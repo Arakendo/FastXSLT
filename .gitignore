@@ -1,0 +1,27 @@
+# Rust / Cargo
+/target/
+**/target/
+
+# Generated documentation and coverage
+/coverage/
+/lcov.info
+
+# Editors / operating systems
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+
+# Local scratch space and downloaded conformance suites
+/.workbench/
+/third-party/
+/third-party-no-redist/
+
+# Fuzzing output
+**/fuzz/artifacts/
+**/fuzz/corpus/generated/
+

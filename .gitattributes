@@ -1,0 +1,13 @@
+* text=auto
+
+*.md text eol=lf
+*.rs text eol=lf
+*.toml text eol=lf
+*.xml text eol=lf
+*.xsl text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# External conformance fixtures may require byte-exact handling. Add narrow
+# overrides beside each imported corpus rather than normalizing them globally.
+

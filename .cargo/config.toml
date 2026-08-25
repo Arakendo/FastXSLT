@@ -1,0 +1,4 @@
+[alias]
+docs = "doc --workspace --no-deps"
+lint = "clippy --workspace --all-targets --all-features -- -D warnings"
+

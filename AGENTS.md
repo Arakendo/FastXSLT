@@ -1,0 +1,120 @@
+# FastXSLT Contributor Instructions
+
+## Project intent
+
+FastXSLT is a Rust-native XSLT engine embedded by other applications, including
+performance-sensitive ASP.NET services. Treat standards semantics, diagnostics,
+host resource access, security limits, interop cost, and conformance evidence as
+product concerns rather than incidental parser details.
+
+The current source-of-truth design document is
+`docs/Specifications/FastXSLT Software Design Document.md`. Update it or add an
+ADR whenever code intentionally changes architecture, ownership, or a public
+contract.
+
+## Source of truth
+
+- Read relevant accepted records in `docs/ADR/` before changing an established
+  boundary or adding a cross-layer dependency.
+- Read relevant records in `docs/Architectural Reviews/` when a question is
+  unresolved, incubating, deferred, or reopened.
+- Specifications describe current intended contracts within accepted ADRs.
+- Plans sequence work. They do not override specifications or ADRs.
+- Evidence records observations. It does not silently create a guarantee.
+- A hand-authored fixture is useful evidence, but it is not a conformance claim.
+
+## Architecture boundaries
+
+- Keep XML parsing mechanics replaceable. FastXSLT owns XDM, XPath, XSLT, and
+  diagnostic semantics even when a third-party parser supplies XML events or a
+  tree.
+- Keep engine semantics host-neutral. ASP.NET, .NET interop, CLI, WASM, and other
+  consumers are adapters over the same compiled-stylesheet and transformation
+  contracts, not alternate semantic engines.
+- Keep stylesheet compilation separate from transformation so compiled
+  stylesheets can eventually be reused safely.
+- Keep compiled artifacts limited to stylesheet-derived static state. Put source
+  documents, parameters, messages, clocks, resolver state, budgets, and other
+  invocation state in the transformation runtime.
+- Keep host-controlled I/O behind explicit resolver interfaces. Engine internals
+  must not silently read the filesystem, access the network, expand external
+  entities, or inherit ambient process authority.
+- Keep resource identity distinct from filenames, display names, host paths,
+  content fingerprints, and retained byte storage. Import adapters may load
+  files; engine execution consumes qualified resources or a sealed snapshot.
+- Follow ADR-0002: after import, compilation and execution are memory-resident by
+  default. Do not retain or reopen source file handles, memory-map source files,
+  emit intermediate artifacts to disk, spill to temporary files, or introduce a
+  hidden disk cache. A disk-backed mechanism requires explicit host authority
+  and a deliberate ADR revision or supersession.
+- Prefer compile-once and transform-many boundaries. A convenience single
+  transform API should use the same semantics as a batch of one rather than
+  developing a separate file-oriented execution path.
+- Preserve source locations and structured diagnostics across XML parsing,
+  XPath parsing/evaluation, stylesheet compilation, lowering, optimization, and
+  execution.
+- Keep the semantic transformation result distinct from serialization into
+  text, bytes, or an output sink, even if an early implementation combines them.
+- Keep observability explicitly supplied and semantically inert. Do not use
+  ambient global subscribers as the only way to inspect engine work.
+- Do not introduce a second execution backend without a parity strategy against
+  the reference semantics.
+- Do not split logical layers into crates until dependency direction, independent
+  reuse, or release pressure makes the boundary valuable.
+- Do not add `unsafe` code without an accepted ADR that defines the invariant,
+  benchmark evidence, and a focused test strategy. The workspace currently
+  forbids it.
+
+## Design habits
+
+- Prefer a small vertical transform slice over broad placeholder abstractions.
+- Tie every public abstraction to a real caller, golden case, conformance case,
+  or host integration requirement.
+- Measure consumer-visible latency and throughput across the host boundary;
+  Rust-only microbenchmarks do not establish ASP.NET application performance.
+- Measure preload, parse, compile, warm execution, result transfer, and peak
+  retained memory separately. “In memory” is a strategy to verify, not a
+  substitute for an end-to-end profile.
+- Include handle-release tests: after a host adapter imports a file, callers
+  must be able to rename, replace, or remove the original without invalidating
+  the sealed snapshot or an in-flight transform.
+- Distinguish unsupported behavior from invalid input in diagnostics.
+- Make resource limits and fallback behavior explicit and testable.
+- Record the exact standards edition and test-suite version behind every
+  conformance number.
+- Do not let a convenient private Rust type silently settle a decision that the
+  SDD lists as open. Open choices affecting ownership, public boundaries,
+  authority, concurrency, replaceability, or conformance require review and an
+  ADR before becoming contracts.
+- Preserve imported fixture provenance, license information, and byte-level
+  integrity where the upstream suite requires it.
+- FastXSLT is MIT licensed. Record dependency, fixture, and copied-code licenses
+  before admission, and do not introduce terms that prevent distributing the
+  FastXSLT library under its declared MIT license without explicit maintainer
+  review.
+
+## Validation
+
+Run these gates after Rust changes:
+
+```text
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-features
+cargo doc --workspace --no-deps
+```
+
+`scripts/verify.ps1` runs the same local gate set and checks local Markdown link
+targets. New public behavior needs at least one focused test and one
+representative golden or corpus case. Changes to documentation navigation must
+keep relative links valid.
+
+## Current workspace shape
+
+- `crates/fastxslt` -- public facade and initially private engine layers
+- `corpus/golden` -- small reviewed source/stylesheet/expected triples
+- `docs/Specifications` -- current intended architecture and contracts
+- `docs/ADR` -- accepted architectural decisions
+- `docs/Architectural Reviews` -- open questions, evidence, and dispositions
+- `docs/Plans` -- executable work and milestone sequencing
+- `docs/Evidence` -- reproducible observations and review records
