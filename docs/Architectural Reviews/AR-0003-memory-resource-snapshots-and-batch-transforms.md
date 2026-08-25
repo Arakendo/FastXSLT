@@ -134,6 +134,11 @@ A batch and a graph may need separate semantics over one shared snapshot.
   dominate real workloads.
 - Snapshot identity, replacement generations, cache keys, concurrency,
   cancellation, output atomicity, and live-resolution policy lack evidence.
+- A test-only M1 experiment now demonstrates a private mutable builder consumed
+  into an immutable snapshot, explicit entry/per-entry/aggregate budgets,
+  duplicate-identity rejection, equal bytes under distinct logical identities,
+  and owned source/stylesheet bytes whose imported files can be renamed and
+  removed immediately. It does not accept the provisional Rust names or shape.
 
 ## Disposition
 
@@ -173,3 +178,5 @@ pipeline outputs beyond the selected batch contract.
 
 - 2026-08-25 -- Opened as Under Review; accepted a bounded snapshot and
   batch-capable first-slice experiment without stabilizing its public API.
+- 2026-08-25 -- Added test-only bounded admission and golden source/stylesheet
+  handle-release evidence; public identity and lifecycle remain unresolved.

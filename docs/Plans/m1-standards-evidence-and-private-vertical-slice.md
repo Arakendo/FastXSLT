@@ -67,7 +67,8 @@ none are represented as supported or executable.
 
 - [ ] Obtain representative transform families and compatibility needs from the
   first consumer.
-- [ ] Complete suite/harness evidence for the XSLT 1.0 alternative.
+- [x] Complete suite/harness evidence for the XSLT 1.0 alternative without
+  admitting redistribution-constrained legacy material to the repository.
 - [ ] Compare staged-modern and version-specific alternatives against time to
   first useful release, data-model growth, diagnostics, and migration risk.
 - [ ] Define dependency-aware selection and reporting categories.
@@ -78,12 +79,14 @@ profile without ambiguity.
 
 ## Slice 2: Private golden vertical behavior
 
-**Status:** Pending AR-0001 disposition.
+**Status:** In Progress as a private, version-neutral experiment; public
+semantics remain pending AR-0001 disposition.
 
 - [ ] Select the XML parser boundary for the slice without delegating engine
   semantics.
-- [ ] Admit source and stylesheet bytes through a bounded resource builder,
-  release import handles, and seal the snapshot.
+- [x] Admit source and stylesheet bytes through a test-only bounded resource
+  builder, release import handles, and seal an immutable snapshot; retain the
+  public contract as unresolved.
 - [ ] Compile one root template and one path/value expression.
 - [ ] Execute `corpus/golden/hello` through batch-capable private machinery.
 - [ ] Compare the semantic result separately from serialization.
@@ -127,3 +130,28 @@ ambient I/O or public stability claim.
   not decide AR-0001 or cover the XSLT 1.0 alternative.
 - Next slice: gather consumer transform families and complete candidate-profile
   suite evidence.
+
+### 2026-08-25: Legacy-suite review and private-slice opening
+
+- Work completed: reviewed the OASIS XSLT/XPath 1.0 Committee Draft 04 archive
+  and recorded its catalog, doubts, acquisition, platform, and licensing facts.
+- Findings: the archival suite is useful local evidence but unsuitable for
+  automatic vendoring; current evidence favors a staged modern model.
+- Plan change: opened Slice 2 only for private version-neutral ownership and
+  resource-boundary work. Public standards semantics remain blocked.
+- Next slice: implement bounded in-memory admission and immutable sealing for
+  the existing golden source and stylesheet, including duplicate/size/budget
+  failures and file-handle release evidence.
+
+### 2026-08-25: Private bounded-resource experiment
+
+- Work completed: added a test-only resource builder and immutable snapshot
+  with opaque identity and explicit entry, per-entry-byte, and aggregate-byte
+  limits.
+- Validation: duplicate and empty identities, entry and byte limits, aggregate
+  limits, equal bytes under distinct identities, and golden source/stylesheet
+  rename/removal immediately after import.
+- Findings: owned memory and handle release work without selecting public type
+  names, URI interpretation, cache semantics, or batch behavior.
+- Next slice: select the replaceable XML parser boundary for the private golden
+  transform and record the exact semantic operations it must supply.

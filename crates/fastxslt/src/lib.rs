@@ -8,6 +8,8 @@
 
 mod compile;
 mod diagnostics;
+#[cfg(test)]
+mod resources;
 mod runtime;
 mod xdm;
 mod xml;

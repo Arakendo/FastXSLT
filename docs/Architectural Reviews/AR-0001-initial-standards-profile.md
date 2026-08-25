@@ -8,7 +8,7 @@
 | Scope | Product standards and semantic baseline |
 | Trigger | The first transform slice needs a precise XPath/XSLT target |
 | Related ADRs | None |
-| Related evidence | `corpus/golden/hello`, peer review in `docs/Evidence/`, and `docs/Evidence/w3c-suite-catalog-inventory-2026-08-25.md` |
+| Related evidence | `corpus/golden/hello`, peer review in `docs/Evidence/`, `docs/Evidence/w3c-suite-catalog-inventory-2026-08-25.md`, and `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md` |
 
 ## Architectural question
 
@@ -60,6 +60,15 @@ This offers a smaller language and a fast path to useful legacy transforms.
 Risks include shaping value and node-set APIs around compatibility semantics
 that do not generalize cleanly to XDM sequences and later standards.
 
+The completed OASIS TC provides a 2005 Committee Draft 04 collection with 3,173
+catalog entries and useful specification citations, scenarios, discretionary
+metadata, and a doubts overlay. It is no longer maintained, contains duplicate
+case identities and unresolved annotations, assumes older filesystem/network
+conditions, and includes contributor-specific redistribution terms that are not
+safe to treat as MIT-compatible vendored corpus without separate legal review.
+It remains useful as a local legacy reference but is weaker as FastXSLT's
+primary public denominator.
+
 ### B. XSLT 3.0 basic conformance and XPath 3.1 from the start
 
 This provides a modern semantic foundation and clearer alignment with current
@@ -81,12 +90,19 @@ suite selection are reported precisely.
 - The test harness should be designed to catalog unsupported and excluded cases
   explicitly regardless of target.
 - There is not yet enough product evidence to choose among the alternatives.
+- Current suite and data-model evidence favors Alternative C over a 1.0-only
+  internal model: modern suites are immutable Git inputs with richer dependency
+  metadata, while the strongest legacy candidate is archival and redistribution
+  constrained. Representative consumer transforms are still required before
+  this recommendation becomes an accepted product decision.
 
 ## Disposition
 
-**Under Review.** Do not label FastXSLT as conformant with a version or expose a
-stable transformation API until the initial target, suites, and reporting policy
-are accepted in an ADR.
+**Under Review with Alternative C as the working recommendation.** A private
+`hello` experiment may use the syntax intersection to test ownership and
+resource boundaries, but must not stabilize a public API or imply a version.
+Do not label FastXSLT as conformant until the initial target, suites, exclusions,
+and reporting policy are accepted in an ADR.
 
 ## Required follow-up
 
@@ -95,9 +111,9 @@ are accepted in an ADR.
 - [ ] Record representative transform families from the first consumer.
 - [x] Pin and structurally inventory the QT3 and XSLT30 suites used by the
   modern-profile alternatives.
-- [ ] Inventory the official candidate suites, versions, licenses, acquisition,
-  and harness requirements still needed for every viable target, including the
-  XSLT 1.0 alternative.
+- [x] Inventory the official candidate suites, versions, licenses, acquisition,
+  and harness requirements for the modern and XSLT 1.0 alternatives; retain the
+  OASIS archive as local-only evidence rather than admitted corpus.
 - [ ] Prototype the `hello` case only as a throwaway/private vertical slice if
   needed to test architecture before disposition.
 - [ ] Propose an ADR naming the target, deliberate exclusions, suites, and
@@ -114,3 +130,5 @@ the selected internal model blocks a planned compatibility level.
 - 2026-08-25 -- Opened as Under Review during project scaffolding.
 - 2026-08-25 -- Recorded the pinned QT3/XSLT30 catalog inventory; profile and
   executable selection remain unresolved.
+- 2026-08-25 -- Reviewed the OASIS XSLT/XPath 1.0 Committee Draft 04 archive;
+  Alternative C became the working recommendation, pending consumer evidence.
