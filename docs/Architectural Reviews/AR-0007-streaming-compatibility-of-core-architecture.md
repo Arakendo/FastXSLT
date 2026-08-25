@@ -137,6 +137,14 @@ workloads support it. No current consumer evidence justifies closing the option.
 - The abstraction cost, useful workload set, standards requirements, hybrid
   fallback behavior, and achievable memory savings are unknown.
 
+The first owned-tree experiment adds concrete capability evidence without
+changing this disposition. The golden source uses document-root and child
+navigation, expanded element names, parent relation, identity, semantic document
+order, descendant text aggregation, and provenance. The builder owns its nodes
+after source bytes are released and assigns order through semantic traversal.
+It does not yet justify ancestors, reverse axes, keys, arbitrary repeated
+navigation, typed values, namespace nodes, or a provider abstraction.
+
 ## Disposition
 
 **Incubating. Do not implement streaming in the initial profile.** Preserve the
@@ -185,3 +193,5 @@ materialization proves useful, or abstraction cost harms the tree evaluator.
 
 - 2026-08-25 -- Opened as Incubating from Monday's streaming-architecture peer
   review; implementation and conformance remain deferred.
+- 2026-08-25 -- Recorded the first concrete navigation inventory from the owned
+  golden-source tree experiment; no generalized interface was introduced.

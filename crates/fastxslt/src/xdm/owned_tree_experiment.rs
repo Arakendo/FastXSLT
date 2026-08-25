@@ -1,0 +1,345 @@
+use std::ops::Range;
+
+use crate::xml::quick_xml_experiment::{ExpandedName, OwnedXmlEvent, ParsedDocument};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct NodeId(usize);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum NodeKind {
+    Document,
+    Element,
+    Attribute,
+    Text,
+    Comment,
+    ProcessingInstruction,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SourceLocation {
+    resource: String,
+    span: Range<usize>,
+}
+
+#[derive(Debug)]
+struct Node {
+    kind: NodeKind,
+    parent: Option<NodeId>,
+    children: Vec<NodeId>,
+    attributes: Vec<NodeId>,
+    name: Option<ExpandedName>,
+    value: Option<String>,
+    location: SourceLocation,
+    document_order: Option<usize>,
+}
+
+#[derive(Debug)]
+struct Document {
+    nodes: Vec<Node>,
+    document: NodeId,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum BuildFailure {
+    UnexpectedEnd,
+    UnclosedElement,
+}
+
+impl Document {
+    #[allow(
+        clippy::too_many_lines,
+        reason = "keeping the private event-to-tree state machine together makes ownership auditable"
+    )]
+    fn from_parsed(parsed: ParsedDocument) -> Result<Self, BuildFailure> {
+        let document_end = parsed
+            .events
+            .iter()
+            .map(event_span)
+            .map(|span| span.end)
+            .max()
+            .unwrap_or(0);
+        let mut result = Self {
+            nodes: vec![Node {
+                kind: NodeKind::Document,
+                parent: None,
+                children: Vec::new(),
+                attributes: Vec::new(),
+                name: None,
+                value: None,
+                location: SourceLocation {
+                    resource: parsed.resource.clone(),
+                    span: 0..document_end,
+                },
+                document_order: None,
+            }],
+            document: NodeId(0),
+        };
+        let mut ancestors = vec![result.document];
+
+        for event in parsed.events {
+            match event {
+                OwnedXmlEvent::Start {
+                    name,
+                    attributes,
+                    span,
+                } => {
+                    let parent = *ancestors.last().expect("document ancestor is retained");
+                    let element = result.push_child(
+                        parent,
+                        NodeKind::Element,
+                        Some(name),
+                        None,
+                        &parsed.resource,
+                        span.clone(),
+                    );
+                    for attribute in attributes {
+                        let attribute_id = result.push_node(Node {
+                            kind: NodeKind::Attribute,
+                            parent: Some(element),
+                            children: Vec::new(),
+                            attributes: Vec::new(),
+                            name: Some(attribute.name),
+                            value: Some(attribute.value),
+                            location: SourceLocation {
+                                resource: parsed.resource.clone(),
+                                span: attribute.span,
+                            },
+                            document_order: None,
+                        });
+                        result.nodes[element.0].attributes.push(attribute_id);
+                    }
+                    ancestors.push(element);
+                }
+                OwnedXmlEvent::End { .. } => {
+                    if ancestors.len() == 1 {
+                        return Err(BuildFailure::UnexpectedEnd);
+                    }
+                    ancestors.pop();
+                }
+                OwnedXmlEvent::Text { value, span } => {
+                    let parent = *ancestors.last().expect("document ancestor is retained");
+                    if let Some(last) = result.nodes[parent.0].children.last().copied()
+                        && result.nodes[last.0].kind == NodeKind::Text
+                    {
+                        result.nodes[last.0]
+                            .value
+                            .as_mut()
+                            .expect("text nodes carry values")
+                            .push_str(&value);
+                        result.nodes[last.0].location.span.end = span.end;
+                    } else {
+                        result.push_child(
+                            parent,
+                            NodeKind::Text,
+                            None,
+                            Some(value),
+                            &parsed.resource,
+                            span,
+                        );
+                    }
+                }
+                OwnedXmlEvent::Comment { value, span } => {
+                    let parent = *ancestors.last().expect("document ancestor is retained");
+                    result.push_child(
+                        parent,
+                        NodeKind::Comment,
+                        None,
+                        Some(value),
+                        &parsed.resource,
+                        span,
+                    );
+                }
+                OwnedXmlEvent::ProcessingInstruction {
+                    target,
+                    value,
+                    span,
+                } => {
+                    let parent = *ancestors.last().expect("document ancestor is retained");
+                    result.push_child(
+                        parent,
+                        NodeKind::ProcessingInstruction,
+                        Some(ExpandedName {
+                            namespace: None,
+                            local: target,
+                        }),
+                        Some(value),
+                        &parsed.resource,
+                        span,
+                    );
+                }
+            }
+        }
+
+        if ancestors.len() != 1 {
+            return Err(BuildFailure::UnclosedElement);
+        }
+        result.assign_document_order();
+        Ok(result)
+    }
+
+    fn push_child(
+        &mut self,
+        parent: NodeId,
+        kind: NodeKind,
+        name: Option<ExpandedName>,
+        value: Option<String>,
+        resource: &str,
+        span: Range<usize>,
+    ) -> NodeId {
+        let id = self.push_node(Node {
+            kind,
+            parent: Some(parent),
+            children: Vec::new(),
+            attributes: Vec::new(),
+            name,
+            value,
+            location: SourceLocation {
+                resource: resource.to_owned(),
+                span,
+            },
+            document_order: None,
+        });
+        self.nodes[parent.0].children.push(id);
+        id
+    }
+
+    fn push_node(&mut self, node: Node) -> NodeId {
+        let id = NodeId(self.nodes.len());
+        self.nodes.push(node);
+        id
+    }
+
+    fn assign_document_order(&mut self) {
+        let mut ordered = Vec::with_capacity(self.nodes.len());
+        self.collect_document_order(self.document, &mut ordered);
+        for (rank, id) in ordered.into_iter().enumerate() {
+            self.nodes[id.0].document_order = Some(rank);
+        }
+    }
+
+    fn collect_document_order(&self, id: NodeId, ordered: &mut Vec<NodeId>) {
+        ordered.push(id);
+        for attribute in &self.nodes[id.0].attributes {
+            ordered.push(*attribute);
+        }
+        for child in &self.nodes[id.0].children {
+            self.collect_document_order(*child, ordered);
+        }
+    }
+
+    fn string_value(&self, id: NodeId) -> String {
+        let node = &self.nodes[id.0];
+        match node.kind {
+            NodeKind::Text
+            | NodeKind::Attribute
+            | NodeKind::Comment
+            | NodeKind::ProcessingInstruction => node.value.clone().unwrap_or_default(),
+            NodeKind::Document | NodeKind::Element => node
+                .children
+                .iter()
+                .map(|child| self.string_value(*child))
+                .collect(),
+        }
+    }
+}
+
+fn event_span(event: &OwnedXmlEvent) -> Range<usize> {
+    match event {
+        OwnedXmlEvent::Start { span, .. }
+        | OwnedXmlEvent::End { span, .. }
+        | OwnedXmlEvent::Text { span, .. }
+        | OwnedXmlEvent::Comment { span, .. }
+        | OwnedXmlEvent::ProcessingInstruction { span, .. } => span.clone(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+
+    use super::{Document, NodeKind};
+
+    const LIMITS: ParseLimits = ParseLimits {
+        max_events: 256,
+        max_depth: 32,
+    };
+
+    #[test]
+    fn golden_source_becomes_an_owned_document_with_identity_order_and_provenance() {
+        let input = include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../corpus/golden/hello/input.xml"
+        ))
+        .to_vec();
+        let parsed = parse_document("golden:hello/input.xml", &input, LIMITS)
+            .expect("golden source should parse");
+        drop(input);
+
+        let document = Document::from_parsed(parsed).expect("owned XDM should build");
+        let greeting = document.nodes[document.document.0].children[0];
+        let name = document.nodes[greeting.0]
+            .children
+            .iter()
+            .copied()
+            .find(|id| {
+                document.nodes[id.0].kind == NodeKind::Element
+                    && document.nodes[id.0]
+                        .name
+                        .as_ref()
+                        .map(|name| name.local.as_str())
+                        == Some("name")
+            })
+            .expect("name element should exist");
+
+        assert_ne!(greeting, name);
+        assert!(document.nodes[greeting.0].document_order < document.nodes[name.0].document_order);
+        assert_eq!(document.nodes[name.0].parent, Some(greeting));
+        assert_eq!(document.string_value(name), "FastXSLT");
+        assert_eq!(
+            document.nodes[name.0].location.resource,
+            "golden:hello/input.xml"
+        );
+        assert!(!document.nodes[name.0].location.span.is_empty());
+    }
+
+    #[test]
+    fn equal_nodes_keep_distinct_identity_and_attributes_are_not_children() {
+        let parsed = parse_document(
+            "memory:identity.xml",
+            b"<root><same value='x'/><same value='x'/></root>",
+            LIMITS,
+        )
+        .expect("identity fixture should parse");
+        let document = Document::from_parsed(parsed).expect("owned XDM should build");
+        let root = document.nodes[document.document.0].children[0];
+        let elements: Vec<_> = document.nodes[root.0]
+            .children
+            .iter()
+            .copied()
+            .filter(|id| document.nodes[id.0].kind == NodeKind::Element)
+            .collect();
+
+        assert_ne!(elements[0], elements[1]);
+        assert_eq!(document.nodes[elements[0].0].attributes.len(), 1);
+        assert!(document.nodes[elements[0].0].children.is_empty());
+        assert_eq!(
+            document.string_value(document.nodes[elements[0].0].attributes[0]),
+            "x"
+        );
+    }
+
+    #[test]
+    fn adjacent_text_and_references_coalesce_without_losing_semantics() {
+        let parsed = parse_document(
+            "memory:text.xml",
+            b"<root>one&amp;<![CDATA[two]]>three</root>",
+            LIMITS,
+        )
+        .expect("text fixture should parse");
+        let document = Document::from_parsed(parsed).expect("owned XDM should build");
+        let root = document.nodes[document.document.0].children[0];
+
+        assert_eq!(document.nodes[root.0].children.len(), 1);
+        assert_eq!(document.string_value(root), "one&twothree");
+    }
+}

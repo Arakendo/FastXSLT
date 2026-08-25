@@ -170,3 +170,17 @@ ambient I/O or public stability claim.
   remain open.
 - Next slice: construct the first owned XDM document from the private adapter
   without retaining parser events or dependency-owned nodes.
+
+### 2026-08-25: First owned XDM document
+
+- Work completed: extended the private parser adapter with owned semantic events
+  and consumed them into a separate engine-owned document arena.
+- Validation: the golden input remains queryable after its input allocation is
+  dropped; node identity, parent/child and attribute relationships, semantic
+  order, string value, text coalescing, expanded names, and provenance pass
+  focused tests.
+- Findings: no parser event, dependency node, path, resolver, or source lifetime
+  needs to enter the XDM model. The first navigation inventory is now recorded
+  in AR-0007 without introducing a provider abstraction.
+- Next slice: parse the golden stylesheet into the owned model and privately
+  recognize only the syntax needed for its root template and value expression.

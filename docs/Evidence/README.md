@@ -17,3 +17,4 @@ pressure architecture but does not silently create a public guarantee.
 - [W3C Suite Catalog Inventory](w3c-suite-catalog-inventory-2026-08-25.md)
 - [OASIS XSLT/XPath 1.0 Suite Candidate Review](oasis-xslt10-suite-candidate-review-2026-08-25.md)
 - [Rust XML Parser Candidate Review](rust-xml-parser-candidate-review-2026-08-25.md)
+- [Owned XDM Tree Experiment](owned-xdm-tree-experiment-2026-08-25.md)

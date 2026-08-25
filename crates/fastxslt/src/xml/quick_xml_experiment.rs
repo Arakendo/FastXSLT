@@ -7,20 +7,54 @@ use quick_xml::name::ResolveResult;
 use quick_xml::reader::NsReader;
 
 #[derive(Debug, Clone, Copy)]
-struct ParseLimits {
-    max_events: usize,
-    max_depth: usize,
+pub(crate) struct ParseLimits {
+    pub(crate) max_events: usize,
+    pub(crate) max_depth: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct ExpandedName {
-    namespace: Option<String>,
-    local: String,
+pub(crate) struct ExpandedName {
+    pub(crate) namespace: Option<String>,
+    pub(crate) local: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct XmlAttribute {
+    pub(crate) name: ExpandedName,
+    pub(crate) value: String,
+    pub(crate) span: Range<usize>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum OwnedXmlEvent {
+    Start {
+        name: ExpandedName,
+        attributes: Vec<XmlAttribute>,
+        span: Range<usize>,
+    },
+    End {
+        name: ExpandedName,
+        span: Range<usize>,
+    },
+    Text {
+        value: String,
+        span: Range<usize>,
+    },
+    Comment {
+        value: String,
+        span: Range<usize>,
+    },
+    ProcessingInstruction {
+        target: String,
+        value: String,
+        span: Range<usize>,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq)]
-struct ParsedDocument {
-    resource: String,
+pub(crate) struct ParsedDocument {
+    pub(crate) resource: String,
+    pub(crate) events: Vec<OwnedXmlEvent>,
     root: ExpandedName,
     root_span: Range<usize>,
     root_attributes: Vec<ExpandedName>,
@@ -43,12 +77,12 @@ enum ParseFailure {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-struct LocatedFailure {
+pub(crate) struct LocatedFailure {
     resource: String,
     failure: ParseFailure,
 }
 
-fn parse_document(
+pub(crate) fn parse_document(
     resource: &str,
     input: &[u8],
     limits: ParseLimits,
@@ -80,6 +114,7 @@ fn parse_bytes(input: &[u8], limits: ParseLimits) -> Result<ParsedDocument, Pars
     let mut root_attributes = Vec::new();
     let mut comment_count = 0_usize;
     let mut processing_instruction_count = 0_usize;
+    let mut events = Vec::new();
 
     loop {
         let start = usize::try_from(reader.buffer_position()).unwrap_or(usize::MAX);
@@ -110,9 +145,12 @@ fn parse_bytes(input: &[u8], limits: ParseLimits) -> Result<ParsedDocument, Pars
                     if root.is_some() {
                         return Err(ParseFailure::MultipleRoots { span });
                     }
-                    root = Some(name);
+                    root = Some(name.clone());
                     root_span = Some(span.clone());
-                    root_attributes = attributes;
+                    root_attributes = attributes
+                        .iter()
+                        .map(|attribute| attribute.name.clone())
+                        .collect();
                 }
                 if depth >= limits.max_depth {
                     return Err(ParseFailure::DepthLimit {
@@ -122,6 +160,11 @@ fn parse_bytes(input: &[u8], limits: ParseLimits) -> Result<ParsedDocument, Pars
                 }
                 depth += 1;
                 element_count += 1;
+                events.push(OwnedXmlEvent::Start {
+                    name,
+                    attributes,
+                    span,
+                });
             }
             Event::Empty(element) => {
                 let name = resolve_element_name(&reader, &element, start)?;
@@ -130,9 +173,12 @@ fn parse_bytes(input: &[u8], limits: ParseLimits) -> Result<ParsedDocument, Pars
                     if root.is_some() {
                         return Err(ParseFailure::MultipleRoots { span });
                     }
-                    root = Some(name);
-                    root_span = Some(span);
-                    root_attributes = attributes;
+                    root = Some(name.clone());
+                    root_span = Some(span.clone());
+                    root_attributes = attributes
+                        .iter()
+                        .map(|attribute| attribute.name.clone())
+                        .collect();
                 }
                 if depth >= limits.max_depth {
                     return Err(ParseFailure::DepthLimit {
@@ -141,21 +187,39 @@ fn parse_bytes(input: &[u8], limits: ParseLimits) -> Result<ParsedDocument, Pars
                     });
                 }
                 element_count += 1;
+                events.push(OwnedXmlEvent::Start {
+                    name: name.clone(),
+                    attributes,
+                    span: span.clone(),
+                });
+                events.push(OwnedXmlEvent::End { name, span });
             }
-            Event::End(_) => depth = depth.saturating_sub(1),
+            Event::End(element) => {
+                let name = resolve_end_name(&reader, element.name().as_ref(), start)?;
+                depth = depth.saturating_sub(1);
+                events.push(OwnedXmlEvent::End { name, span });
+            }
             Event::Text(text) => {
-                text.xml10_content()
-                    .map_err(|error| malformed(start, error))?;
+                let value = text
+                    .xml10_content()
+                    .map_err(|error| malformed(start, error))?
+                    .into_owned();
                 if depth == 0 && !text.as_ref().iter().all(u8::is_ascii_whitespace) {
                     return Err(ParseFailure::ContentOutsideRoot { span });
                 }
+                if depth > 0 {
+                    events.push(OwnedXmlEvent::Text { value, span });
+                }
             }
             Event::CData(text) => {
-                text.xml10_content()
-                    .map_err(|error| malformed(start, error))?;
+                let value = text
+                    .xml10_content()
+                    .map_err(|error| malformed(start, error))?
+                    .into_owned();
                 if depth == 0 {
                     return Err(ParseFailure::ContentOutsideRoot { span });
                 }
+                events.push(OwnedXmlEvent::Text { value, span });
             }
             Event::GeneralRef(reference) => {
                 if depth == 0 {
@@ -172,18 +236,31 @@ fn parse_bytes(input: &[u8], limits: ParseLimits) -> Result<ParsedDocument, Pars
                         name: reference.as_ref().to_vec(),
                     });
                 }
+                events.push(OwnedXmlEvent::Text {
+                    value: resolve_reference(&reference, start)?,
+                    span,
+                });
             }
             Event::DocType(_) => return Err(ParseFailure::DtdForbidden { span }),
             Event::Comment(comment) => {
-                comment
+                let value = comment
                     .xml10_content()
-                    .map_err(|error| malformed(start, error))?;
+                    .map_err(|error| malformed(start, error))?
+                    .into_owned();
                 comment_count += 1;
+                events.push(OwnedXmlEvent::Comment { value, span });
             }
             Event::PI(instruction) => {
-                std::str::from_utf8(instruction.as_ref())
-                    .map_err(|error| malformed(start, error))?;
+                let target = decode_name(instruction.target(), start)?;
+                let value = std::str::from_utf8(instruction.content())
+                    .map_err(|error| malformed(start, error))?
+                    .to_owned();
                 processing_instruction_count += 1;
+                events.push(OwnedXmlEvent::ProcessingInstruction {
+                    target,
+                    value,
+                    span,
+                });
             }
             Event::Eof => break,
             Event::Decl(declaration) => {
@@ -196,6 +273,7 @@ fn parse_bytes(input: &[u8], limits: ParseLimits) -> Result<ParsedDocument, Pars
     let root = root.ok_or(ParseFailure::MissingRoot)?;
     Ok(ParsedDocument {
         resource: String::new(),
+        events,
         root,
         root_span: root_span.expect("a root event always records its span"),
         root_attributes,
@@ -214,11 +292,21 @@ fn resolve_element_name(
     expanded_name(namespace, local.as_ref(), offset)
 }
 
+fn resolve_end_name(
+    reader: &NsReader<&[u8]>,
+    name: &[u8],
+    offset: usize,
+) -> Result<ExpandedName, ParseFailure> {
+    let qualified = quick_xml::name::QName(name);
+    let (namespace, local) = reader.resolver().resolve_element(qualified);
+    expanded_name(namespace, local.as_ref(), offset)
+}
+
 fn resolve_attributes(
     reader: &NsReader<&[u8]>,
     element: &BytesStart<'_>,
     offset: usize,
-) -> Result<Vec<ExpandedName>, ParseFailure> {
+) -> Result<Vec<XmlAttribute>, ParseFailure> {
     let mut names = Vec::new();
     let mut expanded_names = HashSet::new();
 
@@ -227,9 +315,10 @@ fn resolve_attributes(
             offset,
             detail: error.to_string(),
         })?;
-        attribute
+        let value = attribute
             .decoded_and_normalized_value(XmlVersion::Implicit1_0, reader.decoder())
-            .map_err(|error| malformed(offset, error))?;
+            .map_err(|error| malformed(offset, error))?
+            .into_owned();
         if attribute.key.as_ref() == b"xmlns" || attribute.key.as_ref().starts_with(b"xmlns:") {
             continue;
         }
@@ -241,7 +330,11 @@ fn resolve_attributes(
                 detail: format!("duplicate expanded attribute name: {name:?}"),
             });
         }
-        names.push(name);
+        names.push(XmlAttribute {
+            name,
+            value,
+            span: offset..usize::try_from(reader.buffer_position()).unwrap_or(usize::MAX),
+        });
     }
     Ok(names)
 }
@@ -278,6 +371,32 @@ fn malformed(offset: usize, error: impl std::fmt::Display) -> ParseFailure {
         offset,
         detail: error.to_string(),
     }
+}
+
+fn resolve_reference(
+    reference: &quick_xml::events::BytesRef<'_>,
+    offset: usize,
+) -> Result<String, ParseFailure> {
+    if let Some(character) = reference
+        .resolve_char_ref()
+        .map_err(|error| malformed(offset, error))?
+    {
+        return Ok(character.to_string());
+    }
+    let character = match reference.as_ref() {
+        b"lt" => '<',
+        b"gt" => '>',
+        b"amp" => '&',
+        b"apos" => '\'',
+        b"quot" => '"',
+        name => {
+            return Err(ParseFailure::UnknownEntity {
+                offset,
+                name: name.to_vec(),
+            });
+        }
+    };
+    Ok(character.to_string())
 }
 
 #[cfg(test)]

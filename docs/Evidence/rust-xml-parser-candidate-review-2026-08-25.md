@@ -99,8 +99,9 @@ the preferred engine representation.
 
 ## Private experiment results
 
-Ten focused tests now pass across the resource and XML experiments; five cover
-the XML adapter. The XML cases demonstrate:
+Ten focused tests pass across the resource and XML experiments; five cover the
+XML adapter. Three additional owned-XDM tests are recorded separately. The XML
+cases demonstrate:
 
 - namespace expansion for elements and attributes, including default-namespace
   behavior;

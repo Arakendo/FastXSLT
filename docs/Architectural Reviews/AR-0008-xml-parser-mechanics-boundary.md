@@ -8,7 +8,7 @@
 | Scope | XML byte decoding, tokenization, namespaces, provenance, limits, and XDM handoff |
 | Trigger | M1's private transform slice needs to turn admitted bytes into FastXSLT-owned document semantics |
 | Related ADRs | ADR-0001, ADR-0002, ADR-0003 |
-| Related evidence | `docs/Evidence/rust-xml-parser-candidate-review-2026-08-25.md` |
+| Related evidence | `docs/Evidence/rust-xml-parser-candidate-review-2026-08-25.md` and `docs/Evidence/owned-xdm-tree-experiment-2026-08-25.md` |
 
 ## Architectural question
 
@@ -126,7 +126,7 @@ boundary and FastXSLT remains responsible for accepted XML behavior.
   mismatches and byte-order marks.
 - [ ] Define offset-to-line/column indexing without copying parser types or
   repeatedly scanning large resources.
-- [ ] Build the first owned XDM document without retaining parser events or
+- [x] Build the first owned XDM document without retaining parser events or
   dependency node handles.
 - [ ] Fuzz malformed input and measure allocation, latency, and peak memory on
   representative source and stylesheet sizes.
@@ -145,3 +145,5 @@ or another physical input strategy requires a different event seam.
 ## Review history
 
 - 2026-08-25 -- Opened Under Review with a dev-only `quick-xml` experiment.
+- 2026-08-25 -- Confirmed the adapter can feed an owned private XDM tree after
+  source bytes are released; production admission gates remain open.
