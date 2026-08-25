@@ -71,3 +71,6 @@ and add the record to this index. Never reuse a retired number.
   -- Incubating; keep future tree, streaming, and hybrid strategies
   architecturally possible without implementing streaming or claiming XSLT
   streaming conformance now.
+- [AR-0008: XML Parser Mechanics Boundary](AR-0008-xml-parser-mechanics-boundary.md)
+  -- Under Review; evaluate a private event parser without delegating XML
+  policy, XDM ownership, resource authority, or public types.

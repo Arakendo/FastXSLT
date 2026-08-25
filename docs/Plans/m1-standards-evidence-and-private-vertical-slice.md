@@ -8,7 +8,7 @@
 | Owner | FastXSLT maintainers |
 | Target | M1 standards decision and first private transform |
 | Related ADRs | ADR-0001, ADR-0002 |
-| Related reviews | AR-0001, AR-0003, AR-0004, AR-0007 |
+| Related reviews | AR-0001, AR-0003, AR-0004, AR-0007, AR-0008 |
 | Related change requests | None |
 | Depends on | Pinned W3C suites and representative consumer evidence |
 
@@ -82,7 +82,7 @@ profile without ambiguity.
 **Status:** In Progress as a private, version-neutral experiment; public
 semantics remain pending AR-0001 disposition.
 
-- [ ] Select the XML parser boundary for the slice without delegating engine
+- [x] Select a leading XML parser for private evaluation without delegating engine
   semantics.
 - [x] Admit source and stylesheet bytes through a test-only bounded resource
   builder, release import handles, and seal an immutable snapshot; retain the
@@ -155,3 +155,18 @@ ambient I/O or public stability claim.
   names, URI interpretation, cache semantics, or batch behavior.
 - Next slice: select the replaceable XML parser boundary for the private golden
   transform and record the exact semantic operations it must supply.
+
+### 2026-08-25: Private XML parser experiment
+
+- Work completed: opened AR-0008, compared three Rust parser candidates, and
+  pinned `quick-xml` 0.40.1 only as a development dependency for the leading
+  private experiment.
+- Validation: in-memory parsing, expanded namespaces, resource identity and byte
+  spans, malformed structure, duplicate expanded attributes, DTD and unknown
+  entity denial, comment/PI retention pressure, and event/depth limits.
+- Findings: pull events fit the owned-XDM seam, but FastXSLT must own document and
+  namespace validation, external-authority policy, diagnostics, and limits.
+  XML name/declaration/encoding conformance and production dependency admission
+  remain open.
+- Next slice: construct the first owned XDM document from the private adapter
+  without retaining parser events or dependency-owned nodes.
