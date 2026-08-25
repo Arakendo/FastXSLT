@@ -8,7 +8,7 @@
 | Scope | Resource loading, compilation reuse, and volume execution |
 | Trigger | Volume consumers should avoid repeated file I/O and single-file call overhead |
 | Related ADRs | ADR-0001, ADR-0002, ADR-0005 |
-| Related evidence | Tokimu AR-0009/AR-0010 Resource Space work; `docs/Evidence/thread-pool-design-review-2026-08-25.md`; future FastXSLT benchmarks |
+| Related evidence | Tokimu AR-0009/AR-0010 Resource Space work; `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-adr-0005-review-monday-2026-08-25.md`; AR-0009; future FastXSLT benchmarks |
 
 ## Architectural question
 
@@ -147,7 +147,7 @@ and measurements.
   host and sibling results do not mutate the snapshot.
 - A prepared-input pool may retain immutable parsed sources where measurement
   justifies it, but raw-byte, parsed-XDM, and derived-index budgets and lifetimes
-  must remain distinguishable.
+  must remain distinguishable. AR-0009 now owns that retention/cache question.
 - Input capacity, pending request count, worker count, and maximum in-flight
   transforms are separate policies. The discussed 5,000 inputs and 10 workers
   are benchmark parameters, not defaults.
@@ -212,3 +212,5 @@ pipeline outputs beyond the selected batch contract.
 - 2026-08-25 -- ADR-0005 accepted unordered independent transform sets and
   host-owned dependent stages; prepared-input and executor policies remain under
   review.
+- 2026-08-25 -- Peer review confirmed ADR-0005 without revision and moved the
+  prepared-input ownership question into incubating AR-0009.

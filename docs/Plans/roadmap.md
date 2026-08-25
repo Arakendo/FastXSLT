@@ -59,6 +59,8 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [ ] Execute a batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.
+- [ ] Compare parse-per-invocation with private snapshot/work-generation prepared
+  input reuse, reporting retained XDM and peak construction memory separately.
 - [ ] Execute a two-stage host-owned workflow and prove stage-one results remain
   invisible until explicitly admitted into a stage-two snapshot.
 - [ ] Compare file-per-call, preloaded snapshot, warmed filesystem cache, and

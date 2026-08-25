@@ -442,7 +442,8 @@ initial read or explicit output publication escapes operating-system scanning.
 - Resource identity, snapshot construction/replacement, cache ownership,
   transform-set construction, concurrency, and failure policy, tracked by
   AR-0003. ADR-0005 fixes unordered independent execution and host-owned workflow
-  ordering; transformation graphs are deferred.
+  ordering; transformation graphs are deferred. Prepared-input definition,
+  retention, and cache lifecycle are tracked by AR-0009.
 
 ### Deferred capability decisions
 

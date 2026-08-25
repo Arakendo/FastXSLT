@@ -75,3 +75,6 @@ and add the record to this index. Never reuse a retired number.
 - [AR-0008: XML Parser Mechanics Boundary](AR-0008-xml-parser-mechanics-boundary.md)
   -- Under Review; evaluate a private event parser without delegating XML
   policy, XDM ownership, resource authority, or public types.
+- [AR-0009: Prepared Input Retention and Cache Lifecycle](AR-0009-prepared-input-retention-and-cache-lifecycle.md)
+  -- Incubating; determine what immutable source-derived state may be reused and
+  who owns its bounded lifetime without creating hidden semantics or authority.

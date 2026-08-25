@@ -56,6 +56,10 @@ contract.
   execution, or completion-order contract. Correlate results by logical identity,
   keep sibling results invisible, and leave dependent workflow stages and
   result-to-resource admission to the host.
+- Follow AR-0009's incubation guardrails for prepared inputs. Reusable prepared
+  state is immutable and source-derived; never store invocation state in it,
+  equate content hashes with document identity, eagerly parse every snapshot
+  entry by default, or introduce global/cross-snapshot caching without evidence.
 - Preserve source locations and structured diagnostics across XML parsing,
   XPath parsing/evaluation, stylesheet compilation, lowering, optimization, and
   execution.

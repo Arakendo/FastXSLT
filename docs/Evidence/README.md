@@ -19,3 +19,4 @@ pressure architecture but does not silently create a public guarantee.
 - [Rust XML Parser Candidate Review](rust-xml-parser-candidate-review-2026-08-25.md)
 - [Owned XDM Tree Experiment](owned-xdm-tree-experiment-2026-08-25.md)
 - [Thread-Pool and Volume-Work Design Review](thread-pool-design-review-2026-08-25.md)
+- [Peer ADR-0005 Review: Monday](peer-adr-0005-review-monday-2026-08-25.md)
