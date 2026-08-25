@@ -26,6 +26,9 @@ next architectural questions are visible rather than encoded accidentally.
 - [ ] Release import handles before sealing, then replace or remove the original
   fixture files and prove the snapshot still executes identically.
 - [ ] Add negative cases that distinguish invalid input from unsupported syntax.
+- [ ] Establish the first structured boundary failures and reportable semantic
+  outcomes from emitted behavior rather than an aspirational error catalog,
+  providing evidence for AR-0004.
 
 Exit criterion: the seed transform passes through the intended layers and every
 implemented behavior belongs to a named standards slice.
@@ -34,8 +37,14 @@ implemented behavior belongs to a named standards slice.
 
 - [ ] Define node identity, document order, names, strings, and sequence/value
   behavior needed by the accepted profile.
+- [ ] Record the navigation and retention capabilities the implemented XPath
+  and XSLT slice actually requires; keep tree-specific random-access assumptions
+  inside their physical owner, providing evidence for AR-0007.
 - [ ] Expand XPath lex/parse/evaluate tests before growing XSLT instructions.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
+- [ ] Provide a read-only semantic inspection snapshot for the implemented
+  compilation slice without exposing private parser, arena, or IR types,
+  providing evidence for AR-0005.
 - [ ] Import the first licensed, versioned, integrity-checked suite selection.
 
 Exit criterion: a published test report identifies supported, unsupported,
@@ -63,6 +72,6 @@ measured end-to-end behavior to at least one non-Rust consumer.
 
 ## Later candidates
 
-CLI, WASM, streaming, schema awareness, extension functions, packages,
+CLI, WASM, streaming implementation or conformance, schema awareness, extension functions, packages,
 alternate execution backends, and parallelism require their own product evidence
 and architectural review. Their presence in this list is not a commitment.

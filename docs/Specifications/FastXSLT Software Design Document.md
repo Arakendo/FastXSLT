@@ -93,6 +93,11 @@ open:
 - Engine-visible nodes provide stable identity and document order for the
   lifetime required by the accepted standards profile. Neither property may be
   inferred accidentally from Rust object identity or allocation order.
+- Engine layers depend on the semantic navigation and retention capabilities
+  they require, not on a permanent assumption that every source is a fully
+  materialized random-access tree. A concrete tree implementation remains valid
+  for the first evaluator; this rule does not require speculative provider
+  traits or a streaming backend.
 - Resource access occurs only through explicitly supplied host capabilities.
 - A sealed resource snapshot has stable identity and content for the lifetime
   of compilation and transformations that use it; host files changing beneath
@@ -186,6 +191,13 @@ must retain sufficient source provenance for diagnostics and must not capture
 per-transform source documents, parameters, messages, clocks, resolver state,
 budgets, or host resources as hidden global state.
 
+Compilation may eventually attach required navigation, retention, buffering,
+or evaluation capabilities to normalized expressions and templates. This is a
+reserved ownership seam, not an accepted metadata schema or requirement to
+implement formal streamability analysis in the first profile. One semantic
+compiler should remain authoritative if later tree, streaming, or hybrid
+execution strategies are admitted.
+
 ### Runtime
 
 The runtime owns per-transformation evaluation context and result production.
@@ -243,6 +255,13 @@ per-entry byte, and aggregate-byte budgets. Physical byte sharing, parse caches,
 and content fingerprints are provider optimizations and diagnostics; they do not
 merge distinct logical resources.
 
+A sealed snapshot owns immutable admitted resources; it does not imply that
+every source is parsed into and retained as a complete tree before a batch
+begins. The execution strategy may choose tree construction for the initial
+engine. Any future forward-only or hybrid strategy must account for selective
+materialization through explicit memory budgets and may not spill to disk
+silently.
+
 A closed snapshot cannot satisfy an unadmitted resource discovered dynamically
 through `document()`, `unparsed-text()`, collections, includes/imports, or future
 extensions. The engine reports an explicit missing/denied-resource condition.
@@ -265,6 +284,22 @@ associate diagnostics with relevant stylesheet, source-document, and
 host/resource locations. One event may use one as its primary location and the
 others as related locations.
 
+Boundary-facing failures should eventually preserve a stable machine identity,
+a small policy category, a human-readable message, structured details, and an
+underlying cause where one exists. The concrete vocabulary must be derived from
+implemented failure owners rather than declared speculatively. Local modules
+may retain focused error types; a single repository-wide mega-enum is not a
+goal.
+
+A reportable semantic outcome is not necessarily an operation failure. A
+compilation that can reliably report unsupported syntax, or a batch that can
+return independently classified request results, should preserve those
+findings in its structured result where the public contract permits. Failure to
+parse enough input to produce a trustworthy result, denied resource authority,
+budget exhaustion, host cancellation, and internal invariant failure remain
+distinguishable boundary failures. Presentation adapters must not recover this
+meaning by parsing display strings.
+
 ### Observability
 
 Observability means that a host can understand engine work without parsing
@@ -277,6 +312,15 @@ The event vocabulary, cost model, and public interface remain open. Any design
 must be opt-in or explicitly supplied, bounded where necessary, and unable to
 change template selection, evaluation order where observable, results, or error
 semantics.
+
+Hosts also need read-only inspection and explainability without depending on
+private engine representation. Candidate semantic snapshots include admitted
+resource identities and sizes, the selected standards profile, compiled
+stylesheet dependencies, static diagnostics, capability requirements, and
+bounded execution summaries. Such a surface must describe supported meaning,
+not stabilize a parser AST, arena index, optimizer IR, cache layout, or internal
+module boundary. Exact fields and compatibility rules remain open until an
+implemented slice and a real consumer exercise them.
 
 ## 3. Security and resource policy
 
@@ -348,6 +392,13 @@ and correctness gate. Optimize measured costs only after the semantic reference
 path is observable. Unsafe code remains forbidden unless a later ADR supplies
 invariants, evidence, and focused verification.
 
+ADR-0003 defines the exception policy: tests are necessary but cannot prove an
+unsafe invariant. Any first-party unsafe implementation requires its own narrow
+ADR, a measured need that safe Rust cannot reasonably meet, a written safety
+contract, minimized and reviewable surface, safe reference behavior whenever
+practical, specialized verification appropriate to the risk, and explicit
+removal criteria. No unsafe implementation is currently admitted.
+
 For embedded consumers, measurements include parsing or marshaling, interop,
 stylesheet lookup/compilation policy, execution, result transfer, diagnostics,
 and serialization as applicable. A faster engine core does not establish a
@@ -378,6 +429,10 @@ initial read or explicit output publication escapes operating-system scanning.
 - Thread-safety, reentrancy, and concurrent execution semantics for compiled
   artifacts and host capabilities.
 - Initial observability events, cost constraints, and host boundary.
+- Structured error/outcome categories and the read-only semantic inspection
+  boundary, tracked by AR-0004 and AR-0005.
+- Compatibility domains, version identifiers, and whether FastXSLT ever admits
+  persisted compiled artifacts, tracked by AR-0006.
 - ASP.NET/.NET integration, deployment, ownership, cancellation, and artifact
   boundary, tracked by AR-0002.
 - Resource identity, snapshot construction/replacement, cache ownership, batch
@@ -386,7 +441,8 @@ initial read or explicit output publication escapes operating-system scanning.
 ### Deferred capability decisions
 
 - `no_std`, WASM, and CLI requirements.
-- Streaming and incremental execution.
+- Streaming and incremental execution, including any XSLT streaming-conformance
+  claim, tracked as architectural optionality by AR-0007.
 - Schema awareness and typed values beyond the initial profile.
 - Packages, extension functions, and alternate execution backends.
 

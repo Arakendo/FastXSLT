@@ -20,6 +20,8 @@ contract.
   unresolved, incubating, deferred, or reopened.
 - Specifications describe current intended contracts within accepted ADRs.
 - Plans sequence work. They do not override specifications or ADRs.
+- Change Requests preserve a consumer's problem and requested boundary. They
+  do not commit FastXSLT to the consumer's types, architecture, or schedule.
 - Evidence records observations. It does not silently create a guarantee.
 - A hand-authored fixture is useful evidence, but it is not a conformance claim.
 
@@ -55,15 +57,27 @@ contract.
   execution.
 - Keep the semantic transformation result distinct from serialization into
   text, bytes, or an output sink, even if an early implementation combines them.
+- Follow AR-0007's incubation guardrails. A first tree evaluator may be concrete,
+  but do not spread an unnecessary assumption that every source is permanently
+  a fully materialized random-access tree. Depend on the semantic navigation
+  actually required at each layer, keep representation-specific access inside
+  its owner, and do not manufacture generalized provider traits before another
+  strategy or measured seam needs them.
 - Keep observability explicitly supplied and semantically inert. Do not use
   ambient global subscribers as the only way to inspect engine work.
 - Do not introduce a second execution backend without a parity strategy against
   the reference semantics.
+- Do not describe architectural streaming optionality, event-fed parsing, or
+  bounded subtree buffering as XSLT streaming conformance. Any implementation
+  remains deferred and any standards claim depends on AR-0001 plus dedicated
+  conformance evidence.
 - Do not split logical layers into crates until dependency direction, independent
   reuse, or release pressure makes the boundary valuable.
-- Do not add `unsafe` code without an accepted ADR that defines the invariant,
-  benchmark evidence, and a focused test strategy. The workspace currently
-  forbids it.
+- Follow ADR-0003. Do not add `unsafe` code merely because tests pass. The
+  workspace currently forbids it; a narrow future exception needs its own
+  accepted ADR covering necessity, rejected safe alternatives, safety contract,
+  containment, safe reference behavior where practical, specialized tool
+  evidence, measured benefit, exact surface, and removal criteria.
 
 ## Design habits
 
@@ -79,6 +93,12 @@ contract.
   must be able to rename, replace, or remove the original without invalidating
   the sealed snapshot or an in-flight transform.
 - Distinguish unsupported behavior from invalid input in diagnostics.
+- Distinguish a reportable semantic outcome from an operation failure. A host
+  must not have to parse display strings to tell unsupported behavior, denied
+  authority, exhausted budgets, invalid input, and internal failure apart.
+- Keep inspection and explainability surfaces read-only and semantic. Do not
+  make a private AST, IR, arena layout, cache key, or optimizer detail public
+  merely so a host can diagnose compiled or executing work.
 - Make resource limits and fallback behavior explicit and testable.
 - Record the exact standards edition and test-suite version behind every
   conformance number.
@@ -86,8 +106,18 @@ contract.
   SDD lists as open. Open choices affecting ownership, public boundaries,
   authority, concurrency, replaceability, or conformance require review and an
   ADR before becoming contracts.
+- Follow ADR-0004 when source units accumulate size or responsibility pressure.
+  Line count triggers review; split only along named ownership/responsibility
+  seams, prefer private modules, inspect post-extraction coupling, and preserve
+  standards behavior, diagnostic provenance, resource/batch contracts,
+  performance baselines, ABI behavior, and unsafe-code invariants.
 - Preserve imported fixture provenance, license information, and byte-level
   integrity where the upstream suite requires it.
+- Treat `vendor/qt3tests` and `vendor/xslt30-test` as immutable upstream
+  submodules. Do not edit expected results in place, copy their content into the
+  MIT-licensed crate, or move a gitlink without updating the corpus provenance
+  record and reviewing the upstream/license delta. Put harness selection,
+  exclusions, classifications, and corrections in first-party overlays.
 - FastXSLT is MIT licensed. Record dependency, fixture, and copied-code licenses
   before admission, and do not introduce terms that prevent distributing the
   FastXSLT library under its declared MIT license without explicit maintainer
@@ -113,8 +143,10 @@ keep relative links valid.
 
 - `crates/fastxslt` -- public facade and initially private engine layers
 - `corpus/golden` -- small reviewed source/stylesheet/expected triples
+- `vendor/qt3tests` and `vendor/xslt30-test` -- pinned upstream W3C suites
 - `docs/Specifications` -- current intended architecture and contracts
 - `docs/ADR` -- accepted architectural decisions
 - `docs/Architectural Reviews` -- open questions, evidence, and dispositions
 - `docs/Plans` -- executable work and milestone sequencing
+- `docs/Change Requests` -- incoming consumer needs and requested boundaries
 - `docs/Evidence` -- reproducible observations and review records

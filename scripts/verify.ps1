@@ -23,6 +23,7 @@ Invoke-Gate 'Formatting' { cargo fmt --all --check }
 Invoke-Gate 'Clippy' { cargo clippy --workspace --all-targets --all-features -- -D warnings }
 Invoke-Gate 'Tests' { cargo test --workspace --all-features }
 Invoke-Gate 'Markdown links' { & "$PSScriptRoot/check-markdown-links.ps1" }
+Invoke-Gate 'Conformance sources' { & "$PSScriptRoot/check-conformance-sources.ps1" }
 
 $previousRustdocFlags = $env:RUSTDOCFLAGS
 try {

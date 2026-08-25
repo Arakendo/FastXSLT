@@ -8,4 +8,4 @@ silently rewriting their original outcome.
 - [Roadmap](roadmap.md) -- milestone outcomes and gates.
 - [Project Scaffold](project-scaffold.md) -- M0 workspace and documentation
   environment.
-
+- [Template](TEMPLATE.md) -- evidence-led implementation plan structure.

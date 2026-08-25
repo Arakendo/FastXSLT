@@ -1,0 +1,8 @@
+[submodule "vendor/xslt30-test"]
+	path = vendor/xslt30-test
+	url = https://github.com/w3c/xslt30-test
+	ignore = all
+[submodule "vendor/qt3tests"]
+	path = vendor/qt3tests
+	url = https://github.com/w3c/qt3tests
+	ignore = all

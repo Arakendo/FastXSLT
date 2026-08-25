@@ -57,3 +57,17 @@ and add the record to this index. Never reuse a retired number.
 - [AR-0003: Memory Resource Snapshots and Batch Transforms](AR-0003-memory-resource-snapshots-and-batch-transforms.md)
   -- Under Review; study bounded preload, sealed resource identity, shared
   compilation, and batch/graph execution for volume consumers.
+- [AR-0004: Structured Diagnostics and Boundary Error Identity](AR-0004-structured-diagnostics-and-boundary-error-identity.md)
+  -- Incubating; derive machine-readable findings and operation failures from
+  implemented cases without introducing a speculative global error framework.
+- [AR-0005: Semantic Inspection and Explainability Boundary](AR-0005-semantic-inspection-and-explainability-boundary.md)
+  -- Incubating; determine how hosts inspect resources, compilation, and
+  execution without stabilizing private engine representation.
+- [AR-0006: Compatibility Domains, Versioning, and Persisted Artifacts](AR-0006-compatibility-domains-versioning-and-persisted-artifacts.md)
+  -- Incubating; separate standards, Rust API, host ABI, diagnostic, and future
+  artifact compatibility before any one version number is made to cover all of
+  them.
+- [AR-0007: Streaming Compatibility of Core Architecture](AR-0007-streaming-compatibility-of-core-architecture.md)
+  -- Incubating; keep future tree, streaming, and hybrid strategies
+  architecturally possible without implementing streaming or claiming XSLT
+  streaming conformance now.

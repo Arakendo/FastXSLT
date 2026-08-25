@@ -10,12 +10,23 @@ development gates run, but it does not transform documents yet. In particular,
 the supported XSLT/XPath standards profile has not been selected; see
 [AR-0001](docs/Architectural%20Reviews/AR-0001-initial-standards-profile.md).
 
+FastXSLT is not production ready and has not been security audited. Read
+[Safety and Limits](docs/safety-and-limits.md) before evaluating it for an
+application, and use the [Security Policy](SECURITY.md) for the present threat
+scope and vulnerability-reporting route.
+
 ## Getting started
 
 FastXSLT declares Rust 1.85 as its minimum supported Rust version and uses the
 current stable toolchain for development, including `rustfmt` and Clippy. The
 checked-in toolchain file configures the development toolchain automatically
 through rustup, while CI also checks the minimum version.
+
+Initialize the pinned W3C conformance suites after cloning:
+
+```powershell
+git submodule update --init --recursive
+```
 
 ```powershell
 cargo test --workspace
@@ -29,11 +40,17 @@ Run every local gate with:
 ./scripts/verify.ps1
 ```
 
+The full gate verifies that the QT3 and XSLT 3.0 submodules are present, clean,
+and at the revisions recorded in
+[the W3C suite provenance record](docs/Corpus/w3c-test-suites.md). Suite
+availability does not establish FastXSLT conformance.
+
 ## Repository layout
 
 ```text
 crates/fastxslt/  Public library crate and initially private engine layers
 corpus/           Small, reviewed transform cases that drive implementation
+vendor/           Immutable upstream conformance-suite submodules
 docs/             Specifications, decisions, reviews, plans, and evidence
 scripts/          Repeatable development and verification commands
 ```
@@ -66,6 +83,8 @@ The [documentation index](docs/README.md) explains which records are binding:
 - ADRs record accepted architectural decisions;
 - Architectural Reviews preserve open questions and evidence;
 - plans sequence work but do not change architecture;
+- change requests preserve consumer needs without granting them architectural
+  authority;
 - evidence records observations but does not create guarantees.
 
 ## Project status

@@ -17,3 +17,8 @@ Before admitting an external suite, record:
 Do not edit upstream expected results to make FastXSLT pass. Keep local
 classification or harness corrections in reviewable overlays with rationale.
 
+## Admitted upstream suites
+
+- [W3C QT3 and XSLT 3.0 suite provenance](w3c-test-suites.md) records the two
+  Git submodules, immutable revisions, licensing boundary, acquisition check,
+  and update procedure.

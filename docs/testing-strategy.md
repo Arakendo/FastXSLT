@@ -36,6 +36,18 @@ Every report must record:
 
 Unsupported tests must not be counted as passed or silently omitted.
 
+## Admitted conformance sources
+
+The repository pins the W3C QT3 and XSLT 3.0 suites as Git submodules under
+`vendor/`. Their exact revisions and licensing boundary are recorded in
+[W3C Test Suite Provenance](Corpus/w3c-test-suites.md).
+
+The suites are inputs, not executable FastXSLT tests by themselves. A future
+harness must parse upstream dependency and environment metadata, retain the
+unaltered case identity, classify cases against the accepted AR-0001 profile,
+and distinguish unsupported behavior from harness failure. Local selection and
+classification belong outside the submodules.
+
 ## Resource and batch testing
 
 Resource-snapshot tests must cover qualified identity, same-name resources,
@@ -73,3 +85,17 @@ stylesheet compile, cold execution, warm execution, cache reuse, peak memory,
 and total batch throughput separately. Compare against a file-oriented baseline
 and a warmed filesystem-cache baseline before attributing gains to memory
 retention.
+
+## Unsafe-code exception verification
+
+ADR-0003 keeps first-party unsafe code forbidden by default. If a later ADR
+admits a narrow exception, ordinary tests remain only one evidence tier. The
+exception's verification matrix must identify which invariants are inspected by
+Miri, sanitizers, fuzzing, property tests, concurrency model checking,
+platform/ABI tests, and stress tests, including any tool or target gaps.
+
+Unsafe optimizations retain a safe reference implementation whenever practical
+and run semantic differential tests across successful results, structured
+diagnostics, cancellation, limits, malformed inputs, and concurrency. Benchmarks
+run only after parity and safety-focused gates pass and must show that the
+benefit remains material at the consuming-application boundary.
