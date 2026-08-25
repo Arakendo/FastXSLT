@@ -231,7 +231,7 @@ host files, buffers, or application resources
           |              |
           +------+-------+
                  v
-       transform requests or graph
+    independent transform requests
                  v
          result set / output sink
 ```
@@ -268,11 +268,15 @@ extensions. The engine reports an explicit missing/denied-resource condition.
 An optional live resolver may be studied later, but must be an explicit
 capability and cannot become ambient disk or network access.
 
-Volume APIs may accept independent transform requests or an explicit dependency
-graph where one result feeds another. Ordering, failure collection versus
-fail-fast behavior, concurrency, output identity, and atomicity remain open.
-Single-transform convenience is semantically a batch of one over the same
-resource, compilation, runtime, diagnostic, and result boundaries.
+Under ADR-0005, a transform set contains only independently executable requests.
+Submission, start, execution, and completion order have no semantic meaning;
+results correlate by logical request/result identity. One request cannot observe
+a sibling result, and producing a result does not mutate or admit a resource.
+The host sequences dependent stages and explicitly admits selected prior results
+into a later snapshot. Failure collection versus fail-fast behavior,
+cancellation, concurrency limits, result retention, and executor mechanics
+remain open. Single-transform convenience is semantically a batch of one over
+the same resource, compilation, runtime, diagnostic, and result boundaries.
 
 ### Diagnostics
 
@@ -435,8 +439,10 @@ initial read or explicit output publication escapes operating-system scanning.
   persisted compiled artifacts, tracked by AR-0006.
 - ASP.NET/.NET integration, deployment, ownership, cancellation, and artifact
   boundary, tracked by AR-0002.
-- Resource identity, snapshot construction/replacement, cache ownership, batch
-  and transform-graph semantics, tracked by AR-0003.
+- Resource identity, snapshot construction/replacement, cache ownership,
+  transform-set construction, concurrency, and failure policy, tracked by
+  AR-0003. ADR-0005 fixes unordered independent execution and host-owned workflow
+  ordering; transformation graphs are deferred.
 
 ### Deferred capability decisions
 

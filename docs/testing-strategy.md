@@ -61,11 +61,14 @@ sealed snapshot remains usable. Tests must also verify that diagnostic
 provenance, missing dynamic references, and warm transforms never trigger a path
 reopen or implicit temporary/cache file.
 
-Batch tests must distinguish independent requests from dependency graphs and
-cover deterministic result association, shared compiled stylesheets, isolated
+Under ADR-0005, batch tests cover independent unordered requests rather than
+dependency graphs. Randomized acquisition/start/completion order must preserve
+deterministic result association, shared compiled stylesheets, isolated
 parameters/dynamic context, failure collection versus fail-fast policy,
 cancellation, partial output, concurrency, and a batch of one matching the
-single-transform convenience API.
+single-transform convenience API. Stage tests must prove sibling results are not
+visible and become resources only after the host explicitly admits them into a
+later snapshot.
 
 ## Performance reporting
 

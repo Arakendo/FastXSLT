@@ -7,9 +7,10 @@ It is a concise status summary, not a replacement for the owning
 
 ## Current maturity
 
-FastXSLT is at M0: project scaffold. The Rust workspace and verification gates
-run, but the engine does not transform documents. The project has not selected
-its initial XSLT/XPath profile and makes no conformance, compatibility,
+FastXSLT is in M1 pre-stability work. The Rust workspace, verification gates,
+bounded-resource experiment, private XML adapter, and first owned XDM document
+run, but the engine does not yet transform documents. The project has not
+selected its initial XSLT/XPath profile and makes no conformance, compatibility,
 performance, production-readiness, or security-audit claim.
 
 ## Standards support
@@ -52,10 +53,12 @@ must be assumed capable of exhausting process resources.
 
 ## Concurrency and reuse
 
-Compile-once and transform-many is an intended product boundary. Thread safety,
-reentrancy, cancellation, concurrent invocation, resolver safety, snapshot
-replacement, batch ordering, and failure collection are still open decisions.
-No type currently carries a public concurrency guarantee.
+Compile-once and transform-many is an intended product boundary. ADR-0005 fixes
+one semantic: requests in a transform set are independent and have no execution
+or completion-order guarantee; dependent stages belong to the host. Thread
+safety, reentrancy, cancellation, concurrent invocation, resolver safety,
+snapshot replacement, worker/in-flight limits, and failure collection remain
+open. No type currently carries a public concurrency guarantee.
 
 ## Diagnostics and inspection
 

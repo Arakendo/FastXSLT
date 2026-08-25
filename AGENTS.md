@@ -52,6 +52,10 @@ contract.
 - Prefer compile-once and transform-many boundaries. A convenience single
   transform API should use the same semantics as a batch of one rather than
   developing a separate file-oriented execution path.
+- Follow ADR-0005: a transform set contains independent requests with no start,
+  execution, or completion-order contract. Correlate results by logical identity,
+  keep sibling results invisible, and leave dependent workflow stages and
+  result-to-resource admission to the host.
 - Preserve source locations and structured diagnostics across XML parsing,
   XPath parsing/evaluation, stylesheet compilation, lowering, optimization, and
   execution.

@@ -30,4 +30,6 @@ but supersede a materially changed decision instead of rewriting its history.
 - [ADR-0004: Source Unit Cohesion, Size Pressure, and Decomposition](ADR-0004-source-unit-cohesion-size-pressure-and-decomposition.md)
   -- Accepted; source size triggers proportional review, while demonstrated
   ownership and responsibility seams justify behavior-preserving decomposition.
-
+- [ADR-0005: Unordered Transform Sets and Host-Owned Workflow](ADR-0005-unordered-transform-sets-and-host-owned-workflow.md)
+  -- Accepted; transform sets contain independent unordered requests, while the
+  host sequences dependent stages and explicitly admits prior results.

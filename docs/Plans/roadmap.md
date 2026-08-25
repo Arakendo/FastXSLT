@@ -57,8 +57,10 @@ failed, and harness-error cases without an unqualified conformance claim.
   behavior required by the accepted profile.
 - [ ] Establish explicit URI/resource resolution and execution limits.
 - [ ] Execute a batch of independent requests with shared compiled stylesheets
-  and isolated dynamic contexts; prove a batch of one matches the convenience
-  API.
+  and isolated dynamic contexts; randomize scheduling, correlate results by
+  identity, and prove a batch of one matches the convenience API.
+- [ ] Execute a two-stage host-owned workflow and prove stage-one results remain
+  invisible until explicitly admitted into a stage-two snapshot.
 - [ ] Compare file-per-call, preloaded snapshot, warmed filesystem cache, and
   compile-once paths with correctness held constant.
 - [ ] Add differential and integration tests against named processors.
@@ -72,6 +74,7 @@ measured end-to-end behavior to at least one non-Rust consumer.
 
 ## Later candidates
 
-CLI, WASM, streaming implementation or conformance, schema awareness, extension functions, packages,
-alternate execution backends, and parallelism require their own product evidence
-and architectural review. Their presence in this list is not a commitment.
+CLI, WASM, streaming implementation or conformance, schema awareness, extension
+functions, packages, alternate execution backends, transformation graphs, and
+specific parallel executor strategies require their own product evidence and
+architectural review. Their presence in this list is not a commitment.

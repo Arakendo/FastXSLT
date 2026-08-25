@@ -56,7 +56,8 @@ and add the record to this index. Never reuse a retired number.
   without confusing Rust-core speed with end-to-end host performance.
 - [AR-0003: Memory Resource Snapshots and Batch Transforms](AR-0003-memory-resource-snapshots-and-batch-transforms.md)
   -- Under Review; study bounded preload, sealed resource identity, shared
-  compilation, and batch/graph execution for volume consumers.
+  compilation, prepared inputs, and unordered batch execution for volume
+  consumers within ADR-0005.
 - [AR-0004: Structured Diagnostics and Boundary Error Identity](AR-0004-structured-diagnostics-and-boundary-error-identity.md)
   -- Incubating; derive machine-readable findings and operation failures from
   implemented cases without introducing a speculative global error framework.

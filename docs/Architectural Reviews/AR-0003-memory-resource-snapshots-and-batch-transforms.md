@@ -7,14 +7,14 @@
 | Last reviewed | 2026-08-25 |
 | Scope | Resource loading, compilation reuse, and volume execution |
 | Trigger | Volume consumers should avoid repeated file I/O and single-file call overhead |
-| Related ADRs | ADR-0001, ADR-0002 |
-| Related evidence | Tokimu AR-0009/AR-0010 Resource Space work; future FastXSLT benchmarks |
+| Related ADRs | ADR-0001, ADR-0002, ADR-0005 |
+| Related evidence | Tokimu AR-0009/AR-0010 Resource Space work; `docs/Evidence/thread-pool-design-review-2026-08-25.md`; future FastXSLT benchmarks |
 
 ## Architectural question
 
 Should FastXSLT admit a bounded in-memory resource-set loading phase, seal it as
-an immutable execution snapshot, and expose batch or transformation-graph APIs
-that reuse parsed resources and compiled stylesheets across volume work?
+an immutable execution snapshot, and expose an independent unordered batch API
+that reuses parsed resources and compiled stylesheets across volume work?
 
 ## Trigger and evidence
 
@@ -78,7 +78,7 @@ ResourceSnapshot (sealed, immutable)
             |
             v
 TransformSet
-    independent requests or explicit dependency graph
+    independent unordered requests
     isolated parameters and dynamic contexts
             |
             v
@@ -119,6 +119,19 @@ capability rather than the preferred volume path.
 Expresses pipelines naturally, but overcomplicates independent bulk transforms.
 A batch and a graph may need separate semantics over one shared snapshot.
 
+ADR-0005 rejects graph behavior from the initial transform-set contract. A
+future graph requires a new review and cannot change existing unordered-set
+semantics.
+
+### F. Declarative transform-set builder plus bounded internal executor
+
+The host identifies independent source, stylesheet, parameter, and logical
+result relationships, then seals the set before execution. FastXSLT validates
+the set and schedules requests with explicit worker/in-flight budgets. Queue and
+thread mechanics remain private. This matches the selected ordering boundary,
+but exact names, policies, and implementation require an executable transform
+and measurements.
+
 ## Findings and uncertainties
 
 - Compile-once/transform-many and admitted-byte reuse are strong requirements
@@ -129,6 +142,15 @@ A batch and a graph may need separate semantics over one shared snapshot.
   as a batch of one.
 - Independent batch execution and output-dependent pipelines are different
   concepts and should not be conflated accidentally.
+- ADR-0005 now makes independent unordered execution binding: submission,
+  start, and completion order are not contracts; dependent stages belong to the
+  host and sibling results do not mutate the snapshot.
+- A prepared-input pool may retain immutable parsed sources where measurement
+  justifies it, but raw-byte, parsed-XDM, and derived-index budgets and lifetimes
+  must remain distinguishable.
+- Input capacity, pending request count, worker count, and maximum in-flight
+  transforms are separate policies. The discussed 5,000 inputs and 10 workers
+  are benchmark parameters, not defaults.
 - Memory is likely faster than repeated physical disk access, but parsing,
   compilation, OS page cache, allocation, interop, output, and peak memory may
   dominate real workloads.
@@ -142,11 +164,11 @@ A batch and a graph may need separate semantics over one shared snapshot.
 
 ## Disposition
 
-**Under Review with a binding memory-resident baseline from ADR-0002.** The first
+**Under Review with binding baselines from ADR-0002 and ADR-0005.** The first
 vertical slice should load its source and stylesheet through a bounded builder,
 release host handles, seal an immutable snapshot, and run through batch-capable
 internal machinery. This does not accept public type names, unbounded
-whole-workload retention, implicit caches, or a batch/graph contract.
+whole-workload retention, implicit caches, ordered batches, or graph execution.
 
 ## Required follow-up
 
@@ -159,7 +181,14 @@ whole-workload retention, implicit caches, or a batch/graph contract.
 - [ ] After import, rename, replace, and remove source files on Windows and
   verify no engine handle or lazy path dependency remains.
 - [ ] Run one stylesheet over many sources and many stylesheets over one source.
-- [ ] Compare independent batch and output-dependent graph requirements.
+- [x] Resolve initial independent-batch versus output-dependent workflow
+  ownership through ADR-0005; graph execution remains deferred.
+- [ ] Prototype declarative transform-set sealing with duplicate request/result,
+  unknown resource, and batch-budget failures before worker startup.
+- [ ] Randomize scheduling and correlate results by logical identity rather than
+  completion position.
+- [ ] Measure raw-byte, parsed-source, derived-index, pending-request, and
+  in-flight memory separately before selecting preparation or eviction policy.
 - [ ] Benchmark file-per-call, warmed filesystem, preload-only, parse reuse,
   compile reuse, and full warm batch paths with peak memory reported.
 - [ ] Exercise snapshot reuse and replacement through the ASP.NET workbench in
@@ -180,3 +209,6 @@ pipeline outputs beyond the selected batch contract.
   batch-capable first-slice experiment without stabilizing its public API.
 - 2026-08-25 -- Added test-only bounded admission and golden source/stylesheet
   handle-release evidence; public identity and lifecycle remain unresolved.
+- 2026-08-25 -- ADR-0005 accepted unordered independent transform sets and
+  host-owned dependent stages; prepared-input and executor policies remain under
+  review.
