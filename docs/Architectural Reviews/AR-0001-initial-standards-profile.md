@@ -8,7 +8,7 @@
 | Scope | Product standards and semantic baseline |
 | Trigger | The first transform slice needs a precise XPath/XSLT target |
 | Related ADRs | None |
-| Related evidence | `corpus/golden/hello`, peer review in `docs/Evidence/` |
+| Related evidence | `corpus/golden/hello`, peer review in `docs/Evidence/`, and `docs/Evidence/w3c-suite-catalog-inventory-2026-08-25.md` |
 
 ## Architectural question
 
@@ -34,6 +34,13 @@ including ASP.NET services, will embed FastXSLT. Missing evidence still includes
 their representative transform families, compatibility requirements, priority
 features, deployment constraints, acceptable time to first useful release, and
 any need to compare with 1.0-only processors.
+
+The pinned-suite inventory now establishes 31,821 QT3 cases across 428 catalog
+test sets and 14,600 XSLT30 cases across 234 catalog test sets at the revisions
+recorded in the corpus policy. It also proves every root-catalog test-set
+reference resolves. These counts describe available upstream pressure; they do
+not choose a profile, identify supported dependencies, or establish executable
+coverage.
 
 ## Ownership and constraints
 
@@ -86,8 +93,11 @@ are accepted in an ADR.
 - [x] Record the first intended consumer class: embedded applications including
   performance-sensitive ASP.NET services.
 - [ ] Record representative transform families from the first consumer.
+- [x] Pin and structurally inventory the QT3 and XSLT30 suites used by the
+  modern-profile alternatives.
 - [ ] Inventory the official candidate suites, versions, licenses, acquisition,
-  and harness requirements for each viable target.
+  and harness requirements still needed for every viable target, including the
+  XSLT 1.0 alternative.
 - [ ] Prototype the `hello` case only as a throwaway/private vertical slice if
   needed to test architecture before disposition.
 - [ ] Propose an ADR naming the target, deliberate exclusions, suites, and
@@ -102,3 +112,5 @@ the selected internal model blocks a planned compatibility level.
 ## Review history
 
 - 2026-08-25 -- Opened as Under Review during project scaffolding.
+- 2026-08-25 -- Recorded the pinned QT3/XSLT30 catalog inventory; profile and
+  executable selection remain unresolved.

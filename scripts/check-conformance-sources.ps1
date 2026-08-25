@@ -1,5 +1,7 @@
 [CmdletBinding()]
-param()
+param(
+    [switch]$Quiet
+)
 
 $ErrorActionPreference = 'Stop'
 
@@ -46,7 +48,11 @@ foreach ($suite in $suites) {
         throw "$($suite.Name) contains local changes. Keep upstream suite content immutable and place FastXSLT overlays outside the submodule."
     }
 
-    Write-Host "$($suite.Name): $($suite.Revision)"
+    if (-not $Quiet) {
+        Write-Host "$($suite.Name): $($suite.Revision)"
+    }
 }
 
-Write-Host 'Pinned conformance sources are initialized and clean.'
+if (-not $Quiet) {
+    Write-Host 'Pinned conformance sources are initialized and clean.'
+}

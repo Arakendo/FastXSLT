@@ -14,3 +14,4 @@ pressure architecture but does not silently create a public guarantee.
 - [Peer ADR-0004 Review: Monday](peer-adr-0004-review-monday-2026-08-25.md)
 - [Peer Documentation Review: Tosumu Database](peer-database-documentation-review-2026-08-25.md)
 - [Peer Streaming Architecture Review: Monday](peer-streaming-architecture-review-monday-2026-08-25.md)
+- [W3C Suite Catalog Inventory](w3c-suite-catalog-inventory-2026-08-25.md)

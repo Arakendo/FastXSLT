@@ -25,6 +25,7 @@ Initialize a clone with:
 ```text
 git submodule update --init --recursive
 ./scripts/check-conformance-sources.ps1
+./scripts/inventory-conformance-sources.ps1
 ```
 
 The check requires both catalog roots, verifies each submodule HEAD against the
@@ -36,6 +37,12 @@ does not commit the W3C repositories' individual files. `.gitmodules` uses
 `ignore = all` so ordinary parent-repository status and commits do not include
 submodule worktree noise. The explicit conformance-source check remains the
 authority for detecting a missing, moved, or locally modified suite.
+
+The inventory command securely walks the root catalogs and their directly
+referenced test-set documents without resolving DTDs or external resources. At
+the admitted revisions it discovers 31,821 QT3 cases in 428 test sets and
+14,600 XSLT30 cases in 234 test sets. The retained method, result, and
+limitations are in the [catalog inventory evidence](../Evidence/w3c-suite-catalog-inventory-2026-08-25.md).
 
 Do not edit upstream catalogs, environments, sources, assertions, or expected
 results. FastXSLT-owned selection manifests, expected unsupported
