@@ -14,9 +14,9 @@ bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
 current order of work is:
 
-1. extend the persistent isolated ASP.NET baseline from one in-flight request to
-   bounded concurrency, cancellation, worker failure/restart, snapshot
-   replacement, and diagnostic parity;
+1. extend the bounded-concurrency isolated ASP.NET experiment with cancellation,
+   worker failure/restart, snapshot replacement, diagnostic parity, and
+   representative workload evidence;
 2. prototype the leading in-process .NET boundary against the same lifecycle;
 3. compare both modes before stabilizing a host boundary or performance claim.
 
@@ -167,6 +167,9 @@ failed, and harness-error cases without an unqualified conformance claim.
   - [x] Establish the first ASP.NET 8 persistent isolated-worker baseline with
     one-time bounded resource transfer, compile-once/prepared reuse, correlated
     results, structured failures, and one explicit in-flight slot.
+  - [x] Exercise deterministic 5-, 50-, and 500-item tiers through a bounded
+    four-worker pool, recording throughput, p50/p95/p99 latency, CPU,
+    allocation, working-set scope, result size, and comparison-engine caveats.
 - [ ] Exercise AR-0010's private invocation controls under adversarial work;
   distinguish deterministic budgets, cooperative cancellation, best-effort
   deadlines, panic handling, and process-level hard termination claims.

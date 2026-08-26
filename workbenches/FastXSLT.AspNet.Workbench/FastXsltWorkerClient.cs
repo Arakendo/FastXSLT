@@ -106,6 +106,13 @@ public sealed class FastXsltWorkerClient : IDisposable
         }
     }
 
+    public (TimeSpan ProcessorTime, long WorkingSetBytes) ObserveProcess()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _process.Refresh();
+        return (_process.TotalProcessorTime, _process.WorkingSet64);
+    }
+
     public void Dispose()
     {
         if (_disposed)

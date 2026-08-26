@@ -3,7 +3,11 @@ param(
     [int]$Port = 5087,
     [int]$MeasurementRequests = 1000,
     [int]$MeasurementRuns = 3,
-    [switch]$LocalSaxonCs
+    [switch]$LocalSaxonCs,
+    [switch]$TieredBenchmark,
+    [switch]$TieredSummaryOnly,
+    [int]$TieredRequests = 250,
+    [int]$TieredConcurrency = 4
 )
 
 $ErrorActionPreference = 'Stop'
@@ -64,19 +68,20 @@ try {
 
         $result = Invoke-WebRequest -Method Post -Uri "$baseAddress/transform/smoke-001"
         $expected = '<?xml version="1.0" encoding="UTF-8"?><out>36.02</out>'
-        if ($result.StatusCode -ne 200 -or $result.Content -ne $expected) {
+        if ($result.StatusCode -ne 200 -or $result.Content -cne $expected) {
             throw "Unexpected transform response: $($result.StatusCode) $($result.Content)"
         }
         if ($health.dotNetXslt1ExactStylesheetExecuted) {
             throw 'XslCompiledTransform unexpectedly executed the exact XSLT 2.0 stylesheet.'
         }
         $dotNetResult = Invoke-WebRequest -Method Post -Uri "$baseAddress/transform/dotnet-xslt1"
-        if ($dotNetResult.StatusCode -ne 200 -or $dotNetResult.Content -ne $expected) {
+        $dotNetExpected = '<?xml version="1.0" encoding="utf-8"?><out>36.02</out>'
+        if ($dotNetResult.StatusCode -ne 200 -or $dotNetResult.Content -cne $dotNetExpected) {
             throw "Unexpected .NET XSLT 1.0 response: $($dotNetResult.StatusCode) $($dotNetResult.Content)"
         }
         if ($health.saxonCsAvailable) {
             $saxonResult = Invoke-WebRequest -Method Post -Uri "$baseAddress/transform/saxoncs"
-            if ($saxonResult.StatusCode -ne 200 -or $saxonResult.Content -ne $expected) {
+            if ($saxonResult.StatusCode -ne 200 -or $saxonResult.Content -cne $expected) {
                 throw "Unexpected SaxonCS response: $($saxonResult.StatusCode) $($saxonResult.Content)"
             }
         }
@@ -104,6 +109,15 @@ try {
                 SaxonCsToFastXsltRatio = if ($saxonCs) { $saxonCs.transformsPerSecond / $fastXslt.transformsPerSecond } else { $null }
                 ExactStylesheetExecutedByDotNet = $health.dotNetXslt1ExactStylesheetExecuted
                 ExactStylesheetDotNetDiagnostic = $health.dotNetXslt1ExactStylesheetDiagnostic
+            }
+        }
+        if ($TieredBenchmark) {
+            $tiered = Invoke-RestMethod -Method Post -Uri "$baseAddress/benchmark/tiers?requests=$TieredRequests&concurrency=$TieredConcurrency"
+            if ($TieredSummaryOnly) {
+                $tiered.measurements | Select-Object engine, tier, requests, concurrency, transformsPerSecond, p50Microseconds, p95Microseconds, p99Microseconds, processorMilliseconds, normalizedProcessorPercent, managedAllocatedBytes, workerWorkingSetAfter
+            }
+            else {
+                $tiered | ConvertTo-Json -Depth 6
             }
         }
     }

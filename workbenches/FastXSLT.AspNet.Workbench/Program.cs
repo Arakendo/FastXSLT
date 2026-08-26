@@ -11,6 +11,7 @@ var stylesheetPath = Path.Combine(
 var dotNetStylesheetPath = Path.Combine(
     repositoryRoot, "workbenches", "FastXSLT.AspNet.Workbench", "fixtures",
     "for-004-equivalent-xslt1.xsl");
+var dotNetStylesheet = await File.ReadAllBytesAsync(dotNetStylesheetPath);
 
 var source = await File.ReadAllBytesAsync(sourcePath);
 var stylesheet = await File.ReadAllBytesAsync(stylesheetPath);
@@ -23,7 +24,7 @@ var worker = await FastXsltWorkerClient.StartAsync(
     stylesheet);
 var dotNetXslt1 = DotNetXslt1Baseline.Create(
     source,
-    await File.ReadAllBytesAsync(dotNetStylesheetPath));
+    dotNetStylesheet);
 #if SAXONCS_LOCAL
 var saxonCs = SaxonCsBaseline.Create(source, stylesheet);
 #endif
@@ -35,6 +36,7 @@ builder.Services.AddSingleton(saxonCs);
 #endif
 
 var app = builder.Build();
+var tieredBenchmarkGate = new SemaphoreSlim(1, 1);
 app.MapGet("/health", () => Results.Ok(new
 {
     status = "ready",
@@ -106,6 +108,23 @@ app.MapPost("/measure/dotnet-xslt1", (int? requests, DotNetXslt1Baseline baselin
         transformsPerSecond = count / stopwatch.Elapsed.TotalSeconds,
         maximumInFlight = 1
     });
+});
+app.MapPost("/benchmark/tiers", async (int? requests, int? concurrency) =>
+{
+    await tieredBenchmarkGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await TieredComparison.RunAsync(
+            workerPath,
+            stylesheet,
+            dotNetStylesheet,
+            Math.Clamp(requests ?? 250, 1, 10_000),
+            Math.Clamp(concurrency ?? 4, 1, 8)));
+    }
+    finally
+    {
+        tieredBenchmarkGate.Release();
+    }
 });
 #if SAXONCS_LOCAL
 app.MapPost("/measure/saxoncs", (int? requests, SaxonCsBaseline baseline) =>

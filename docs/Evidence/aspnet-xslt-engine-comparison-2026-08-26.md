@@ -31,14 +31,20 @@ expression; execution reported `Expected token ')', found '$'.` Its timed lane
 therefore used a reviewed 929-byte XSLT 1.0 equivalent. That stylesheet traverses
 the same five `order-item` elements, multiplies the same `price` and `qty`
 attributes, formats the same total, reuses one `XPathDocument` and compiled
-transform, and materializes the same exact serialized result. It is equivalent
-work, not the same expression or language surface.
+transform, and materializes equivalent serialized XML. It is equivalent work,
+not the same expression or language surface.
 
-All three smoke paths produced:
+FastXSLT and SaxonCS produced:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?><out>36.02</out>
 ```
+
+Microsoft produced the semantically equivalent serialization
+`<?xml version="1.0" encoding="utf-8"?><out>36.02</out>`. The original
+PowerShell verifier used a case-insensitive comparison and therefore did not
+expose that byte difference; the verifier now uses case-sensitive expectations
+for each lane.
 
 ## Five-run observations
 

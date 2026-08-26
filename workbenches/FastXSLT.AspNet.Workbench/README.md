@@ -19,15 +19,18 @@ offers:
 - `POST /measure?requests=1000`
 - `POST /transform/dotnet-xslt1`
 - `POST /measure/dotnet-xslt1?requests=1000`
+- `POST /benchmark/tiers?requests=250&concurrency=4`
 - `POST /transform/saxoncs`
 - `POST /measure/saxoncs?requests=1000`
 
 The Microsoft comparison first verifies that `XslCompiledTransform` cannot
-execute the exact XSLT 2.0 `for-004` stylesheet. Its timed path uses a reviewed XSLT 1.0
-equivalent over the same prepared XML and produces the same exact serialized
-result. Both stylesheets compile once and both timed loops materialize each
-serialized result. This is an equivalent-workload comparison, not a claim that
-the language surfaces are interchangeable.
+execute the exact XSLT 2.0 `for-004` stylesheet. Its timed path uses a reviewed
+XSLT 1.0 equivalent over the same prepared XML and produces equivalent
+serialized XML.
+Microsoft emits the encoding label as lowercase `utf-8`; FastXSLT and the local
+SaxonCS lane emit `UTF-8`. Both stylesheets compile once and both timed loops
+materialize each serialized result. This is an equivalent-workload comparison,
+not a claim that the language surfaces are interchangeable.
 
 An optional local SaxonCS lane can be supplied from the gitignored
 `.workbench/saxoncs-comparison/` area and enabled with `-LocalSaxonCs`. The
@@ -36,6 +39,21 @@ XSLT 2.0 stylesheet over one prepared Saxon tree and one compiled executable. A
 fresh transformer and serializer are created per invocation. Neither the
 package, its adapter, nor its lock file is distributed by FastXSLT.
 
-The transport has one explicit in-flight slot. Cancellation, a worker pool,
+The primary smoke transport retains one explicit in-flight slot. The tiered
+experiment adds a bounded pool, but cancellation, production pool lifecycle,
 restart, snapshot replacement, and an in-process FastXSLT comparison remain
-future experiments.
+future work.
+
+The opt-in tiered benchmark generates deterministic 5-, 50-, and 500-item
+sources. It measures sequential and bounded-concurrent warm execution with
+per-invocation p50/p95/p99 latency, aggregate throughput, approximate managed
+allocation, process CPU, working-set observations, source size, and result size.
+Run it with:
+
+```powershell
+./scripts/verify-aspnet-workbench.ps1 -TieredBenchmark -LocalSaxonCs
+```
+
+The concurrent FastXSLT lane uses a bounded pool of isolated workers, each with
+its own compiled stylesheet and prepared source. Working-set multiplication is
+therefore explicit rather than hidden behind a scheduler abstraction.

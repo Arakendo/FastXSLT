@@ -8,7 +8,7 @@
 | Scope | Non-Rust embedding, deployment, and performance boundary |
 | Trigger | ASP.NET applications are a motivating FastXSLT consumer class |
 | Related ADRs | ADR-0001 |
-| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
+| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
 
 ## Architectural question
 
@@ -104,6 +104,11 @@ security contracts.
   13.0.0 NuGet payload carries license text inconsistent with Saxonica's public
   SaxonCS-HE licensing description, so FastXSLT does not distribute or restore
   it by default.
+- A four-worker isolated pool preserved correlation and exact semantics across
+  deterministic 5-, 50-, and 500-item tiers. Five-run median FastXSLT throughput
+  ranged from 25,966 to 5,550 transforms/second sequentially and from 84,939 to
+  22,903 transforms/second concurrently. The pool makes prepared-state memory
+  multiplication explicit; cancellation, restart, and replacement remain open.
 
 ## Disposition
 
@@ -144,3 +149,6 @@ invalidates the selected mechanism.
 - 2026-08-26 -- Compared the warm exact workload with locally acquired SaxonCS
   and an equivalent XSLT 1.0 workload with Microsoft's built-in processor. Kept
   SaxonCS outside source control and left this review Proposed.
+- 2026-08-26 -- Added tiered latency/allocation evidence and a bounded
+  four-worker isolated pool without promoting the workbench protocol or pool to
+  a supported host boundary.
