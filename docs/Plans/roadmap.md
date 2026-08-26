@@ -17,16 +17,16 @@ next architectural questions are visible rather than encoded accidentally.
 ## M1 -- Standards decision and first vertical slice
 
 - [ ] Close AR-0001 through an accepted standards-profile ADR.
-- [ ] Select and document the XML parser boundary for the slice.
-- [ ] Compile one root template, evaluate one path/value expression, and produce
+- [x] Select and document the leading private XML parser boundary for the slice.
+- [x] Compile one root template, evaluate one path/value expression, and produce
   one result through a private end-to-end engine path.
-- [ ] Run `corpus/golden/hello` with structured diagnostics.
-- [ ] Load the golden source and stylesheet through a bounded resource set,
+- [x] Run `corpus/golden/hello` with private structured failure identities.
+- [x] Load the golden source and stylesheet through a bounded resource set,
   seal it, and execute the case without engine-owned filesystem access.
 - [ ] Release import handles before sealing, then replace or remove the original
   fixture files and prove the snapshot still executes identically.
-- [ ] Add negative cases that distinguish invalid input from unsupported syntax.
-- [ ] Establish the first structured boundary failures and reportable semantic
+- [x] Add negative cases that distinguish invalid input from unsupported syntax.
+- [x] Establish the first private structured boundary failures and reportable semantic
   outcomes from emitted behavior rather than an aspirational error catalog,
   providing evidence for AR-0004.
 

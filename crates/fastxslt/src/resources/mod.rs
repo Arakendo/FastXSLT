@@ -6,14 +6,18 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 #[derive(Clone, Copy, Debug)]
-struct ResourceLimits {
+pub(crate) struct ResourceLimits {
     entries: usize,
     entry_bytes: usize,
     total_bytes: usize,
 }
 
 impl ResourceLimits {
-    const fn new(max_entries: usize, max_entry_bytes: usize, max_total_bytes: usize) -> Self {
+    pub(crate) const fn new(
+        max_entries: usize,
+        max_entry_bytes: usize,
+        max_total_bytes: usize,
+    ) -> Self {
         Self {
             entries: max_entries,
             entry_bytes: max_entry_bytes,
@@ -23,7 +27,7 @@ impl ResourceLimits {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-enum AdmissionError {
+pub(crate) enum AdmissionError {
     EmptyIdentity,
     DuplicateIdentity {
         identity: String,
@@ -44,14 +48,14 @@ enum AdmissionError {
 }
 
 #[derive(Debug)]
-struct ResourceSetBuilder {
+pub(crate) struct ResourceSetBuilder {
     limits: ResourceLimits,
     entries: BTreeMap<String, Arc<[u8]>>,
     total_bytes: usize,
 }
 
 impl ResourceSetBuilder {
-    fn new(limits: ResourceLimits) -> Self {
+    pub(crate) fn new(limits: ResourceLimits) -> Self {
         Self {
             limits,
             entries: BTreeMap::new(),
@@ -59,7 +63,11 @@ impl ResourceSetBuilder {
         }
     }
 
-    fn admit(&mut self, identity: impl Into<String>, bytes: Vec<u8>) -> Result<(), AdmissionError> {
+    pub(crate) fn admit(
+        &mut self,
+        identity: impl Into<String>,
+        bytes: Vec<u8>,
+    ) -> Result<(), AdmissionError> {
         let identity = identity.into();
         if identity.is_empty() {
             return Err(AdmissionError::EmptyIdentity);
@@ -99,7 +107,7 @@ impl ResourceSetBuilder {
         Ok(())
     }
 
-    fn seal(self) -> ResourceSnapshot {
+    pub(crate) fn seal(self) -> ResourceSnapshot {
         ResourceSnapshot {
             entries: Arc::new(self.entries),
             total_bytes: self.total_bytes,
@@ -108,13 +116,13 @@ impl ResourceSetBuilder {
 }
 
 #[derive(Clone, Debug)]
-struct ResourceSnapshot {
+pub(crate) struct ResourceSnapshot {
     entries: Arc<BTreeMap<String, Arc<[u8]>>>,
     total_bytes: usize,
 }
 
 impl ResourceSnapshot {
-    fn get(&self, identity: &str) -> Option<&[u8]> {
+    pub(crate) fn get(&self, identity: &str) -> Option<&[u8]> {
         self.entries.get(identity).map(AsRef::as_ref)
     }
 

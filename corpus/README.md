@@ -16,11 +16,10 @@ golden/<case>/stylesheet.xsl Stylesheet
 golden/<case>/expected.xml   Expected serialized result
 ```
 
-The initial `hello` case is a portable design seed, not an executable test yet
-and not a commitment to an XSLT version. The first vertical slice will add a
-runner that reports semantic results separately from serialization differences.
+The initial `hello` case now executes through a test-only private vertical slice
+that asserts its semantic result separately from serialization. It remains a
+portable design seed, not a public feature or commitment to an XSLT version.
 
 External suites must live in a separately documented location with provenance,
 license, acquisition, integrity, and selection instructions. Do not copy a
 downloaded suite into `golden/`.
-

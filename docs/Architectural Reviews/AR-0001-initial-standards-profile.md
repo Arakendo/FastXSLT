@@ -8,7 +8,7 @@
 | Scope | Product standards and semantic baseline |
 | Trigger | The first transform slice needs a precise XPath/XSLT target |
 | Related ADRs | None |
-| Related evidence | `corpus/golden/hello`, peer review in `docs/Evidence/`, `docs/Evidence/w3c-suite-catalog-inventory-2026-08-25.md`, and `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md` |
+| Related evidence | `corpus/golden/hello`, peer review in `docs/Evidence/`, `docs/Evidence/w3c-suite-catalog-inventory-2026-08-25.md`, `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`, and `docs/Evidence/private-golden-transform-slice-2026-08-25.md` |
 
 ## Architectural question
 
@@ -95,6 +95,10 @@ suite selection are reported precisely.
   metadata, while the strongest legacy candidate is archival and redistribution
   constrained. Representative consumer transforms are still required before
   this recommendation becomes an accepted product decision.
+- The private golden slice now executes through XML, owned XDM, XSLT/XPath
+  compilation, runtime, semantic result, and serialization. Its syntax remains
+  common to all three alternatives and therefore confirms architecture without
+  selecting a standards profile.
 
 ## Disposition
 
@@ -114,7 +118,7 @@ and reporting policy are accepted in an ADR.
 - [x] Inventory the official candidate suites, versions, licenses, acquisition,
   and harness requirements for the modern and XSLT 1.0 alternatives; retain the
   OASIS archive as local-only evidence rather than admitted corpus.
-- [ ] Prototype the `hello` case only as a throwaway/private vertical slice if
+- [x] Prototype the `hello` case only as a throwaway/private vertical slice if
   needed to test architecture before disposition.
 - [ ] Propose an ADR naming the target, deliberate exclusions, suites, and
   criteria for widening scope.
@@ -132,3 +136,5 @@ the selected internal model blocks a planned compatibility level.
   executable selection remain unresolved.
 - 2026-08-25 -- Reviewed the OASIS XSLT/XPath 1.0 Committee Draft 04 archive;
   Alternative C became the working recommendation, pending consumer evidence.
+- 2026-08-25 -- Completed the private `hello` transform across the intended
+  semantic owners; its version-intersection syntax did not resolve the profile.

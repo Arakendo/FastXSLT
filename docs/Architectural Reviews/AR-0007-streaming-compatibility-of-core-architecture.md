@@ -145,6 +145,13 @@ after source bytes are released and assigns order through semantic traversal.
 It does not yet justify ancestors, reverse axes, keys, arbitrary repeated
 navigation, typed values, namespace nodes, or a provider abstraction.
 
+The completed private transform sharpens that inventory: `greeting/name`
+performs two forward child-name steps from the document node, and `xsl:value-of`
+uses the selected element's descendant text string value. Literal result
+construction needs no source reverse navigation. This one path still provides
+no evidence for a generalized provider, streaming strategy, or permanent
+full-tree requirement.
+
 ## Disposition
 
 **Incubating. Do not implement streaming in the initial profile.** Preserve the
@@ -195,3 +202,5 @@ materialization proves useful, or abstraction cost harms the tree evaluator.
   review; implementation and conformance remain deferred.
 - 2026-08-25 -- Recorded the first concrete navigation inventory from the owned
   golden-source tree experiment; no generalized interface was introduced.
+- 2026-08-25 -- Executed the first child-path expression and recorded its exact
+  navigation/string-value requirements; streaming remains unimplemented.

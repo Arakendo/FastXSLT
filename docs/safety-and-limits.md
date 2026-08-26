@@ -8,10 +8,10 @@ It is a concise status summary, not a replacement for the owning
 ## Current maturity
 
 FastXSLT is in M1 pre-stability work. The Rust workspace, verification gates,
-bounded-resource experiment, private XML adapter, and first owned XDM document
-run, but the engine does not yet transform documents. The project has not
-selected its initial XSLT/XPath profile and makes no conformance, compatibility,
-performance, production-readiness, or security-audit claim.
+bounded-resource experiment, private XML/XDM path, and test-only golden transform
+run, but no public transform API or supported language surface exists. The
+project has not selected its initial XSLT/XPath profile and makes no conformance,
+compatibility, performance, production-readiness, or security-audit claim.
 
 ## Standards support
 

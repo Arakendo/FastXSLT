@@ -8,7 +8,7 @@
 | Scope | Engine diagnostics, operation failures, and host translation |
 | Trigger | M1 needs machine-readable negative results; the peer database review exposed the cost of string-shaped failures |
 | Related ADRs | ADR-0001, ADR-0002 |
-| Related evidence | `docs/Evidence/peer-database-documentation-review-2026-08-25.md`; future M1 negative cases and host consumers |
+| Related evidence | `docs/Evidence/peer-database-documentation-review-2026-08-25.md`; `docs/Evidence/private-golden-transform-slice-2026-08-25.md`; future host consumers |
 
 ## Architectural question
 
@@ -31,10 +31,13 @@ category, message, structured details, and preserved cause, with local errors
 translated only at boundaries. That demonstrates consumer value, not the
 correct FastXSLT vocabulary.
 
-No FastXSLT parser, compiler, runtime, facade, or host adapter currently emits a
-real failure. The standards profile and its normative error codes are unresolved.
-There is no evidence for exact Rust types, category names, code prefixes,
-serialization fields, or stability promises.
+The private golden path now emits focused XML, compile, resource, batch, and
+runtime failures. Experimental `FX*` identities distinguish invalid,
+unsupported, missing-resource, and limit categories and retain request or source
+context where available. No facade or host adapter consumes them, and the
+standards profile and normative error codes remain unresolved. These cases are
+shape evidence, not accepted code prefixes, public types, serialization fields,
+or stability promises.
 
 ## Ownership and constraints
 
@@ -96,6 +99,10 @@ selects a host mechanism risks treating transport as the semantic model.
 - Batch-level and per-request failure semantics remain dependent on AR-0003.
 - Exact code format, categories, Rust representation, serialization, forward
   compatibility, and host mapping lack executable evidence.
+- The private compiler proves invalid stylesheet structure and unsupported
+  XSLT/XPath behavior can remain distinct without a global error enum. The batch
+  builder likewise distinguishes missing resources, duplicate identities, and
+  request-budget exhaustion before execution.
 
 ## Disposition
 
@@ -106,9 +113,11 @@ fixtures, and consumer-shaped handling evidence.
 
 ## Required follow-up
 
-- [ ] Exercise invalid XML, invalid stylesheet syntax, an unsupported feature,
-  a missing resource, a denied resource, and an enforced limit or cancellation
-  through the first vertical slice.
+- [x] Exercise invalid stylesheet syntax, unsupported XSLT/XPath behavior, a
+  missing resource, and an enforced transform-set limit through the first
+  vertical slice.
+- [ ] Exercise invalid XML, denied authority, runtime/output limits, and
+  cancellation through the boundary path.
 - [ ] Record which conditions are reportable outcomes and which prevent a
   trustworthy result.
 - [ ] Map standards-defined errors separately from FastXSLT operational errors.
@@ -133,3 +142,6 @@ a serialized form needs versioning.
 
 - 2026-08-25 -- Opened as Incubating from deferred findings in the Tosumu
   documentation review.
+- 2026-08-25 -- Recorded the first private structured compiler, resource, batch,
+  and runtime identities from the executable golden slice; no public catalog was
+  accepted.

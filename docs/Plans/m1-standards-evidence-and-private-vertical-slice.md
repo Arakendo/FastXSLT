@@ -8,7 +8,7 @@
 | Owner | FastXSLT maintainers |
 | Target | M1 standards decision and first private transform |
 | Related ADRs | ADR-0001, ADR-0002 |
-| Related reviews | AR-0001, AR-0003, AR-0004, AR-0007, AR-0008 |
+| Related reviews | AR-0001, AR-0003, AR-0004, AR-0007, AR-0008, AR-0009 |
 | Related change requests | None |
 | Depends on | Pinned W3C suites and representative consumer evidence |
 
@@ -79,20 +79,21 @@ profile without ambiguity.
 
 ## Slice 2: Private golden vertical behavior
 
-**Status:** In Progress as a private, version-neutral experiment; public
-semantics remain pending AR-0001 disposition.
+**Status:** Complete as a private, version-neutral experiment; public semantics
+remain pending AR-0001 disposition.
 
 - [x] Select a leading XML parser for private evaluation without delegating engine
   semantics.
 - [x] Admit source and stylesheet bytes through a test-only bounded resource
   builder, release import handles, and seal an immutable snapshot; retain the
   public contract as unresolved.
-- [ ] Compile one root template and one path/value expression.
-- [ ] Execute `corpus/golden/hello` through batch-capable private machinery.
-- [ ] Compare the semantic result separately from serialization.
-- [ ] Add invalid, unsupported, missing/denied-resource, and budget cases with
-  private structured diagnostics.
-- [ ] Record navigation capabilities actually required by the slice for AR-0007.
+- [x] Compile one root template and one path/value expression.
+- [x] Execute `corpus/golden/hello` through batch-capable private machinery.
+- [x] Compare the semantic result separately from serialization.
+- [x] Add invalid, unsupported, missing-resource, and transform-set budget cases
+  with private structured diagnostics.
+- [ ] Add denied-authority, cancellation, and runtime/output budget cases.
+- [x] Record navigation capabilities actually required by the slice for AR-0007.
 
 Exit state: one exact golden result passes through named semantic owners with no
 ambient I/O or public stability claim.
@@ -184,3 +185,20 @@ ambient I/O or public stability claim.
   in AR-0007 without introducing a provider abstraction.
 - Next slice: parse the golden stylesheet into the owned model and privately
   recognize only the syntax needed for its root template and value expression.
+
+### 2026-08-25: Private golden transform completed
+
+- Work completed: compiled the golden stylesheet once, parsed and evaluated its
+  relative child path, executed two identified requests in reverse submission
+  order, built a semantic result, and serialized it separately to the expected
+  XML.
+- Validation: 22 focused tests cover the full private path, batch-of-one parity,
+  stable result correlation, invalid versus unsupported compile failures,
+  missing resources, duplicate request/result identities, request budgets, and
+  sibling-result invisibility.
+- Findings: the layer boundaries support the first exact transform without
+  leaking parser or XDM representation into compiled semantics. Parse per
+  invocation remains AR-0009's reference behavior. The syntax intersection does
+  not decide AR-0001 or establish conformance.
+- Next slice: add denied authority and runtime/output budgets, then obtain
+  representative consumer transforms to close the standards-profile decision.

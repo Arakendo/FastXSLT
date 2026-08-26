@@ -3,10 +3,10 @@ use std::ops::Range;
 use crate::xml::quick_xml_experiment::{ExpandedName, OwnedXmlEvent, ParsedDocument};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct NodeId(usize);
+pub(crate) struct NodeId(usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum NodeKind {
+pub(crate) enum NodeKind {
     Document,
     Element,
     Attribute,
@@ -16,9 +16,9 @@ enum NodeKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct SourceLocation {
-    resource: String,
-    span: Range<usize>,
+pub(crate) struct SourceLocation {
+    pub(crate) resource: String,
+    pub(crate) span: Range<usize>,
 }
 
 #[derive(Debug)]
@@ -34,13 +34,13 @@ struct Node {
 }
 
 #[derive(Debug)]
-struct Document {
+pub(crate) struct Document {
     nodes: Vec<Node>,
     document: NodeId,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum BuildFailure {
+pub(crate) enum BuildFailure {
     UnexpectedEnd,
     UnclosedElement,
 }
@@ -50,7 +50,7 @@ impl Document {
         clippy::too_many_lines,
         reason = "keeping the private event-to-tree state machine together makes ownership auditable"
     )]
-    fn from_parsed(parsed: ParsedDocument) -> Result<Self, BuildFailure> {
+    pub(crate) fn from_parsed(parsed: ParsedDocument) -> Result<Self, BuildFailure> {
         let document_end = parsed
             .events
             .iter()
@@ -227,7 +227,39 @@ impl Document {
         }
     }
 
-    fn string_value(&self, id: NodeId) -> String {
+    pub(crate) fn document_node(&self) -> NodeId {
+        self.document
+    }
+
+    pub(crate) fn kind(&self, id: NodeId) -> NodeKind {
+        self.nodes[id.0].kind
+    }
+
+    pub(crate) fn name(&self, id: NodeId) -> Option<&ExpandedName> {
+        self.nodes[id.0].name.as_ref()
+    }
+
+    pub(crate) fn children(&self, id: NodeId) -> &[NodeId] {
+        &self.nodes[id.0].children
+    }
+
+    pub(crate) fn attributes(&self, id: NodeId) -> &[NodeId] {
+        &self.nodes[id.0].attributes
+    }
+
+    pub(crate) fn parent(&self, id: NodeId) -> Option<NodeId> {
+        self.nodes[id.0].parent
+    }
+
+    pub(crate) fn value(&self, id: NodeId) -> Option<&str> {
+        self.nodes[id.0].value.as_deref()
+    }
+
+    pub(crate) fn location(&self, id: NodeId) -> &SourceLocation {
+        &self.nodes[id.0].location
+    }
+
+    pub(crate) fn string_value(&self, id: NodeId) -> String {
         let node = &self.nodes[id.0];
         match node.kind {
             NodeKind::Text
@@ -293,7 +325,7 @@ mod tests {
 
         assert_ne!(greeting, name);
         assert!(document.nodes[greeting.0].document_order < document.nodes[name.0].document_order);
-        assert_eq!(document.nodes[name.0].parent, Some(greeting));
+        assert_eq!(document.parent(name), Some(greeting));
         assert_eq!(document.string_value(name), "FastXSLT");
         assert_eq!(
             document.nodes[name.0].location.resource,

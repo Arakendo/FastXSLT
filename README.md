@@ -5,9 +5,11 @@ Its motivating consumers include ASP.NET applications that need reusable,
 high-throughput transformations without treating an external command-line tool
 as the primary product boundary.
 
-The repository is currently at **M0: project scaffold**. It builds and its
-development gates run, but it does not transform documents yet. In particular,
-the supported XSLT/XPath standards profile has not been selected; see
+The repository is currently in **M1 pre-stability development**. A test-only
+private slice executes the `hello` golden transform through in-memory resources,
+XML, owned XDM, XSLT/XPath compilation, runtime, semantic result, and separate
+serialization. There is no public transform API or supported standards claim;
+the XSLT/XPath profile remains under
 [AR-0001](docs/Architectural%20Reviews/AR-0001-initial-standards-profile.md).
 
 FastXSLT is not production ready and has not been security audited. Read
@@ -89,9 +91,10 @@ The [documentation index](docs/README.md) explains which records are binding:
 
 ## Project status
 
-The [roadmap](docs/Plans/roadmap.md) defines milestone outcomes. The next useful
-slice is a tiny, end-to-end transform chosen only after AR-0001 decides the
-initial standards profile and conformance baseline.
+The [roadmap](docs/Plans/roadmap.md) defines milestone outcomes. The private
+architecture slice is executable; M1 still needs denied-authority/runtime-budget
+evidence and representative consumer transforms before AR-0001 can establish a
+named standards profile and public behavior.
 
 ## License
 

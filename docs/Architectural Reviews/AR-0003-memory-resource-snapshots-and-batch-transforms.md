@@ -161,6 +161,11 @@ and measurements.
   duplicate-identity rejection, equal bytes under distinct logical identities,
   and owned source/stylesheet bytes whose imported files can be renamed and
   removed immediately. It does not accept the provisional Rust names or shape.
+- The first private transform compiles one stylesheet once, executes two
+  identified requests over an admitted source in reverse submission order, and
+  correlates equal results by request identity. Source parsing remains
+  per-invocation, so this is ordering/lifecycle evidence rather than prepared
+  input reuse or throughput evidence.
 
 ## Disposition
 
@@ -214,3 +219,5 @@ pipeline outputs beyond the selected batch contract.
   review.
 - 2026-08-25 -- Peer review confirmed ADR-0005 without revision and moved the
   prepared-input ownership question into incubating AR-0009.
+- 2026-08-25 -- The private golden set exercised reversed scheduling, stable
+  result correlation, batch-of-one parity, and sibling-result invisibility.

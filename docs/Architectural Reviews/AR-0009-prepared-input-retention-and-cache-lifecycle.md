@@ -125,6 +125,9 @@ incompatible with the current explicit-ownership direction.
   measurements.
 - Parse-per-invocation remains the safe semantic reference behavior against
   which reuse can be tested.
+- The first private transform set now uses that reference behavior for two
+  requests sharing one compiled stylesheet and one admitted source. This proves
+  the baseline lifecycle but contains no cache comparison or performance data.
 - An implementation may physically share storage only while preserving logical
   document identity and provenance.
 - Failure memoization, concurrent first access, cancellation during preparation,
@@ -179,3 +182,5 @@ different retention seam.
 
 - 2026-08-25 -- Opened as Incubating after ADR-0005 peer review identified
   prepared-input ownership as the next volume-design question.
+- 2026-08-25 -- The first private transform set exercised parse-per-invocation as
+  the reference path; prepared reuse remains unimplemented.
