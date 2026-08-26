@@ -40,7 +40,7 @@ method rules need deliberate comparison behavior.
 
 ## Conformance reporting
 
-AR-0011 owns the incubating cross-suite verification-ledger model. Suite-specific
+ADR-0006 owns the cross-suite verification-ledger invariants. Suite-specific
 adapters may proceed privately, but shared record types, persistence, and report
 APIs remain unstabilized until multiple assertion/environment families provide
 evidence.

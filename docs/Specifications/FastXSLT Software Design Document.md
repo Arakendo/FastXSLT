@@ -394,6 +394,12 @@ only those cases under the recorded environment. Conformance reports must expose
 selection and exclusion policy rather than collapsing results into an
 unqualified percentage.
 
+ADR-0006 requires suite-native case identity, an explainable disposition for
+every discovered case, separate selection and execution outcomes, and conserved
+denominators across filtering, sharding, interruption, retry, and merging. It
+does not select the initial standards profile, a ledger schema or storage
+format, or wording for a published conformance claim.
+
 ## 6. Performance
 
 The name FastXSLT is an objective, not evidence. Performance claims require a
@@ -445,11 +451,11 @@ initial read or explicit output publication escapes operating-system scanning.
   persisted compiled artifacts, tracked by AR-0006.
 - ASP.NET/.NET integration, deployment, ownership, cancellation, and artifact
   boundary, tracked by AR-0002.
-- Resource identity, snapshot construction/replacement, cache ownership,
-  transform-set construction, concurrency, and failure policy, tracked by
-  AR-0003. ADR-0005 fixes unordered independent execution and host-owned workflow
-  ordering; transformation graphs are deferred. Prepared-input definition,
-  retention, and cache lifecycle are tracked by AR-0009.
+- ADR-0002 fixes logical memory-resident resource admission and sealed snapshot
+  authority. ADR-0005 fixes unordered independent execution and host-owned
+  workflow ordering; transformation graphs are deferred. Exact public lifecycle
+  shapes remain unstabilized, while prepared-input definition, retention, and
+  cache lifecycle are tracked by AR-0009.
 - Execution supervision, cooperative cancellation/deadline observation, panic
   containment, worker health, and the process boundary required for hard
   termination, tracked by AR-0010.

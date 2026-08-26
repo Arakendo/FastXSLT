@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Under Review |
+| Status | Accepted |
 | Opened | 2026-08-25 |
 | Last reviewed | 2026-08-25 |
 | Scope | Resource loading, compilation reuse, and volume execution |
@@ -178,11 +178,15 @@ and measurements.
 
 ## Disposition
 
-**Under Review with binding baselines from ADR-0002 and ADR-0005.** The first
-vertical slice should load its source and stylesheet through a bounded builder,
-release host handles, seal an immutable snapshot, and run through batch-capable
-internal machinery. This does not accept public type names, unbounded
-whole-workload retention, implicit caches, ordered batches, or graph execution.
+**Accepted through ADR-0002 and ADR-0005.** ADR-0002 owns bounded,
+memory-resident resource admission and sealed execution without retained host
+file authority. ADR-0005 owns independent unordered transform sets, stable
+request/result identity, batch-of-one parity, and host-owned dependent stages.
+
+This review does not accept public type names, unbounded whole-workload
+retention, implicit caches, ordered batches, or graph execution. Prepared-input
+retention and cache lifecycle continue in AR-0009, execution supervision in
+AR-0010, and ASP.NET lifecycle evidence in AR-0002.
 
 ## Required follow-up
 
@@ -235,3 +239,6 @@ pipeline outputs beyond the selected batch contract.
   limit without granting filesystem output authority.
 - 2026-08-25 -- Added explicit selected-source preparation tied to one snapshot
   generation, with functional reuse and parse-per-invocation parity evidence.
+- 2026-08-25 -- Marked Accepted because its resource and workflow decisions are
+  binding in ADR-0002 and ADR-0005; routed remaining cache, supervision, and
+  host-boundary questions to AR-0009, AR-0010, and AR-0002 respectively.

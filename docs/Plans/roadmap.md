@@ -20,11 +20,12 @@ not advanced beyond M1's product decision. The current order of work is:
 5. exercise the same lifecycle through the bounded ASP.NET workbench before
    stabilizing a host boundary or performance claim.
 
-AR-0011's essential ledger invariants now have private evidence. Its remaining
+ADR-0006 now makes AR-0011's essential ledger invariants binding. Its remaining
 reporting, storage, CI, and comparison-family work proceeds when executable
-standards slices need it; completing that review is not the current release
-gate. AR-0005, AR-0006, AR-0007, and AR-0010 remain seam-preservation reviews
-unless a representative case activates one of their reopening pressures.
+standards slices need it; those deferred choices are not the current release
+gate. AR-0005 and AR-0010 remain seam-preservation reviews. AR-0006 and AR-0007
+are deferred unless a representative case activates one of their reopening
+pressures.
 
 ## M0 -- Project scaffold
 

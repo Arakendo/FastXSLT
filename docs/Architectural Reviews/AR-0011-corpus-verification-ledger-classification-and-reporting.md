@@ -2,12 +2,12 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Incubating |
+| Status | Accepted |
 | Opened | 2026-08-25 |
 | Last reviewed | 2026-08-25 |
 | Scope | External and first-party test-data inventory, selection, execution, comparison, and evidence reporting |
 | Trigger | FastXSLT has 46,421 admitted QT3/XSLT30 cases and 2,586 locally inventoried XML candidates, but only one upstream case executes through a first-party overlay |
-| Related ADRs | ADR-0002, ADR-0005 |
+| Related ADRs | ADR-0002, ADR-0005, ADR-0006 |
 | Related reviews | AR-0001, AR-0004, AR-0006, AR-0008, AR-0010 |
 | Related evidence | `docs/Evidence/w3c-suite-catalog-inventory-2026-08-25.md`, `docs/Evidence/xslt30-template-006-private-execution-2026-08-25.md`, `docs/Evidence/peer-test-corpus-review-monday-2026-08-25.md`, and `docs/Evidence/w3c-xml-conformance-suite-candidate-review-2026-08-25.md` |
 
@@ -216,16 +216,14 @@ the profile closes; generalized execution remains deferred.
 
 ## Disposition
 
-**Incubating.** Adopt the verification-ledger principles now: preserve native
-case identity, classify every discovered case, separate selection from
-execution, conserve denominators, retain report inputs, and keep corpus purposes
-distinct.
+**Accepted through ADR-0006.** Verification must preserve native case identity,
+classify every discovered case, separate selection from execution, conserve
+denominators, retain report inputs, and keep corpus purposes distinct.
 
-Do not yet implement a universal harness, stabilize a ledger schema, publish a
-conformance percentage, copy suites into a normalized first-party corpus, or
-select a report database/API. Continue private suite-specific vertical slices
-and inventory work until AR-0001 closes and at least two materially different
-assertion/environment families provide boundary evidence.
+ADR-0006 deliberately does not stabilize a universal harness, ledger schema,
+report database/API, CI topology, or published conformance percentage. Those
+follow-on choices remain deferred until AR-0001 closes and executable standards
+slices provide the relevant comparison and scale evidence.
 
 ## Required follow-up
 
@@ -271,3 +269,7 @@ reporting becomes a release requirement.
 - 2026-08-25 -- Opened as Incubating after corpus review established 46,421
   admitted QT3/XSLT30 cases plus 2,586 non-admitted XML candidates and identified
   explainable disposition—not raw pass count—as the verification objective.
+- 2026-08-25 -- Accepted the evidence-backed identity, classification,
+  conservation, provenance, and corpus-purpose invariants through ADR-0006;
+  retained schema, storage, CI, comparison, and publication questions as
+  deferred follow-up.

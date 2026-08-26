@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Incubating |
+| Status | Deferred |
 | Opened | 2026-08-25 |
 | Last reviewed | 2026-08-25 |
 | Scope | XDM access, compilation metadata, execution strategy, buffering, and resource lifetime |
@@ -169,12 +169,12 @@ requirements independent of any future physical source strategy.
 
 ## Disposition
 
-**Incubating. Do not implement streaming in the initial profile.** Preserve the
+**Deferred. Do not implement streaming in the initial profile.** Preserve the
 semantic/physical representation boundary, keep tree-specific access inside its
 owner, allow compiled forms to gain requirement metadata later, and avoid
-making batch snapshots imply eager full-tree retention. Do not add generalized
-interfaces until a second implementation experiment or measured boundary
-demonstrates both their operations and acceptable cost.
+making batch snapshots imply eager full-tree retention. No current profile or
+measured workload justifies a streaming strategy or generalized provider
+interface. Reopen only when a named trigger supplies that pressure.
 
 This disposition creates no streaming API, execution strategy, or conformance
 claim.
@@ -219,3 +219,7 @@ materialization proves useful, or abstraction cost harms the tree evaluator.
   golden-source tree experiment; no generalized interface was introduced.
 - 2026-08-25 -- Executed the first child-path expression and recorded its exact
   navigation/string-value requirements; streaming remains unimplemented.
+- 2026-08-25 -- Deferred implementation and abstraction work after the concrete
+  tree slice confirmed the required seam can remain private; profile selection,
+  representative workload pressure, or measured tree-memory pressure must
+  trigger renewed review.

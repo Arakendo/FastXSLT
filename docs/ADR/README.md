@@ -33,3 +33,7 @@ but supersede a materially changed decision instead of rewriting its history.
 - [ADR-0005: Unordered Transform Sets and Host-Owned Workflow](ADR-0005-unordered-transform-sets-and-host-owned-workflow.md)
   -- Accepted; transform sets contain independent unordered requests, while the
   host sequences dependent stages and explicitly admits prior results.
+- [ADR-0006: Verification Ledger Invariants](ADR-0006-verification-ledger-invariants.md)
+  -- Accepted; every discovered standards case retains native identity and an
+  explainable disposition, with separate selection/execution axes and conserved
+  denominators across filtering, sharding, interruption, retry, and merging.

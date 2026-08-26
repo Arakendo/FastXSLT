@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Incubating |
+| Status | Deferred |
 | Opened | 2026-08-25 |
 | Last reviewed | 2026-08-25 |
 | Scope | Standards behavior, Rust API, host ABI, diagnostics, schemas, and future durable artifacts |
@@ -117,10 +117,12 @@ That cost is not measured.
 
 ## Disposition
 
-**Incubating.** Keep pre-stability compatibility claims explicit and narrow. Do
-not introduce a persisted compiled-artifact or disk-cache format without
-measured consumer need and a separate accepted decision. Plans must check each
-affected domain instead of asserting generic version compatibility.
+**Deferred.** Keep pre-stability compatibility claims explicit and narrow. No
+current consumer or measurement justifies selecting a persisted artifact,
+disk-cache format, stable ABI, or umbrella compatibility version. Do not
+introduce one without a named reopening trigger and a separate accepted
+decision. Plans must check each affected domain instead of asserting generic
+version compatibility.
 
 ## Required follow-up
 
@@ -150,3 +152,7 @@ evolution, the standards profile changes, or persistence is proposed.
 
 - 2026-08-25 -- Opened as Incubating from deferred findings in the Tosumu
   documentation review.
+- 2026-08-25 -- Deferred because no current consumer needs persistence or a
+  stable ABI and no measured restart/compilation pressure selects a mechanism;
+  retained explicit reopening triggers for profile, host, schema, and artifact
+  pressure.

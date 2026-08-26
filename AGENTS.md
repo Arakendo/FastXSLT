@@ -65,7 +65,7 @@ contract.
   execution.
 - Keep the semantic transformation result distinct from serialization into
   text, bytes, or an output sink, even if an early implementation combines them.
-- Follow AR-0007's incubation guardrails. A first tree evaluator may be concrete,
+- Follow AR-0007's deferred guardrails. A first tree evaluator may be concrete,
   but do not spread an unnecessary assumption that every source is permanently
   a fully materialized random-access tree. Depend on the semantic navigation
   actually required at each layer, keep representation-specific access inside

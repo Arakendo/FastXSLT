@@ -55,9 +55,9 @@ and add the record to this index. Never reuse a retired number.
   -- Proposed; determine how managed applications embed and reuse FastXSLT
   without confusing Rust-core speed with end-to-end host performance.
 - [AR-0003: Memory Resource Snapshots and Batch Transforms](AR-0003-memory-resource-snapshots-and-batch-transforms.md)
-  -- Under Review; study bounded preload, sealed resource identity, shared
-  compilation, prepared inputs, and unordered batch execution for volume
-  consumers within ADR-0005.
+  -- Accepted through ADR-0002 and ADR-0005; bounded memory-resident snapshots
+  and unordered independent transform sets are binding, while cache,
+  supervision, and host lifecycle questions remain in focused reviews.
 - [AR-0004: Structured Diagnostics and Boundary Error Identity](AR-0004-structured-diagnostics-and-boundary-error-identity.md)
   -- Incubating; derive machine-readable findings and operation failures from
   implemented cases without introducing a speculative global error framework.
@@ -65,13 +65,12 @@ and add the record to this index. Never reuse a retired number.
   -- Incubating; determine how hosts inspect resources, compilation, and
   execution without stabilizing private engine representation.
 - [AR-0006: Compatibility Domains, Versioning, and Persisted Artifacts](AR-0006-compatibility-domains-versioning-and-persisted-artifacts.md)
-  -- Incubating; separate standards, Rust API, host ABI, diagnostic, and future
-  artifact compatibility before any one version number is made to cover all of
-  them.
+  -- Deferred; no current consumer or measurement justifies a persisted
+  artifact, stable ABI, or umbrella compatibility mechanism.
 - [AR-0007: Streaming Compatibility of Core Architecture](AR-0007-streaming-compatibility-of-core-architecture.md)
-  -- Incubating; keep future tree, streaming, and hybrid strategies
-  architecturally possible without implementing streaming or claiming XSLT
-  streaming conformance now.
+  -- Deferred; preserve the semantic/physical seam without implementing a
+  streaming strategy or generalized provider until profile or measured
+  workload pressure reopens the question.
 - [AR-0008: XML Parser Mechanics Boundary](AR-0008-xml-parser-mechanics-boundary.md)
   -- Under Review; evaluate a private event parser without delegating XML
   policy, XDM ownership, resource authority, or public types.
@@ -82,5 +81,6 @@ and add the record to this index. Never reuse a retired number.
   -- Incubating; separate bounded cooperative dispatch from the process boundary
   required for forcible termination and hard recovery.
 - [AR-0011: Corpus Verification Ledger, Classification, and Reporting](AR-0011-corpus-verification-ledger-classification-and-reporting.md)
-  -- Incubating; preserve explainable disposition and denominator conservation
-  across suite-specific inventory, selection, execution, and reporting.
+  -- Accepted through ADR-0006; preserve native identity, explainable
+  disposition, separate selection/execution axes, and denominator conservation
+  while schema, storage, CI, and publication remain deferred.
