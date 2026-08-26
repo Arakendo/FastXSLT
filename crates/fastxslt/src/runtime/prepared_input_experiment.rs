@@ -619,6 +619,157 @@ mod tests {
         );
     }
 
+    #[test]
+    #[ignore = "manual release-mode multi-source and multi-stylesheet reuse probe"]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "keeping setup, correctness conservation, four timed paths, and reporting together makes this manual probe auditable"
+    )]
+    fn measures_multi_source_and_multi_stylesheet_reuse_shapes() {
+        const SOURCE_COUNT: usize = 8;
+        const STYLE_COUNT: usize = 8;
+        const ITERATIONS: usize = 1_000;
+        const OPERATIONS_F64: f64 = 8_000.0;
+        const SAMPLES: usize = 7;
+        let source_bytes =
+            include_bytes!("../../../../corpus/golden/built-in-template-rules/input.xml");
+        let stylesheet_bytes =
+            include_bytes!("../../../../corpus/golden/built-in-template-rules/stylesheet.xsl");
+        let source_ids: Vec<_> = (0..SOURCE_COUNT)
+            .map(|index| format!("urn:fastxslt:measure:shape:source-{index}"))
+            .collect();
+        let style_ids: Vec<_> = (0..STYLE_COUNT)
+            .map(|index| format!("urn:fastxslt:measure:shape:style-{index}"))
+            .collect();
+        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(16, 4_096, 32_768));
+        for identity in &source_ids {
+            resources
+                .admit(identity.clone(), source_bytes.to_vec())
+                .expect("admit shape source");
+        }
+        for identity in &style_ids {
+            resources
+                .admit(identity.clone(), stylesheet_bytes.to_vec())
+                .expect("admit shape stylesheet");
+        }
+        let snapshot = resources.seal();
+        let prepared_identities: Vec<_> = source_ids.iter().map(String::as_str).collect();
+        let prepared = prepare(&snapshot, &prepared_identities);
+        let programs: Vec<_> = style_ids
+            .iter()
+            .map(|identity| compile_resource(&snapshot, identity).expect("compile shape style"))
+            .collect();
+        let run = |program: &crate::xslt::golden_semantics_experiment::StylesheetProgram,
+                   document: &Document| {
+            let mut control = InvocationControl::unbounded();
+            let semantic = execute_program(program, document, "shape", &mut control)
+                .expect("execute shape transform");
+            serialize_xml(&semantic, &program.output, "shape", 4_096, &mut control)
+                .expect("serialize shape transform")
+        };
+
+        let direct_reference = Document::from_parsed(
+            parse_document(
+                &source_ids[0],
+                snapshot.get(&source_ids[0]).expect("reference source"),
+                super::PREPARATION_XML_LIMITS,
+            )
+            .expect("parse shape reference"),
+        )
+        .expect("build shape reference");
+        assert_eq!(
+            run(&programs[0], &direct_reference),
+            run(
+                &programs[0],
+                &prepared.get(&source_ids[0]).expect("prepared reference")
+            )
+        );
+
+        let mut multi_source_direct = Vec::with_capacity(SAMPLES);
+        let mut multi_source_prepared = Vec::with_capacity(SAMPLES);
+        let mut multi_style_direct = Vec::with_capacity(SAMPLES);
+        let mut multi_style_prepared = Vec::with_capacity(SAMPLES);
+        for _ in 0..SAMPLES {
+            let start = Instant::now();
+            for _ in 0..ITERATIONS {
+                for identity in &source_ids {
+                    let parsed = parse_document(
+                        identity,
+                        black_box(snapshot.get(identity).expect("shape source bytes")),
+                        super::PREPARATION_XML_LIMITS,
+                    )
+                    .expect("parse direct multi-source input");
+                    let document =
+                        Document::from_parsed(parsed).expect("build direct multi-source XDM");
+                    black_box(run(&programs[0], &document));
+                }
+            }
+            multi_source_direct
+                .push(start.elapsed().as_secs_f64() * 1_000_000_000.0 / OPERATIONS_F64);
+
+            let start = Instant::now();
+            for _ in 0..ITERATIONS {
+                for identity in &source_ids {
+                    let document = prepared
+                        .get(identity)
+                        .expect("get prepared multi-source input");
+                    black_box(run(&programs[0], &document));
+                }
+            }
+            multi_source_prepared
+                .push(start.elapsed().as_secs_f64() * 1_000_000_000.0 / OPERATIONS_F64);
+
+            let start = Instant::now();
+            for _ in 0..ITERATIONS {
+                for program in &programs {
+                    let parsed = parse_document(
+                        &source_ids[0],
+                        black_box(snapshot.get(&source_ids[0]).expect("shared source bytes")),
+                        super::PREPARATION_XML_LIMITS,
+                    )
+                    .expect("parse direct multi-style input");
+                    let document =
+                        Document::from_parsed(parsed).expect("build direct multi-style XDM");
+                    black_box(run(program, &document));
+                }
+            }
+            multi_style_direct
+                .push(start.elapsed().as_secs_f64() * 1_000_000_000.0 / OPERATIONS_F64);
+
+            let start = Instant::now();
+            for _ in 0..ITERATIONS {
+                for program in &programs {
+                    let document = prepared
+                        .get(&source_ids[0])
+                        .expect("get prepared multi-style input");
+                    black_box(run(program, &document));
+                }
+            }
+            multi_style_prepared
+                .push(start.elapsed().as_secs_f64() * 1_000_000_000.0 / OPERATIONS_F64);
+        }
+
+        for observations in [
+            &mut multi_source_direct,
+            &mut multi_source_prepared,
+            &mut multi_style_direct,
+            &mut multi_style_prepared,
+        ] {
+            observations.sort_by(f64::total_cmp);
+        }
+        let middle = SAMPLES / 2;
+        println!(
+            "iterations={ITERATIONS} operations_per_shape={} samples={SAMPLES} multi_source_direct_ns={:.1} multi_source_prepared_ns={:.1} multi_source_ratio={:.2} multi_style_direct_ns={:.1} multi_style_prepared_ns={:.1} multi_style_ratio={:.2}",
+            ITERATIONS * SOURCE_COUNT,
+            multi_source_direct[middle],
+            multi_source_prepared[middle],
+            multi_source_direct[middle] / multi_source_prepared[middle],
+            multi_style_direct[middle],
+            multi_style_prepared[middle],
+            multi_style_direct[middle] / multi_style_prepared[middle]
+        );
+    }
+
     #[cfg(feature = "allocation-observation")]
     #[test]
     #[ignore = "manual allocator-requested retained and peak preparation probe"]

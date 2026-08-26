@@ -98,6 +98,12 @@ The feature must remain absent from timing probes so its global allocator
 wrapper cannot contaminate their results. Numeric results remain observations
 rather than cross-platform assertions.
 
+Reuse-shape probes preserve logical resource identity while comparing one
+compiled stylesheet across several sources and several compiled stylesheets
+across one source. Compilation and preparation remain outside timing, and
+equal-byte fixtures must be identified explicitly rather than presented as
+workload diversity.
+
 Prepared-retention tests report admitted raw bytes, parser-owned capacity at
 the completed-parse boundary, XDM node count, and current XDM-owned capacity as
 separate classes. They must state excluded allocator, co-resident

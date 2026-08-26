@@ -401,6 +401,11 @@ ambient I/O or public stability claim.
   exact-pinned optional tool is current-thread-only and excludes allocator
   metadata, snapshot admission, process memory, and host overhead. Its explicit
   feature remains disabled for timing probes.
+- Relationship-shape measurement: three local runs over eight distinct source
+  identities and eight separately compiled stylesheet identities observed
+  3.19–3.33 times prepared benefit for the multi-source shape and 3.22–3.43
+  times for the multi-stylesheet shape. All bytes remain equal and the workload
+  remains tiny, warm, single-threaded, and consumer-unconfirmed.
 - Findings: the seam has measurable private value and meaningful retention
   cost. The current builder performs explicit owned construction, so it has no
   shared first-access, single-flight, or waiter semantics to stabilize.

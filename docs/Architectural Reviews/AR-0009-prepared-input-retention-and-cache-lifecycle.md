@@ -169,12 +169,18 @@ incompatible with the current explicit-ownership direction.
   construct-and-drop medians across three local runs. Different allocation
   lifetimes and cache state prevent treating their sum as an exact decomposition
   of the earlier end-to-end probe.
-- An exact-pinned dev-only allocator counter now measures the complete explicit
+- An exact-pinned optional allocator counter now measures the complete explicit
   preparation closure on its calling thread. The hello source retained 2,744
   allocator-requested bytes and peaked at 3,424; the generated 100-item source
   retained 64,577 and peaked at 130,357. The tool excludes allocator metadata,
   fragmentation, process memory, snapshot admission, and other threads. No
   first-party unsafe exception or default runtime dependency was introduced.
+- A release-mode relationship-shape probe holds eight compiled stylesheets and
+  eight distinct source identities outside timing. Across three local runs,
+  prepared reuse measured 3.19–3.33× faster for one stylesheet over eight
+  sources and 3.22–3.43× for eight stylesheets over one source. Equal-byte tiny
+  fixtures and warm single-threaded execution prevent a lifecycle default or
+  consumer-volume conclusion.
 
 ## Disposition
 
@@ -198,7 +204,7 @@ thread-safety, eviction, or performance guarantee.
     construction separately for the private 55-byte fixture.
 - [x] Run one stylesheet over multiple prepared sources and multiple stylesheets
   over one prepared source, comparing semantics with parse per invocation.
-- [ ] Benchmark those workload shapes,
+- [x] Benchmark those workload shapes,
   comparing parse-per-invocation with reuse.
 - [x] Retain a reproducible private release-mode probe that holds compilation
   constant and compares one complete direct iteration with prepared reuse.
@@ -265,3 +271,6 @@ different retention seam.
   separates allocator-requested retained and peak preparation bytes; its
   explicit feature keeps the wrapper out of default timing binaries. Process
   working set and representative consumer workloads remain open.
+- 2026-08-25 -- Benchmarked both demonstrated reuse relationship shapes while
+  holding compilation and preparation outside timing. Similar local ratios
+  confirm seam value but do not activate cache or single-flight policy.
