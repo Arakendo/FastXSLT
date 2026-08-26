@@ -88,6 +88,13 @@ struct PreparedInputSet {
     documents: Arc<BTreeMap<String, Arc<Document>>>,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct PreparedInputObservation {
+    raw_bytes: usize,
+    xdm_nodes: usize,
+    xdm_owned_capacity_bytes: usize,
+}
+
 impl PreparedInputSet {
     fn belongs_to(&self, snapshot: &ResourceSnapshot) -> bool {
         self.snapshot.same_generation(snapshot)
@@ -95,6 +102,28 @@ impl PreparedInputSet {
 
     fn get(&self, identity: &str) -> Option<Arc<Document>> {
         self.documents.get(identity).cloned()
+    }
+
+    fn observe(&self, identity: &str) -> Option<PreparedInputObservation> {
+        let raw_bytes = self.snapshot.get(identity)?.len();
+        let document = self.documents.get(identity)?;
+        Some(PreparedInputObservation {
+            raw_bytes,
+            xdm_nodes: document.node_count(),
+            xdm_owned_capacity_bytes: document.owned_capacity_bytes(),
+        })
+    }
+
+    fn observe_totals(&self) -> PreparedInputObservation {
+        self.documents
+            .keys()
+            .filter_map(|identity| self.observe(identity))
+            .fold(PreparedInputObservation::default(), |mut total, item| {
+                total.raw_bytes += item.raw_bytes;
+                total.xdm_nodes += item.xdm_nodes;
+                total.xdm_owned_capacity_bytes += item.xdm_owned_capacity_bytes;
+                total
+            })
     }
 }
 
@@ -230,6 +259,48 @@ mod tests {
             );
         }
         assert_eq!(serialized[0], serialized[1]);
+    }
+
+    #[test]
+    fn raw_and_xdm_retention_are_observed_as_separate_classes() {
+        const SCALED_SOURCE: &str = "urn:fastxslt:prepared:scaled-source";
+        const ITEM_COUNT: usize = 100;
+        let baseline_snapshot = snapshot();
+        let baseline = prepare(&baseline_snapshot, &[SOURCE_A]);
+        let baseline_observation = baseline.observe(SOURCE_A).expect("observe baseline source");
+        assert_eq!(baseline_observation.raw_bytes, 87);
+        assert_eq!(baseline_observation.xdm_nodes, 6);
+        assert!(
+            baseline_observation.xdm_owned_capacity_bytes > baseline_observation.raw_bytes,
+            "owned XDM capacity should remain visibly separate from retained source bytes"
+        );
+        assert_eq!(baseline.observe_totals(), baseline_observation);
+
+        let mut xml = String::from("<catalog>");
+        for index in 0..ITEM_COUNT {
+            xml.push_str("<item>value-");
+            xml.push_str(&index.to_string());
+            xml.push_str("</item>");
+        }
+        xml.push_str("</catalog>");
+        let raw_bytes = xml.len();
+        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 64_000, 64_000));
+        resources
+            .admit(SCALED_SOURCE, xml.into_bytes())
+            .expect("admit scaled source");
+        let scaled_snapshot = resources.seal();
+        let scaled = prepare(&scaled_snapshot, &[SCALED_SOURCE]);
+        let scaled_observation = scaled
+            .observe(SCALED_SOURCE)
+            .expect("observe scaled prepared source");
+
+        assert_eq!(scaled_observation.raw_bytes, raw_bytes);
+        assert_eq!(scaled_observation.xdm_nodes, 2 + ITEM_COUNT * 2);
+        assert!(scaled_observation.xdm_owned_capacity_bytes > raw_bytes);
+        assert_eq!(scaled.observe_totals(), scaled_observation);
+        println!(
+            "baseline={baseline_observation:?} scaled_items={ITEM_COUNT} scaled={scaled_observation:?}"
+        );
     }
 
     #[test]

@@ -90,6 +90,11 @@ Prepared-input timing remains an ignored release-mode probe. Normal correctness
 gates do not enforce timing, and local ratios from a tiny private fixture do not
 become cache defaults or ASP.NET performance claims.
 
+Prepared-retention tests report admitted raw bytes, XDM node count, and current
+XDM-owned capacity as separate classes. They must state excluded allocator,
+construction-peak, index, and invocation memory rather than presenting the sum
+as process memory.
+
 The W3C XML Conformance Test Suite 20130923 is a reviewed but non-admitted
 candidate for AR-0008. It is a dated archive rather than a Git submodule, its
 root catalog uses DTD/entity composition, and its older contributor notices

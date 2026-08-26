@@ -156,6 +156,13 @@ incompatible with the current explicit-ownership direction.
   804.2–814.9 ns prepared medians, or 3.23–3.62×. This proves measurable seam
   value only; the fixture is not consumer-representative and supplies no cache
   policy, memory, concurrency, or ASP.NET conclusion.
+- Prepared-set observations now report retained raw bytes, XDM nodes, and
+  XDM-owned capacity separately for each prepared identity and in aggregate.
+  The 87-byte hello source reports 6 nodes and 1,932 bytes of XDM capacity; a
+  generated 2,109-byte/100-item source reports 202 nodes and 63,755 bytes. The
+  diagnostic excludes allocator/map/Arc overhead, construction peak, derived
+  indexes, and runtime transients, so it cannot yet close the general memory
+  follow-up or select budgets.
 
 ## Disposition
 
@@ -191,6 +198,8 @@ thread-safety, eviction, or performance guarantee.
   immutably across concurrent readers without interior invocation mutation.
 - [ ] Separate budgets and observations for raw bytes, parsed XDM, derived
   indexes, in-flight construction, and runtime transient memory.
+  - [x] Observe retained raw bytes, XDM node count, and current XDM-owned
+    capacity separately for explicitly prepared identities.
 - [ ] Classify proposed indexes as source-only, stylesheet-derived, or
   invocation-specific before retaining them.
 - [ ] Exercise eviction/reconstruction and prove it affects performance only,
@@ -220,3 +229,6 @@ different retention seam.
   the private built-in-rule golden. Retained the general benchmark and memory
   follow-ups because the tiny fixture and Rust-only boundary cannot select a
   lifecycle or establish consumer benefit.
+- 2026-08-25 -- Added per-identity and aggregate raw-byte/XDM retention
+  observations and exercised them on the hello and generated 100-item sources.
+  Allocator-inclusive peak, indexes, and runtime transient classes remain open.
