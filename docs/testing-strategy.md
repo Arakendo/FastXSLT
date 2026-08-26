@@ -94,8 +94,10 @@ and applies only the required two-decimal formatting picture. The current
 denominator is four passes with no unsupported or failed cases.
 The next admitted expression denominator is the complete nine-case XSLT30
 `expr/castable` test set. Seven cases are selected and two schema-aware cases
-remain visibly excluded under ADR-0007. Of the selected cases, four are
-engine-unsupported and three are harness-unsupported; none currently pass.
+remain visibly excluded under ADR-0007. Native `castable-001` now passes all 24
+built-in lexical checks and its exact file-backed XML assertion, including the
+inherited `xs` namespace binding. Of the remaining selected cases, three are
+engine-unsupported and three are harness-unsupported.
 The admission resolves every stylesheet, environment, source, dependency, and
 assertion shape without treating the two profile exclusions as undiscovered or
 silently dropping the compound-assertion cases.

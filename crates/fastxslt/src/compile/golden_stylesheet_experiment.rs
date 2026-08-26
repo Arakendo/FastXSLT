@@ -1,4 +1,6 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
+use crate::xml::quick_xml_experiment::NamespaceBinding;
+use crate::xpath::castable_experiment::parse as parse_castable;
 use crate::xpath::decimal_sum_for_experiment::parse as parse_decimal_sum_for;
 use crate::xpath::focus_sum_for_experiment::parse as parse_focus_sum_for;
 use crate::xpath::for_distinct_values_experiment::{
@@ -326,6 +328,7 @@ fn compile_sequence_excluding(
                     }
                     instructions.push(Instruction::LiteralElement {
                         name: name.clone(),
+                        namespaces: literal_result_namespaces(document, child),
                         body: compile_sequence(document, child)?,
                         location: document.location(child).clone(),
                     });
@@ -341,6 +344,29 @@ fn compile_sequence_excluding(
         }
     }
     Ok(instructions)
+}
+
+fn literal_result_namespaces(document: &Document, element: NodeId) -> Vec<NamespaceBinding> {
+    let mut namespaces = Vec::new();
+    let mut current = Some(element);
+    while let Some(node) = current {
+        for binding in document.namespace_declarations(node) {
+            let Some(prefix) = binding.prefix.as_deref() else {
+                continue;
+            };
+            if prefix != "xml"
+                && binding.namespace != XSLT_NAMESPACE
+                && !binding.namespace.is_empty()
+                && !namespaces
+                    .iter()
+                    .any(|existing: &NamespaceBinding| existing.prefix.as_deref() == Some(prefix))
+            {
+                namespaces.push(binding.clone());
+            }
+        }
+        current = document.parent(node);
+    }
+    namespaces
 }
 
 fn compile_apply_templates(
@@ -413,7 +439,16 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
     ensure_no_meaningful_children(document, element, "xsl:value-of")?;
     let location = document.location(element).clone();
     let expression = required_attribute(document, element, None, "select")?;
-    let select = if expression.trim_start().starts_with("format-number(") {
+    let select = if expression.contains(" castable as ") {
+        ValueExpression::Castable(Box::new(parse_castable(expression, &location).map_err(
+            |failure| CompileFailure {
+                code: "FXXP1007",
+                category: CompileCategory::Unsupported,
+                detail: failure.detail,
+                location: failure.location,
+            },
+        )?))
+    } else if expression.trim_start().starts_with("format-number(") {
         ValueExpression::DecimalSumFor(Box::new(
             parse_decimal_sum_for(expression, &location).map_err(|failure| CompileFailure {
                 code: "FXXP1006",

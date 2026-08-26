@@ -152,8 +152,8 @@ rationale = "The native for03 source executes exact-decimal multiplication over 
 set_file = "tests/expr/castable/_castable-test-set.xml"
 case_name = "castable-001"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The native XSLT20+ source, stylesheet, and file-backed XML assertion are admitted; built-in atomic castability across string, numeric, duration, date, and time types exceeds the current XPath evaluator."
+execution = "passed"
+rationale = "The native XSLT20+ case executes built-in atomic lexical castability across string, numeric, duration, date, and time types, with inherited literal-result namespace bindings retained in serialization."
 
 [[case]]
 set_file = "tests/expr/castable/_castable-test-set.xml"

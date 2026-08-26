@@ -50,9 +50,11 @@ execution path.
 | `castable-005`, `castable-006` | excluded by profile | not run | schema-defined union/list types plus higher-order functions |
 | `castable-007` through `castable-009` | selected | harness unsupported | standard initial-template entry and compound XPath assertions, before engine capability can be classified |
 
-The denominator is nine discovered: seven selected and two excluded by the
-accepted profile. Within the selected set, zero pass, four are
-engine-unsupported, three are harness-unsupported, and none fail or disappear.
+At this admission checkpoint, the denominator was nine discovered: seven
+selected and two excluded by the accepted profile. Within the selected set,
+zero passed, four were engine-unsupported, three were harness-unsupported, and
+none failed or disappeared. Native `castable-001` subsequently advanced in
+[the built-in atomic execution evidence](xslt30-castable-001-built-in-atomic-execution-2026-08-26.md).
 
 ## Claim boundary and next pressure
 

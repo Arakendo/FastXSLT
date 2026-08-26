@@ -1,8 +1,12 @@
 //! Conserved admission for the complete XSLT30 `expr/castable` denominator.
 
-use std::{fs, path::PathBuf};
+use std::{collections::HashSet, fs, path::PathBuf};
 
-use super::{FailureCategory, compile_resource};
+use super::{
+    ExecutionPolicy, FailureCategory, InvocationEntry, TransformRequest, TransformSetBuilder,
+    compile_resource, execute_transform_set,
+};
+use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
@@ -21,7 +25,15 @@ struct CasePressure {
 }
 
 const CASES: [CasePressure; 9] = [
-    selected_engine_case("castable-001", "assert-xml"),
+    CasePressure {
+        name: "castable-001",
+        environment: Some("castbl01"),
+        spec: "XSLT20+",
+        features: &[],
+        assertion: "assert-xml",
+        selection: "selected",
+        execution: "passed",
+    },
     selected_engine_case("castable-002", "assert-xml"),
     selected_engine_case("castable-003", "assert-xml"),
     selected_engine_case("castable-004", "assert-xml"),
@@ -47,6 +59,78 @@ const CASES: [CasePressure; 9] = [
     selected_harness_case("castable-008"),
     selected_harness_case("castable-009"),
 ];
+
+#[test]
+fn executes_native_xslt30_castable_001() {
+    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
+    assert!(overlay_case(overlay, "castable-001").contains("execution = \"passed\""));
+    let (test_set, set_path) = load_test_set();
+    let directory = set_path.parent().expect("castable test-set directory");
+    let test_case = descendants_named(&test_set, test_set.document_node(), "test-case")
+        .into_iter()
+        .find(|node| attribute(&test_set, *node, "name") == Some("castable-001"))
+        .expect("native castable-001 case");
+    let test = child_named(&test_set, test_case, "test").expect("native test");
+    let stylesheet_file = child_named(&test_set, test, "stylesheet")
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("native stylesheet file");
+    let environment = descendants_named(&test_set, test_set.document_node(), "environment")
+        .into_iter()
+        .find(|node| attribute(&test_set, *node, "name") == Some("castbl01"))
+        .expect("native environment");
+    let source_file = child_named(&test_set, environment, "source")
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("native source file");
+    let result = child_named(&test_set, test_case, "result").expect("native result");
+    let assertion = first_element_child(&test_set, result).expect("native assertion");
+    let expected_file = attribute(&test_set, assertion, "file").expect("native expected file");
+    let expected = fs::read_to_string(directory.join(expected_file))
+        .expect("read native assertion and close handle");
+    let source_id = "urn:w3c:xslt30:castable-001:source";
+    let stylesheet_id = stylesheet_id("castable-001");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 65_536, 131_072));
+    resources
+        .admit(
+            source_id,
+            fs::read(directory.join(source_file)).expect("read native source and close handle"),
+        )
+        .expect("admit native source");
+    resources
+        .admit(
+            stylesheet_id.clone(),
+            fs::read(directory.join(stylesheet_file))
+                .expect("read native stylesheet and close handle"),
+        )
+        .expect("admit native stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, &stylesheet_id).expect("compile castable-001");
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 8_192,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    set.add(TransformRequest {
+        identity: "castable-001".to_owned(),
+        result_identity: "result:castable-001".to_owned(),
+        entry: InvocationEntry::PrincipalSource {
+            resource: source_id.to_owned(),
+        },
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    })
+    .expect("admit native request");
+
+    let results = execute_transform_set(set.seal()).expect("execute castable-001");
+    assert_eq!(
+        results.by_request["castable-001"].serialized,
+        expected.trim()
+    );
+}
 
 const fn selected_engine_case(name: &'static str, assertion: &'static str) -> CasePressure {
     CasePressure {

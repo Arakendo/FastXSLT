@@ -11,6 +11,7 @@ use crate::xdm::owned_tree_experiment::{
 use crate::xml::quick_xml_experiment::{
     ExpandedName, ParseLimits, parse_document, parse_document_controlled,
 };
+use crate::xpath::castable_experiment::evaluate as evaluate_castable;
 use crate::xpath::decimal_sum_for_experiment::{
     DecimalSumEvaluationFailure, evaluate as evaluate_decimal_sum_for,
 };
@@ -39,6 +40,7 @@ const MAX_NAMED_TEMPLATE_CALL_DEPTH: usize = 256;
 enum ResultNode {
     Element {
         name: ExpandedName,
+        namespaces: Vec<crate::xml::quick_xml_experiment::NamespaceBinding>,
         children: Vec<ResultNode>,
     },
     Text(String),
@@ -457,12 +459,18 @@ fn execute_sequence(
             .charge(WorkDomain::XsltInstruction, 1)
             .map_err(|failure| control_failure(failure, inputs.request_id))?;
         match instruction {
-            Instruction::LiteralElement { name, body, .. } => {
+            Instruction::LiteralElement {
+                name,
+                namespaces,
+                body,
+                ..
+            } => {
                 control
                     .charge(WorkDomain::ResultNode, 1)
                     .map_err(|failure| control_failure(failure, inputs.request_id))?;
                 result.push(ResultNode::Element {
                     name: name.clone(),
+                    namespaces: namespaces.clone(),
                     children: execute_sequence(
                         inputs, body, context, variables, call_depth, control,
                     )?,
@@ -561,6 +569,7 @@ fn copy_source_node(
                     .name(node)
                     .expect("source element nodes have names")
                     .clone(),
+                namespaces: Vec::new(),
                 children,
             }])
         }
@@ -681,6 +690,17 @@ fn execute_value_of(
                 },
             )?;
             append_text(result, &value, inputs.request_id, control)?;
+        }
+        ValueExpression::Castable(expression) => {
+            let (source, context) = required_source_context(inputs, context)?;
+            let value = evaluate_castable(expression, source, context, control)
+                .map_err(|control| control_failure(control, inputs.request_id))?;
+            append_text(
+                result,
+                if value { "true" } else { "false" },
+                inputs.request_id,
+                control,
+            )?;
         }
     }
     Ok(())
@@ -1075,6 +1095,7 @@ mod tests {
                     namespace: None,
                     local: "message".to_owned(),
                 },
+                namespaces: Vec::new(),
                 children: vec![ResultNode::Text("Hello, FastXSLT!".to_owned())],
             }]
         );
@@ -1219,6 +1240,7 @@ mod tests {
                     namespace: None,
                     local: "html".to_owned(),
                 },
+                namespaces: Vec::new(),
                 children: Vec::new(),
             }],
         };

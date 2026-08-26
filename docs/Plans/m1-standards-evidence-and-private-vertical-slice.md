@@ -838,3 +838,26 @@ ambient I/O or public stability claim.
 - Next slice: design the smallest owned atomic-value and lexical castability
   boundary needed by native `castable-001`, then execute it without turning
   one stylesheet shape into a general type-system claim.
+
+### 2026-08-26: Native XSLT30 `castable-001` built-in atomic castability
+
+- Work completed: executed all 24 native `castable as` checks and matched the
+  file-backed XML assertion exactly.
+- XPath ownership: path atomization and lexical recognition now cover the 12
+  built-in target families required by the case, without host numeric or date
+  parsing defining standards behavior.
+- Namespace ownership: parser events and the owned tree retain local namespace
+  declarations separately from attributes; compilation derives required
+  inherited prefixed bindings and serialization suppresses redundant child
+  declarations.
+- Work accounting: castability, navigation, atomization, result construction,
+  and serialization remain charged to their existing owning domains.
+- Conservation: the nine discovered cases remain seven selected plus two
+  profile-excluded; selected execution is one pass, three engine-unsupported,
+  and three harness-unsupported.
+- Claim control: typed atomic values, actual casts, typed variables, schema
+  types, general namespace fixup, and navigable namespace nodes remain outside
+  this evidence.
+- Next slice: inspect native `castable-002` as pressure for typed atomic values,
+  explicit `cast as`, stylesheet variables, `xs:untypedAtomic`, and the
+  relationship between lexical value and runtime type identity.

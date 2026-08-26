@@ -1,7 +1,9 @@
 use std::ops::Range;
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
-use crate::xml::quick_xml_experiment::{ExpandedName, OwnedXmlEvent, ParsedDocument};
+use crate::xml::quick_xml_experiment::{
+    ExpandedName, NamespaceBinding, OwnedXmlEvent, ParsedDocument,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct NodeId(usize);
@@ -28,6 +30,7 @@ struct Node {
     parent: Option<NodeId>,
     children: Vec<NodeId>,
     attributes: Vec<NodeId>,
+    namespaces: Vec<NamespaceBinding>,
     name: Option<ExpandedName>,
     value: Option<String>,
     location: SourceLocation,
@@ -87,6 +90,7 @@ impl Document {
                 parent: None,
                 children: Vec::new(),
                 attributes: Vec::new(),
+                namespaces: Vec::new(),
                 name: None,
                 value: None,
                 location: SourceLocation {
@@ -104,6 +108,7 @@ impl Document {
                 OwnedXmlEvent::Start {
                     name,
                     attributes,
+                    namespaces,
                     span,
                 } => {
                     control
@@ -118,6 +123,7 @@ impl Document {
                         &parsed.resource,
                         span.clone(),
                     );
+                    result.nodes[element.0].namespaces = namespaces;
                     for attribute in attributes {
                         control
                             .charge(WorkDomain::XdmNode, 1)
@@ -127,6 +133,7 @@ impl Document {
                             parent: Some(element),
                             children: Vec::new(),
                             attributes: Vec::new(),
+                            namespaces: Vec::new(),
                             name: Some(attribute.name),
                             value: Some(attribute.value),
                             location: SourceLocation {
@@ -229,6 +236,7 @@ impl Document {
             parent: Some(parent),
             children: Vec::new(),
             attributes: Vec::new(),
+            namespaces: Vec::new(),
             name,
             value,
             location: SourceLocation {
@@ -289,7 +297,21 @@ impl Document {
                             .map_or(0, std::string::String::capacity)
                 });
                 let value_bytes = node.value.as_ref().map_or(0, std::string::String::capacity);
-                relationships + name_bytes + value_bytes + node.location.resource.capacity()
+                let namespace_bytes = node.namespaces.capacity()
+                    * std::mem::size_of::<NamespaceBinding>()
+                    + node
+                        .namespaces
+                        .iter()
+                        .map(|binding| {
+                            binding.prefix.as_ref().map_or(0, String::capacity)
+                                + binding.namespace.capacity()
+                        })
+                        .sum::<usize>();
+                relationships
+                    + name_bytes
+                    + value_bytes
+                    + namespace_bytes
+                    + node.location.resource.capacity()
             })
             .sum();
         std::mem::size_of::<Self>() + node_storage + nested_storage
@@ -309,6 +331,10 @@ impl Document {
 
     pub(crate) fn attributes(&self, id: NodeId) -> &[NodeId] {
         &self.nodes[id.0].attributes
+    }
+
+    pub(crate) fn namespace_declarations(&self, id: NodeId) -> &[NamespaceBinding] {
+        &self.nodes[id.0].namespaces
     }
 
     pub(crate) fn parent(&self, id: NodeId) -> Option<NodeId> {
@@ -473,6 +499,31 @@ mod tests {
 
         assert_eq!(document.nodes[root.0].children.len(), 1);
         assert_eq!(document.string_value(root), "one&twothree");
+    }
+
+    #[test]
+    fn namespace_declarations_remain_owned_separately_from_attributes() {
+        let parsed = parse_document(
+            "memory:namespaces.xml",
+            b"<root xmlns:p='urn:p' value='x'><child xmlns:q='urn:q'/></root>",
+            LIMITS,
+        )
+        .expect("namespace fixture should parse");
+        let document = Document::from_parsed(parsed).expect("owned XDM should build");
+        let root = document.children(document.document_node())[0];
+        let child = document.children(root)[0];
+
+        assert_eq!(document.attributes(root).len(), 1);
+        assert_eq!(document.namespace_declarations(root).len(), 1);
+        assert_eq!(
+            document.namespace_declarations(root)[0].prefix.as_deref(),
+            Some("p")
+        );
+        assert_eq!(document.namespace_declarations(root)[0].namespace, "urn:p");
+        assert_eq!(
+            document.namespace_declarations(child)[0].prefix.as_deref(),
+            Some("q")
+        );
     }
 
     #[test]

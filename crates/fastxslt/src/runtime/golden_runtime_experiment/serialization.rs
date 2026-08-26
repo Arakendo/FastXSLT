@@ -41,15 +41,23 @@ pub(in crate::runtime) fn serialize_xml(
         output.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")?;
     }
     for node in &result.children {
-        serialize_node(node, &mut output)?;
+        serialize_node(node, &[], &mut output)?;
     }
     Ok(output.finish())
 }
 
-fn serialize_node(node: &ResultNode, output: &mut BudgetedString) -> Result<(), ExecutionFailure> {
+fn serialize_node(
+    node: &ResultNode,
+    inherited_namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
     match node {
         ResultNode::Text(value) => escape_text(value, output)?,
-        ResultNode::Element { name, children } => {
+        ResultNode::Element {
+            name,
+            namespaces,
+            children,
+        } => {
             if name.namespace.is_some() {
                 return Err(failure(
                     "FXSR1002",
@@ -60,13 +68,46 @@ fn serialize_node(node: &ResultNode, output: &mut BudgetedString) -> Result<(), 
             }
             output.push('<')?;
             output.push_str(&name.local)?;
+            let mut in_scope = inherited_namespaces.to_vec();
+            for binding in namespaces {
+                let inherited = in_scope.iter().position(|candidate| {
+                    candidate.prefix == binding.prefix && candidate.namespace == binding.namespace
+                });
+                if inherited.is_none() {
+                    output.push_str(" xmlns")?;
+                    if let Some(prefix) = &binding.prefix {
+                        output.push(':')?;
+                        output.push_str(prefix)?;
+                    }
+                    output.push_str("=\"")?;
+                    escape_attribute(&binding.namespace, output)?;
+                    output.push('"')?;
+                }
+                in_scope.retain(|candidate| candidate.prefix != binding.prefix);
+                in_scope.push(binding.clone());
+            }
             output.push('>')?;
             for child in children {
-                serialize_node(child, output)?;
+                serialize_node(child, &in_scope, output)?;
             }
             output.push_str("</")?;
             output.push_str(&name.local)?;
             output.push('>')?;
+        }
+    }
+    Ok(())
+}
+
+fn escape_attribute(value: &str, output: &mut BudgetedString) -> Result<(), ExecutionFailure> {
+    for character in value.chars() {
+        match character {
+            '&' => output.push_str("&amp;")?,
+            '<' => output.push_str("&lt;")?,
+            '"' => output.push_str("&quot;")?,
+            '\t' => output.push_str("&#x9;")?,
+            '\n' => output.push_str("&#xA;")?,
+            '\r' => output.push_str("&#xD;")?,
+            _ => output.push(character)?,
         }
     }
     Ok(())

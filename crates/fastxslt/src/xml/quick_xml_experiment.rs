@@ -28,10 +28,17 @@ pub(crate) struct XmlAttribute {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct NamespaceBinding {
+    pub(crate) prefix: Option<String>,
+    pub(crate) namespace: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum OwnedXmlEvent {
     Start {
         name: ExpandedName,
         attributes: Vec<XmlAttribute>,
+        namespaces: Vec<NamespaceBinding>,
         span: Range<usize>,
     },
     End {
@@ -85,13 +92,24 @@ impl OwnedXmlEvent {
     fn nested_owned_capacity_bytes(&self) -> usize {
         match self {
             Self::Start {
-                name, attributes, ..
+                name,
+                attributes,
+                namespaces,
+                ..
             } => {
                 name.owned_capacity_bytes()
                     + attributes.capacity() * std::mem::size_of::<XmlAttribute>()
                     + attributes
                         .iter()
                         .map(XmlAttribute::owned_capacity_bytes)
+                        .sum::<usize>()
+                    + namespaces.capacity() * std::mem::size_of::<NamespaceBinding>()
+                    + namespaces
+                        .iter()
+                        .map(|binding| {
+                            binding.prefix.as_ref().map_or(0, String::capacity)
+                                + binding.namespace.capacity()
+                        })
                         .sum::<usize>()
             }
             Self::End { name, .. } => name.owned_capacity_bytes(),
@@ -234,6 +252,7 @@ fn parse_bytes(
             Event::Start(element) => {
                 let name = resolve_element_name(&reader, &element, start)?;
                 let attributes = resolve_attributes(&reader, &element, start)?;
+                let namespaces = resolve_namespace_declarations(&reader, &element, start)?;
                 if depth == 0 {
                     if root.is_some() {
                         return Err(ParseFailure::MultipleRoots { span });
@@ -256,12 +275,14 @@ fn parse_bytes(
                 events.push(OwnedXmlEvent::Start {
                     name,
                     attributes,
+                    namespaces,
                     span,
                 });
             }
             Event::Empty(element) => {
                 let name = resolve_element_name(&reader, &element, start)?;
                 let attributes = resolve_attributes(&reader, &element, start)?;
+                let namespaces = resolve_namespace_declarations(&reader, &element, start)?;
                 if depth == 0 {
                     if root.is_some() {
                         return Err(ParseFailure::MultipleRoots { span });
@@ -283,6 +304,7 @@ fn parse_bytes(
                 events.push(OwnedXmlEvent::Start {
                     name: name.clone(),
                     attributes,
+                    namespaces,
                     span: span.clone(),
                 });
                 events.push(OwnedXmlEvent::End { name, span });
@@ -431,6 +453,34 @@ fn resolve_attributes(
         });
     }
     Ok(names)
+}
+
+fn resolve_namespace_declarations(
+    reader: &NsReader<&[u8]>,
+    element: &BytesStart<'_>,
+    offset: usize,
+) -> Result<Vec<NamespaceBinding>, ParseFailure> {
+    let mut bindings = Vec::new();
+    for attribute in element.attributes() {
+        let attribute = attribute.map_err(|error| ParseFailure::Malformed {
+            offset,
+            detail: error.to_string(),
+        })?;
+        let key = attribute.key.as_ref();
+        let prefix = if key == b"xmlns" {
+            None
+        } else if let Some(prefix) = key.strip_prefix(b"xmlns:") {
+            Some(decode_name(prefix, offset)?)
+        } else {
+            continue;
+        };
+        let namespace = attribute
+            .decoded_and_normalized_value(XmlVersion::Implicit1_0, reader.decoder())
+            .map_err(|error| malformed(offset, error))?
+            .into_owned();
+        bindings.push(NamespaceBinding { prefix, namespace });
+    }
+    Ok(bindings)
 }
 
 fn expanded_name(
