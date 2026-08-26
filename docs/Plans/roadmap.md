@@ -69,7 +69,7 @@ implemented behavior belongs to a named standards slice.
   inside their physical owner, providing evidence for AR-0007.
 - [ ] Expand XPath lex/parse/evaluate tests before growing XSLT instructions.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
-- [ ] Provide a read-only semantic inspection snapshot for the implemented
+- [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,
   providing evidence for AR-0005.
 - [x] Import the first licensed, versioned, integrity-checked suite selection.

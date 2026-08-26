@@ -427,3 +427,19 @@ ambient I/O or public stability claim.
 - Next slice: retain this behavior when a real host adapter exists. Do not add a
   graph, implicit promotion, or zero-copy public representation without
   consumer and performance evidence.
+
+### 2026-08-25: Private compiled-semantic inspection
+
+- Work completed: projected the implemented compiled stylesheet into an owned,
+  read-only report containing logical identity, declared version, output
+  semantics, template/instruction counts, and implemented feature counts.
+- Validation: the hello stylesheet produces the exact expected projection;
+  inspection leaves the compiled program equal, the report survives program
+  drop, and text/feature-kind limits fail structurally without partial output.
+- Findings: semantic inspection can answer useful static questions without
+  exposing source text, matches, paths, locations, parser/XDM nodes,
+  instruction bodies, IR, addresses, or caches. The current caller supplies the
+  stylesheet identity because compiled ownership is not yet public.
+- Next slice: obtain ASP.NET and conformance-harness questions before choosing
+  public fields, redaction, compatibility/versioning, serialization, dynamic
+  summaries, or tracing.

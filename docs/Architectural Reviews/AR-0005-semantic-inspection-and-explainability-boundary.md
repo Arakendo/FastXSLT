@@ -32,10 +32,10 @@ structured inspection boundary that separates reportable findings from
 inability to inspect. Its database commands and payload fields do not transfer
 to FastXSLT.
 
-FastXSLT has no compiled stylesheet, resource snapshot implementation, runtime,
-or public facade. There is no evidence for exact fields, schema versions, cost,
-stability, or whether inspection should be a method, immutable report, event
-stream, visitor, or adapter concern.
+FastXSLT now has private compiled stylesheet, resource snapshot, and runtime
+experiments, but no public facade. There is still no evidence for stable fields,
+schema versions, cost, or whether inspection should ultimately be a method,
+immutable report, event stream, visitor, or adapter concern.
 
 ## Ownership and constraints
 
@@ -100,6 +100,11 @@ should translate a common semantic projection rather than rediscover internals.
   fields they must handle programmatically.
 - Schema, Rust ownership, lazy/eager construction, compatibility, redaction,
   serialization, and cost remain unsupported by evidence.
+- A private bounded owned projection now reports caller-supplied stylesheet
+  identity, declared version, output semantics, template counts, instruction
+  count, and implemented semantic feature counts. It survives its compiled
+  owner and exposes no private tree, instruction body, match name, path,
+  location, source text, or storage identity.
 
 ## Disposition
 
@@ -117,10 +122,16 @@ AR-0006.
   answer without reading human text.
 - [ ] Prototype a bounded immutable projection containing no parser, arena, XDM
   storage, IR, optimizer, or cache implementation types.
+  - [x] Project the implemented compiled slice into owned bounded semantic
+    counts/settings without exposing representation types.
 - [ ] Prove inspection performs no resolver calls, file access, extension
   execution, or semantic mutation.
+  - [x] Exercise the private projection over an in-memory compiled fixture and
+    prove the compiled program remains equal before and after inspection.
 - [ ] Define sensitive fields, default redaction, source-text inclusion, report
   limits, and behavior after the inspected owner is dropped.
+  - [x] Exclude source/literal/path/match/location data, bound copied text and
+    feature kinds, and prove the owned projection survives its program.
 - [ ] Distinguish static inspection, dynamic summaries, and tracing; measure
   their costs separately.
 - [ ] Exercise unknown fields or versions through a non-Rust candidate if a
@@ -139,3 +150,6 @@ tracing is asked to replace semantic inspection.
 
 - 2026-08-25 -- Opened as Incubating from deferred findings in the Tosumu
   documentation review.
+- 2026-08-25 -- Added the first private compiled-semantic projection. Its owned
+  bounded fields answer implemented-slice questions without creating a public
+  type or serialized schema; consumer fields and lifecycle remain Incubating.

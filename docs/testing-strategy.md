@@ -150,6 +150,12 @@ an earlier sealed snapshot reports the produced-but-unadmitted identity as
 missing, while a new host-built snapshot can consume the same bytes only after
 explicit admission.
 
+Compiled-inspection tests assert semantic questions and bounds rather than
+private debug structure. Reports must remain owned and usable after the compiled
+program is dropped, inspection must not mutate compilation, and source text,
+paths, matches, node identities, instruction trees, IR, and cache details stay
+absent unless a later accepted contract explicitly admits them.
+
 ## Performance reporting
 
 Benchmarks run only after correctness checks for the measured cases. Record the
