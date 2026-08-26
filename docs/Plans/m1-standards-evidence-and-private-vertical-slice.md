@@ -96,7 +96,7 @@ remain pending AR-0001 disposition.
 - [x] Add invalid, unsupported, missing-resource, and transform-set budget cases
   with private structured diagnostics.
 - [x] Add denied-authority and serialization-output budget cases.
-- [ ] Add cancellation and non-output runtime budget cases through a real
+- [x] Add cancellation and non-output runtime budget cases through a real
   host/control boundary.
 - [x] Record navigation capabilities actually required by the slice for AR-0007.
 
@@ -224,3 +224,19 @@ ambient I/O or public stability claim.
   conformance claim.
 - Next slice: define general dependency/classification reporting only after
   representative consumer transforms supply the denominator for AR-0001.
+
+### 2026-08-25: Private invocation control and charge points
+
+- Work completed: added an invocation-local atomic cancellation token and
+  independent XML-event, XDM-node, XDM string-value, XPath node-visit, XSLT
+  instruction, and serialized-byte work counters.
+- Validation: 30 tests pass. Cancellation is distinct from budget exhaustion;
+  every implemented work domain can be exhausted with preserved request/domain
+  identity; the separate output-size limit retains its own failure shape.
+- Findings: XPath charges candidate nodes inspected rather than expressions
+  entered. Cancellation is observed only at charge points and cannot interrupt
+  one dependency call already in progress.
+- Next slice: measure/check maximum observation gaps and accounting overhead
+  before proposing work-unit composition or defaults. Phase-specific
+  cancellation, deadlines, panic containment, and process isolation remain
+  AR-0010 follow-up.

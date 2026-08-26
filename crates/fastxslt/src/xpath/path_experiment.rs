@@ -1,3 +1,4 @@
+use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 
@@ -68,20 +69,35 @@ pub(crate) fn evaluate_child_path(
     context: NodeId,
     path: &ChildPath,
 ) -> Vec<NodeId> {
+    let mut control = InvocationControl::unbounded();
+    evaluate_child_path_controlled(document, context, path, &mut control)
+        .expect("unbounded private control cannot reject XPath work")
+}
+
+pub(crate) fn evaluate_child_path_controlled(
+    document: &Document,
+    context: NodeId,
+    path: &ChildPath,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ControlFailure> {
     let mut current = vec![context];
     for step in &path.steps {
         let mut next = Vec::new();
         for node in current {
-            next.extend(document.children(node).iter().copied().filter(|child| {
-                document.kind(*child) == NodeKind::Element
+            for child in document.children(node).iter().copied() {
+                control.charge(WorkDomain::XPathNodeVisit, 1)?;
+                if document.kind(child) == NodeKind::Element
                     && document
-                        .name(*child)
+                        .name(child)
                         .is_some_and(|name| name.namespace.is_none() && name.local == *step)
-            }));
+                {
+                    next.push(child);
+                }
+            }
         }
         current = next;
     }
-    current
+    Ok(current)
 }
 
 #[cfg(test)]

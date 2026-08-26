@@ -9,7 +9,7 @@
 | Trigger | A dispatcher was proposed as a security layer capable of detecting and recovering a rogue parser worker |
 | Related ADRs | ADR-0002, ADR-0005 |
 | Related reviews | AR-0002, AR-0003, AR-0004, AR-0008, AR-0009 |
-| Related evidence | `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-ar-0010-review-monday-2026-08-25.md`; private parser and output-limit tests; future fault-injection and host-boundary measurements |
+| Related evidence | `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-ar-0010-review-monday-2026-08-25.md`; `docs/Evidence/private-invocation-control-charge-points-2026-08-25.md`; future fault-injection and host-boundary measurements |
 
 ## Architectural question
 
@@ -128,6 +128,16 @@ only mode.
   whether third-party/native dependencies introduce non-cooperating regions.
 - No evidence selects threads, async tasks, work stealing, queue technology,
   worker count, deadline defaults, retry policy, or a public supervisor API.
+- A private invocation-control experiment now separates an atomic cooperative
+  cancellation signal from six independent work counters. XML events, allocated
+  XDM nodes, XDM string-value visits, XPath candidate-child visits, XSLT
+  instructions, and serialized bytes charge where their work occurs.
+- XPath child-axis accounting is data-dependent rather than one unit per
+  expression. Broader operation weights, composed budgets, accounting overhead,
+  and defaults remain unmeasured.
+- Cancellation observation occurs at charge points. Work inside one parser or
+  dependency call remains non-interruptible until that call returns, so no
+  wall-clock observation bound follows from the current experiment.
 
 ## Disposition
 
@@ -144,11 +154,15 @@ or mutate semantic state.
 
 ## Required follow-up
 
-- [ ] Define a private invocation-control experiment separating cancellation,
-  deterministic work counters, structural limits, and wall-clock deadline.
-- [ ] Inventory charge/check points and maximum observation gaps across XML,
-  XDM construction, XPath evaluation, template dispatch, result construction,
-  messages/diagnostics, and serialization.
+- [x] Define a private invocation-control experiment separating cancellation
+  from deterministic per-domain work counters and structural limits; deadline
+  remains deliberately absent.
+- [x] Inventory the implemented XML, XDM, XPath, instruction, and serialization
+  charge/check points.
+- [ ] Establish maximum observation gaps, including work inside dependency
+  calls, and extend accounting to result construction, messages, and diagnostics.
+- [x] Force exhaustion in every currently implemented work domain and preserve
+  domain plus request identity in the private structured failure.
 - [ ] Add adversarial cases for excessive input bytes, names/attributes, nodes,
   sequence growth, recursion, expression work, diagnostics, and output.
 - [ ] Fault-inject cancellation at multiple execution phases and prove request
@@ -185,3 +199,7 @@ is measured, or a stronger sandbox such as WASM becomes a viable host boundary.
 - 2026-08-25 -- Peer review confirmed the guarantee classes, direct semantic
   reference path, layer-owned accounting, and caution around panic recovery;
   retained Incubating pending charge-point and fault-injection evidence.
+- 2026-08-25 -- Added the first private invocation-control experiment with an
+  atomic cancellation token and six layer-owned work domains. Retained
+  Incubating because observation latency, weights, overhead, deadlines, panic,
+  dispatch, and hard isolation remain untested.

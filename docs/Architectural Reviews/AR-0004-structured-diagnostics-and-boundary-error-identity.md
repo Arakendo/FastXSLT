@@ -109,6 +109,9 @@ selects a host mechanism risks treating transport as the semantic model.
 - An explicitly denied admitted source now remains distinct from a missing
   resource, and serialization stops through a byte-counted sink before crossing
   its host-supplied limit. Both retain request identity.
+- Private invocation control now distinguishes host cancellation from
+  deterministic work-budget exhaustion. Both retain request and charge-domain
+  identity; the existing output limit remains separately classified.
 
 ## Disposition
 
@@ -124,7 +127,7 @@ fixtures, and consumer-shaped handling evidence.
   vertical slice.
 - [x] Exercise denied source authority and a serialization-output limit through
   the private boundary path.
-- [ ] Exercise invalid XML, non-output runtime limits, and cancellation through
+- [x] Exercise invalid XML, non-output runtime limits, and cancellation through
   the boundary path.
 - [ ] Record which conditions are reportable outcomes and which prevent a
   trustworthy result.
@@ -155,3 +158,5 @@ a serialized form needs versioning.
   accepted.
 - 2026-08-25 -- Added distinct denied-authority and bounded-serialization
   failures with request correlation.
+- 2026-08-25 -- Added separate private cancellation and per-domain work-budget
+  failures across the implemented execution phases.

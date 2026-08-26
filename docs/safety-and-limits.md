@@ -51,6 +51,12 @@ yet.
 Until those limits are implemented and tested, hostile or merely large inputs
 must be assumed capable of exhausting process resources.
 
+A private invocation-control experiment now checks an atomic cancellation token
+while charging six independent work domains during the current vertical slice.
+Those counters have no calibrated defaults or public contract. Cancellation
+cannot interrupt work already executing inside one dependency call, and no
+maximum observation latency has been established.
+
 ## Concurrency and reuse
 
 Compile-once and transform-many is an intended product boundary. ADR-0005 fixes

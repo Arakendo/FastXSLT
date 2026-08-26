@@ -6,6 +6,8 @@ use quick_xml::events::{BytesStart, Event};
 use quick_xml::name::ResolveResult;
 use quick_xml::reader::NsReader;
 
+use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
+
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct ParseLimits {
     pub(crate) max_events: usize,
@@ -74,6 +76,7 @@ enum ParseFailure {
     ContentOutsideRoot { span: Range<usize> },
     EventLimit { limit: usize, offset: usize },
     DepthLimit { limit: usize, span: Range<usize> },
+    Control(ControlFailure),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -82,12 +85,31 @@ pub(crate) struct LocatedFailure {
     failure: ParseFailure,
 }
 
+impl LocatedFailure {
+    pub(crate) fn control_failure(&self) -> Option<&ControlFailure> {
+        match &self.failure {
+            ParseFailure::Control(failure) => Some(failure),
+            _ => None,
+        }
+    }
+}
+
 pub(crate) fn parse_document(
     resource: &str,
     input: &[u8],
     limits: ParseLimits,
 ) -> Result<ParsedDocument, LocatedFailure> {
-    parse_bytes(input, limits)
+    let mut control = InvocationControl::unbounded();
+    parse_document_controlled(resource, input, limits, &mut control)
+}
+
+pub(crate) fn parse_document_controlled(
+    resource: &str,
+    input: &[u8],
+    limits: ParseLimits,
+    control: &mut InvocationControl,
+) -> Result<ParsedDocument, LocatedFailure> {
+    parse_bytes(input, limits, control)
         .map(|mut document| {
             document.resource = resource.to_owned();
             document
@@ -102,7 +124,11 @@ pub(crate) fn parse_document(
     clippy::too_many_lines,
     reason = "keeping the experimental event loop together makes parser behavior auditable"
 )]
-fn parse_bytes(input: &[u8], limits: ParseLimits) -> Result<ParsedDocument, ParseFailure> {
+fn parse_bytes(
+    input: &[u8],
+    limits: ParseLimits,
+    control: &mut InvocationControl,
+) -> Result<ParsedDocument, ParseFailure> {
     let mut reader = NsReader::from_reader(input);
     reader.config_mut().enable_all_checks(true);
 
@@ -128,6 +154,9 @@ fn parse_bytes(input: &[u8], limits: ParseLimits) -> Result<ParsedDocument, Pars
         let span = start..end;
 
         if !matches!(event, Event::Eof) {
+            control
+                .charge(WorkDomain::XmlEvent, 1)
+                .map_err(ParseFailure::Control)?;
             event_count = event_count.saturating_add(1);
             if event_count > limits.max_events {
                 return Err(ParseFailure::EventLimit {

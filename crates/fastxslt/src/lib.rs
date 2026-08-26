@@ -9,6 +9,8 @@
 mod compile;
 mod diagnostics;
 #[cfg(test)]
+mod execution_control_experiment;
+#[cfg(test)]
 mod resources;
 mod runtime;
 mod xdm;

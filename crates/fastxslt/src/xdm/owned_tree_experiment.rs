@@ -1,5 +1,6 @@
 use std::ops::Range;
 
+use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::xml::quick_xml_experiment::{ExpandedName, OwnedXmlEvent, ParsedDocument};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -43,6 +44,7 @@ pub(crate) struct Document {
 pub(crate) enum BuildFailure {
     UnexpectedEnd,
     UnclosedElement,
+    Control(ControlFailure),
 }
 
 impl Document {
@@ -51,6 +53,18 @@ impl Document {
         reason = "keeping the private event-to-tree state machine together makes ownership auditable"
     )]
     pub(crate) fn from_parsed(parsed: ParsedDocument) -> Result<Self, BuildFailure> {
+        let mut control = InvocationControl::unbounded();
+        Self::from_parsed_controlled(parsed, &mut control)
+    }
+
+    #[allow(
+        clippy::too_many_lines,
+        reason = "keeping the private event-to-tree state machine together makes ownership auditable"
+    )]
+    pub(crate) fn from_parsed_controlled(
+        parsed: ParsedDocument,
+        control: &mut InvocationControl,
+    ) -> Result<Self, BuildFailure> {
         let document_end = parsed
             .events
             .iter()
@@ -58,6 +72,9 @@ impl Document {
             .map(|span| span.end)
             .max()
             .unwrap_or(0);
+        control
+            .charge(WorkDomain::XdmNode, 1)
+            .map_err(BuildFailure::Control)?;
         let mut result = Self {
             nodes: vec![Node {
                 kind: NodeKind::Document,
@@ -83,6 +100,9 @@ impl Document {
                     attributes,
                     span,
                 } => {
+                    control
+                        .charge(WorkDomain::XdmNode, 1)
+                        .map_err(BuildFailure::Control)?;
                     let parent = *ancestors.last().expect("document ancestor is retained");
                     let element = result.push_child(
                         parent,
@@ -93,6 +113,9 @@ impl Document {
                         span.clone(),
                     );
                     for attribute in attributes {
+                        control
+                            .charge(WorkDomain::XdmNode, 1)
+                            .map_err(BuildFailure::Control)?;
                         let attribute_id = result.push_node(Node {
                             kind: NodeKind::Attribute,
                             parent: Some(element),
@@ -128,6 +151,9 @@ impl Document {
                             .push_str(&value);
                         result.nodes[last.0].location.span.end = span.end;
                     } else {
+                        control
+                            .charge(WorkDomain::XdmNode, 1)
+                            .map_err(BuildFailure::Control)?;
                         result.push_child(
                             parent,
                             NodeKind::Text,
@@ -139,6 +165,9 @@ impl Document {
                     }
                 }
                 OwnedXmlEvent::Comment { value, span } => {
+                    control
+                        .charge(WorkDomain::XdmNode, 1)
+                        .map_err(BuildFailure::Control)?;
                     let parent = *ancestors.last().expect("document ancestor is retained");
                     result.push_child(
                         parent,
@@ -154,6 +183,9 @@ impl Document {
                     value,
                     span,
                 } => {
+                    control
+                        .charge(WorkDomain::XdmNode, 1)
+                        .map_err(BuildFailure::Control)?;
                     let parent = *ancestors.last().expect("document ancestor is retained");
                     result.push_child(
                         parent,
@@ -260,18 +292,31 @@ impl Document {
     }
 
     pub(crate) fn string_value(&self, id: NodeId) -> String {
+        let mut control = InvocationControl::unbounded();
+        self.string_value_controlled(id, &mut control)
+            .expect("unbounded private control cannot reject string-value work")
+    }
+
+    pub(crate) fn string_value_controlled(
+        &self,
+        id: NodeId,
+        control: &mut InvocationControl,
+    ) -> Result<String, ControlFailure> {
+        control.charge(WorkDomain::XdmStringValueNode, 1)?;
         let node = &self.nodes[id.0];
-        match node.kind {
+        Ok(match node.kind {
             NodeKind::Text
             | NodeKind::Attribute
             | NodeKind::Comment
             | NodeKind::ProcessingInstruction => node.value.clone().unwrap_or_default(),
-            NodeKind::Document | NodeKind::Element => node
-                .children
-                .iter()
-                .map(|child| self.string_value(*child))
-                .collect(),
-        }
+            NodeKind::Document | NodeKind::Element => {
+                let mut value = String::new();
+                for child in &node.children {
+                    value.push_str(&self.string_value_controlled(*child, control)?);
+                }
+                value
+            }
+        })
     }
 }
 
