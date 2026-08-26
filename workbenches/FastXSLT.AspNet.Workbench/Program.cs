@@ -214,6 +214,21 @@ app.MapPost("/experiment/diagnostic-parity", async () =>
         operationalExperimentGate.Release();
     }
 });
+app.MapPost("/experiment/instruction-budget", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await OperationalExperiments.ExerciseInstructionBudgetAsync(
+            workerPath,
+            source,
+            stylesheet));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
 app.MapPost("/experiment/generation-replacement", async () =>
 {
     await operationalExperimentGate.WaitAsync();

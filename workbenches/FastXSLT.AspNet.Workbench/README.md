@@ -26,6 +26,7 @@ offers:
 - `POST /experiment/natural-cancellation-races`
 - `POST /experiment/managed-cancellation`
 - `POST /experiment/diagnostic-parity`
+- `POST /experiment/instruction-budget`
 - `POST /experiment/generation-replacement`
 - `POST /experiment/host-file-replacement`
 - `POST /transform/saxoncs`
@@ -90,6 +91,11 @@ The diagnostic-parity endpoint checks invalid request identity, malformed XML,
 unsupported XSLT, and cancellation against the same fields asserted by the
 direct Rust path, then proves the original worker can execute a valid request.
 This is a four-case private matrix, not a stable error catalog.
+
+The instruction-budget endpoint gives one invocation a zero XSLT-instruction
+budget. It asserts `FXCT0002 / limit`, no retry or process replacement, and a
+successful ordinary transform on the same compiled/prepared worker afterward.
+The command is a narrow workbench probe, not a proposed public policy format.
 
 The host-file variant imports source and stylesheet files into owned bytes,
 closes the handles, renames and removes both originals while the old worker

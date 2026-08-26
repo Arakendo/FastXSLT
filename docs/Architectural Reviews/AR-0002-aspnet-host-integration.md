@@ -136,6 +136,9 @@ security contracts.
   cancellation while retaining structured engine failures and the
   completion-wins race rule. A four-case direct/isolated diagnostic matrix
   retained code, category, request identity, detail, and source identity/span.
+- A narrow invocation-local instruction-budget command now returns structured
+  limit exhaustion without retrying or replacing the worker, followed by a
+  successful ordinary request on the same compiled/prepared process.
 
 ## Disposition
 
@@ -197,3 +200,6 @@ invalidates the selected mechanism.
 - 2026-08-26 -- Added a managed-token adapter and matched four representative
   direct diagnostics across the isolated boundary. Public exception mapping and
   the in-process candidate remain unresolved.
+- 2026-08-26 -- Carried deterministic XSLT-instruction budget exhaustion across
+  the worker boundary and retained same-process reuse. The private command does
+  not select a public limit-policy representation.

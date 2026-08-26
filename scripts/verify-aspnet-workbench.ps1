@@ -160,6 +160,20 @@ try {
                 -not $diagnostics.sameDiagnosticFieldsAsDirectRustAssertions) {
                 throw "Diagnostic parity experiment changed a direct-path diagnostic: $($diagnostics | ConvertTo-Json -Depth 5)"
             }
+            $instructionBudget = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/instruction-budget"
+            if ($instructionBudget.exhaustion.code -ne 'FXCT0002' -or
+                $instructionBudget.exhaustion.category -ne 'limit' -or
+                $instructionBudget.exhaustion.requestId -ne 'instruction-budget-exhausted' -or
+                $instructionBudget.exhaustion.detail -cne 'xslt-instruction work budget exhausted: limit 0, consumed 0, next charge 1' -or
+                $instructionBudget.configuredMaximumXsltInstructions -ne 0 -or
+                $instructionBudget.processIdBefore -ne $instructionBudget.processIdAfter -or
+                $instructionBudget.recoveryResult -cne $expected -or
+                -not $instructionBudget.deterministicEngineBudget -or
+                $instructionBudget.cooperativeCancellation -or
+                $instructionBudget.workerWasTerminated -or
+                $instructionBudget.requestWasRetried) {
+                throw "Instruction budget experiment violated its guarantee class: $($instructionBudget | ConvertTo-Json -Depth 5)"
+            }
             $recovery = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/worker-recovery"
             if ($recovery.recovery.failureCode -ne 'FXWB2001' -or
                 $recovery.recovery.failureCategory -ne 'worker-terminated' -or
@@ -235,6 +249,14 @@ try {
                 UnsupportedStylesheet = $diagnostics.unsupportedStylesheet.code
                 Cancellation = $diagnostics.cancellation.code
                 WorkerReused = $diagnostics.processIdBefore -eq $diagnostics.processIdAfter
+            }
+            [pscustomobject]@{
+                Experiment = 'InstructionBudget'
+                FailureCode = $instructionBudget.exhaustion.code
+                FailureCategory = $instructionBudget.exhaustion.category
+                FailureDetail = $instructionBudget.exhaustion.detail
+                WorkerReused = $instructionBudget.processIdBefore -eq $instructionBudget.processIdAfter
+                RecoveryCompleted = $instructionBudget.recoveryResult -ceq $expected
             }
             [pscustomobject]@{
                 Experiment = 'WorkerRecovery'

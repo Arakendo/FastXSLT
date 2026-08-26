@@ -116,6 +116,9 @@ selects a host mechanism risks treating transport as the semantic model.
   invalid request identity, malformed XML, unsupported XSLT instruction with
   source span, and correlated cancellation. This is consumer-shaped evidence,
   not acceptance of those private codes as a public catalog.
+- Isolated deterministic instruction exhaustion retains `FXCT0002 / limit`,
+  request identity, work-domain detail, no retry, and same-worker reuse. It is
+  observably distinct from cancellation and worker termination.
 
 ## Disposition
 
@@ -167,3 +170,6 @@ a serialized form needs versioning.
 - 2026-08-26 -- Preserved four representative direct diagnostic records through
   the isolated ASP.NET candidate and retained same-worker recovery after the
   invocation-level failures.
+- 2026-08-26 -- Preserved deterministic instruction-budget exhaustion through
+  the isolated candidate without converting it into cancellation or worker
+  failure.

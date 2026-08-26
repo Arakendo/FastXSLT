@@ -182,6 +182,37 @@ public static class OperationalExperiments
         };
     }
 
+    public static async Task<object> ExerciseInstructionBudgetAsync(
+        string workerPath,
+        byte[] source,
+        byte[] stylesheet)
+    {
+        using var client = await FastXsltWorkerClient.StartAsync(
+            workerPath,
+            "urn:w3c:xslt30:for-004:source",
+            source,
+            "urn:w3c:xslt30:for-004:stylesheet",
+            stylesheet);
+        var processId = client.ProcessId;
+        var exhaustion = await CaptureFailureAsync(
+            () => client.TransformWithXsltInstructionLimitAsync(
+                "instruction-budget-exhausted",
+                maximumXsltInstructions: 0));
+        var recoveryResult = await client.TransformAsync("instruction-budget-recovery");
+        return new
+        {
+            exhaustion,
+            configuredMaximumXsltInstructions = 0,
+            processIdBefore = processId,
+            processIdAfter = client.ProcessId,
+            recoveryResult,
+            deterministicEngineBudget = true,
+            cooperativeCancellation = false,
+            workerWasTerminated = false,
+            requestWasRetried = false
+        };
+    }
+
     private static async Task<DiagnosticEvidence> CaptureInitializationFailureAsync(
         string workerPath,
         string sourceIdentity,

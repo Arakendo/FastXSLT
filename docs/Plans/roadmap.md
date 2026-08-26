@@ -191,6 +191,9 @@ failed, and harness-error cases without an unqualified conformance claim.
   - [x] Adapt a managed `CancellationToken` without converting cooperative
     cancellation into a hard-stop claim, and preserve a four-case direct versus
     isolated diagnostic matrix for invalid, unsupported, and cancelled work.
+  - [x] Exhaust an invocation-local XSLT-instruction budget through the isolated
+    host boundary, retain `FXCT0002 / limit`, decline retry or replacement, and
+    prove the same compiled/prepared worker remains reusable.
 - [ ] Exercise AR-0010's private invocation controls under adversarial work;
   distinguish deterministic budgets, cooperative cancellation, best-effort
   deadlines, panic handling, and process-level hard termination claims.

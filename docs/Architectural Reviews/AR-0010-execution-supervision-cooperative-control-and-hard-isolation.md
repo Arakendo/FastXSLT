@@ -9,7 +9,7 @@
 | Trigger | A dispatcher was proposed as a security layer capable of detecting and recovering a rogue parser worker |
 | Related ADRs | ADR-0002, ADR-0005 |
 | Related reviews | AR-0002, AR-0003, AR-0004, AR-0008, AR-0009 |
-| Related evidence | `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-ar-0010-review-monday-2026-08-25.md`; `docs/Evidence/private-invocation-control-charge-points-2026-08-25.md`; `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`; `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`; `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`; `docs/Evidence/aspnet-natural-cancellation-races-2026-08-26.md`; future fault-injection and host-boundary measurements |
+| Related evidence | `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-ar-0010-review-monday-2026-08-25.md`; `docs/Evidence/private-invocation-control-charge-points-2026-08-25.md`; `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`; `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`; `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`; `docs/Evidence/aspnet-natural-cancellation-races-2026-08-26.md`; `docs/Evidence/aspnet-deterministic-instruction-budget-2026-08-26.md`; future fault-injection and host-boundary measurements |
 
 ## Architectural question
 
@@ -171,6 +171,10 @@ only mode.
   a 0.1309 ms median signal-to-response, and same-worker recovery. The earlier
   500-item attempt committed completion first. This covers both race outcomes
   but not representative/adversarial observation bounds.
+- A zero-instruction isolated invocation returned `FXCT0002 / limit`, was not
+  retried, and left its compiled/prepared worker reusable. The boundary now has
+  executable distinctions among deterministic exhaustion, cooperative
+  cancellation, and hard process termination.
 
 ## Disposition
 
@@ -220,9 +224,9 @@ or mutate semantic state.
     cannot receive a safe thread-level hard-kill guarantee.
   - [x] Demonstrate through an isolated helper that a non-cooperating worker
     process can be terminated without poisoning the supervisor.
-- [ ] Define distinct boundary categories for limit exhaustion, cancellation,
-  deadline, worker crash, panic/internal failure, and supervisor/transport
-  failure through AR-0004.
+- [ ] Define distinct boundary categories for deadline, panic/internal failure,
+  and supervisor/transport failure through AR-0004; limit exhaustion,
+  cancellation, and worker termination now have private executable evidence.
 - [ ] Prototype the leading in-process and isolated modes through the ASP.NET
   workbench in AR-0002 and measure cold start, warm reuse, transfer, throughput,
   tail latency, and peak memory.
@@ -278,3 +282,6 @@ is measured, or a stronger sandbox such as WASM becomes a viable host boundary.
   cancellation without changing the completion-wins rule or claiming hard
   termination. A four-case direct/isolated matrix retained structured failure
   fields; dispatched and in-process parity remain open.
+- 2026-08-26 -- Carried a zero XSLT-instruction budget through the isolated
+  boundary as deterministic `FXCT0002 / limit`, declined retry/replacement, and
+  reused the same compiled/prepared process afterward.

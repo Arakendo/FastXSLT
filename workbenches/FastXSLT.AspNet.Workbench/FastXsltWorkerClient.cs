@@ -12,6 +12,7 @@ public sealed class FastXsltWorkerClient : IDisposable
     private const byte ControlledTransform = 6;
     private const byte Cancel = 7;
     private const byte UnpausedControlledTransform = 8;
+    private const byte InstructionLimitedTransform = 9;
     private const byte Ready = 0x81;
     private const byte Result = 0x82;
     private const byte Stopped = 0x83;
@@ -158,6 +159,41 @@ public sealed class FastXsltWorkerClient : IDisposable
                     $"Cancelled transform unexpectedly returned response: {response}.");
             }
             throw await ReadFailureAsync();
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task<string> TransformWithXsltInstructionLimitAsync(
+        string requestIdentity,
+        ulong maximumXsltInstructions)
+    {
+        await _gate.WaitAsync();
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            await WriteByteAsync(InstructionLimitedTransform);
+            await WriteStringAsync(requestIdentity);
+            await WriteUInt64Async(maximumXsltInstructions);
+            await _input.FlushAsync();
+            var response = await ReadByteAsync();
+            if (response == Error)
+            {
+                throw await ReadFailureAsync();
+            }
+            if (response != Result)
+            {
+                throw new InvalidDataException(
+                    $"Instruction-limited transform unexpectedly returned: {response}.");
+            }
+            var correlatedIdentity = await ReadStringAsync();
+            if (!StringComparer.Ordinal.Equals(requestIdentity, correlatedIdentity))
+            {
+                throw new InvalidDataException("Worker response identity did not match the request.");
+            }
+            return await ReadStringAsync();
         }
         finally
         {
@@ -348,6 +384,13 @@ public sealed class FastXsltWorkerClient : IDisposable
 
     private async Task WriteStringAsync(string value) =>
         await WriteBytesAsync(Encoding.UTF8.GetBytes(value));
+
+    private async Task WriteUInt64Async(ulong value)
+    {
+        var bytes = new byte[8];
+        BinaryPrimitives.WriteUInt64LittleEndian(bytes, value);
+        await _input.WriteAsync(bytes);
+    }
 
     private async Task WriteBytesAsync(byte[] value)
     {

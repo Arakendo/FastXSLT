@@ -17,6 +17,7 @@ const CANCELLED_TRANSFORM: u8 = 5;
 const CONTROLLED_TRANSFORM: u8 = 6;
 const CANCEL: u8 = 7;
 const UNPAUSED_CONTROLLED_TRANSFORM: u8 = 8;
+const INSTRUCTION_LIMITED_TRANSFORM: u8 = 9;
 const READY: u8 = 0x81;
 const RESULT: u8 = 0x82;
 const STOPPED: u8 = 0x83;
@@ -108,11 +109,13 @@ impl Supervisor {
                 cancelled,
                 controlled,
                 first_charge_barrier,
+                maximum_xslt_instructions,
             } => self.begin_transform(
                 request_id,
                 cancelled,
                 controlled,
                 first_charge_barrier,
+                maximum_xslt_instructions,
                 output,
             )?,
             Command::Cancel { request_id } => {
@@ -158,6 +161,7 @@ impl Supervisor {
         cancelled: bool,
         controlled: bool,
         first_charge_barrier: bool,
+        maximum_xslt_instructions: Option<usize>,
         output: &mut impl Write,
     ) -> io::Result<()> {
         if self.active.is_some() {
@@ -185,7 +189,10 @@ impl Supervisor {
             cancellation.cancel();
         }
         if !controlled {
-            let result = engine.transform_with_cancellation(&request_id, cancellation);
+            let result = maximum_xslt_instructions.map_or_else(
+                || engine.transform_with_cancellation(&request_id, cancellation),
+                |maximum| engine.transform_with_xslt_instruction_limit(&request_id, maximum),
+            );
             return write_transform_result(output, &request_id, result);
         }
         let cancellation = if first_charge_barrier {
@@ -291,15 +298,29 @@ fn read_command(input: &mut impl Read) -> io::Result<Option<Command>> {
             stylesheet_id: read_string(input, MAX_IDENTITY_BYTES)?,
             stylesheet: read_bytes(input, MAX_RESOURCE_BYTES)?,
         },
-        TRANSFORM | CANCELLED_TRANSFORM | CONTROLLED_TRANSFORM | UNPAUSED_CONTROLLED_TRANSFORM => {
+        TRANSFORM
+        | CANCELLED_TRANSFORM
+        | CONTROLLED_TRANSFORM
+        | UNPAUSED_CONTROLLED_TRANSFORM
+        | INSTRUCTION_LIMITED_TRANSFORM => {
+            let request_id = read_string(input, MAX_IDENTITY_BYTES)?;
+            let maximum_xslt_instructions = if operation == INSTRUCTION_LIMITED_TRANSFORM {
+                Some(
+                    usize::try_from(read_u64(input)?)
+                        .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?,
+                )
+            } else {
+                None
+            };
             Command::Transform {
-                request_id: read_string(input, MAX_IDENTITY_BYTES)?,
+                request_id,
                 cancelled: operation == CANCELLED_TRANSFORM,
                 controlled: matches!(
                     operation,
                     CONTROLLED_TRANSFORM | UNPAUSED_CONTROLLED_TRANSFORM
                 ),
                 first_charge_barrier: operation == CONTROLLED_TRANSFORM,
+                maximum_xslt_instructions,
             }
         }
         CANCEL => Command::Cancel {
@@ -335,6 +356,7 @@ enum Command {
         cancelled: bool,
         controlled: bool,
         first_charge_barrier: bool,
+        maximum_xslt_instructions: Option<usize>,
     },
     Cancel {
         request_id: String,
@@ -364,6 +386,12 @@ fn read_byte(input: &mut impl Read) -> io::Result<u8> {
     let mut value = [0_u8; 1];
     input.read_exact(&mut value)?;
     Ok(value[0])
+}
+
+fn read_u64(input: &mut impl Read) -> io::Result<u64> {
+    let mut value = [0_u8; 8];
+    input.read_exact(&mut value)?;
+    Ok(u64::from_le_bytes(value))
 }
 
 fn read_bytes(input: &mut impl Read, maximum: usize) -> io::Result<Vec<u8>> {

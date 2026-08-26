@@ -193,6 +193,32 @@ impl ExperimentalEngine {
         request_id: &str,
         cancellation: WorkbenchCancellation,
     ) -> Result<String, WorkbenchFailure> {
+        self.transform_with_control(request_id, cancellation, self.limits)
+    }
+
+    /// Executes one workbench request with an invocation-local XSLT instruction
+    /// budget while retaining every other configured limit.
+    ///
+    /// # Errors
+    ///
+    /// Returns `FXCT0002 / limit` when the instruction budget is exhausted, or
+    /// another structured workbench failure.
+    pub fn transform_with_xslt_instruction_limit(
+        &self,
+        request_id: &str,
+        maximum_xslt_instructions: usize,
+    ) -> Result<String, WorkbenchFailure> {
+        let mut limits = self.limits;
+        limits.max_xslt_instructions = maximum_xslt_instructions;
+        self.transform_with_control(request_id, WorkbenchCancellation::new(), limits)
+    }
+
+    fn transform_with_control(
+        &self,
+        request_id: &str,
+        cancellation: WorkbenchCancellation,
+        limits: WorkbenchLimits,
+    ) -> Result<String, WorkbenchFailure> {
         if request_id.is_empty() {
             return Err(workbench_failure(
                 "FXWB0003",
@@ -203,7 +229,7 @@ impl ExperimentalEngine {
         let document = self.prepared.get(&self.source_id).ok_or_else(|| {
             workbench_failure("FXWB0004", "internal", "prepared source is unavailable")
         })?;
-        let mut control = InvocationControl::new(cancellation.0, work_limits(self.limits));
+        let mut control = InvocationControl::new(cancellation.0, work_limits(limits));
         let semantic = execute_program(&self.program, &document, request_id, &mut control)
             .map_err(|failure| project_execution(&failure))?;
         serialize_xml(
@@ -400,5 +426,29 @@ mod tests {
             unsupported.detail,
             "unsupported XSLT instruction: xsl:message at urn:fastxslt:diagnostic:unsupported-stylesheet:103..117"
         );
+    }
+
+    #[test]
+    fn invocation_local_instruction_limit_does_not_poison_reused_state() {
+        let engine = ExperimentalEngine::new(
+            "urn:w3c:xslt30:for-004:source",
+            include_bytes!("../../../../vendor/xslt30-test/tests/expr/for/for03.xml").to_vec(),
+            "urn:w3c:xslt30:for-004:stylesheet",
+            include_bytes!("../../../../vendor/xslt30-test/tests/expr/for/for-004.xsl").to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("workbench engine should initialize");
+
+        let failure = engine
+            .transform_with_xslt_instruction_limit("instruction-limited", 0)
+            .expect_err("zero instruction budget should fail");
+        assert_eq!(failure.code, "FXCT0002");
+        assert_eq!(failure.category, "limit");
+        assert_eq!(failure.request_id.as_deref(), Some("instruction-limited"));
+        assert_eq!(
+            failure.detail,
+            "xslt-instruction work budget exhausted: limit 0, consumed 0, next charge 1"
+        );
+        assert!(engine.transform("after-instruction-limit").is_ok());
     }
 }
