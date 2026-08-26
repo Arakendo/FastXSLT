@@ -40,10 +40,12 @@ names remain invalid.
 | `for-003` | `for03` source | inline XML | engine unsupported | `sum(for ...)` and preservation of focus inside the return expression |
 | `for-004` | `for03` source | inline XML | engine unsupported | bound-variable paths, decimal arithmetic, `sum`, and `format-number` |
 
-The denominator is four selected, zero passed, three engine-unsupported, one
-harness-unsupported, zero failed, and zero metadata failures. `for-002` may
-also contain unsupported engine semantics, but the currently decisive barrier
-is that the harness cannot invoke its declared initial template.
+At this admission checkpoint, the denominator was four selected, zero passed,
+three engine-unsupported, one harness-unsupported, zero failed, and zero
+metadata failures. `for-002` may also contain unsupported engine semantics, but
+the decisive admission-time barrier was that the harness could not invoke its
+declared initial template. Native `for-001` subsequently advanced to passed in
+[XSLT30 `for-001` Ordered Sequence Execution](xslt30-for-001-ordered-sequence-execution-2026-08-26.md).
 
 ## Claim boundary
 

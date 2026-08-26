@@ -124,8 +124,8 @@ rationale = "The file-backed source snapshot executes predicates on individual p
 set_file = "tests/expr/for/_for-test-set.xml"
 case_name = "for-001"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The native source, stylesheet, file-backed assert-xml, and XSLT20+ dependency are admitted; xsl:sequence plus the for/distinct-values expression exceed the current compiler semantics."
+execution = "passed"
+rationale = "The native source and stylesheet execute xsl:sequence with ordered for/distinct-values binding, value comparisons, related path selection, and source-node copying against the file-backed XML assertion."
 
 [[case]]
 set_file = "tests/expr/for/_for-test-set.xml"

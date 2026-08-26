@@ -11,6 +11,7 @@ use crate::xdm::owned_tree_experiment::{
 use crate::xml::quick_xml_experiment::{
     ExpandedName, ParseLimits, parse_document, parse_document_controlled,
 };
+use crate::xpath::for_distinct_values_experiment::evaluate as evaluate_for_distinct_values;
 use crate::xpath::path_experiment::evaluate_child_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, Instruction, MatchPattern, NodeTest, StylesheetProgram, TemplateArgument,
@@ -377,6 +378,13 @@ fn execute_sequence(
             Instruction::ValueOf { select, .. } => {
                 execute_value_of(inputs, select, context, variables, &mut result, control)?;
             }
+            Instruction::SequenceNodes { select, .. } => {
+                let selected = evaluate_for_distinct_values(select, inputs.source, control)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                for node in selected {
+                    result.extend(copy_source_node(inputs, node, control)?);
+                }
+            }
             Instruction::ApplyTemplates { select, mode, .. } => {
                 let selected = select_apply_nodes(inputs, select.as_ref(), context, control)?;
                 for selected_node in selected {
@@ -415,6 +423,59 @@ fn execute_sequence(
         }
     }
     Ok(result)
+}
+
+fn copy_source_node(
+    inputs: &SequenceInputs<'_>,
+    node: NodeId,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    match inputs.source.kind(node) {
+        NodeKind::Element => {
+            if !inputs.source.attributes(node).is_empty() {
+                return Err(failure(
+                    "FXRT1002",
+                    FailureCategory::Unsupported,
+                    Some(inputs.request_id),
+                    "copying selected source attributes is outside the private xsl:sequence slice",
+                ));
+            }
+            control
+                .charge(WorkDomain::ResultNode, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let mut children = Vec::new();
+            for child in inputs.source.children(node).iter().copied() {
+                children.extend(copy_source_node(inputs, child, control)?);
+            }
+            Ok(vec![ResultNode::Element {
+                name: inputs
+                    .source
+                    .name(node)
+                    .expect("source element nodes have names")
+                    .clone(),
+                children,
+            }])
+        }
+        NodeKind::Text => {
+            let mut copied = Vec::new();
+            append_text(
+                &mut copied,
+                inputs.source.value(node).unwrap_or_default(),
+                inputs.request_id,
+                control,
+            )?;
+            Ok(copied)
+        }
+        NodeKind::Document
+        | NodeKind::Attribute
+        | NodeKind::Comment
+        | NodeKind::ProcessingInstruction => Err(failure(
+            "FXRT1002",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "the selected source node kind is outside the private xsl:sequence copy slice",
+        )),
+    }
 }
 
 fn execute_value_of(

@@ -725,3 +725,28 @@ ambient I/O or public stability claim.
 - Next slice: decompose and implement only the first `for-001` semantic layer
   that can preserve sequence order and node identity; do not shrink the
   four-case denominator or imply general XPath sequence support.
+
+### 2026-08-26: Native XSLT30 `for-001` ordered sequence
+
+- Work completed: compiled and executed unmodified native `for-001`, including
+  `xsl:sequence`, ordered `distinct-values`, one `for` binding, value-based
+  predicates, first-item selection, and related title selection.
+- Ownership: the compiled expression owns only stylesheet-derived variable,
+  path, and name structure. Bound values and selected source `NodeId` values
+  remain invocation-local until selected elements are copied into the semantic
+  result.
+- Result boundary: the private copy seam handles the unnamespaced element/text
+  subtrees required by the case and rejects unsupported attributes or node
+  kinds instead of dropping them.
+- Work accounting: path navigation, XDM string atomization, XSLT instruction
+  execution, result construction, and serialization use their existing
+  separate charge domains.
+- Conservation: the complete `expr/for` denominator advances to one pass, two
+  engine-unsupported cases, and one harness-unsupported case. The upstream
+  file-backed XML assertion matches exactly.
+- Claim control: arbitrary FLWOR grammar, general sequences/functions,
+  collations, namespaces, atomic sequence results, and generalized node copying
+  remain outside this evidence.
+- Next slice: enable source-free initial-template entry for native `for-002`,
+  then implement only its multiple integer bindings, addition, ordered atomic
+  return sequence, and `xsl:value-of` separator behavior.

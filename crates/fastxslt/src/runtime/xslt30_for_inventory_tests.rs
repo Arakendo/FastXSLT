@@ -1,8 +1,12 @@
-//! Conserved admission test for the complete XSLT30 `expr/for` denominator.
+//! Conserved integration tests for the complete XSLT30 `expr/for` denominator.
 
-use std::{fs, path::PathBuf};
+use std::{collections::HashSet, fs, path::PathBuf};
 
-use super::{FailureCategory, compile_resource};
+use super::{
+    ExecutionPolicy, FailureCategory, TransformRequest, TransformSetBuilder, compile_resource,
+    execute_transform_set,
+};
+use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
@@ -22,7 +26,7 @@ const CASES: [CasePressure; 4] = [
         name: "for-001",
         environment: Some("for01"),
         initial_template: None,
-        execution: "engine-unsupported",
+        execution: "passed",
     },
     CasePressure {
         name: "for-002",
@@ -51,6 +55,81 @@ fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'
             .filter(|name| name.namespace.is_none() && name.local == local)
             .and_then(|_| document.value(*attribute))
     })
+}
+
+#[test]
+fn executes_native_xslt30_for_001_in_order() {
+    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
+    assert!(overlay_case(overlay, "for-001").contains("execution = \"passed\""));
+    let (test_set, set_path) = load_test_set();
+    let directory = set_path
+        .parent()
+        .expect("for test set should have a directory");
+    let test_case = find_element(
+        &test_set,
+        test_set.document_node(),
+        "test-case",
+        Some(("name", "for-001")),
+    )
+    .expect("for-001 should exist in the pinned test set");
+    let environment_ref = find_element(&test_set, test_case, "environment", None)
+        .and_then(|node| attribute(&test_set, node, "ref"))
+        .expect("for-001 should reference an environment");
+    let environment = find_element(
+        &test_set,
+        test_set.document_node(),
+        "environment",
+        Some(("name", environment_ref)),
+    )
+    .expect("for-001 environment should exist");
+    let source_file = find_element(&test_set, environment, "source", None)
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("for-001 environment should name a source");
+    let stylesheet_file = find_element(&test_set, test_case, "stylesheet", None)
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("for-001 should name a stylesheet");
+    let expected_file = find_element(&test_set, test_case, "assert-xml", None)
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("for-001 should name its expected XML file");
+
+    let source =
+        fs::read(directory.join(source_file)).expect("read for-001 source and close import handle");
+    let stylesheet = fs::read(directory.join(stylesheet_file))
+        .expect("read for-001 stylesheet and close import handle");
+    let expected = fs::read_to_string(directory.join(expected_file))
+        .expect("read for-001 expected XML and close handle");
+    let source_id = "urn:w3c:xslt30:for-001:source";
+    let stylesheet_id = "urn:w3c:xslt30:for-001:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(source_id, source)
+        .expect("admit for-001 source");
+    resources
+        .admit(stylesheet_id, stylesheet)
+        .expect("admit for-001 stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, stylesheet_id).expect("compile native for-001");
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 4_096,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    set.add(TransformRequest {
+        identity: "for-001".to_owned(),
+        result_identity: "result:for-001".to_owned(),
+        source_resource: source_id.to_owned(),
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    })
+    .expect("admit native for-001 request");
+
+    let results = execute_transform_set(set.seal()).expect("execute native for-001");
+    assert_eq!(results.by_request["for-001"].serialized, expected.trim());
 }
 
 fn find_element(

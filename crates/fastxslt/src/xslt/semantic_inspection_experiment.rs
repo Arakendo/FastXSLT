@@ -22,6 +22,7 @@ enum SemanticFeature {
     LiteralElement,
     Text,
     ValueOf,
+    SequenceNodes,
     ApplyTemplates,
     If,
     CallTemplate,
@@ -143,6 +144,7 @@ fn observe_instructions(
             }
             Instruction::Text { .. } => (SemanticFeature::Text, None),
             Instruction::ValueOf { .. } => (SemanticFeature::ValueOf, None),
+            Instruction::SequenceNodes { .. } => (SemanticFeature::SequenceNodes, None),
             Instruction::ApplyTemplates { .. } => (SemanticFeature::ApplyTemplates, None),
             Instruction::If { body, .. } => (SemanticFeature::If, Some(body.as_slice())),
             Instruction::CallTemplate { .. } => (SemanticFeature::CallTemplate, None),

@@ -1,5 +1,6 @@
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xml::quick_xml_experiment::ExpandedName;
+use crate::xpath::for_distinct_values_experiment::ForDistinctValuesExpression;
 use crate::xpath::path_experiment::ChildPath;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,6 +75,10 @@ pub(crate) enum Instruction {
     },
     ValueOf {
         select: ValueExpression,
+        location: SourceLocation,
+    },
+    SequenceNodes {
+        select: Box<ForDistinctValuesExpression>,
         location: SourceLocation,
     },
     ApplyTemplates {

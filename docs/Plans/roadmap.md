@@ -9,15 +9,15 @@ standards scope are decided.
 FastXSLT has accepted its staged-modern semantic direction, passes the complete
 XSLT30 `template` and `path` test-set denominators, and executes the complete
 four-case QT3 `Axes002` group through a stylesheet-independent XPath seam. The
-complete four-case XSLT30 `expr/for` denominator is now admitted with three
-engine-unsupported and one harness-unsupported dispositions. The current order
-of work is:
+complete four-case XSLT30 `expr/for` denominator was admitted with no hidden
+cases; native `for-001` now passes, leaving two engine-unsupported cases and one
+harness-unsupported case. The current order of work is:
 
-1. decompose native `for-001` into the minimum sequence/value representation,
-   `for` binding, `distinct-values`, comparison, path, and `xsl:sequence`
-   behavior needed to preserve its result-node order;
-2. implement that behavior behind the existing compiled/invocation ownership
-   boundary and advance only `for-001` when its upstream assertion passes;
+1. add an invocation-local initial-template entry seam for source-free native
+   `for-002` without fabricating a principal source or moving entry state into
+   the compiled stylesheet;
+2. implement only the multiple integer bindings, arithmetic return sequence,
+   and `xsl:value-of` separator behavior required by `for-002`;
 3. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
    memory, and peak construction memory under those representative workloads;
 4. exercise the same lifecycle through the bounded ASP.NET workbench before
@@ -92,6 +92,9 @@ implemented behavior belongs to a named standards slice.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.
+- [x] Execute native `for-001` through ordered distinct-value binding,
+  comparison/path selection, source-node identity preservation, and
+  `xsl:sequence` result construction against its complete upstream assertion.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,

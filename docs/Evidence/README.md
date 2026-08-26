@@ -32,6 +32,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `path-010` and Complete Path Denominator](xslt30-path-010-complete-denominator-2026-08-26.md)
 - [QT3 `Axes002` Native Execution](qt3-axes002-native-execution-2026-08-26.md)
 - [XSLT30 `expr/for` Denominator Admission](xslt30-for-denominator-admission-2026-08-26.md)
+- [XSLT30 `for-001` Ordered Sequence Execution](xslt30-for-001-ordered-sequence-execution-2026-08-26.md)
 - [OASIS XSLT/XPath 1.0 Suite Candidate Review](oasis-xslt10-suite-candidate-review-2026-08-25.md)
 - [Rust XML Parser Candidate Review](rust-xml-parser-candidate-review-2026-08-25.md)
 - [Owned XDM Tree Experiment](owned-xdm-tree-experiment-2026-08-25.md)

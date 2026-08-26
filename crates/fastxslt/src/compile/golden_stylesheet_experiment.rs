@@ -1,4 +1,7 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
+use crate::xpath::for_distinct_values_experiment::{
+    ForExpressionFailure, parse as parse_for_distinct_values,
+};
 use crate::xpath::path_experiment::{PathFailure, parse_child_path};
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, EqualityTest, Instruction, MatchPattern, MatchedTemplate, NamedTemplate,
@@ -295,6 +298,8 @@ fn compile_sequence_excluding(
                 if name.namespace.as_deref() == Some(XSLT_NAMESPACE) {
                     if name.local == "value-of" {
                         instructions.push(compile_value_of(document, child)?);
+                    } else if name.local == "sequence" {
+                        instructions.push(compile_sequence_nodes(document, child)?);
                     } else if name.local == "apply-templates" {
                         instructions.push(compile_apply_templates(document, child)?);
                     } else if name.local == "if" {
@@ -420,6 +425,37 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
         )
     };
     Ok(Instruction::ValueOf { select, location })
+}
+
+fn compile_sequence_nodes(
+    document: &Document,
+    element: NodeId,
+) -> Result<Instruction, CompileFailure> {
+    ensure_only_attributes(document, element, &["select"], "xsl:sequence")?;
+    ensure_no_meaningful_children(document, element, "xsl:sequence")?;
+    let location = document.location(element).clone();
+    let expression = required_attribute(document, element, None, "select")?;
+    let select =
+        parse_for_distinct_values(expression, location.clone()).map_err(
+            |failure| match failure {
+                ForExpressionFailure::Invalid { detail, location } => CompileFailure {
+                    code: "FXXP0003",
+                    category: CompileCategory::Invalid,
+                    detail,
+                    location,
+                },
+                ForExpressionFailure::Unsupported { detail, location } => CompileFailure {
+                    code: "FXXP1003",
+                    category: CompileCategory::Unsupported,
+                    detail,
+                    location,
+                },
+            },
+        )?;
+    Ok(Instruction::SequenceNodes {
+        select: Box::new(select),
+        location,
+    })
 }
 
 fn compile_if(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
@@ -567,6 +603,7 @@ fn validate_named_calls(
             }
             Instruction::Text { .. }
             | Instruction::ValueOf { .. }
+            | Instruction::SequenceNodes { .. }
             | Instruction::ApplyTemplates { .. } => {}
         }
     }
