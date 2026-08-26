@@ -4,12 +4,12 @@
 | --- | --- |
 | Status | Incubating |
 | Opened | 2026-08-25 |
-| Last reviewed | 2026-08-25 |
+| Last reviewed | 2026-08-26 |
 | Scope | Dispatch supervision, execution control, worker health, and security containment |
 | Trigger | A dispatcher was proposed as a security layer capable of detecting and recovering a rogue parser worker |
 | Related ADRs | ADR-0002, ADR-0005 |
 | Related reviews | AR-0002, AR-0003, AR-0004, AR-0008, AR-0009 |
-| Related evidence | `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-ar-0010-review-monday-2026-08-25.md`; `docs/Evidence/private-invocation-control-charge-points-2026-08-25.md`; future fault-injection and host-boundary measurements |
+| Related evidence | `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-ar-0010-review-monday-2026-08-25.md`; `docs/Evidence/private-invocation-control-charge-points-2026-08-25.md`; `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`; future fault-injection and host-boundary measurements |
 
 ## Architectural question
 
@@ -152,6 +152,11 @@ only mode.
 - A local optimized microprobe observed 1.215–1.249 ns per successful charge
   versus 0.205–0.207 ns for its black-box loop baseline on the recorded machine.
   It is not an end-to-end overhead or host-performance result.
+- The ASP.NET workbench now acknowledges a correlated non-cooperating request,
+  forcibly terminates only its isolated process, declines to retry the ambiguous
+  invocation, replaces the slot from the sealed generation, and preserves a
+  sibling plus later execution. This is hard-isolation evidence, not
+  cooperative cancellation or a production restart policy.
 
 ## Disposition
 
@@ -196,9 +201,11 @@ or mutate semantic state.
 - [ ] Evaluate panic containment under the selected Rust panic strategy,
   including whether compiled, snapshot, worker, and shared dependency state may
   be reused after a caught unwind.
-- [ ] Demonstrate with an isolated test helper that a non-cooperating worker
-  cannot receive a safe in-process hard-kill guarantee and that a worker process
-  can be terminated without poisoning the supervisor.
+- [ ] Complete the non-cooperating-worker boundary comparison.
+  - [ ] Demonstrate through an in-process helper that a non-cooperating worker
+    cannot receive a safe thread-level hard-kill guarantee.
+  - [x] Demonstrate through an isolated helper that a non-cooperating worker
+    process can be terminated without poisoning the supervisor.
 - [ ] Define distinct boundary categories for limit exhaustion, cancellation,
   deadline, worker crash, panic/internal failure, and supervisor/transport
   failure through AR-0004.
@@ -241,3 +248,6 @@ is measured, or a stronger sandbox such as WASM becomes a viable host boundary.
 - 2026-08-25 -- Asserted the golden eight-domain charge profile, inventoried
   semantic-unit observation gaps, and retained a three-run local charge-cost
   microprobe. Wall-clock and end-to-end overhead remain open.
+- 2026-08-26 -- Added an isolated ASP.NET fault probe that terminates an
+  acknowledged non-cooperating worker request, preserves sibling execution, and
+  reinitializes only the affected slot without retrying the failed invocation.

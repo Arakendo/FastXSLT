@@ -37,6 +37,7 @@ builder.Services.AddSingleton(saxonCs);
 
 var app = builder.Build();
 var tieredBenchmarkGate = new SemaphoreSlim(1, 1);
+var operationalExperimentGate = new SemaphoreSlim(1, 1);
 app.MapGet("/health", () => Results.Ok(new
 {
     status = "ready",
@@ -124,6 +125,36 @@ app.MapPost("/benchmark/tiers", async (int? requests, int? concurrency) =>
     finally
     {
         tieredBenchmarkGate.Release();
+    }
+});
+app.MapPost("/experiment/worker-recovery", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await OperationalExperiments.ExerciseWorkerRecoveryAsync(
+            workerPath,
+            source,
+            stylesheet));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
+app.MapPost("/experiment/generation-replacement", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await OperationalExperiments.ExerciseGenerationReplacementAsync(
+            workerPath,
+            source,
+            stylesheet));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
     }
 });
 #if SAXONCS_LOCAL

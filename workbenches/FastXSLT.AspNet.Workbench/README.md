@@ -20,6 +20,8 @@ offers:
 - `POST /transform/dotnet-xslt1`
 - `POST /measure/dotnet-xslt1?requests=1000`
 - `POST /benchmark/tiers?requests=250&concurrency=4`
+- `POST /experiment/worker-recovery`
+- `POST /experiment/generation-replacement`
 - `POST /transform/saxoncs`
 - `POST /measure/saxoncs?requests=1000`
 
@@ -40,9 +42,23 @@ fresh transformer and serializer are created per invocation. Neither the
 package, its adapter, nor its lock file is distributed by FastXSLT.
 
 The primary smoke transport retains one explicit in-flight slot. The tiered
-experiment adds a bounded pool, but cancellation, production pool lifecycle,
-restart, snapshot replacement, and an in-process FastXSLT comparison remain
-future work.
+experiment adds a bounded pool. An opt-in operational experiment forcibly
+terminates one process, gives its next request a structured operational failure
+without retry, replaces only that slot from the same sealed generation, and
+proves a sibling plus a later request still complete. A second experiment
+atomically promotes a new explicitly identified generation while an acquired old
+generation remains executable until its lease drains. These are workbench
+lifecycle observations, not a production restart policy or public API.
+
+Run those checks with:
+
+```powershell
+./scripts/verify-aspnet-workbench.ps1 -OperationalExperiments
+```
+
+Cooperative cancellation, deadlines, crash-loop policy, production pool
+lifecycle, and an in-process FastXSLT comparison remain future work. Hard worker
+termination is intentionally not described as cooperative cancellation.
 
 The opt-in tiered benchmark generates deterministic 5-, 50-, and 500-item
 sources. It measures sequential and bounded-concurrent warm execution with

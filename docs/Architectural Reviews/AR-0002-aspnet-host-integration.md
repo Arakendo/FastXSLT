@@ -8,7 +8,7 @@
 | Scope | Non-Rust embedding, deployment, and performance boundary |
 | Trigger | ASP.NET applications are a motivating FastXSLT consumer class |
 | Related ADRs | ADR-0001 |
-| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
+| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
 
 ## Architectural question
 
@@ -108,7 +108,16 @@ security contracts.
   deterministic 5-, 50-, and 500-item tiers. Five-run median FastXSLT throughput
   ranged from 25,966 to 5,550 transforms/second sequentially and from 84,939 to
   22,903 transforms/second concurrently. The pool makes prepared-state memory
-  multiplication explicit; cancellation, restart, and replacement remain open.
+  multiplication explicit; cancellation and production restart/replacement
+  policy remain open.
+- A private two-worker fault probe acknowledged a deliberately non-cooperating
+  request, terminated only its process, returned an explicit
+  `worker-terminated` disposition without retry, initialized a replacement from
+  the same sealed generation, and preserved sibling plus subsequent execution.
+- A private host-owned generation experiment initialized a replacement before
+  atomic promotion, routed new requests to its explicit generation identity,
+  and allowed an acquired old-generation request to drain before disposal.
+  Changed-resource and imported-file replacement remain untested.
 
 ## Disposition
 
@@ -121,7 +130,7 @@ ABI or managed API until a bounded ASP.NET workbench compares viable mechanisms.
   deployment targets, and latency/throughput budgets.
 - [x] Define a minimal experimental host-neutral compile/prepare/transform
   lifecycle to exercise without accepting it as the public API.
-- [ ] Exercise snapshot creation/replacement and a batch of transforms without
+- [x] Exercise snapshot creation/replacement and a batch of transforms without
   transferring identical resource bytes on every invocation.
 - [ ] Verify imported files can be replaced during service operation while old
   in-flight requests continue on their sealed snapshots without held handles.
@@ -152,3 +161,6 @@ invalidates the selected mechanism.
 - 2026-08-26 -- Added tiered latency/allocation evidence and a bounded
   four-worker isolated pool without promoting the workbench protocol or pool to
   a supported host boundary.
+- 2026-08-26 -- Added non-cooperating worker termination/replacement and explicit
+  generation promotion/draining evidence. Kept restart policy and the workbench
+  lifecycle private.

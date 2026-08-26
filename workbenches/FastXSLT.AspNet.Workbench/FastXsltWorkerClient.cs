@@ -7,9 +7,11 @@ public sealed class FastXsltWorkerClient : IDisposable
     private const byte Initialize = 1;
     private const byte Transform = 2;
     private const byte Shutdown = 3;
+    private const byte NonCooperatingProbe = 4;
     private const byte Ready = 0x81;
     private const byte Result = 0x82;
     private const byte Stopped = 0x83;
+    private const byte ProbeStarted = 0x84;
     private const byte Error = 0xff;
     private const int MaximumFrameBytes = 1_048_576;
 
@@ -113,6 +115,51 @@ public sealed class FastXsltWorkerClient : IDisposable
         return (_process.TotalProcessorTime, _process.WorkingSet64);
     }
 
+    public int ProcessId
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return _process.Id;
+        }
+    }
+
+    public async Task BeginNonCooperatingProbeAsync(string requestIdentity)
+    {
+        await _gate.WaitAsync();
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            await WriteByteAsync(NonCooperatingProbe);
+            await WriteStringAsync(requestIdentity);
+            await _input.FlushAsync();
+            var response = await ReadByteAsync();
+            if (response != ProbeStarted)
+            {
+                throw new InvalidDataException($"Unexpected isolation-probe response: {response}.");
+            }
+            var correlatedIdentity = await ReadStringAsync();
+            if (!StringComparer.Ordinal.Equals(requestIdentity, correlatedIdentity))
+            {
+                throw new InvalidDataException("Isolation-probe identity did not match the request.");
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public void TerminateForExperiment()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (!_process.HasExited)
+        {
+            _process.Kill(entireProcessTree: true);
+            _process.WaitForExit(2_000);
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -124,12 +171,22 @@ public sealed class FastXsltWorkerClient : IDisposable
         {
             if (!_process.HasExited)
             {
-                WriteByteAsync(Shutdown).GetAwaiter().GetResult();
-                _input.Flush();
-                if (ReadByteAsync().GetAwaiter().GetResult() != Stopped ||
-                    !_process.WaitForExit(2_000))
+                try
                 {
-                    _process.Kill(entireProcessTree: true);
+                    WriteByteAsync(Shutdown).GetAwaiter().GetResult();
+                    _input.Flush();
+                    if (ReadByteAsync().GetAwaiter().GetResult() != Stopped ||
+                        !_process.WaitForExit(2_000))
+                    {
+                        _process.Kill(entireProcessTree: true);
+                    }
+                }
+                catch (Exception failure) when (failure is IOException or InvalidOperationException)
+                {
+                    if (!_process.HasExited)
+                    {
+                        _process.Kill(entireProcessTree: true);
+                    }
                 }
             }
             _disposed = true;

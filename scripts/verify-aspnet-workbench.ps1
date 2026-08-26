@@ -6,6 +6,7 @@ param(
     [switch]$LocalSaxonCs,
     [switch]$TieredBenchmark,
     [switch]$TieredSummaryOnly,
+    [switch]$OperationalExperiments,
     [int]$TieredRequests = 250,
     [int]$TieredConcurrency = 4
 )
@@ -83,6 +84,44 @@ try {
             $saxonResult = Invoke-WebRequest -Method Post -Uri "$baseAddress/transform/saxoncs"
             if ($saxonResult.StatusCode -ne 200 -or $saxonResult.Content -cne $expected) {
                 throw "Unexpected SaxonCS response: $($saxonResult.StatusCode) $($saxonResult.Content)"
+            }
+        }
+        if ($OperationalExperiments) {
+            $recovery = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/worker-recovery"
+            if ($recovery.recovery.failureCode -ne 'FXWB2001' -or
+                $recovery.recovery.failureCategory -ne 'worker-terminated' -or
+                $recovery.recovery.failedRequestIdentity -ne 'recovery-failed' -or
+                $recovery.recovery.formerProcessId -eq $recovery.recovery.replacementProcessId -or
+                $recovery.failedRequestRetried -or
+                $recovery.siblingResult -cne $expected -or
+                $recovery.recovery.recoveryResult -cne $expected) {
+                throw "Worker recovery experiment violated its expected disposition: $($recovery | ConvertTo-Json -Depth 5)"
+            }
+            $replacement = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/generation-replacement"
+            if ($replacement.retiredGenerationIdentity -ne 'generation-001' -or
+                $replacement.oldLeaseGenerationIdentity -ne 'generation-001' -or
+                $replacement.newGeneration.generationIdentity -ne 'generation-002' -or
+                $replacement.oldResult -cne $expected -or
+                $replacement.newGeneration.result -cne $expected -or
+                -not $replacement.promotionWasExplicit -or
+                -not $replacement.oldGenerationDrainsOnLeaseRelease) {
+                throw "Generation replacement experiment violated its expected lifecycle: $($replacement | ConvertTo-Json -Depth 5)"
+            }
+            [pscustomobject]@{
+                Experiment = 'WorkerRecovery'
+                FailureCode = $recovery.recovery.failureCode
+                FailedRequestRetried = $recovery.failedRequestRetried
+                FormerProcessId = $recovery.recovery.formerProcessId
+                ReplacementProcessId = $recovery.recovery.replacementProcessId
+                SiblingCompleted = $recovery.siblingResult -ceq $expected
+                RecoveryCompleted = $recovery.recovery.recoveryResult -ceq $expected
+            }
+            [pscustomobject]@{
+                Experiment = 'GenerationReplacement'
+                RetiredGeneration = $replacement.retiredGenerationIdentity
+                NewGeneration = $replacement.newGeneration.generationIdentity
+                OldLeaseCompleted = $replacement.oldResult -ceq $expected
+                NewRequestCompleted = $replacement.newGeneration.result -ceq $expected
             }
         }
         for ($run = 1; $run -le $MeasurementRuns; $run++) {

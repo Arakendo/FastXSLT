@@ -7,9 +7,11 @@ use fastxslt::workbench::{ExperimentalEngine, WorkbenchFailure, WorkbenchLimits}
 const INITIALIZE: u8 = 1;
 const TRANSFORM: u8 = 2;
 const SHUTDOWN: u8 = 3;
+const NON_COOPERATING_PROBE: u8 = 4;
 const READY: u8 = 0x81;
 const RESULT: u8 = 0x82;
 const STOPPED: u8 = 0x83;
+const PROBE_STARTED: u8 = 0x84;
 const ERROR: u8 = 0xff;
 const MAX_IDENTITY_BYTES: usize = 4_096;
 const MAX_RESOURCE_BYTES: usize = 1_048_576;
@@ -76,6 +78,15 @@ fn main() -> io::Result<()> {
                 write_byte(&mut output, STOPPED)?;
                 output.flush()?;
                 return Ok(());
+            }
+            NON_COOPERATING_PROBE => {
+                let request_id = read_string(&mut input, MAX_IDENTITY_BYTES)?;
+                write_byte(&mut output, PROBE_STARTED)?;
+                write_string(&mut output, &request_id)?;
+                output.flush()?;
+                loop {
+                    std::thread::park();
+                }
             }
             _ => {
                 write_failure(

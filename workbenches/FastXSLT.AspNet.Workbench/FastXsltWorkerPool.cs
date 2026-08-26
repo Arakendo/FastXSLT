@@ -1,15 +1,17 @@
 public sealed class FastXsltWorkerPool : IDisposable
 {
-    private readonly FastXsltWorkerClient[] _workers;
-    private readonly Queue<FastXsltWorkerClient> _available;
+    private readonly WorkerBootstrap _bootstrap;
+    private readonly WorkerSlot[] _workers;
+    private readonly Queue<WorkerSlot> _available;
     private readonly SemaphoreSlim _slots;
     private readonly object _queueLock = new();
     private bool _disposed;
 
-    private FastXsltWorkerPool(FastXsltWorkerClient[] workers)
+    private FastXsltWorkerPool(WorkerBootstrap bootstrap, WorkerSlot[] workers)
     {
+        _bootstrap = bootstrap;
         _workers = workers;
-        _available = new Queue<FastXsltWorkerClient>(workers);
+        _available = new Queue<WorkerSlot>(workers);
         _slots = new SemaphoreSlim(workers.Length, workers.Length);
     }
 
@@ -22,25 +24,26 @@ public sealed class FastXsltWorkerPool : IDisposable
         int workers)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(workers, 1);
-        var started = new List<FastXsltWorkerClient>(workers);
+        var bootstrap = new WorkerBootstrap(
+            workerPath,
+            sourceIdentity,
+            (byte[])source.Clone(),
+            stylesheetIdentity,
+            (byte[])stylesheet.Clone());
+        var started = new List<WorkerSlot>(workers);
         try
         {
             for (var index = 0; index < workers; index++)
             {
-                started.Add(await FastXsltWorkerClient.StartAsync(
-                    workerPath,
-                    sourceIdentity,
-                    source,
-                    stylesheetIdentity,
-                    stylesheet));
+                started.Add(new WorkerSlot(await bootstrap.StartAsync()));
             }
-            return new FastXsltWorkerPool(started.ToArray());
+            return new FastXsltWorkerPool(bootstrap, started.ToArray());
         }
         catch
         {
             foreach (var worker in started)
             {
-                worker.Dispose();
+                worker.Client.Dispose();
             }
             throw;
         }
@@ -50,14 +53,80 @@ public sealed class FastXsltWorkerPool : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         await _slots.WaitAsync();
-        FastXsltWorkerClient worker;
+        WorkerSlot worker;
         lock (_queueLock)
         {
             worker = _available.Dequeue();
         }
         try
         {
-            return await worker.TransformAsync(requestIdentity);
+            try
+            {
+                return await worker.Client.TransformAsync(requestIdentity);
+            }
+            catch (FastXsltWorkerException)
+            {
+                throw;
+            }
+            catch (Exception failure) when (IsWorkerBoundaryFailure(failure))
+            {
+                var formerProcessId = worker.Client.ProcessId;
+                await ReplaceAsync(worker);
+                throw new FastXsltWorkerOperationalException(
+                    "FXWB2001",
+                    "worker-terminated",
+                    requestIdentity,
+                    formerProcessId,
+                    worker.Client.ProcessId,
+                    "The isolated worker ended during the request. The request was not retried; " +
+                    "the slot was initialized from the same sealed generation.",
+                    failure);
+            }
+        }
+        finally
+        {
+            lock (_queueLock)
+            {
+                _available.Enqueue(worker);
+            }
+            _slots.Release();
+        }
+    }
+
+    public async Task<WorkerRecoveryEvidence> ExerciseTerminationAndRecoveryAsync(
+        string failedRequestIdentity,
+        string recoveryRequestIdentity)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        await _slots.WaitAsync();
+        WorkerSlot worker;
+        lock (_queueLock)
+        {
+            worker = _available.Dequeue();
+        }
+        try
+        {
+            var formerProcessId = worker.Client.ProcessId;
+            await worker.Client.BeginNonCooperatingProbeAsync(failedRequestIdentity);
+            worker.Client.TerminateForExperiment();
+            await ReplaceAsync(worker);
+            var disposition = new FastXsltWorkerOperationalException(
+                "FXWB2001",
+                "worker-terminated",
+                failedRequestIdentity,
+                formerProcessId,
+                worker.Client.ProcessId,
+                "The acknowledged non-cooperating request was terminated with its worker and was not retried.",
+                new IOException("The workbench supervisor deliberately terminated the isolated worker."));
+            var result = await worker.Client.TransformAsync(recoveryRequestIdentity);
+            return new WorkerRecoveryEvidence(
+                disposition.Code,
+                disposition.Category,
+                disposition.RequestId,
+                formerProcessId,
+                worker.Client.ProcessId,
+                recoveryRequestIdentity,
+                result);
         }
         finally
         {
@@ -75,7 +144,7 @@ public sealed class FastXsltWorkerPool : IDisposable
         long workingSetBytes = 0;
         foreach (var worker in _workers)
         {
-            var observation = worker.ObserveProcess();
+            var observation = worker.Client.ObserveProcess();
             processorTime += observation.ProcessorTime;
             workingSetBytes = checked(workingSetBytes + observation.WorkingSetBytes);
         }
@@ -91,8 +160,65 @@ public sealed class FastXsltWorkerPool : IDisposable
         _disposed = true;
         foreach (var worker in _workers)
         {
-            worker.Dispose();
+            worker.Client.Dispose();
         }
         _slots.Dispose();
     }
+
+
+    private async Task ReplaceAsync(WorkerSlot worker)
+    {
+        var replacement = await _bootstrap.StartAsync();
+        var prior = worker.Client;
+        worker.Client = replacement;
+        prior.Dispose();
+    }
+
+    private static bool IsWorkerBoundaryFailure(Exception failure) =>
+        failure is IOException or InvalidOperationException or ObjectDisposedException;
+
+    private sealed record WorkerBootstrap(
+        string WorkerPath,
+        string SourceIdentity,
+        byte[] Source,
+        string StylesheetIdentity,
+        byte[] Stylesheet)
+    {
+        public Task<FastXsltWorkerClient> StartAsync() => FastXsltWorkerClient.StartAsync(
+            WorkerPath,
+            SourceIdentity,
+            Source,
+            StylesheetIdentity,
+            Stylesheet);
+    }
+
+    private sealed class WorkerSlot(FastXsltWorkerClient client)
+    {
+        public FastXsltWorkerClient Client { get; set; } = client;
+    }
+}
+
+public sealed record WorkerRecoveryEvidence(
+    string FailureCode,
+    string FailureCategory,
+    string FailedRequestIdentity,
+    int FormerProcessId,
+    int ReplacementProcessId,
+    string RecoveryRequestIdentity,
+    string RecoveryResult);
+
+public sealed class FastXsltWorkerOperationalException(
+    string code,
+    string category,
+    string requestId,
+    int formerProcessId,
+    int replacementProcessId,
+    string detail,
+    Exception innerException) : Exception(detail, innerException)
+{
+    public string Code { get; } = code;
+    public string Category { get; } = category;
+    public string RequestId { get; } = requestId;
+    public int FormerProcessId { get; } = formerProcessId;
+    public int ReplacementProcessId { get; } = replacementProcessId;
 }
