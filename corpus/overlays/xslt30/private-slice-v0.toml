@@ -103,15 +103,15 @@ rationale = "The inline source snapshot executes a checked constant-integer posi
 set_file = "tests/expr/path/_path-test-set.xml"
 case_name = "path-008"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The floor function inside an arithmetic positional predicate exceeds the current private XPath slice."
+execution = "passed"
+rationale = "The inline source snapshot executes a floor() call within checked constant-integer positional arithmetic; floor is admitted only over the parser's integer domain."
 
 [[case]]
 set_file = "tests/expr/path/_path-test-set.xml"
 case_name = "path-009"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "A numeric function-call predicate exceeds the current private XPath slice."
+execution = "passed"
+rationale = "The inline source snapshot executes floor(2) as a numeric position over the name-matched element1 sequence within the checked constant-integer domain."
 
 [[case]]
 set_file = "tests/expr/path/_path-test-set.xml"

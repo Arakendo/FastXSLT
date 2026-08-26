@@ -576,3 +576,15 @@ fn executes_pinned_xslt30_path_007_constant_arithmetic_position() {
     let (actual, expected) = execute_path_case("path-007");
     assert_same_result_element_string(&actual, &expected, "out");
 }
+
+#[test]
+fn executes_pinned_xslt30_path_008_floor_inside_arithmetic() {
+    let (actual, expected) = execute_path_case("path-008");
+    assert_same_result_element_string(&actual, &expected, "out");
+}
+
+#[test]
+fn executes_pinned_xslt30_path_009_floor_position() {
+    let (actual, expected) = execute_path_case("path-009");
+    assert_same_result_element_string(&actual, &expected, "out");
+}

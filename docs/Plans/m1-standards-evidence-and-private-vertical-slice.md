@@ -647,3 +647,18 @@ ambient I/O or public stability claim.
   three explicit engine-unsupported outcomes.
 - Next slice: pressure the numeric seam with `floor()` in native `path-008`
   without implying general XPath function support.
+
+### 2026-08-26: XSLT30 `path-008/009` integer floor
+
+- Work completed: executed both unmodified native floor cases through their
+  inline catalog environment and the shared bounded snapshot harness.
+- XPath behavior: admitted `floor()` only inside the checked constant-integer
+  parser, where it is the identity operation; nested arithmetic and direct
+  positional uses both select position two.
+- Claim control: decimal/double rounding, fractional division, other functions,
+  and general function resolution remain unsupported.
+- Conservation: the complete `path` denominator now contains nine passes and
+  one explicit engine-unsupported outcome.
+- Next slice: decompose `path-010`'s intermediate positional predicate, final
+  `last()` predicate, and complex match pattern before implementing the final
+  denominator case.

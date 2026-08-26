@@ -77,6 +77,18 @@ impl Parser<'_> {
 
     fn primary(&mut self) -> Result<i64, ConstantIntegerFailure> {
         self.whitespace();
+        if self.consume_keyword(b"floor") {
+            self.whitespace();
+            if !self.consume(b'(') {
+                return Err(ConstantIntegerFailure::Invalid);
+            }
+            let value = self.additive()?;
+            self.whitespace();
+            if !self.consume(b')') {
+                return Err(ConstantIntegerFailure::Invalid);
+            }
+            return Ok(value);
+        }
         if self.consume(b'(') {
             let value = self.additive()?;
             self.whitespace();
@@ -139,6 +151,13 @@ mod tests {
     }
 
     #[test]
+    fn floors_values_in_the_admitted_constant_integer_domain() {
+        assert_eq!(evaluate("floor(2)"), Ok(2));
+        assert_eq!(evaluate("10 mod floor(3)"), Ok(1));
+        assert_eq!(evaluate("floor((2 + 3) * 4)"), Ok(20));
+    }
+
+    #[test]
     fn rejects_unadmitted_numeric_semantics_instead_of_approximating_them() {
         assert_eq!(
             evaluate("1 div 2"),
@@ -146,7 +165,7 @@ mod tests {
         );
         assert_eq!(evaluate("1 div 0"), Err(ConstantIntegerFailure::Invalid));
         assert_eq!(
-            evaluate("floor(2)"),
+            evaluate("ceiling(2)"),
             Err(ConstantIntegerFailure::Unsupported)
         );
         assert_eq!(evaluate("(2 + 3"), Err(ConstantIntegerFailure::Invalid));

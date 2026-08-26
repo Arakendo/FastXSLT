@@ -28,6 +28,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `path-005` Descendant-or-Self Execution](xslt30-path-005-descendant-or-self-execution-2026-08-26.md)
 - [XSLT30 `path-006` Parent-Predicate Execution](xslt30-path-006-parent-predicate-execution-2026-08-26.md)
 - [XSLT30 `path-007` Constant-Arithmetic Position](xslt30-path-007-constant-arithmetic-position-2026-08-26.md)
+- [XSLT30 `path-008/009` Integer-Floor Execution](xslt30-path-008-009-integer-floor-execution-2026-08-26.md)
 - [OASIS XSLT/XPath 1.0 Suite Candidate Review](oasis-xslt10-suite-candidate-review-2026-08-25.md)
 - [Rust XML Parser Candidate Review](rust-xml-parser-candidate-review-2026-08-25.md)
 - [Owned XDM Tree Experiment](owned-xdm-tree-experiment-2026-08-25.md)

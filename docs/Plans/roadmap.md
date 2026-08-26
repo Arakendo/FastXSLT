@@ -10,9 +10,9 @@ FastXSLT has accepted its staged-modern semantic direction and conserved the
 first complete XSLT30 test-set denominator and has now admitted the complete
 ten-case `path` denominator. The current order of work is:
 
-1. widen the selected `path` family one semantic unit at a time, continuing
-   with the `floor()` pressure in `path-008`, while retaining all ten
-   dispositions and the paired QT3 `Axes002` group;
+1. decompose the remaining `path-010` case into predicates on multiple path
+   steps, `last()` context-size semantics, and its complex match pattern while
+   retaining the complete denominator and paired QT3 `Axes002` group;
 2. reuse the bounded file-backed environment import established by `path-002`
    and add only the comparison behavior required by each case;
 3. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
@@ -80,9 +80,9 @@ implemented behavior belongs to a named standards slice.
   inside their physical owner, providing evidence for AR-0007.
 - [ ] Expand XPath lex/parse/evaluate tests before growing XSLT instructions.
 - [x] Admit all ten cases in the complete XSLT30 `path` test set and execute
-  `path-001` through `path-007`, including charged axis predicates and checked
-  constant-integer positional arithmetic, retaining the other three as
-  explicit engine-unsupported outcomes.
+  `path-001` through `path-009`, including charged axis predicates, checked
+  constant-integer positional arithmetic, and integer-domain `floor()`,
+  retaining `path-010` as an explicit engine-unsupported outcome.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,
