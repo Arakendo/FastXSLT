@@ -41,7 +41,7 @@ pub(crate) fn parse_child_path(
     if expression.starts_with('/')
         || expression.ends_with('/')
         || expression.contains("//")
-        || expression.contains(['[', ']', '(', ')', '@', ':', '*', '.'])
+        || expression.contains(['[', ']', '(', ')', '@', ':', '*'])
     {
         return Err(PathFailure::Unsupported {
             detail: format!(
@@ -51,7 +51,24 @@ pub(crate) fn parse_child_path(
         });
     }
 
+    if !expression.is_ascii() {
+        return Err(PathFailure::Unsupported {
+            detail: format!(
+                "the private slice does not yet classify or evaluate non-ASCII child names: {expression}"
+            ),
+            location,
+        });
+    }
+
     let steps: Vec<_> = expression.split('/').map(str::to_owned).collect();
+    if steps.iter().any(|step| step == "." || step == "..") {
+        return Err(PathFailure::Unsupported {
+            detail: format!(
+                "the private slice supports the context item only as the complete expression: {expression}"
+            ),
+            location,
+        });
+    }
     if steps.iter().any(|step| !is_ascii_ncname(step)) {
         return Err(PathFailure::Invalid {
             detail: format!("the private slice found an invalid child name in: {expression}"),
@@ -168,8 +185,29 @@ mod tests {
             parse_child_path("", location()),
             Err(PathFailure::Invalid { .. })
         ));
+        let invalid = parse_child_path("1greeting/name", location())
+            .expect_err("an invalid child-name path must fail");
+        let unsupported = parse_child_path("greeting//name", location())
+            .expect_err("a descendant path is outside the private slice");
+
+        assert!(matches!(invalid, PathFailure::Invalid { .. }));
+        assert!(matches!(unsupported, PathFailure::Unsupported { .. }));
+        assert_eq!(failure_location(&invalid), &location());
+        assert_eq!(failure_location(&unsupported), &location());
+    }
+
+    #[test]
+    fn accepts_supported_ncname_punctuation_without_claiming_unicode_names() {
+        let path = parse_child_path("catalog/item.name/item-2/_value", location())
+            .expect("ASCII NCName punctuation belongs to the private grammar");
+        assert_eq!(path.steps, ["catalog", "item.name", "item-2", "_value"]);
+
         assert!(matches!(
-            parse_child_path("greeting//name", location()),
+            parse_child_path("café/name", location()),
+            Err(PathFailure::Unsupported { .. })
+        ));
+        assert!(matches!(
+            parse_child_path("catalog/..", location()),
             Err(PathFailure::Unsupported { .. })
         ));
     }
@@ -192,5 +230,42 @@ mod tests {
 
         assert_eq!(selected.len(), 1);
         assert_eq!(document.string_value(selected[0]), "FastXSLT");
+    }
+
+    #[test]
+    fn evaluation_preserves_document_order_and_requires_no_namespace() {
+        let parsed = parse_document(
+            "memory:source.xml",
+            br#"<catalog xmlns:n="urn:other"><item>first</item><n:item>namespaced</n:item><skip/><item>second</item><item.name>dotted</item.name></catalog>"#,
+            ParseLimits {
+                max_events: 32,
+                max_depth: 8,
+            },
+        )
+        .expect("source should parse");
+        let document = Document::from_parsed(parsed).expect("source XDM should build");
+        let catalog = document.children(document.document_node())[0];
+        let items = parse_child_path("item", location()).expect("item path should parse");
+        let dotted = parse_child_path("item.name", location()).expect("dotted name should parse");
+        let missing = parse_child_path("missing", location()).expect("missing path should parse");
+
+        let selected = evaluate_child_path(&document, catalog, &items);
+
+        assert_eq!(selected.len(), 2);
+        assert_eq!(document.string_value(selected[0]), "first");
+        assert_eq!(document.string_value(selected[1]), "second");
+        assert_eq!(
+            document.string_value(evaluate_child_path(&document, catalog, &dotted)[0]),
+            "dotted"
+        );
+        assert!(evaluate_child_path(&document, catalog, &missing).is_empty());
+    }
+
+    fn failure_location(failure: &PathFailure) -> &SourceLocation {
+        match failure {
+            PathFailure::Invalid { location, .. } | PathFailure::Unsupported { location, .. } => {
+                location
+            }
+        }
     }
 }

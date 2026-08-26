@@ -443,3 +443,21 @@ ambient I/O or public stability claim.
 - Next slice: obtain ASP.NET and conformance-harness questions before choosing
   public fields, redaction, compatibility/versioning, serialization, dynamic
   summaries, or tracing.
+
+### 2026-08-25: Private XPath boundary expansion
+
+- Work completed: expanded the private relative child-path parser and evaluator
+  tests across supported ASCII NCName punctuation, invalid syntax,
+  valid-but-unimplemented syntax, context selection, repeated children,
+  namespace exclusion, empty selection, document order, and logical failure
+  provenance.
+- Correction: `item.name` no longer fails merely because a supported NCName
+  contains a dot. Non-ASCII names remain conservatively unsupported until the
+  accepted profile selects editions and name rules; the ASCII-only helper does
+  not label them malformed.
+- Findings: the implemented evaluator selects unnamespaced expanded names in
+  document order and returns an empty sequence when no child matches. This
+  remains boundary evidence, not a general XPath parser or version claim.
+- Next slice: obtain intended-consumer transforms before selecting another
+  expression family. Keep general tokenization, Unicode name classification,
+  axes, predicates, functions, operators, and sequences standards-directed.

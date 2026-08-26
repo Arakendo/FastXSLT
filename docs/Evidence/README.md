@@ -32,6 +32,7 @@ pressure architecture but does not silently create a public guarantee.
 - [Private Ledger Conservation Experiment](private-ledger-conservation-experiment-2026-08-25.md)
 - [TS XSLT Transform-Family Candidate Inventory](ts-xslt-transform-family-candidate-inventory-2026-08-25.md)
 - [Private Template-Dispatch Slice](private-template-dispatch-slice-2026-08-25.md)
+- [Private XPath Boundary Expansion](private-xpath-boundary-expansion-2026-08-25.md)
 - [Private Built-In Rules and XSLT30 Fit Review](private-built-in-rules-and-xslt30-fit-review-2026-08-25.md)
 - [Runtime Composition Cohesion Review](runtime-composition-cohesion-review-2026-08-25.md)
 - [Private Prepared-Reuse Timing Probe](private-prepared-reuse-timing-probe-2026-08-25.md)
