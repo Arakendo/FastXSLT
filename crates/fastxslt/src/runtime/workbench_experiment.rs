@@ -68,9 +68,21 @@ impl WorkbenchCancellation {
         Self(CancellationToken::new())
     }
 
+    /// Creates a workbench-only cancellation state paused at its first charge.
+    #[must_use]
+    pub fn with_first_charge_barrier() -> Self {
+        Self(CancellationToken::with_first_charge_barrier())
+    }
+
     /// Signals cooperative cancellation for invocations observing this state.
     pub fn cancel(&self) {
         self.0.cancel();
+    }
+
+    /// Reports whether an invocation reached the workbench-only first charge.
+    #[must_use]
+    pub fn first_charge_observed(&self) -> bool {
+        self.0.first_charge_observed()
     }
 }
 

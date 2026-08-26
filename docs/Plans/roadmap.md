@@ -14,9 +14,10 @@ bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
 current order of work is:
 
-1. extend the bounded-concurrency isolated ASP.NET experiment with active
-   mid-execution cancellation, broader diagnostic parity, and representative
-   workload evidence; pre-dispatch cooperative cancellation, worker
+1. extend the bounded-concurrency isolated ASP.NET experiment with natural
+   unpaused cancellation measurements, broader diagnostic parity, and
+   representative workload evidence; pre-dispatch and deterministic active
+   cooperative cancellation, worker
    failure/restart, explicit snapshot generation promotion, and changed-resource
    file replacement now have private executable baselines;
 2. prototype the leading in-process .NET boundary against the same lifecycle;
@@ -180,7 +181,10 @@ failed, and harness-error cases without an unqualified conformance claim.
     semantics without engine-owned filesystem access.
   - [x] Carry already-signalled cooperative cancellation into an isolated
     invocation, preserve its exact direct-path diagnostic, and reuse the same
-    worker generation; active mid-execution signalling remains open.
+    worker generation; natural active-signal measurement remains open.
+  - [x] Route a correlated cancellation while execution is paused at a real
+    charge point, ignore an unrelated identity, preserve structured failure and
+    worker reuse, and keep the artificial barrier out of latency claims.
 - [ ] Exercise AR-0010's private invocation controls under adversarial work;
   distinguish deterministic budgets, cooperative cancellation, best-effort
   deadlines, panic handling, and process-level hard termination claims.

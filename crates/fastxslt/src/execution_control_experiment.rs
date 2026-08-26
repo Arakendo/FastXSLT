@@ -92,19 +92,60 @@ impl WorkLimits {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct CancellationToken(Arc<AtomicBool>);
+pub(crate) struct CancellationToken {
+    cancelled: Arc<AtomicBool>,
+    first_charge_barrier: Option<FirstChargeBarrier>,
+}
+
+#[derive(Debug, Clone)]
+struct FirstChargeBarrier {
+    observed: Arc<AtomicBool>,
+    released: Arc<AtomicBool>,
+    passed: Arc<AtomicBool>,
+}
 
 impl CancellationToken {
     pub(crate) fn new() -> Self {
-        Self(Arc::new(AtomicBool::new(false)))
+        Self {
+            cancelled: Arc::new(AtomicBool::new(false)),
+            first_charge_barrier: None,
+        }
+    }
+
+    pub(crate) fn with_first_charge_barrier() -> Self {
+        Self {
+            cancelled: Arc::new(AtomicBool::new(false)),
+            first_charge_barrier: Some(FirstChargeBarrier {
+                observed: Arc::new(AtomicBool::new(false)),
+                released: Arc::new(AtomicBool::new(false)),
+                passed: Arc::new(AtomicBool::new(false)),
+            }),
+        }
     }
 
     pub(crate) fn cancel(&self) {
-        self.0.store(true, Ordering::Release);
+        self.cancelled.store(true, Ordering::Release);
+        if let Some(barrier) = &self.first_charge_barrier {
+            barrier.released.store(true, Ordering::Release);
+        }
+    }
+
+    pub(crate) fn first_charge_observed(&self) -> bool {
+        self.first_charge_barrier
+            .as_ref()
+            .is_some_and(|barrier| barrier.observed.load(Ordering::Acquire))
     }
 
     fn is_cancelled(&self) -> bool {
-        self.0.load(Ordering::Acquire)
+        if let Some(barrier) = &self.first_charge_barrier
+            && !barrier.passed.swap(true, Ordering::AcqRel)
+        {
+            barrier.observed.store(true, Ordering::Release);
+            while !barrier.released.load(Ordering::Acquire) {
+                std::thread::yield_now();
+            }
+        }
+        self.cancelled.load(Ordering::Acquire)
     }
 }
 
@@ -218,7 +259,11 @@ impl InvocationControl {
 
 #[cfg(test)]
 mod tests {
-    use std::{hint::black_box, time::Instant};
+    use std::{
+        hint::black_box,
+        sync::mpsc,
+        time::{Duration, Instant},
+    };
 
     use super::{CancellationToken, ControlFailure, InvocationControl, WorkDomain, WorkLimits};
 
@@ -247,6 +292,33 @@ mod tests {
             control.charge(WorkDomain::XmlEvent, 1),
             Err(ControlFailure::Cancelled {
                 domain: WorkDomain::XmlEvent,
+            })
+        );
+    }
+
+    #[test]
+    fn first_charge_barrier_observes_then_releases_into_cancellation() {
+        let token = CancellationToken::with_first_charge_barrier();
+        let worker_token = token.clone();
+        let (result, completed) = mpsc::channel();
+        std::thread::spawn(move || {
+            let mut control = InvocationControl::new(worker_token, WorkLimits::unbounded());
+            result
+                .send(control.charge(WorkDomain::XsltInstruction, 1))
+                .expect("test receiver should remain available");
+        });
+
+        while !token.first_charge_observed() {
+            std::thread::yield_now();
+        }
+        assert!(completed.try_recv().is_err());
+        token.cancel();
+        assert_eq!(
+            completed
+                .recv_timeout(Duration::from_secs(1))
+                .expect("cancelled charge should finish"),
+            Err(ControlFailure::Cancelled {
+                domain: WorkDomain::XsltInstruction,
             })
         );
     }

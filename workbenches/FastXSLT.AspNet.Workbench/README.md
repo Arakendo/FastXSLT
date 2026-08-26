@@ -22,6 +22,7 @@ offers:
 - `POST /benchmark/tiers?requests=250&concurrency=4`
 - `POST /experiment/worker-recovery`
 - `POST /experiment/cooperative-cancellation`
+- `POST /experiment/active-cancellation`
 - `POST /experiment/generation-replacement`
 - `POST /experiment/host-file-replacement`
 - `POST /transform/saxoncs`
@@ -52,13 +53,23 @@ atomically promotes a new explicitly identified generation while an acquired old
 generation remains executable until its lease drains. These are workbench
 lifecycle observations, not a production restart policy or public API.
 
-The cooperative-cancellation probe carries a cancellation state that was
-already signalled by the host into a normal engine invocation. The engine
-observes it at its first owned charge point, returns `FXCT0001 / cancelled`, and
-the same process and prepared state execute a later request. The current
-single-request protocol cannot yet carry a new cancellation signal after
-execution begins; the endpoint reports that limitation explicitly. It neither
-kills nor replaces the worker.
+The pre-dispatch cooperative-cancellation probe carries a cancellation state
+that was already signalled by the host into a normal engine invocation. The
+engine observes it at its first owned charge point, returns
+`FXCT0001 / cancelled`, and the same process and prepared state execute a later
+request. It neither kills nor replaces the worker.
+
+The active-cancellation probe uses a correlated start acknowledgement and a
+separate cancel command while a 500-item transform is running. The worker's
+reader remains responsive while execution owns another thread, and the engine
+observes the shared signal at a local charge point. If completion is committed
+before the supervisor processes the matching signal, completion wins; otherwise
+the invocation returns structured cancellation. Signals for another logical
+identity do not affect the active invocation. This is still one active request
+per worker, not general multi-invocation multiplexing or a deadline guarantee.
+The deterministic probe pauses at its first real charge point until the control
+message arrives. Its signal-to-observation timing therefore measures the
+experimental host/worker route, not natural cancellation-check latency.
 
 The host-file variant imports source and stylesheet files into owned bytes,
 closes the handles, renames and removes both originals while the old worker

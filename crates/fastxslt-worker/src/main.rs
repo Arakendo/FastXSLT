@@ -1,6 +1,9 @@
 //! Length-prefixed isolated transport for the ASP.NET boundary workbench.
 
-use std::io::{self, BufReader, BufWriter, Read, Write};
+use std::{
+    io::{self, BufReader, BufWriter, Read, Write},
+    sync::{Arc, mpsc},
+};
 
 use fastxslt::workbench::{
     ExperimentalEngine, WorkbenchCancellation, WorkbenchFailure, WorkbenchLimits,
@@ -11,110 +14,221 @@ const TRANSFORM: u8 = 2;
 const SHUTDOWN: u8 = 3;
 const NON_COOPERATING_PROBE: u8 = 4;
 const CANCELLED_TRANSFORM: u8 = 5;
+const CONTROLLED_TRANSFORM: u8 = 6;
+const CANCEL: u8 = 7;
 const READY: u8 = 0x81;
 const RESULT: u8 = 0x82;
 const STOPPED: u8 = 0x83;
 const PROBE_STARTED: u8 = 0x84;
+const TRANSFORM_STARTED: u8 = 0x85;
 const ERROR: u8 = 0xff;
 const MAX_IDENTITY_BYTES: usize = 4_096;
 const MAX_RESOURCE_BYTES: usize = 1_048_576;
 
 fn main() -> io::Result<()> {
-    let stdin = io::stdin();
     let stdout = io::stdout();
-    let mut input = BufReader::new(stdin.lock());
     let mut output = BufWriter::new(stdout.lock());
-    let mut engine = None;
+    let (events, incoming) = mpsc::channel();
+    let reader_events = events.clone();
+    std::thread::spawn(move || read_commands(&reader_events));
+    let mut supervisor = Supervisor::new(events);
 
-    loop {
-        let operation = match read_byte(&mut input) {
-            Ok(operation) => operation,
-            Err(error) if error.kind() == io::ErrorKind::UnexpectedEof => return Ok(()),
-            Err(error) => return Err(error),
-        };
-        match operation {
-            INITIALIZE => {
-                let source_id = read_string(&mut input, MAX_IDENTITY_BYTES)?;
-                let source = read_bytes(&mut input, MAX_RESOURCE_BYTES)?;
-                let stylesheet_id = read_string(&mut input, MAX_IDENTITY_BYTES)?;
-                let stylesheet = read_bytes(&mut input, MAX_RESOURCE_BYTES)?;
-                match ExperimentalEngine::new(
-                    source_id,
-                    source,
-                    stylesheet_id,
-                    stylesheet,
-                    WorkbenchLimits::default(),
-                ) {
-                    Ok(initialized) => {
-                        engine = Some(initialized);
-                        write_byte(&mut output, READY)?;
+    while let Ok(event) = incoming.recv() {
+        if supervisor.handle_event(event, &mut output)? == LoopControl::Stop {
+            return Ok(());
+        }
+    }
+    Ok(())
+}
+
+struct Supervisor {
+    engine: Option<Arc<ExperimentalEngine>>,
+    active: Option<ActiveInvocation>,
+    stop_after_active: bool,
+    events: mpsc::Sender<Event>,
+}
+
+impl Supervisor {
+    fn new(events: mpsc::Sender<Event>) -> Self {
+        Self {
+            engine: None,
+            active: None,
+            stop_after_active: false,
+            events,
+        }
+    }
+
+    fn handle_event(&mut self, event: Event, output: &mut impl Write) -> io::Result<LoopControl> {
+        match event {
+            Event::Command(command) => self.handle_command(command, output),
+            Event::Completed { request_id, result } => {
+                if self.active.as_ref().map(|value| &value.request_id) == Some(&request_id) {
+                    self.active = None;
+                    write_transform_result(output, &request_id, result)?;
+                    if self.stop_after_active {
+                        write_byte(output, STOPPED)?;
                         output.flush()?;
+                        return Ok(LoopControl::Stop);
                     }
-                    Err(failure) => write_failure(&mut output, &failure)?,
+                }
+                Ok(LoopControl::Continue)
+            }
+            Event::InputClosed(result) => result.map(|()| LoopControl::Stop),
+        }
+    }
+
+    fn handle_command(
+        &mut self,
+        command: Command,
+        output: &mut impl Write,
+    ) -> io::Result<LoopControl> {
+        match command {
+            Command::Initialize {
+                source_id,
+                source,
+                stylesheet_id,
+                stylesheet,
+            } => match ExperimentalEngine::new(
+                source_id,
+                source,
+                stylesheet_id,
+                stylesheet,
+                WorkbenchLimits::default(),
+            ) {
+                Ok(initialized) => {
+                    self.engine = Some(Arc::new(initialized));
+                    write_byte(output, READY)?;
+                    output.flush()?;
+                }
+                Err(failure) => write_failure(output, &failure)?,
+            },
+            Command::Transform {
+                request_id,
+                cancelled,
+                controlled,
+            } => self.begin_transform(request_id, cancelled, controlled, output)?,
+            Command::Cancel { request_id } => {
+                if let Some(invocation) = &self.active
+                    && invocation.request_id == request_id
+                {
+                    invocation.cancellation.cancel();
                 }
             }
-            TRANSFORM => {
-                let request_id = read_string(&mut input, MAX_IDENTITY_BYTES)?;
-                write_transform(&mut output, engine.as_ref(), &request_id, false)?;
+            Command::Shutdown => {
+                if let Some(invocation) = &self.active {
+                    invocation.cancellation.cancel();
+                    self.stop_after_active = true;
+                } else {
+                    write_byte(output, STOPPED)?;
+                    output.flush()?;
+                    return Ok(LoopControl::Stop);
+                }
             }
-            CANCELLED_TRANSFORM => {
-                let request_id = read_string(&mut input, MAX_IDENTITY_BYTES)?;
-                write_transform(&mut output, engine.as_ref(), &request_id, true)?;
-            }
-            SHUTDOWN => {
-                write_byte(&mut output, STOPPED)?;
-                output.flush()?;
-                return Ok(());
-            }
-            NON_COOPERATING_PROBE => {
-                let request_id = read_string(&mut input, MAX_IDENTITY_BYTES)?;
-                write_byte(&mut output, PROBE_STARTED)?;
-                write_string(&mut output, &request_id)?;
+            Command::NonCooperatingProbe { request_id } => {
+                write_byte(output, PROBE_STARTED)?;
+                write_string(output, &request_id)?;
                 output.flush()?;
                 loop {
                     std::thread::park();
                 }
             }
-            _ => {
-                write_failure(
-                    &mut output,
-                    &WorkbenchFailure {
-                        code: "FXWB1002".to_owned(),
-                        category: "invalid".to_owned(),
-                        request_id: None,
-                        detail: format!("unknown worker operation: {operation}"),
-                    },
-                )?;
-            }
+            Command::Unknown(operation) => write_failure(
+                output,
+                &worker_failure(
+                    "FXWB1002",
+                    None,
+                    &format!("unknown worker operation: {operation}"),
+                ),
+            )?,
         }
+        Ok(LoopControl::Continue)
+    }
+
+    fn begin_transform(
+        &mut self,
+        request_id: String,
+        cancelled: bool,
+        controlled: bool,
+        output: &mut impl Write,
+    ) -> io::Result<()> {
+        if self.active.is_some() {
+            return write_failure(
+                output,
+                &worker_failure(
+                    "FXWB1003",
+                    Some(request_id),
+                    "worker already has an active invocation",
+                ),
+            );
+        }
+        let Some(engine) = &self.engine else {
+            return write_failure(
+                output,
+                &worker_failure(
+                    "FXWB1001",
+                    Some(request_id),
+                    "worker has not been initialized",
+                ),
+            );
+        };
+        let cancellation = WorkbenchCancellation::new();
+        if cancelled {
+            cancellation.cancel();
+        }
+        if !controlled {
+            let result = engine.transform_with_cancellation(&request_id, cancellation);
+            return write_transform_result(output, &request_id, result);
+        }
+        let cancellation = WorkbenchCancellation::with_first_charge_barrier();
+        start_transform(
+            Arc::clone(engine),
+            request_id.clone(),
+            cancellation.clone(),
+            self.events.clone(),
+        );
+        self.active = Some(ActiveInvocation {
+            request_id: request_id.clone(),
+            cancellation,
+        });
+        if controlled {
+            while !self
+                .active
+                .as_ref()
+                .is_some_and(|value| value.cancellation.first_charge_observed())
+            {
+                std::thread::yield_now();
+            }
+            write_byte(output, TRANSFORM_STARTED)?;
+            write_string(output, &request_id)?;
+            output.flush()?;
+        }
+        Ok(())
     }
 }
 
-fn write_transform(
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum LoopControl {
+    Continue,
+    Stop,
+}
+
+fn start_transform(
+    engine: Arc<ExperimentalEngine>,
+    request_id: String,
+    cancellation: WorkbenchCancellation,
+    events: mpsc::Sender<Event>,
+) {
+    std::thread::spawn(move || {
+        let result = engine.transform_with_cancellation(&request_id, cancellation);
+        let _ = events.send(Event::Completed { request_id, result });
+    });
+}
+
+fn write_transform_result(
     output: &mut impl Write,
-    engine: Option<&ExperimentalEngine>,
     request_id: &str,
-    cancelled: bool,
+    result: Result<String, WorkbenchFailure>,
 ) -> io::Result<()> {
-    let result = engine.map_or_else(
-        || {
-            Err(WorkbenchFailure {
-                code: "FXWB1001".to_owned(),
-                category: "invalid".to_owned(),
-                request_id: Some(request_id.to_owned()),
-                detail: "worker has not been initialized".to_owned(),
-            })
-        },
-        |engine| {
-            if cancelled {
-                let cancellation = WorkbenchCancellation::new();
-                cancellation.cancel();
-                engine.transform_with_cancellation(request_id, cancellation)
-            } else {
-                engine.transform(request_id)
-            }
-        },
-    );
     match result {
         Ok(result) => {
             write_byte(output, RESULT)?;
@@ -124,6 +238,104 @@ fn write_transform(
         }
         Err(failure) => write_failure(output, &failure),
     }
+}
+
+fn read_commands(events: &mpsc::Sender<Event>) {
+    let stdin = io::stdin();
+    let mut input = BufReader::new(stdin.lock());
+    loop {
+        let command = read_command(&mut input);
+        match command {
+            Ok(Some(command)) => {
+                if events.send(Event::Command(command)).is_err() {
+                    return;
+                }
+            }
+            Ok(None) => {
+                let _ = events.send(Event::InputClosed(Ok(())));
+                return;
+            }
+            Err(error) => {
+                let _ = events.send(Event::InputClosed(Err(error)));
+                return;
+            }
+        }
+    }
+}
+
+fn read_command(input: &mut impl Read) -> io::Result<Option<Command>> {
+    let operation = match read_byte(input) {
+        Ok(operation) => operation,
+        Err(error) if error.kind() == io::ErrorKind::UnexpectedEof => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    let command = match operation {
+        INITIALIZE => Command::Initialize {
+            source_id: read_string(input, MAX_IDENTITY_BYTES)?,
+            source: read_bytes(input, MAX_RESOURCE_BYTES)?,
+            stylesheet_id: read_string(input, MAX_IDENTITY_BYTES)?,
+            stylesheet: read_bytes(input, MAX_RESOURCE_BYTES)?,
+        },
+        TRANSFORM | CANCELLED_TRANSFORM | CONTROLLED_TRANSFORM => Command::Transform {
+            request_id: read_string(input, MAX_IDENTITY_BYTES)?,
+            cancelled: operation == CANCELLED_TRANSFORM,
+            controlled: operation == CONTROLLED_TRANSFORM,
+        },
+        CANCEL => Command::Cancel {
+            request_id: read_string(input, MAX_IDENTITY_BYTES)?,
+        },
+        SHUTDOWN => Command::Shutdown,
+        NON_COOPERATING_PROBE => Command::NonCooperatingProbe {
+            request_id: read_string(input, MAX_IDENTITY_BYTES)?,
+        },
+        _ => Command::Unknown(operation),
+    };
+    Ok(Some(command))
+}
+
+fn worker_failure(code: &str, request_id: Option<String>, detail: &str) -> WorkbenchFailure {
+    WorkbenchFailure {
+        code: code.to_owned(),
+        category: "invalid".to_owned(),
+        request_id,
+        detail: detail.to_owned(),
+    }
+}
+
+enum Command {
+    Initialize {
+        source_id: String,
+        source: Vec<u8>,
+        stylesheet_id: String,
+        stylesheet: Vec<u8>,
+    },
+    Transform {
+        request_id: String,
+        cancelled: bool,
+        controlled: bool,
+    },
+    Cancel {
+        request_id: String,
+    },
+    Shutdown,
+    NonCooperatingProbe {
+        request_id: String,
+    },
+    Unknown(u8),
+}
+
+enum Event {
+    Command(Command),
+    Completed {
+        request_id: String,
+        result: Result<String, WorkbenchFailure>,
+    },
+    InputClosed(io::Result<()>),
+}
+
+struct ActiveInvocation {
+    request_id: String,
+    cancellation: WorkbenchCancellation,
 }
 
 fn read_byte(input: &mut impl Read) -> io::Result<u8> {

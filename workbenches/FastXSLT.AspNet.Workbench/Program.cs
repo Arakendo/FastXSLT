@@ -157,6 +157,20 @@ app.MapPost("/experiment/cooperative-cancellation", async () =>
         operationalExperimentGate.Release();
     }
 });
+app.MapPost("/experiment/active-cancellation", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await OperationalExperiments.ExerciseActiveCancellationAsync(
+            workerPath,
+            stylesheet));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
 app.MapPost("/experiment/generation-replacement", async () =>
 {
     await operationalExperimentGate.WaitAsync();

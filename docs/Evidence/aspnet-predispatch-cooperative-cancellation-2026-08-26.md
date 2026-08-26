@@ -33,19 +33,18 @@ This distinguishes a reportable cooperative cancellation from
 also evidence that a cancellation observed before semantic mutation does not
 poison the retained generation.
 
-## Deliberate limitation
+## Limitation at this checkpoint
 
-The current worker protocol serializes one request and one response on a single
-stream. It cannot receive another control message while the execution loop is
-inside a transform. The workbench therefore reports
-`activeMidExecutionSignalSupported = false` and exposes no misleading managed
-`CancellationToken` overload.
+At this checkpoint the worker serialized one request and one response on a
+single stream and could not receive another control message while inside a
+transform. The endpoint retains `activeMidExecutionSignalSupported = false` as
+a description of this pre-dispatch operation. The later
+[active-cancellation experiment](aspnet-active-cooperative-cancellation-2026-08-26.md)
+adds a supervised reader/executor seam without rewriting this earlier evidence.
 
-Active cancellation needs a multiplexed reader/executor boundary or separate
-control channel, request-correlated signal ownership, cancellation/completion
-race rules, and wall-clock observation measurements. Killing a worker remains
-hard termination and is not a fallback implementation of cooperative
-cancellation. Deadlines remain a separate operational guarantee class.
+Killing a worker remains hard termination and is not a fallback implementation
+of cooperative cancellation. Deadlines remain a separate operational guarantee
+class.
 
 ## Disposition
 

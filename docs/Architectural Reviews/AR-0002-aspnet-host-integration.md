@@ -8,7 +8,7 @@
 | Scope | Non-Rust embedding, deployment, and performance boundary |
 | Trigger | ASP.NET applications are a motivating FastXSLT consumer class |
 | Related ADRs | ADR-0001 |
-| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`, `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
+| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`, `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
 
 ## Architectural question
 
@@ -123,8 +123,11 @@ security contracts.
   results after promotion. Paths remained outside engine identity and authority.
 - Pre-dispatch host cancellation now crosses the isolated boundary as
   cooperative engine state, preserves exact direct/isolated code, category,
-  request identity, and detail, and leaves the worker reusable. The serial
-  protocol still cannot carry a cancellation signal after execution begins.
+  request identity, and detail, and leaves the worker reusable.
+- A supervised reader/executor experiment now carries an identity-correlated
+  signal after execution reaches a real charge point, ignores an unrelated
+  identity, returns structured cancellation, and reuses the same worker. Its
+  deterministic first-charge barrier prevents a natural latency claim.
 
 ## Disposition
 
@@ -177,3 +180,6 @@ invalidates the selected mechanism.
 - 2026-08-26 -- Carried an already-signalled cooperative cancellation through
   the isolated boundary with exact direct diagnostic parity and worker reuse.
   Active mid-execution signalling remains open.
+- 2026-08-26 -- Added one-active-invocation control-plane multiplexing and a
+  deterministic first-charge cancellation probe with correlation and reuse.
+  Natural observation latency and managed API selection remain open.

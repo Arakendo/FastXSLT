@@ -9,10 +9,13 @@ public sealed class FastXsltWorkerClient : IDisposable
     private const byte Shutdown = 3;
     private const byte NonCooperatingProbe = 4;
     private const byte CancelledTransform = 5;
+    private const byte ControlledTransform = 6;
+    private const byte Cancel = 7;
     private const byte Ready = 0x81;
     private const byte Result = 0x82;
     private const byte Stopped = 0x83;
     private const byte ProbeStarted = 0x84;
+    private const byte TransformStarted = 0x85;
     private const byte Error = 0xff;
     private const int MaximumFrameBytes = 1_048_576;
 
@@ -132,6 +135,39 @@ public sealed class FastXsltWorkerClient : IDisposable
         }
     }
 
+    public async Task<ControlledTransformHandle> StartControlledTransformAsync(
+        string requestIdentity)
+    {
+        await _gate.WaitAsync();
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            await WriteByteAsync(ControlledTransform);
+            await WriteStringAsync(requestIdentity);
+            await _input.FlushAsync();
+            var response = await ReadByteAsync();
+            if (response != TransformStarted)
+            {
+                throw new InvalidDataException(
+                    $"Controlled transform unexpectedly returned response: {response}.");
+            }
+            var correlatedIdentity = await ReadStringAsync();
+            if (!StringComparer.Ordinal.Equals(requestIdentity, correlatedIdentity))
+            {
+                throw new InvalidDataException("Controlled transform identity did not match the request.");
+            }
+            return new ControlledTransformHandle(
+                requestIdentity,
+                ReadControlledCompletionAsync(requestIdentity),
+                SendCancellationAsync);
+        }
+        catch
+        {
+            _gate.Release();
+            throw;
+        }
+    }
+
     public (TimeSpan ProcessorTime, long WorkingSetBytes) ObserveProcess()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -231,6 +267,41 @@ public sealed class FastXsltWorkerClient : IDisposable
         NullIfEmpty(await ReadStringAsync()),
         await ReadStringAsync());
 
+    private async Task<string> ReadControlledCompletionAsync(string requestIdentity)
+    {
+        try
+        {
+            var response = await ReadByteAsync();
+            if (response == Error)
+            {
+                throw await ReadFailureAsync();
+            }
+            if (response != Result)
+            {
+                throw new InvalidDataException(
+                    $"Unexpected controlled transform response: {response}.");
+            }
+            var correlatedIdentity = await ReadStringAsync();
+            if (!StringComparer.Ordinal.Equals(requestIdentity, correlatedIdentity))
+            {
+                throw new InvalidDataException("Worker response identity did not match the request.");
+            }
+            return await ReadStringAsync();
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    private async Task SendCancellationAsync(string requestIdentity)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        await WriteByteAsync(Cancel);
+        await WriteStringAsync(requestIdentity);
+        await _input.FlushAsync();
+    }
+
     private async Task WriteByteAsync(byte value) =>
         await _input.WriteAsync(new[] { value });
 
@@ -271,6 +342,24 @@ public sealed class FastXsltWorkerClient : IDisposable
     }
 
     private static string? NullIfEmpty(string value) => value.Length == 0 ? null : value;
+}
+
+public sealed class ControlledTransformHandle(
+    string requestIdentity,
+    Task<string> completion,
+    Func<string, Task> sendCancellation)
+{
+    private int _cancellationSent;
+
+    public string RequestIdentity { get; } = requestIdentity;
+    public Task<string> Completion { get; } = completion;
+
+    public Task CancelAsync() => Interlocked.Exchange(ref _cancellationSent, 1) == 0
+        ? sendCancellation(RequestIdentity)
+        : Task.CompletedTask;
+
+    public Task SendUnrelatedCancellationForExperimentAsync(string unrelatedRequestIdentity) =>
+        sendCancellation(unrelatedRequestIdentity);
 }
 
 public sealed class FastXsltWorkerException(

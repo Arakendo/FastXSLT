@@ -183,6 +183,60 @@ public sealed class FastXsltWorkerPool : IDisposable
         }
     }
 
+    public async Task<ActiveCancellationEvidence> ExerciseActiveCancellationAsync(
+        string cancelledRequestIdentity,
+        string recoveryRequestIdentity)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        await _slots.WaitAsync();
+        WorkerSlot worker;
+        lock (_queueLock)
+        {
+            worker = _available.Dequeue();
+        }
+        try
+        {
+            var processId = worker.Client.ProcessId;
+            var invocation = await worker.Client.StartControlledTransformAsync(cancelledRequestIdentity);
+            await invocation.SendUnrelatedCancellationForExperimentAsync("unrelated-cancellation");
+            await Task.Delay(10);
+            var unrelatedSignalIgnored = !invocation.Completion.IsCompleted;
+            var observation = System.Diagnostics.Stopwatch.StartNew();
+            await invocation.CancelAsync();
+            FastXsltWorkerException disposition;
+            try
+            {
+                _ = await invocation.Completion;
+                throw new InvalidOperationException("Cancellation lost to completion in the active probe.");
+            }
+            catch (FastXsltWorkerException failure)
+            {
+                disposition = failure;
+            }
+            observation.Stop();
+            var recoveryResult = await worker.Client.TransformAsync(recoveryRequestIdentity);
+            return new ActiveCancellationEvidence(
+                disposition.Code,
+                disposition.Category,
+                disposition.RequestId,
+                disposition.Detail,
+                observation.Elapsed.TotalMilliseconds,
+                unrelatedSignalIgnored,
+                processId,
+                worker.Client.ProcessId,
+                recoveryRequestIdentity,
+                recoveryResult);
+        }
+        finally
+        {
+            lock (_queueLock)
+            {
+                _available.Enqueue(worker);
+            }
+            _slots.Release();
+        }
+    }
+
     public (TimeSpan ProcessorTime, long WorkingSetBytes) ObserveProcesses()
     {
         var processorTime = TimeSpan.Zero;
@@ -257,6 +311,18 @@ public sealed record CooperativeCancellationEvidence(
     string FailureCategory,
     string? CancelledRequestIdentity,
     string FailureDetail,
+    int ProcessIdBefore,
+    int ProcessIdAfter,
+    string RecoveryRequestIdentity,
+    string RecoveryResult);
+
+public sealed record ActiveCancellationEvidence(
+    string FailureCode,
+    string FailureCategory,
+    string? CancelledRequestIdentity,
+    string FailureDetail,
+    double SignalToObservationMilliseconds,
+    bool UnrelatedSignalIgnored,
     int ProcessIdBefore,
     int ProcessIdAfter,
     string RecoveryRequestIdentity,

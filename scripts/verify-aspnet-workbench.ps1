@@ -99,6 +99,21 @@ try {
                 $cancellation.activeMidExecutionSignalSupported) {
                 throw "Cooperative cancellation experiment violated its guarantee class: $($cancellation | ConvertTo-Json -Depth 5)"
             }
+            $activeCancellation = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/active-cancellation"
+            if ($activeCancellation.cancellation.failureCode -ne 'FXCT0001' -or
+                $activeCancellation.cancellation.failureCategory -ne 'cancelled' -or
+                $activeCancellation.cancellation.cancelledRequestIdentity -ne 'active-cooperative-cancelled' -or
+                -not $activeCancellation.cancellation.failureDetail.StartsWith('host cancellation observed while charging ') -or
+                $activeCancellation.cancellation.processIdBefore -ne $activeCancellation.cancellation.processIdAfter -or
+                -not $activeCancellation.cancellation.unrelatedSignalIgnored -or
+                $activeCancellation.cancellation.recoveryResult -cne '<?xml version="1.0" encoding="UTF-8"?><out>500.00</out>' -or
+                -not $activeCancellation.signalSentAfterWorkerStarted -or
+                -not $activeCancellation.cancellationWasCooperative -or
+                $activeCancellation.workerWasTerminated -or
+                -not $activeCancellation.completionWinsIfCommittedBeforeSignal -or
+                -not $activeCancellation.firstChargeBarrierWasExperimental) {
+                throw "Active cancellation experiment violated its race or reuse contract: $($activeCancellation | ConvertTo-Json -Depth 5)"
+            }
             $recovery = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/worker-recovery"
             if ($recovery.recovery.failureCode -ne 'FXWB2001' -or
                 $recovery.recovery.failureCategory -ne 'worker-terminated' -or
@@ -139,6 +154,15 @@ try {
                 WorkerReused = $cancellation.cancellation.processIdBefore -eq $cancellation.cancellation.processIdAfter
                 RecoveryCompleted = $cancellation.cancellation.recoveryResult -ceq $expected
                 ActiveMidExecutionSignalSupported = $cancellation.activeMidExecutionSignalSupported
+            }
+            [pscustomobject]@{
+                Experiment = 'ActiveCancellation'
+                FailureCode = $activeCancellation.cancellation.failureCode
+                FailureDetail = $activeCancellation.cancellation.failureDetail
+                SignalToObservationMilliseconds = $activeCancellation.cancellation.signalToObservationMilliseconds
+                WorkerReused = $activeCancellation.cancellation.processIdBefore -eq $activeCancellation.cancellation.processIdAfter
+                UnrelatedSignalIgnored = $activeCancellation.cancellation.unrelatedSignalIgnored
+                RecoveryCompleted = $activeCancellation.cancellation.recoveryResult -ceq '<?xml version="1.0" encoding="UTF-8"?><out>500.00</out>'
             }
             [pscustomobject]@{
                 Experiment = 'WorkerRecovery'

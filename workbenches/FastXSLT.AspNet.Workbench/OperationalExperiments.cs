@@ -55,6 +55,33 @@ public static class OperationalExperiments
         };
     }
 
+    public static async Task<object> ExerciseActiveCancellationAsync(
+        string workerPath,
+        byte[] stylesheet)
+    {
+        var source = BuildCancellationSource(500);
+        using var pool = await FastXsltWorkerPool.StartAsync(
+            workerPath,
+            "urn:fastxslt:active-cancellation:source",
+            source,
+            "urn:fastxslt:active-cancellation:stylesheet",
+            stylesheet,
+            workers: 1);
+        var cancellation = await pool.ExerciseActiveCancellationAsync(
+            "active-cooperative-cancelled",
+            "active-cooperative-after-cancel");
+        return new
+        {
+            cancellation,
+            sourceItems = 500,
+            signalSentAfterWorkerStarted = true,
+            cancellationWasCooperative = true,
+            workerWasTerminated = false,
+            completionWinsIfCommittedBeforeSignal = true,
+            firstChargeBarrierWasExperimental = true
+        };
+    }
+
     public static async Task<object> ExerciseGenerationReplacementAsync(
         string workerPath,
         byte[] source,
@@ -169,5 +196,16 @@ public static class OperationalExperiments
         using var imported = new MemoryStream();
         await input.CopyToAsync(imported);
         return imported.ToArray();
+    }
+
+    private static byte[] BuildCancellationSource(int items)
+    {
+        var source = new System.Text.StringBuilder("<order>");
+        for (var index = 0; index < items; index++)
+        {
+            source.Append("<order-item price=\"1.00\" qty=\"1\"/>");
+        }
+        source.Append("</order>");
+        return System.Text.Encoding.UTF8.GetBytes(source.ToString());
     }
 }
