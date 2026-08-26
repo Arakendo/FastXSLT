@@ -6,7 +6,7 @@
 | Opened | 2026-08-25 |
 | Owner | FastXSLT maintainers |
 | Target | AR-0008 standards-derived XML evidence and separate hostile-input evidence |
-| Related reviews | AR-0001, AR-0008, AR-0010 |
+| Related reviews | AR-0001, AR-0008, AR-0010, AR-0011 |
 | Depends on | XML/Namespaces edition selection and external-suite rights review |
 
 ## Purpose
@@ -14,6 +14,8 @@
 Use accumulated XML standards cases to test parser-boundary correctness while
 building a separate first-party adversarial corpus for bounded termination.
 Neither activity creates an XSLT conformance claim or a performance benchmark.
+AR-0011 owns the shared inventory/disposition/reporting principles; this plan
+sequences XML-specific acquisition and execution evidence.
 
 ## Corpus responsibilities
 

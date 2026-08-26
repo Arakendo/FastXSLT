@@ -5,7 +5,7 @@
 | Date | 2026-08-25 |
 | Reviewer | Monday, peer review supplied by the project owner |
 | Scope | External standards suites and distinct adversarial/performance corpus purposes |
-| Informs | AR-0001, AR-0008, AR-0010, testing strategy, and corpus planning |
+| Informs | AR-0001, AR-0008, AR-0010, AR-0011, testing strategy, and corpus planning |
 
 ## Reconciliation with the repository
 

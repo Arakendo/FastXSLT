@@ -81,3 +81,6 @@ and add the record to this index. Never reuse a retired number.
 - [AR-0010: Execution Supervision, Cooperative Control, and Hard Isolation](AR-0010-execution-supervision-cooperative-control-and-hard-isolation.md)
   -- Incubating; separate bounded cooperative dispatch from the process boundary
   required for forcible termination and hard recovery.
+- [AR-0011: Corpus Verification Ledger, Classification, and Reporting](AR-0011-corpus-verification-ledger-classification-and-reporting.md)
+  -- Incubating; preserve explainable disposition and denominator conservation
+  across suite-specific inventory, selection, execution, and reporting.
