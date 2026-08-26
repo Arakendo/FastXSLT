@@ -629,3 +629,21 @@ ambient I/O or public stability claim.
 - Next slice: decompose `path-007`'s arithmetic positional predicate into the
   minimum grammar and numeric semantics needed by the native case before
   implementation.
+
+### 2026-08-26: XSLT30 `path-007` constant arithmetic position
+
+- Work completed: executed the unmodified native `path-007` stylesheet and its
+  inline environment through a resource-admission helper shared with the
+  file-backed path cases.
+- XPath behavior: added checked constant-integer parsing with parentheses,
+  multiplicative/additive precedence, exact `div`, and non-negative `mod`, then
+  applied the result as a position over name-matched step nodes.
+- Claim control: fractional division, zero division, overflow, functions, and
+  other unimplemented numeric semantics remain explicit failures rather than
+  host-language approximations.
+- Cohesion: numeric expression parsing is isolated in a private XPath source
+  unit instead of expanding the navigation evaluator's responsibility.
+- Conservation: the complete `path` denominator now contains seven passes and
+  three explicit engine-unsupported outcomes.
+- Next slice: pressure the numeric seam with `floor()` in native `path-008`
+  without implying general XPath function support.

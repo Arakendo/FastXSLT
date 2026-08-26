@@ -163,7 +163,7 @@ fn assert_same_result_element_string(actual: &str, expected: &str, local: &str) 
     );
 }
 
-fn execute_file_backed_path_case(case_name: &str) -> (String, String) {
+fn execute_path_case(case_name: &str) -> (String, String) {
     let (test_set, set_path) = path_test_set();
     let test_case = find_element(
         &test_set,
@@ -182,9 +182,8 @@ fn execute_file_backed_path_case(case_name: &str) -> (String, String) {
         Some(("name", environment_ref)),
     )
     .expect("referenced path environment should exist");
-    let source_file = find_element(&test_set, environment, "source", None)
-        .and_then(|node| attribute(&test_set, node, "file"))
-        .expect("path case should have a file-backed principal source");
+    let source_element = find_element(&test_set, environment, "source", None)
+        .expect("path case should have a principal source");
     let stylesheet_file = find_element(&test_set, test_case, "stylesheet", None)
         .and_then(|node| attribute(&test_set, node, "file"))
         .expect("path case should name a stylesheet");
@@ -194,8 +193,14 @@ fn execute_file_backed_path_case(case_name: &str) -> (String, String) {
     let case_directory = set_path
         .parent()
         .expect("path test set should have a directory");
-    let source = fs::read(case_directory.join(source_file))
-        .expect("read upstream path source and close handle");
+    let source = if let Some(content) = find_element(&test_set, source_element, "content", None) {
+        test_set.string_value(content).into_bytes()
+    } else {
+        let source_file = attribute(&test_set, source_element, "file")
+            .expect("path source should be inline or name a file");
+        fs::read(case_directory.join(source_file))
+            .expect("read upstream path source and close handle")
+    };
     let stylesheet = fs::read(case_directory.join(stylesheet_file))
         .expect("read upstream path stylesheet and close handle");
     let source_id = format!("urn:w3c:xslt30:{case_name}:source");
@@ -538,30 +543,36 @@ fn executes_pinned_xslt30_path_001_child_axis_predicate() {
 
 #[test]
 fn executes_pinned_xslt30_path_002_from_a_file_backed_environment() {
-    let (actual, expected) = execute_file_backed_path_case("path-002");
+    let (actual, expected) = execute_path_case("path-002");
     assert_same_result_element_string(&actual, &expected, "out");
 }
 
 #[test]
 fn executes_pinned_xslt30_path_003_ancestor_or_self_predicate() {
-    let (actual, expected) = execute_file_backed_path_case("path-003");
+    let (actual, expected) = execute_path_case("path-003");
     assert_same_result_element_string(&actual, &expected, "out");
 }
 
 #[test]
 fn executes_pinned_xslt30_path_004_attribute_predicate() {
-    let (actual, expected) = execute_file_backed_path_case("path-004");
+    let (actual, expected) = execute_path_case("path-004");
     assert_same_result_element_string(&actual, &expected, "out");
 }
 
 #[test]
 fn executes_pinned_xslt30_path_005_descendant_or_self_predicate() {
-    let (actual, expected) = execute_file_backed_path_case("path-005");
+    let (actual, expected) = execute_path_case("path-005");
     assert_same_result_element_string(&actual, &expected, "out");
 }
 
 #[test]
 fn executes_pinned_xslt30_path_006_parent_predicate() {
-    let (actual, expected) = execute_file_backed_path_case("path-006");
+    let (actual, expected) = execute_path_case("path-006");
+    assert_same_result_element_string(&actual, &expected, "out");
+}
+
+#[test]
+fn executes_pinned_xslt30_path_007_constant_arithmetic_position() {
+    let (actual, expected) = execute_path_case("path-007");
     assert_same_result_element_string(&actual, &expected, "out");
 }

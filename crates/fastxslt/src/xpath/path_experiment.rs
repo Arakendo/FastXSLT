@@ -1,6 +1,7 @@
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
+use crate::xpath::constant_integer_experiment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ChildPath {
@@ -8,6 +9,7 @@ pub(crate) struct ChildPath {
     pub(crate) selects_context_item: bool,
     pub(crate) starts_with_descendant_search: bool,
     final_predicate: Option<ExistencePredicate>,
+    final_position_predicate: Option<PositionPredicate>,
     pub(crate) location: SourceLocation,
 }
 
@@ -25,6 +27,12 @@ enum PredicateAxis {
 struct ExistencePredicate {
     axis: PredicateAxis,
     name: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PositionPredicate {
+    Select(usize),
+    Never,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,10 +63,16 @@ pub(crate) fn parse_child_path(
             selects_context_item: true,
             starts_with_descendant_search: false,
             final_predicate: None,
+            final_position_predicate: None,
             location,
         });
     }
     let (expression, final_predicate) = parse_final_axis_predicate(expression);
+    let (expression, final_position_predicate) = if final_predicate.is_none() {
+        parse_final_position_predicate(expression)
+    } else {
+        (expression, None)
+    };
     let (expression, starts_with_descendant_search) = expression
         .strip_prefix("//")
         .map_or((expression, false), |expression| (expression, true));
@@ -104,6 +118,7 @@ pub(crate) fn parse_child_path(
         selects_context_item: false,
         starts_with_descendant_search,
         final_predicate,
+        final_position_predicate,
         location,
     })
 }
@@ -142,6 +157,26 @@ fn parse_final_axis_predicate(expression: &str) -> (&str, Option<ExistencePredic
     )
 }
 
+fn parse_final_position_predicate(expression: &str) -> (&str, Option<PositionPredicate>) {
+    let Some((path, predicate)) = expression.split_once('[') else {
+        return (expression, None);
+    };
+    let Some(predicate) = predicate.strip_suffix(']') else {
+        return (expression, None);
+    };
+    if path.is_empty() || path.contains('[') {
+        return (expression, None);
+    }
+    let Ok(value) = constant_integer_experiment::evaluate(predicate) else {
+        return (expression, None);
+    };
+    let position = usize::try_from(value)
+        .ok()
+        .filter(|position| *position > 0)
+        .map_or(PositionPredicate::Never, PositionPredicate::Select);
+    (path, Some(position))
+}
+
 fn is_ascii_ncname(value: &str) -> bool {
     let mut chars = value.chars();
     let Some(first) = chars.next() else {
@@ -177,6 +212,7 @@ pub(crate) fn evaluate_child_path_controlled(
     for (step_index, step) in path.steps.iter().enumerate() {
         let mut next = Vec::new();
         for node in current {
+            let mut matching_position = 0;
             let candidates = if step_index == 0 && path.starts_with_descendant_search {
                 descendant_nodes(document, node, control)?
             } else {
@@ -190,8 +226,15 @@ pub(crate) fn evaluate_child_path_controlled(
                     && document
                         .name(child)
                         .is_some_and(|name| name.namespace.is_none() && name.local == *step);
+                if matches_name {
+                    matching_position += 1;
+                }
                 let matches_predicate = matches_name
                     && if step_index + 1 == path.steps.len()
+                        && let Some(position) = path.final_position_predicate
+                    {
+                        position == PositionPredicate::Select(matching_position)
+                    } else if step_index + 1 == path.steps.len()
                         && let Some(predicate) = &path.final_predicate
                     {
                         match predicate.axis {
@@ -345,7 +388,7 @@ mod tests {
     use std::ops::Range;
 
     use super::{
-        ExistencePredicate, PathFailure, PredicateAxis, evaluate_child_path,
+        ExistencePredicate, PathFailure, PositionPredicate, PredicateAxis, evaluate_child_path,
         evaluate_child_path_controlled, parse_child_path,
     };
     use crate::execution_control_experiment::{InvocationControl, WorkDomain};
@@ -642,6 +685,35 @@ mod tests {
                 name: "element1".to_owned(),
             })
         );
+    }
+
+    #[test]
+    fn constant_integer_arithmetic_selects_the_matching_node_position() {
+        let parsed = parse_document(
+            "memory:source.xml",
+            b"<doc><element1>wrong</element1><skip/><element1>right</element1><element1>wrong</element1></doc>",
+            ParseLimits {
+                max_events: 32,
+                max_depth: 8,
+            },
+        )
+        .expect("source should parse");
+        let document = Document::from_parsed(parsed).expect("source XDM should build");
+        let doc = document.children(document.document_node())[0];
+        let path = parse_child_path("element1[(((((2*10)-4)+9) div 5) mod 3 )]", location())
+            .expect("path-007 expression should parse");
+        let mut control = InvocationControl::unbounded();
+
+        let selected = evaluate_child_path_controlled(&document, doc, &path, &mut control)
+            .expect("unbounded evaluation should succeed");
+
+        assert_eq!(selected.len(), 1);
+        assert_eq!(document.string_value(selected[0]), "right");
+        assert_eq!(
+            path.final_position_predicate,
+            Some(PositionPredicate::Select(2))
+        );
+        assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 4);
     }
 
     #[test]

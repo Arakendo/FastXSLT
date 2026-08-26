@@ -96,8 +96,8 @@ rationale = "The file-backed source snapshot executes leading descendant navigat
 set_file = "tests/expr/path/_path-test-set.xml"
 case_name = "path-007"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The arithmetic positional predicate exceeds the current private XPath slice."
+execution = "passed"
+rationale = "The inline source snapshot executes a checked constant-integer positional predicate with XPath arithmetic precedence for multiplication, addition, subtraction, exact div, mod, and parentheses."
 
 [[case]]
 set_file = "tests/expr/path/_path-test-set.xml"
