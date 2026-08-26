@@ -544,3 +544,17 @@ ambient I/O or public stability claim.
   selected and passing, with zero exclusions or hidden unsupported outcomes.
 - Next slice: select the next complete XSLT30 family together with the QT3
   expression cases needed to implement it honestly.
+
+### 2026-08-26: XSLT30 path denominator opened
+
+- Work completed: admitted all ten cases in the complete pinned XSLT30 `path`
+  test set and the complete four-case QT3 `Axes002` named-child-axis pressure
+  group before broadening implementation.
+- Execution: native `path-001` now passes through a narrow final
+  `child::name` existence predicate over a relative child path.
+- Work accounting: both candidate children and predicate children examined are
+  charged to the invocation's XPath node-visit domain.
+- Conservation: the XSLT30 denominator contains one pass and nine explicit
+  engine-unsupported outcomes; QT3 retains four explicit unsupported outcomes.
+- Next slice: map the file-backed `path-002` environment into sealed resources
+  and add only the ancestor/descendant XPath behavior its native case requires.

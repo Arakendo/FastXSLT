@@ -7,13 +7,14 @@ standards scope are decided.
 ## Current critical path
 
 FastXSLT has accepted its staged-modern semantic direction and conserved the
-first complete XSLT30 test-set denominator. The current order of work is:
+first complete XSLT30 test-set denominator and has now admitted the complete
+ten-case `path` denominator. The current order of work is:
 
-1. select the next complete metadata-driven XSLT30 family and its required QT3
-   expression pressure, retaining unsupported and harness-gap cases before
-   implementation begins;
-2. map each selected suite environment into bounded sealed resources and add
-   the comparison family required by that slice;
+1. widen the selected `path` family one semantic unit at a time, beginning with
+   ancestor-axis predicate pressure in `path-002`, while retaining all ten
+   dispositions and the paired QT3 `Axes002` group;
+2. map file-backed suite environments into bounded sealed resources and add the
+   comparison behavior required by those cases;
 3. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
    memory, and peak construction memory under those representative workloads;
 4. exercise the same lifecycle through the bounded ASP.NET workbench before
@@ -78,6 +79,9 @@ implemented behavior belongs to a named standards slice.
   and XSLT slice actually requires; keep tree-specific random-access assumptions
   inside their physical owner, providing evidence for AR-0007.
 - [ ] Expand XPath lex/parse/evaluate tests before growing XSLT instructions.
+- [x] Admit all ten cases in the complete XSLT30 `path` test set, execute
+  `path-001` through a charged final child-axis existence predicate, and retain
+  the other nine as explicit engine-unsupported outcomes.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,

@@ -6,6 +6,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 pub(crate) struct ChildPath {
     pub(crate) steps: Vec<String>,
     pub(crate) selects_context_item: bool,
+    pub(crate) final_child_predicate: Option<String>,
     pub(crate) location: SourceLocation,
 }
 
@@ -35,9 +36,11 @@ pub(crate) fn parse_child_path(
         return Ok(ChildPath {
             steps: Vec::new(),
             selects_context_item: true,
+            final_child_predicate: None,
             location,
         });
     }
+    let (expression, final_child_predicate) = parse_final_child_predicate(expression);
     if expression.starts_with('/')
         || expression.ends_with('/')
         || expression.contains("//")
@@ -78,8 +81,25 @@ pub(crate) fn parse_child_path(
     Ok(ChildPath {
         steps,
         selects_context_item: false,
+        final_child_predicate,
         location,
     })
+}
+
+fn parse_final_child_predicate(expression: &str) -> (&str, Option<String>) {
+    let Some((path, predicate)) = expression.split_once('[') else {
+        return (expression, None);
+    };
+    let Some(predicate) = predicate.strip_suffix(']') else {
+        return (expression, None);
+    };
+    let Some(child_name) = predicate.strip_prefix("child::") else {
+        return (expression, None);
+    };
+    if path.is_empty() || path.contains('[') || !is_ascii_ncname(child_name) {
+        return (expression, None);
+    }
+    (path, Some(child_name.to_owned()))
 }
 
 fn is_ascii_ncname(value: &str) -> bool {
@@ -114,16 +134,35 @@ pub(crate) fn evaluate_child_path_controlled(
         return Ok(vec![context]);
     }
     let mut current = vec![context];
-    for step in &path.steps {
+    for (step_index, step) in path.steps.iter().enumerate() {
         let mut next = Vec::new();
         for node in current {
             for child in document.children(node).iter().copied() {
                 control.charge(WorkDomain::XPathNodeVisit, 1)?;
-                if document.kind(child) == NodeKind::Element
+                let matches_name = document.kind(child) == NodeKind::Element
                     && document
                         .name(child)
-                        .is_some_and(|name| name.namespace.is_none() && name.local == *step)
+                        .is_some_and(|name| name.namespace.is_none() && name.local == *step);
+                let matches_predicate = if step_index + 1 == path.steps.len()
+                    && let Some(required) = &path.final_child_predicate
                 {
+                    let mut found = false;
+                    for predicate_child in document.children(child).iter().copied() {
+                        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+                        if document.kind(predicate_child) == NodeKind::Element
+                            && document.name(predicate_child).is_some_and(|name| {
+                                name.namespace.is_none() && name.local == *required
+                            })
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+                    found
+                } else {
+                    true
+                };
+                if matches_name && matches_predicate {
                     next.push(child);
                 }
             }
@@ -137,7 +176,10 @@ pub(crate) fn evaluate_child_path_controlled(
 mod tests {
     use std::ops::Range;
 
-    use super::{PathFailure, evaluate_child_path, parse_child_path};
+    use super::{
+        PathFailure, evaluate_child_path, evaluate_child_path_controlled, parse_child_path,
+    };
+    use crate::execution_control_experiment::{InvocationControl, WorkDomain};
     use crate::xdm::owned_tree_experiment::Document;
     use crate::xdm::owned_tree_experiment::SourceLocation;
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
@@ -155,6 +197,7 @@ mod tests {
 
         assert_eq!(path.steps, ["greeting", "name"]);
         assert!(!path.selects_context_item);
+        assert_eq!(path.final_child_predicate, None);
         assert_eq!(path.location, location());
     }
 
@@ -230,6 +273,31 @@ mod tests {
 
         assert_eq!(selected.len(), 1);
         assert_eq!(document.string_value(selected[0]), "FastXSLT");
+    }
+
+    #[test]
+    fn filters_the_final_child_step_by_an_explicit_named_child_axis() {
+        let parsed = parse_document(
+            "memory:source.xml",
+            b"<doc><child1/><child1><child2/></child1><child1><other/></child1></doc>",
+            ParseLimits {
+                max_events: 32,
+                max_depth: 8,
+            },
+        )
+        .expect("source should parse");
+        let document = Document::from_parsed(parsed).expect("source XDM should build");
+        let doc = document.children(document.document_node())[0];
+        let path = parse_child_path("child1[child::child2]", location())
+            .expect("named child-axis predicate should parse");
+
+        let mut control = InvocationControl::unbounded();
+        let selected = evaluate_child_path_controlled(&document, doc, &path, &mut control)
+            .expect("unbounded evaluation should succeed");
+
+        assert_eq!(selected.len(), 1);
+        assert_eq!(path.final_child_predicate.as_deref(), Some("child2"));
+        assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 5);
     }
 
     #[test]

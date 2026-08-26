@@ -21,6 +21,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `template-002/003` Node-Kind Execution](xslt30-template-002-003-node-kind-execution-2026-08-26.md)
 - [XSLT30 `template-004` Attribute Execution](xslt30-template-004-attribute-execution-2026-08-26.md)
 - [XSLT30 `template-005` Named-Template Execution](xslt30-template-005-named-template-execution-2026-08-26.md)
+- [XSLT30 Path Denominator and Child-Axis Predicate](xslt30-path-denominator-and-child-axis-predicate-2026-08-26.md)
 - [OASIS XSLT/XPath 1.0 Suite Candidate Review](oasis-xslt10-suite-candidate-review-2026-08-25.md)
 - [Rust XML Parser Candidate Review](rust-xml-parser-candidate-review-2026-08-25.md)
 - [Owned XDM Tree Experiment](owned-xdm-tree-experiment-2026-08-25.md)

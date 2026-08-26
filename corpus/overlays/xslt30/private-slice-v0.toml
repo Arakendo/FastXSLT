@@ -49,3 +49,73 @@ case_name = "avt-0701"
 selection = "selected"
 execution = "harness-unsupported"
 rationale = "Referenced environment plus all-of/assert-message/assert-eq preserves a compound assertion family that the private harness cannot yet compare."
+
+[[case]]
+set_file = "tests/expr/path/_path-test-set.xml"
+case_name = "path-001"
+selection = "selected"
+execution = "passed"
+rationale = "A final explicit child::name existence predicate executes over the current relative child path, with candidate and predicate-node visits charged to the invocation work budget."
+
+[[case]]
+set_file = "tests/expr/path/_path-test-set.xml"
+case_name = "path-002"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The ancestor-axis predicate and descendant abbreviation exceed the current private XPath slice."
+
+[[case]]
+set_file = "tests/expr/path/_path-test-set.xml"
+case_name = "path-003"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The ancestor-or-self-axis predicate and descendant abbreviation exceed the current private XPath slice."
+
+[[case]]
+set_file = "tests/expr/path/_path-test-set.xml"
+case_name = "path-004"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The attribute-axis predicate exceeds the current private XPath slice."
+
+[[case]]
+set_file = "tests/expr/path/_path-test-set.xml"
+case_name = "path-005"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The descendant-or-self-axis predicate and descendant abbreviation exceed the current private XPath slice."
+
+[[case]]
+set_file = "tests/expr/path/_path-test-set.xml"
+case_name = "path-006"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The parent-axis predicate and descendant abbreviation exceed the current private XPath slice."
+
+[[case]]
+set_file = "tests/expr/path/_path-test-set.xml"
+case_name = "path-007"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The arithmetic positional predicate exceeds the current private XPath slice."
+
+[[case]]
+set_file = "tests/expr/path/_path-test-set.xml"
+case_name = "path-008"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The floor function inside an arithmetic positional predicate exceeds the current private XPath slice."
+
+[[case]]
+set_file = "tests/expr/path/_path-test-set.xml"
+case_name = "path-009"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "A numeric function-call predicate exceeds the current private XPath slice."
+
+[[case]]
+set_file = "tests/expr/path/_path-test-set.xml"
+case_name = "path-010"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The complex match pattern, positional function, and descendant navigation exceed the current private XSLT and XPath slices."

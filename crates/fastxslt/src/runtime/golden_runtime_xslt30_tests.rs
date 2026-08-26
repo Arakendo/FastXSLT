@@ -19,6 +19,10 @@ const TEMPLATE_CASES: [&str; 6] = [
     "template-005",
     "template-006",
 ];
+const PATH_CASES: [&str; 10] = [
+    "path-001", "path-002", "path-003", "path-004", "path-005", "path-006", "path-007", "path-008",
+    "path-009", "path-010",
+];
 
 fn suite_test_set() -> (Document, PathBuf) {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -35,6 +39,25 @@ fn suite_test_set() -> (Document, PathBuf) {
     .expect("parse pinned XSLT30 test set");
     (
         Document::from_parsed(parsed).expect("build test-set document"),
+        path,
+    )
+}
+
+fn path_test_set() -> (Document, PathBuf) {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../vendor/xslt30-test/tests/expr/path/_path-test-set.xml");
+    let bytes = fs::read(&path).expect("read pinned XSLT30 path test set and close handle");
+    let parsed = parse_document(
+        "urn:w3c:xslt30:expr:path:test-set",
+        &bytes,
+        ParseLimits {
+            max_events: 4_096,
+            max_depth: 64,
+        },
+    )
+    .expect("parse pinned XSLT30 path test set");
+    (
+        Document::from_parsed(parsed).expect("build path test-set document"),
         path,
     )
 }
@@ -349,4 +372,97 @@ fn executes_pinned_xslt30_template_006_from_its_upstream_test_set() {
 
     assert_eq!(actual, "<?xml version=\"1.0\" encoding=\"UTF-8\"?><o></o>");
     assert_same_empty_document_element(actual, expected.trim());
+}
+
+#[test]
+fn inventories_the_complete_pinned_path_test_set_without_denominator_loss() {
+    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
+    let path_set = "set_file = \"tests/expr/path/_path-test-set.xml\"";
+    assert_eq!(overlay.matches(path_set).count(), PATH_CASES.len());
+
+    let (test_set, _) = path_test_set();
+    for case_name in PATH_CASES {
+        assert!(overlay.contains(&format!("case_name = \"{case_name}\"")));
+        let test_case = find_element(
+            &test_set,
+            test_set.document_node(),
+            "test-case",
+            Some(("name", case_name)),
+        )
+        .expect("overlay path case should exist in the complete pinned test set");
+        assert!(find_element(&test_set, test_case, "environment", None).is_some());
+        assert!(find_element(&test_set, test_case, "stylesheet", None).is_some());
+        assert!(find_element(&test_set, test_case, "assert-xml", None).is_some());
+    }
+}
+
+#[test]
+fn executes_pinned_xslt30_path_001_child_axis_predicate() {
+    let (test_set, set_path) = path_test_set();
+    let test_case = find_element(
+        &test_set,
+        test_set.document_node(),
+        "test-case",
+        Some(("name", "path-001")),
+    )
+    .expect("path-001 should exist in pinned suite");
+    let environment_ref = find_element(&test_set, test_case, "environment", None)
+        .and_then(|node| attribute(&test_set, node, "ref"))
+        .expect("path-001 should reference an environment");
+    let environment = find_element(
+        &test_set,
+        test_set.document_node(),
+        "environment",
+        Some(("name", environment_ref)),
+    )
+    .expect("path-001 environment should exist");
+    let source = find_element(&test_set, environment, "content", None)
+        .map(|node| test_set.string_value(node))
+        .expect("path-001 should have an inline principal source");
+    let stylesheet_file = find_element(&test_set, test_case, "stylesheet", None)
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("path-001 should name a stylesheet");
+    let expected = find_element(&test_set, test_case, "assert-xml", None)
+        .map(|node| test_set.string_value(node))
+        .expect("path-001 should provide an XML assertion");
+    let stylesheet = fs::read(
+        set_path
+            .parent()
+            .expect("path test set should have a directory")
+            .join(stylesheet_file),
+    )
+    .expect("read upstream path-001 stylesheet and close handle");
+
+    let source_id = "urn:w3c:xslt30:path-001:source";
+    let stylesheet_id = "urn:w3c:xslt30:path-001:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(source_id, source.into_bytes())
+        .expect("admit path-001 source");
+    resources
+        .admit(stylesheet_id, stylesheet)
+        .expect("admit path-001 stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, stylesheet_id).expect("compile path-001");
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 4_096,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    set.add(TransformRequest {
+        identity: "path-001".to_owned(),
+        result_identity: "result:path-001".to_owned(),
+        source_resource: source_id.to_owned(),
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    })
+    .expect("admit path-001 request");
+
+    let results = execute_transform_set(set.seal()).expect("execute path-001");
+    assert_same_result_element_string(&results.by_request["path-001"].serialized, &expected, "out");
 }

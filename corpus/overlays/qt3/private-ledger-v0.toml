@@ -7,3 +7,31 @@ case_name = "Axes001-1"
 selection = "selected"
 execution = "engine-unsupported"
 rationale = "Referenced source environment plus assert-eq exercise QT3-native metadata; the expression exceeds the current private XPath slice."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes002-1"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The first case in the complete named-child-axis group requires QT3 environment resolution, descendant navigation, explicit child-axis selection, and fn:count."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes002-2"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The zero-result single-child environment pressures the same named-child-axis semantics while the QT3 executor remains deferred."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes002-3"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The one-result compass environment pressures the same named-child-axis semantics while the QT3 executor remains deferred."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes002-4"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The two-result repeated environment completes the named-child-axis group while the QT3 executor remains deferred."
