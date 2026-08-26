@@ -116,6 +116,13 @@ pub(crate) struct InvocationControl {
     cancellation: CancellationToken,
     limits: WorkLimits,
     remaining: WorkLimits,
+    cancellation_fault: Option<CancellationFault>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct CancellationFault {
+    domain: WorkDomain,
+    accepted_charges_before_signal: usize,
 }
 
 impl InvocationControl {
@@ -124,6 +131,7 @@ impl InvocationControl {
             cancellation,
             limits,
             remaining: limits,
+            cancellation_fault: None,
         }
     }
 
@@ -131,11 +139,38 @@ impl InvocationControl {
         Self::new(CancellationToken::new(), WorkLimits::unbounded())
     }
 
+    /// Installs a deterministic test fault at a real charge point.
+    ///
+    /// This is not a deadline or production cancellation mechanism. It lets the
+    /// private experiment prove phase-specific failure behavior after a chosen
+    /// number of matching charges have already succeeded.
+    pub(crate) fn cancelling_on_charge(
+        mut self,
+        domain: WorkDomain,
+        accepted_charges_before_signal: usize,
+    ) -> Self {
+        self.cancellation_fault = Some(CancellationFault {
+            domain,
+            accepted_charges_before_signal,
+        });
+        self
+    }
+
     pub(crate) fn charge(
         &mut self,
         domain: WorkDomain,
         units: usize,
     ) -> Result<(), ControlFailure> {
+        if let Some(fault) = &mut self.cancellation_fault
+            && fault.domain == domain
+        {
+            if fault.accepted_charges_before_signal == 0 {
+                self.cancellation.cancel();
+                self.cancellation_fault = None;
+            } else {
+                fault.accepted_charges_before_signal -= 1;
+            }
+        }
         if self.cancellation.is_cancelled() {
             return Err(ControlFailure::Cancelled { domain });
         }

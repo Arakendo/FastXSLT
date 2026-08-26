@@ -57,6 +57,11 @@ Those counters have no calibrated defaults or public contract. Cancellation
 cannot interrupt work already executing inside one dependency call, and no
 maximum observation latency has been established.
 
+Test-only faults exercise cancellation after partial work in every implemented
+charge domain. The private reference transform set returns a structured failure
+and no partial result set even if a sibling completed first. That is not yet a
+public batch failure-collection policy.
+
 A separate private experiment can explicitly prepare selected snapshot sources
 as immutable XDM documents for functional reuse. It is not a hidden or public
 cache, is not used by the transform-set path, and has no measured retention,

@@ -256,3 +256,17 @@ ambient I/O or public stability claim.
 - Next slice: measure XDM retained/peak memory, preparation time, and concurrent
   preparation/contended reuse before choosing eager, lazy, transform-set,
   eviction, or public handle policy in AR-0009.
+
+### 2026-08-25: Phase-specific cancellation fault injection
+
+- Work completed: added a deterministic test-only fault that signals the host
+  token at a selected real charge point after optional earlier phase work.
+- Validation: 38 tests pass. XML, XDM, XSLT instruction, XPath visit, XDM
+  string-value, and serialization cancellation retain request/domain identity.
+  A sibling may complete first, but the private reference operation exposes no
+  partial result set when a later request cancels.
+- Findings: cancellation behavior at an observed charge point is deterministic;
+  wall-clock signal latency and work inside one dependency call remain
+  unbounded. Public batch failure collection is still undecided.
+- Next slice: account for result construction and add adversarial growth cases
+  before measuring observation gaps and hot-path accounting overhead.

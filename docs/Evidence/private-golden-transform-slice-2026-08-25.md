@@ -73,7 +73,7 @@ test compares the serializer output plus that harness terminator to the exact
 fixture bytes; the semantic result and serializer string are asserted
 separately.
 
-Thirty-six focused unit tests pass across resource, XML, XDM, XPath, compile,
+Thirty-eight focused unit tests pass across resource, XML, XDM, XPath, compile,
 runtime, batch, and serialization experiments. Negative cases establish private
 machine identities and categories for:
 
@@ -105,13 +105,14 @@ is direct evidence for ADR-0005's “produced does not mean admitted” rule.
 ## Limitations
 
 This is not XSLT, XPath, XML, XDM, or serialization conformance evidence. It has
-no public facade, host adapter, real parallel executor, cancellation, parameters,
+no public facade, host adapter, real parallel executor, deadline, parameters,
 messages, namespaces in results, attributes in literal results, template
 selection, general XPath, multi-node `xsl:value-of` conversion, non-output
 runtime budgets, or failure collection. Private `FX*` identifiers are
 experimental and are not stable standards codes or public compatibility
 promises.
 
-The next architecture work should use representative consumer transforms to
-close AR-0001 before widening language behavior. Cancellation and broader
-runtime budgets need a real host/control boundary rather than a synthetic flag.
+The next language work should use representative consumer transforms to close
+AR-0001 before widening behavior. Cooperative cancellation now has private
+charge-point and fault-injection evidence; deadlines, observation latency,
+broader runtime budgets, and a real host boundary remain unresolved.

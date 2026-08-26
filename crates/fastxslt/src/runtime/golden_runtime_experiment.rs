@@ -37,6 +37,7 @@ struct TransformRequest {
     result_identity: String,
     source_resource: String,
     cancellation: CancellationToken,
+    cancellation_fault: Option<(WorkDomain, usize)>,
 }
 
 #[derive(Debug)]
@@ -237,6 +238,9 @@ fn execute_transform_set(set: TransformSet) -> Result<ResultSet, ExecutionFailur
     for request in set.requests.into_iter().rev() {
         let mut control =
             InvocationControl::new(request.cancellation.clone(), set.policy.work_limits);
+        if let Some((domain, accepted_charges_before_signal)) = request.cancellation_fault {
+            control = control.cancelling_on_charge(domain, accepted_charges_before_signal);
+        }
         let bytes = set
             .snapshot
             .get(&request.source_resource)
@@ -586,6 +590,7 @@ mod tests {
             result_identity: result_id.to_owned(),
             source_resource: source_id.to_owned(),
             cancellation: CancellationToken::new(),
+            cancellation_fault: None,
         }
     }
 
@@ -977,3 +982,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "golden_runtime_control_tests.rs"]
+mod control_phase_tests;

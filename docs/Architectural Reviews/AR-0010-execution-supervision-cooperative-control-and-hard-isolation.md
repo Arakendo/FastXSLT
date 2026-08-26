@@ -138,6 +138,10 @@ only mode.
 - Cancellation observation occurs at charge points. Work inside one parser or
   dependency call remains non-interruptible until that call returns, so no
   wall-clock observation bound follows from the current experiment.
+- Deterministic test faults now signal cancellation after earlier work in each
+  implemented phase. All six paths retain request/domain identity, and the
+  private transform-set reference returns no partial result set even when a
+  sibling completed first. This does not select future batch failure collection.
 
 ## Disposition
 
@@ -165,7 +169,7 @@ or mutate semantic state.
   domain plus request identity in the private structured failure.
 - [ ] Add adversarial cases for excessive input bytes, names/attributes, nodes,
   sequence growth, recursion, expression work, diagnostics, and output.
-- [ ] Fault-inject cancellation at multiple execution phases and prove request
+- [x] Fault-inject cancellation at multiple execution phases and prove request
   identity and partial-result policy remain structured and deterministic.
 - [ ] Evaluate panic containment under the selected Rust panic strategy,
   including whether compiled, snapshot, worker, and shared dependency state may
@@ -203,3 +207,6 @@ is measured, or a stronger sandbox such as WASM becomes a viable host boundary.
   atomic cancellation token and six layer-owned work domains. Retained
   Incubating because observation latency, weights, overhead, deadlines, panic,
   dispatch, and hard isolation remain untested.
+- 2026-08-25 -- Injected deterministic cancellation after partial work in every
+  implemented charge domain and retained request/domain identity. The private
+  set returns no partial results, but public batch collection remains open.
