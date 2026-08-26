@@ -112,6 +112,10 @@ selects a host mechanism risks treating transport as the semantic model.
 - Private invocation control now distinguishes host cancellation from
   deterministic work-budget exhaustion. Both retain request and charge-domain
   identity; the existing output limit remains separately classified.
+- A private ASP.NET worker matrix now preserves the direct Rust fields for an
+  invalid request identity, malformed XML, unsupported XSLT instruction with
+  source span, and correlated cancellation. This is consumer-shaped evidence,
+  not acceptance of those private codes as a public catalog.
 
 ## Disposition
 
@@ -138,7 +142,7 @@ fixtures, and consumer-shaped handling evidence.
   have a safe handling path.
 - [ ] Define source/detail disclosure, retention bounds, cause behavior, and
   panic containment at public or FFI boundaries.
-- [ ] Exercise the shape through an ASP.NET candidate or independent consumer.
+- [x] Exercise the shape through an ASP.NET candidate or independent consumer.
 - [ ] If evidence converges, propose an ADR defining ownership, minimum stable
   fields, compatibility, and documentation/code synchronization.
 
@@ -160,3 +164,6 @@ a serialized form needs versioning.
   failures with request correlation.
 - 2026-08-25 -- Added separate private cancellation and per-domain work-budget
   failures across the implemented execution phases.
+- 2026-08-26 -- Preserved four representative direct diagnostic records through
+  the isolated ASP.NET candidate and retained same-worker recovery after the
+  invocation-level failures.

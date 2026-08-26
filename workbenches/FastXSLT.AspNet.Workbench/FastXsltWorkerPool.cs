@@ -49,7 +49,18 @@ public sealed class FastXsltWorkerPool : IDisposable
         }
     }
 
-    public async Task<string> TransformAsync(string requestIdentity)
+    public Task<string> TransformAsync(string requestIdentity) =>
+        TransformAsync(requestIdentity, static (client, identity) => client.TransformAsync(identity));
+
+    public Task<string> TransformAsync(
+        string requestIdentity,
+        CancellationToken cancellationToken) => TransformAsync(
+            requestIdentity,
+            (client, identity) => client.TransformAsync(identity, cancellationToken));
+
+    private async Task<string> TransformAsync(
+        string requestIdentity,
+        Func<FastXsltWorkerClient, string, Task<string>> transform)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         await _slots.WaitAsync();
@@ -62,7 +73,7 @@ public sealed class FastXsltWorkerPool : IDisposable
         {
             try
             {
-                return await worker.Client.TransformAsync(requestIdentity);
+                return await transform(worker.Client, requestIdentity);
             }
             catch (FastXsltWorkerException)
             {
@@ -90,6 +101,63 @@ public sealed class FastXsltWorkerPool : IDisposable
                 _available.Enqueue(worker);
             }
             _slots.Release();
+        }
+    }
+
+    public async Task<ManagedCancellationEvidence> ExerciseManagedCancellationAsync(
+        string preDispatchRequestIdentity,
+        string activeRequestIdentity,
+        string recoveryRequestIdentity)
+    {
+        using var alreadyCancelled = new CancellationTokenSource();
+        alreadyCancelled.Cancel();
+        var preDispatch = await CaptureCancellationAsync(
+            preDispatchRequestIdentity,
+            alreadyCancelled.Token);
+
+        using var active = new CancellationTokenSource();
+        var activeTransform = TransformAsync(activeRequestIdentity, active.Token);
+        active.Cancel();
+        FastXsltWorkerException? activeFailure = null;
+        string? activeResult = null;
+        try
+        {
+            activeResult = await activeTransform;
+        }
+        catch (FastXsltWorkerException failure) when (
+            failure.Code == "FXCT0001" && failure.Category == "cancelled")
+        {
+            activeFailure = failure;
+        }
+
+        var recoveryResult = await TransformAsync(recoveryRequestIdentity);
+        return new ManagedCancellationEvidence(
+            preDispatch.Code,
+            preDispatch.Category,
+            preDispatch.RequestId,
+            preDispatch.Detail,
+            activeFailure?.Code,
+            activeFailure?.Category,
+            activeFailure?.RequestId,
+            activeFailure?.Detail,
+            activeResult,
+            recoveryRequestIdentity,
+            recoveryResult);
+    }
+
+    private async Task<FastXsltWorkerException> CaptureCancellationAsync(
+        string requestIdentity,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _ = await TransformAsync(requestIdentity, cancellationToken);
+            throw new InvalidOperationException("A signalled invocation unexpectedly completed.");
+        }
+        catch (FastXsltWorkerException failure) when (
+            failure.Code == "FXCT0001" && failure.Category == "cancelled")
+        {
+            return failure;
         }
     }
 
@@ -407,6 +475,19 @@ public sealed record UnpausedCancellationRaceEvidence(
     double? MaximumCancellationMilliseconds,
     int ProcessIdBefore,
     int ProcessIdAfter,
+    string RecoveryRequestIdentity,
+    string RecoveryResult);
+
+public sealed record ManagedCancellationEvidence(
+    string PreDispatchFailureCode,
+    string PreDispatchFailureCategory,
+    string? PreDispatchRequestIdentity,
+    string PreDispatchFailureDetail,
+    string? ActiveFailureCode,
+    string? ActiveFailureCategory,
+    string? ActiveRequestIdentity,
+    string? ActiveFailureDetail,
+    string? ActiveResult,
     string RecoveryRequestIdentity,
     string RecoveryResult);
 

@@ -113,6 +113,35 @@ public sealed class FastXsltWorkerClient : IDisposable
         }
     }
 
+    public async Task<string> TransformAsync(
+        string requestIdentity,
+        CancellationToken cancellationToken)
+    {
+        if (cancellationToken.IsCancellationRequested)
+        {
+            await TransformCancelledBeforeDispatchAsync(requestIdentity);
+            throw new InvalidOperationException("A cancelled transform unexpectedly completed.");
+        }
+
+        var invocation = await StartUnpausedControlledTransformAsync(requestIdentity);
+        if (!cancellationToken.CanBeCanceled)
+        {
+            return await invocation.Completion;
+        }
+
+        var cancellationObserved = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var registration = cancellationToken.Register(
+            static state => ((TaskCompletionSource)state!).TrySetResult(),
+            cancellationObserved);
+        if (await Task.WhenAny(invocation.Completion, cancellationObserved.Task) ==
+            cancellationObserved.Task)
+        {
+            await invocation.CancelAsync();
+        }
+        return await invocation.Completion;
+    }
+
     public async Task TransformCancelledBeforeDispatchAsync(string requestIdentity)
     {
         await _gate.WaitAsync();

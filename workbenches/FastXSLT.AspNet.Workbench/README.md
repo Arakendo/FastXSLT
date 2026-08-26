@@ -24,6 +24,8 @@ offers:
 - `POST /experiment/cooperative-cancellation`
 - `POST /experiment/active-cancellation`
 - `POST /experiment/natural-cancellation-races`
+- `POST /experiment/managed-cancellation`
+- `POST /experiment/diagnostic-parity`
 - `POST /experiment/generation-replacement`
 - `POST /experiment/host-file-replacement`
 - `POST /transform/saxoncs`
@@ -79,6 +81,16 @@ valid completion remains a permitted race outcome. The larger input is admitted
 because the workbench's explicit XML-event limit is now supplied to prepared
 input parsing instead of being shadowed by its earlier 1,024-event default.
 
+The managed-cancellation endpoint adapts a .NET `CancellationToken` to that
+same cooperative protocol. It preserves FastXSLT's structured cancellation
+failure rather than selecting a public .NET exception policy. An active signal
+still races with committed completion and does not imply hard termination.
+
+The diagnostic-parity endpoint checks invalid request identity, malformed XML,
+unsupported XSLT, and cancellation against the same fields asserted by the
+direct Rust path, then proves the original worker can execute a valid request.
+This is a four-case private matrix, not a stable error catalog.
+
 The host-file variant imports source and stylesheet files into owned bytes,
 closes the handles, renames and removes both originals while the old worker
 generation remains live, writes changed source bytes at the same host path, and
@@ -92,8 +104,8 @@ Run those checks with:
 ./scripts/verify-aspnet-workbench.ps1 -OperationalExperiments
 ```
 
-Cooperative cancellation, deadlines, crash-loop policy, production pool
-lifecycle, and an in-process FastXSLT comparison remain future work. Hard worker
+Deadlines, crash-loop policy, production pool lifecycle, public managed error
+mapping, and an in-process FastXSLT comparison remain future work. Hard worker
 termination is intentionally not described as cooperative cancellation.
 
 The opt-in tiered benchmark generates deterministic 5-, 50-, and 500-item

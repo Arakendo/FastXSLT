@@ -75,5 +75,6 @@ pressure architecture but does not silently create a public guarantee.
 - [ASP.NET Pre-Dispatch Cooperative Cancellation](aspnet-predispatch-cooperative-cancellation-2026-08-26.md)
 - [ASP.NET Active Cooperative Cancellation](aspnet-active-cooperative-cancellation-2026-08-26.md)
 - [ASP.NET Natural Cancellation Races](aspnet-natural-cancellation-races-2026-08-26.md)
+- [ASP.NET Managed Cancellation and Diagnostic Parity](aspnet-managed-cancellation-and-diagnostic-parity-2026-08-26.md)
 - [Private Host-Owned Two-Stage Workflow](private-host-owned-two-stage-workflow-2026-08-25.md)
 - [Private Compiled Semantic Inspection](private-compiled-semantic-inspection-2026-08-25.md)

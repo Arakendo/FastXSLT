@@ -185,6 +185,35 @@ app.MapPost("/experiment/natural-cancellation-races", async () =>
         operationalExperimentGate.Release();
     }
 });
+app.MapPost("/experiment/managed-cancellation", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await OperationalExperiments.ExerciseManagedCancellationAsync(
+            workerPath,
+            stylesheet));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
+app.MapPost("/experiment/diagnostic-parity", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await OperationalExperiments.ExerciseDiagnosticParityAsync(
+            workerPath,
+            source,
+            stylesheet));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
 app.MapPost("/experiment/generation-replacement", async () =>
 {
     await operationalExperimentGate.WaitAsync();

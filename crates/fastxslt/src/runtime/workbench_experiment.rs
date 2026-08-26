@@ -340,4 +340,65 @@ mod tests {
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>600.00</out>"
         );
     }
+
+    #[test]
+    fn preserves_machine_readable_diagnostics_across_workbench_phases() {
+        let source = b"<order/>".to_vec();
+        let stylesheet =
+            include_bytes!("../../../../vendor/xslt30-test/tests/expr/for/for-004.xsl").to_vec();
+        let engine = ExperimentalEngine::new(
+            "urn:fastxslt:diagnostic:source",
+            source.clone(),
+            "urn:fastxslt:diagnostic:stylesheet",
+            stylesheet.clone(),
+            WorkbenchLimits::default(),
+        )
+        .expect("diagnostic engine should initialize");
+
+        let invalid_identity = engine
+            .transform("")
+            .expect_err("empty request identity should fail");
+        assert_eq!(invalid_identity.code, "FXWB0003");
+        assert_eq!(invalid_identity.category, "invalid");
+        assert_eq!(invalid_identity.request_id, None);
+        assert_eq!(
+            invalid_identity.detail,
+            "request identity must not be empty"
+        );
+
+        let Err(malformed) = ExperimentalEngine::new(
+            "urn:fastxslt:diagnostic:malformed-source",
+            b"<order></other>".to_vec(),
+            "urn:fastxslt:diagnostic:stylesheet",
+            stylesheet,
+            WorkbenchLimits::default(),
+        ) else {
+            panic!("malformed source should fail preparation");
+        };
+        assert_eq!(malformed.code, "FXXM0002");
+        assert_eq!(malformed.category, "invalid");
+        assert_eq!(malformed.request_id, None);
+        assert!(
+            malformed
+                .detail
+                .contains("urn:fastxslt:diagnostic:malformed-source")
+        );
+
+        let Err(unsupported) = ExperimentalEngine::new(
+            "urn:fastxslt:diagnostic:source",
+            source,
+            "urn:fastxslt:diagnostic:unsupported-stylesheet",
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><xsl:message/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            WorkbenchLimits::default(),
+        ) else {
+            panic!("unsupported instruction should fail compilation");
+        };
+        assert_eq!(unsupported.code, "FXST1006");
+        assert_eq!(unsupported.category, "unsupported");
+        assert_eq!(unsupported.request_id, None);
+        assert_eq!(
+            unsupported.detail,
+            "unsupported XSLT instruction: xsl:message at urn:fastxslt:diagnostic:unsupported-stylesheet:103..117"
+        );
+    }
 }

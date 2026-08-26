@@ -274,3 +274,7 @@ is measured, or a stronger sandbox such as WASM becomes a viable host boundary.
 - 2026-08-26 -- Added an unpaused 25-trial larger-workload race sample after
   propagating explicit XML limits into preparation. Retained representative and
   adversarial wall-clock bounds as open.
+- 2026-08-26 -- Adapted a managed `CancellationToken` to correlated cooperative
+  cancellation without changing the completion-wins rule or claiming hard
+  termination. A four-case direct/isolated matrix retained structured failure
+  fields; dispatched and in-process parity remain open.

@@ -110,6 +110,112 @@ public static class OperationalExperiments
         };
     }
 
+    public static async Task<object> ExerciseManagedCancellationAsync(
+        string workerPath,
+        byte[] stylesheet)
+    {
+        var source = BuildCancellationSource(20_000);
+        using var pool = await FastXsltWorkerPool.StartAsync(
+            workerPath,
+            "urn:fastxslt:managed-cancellation:source",
+            source,
+            "urn:fastxslt:managed-cancellation:stylesheet",
+            stylesheet,
+            workers: 1);
+        var cancellation = await pool.ExerciseManagedCancellationAsync(
+            "managed-cancellation-pre-dispatch",
+            "managed-cancellation-active",
+            "managed-cancellation-recovery");
+        return new
+        {
+            cancellation,
+            sourceItems = 20_000,
+            activeOutcome = cancellation.ActiveFailureCode is null ? "completed" : "cancelled",
+            completionWinsIfCommittedBeforeSignal = true,
+            managedTokenMeansCooperativeRequest = true,
+            hardTerminationGuaranteed = false
+        };
+    }
+
+    public static async Task<object> ExerciseDiagnosticParityAsync(
+        string workerPath,
+        byte[] source,
+        byte[] stylesheet)
+    {
+        using var client = await FastXsltWorkerClient.StartAsync(
+            workerPath,
+            "urn:fastxslt:diagnostic:source",
+            source,
+            "urn:fastxslt:diagnostic:stylesheet",
+            stylesheet);
+        var processId = client.ProcessId;
+        var invalidIdentity = await CaptureFailureAsync(() => client.TransformAsync(""));
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+        var cancellation = await CaptureFailureAsync(
+            () => client.TransformAsync("diagnostic-cancelled", cancelled.Token));
+        var recoveryResult = await client.TransformAsync("diagnostic-recovery");
+
+        var malformedSource = await CaptureInitializationFailureAsync(
+            workerPath,
+            "urn:fastxslt:diagnostic:malformed-source",
+            "<order></other>"u8.ToArray(),
+            "urn:fastxslt:diagnostic:stylesheet",
+            stylesheet);
+        var unsupportedStylesheet = await CaptureInitializationFailureAsync(
+            workerPath,
+            "urn:fastxslt:diagnostic:source",
+            source,
+            "urn:fastxslt:diagnostic:unsupported-stylesheet",
+            """<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><xsl:message/></xsl:template></xsl:stylesheet>"""u8.ToArray());
+
+        return new
+        {
+            invalidIdentity,
+            malformedSource,
+            unsupportedStylesheet,
+            cancellation,
+            processIdBefore = processId,
+            processIdAfter = client.ProcessId,
+            recoveryResult,
+            sameDiagnosticFieldsAsDirectRustAssertions = true
+        };
+    }
+
+    private static async Task<DiagnosticEvidence> CaptureInitializationFailureAsync(
+        string workerPath,
+        string sourceIdentity,
+        byte[] source,
+        string stylesheetIdentity,
+        byte[] stylesheet) => await CaptureFailureAsync(async () =>
+        {
+            using var unexpected = await FastXsltWorkerClient.StartAsync(
+                workerPath,
+                sourceIdentity,
+                source,
+                stylesheetIdentity,
+                stylesheet);
+            return "unexpected initialization";
+        });
+
+    private static async Task<DiagnosticEvidence> CaptureFailureAsync(
+        Func<Task<string>> operation)
+    {
+        try
+        {
+            _ = await operation();
+            throw new InvalidOperationException("Diagnostic probe unexpectedly succeeded.");
+        }
+        catch (FastXsltWorkerException failure)
+        {
+            return new DiagnosticEvidence(
+                failure.Code,
+                failure.Category,
+                failure.RequestId,
+                failure.Detail);
+        }
+    }
+
     public static async Task<object> ExerciseGenerationReplacementAsync(
         string workerPath,
         byte[] source,
@@ -237,3 +343,9 @@ public static class OperationalExperiments
         return System.Text.Encoding.UTF8.GetBytes(source.ToString());
     }
 }
+
+public sealed record DiagnosticEvidence(
+    string Code,
+    string Category,
+    string? RequestId,
+    string Detail);

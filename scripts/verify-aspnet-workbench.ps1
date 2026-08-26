@@ -125,6 +125,41 @@ try {
                 $naturalCancellation.workerWasTerminated) {
                 throw "Natural cancellation race experiment violated its accounting or reuse contract: $($naturalCancellation | ConvertTo-Json -Depth 5)"
             }
+            $managedCancellation = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/managed-cancellation"
+            if ($managedCancellation.cancellation.preDispatchFailureCode -ne 'FXCT0001' -or
+                $managedCancellation.cancellation.preDispatchFailureCategory -ne 'cancelled' -or
+                $managedCancellation.cancellation.preDispatchRequestIdentity -ne 'managed-cancellation-pre-dispatch' -or
+                $managedCancellation.cancellation.preDispatchFailureDetail -cne 'host cancellation observed while charging xslt-instruction work' -or
+                $managedCancellation.activeOutcome -notin @('cancelled', 'completed') -or
+                ($managedCancellation.activeOutcome -eq 'cancelled' -and
+                    ($managedCancellation.cancellation.activeFailureCode -ne 'FXCT0001' -or
+                     $managedCancellation.cancellation.activeFailureCategory -ne 'cancelled' -or
+                     $managedCancellation.cancellation.activeRequestIdentity -ne 'managed-cancellation-active')) -or
+                $managedCancellation.cancellation.recoveryResult -cne '<?xml version="1.0" encoding="UTF-8"?><out>20000.00</out>' -or
+                -not $managedCancellation.managedTokenMeansCooperativeRequest -or
+                $managedCancellation.hardTerminationGuaranteed -or
+                -not $managedCancellation.completionWinsIfCommittedBeforeSignal) {
+                throw "Managed cancellation experiment violated its adapter contract: $($managedCancellation | ConvertTo-Json -Depth 5)"
+            }
+            $diagnostics = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/diagnostic-parity"
+            if ($diagnostics.invalidIdentity.code -ne 'FXWB0003' -or
+                $diagnostics.invalidIdentity.category -ne 'invalid' -or
+                $null -ne $diagnostics.invalidIdentity.requestId -or
+                $diagnostics.invalidIdentity.detail -cne 'request identity must not be empty' -or
+                $diagnostics.malformedSource.code -ne 'FXXM0002' -or
+                $diagnostics.malformedSource.category -ne 'invalid' -or
+                -not $diagnostics.malformedSource.detail.Contains('urn:fastxslt:diagnostic:malformed-source') -or
+                $diagnostics.unsupportedStylesheet.code -ne 'FXST1006' -or
+                $diagnostics.unsupportedStylesheet.category -ne 'unsupported' -or
+                $diagnostics.unsupportedStylesheet.detail -cne 'unsupported XSLT instruction: xsl:message at urn:fastxslt:diagnostic:unsupported-stylesheet:103..117' -or
+                $diagnostics.cancellation.code -ne 'FXCT0001' -or
+                $diagnostics.cancellation.category -ne 'cancelled' -or
+                $diagnostics.cancellation.requestId -ne 'diagnostic-cancelled' -or
+                $diagnostics.processIdBefore -ne $diagnostics.processIdAfter -or
+                $diagnostics.recoveryResult -cne $expected -or
+                -not $diagnostics.sameDiagnosticFieldsAsDirectRustAssertions) {
+                throw "Diagnostic parity experiment changed a direct-path diagnostic: $($diagnostics | ConvertTo-Json -Depth 5)"
+            }
             $recovery = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/worker-recovery"
             if ($recovery.recovery.failureCode -ne 'FXWB2001' -or
                 $recovery.recovery.failureCategory -ne 'worker-terminated' -or
@@ -184,6 +219,22 @@ try {
                 MedianCancellationMilliseconds = $naturalCancellation.races.medianCancellationMilliseconds
                 MaximumCancellationMilliseconds = $naturalCancellation.races.maximumCancellationMilliseconds
                 WorkerReused = $naturalCancellation.races.processIdBefore -eq $naturalCancellation.races.processIdAfter
+            }
+            [pscustomobject]@{
+                Experiment = 'ManagedCancellation'
+                PreDispatchFailureCode = $managedCancellation.cancellation.preDispatchFailureCode
+                ActiveOutcome = $managedCancellation.activeOutcome
+                ActiveFailureCode = $managedCancellation.cancellation.activeFailureCode
+                RecoveryCompleted = $managedCancellation.cancellation.recoveryResult -ceq '<?xml version="1.0" encoding="UTF-8"?><out>20000.00</out>'
+                HardTerminationGuaranteed = $managedCancellation.hardTerminationGuaranteed
+            }
+            [pscustomobject]@{
+                Experiment = 'DiagnosticParity'
+                InvalidIdentity = $diagnostics.invalidIdentity.code
+                MalformedSource = $diagnostics.malformedSource.code
+                UnsupportedStylesheet = $diagnostics.unsupportedStylesheet.code
+                Cancellation = $diagnostics.cancellation.code
+                WorkerReused = $diagnostics.processIdBefore -eq $diagnostics.processIdAfter
             }
             [pscustomobject]@{
                 Experiment = 'WorkerRecovery'

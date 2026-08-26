@@ -132,6 +132,10 @@ security contracts.
   0.0952–0.4285 ms signal-to-response and the worker remained reusable. An
   earlier 500-item trial completed first. These are local workload observations,
   not deadline bounds or managed API selection.
+- A private `CancellationToken` overload now requests correlated cooperative
+  cancellation while retaining structured engine failures and the
+  completion-wins race rule. A four-case direct/isolated diagnostic matrix
+  retained code, category, request identity, detail, and source identity/span.
 
 ## Disposition
 
@@ -190,3 +194,6 @@ invalidates the selected mechanism.
 - 2026-08-26 -- Sampled 25 unpaused cancellation races after propagating the
   explicit XML-event limit into prepared parsing. All larger-workload trials
   cancelled; the earlier small-workload completion preserved the opposite race.
+- 2026-08-26 -- Added a managed-token adapter and matched four representative
+  direct diagnostics across the isolated boundary. Public exception mapping and
+  the in-process candidate remain unresolved.
