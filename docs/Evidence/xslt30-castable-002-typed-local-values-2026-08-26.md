@@ -46,17 +46,19 @@ XPath-node-visit and XDM-string-value charges.
 
 ## Conservation
 
-The complete nine-case denominator remains seven selected and two schema-aware
-profile exclusions. Selected execution advances to two passes, two
-engine-unsupported cases, and three harness-unsupported cases. No case fails or
-disappears.
+At this checkpoint, the complete nine-case denominator remained seven selected
+and two schema-aware profile exclusions. Selected execution advanced to two
+passes, two engine-unsupported cases, and three harness-unsupported cases. No
+case failed or disappeared. The later
+[`castable-003` evidence](xslt30-castable-003-numeric-conversion-matrix-2026-08-26.md)
+advances that same conserved denominator.
 
 ## Claim boundary
 
-This evidence does not establish a public atomic-value API, canonical lexical
-serialization, arithmetic over typed values, cross-numeric conversion,
-precision or range behavior, general variable select expressions, global
-variables, variable sequences, external parameters, or general static type
-checking. Variable castability is intentionally limited to the two native
-targets required here; other typed-target combinations remain unsupported for
-`castable-003` rather than being guessed from retained strings.
+At this checkpoint, the evidence did not establish a public atomic-value API,
+canonical lexical serialization, arithmetic over typed values, cross-numeric
+conversion, precision or range behavior, general variable select expressions,
+global variables, variable sequences, external parameters, or general static
+type checking. Variable castability was intentionally limited to the two native
+targets required here; the later `castable-003` slice adds a narrow conversion
+matrix instead of guessing compatibility from retained strings.

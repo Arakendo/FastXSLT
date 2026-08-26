@@ -166,8 +166,8 @@ rationale = "The native XSLT20+ case executes typed local variables produced by 
 set_file = "tests/expr/castable/_castable-test-set.xml"
 case_name = "castable-003"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The native XSLT20+ case is admitted; its variable, cast, and castable-as semantics exceed the current compiler and evaluator."
+execution = "passed"
+rationale = "The native XSLT20+ case executes an explicit, value-aware castability matrix across boolean, integer, decimal, float, and double typed variables, including prohibited nonnumeric source types."
 
 [[case]]
 set_file = "tests/expr/castable/_castable-test-set.xml"

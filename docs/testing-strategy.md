@@ -99,8 +99,9 @@ built-in lexical checks and its exact file-backed XML assertion, including the
 inherited `xs` namespace binding. Native `castable-002` also passes through 12
 explicit casts into typed local variables and 24
 type-directed checks against `xs:string` and `xs:untypedAtomic`. The selected
-denominator is therefore two passes, two engine-unsupported, and three
-harness-unsupported cases.
+denominator now also executes native `castable-003` through 20 positive numeric
+conversion edges and three incompatible source/target edges. It is therefore
+three passes, one engine-unsupported, and three harness-unsupported cases.
 The admission resolves every stylesheet, environment, source, dependency, and
 assertion shape without treating the two profile exclusions as undiscovered or
 silently dropping the compound-assertion cases.

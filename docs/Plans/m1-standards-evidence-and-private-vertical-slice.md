@@ -883,3 +883,24 @@ ambient I/O or public stability claim.
   conversion matrix for boolean/integer/decimal/float/double castability while
   keeping strings, durations, and temporal values visibly incompatible where
   required.
+
+### 2026-08-26: Native XSLT30 `castable-003` numeric conversion matrix
+
+- Work completed: executed the unmodified native stylesheet's 20 positive
+  boolean/numeric castability checks and three incompatible nonnumeric checks,
+  matching its file-backed XML assertion exactly.
+- Conversion rule: boolean converts to each numeric target; integer, decimal,
+  float, and double interconvert, except non-finite float/double values cannot
+  convert to decimal or integer.
+- Type rule: same-type values remain castable, including non-finite floating
+  values. String and untyped values remain lexical and value-dependent;
+  unrelated duration and temporal sources do not acquire numeric compatibility.
+- Conservation: the denominator remains seven selected plus two
+  profile-excluded; selected execution is three passes, one
+  engine-unsupported, and three harness-unsupported.
+- Claim control: the slice answers castability without constructing converted
+  numeric values or choosing numeric storage, precision, range, rounding, or
+  canonical lexical rules.
+- Next slice: execute native `castable-004` through explicit duration-family
+  conversion rules while keeping date, time, boolean, and numeric sources
+  incompatible with duration targets where required.

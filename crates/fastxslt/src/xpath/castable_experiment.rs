@@ -1,4 +1,4 @@
-//! Built-in atomic lexical castability for the native `castable-001` slice.
+//! Built-in atomic castability for the native `castable-001` through `003` slices.
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
@@ -49,12 +49,7 @@ pub(crate) fn parse(
     let target =
         BuiltinAtomicType::parse(target).ok_or_else(|| unsupported(normalized, location))?;
     let operand = if let Some(variable) = operand.strip_prefix('$') {
-        if !is_ascii_ncname(variable)
-            || !matches!(
-                target,
-                BuiltinAtomicType::String | BuiltinAtomicType::UntypedAtomic
-            )
-        {
+        if !is_ascii_ncname(variable) || !variable_target_is_admitted(target) {
             return Err(unsupported(normalized, location));
         }
         AtomicOperand::Variable(variable.to_owned())
@@ -153,11 +148,32 @@ fn castable_as(value: &AtomicValue, target: BuiltinAtomicType) -> bool {
     ) {
         return true;
     }
-    value.atomic_type() == target
-        || matches!(
-            value.atomic_type(),
-            BuiltinAtomicType::String | BuiltinAtomicType::UntypedAtomic
-        ) && target.accepts(value.lexical())
+    if value.atomic_type() == target {
+        return true;
+    }
+
+    match (value.atomic_type(), target) {
+        (BuiltinAtomicType::String | BuiltinAtomicType::UntypedAtomic, _) => {
+            target.accepts(value.lexical())
+        }
+        (BuiltinAtomicType::Boolean, target) if target.is_numeric() => true,
+        (source, target) if source.is_numeric() && target.is_numeric() => !matches!(
+            (source, target, value.lexical().trim()),
+            (
+                BuiltinAtomicType::Float | BuiltinAtomicType::Double,
+                BuiltinAtomicType::Integer | BuiltinAtomicType::Decimal,
+                "INF" | "-INF" | "NaN"
+            )
+        ),
+        _ => false,
+    }
+}
+
+fn variable_target_is_admitted(target: BuiltinAtomicType) -> bool {
+    matches!(
+        target,
+        BuiltinAtomicType::String | BuiltinAtomicType::UntypedAtomic
+    ) || target.is_numeric()
 }
 
 impl BuiltinAtomicType {
@@ -195,6 +211,13 @@ impl BuiltinAtomicType {
             Self::Date => date(collapsed),
             Self::Time => time(collapsed),
         }
+    }
+
+    fn is_numeric(self) -> bool {
+        matches!(
+            self,
+            Self::Integer | Self::Decimal | Self::Float | Self::Double
+        )
     }
 }
 
@@ -534,5 +557,71 @@ mod tests {
         assert_eq!(variable_name(&to_string), Some("value"));
         assert!(evaluate_value(&to_string, &value, &mut control).expect("castability"));
         assert!(evaluate_value(&to_untyped, &value, &mut control).expect("castability"));
+    }
+
+    #[test]
+    fn applies_the_admitted_cross_numeric_castability_matrix() {
+        let location = SourceLocation {
+            resource: "memory:stylesheet".to_owned(),
+            span: 0..40,
+        };
+        let sources = [
+            ("boolean", BuiltinAtomicType::Boolean, "true"),
+            ("integer", BuiltinAtomicType::Integer, "43"),
+            ("decimal", BuiltinAtomicType::Decimal, "-1.23"),
+            ("float", BuiltinAtomicType::Float, "12.78e-2"),
+            ("double", BuiltinAtomicType::Double, "12.78e-2"),
+        ];
+        let targets = ["float", "double", "decimal", "integer"];
+        let mut control = InvocationControl::unbounded();
+
+        for (name, source_type, lexical) in sources {
+            let value = crate::xdm::atomic_value_experiment::AtomicValue::from_validated_lexical(
+                source_type,
+                lexical,
+            );
+            for target in targets {
+                let expression = parse(&format!("${name} castable as xs:{target}"), &location)
+                    .expect("native numeric conversion edge should parse");
+                assert!(
+                    evaluate_value(&expression, &value, &mut control).expect("castability"),
+                    "{source_type:?} should be castable as xs:{target}"
+                );
+            }
+        }
+
+        for lexical in ["INF", "-INF", "NaN"] {
+            for source_type in [BuiltinAtomicType::Float, BuiltinAtomicType::Double] {
+                let value =
+                    crate::xdm::atomic_value_experiment::AtomicValue::from_validated_lexical(
+                        source_type,
+                        lexical,
+                    );
+                for target in ["decimal", "integer"] {
+                    let expression = parse(&format!("$value castable as xs:{target}"), &location)
+                        .expect("value-sensitive numeric conversion edge should parse");
+                    assert!(
+                        !evaluate_value(&expression, &value, &mut control).expect("castability")
+                    );
+                }
+            }
+        }
+
+        for (source_type, lexical) in [
+            (BuiltinAtomicType::String, "abcd"),
+            (BuiltinAtomicType::Duration, "P1Y2M3DT1H2M3S"),
+            (BuiltinAtomicType::DateTime, "2002-10-10T12:00:00-05:00"),
+        ] {
+            let value = crate::xdm::atomic_value_experiment::AtomicValue::from_validated_lexical(
+                source_type,
+                lexical,
+            );
+            let expression = parse("$value castable as xs:float", &location)
+                .expect("native incompatible edge should parse");
+            assert!(
+                !evaluate_value(&expression, &value, &mut control).expect("castability"),
+                "{source_type:?} should not be castable as xs:float"
+            );
+        }
     }
 }

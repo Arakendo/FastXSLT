@@ -43,7 +43,15 @@ const CASES: [CasePressure; 9] = [
         selection: "selected",
         execution: "passed",
     },
-    selected_engine_case("castable-003", "assert-xml"),
+    CasePressure {
+        name: "castable-003",
+        environment: Some("castbl01"),
+        spec: "XSLT20+",
+        features: &[],
+        assertion: "assert-xml",
+        selection: "selected",
+        execution: "passed",
+    },
     selected_engine_case("castable-004", "assert-xml"),
     CasePressure {
         name: "castable-005",
@@ -77,6 +85,12 @@ fn executes_native_xslt30_castable_001() {
 #[test]
 fn executes_native_xslt30_castable_002_with_typed_local_variables() {
     let (actual, expected) = execute_principal_case("castable-002");
+    assert_eq!(actual, expected.trim());
+}
+
+#[test]
+fn executes_native_xslt30_castable_003_with_numeric_conversions() {
+    let (actual, expected) = execute_principal_case("castable-003");
     assert_eq!(actual, expected.trim());
 }
 

@@ -14,11 +14,10 @@ bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
 current order of work is:
 
-1. define the explicit built-in numeric conversion/castability matrix required
-   by native XSLT30 `castable-003`, including boolean-to-numeric and
-   float/double-to-integer admission;
-2. execute `castable-003` without treating retained lexical strings as proof
-   that every cross-type conversion is supported, retaining the other six
+1. define the explicit duration-family conversion/castability rules required by
+   native XSLT30 `castable-004` without generalizing them to unrelated temporal
+   types;
+2. execute `castable-004`, retaining the other five
    dispositions;
 3. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
    memory, and peak construction memory under those representative workloads;
@@ -116,6 +115,9 @@ implemented behavior belongs to a named standards slice.
 - [x] Execute native `castable-002` through explicit built-in casts and typed
   invocation-local variables. The selected denominator is two passes, two
   engine gaps, and three harness gaps.
+- [x] Execute native `castable-003` through an explicit value-aware conversion
+  matrix for boolean, integer, decimal, float, and double. The selected
+  denominator is three passes, one engine gap, and three harness gaps.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,
