@@ -588,3 +588,9 @@ fn executes_pinned_xslt30_path_009_floor_position() {
     let (actual, expected) = execute_path_case("path-009");
     assert_same_result_element_string(&actual, &expected, "out");
 }
+
+#[test]
+fn executes_pinned_xslt30_path_010_multi_step_positions_and_pattern() {
+    let (actual, expected) = execute_path_case("path-010");
+    assert_same_result_element_string(&actual, &expected, "out");
+}

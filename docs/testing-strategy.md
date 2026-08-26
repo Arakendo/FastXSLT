@@ -71,7 +71,8 @@ The suites are inputs, not executable FastXSLT tests by themselves. The private
 XSLT30 slice resolves all six `template` selections and their upstream
 environments, stylesheets, and XML assertions; that complete test set passes.
 The overlay also conserves the complete ten-case `path` test set: `path-001`
-through `path-009` pass and `path-010` remains explicitly engine-unsupported.
+through `path-010` all pass. The complete `template` and `path` denominators are
+local executable evidence, not broad standards claims.
 The paired QT3
 `Axes002` named-child-axis group is inventoried but not yet executable. These
 local denominators do not imply support for adjacent test sets or broad

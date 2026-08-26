@@ -180,6 +180,9 @@ fn compile_matched_template(
                 local: name.to_owned(),
             })
         }
+        path if path.contains('/') && !path.starts_with('/') => MatchPattern::Path(
+            parse_child_path(path, document.location(element).clone()).map_err(map_path_failure)?,
+        ),
         _ => {
             return Err(unsupported(
                 "FXST1005",

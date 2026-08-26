@@ -567,33 +567,26 @@ fn apply_template(
     control
         .charge(WorkDomain::XsltInstruction, 1)
         .map_err(|failure| control_failure(failure, request_id))?;
-    if let Some(template) = program
-        .matched_templates
-        .iter()
-        .filter(|template| template.mode.as_deref() == mode)
-        .filter(|template| match &template.pattern {
-            MatchPattern::Element(name) => source.name(node) == Some(name),
-            MatchPattern::Attribute(name) => {
-                source.kind(node) == NodeKind::Attribute && source.name(node) == Some(name)
-            }
-            MatchPattern::Comment => source.kind(node) == NodeKind::Comment,
-            MatchPattern::ProcessingInstruction => {
-                source.kind(node) == NodeKind::ProcessingInstruction
-            }
-            MatchPattern::AnyNode => matches!(
-                source.kind(node),
-                NodeKind::Element
-                    | NodeKind::Text
-                    | NodeKind::Comment
-                    | NodeKind::ProcessingInstruction
-            ),
-        })
-        .max_by_key(|template| match template.pattern {
+    let mut selected_template = None;
+    let mut selected_priority = 0;
+    for template in &program.matched_templates {
+        if template.mode.as_deref() != mode
+            || !match_pattern(&template.pattern, source, node, request_id, control)?
+        {
+            continue;
+        }
+        let priority = match template.pattern {
+            MatchPattern::Path(_) => 3,
             MatchPattern::Element(_) | MatchPattern::Attribute(_) => 2,
             MatchPattern::Comment | MatchPattern::ProcessingInstruction => 1,
             MatchPattern::AnyNode => 0,
-        })
-    {
+        };
+        if selected_template.is_none() || priority >= selected_priority {
+            selected_template = Some(template);
+            selected_priority = priority;
+        }
+    }
+    if let Some(template) = selected_template {
         let inputs = SequenceInputs {
             program,
             source,
@@ -631,6 +624,61 @@ fn apply_template(
         }
         NodeKind::Attribute | NodeKind::Comment | NodeKind::ProcessingInstruction => Ok(Vec::new()),
     }
+}
+
+fn match_pattern(
+    pattern: &MatchPattern,
+    source: &Document,
+    node: NodeId,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    match pattern {
+        MatchPattern::Element(name) => Ok(source.name(node) == Some(name)),
+        MatchPattern::Path(path) => match_path_pattern(source, node, path, request_id, control),
+        MatchPattern::Attribute(name) => {
+            Ok(source.kind(node) == NodeKind::Attribute && source.name(node) == Some(name))
+        }
+        MatchPattern::Comment => Ok(source.kind(node) == NodeKind::Comment),
+        MatchPattern::ProcessingInstruction => {
+            Ok(source.kind(node) == NodeKind::ProcessingInstruction)
+        }
+        MatchPattern::AnyNode => Ok(matches!(
+            source.kind(node),
+            NodeKind::Element
+                | NodeKind::Text
+                | NodeKind::Comment
+                | NodeKind::ProcessingInstruction
+        )),
+    }
+}
+
+fn match_path_pattern(
+    source: &Document,
+    node: NodeId,
+    path: &crate::xpath::path_experiment::ChildPath,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let mut first_step = node;
+    for _ in 1..path.steps.len() {
+        let Some(parent) = source.parent(first_step) else {
+            return Ok(false);
+        };
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        first_step = parent;
+    }
+    let Some(context) = source.parent(first_step) else {
+        return Ok(false);
+    };
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    evaluate_child_path_controlled(source, context, path, control)
+        .map(|selected| selected.contains(&node))
+        .map_err(|failure| control_failure(failure, request_id))
 }
 
 fn append_text(

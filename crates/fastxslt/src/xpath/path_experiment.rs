@@ -9,7 +9,7 @@ pub(crate) struct ChildPath {
     pub(crate) selects_context_item: bool,
     pub(crate) starts_with_descendant_search: bool,
     final_predicate: Option<ExistencePredicate>,
-    final_position_predicate: Option<PositionPredicate>,
+    step_position_predicates: Vec<Option<PositionPredicate>>,
     pub(crate) location: SourceLocation,
 }
 
@@ -32,6 +32,7 @@ struct ExistencePredicate {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PositionPredicate {
     Select(usize),
+    Last,
     Never,
 }
 
@@ -63,23 +64,26 @@ pub(crate) fn parse_child_path(
             selects_context_item: true,
             starts_with_descendant_search: false,
             final_predicate: None,
-            final_position_predicate: None,
+            step_position_predicates: Vec::new(),
             location,
         });
     }
     let (expression, final_predicate) = parse_final_axis_predicate(expression);
-    let (expression, final_position_predicate) = if final_predicate.is_none() {
-        parse_final_position_predicate(expression)
-    } else {
-        (expression, None)
-    };
     let (expression, starts_with_descendant_search) = expression
         .strip_prefix("//")
         .map_or((expression, false), |expression| (expression, true));
+    let parsed_steps = if final_predicate.is_none() {
+        parse_position_steps(expression)
+    } else {
+        Some((
+            expression.split('/').map(str::to_owned).collect(),
+            vec![None; expression.split('/').count()],
+        ))
+    };
     if expression.starts_with('/')
         || expression.ends_with('/')
         || expression.contains("//")
-        || expression.contains(['[', ']', '(', ')', '@', ':', '*'])
+        || parsed_steps.is_none()
     {
         return Err(PathFailure::Unsupported {
             detail: format!(
@@ -98,7 +102,7 @@ pub(crate) fn parse_child_path(
         });
     }
 
-    let steps: Vec<_> = expression.split('/').map(str::to_owned).collect();
+    let (steps, step_position_predicates) = parsed_steps.expect("checked above");
     if steps.iter().any(|step| step == "." || step == "..") {
         return Err(PathFailure::Unsupported {
             detail: format!(
@@ -118,7 +122,7 @@ pub(crate) fn parse_child_path(
         selects_context_item: false,
         starts_with_descendant_search,
         final_predicate,
-        final_position_predicate,
+        step_position_predicates,
         location,
     })
 }
@@ -157,24 +161,57 @@ fn parse_final_axis_predicate(expression: &str) -> (&str, Option<ExistencePredic
     )
 }
 
-fn parse_final_position_predicate(expression: &str) -> (&str, Option<PositionPredicate>) {
-    let Some((path, predicate)) = expression.split_once('[') else {
-        return (expression, None);
-    };
-    let Some(predicate) = predicate.strip_suffix(']') else {
-        return (expression, None);
-    };
-    if path.is_empty() || path.contains('[') {
-        return (expression, None);
+fn parse_position_steps(expression: &str) -> Option<(Vec<String>, Vec<Option<PositionPredicate>>)> {
+    let raw_steps = split_path_steps(expression)?;
+    let mut steps = Vec::with_capacity(raw_steps.len());
+    let mut predicates = Vec::with_capacity(raw_steps.len());
+    for raw_step in raw_steps {
+        let (name, predicate) = if let Some((name, predicate)) = raw_step.split_once('[') {
+            let predicate = predicate.strip_suffix(']')?;
+            if name.is_empty() || predicate.contains(['[', ']']) {
+                return None;
+            }
+            let predicate = if predicate.trim() == "last()" {
+                PositionPredicate::Last
+            } else {
+                let value = constant_integer_experiment::evaluate(predicate).ok()?;
+                usize::try_from(value)
+                    .ok()
+                    .filter(|position| *position > 0)
+                    .map_or(PositionPredicate::Never, PositionPredicate::Select)
+            };
+            (name, Some(predicate))
+        } else {
+            (raw_step, None)
+        };
+        steps.push(name.to_owned());
+        predicates.push(predicate);
     }
-    let Ok(value) = constant_integer_experiment::evaluate(predicate) else {
-        return (expression, None);
-    };
-    let position = usize::try_from(value)
-        .ok()
-        .filter(|position| *position > 0)
-        .map_or(PositionPredicate::Never, PositionPredicate::Select);
-    (path, Some(position))
+    Some((steps, predicates))
+}
+
+fn split_path_steps(expression: &str) -> Option<Vec<&str>> {
+    let mut steps = Vec::new();
+    let mut start = 0;
+    let mut bracket_depth: usize = 0;
+    for (offset, character) in expression.char_indices() {
+        match character {
+            '[' => bracket_depth += 1,
+            ']' => {
+                bracket_depth = bracket_depth.checked_sub(1)?;
+            }
+            '/' if bracket_depth == 0 => {
+                steps.push(&expression[start..offset]);
+                start = offset + 1;
+            }
+            _ => {}
+        }
+    }
+    if bracket_depth != 0 {
+        return None;
+    }
+    steps.push(&expression[start..]);
+    Some(steps)
 }
 
 fn is_ascii_ncname(value: &str) -> bool {
@@ -212,62 +249,59 @@ pub(crate) fn evaluate_child_path_controlled(
     for (step_index, step) in path.steps.iter().enumerate() {
         let mut next = Vec::new();
         for node in current {
-            let mut matching_position = 0;
             let candidates = if step_index == 0 && path.starts_with_descendant_search {
                 descendant_nodes(document, node, control)?
             } else {
                 document.children(node).to_vec()
             };
+            let mut named_candidates = Vec::new();
             for child in candidates {
                 if step_index != 0 || !path.starts_with_descendant_search {
                     control.charge(WorkDomain::XPathNodeVisit, 1)?;
                 }
-                let matches_name = document.kind(child) == NodeKind::Element
+                if document.kind(child) == NodeKind::Element
                     && document
                         .name(child)
-                        .is_some_and(|name| name.namespace.is_none() && name.local == *step);
-                if matches_name {
-                    matching_position += 1;
+                        .is_some_and(|name| name.namespace.is_none() && name.local == *step)
+                {
+                    named_candidates.push(child);
                 }
-                let matches_predicate = matches_name
-                    && if step_index + 1 == path.steps.len()
-                        && let Some(position) = path.final_position_predicate
-                    {
-                        position == PositionPredicate::Select(matching_position)
-                    } else if step_index + 1 == path.steps.len()
-                        && let Some(predicate) = &path.final_predicate
-                    {
-                        match predicate.axis {
-                            PredicateAxis::Child => {
-                                has_named_child(document, child, &predicate.name, control)?
-                            }
-                            PredicateAxis::Attribute => {
-                                has_named_attribute(document, child, &predicate.name, control)?
-                            }
-                            PredicateAxis::Ancestor => has_named_ancestor(
-                                document,
-                                child,
-                                &predicate.name,
-                                false,
-                                control,
-                            )?,
-                            PredicateAxis::AncestorOrSelf => {
-                                has_named_ancestor(document, child, &predicate.name, true, control)?
-                            }
-                            PredicateAxis::DescendantOrSelf => has_named_descendant_or_self(
-                                document,
-                                child,
-                                &predicate.name,
-                                control,
-                            )?,
-                            PredicateAxis::Parent => {
-                                has_named_parent(document, child, &predicate.name, control)?
-                            }
+            }
+            let matching_count = named_candidates.len();
+            for (offset, child) in named_candidates.into_iter().enumerate() {
+                let position_matches = match path.step_position_predicates[step_index] {
+                    Some(PositionPredicate::Select(position)) => position == offset + 1,
+                    Some(PositionPredicate::Last) => offset + 1 == matching_count,
+                    Some(PositionPredicate::Never) => false,
+                    None => true,
+                };
+                let existence_matches = if step_index + 1 == path.steps.len()
+                    && let Some(predicate) = &path.final_predicate
+                {
+                    match predicate.axis {
+                        PredicateAxis::Child => {
+                            has_named_child(document, child, &predicate.name, control)?
                         }
-                    } else {
-                        true
-                    };
-                if matches_predicate {
+                        PredicateAxis::Attribute => {
+                            has_named_attribute(document, child, &predicate.name, control)?
+                        }
+                        PredicateAxis::Ancestor => {
+                            has_named_ancestor(document, child, &predicate.name, false, control)?
+                        }
+                        PredicateAxis::AncestorOrSelf => {
+                            has_named_ancestor(document, child, &predicate.name, true, control)?
+                        }
+                        PredicateAxis::DescendantOrSelf => {
+                            has_named_descendant_or_self(document, child, &predicate.name, control)?
+                        }
+                        PredicateAxis::Parent => {
+                            has_named_parent(document, child, &predicate.name, control)?
+                        }
+                    }
+                } else {
+                    true
+                };
+                if position_matches && existence_matches {
                     next.push(child);
                 }
             }
@@ -710,10 +744,50 @@ mod tests {
         assert_eq!(selected.len(), 1);
         assert_eq!(document.string_value(selected[0]), "right");
         assert_eq!(
-            path.final_position_predicate,
+            path.step_position_predicates[0],
             Some(PositionPredicate::Select(2))
         );
         assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 4);
+    }
+
+    #[test]
+    fn applies_positions_to_individual_steps_and_last_to_the_matched_sequence() {
+        let parsed = parse_document(
+            "memory:source.xml",
+            b"<doc><element1>wrong</element1><element1><child1>wrong</child1><child1>wrong</child1><child1>right</child1></element1><element1>wrong</element1></doc>",
+            ParseLimits {
+                max_events: 40,
+                max_depth: 8,
+            },
+        )
+        .expect("source should parse");
+        let document = Document::from_parsed(parsed).expect("source XDM should build");
+        let path = parse_child_path(
+            "doc/element1[(((((2*10)-4)+9) div 5) mod 3)]/child1[last()]",
+            location(),
+        )
+        .expect("path-010 selection should parse");
+        let mut control = InvocationControl::unbounded();
+
+        let selected = evaluate_child_path_controlled(
+            &document,
+            document.document_node(),
+            &path,
+            &mut control,
+        )
+        .expect("unbounded evaluation should succeed");
+
+        assert_eq!(selected.len(), 1);
+        assert_eq!(document.string_value(selected[0]), "right");
+        assert_eq!(
+            path.step_position_predicates,
+            [
+                None,
+                Some(PositionPredicate::Select(2)),
+                Some(PositionPredicate::Last),
+            ]
+        );
+        assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 7);
     }
 
     #[test]

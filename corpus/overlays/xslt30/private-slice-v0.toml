@@ -117,5 +117,5 @@ rationale = "The inline source snapshot executes floor(2) as a numeric position 
 set_file = "tests/expr/path/_path-test-set.xml"
 case_name = "path-010"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The complex match pattern, positional function, and descendant navigation exceed the current private XSLT and XPath slices."
+execution = "passed"
+rationale = "The file-backed source snapshot executes predicates on individual path steps, last() over the final name-matched sequence, and the same compiled path semantics as a template match pattern."

@@ -662,3 +662,21 @@ ambient I/O or public stability claim.
 - Next slice: decompose `path-010`'s intermediate positional predicate, final
   `last()` predicate, and complex match pattern before implementing the final
   denominator case.
+
+### 2026-08-26: Complete XSLT30 path denominator
+
+- Work completed: executed native `path-010` with an intermediate arithmetic
+  position, final `last()`, and the same relative path as a template match
+  pattern.
+- XPath behavior: positional predicates now belong to individual path steps and
+  operate over each step's name-matched sequence.
+- XSLT behavior: a private relative path pattern walks the candidate lineage to
+  the first-step context, then reuses the charged path evaluator and node
+  identity for matching.
+- Conservation: all ten cases in the complete `path` denominator are selected
+  and passing, with zero exclusions or hidden unsupported outcomes.
+- Claim control: general XSLT pattern grammar and priority, general XPath
+  predicates/functions, and standards conformance remain outside this evidence.
+- Next slice: execute the paired QT3 `Axes002-1` through `Axes002-4` group by
+  adding native environment resolution, explicit named child-axis steps,
+  `fn:count`, and `assert-eq` comparison without routing it through XSLT.

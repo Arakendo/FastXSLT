@@ -6,15 +6,15 @@ standards scope are decided.
 
 ## Current critical path
 
-FastXSLT has accepted its staged-modern semantic direction and conserved the
-first complete XSLT30 test-set denominator and has now admitted the complete
-ten-case `path` denominator. The current order of work is:
+FastXSLT has accepted its staged-modern semantic direction and now passes the
+complete XSLT30 `template` and `path` test-set denominators. The current order
+of work is:
 
-1. decompose the remaining `path-010` case into predicates on multiple path
-   steps, `last()` context-size semantics, and its complex match pattern while
-   retaining the complete denominator and paired QT3 `Axes002` group;
-2. reuse the bounded file-backed environment import established by `path-002`
-   and add only the comparison behavior required by each case;
+1. activate the paired four-case QT3 `Axes002` group through native environment
+   resolution, explicit named child-axis steps, `fn:count`, and `assert-eq`,
+   retaining every disposition while the harness grows;
+2. select the next complete XSLT30 family only after the QT3 expression seam
+   can execute independently of an XSLT stylesheet;
 3. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
    memory, and peak construction memory under those representative workloads;
 4. exercise the same lifecycle through the bounded ASP.NET workbench before
@@ -80,9 +80,9 @@ implemented behavior belongs to a named standards slice.
   inside their physical owner, providing evidence for AR-0007.
 - [ ] Expand XPath lex/parse/evaluate tests before growing XSLT instructions.
 - [x] Admit all ten cases in the complete XSLT30 `path` test set and execute
-  `path-001` through `path-009`, including charged axis predicates, checked
-  constant-integer positional arithmetic, and integer-domain `floor()`,
-  retaining `path-010` as an explicit engine-unsupported outcome.
+  `path-001` through `path-010`, including charged axis predicates, per-step
+  positions, `last()`, checked constant-integer arithmetic, integer-domain
+  `floor()`, and the native complex relative match pattern.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,
