@@ -40,7 +40,8 @@ same execution and serialization functions.
 The compiler recognizes only the fixture pressure:
 
 - an XSLT-namespace `stylesheet` root with a retained declared version;
-- one XML `xsl:output` declaration;
+- zero or one XML `xsl:output` declaration, preserving absence for runtime
+  method inference;
 - one `xsl:template` with `match="/"`;
 - literal result elements without attributes or result namespaces;
 - literal text;
@@ -72,7 +73,7 @@ test compares the serializer output plus that harness terminator to the exact
 fixture bytes; the semantic result and serializer string are asserted
 separately.
 
-Twenty-four focused unit tests pass across resource, XML, XDM, XPath, compile,
+Twenty-seven focused unit tests pass across resource, XML, XDM, XPath, compile,
 runtime, batch, and serialization experiments. Negative cases establish private
 machine identities and categories for:
 

@@ -47,7 +47,9 @@ limitations are in the [catalog inventory evidence](../Evidence/w3c-suite-catalo
 Do not edit upstream catalogs, environments, sources, assertions, or expected
 results. FastXSLT-owned selection manifests, expected unsupported
 classifications, harness corrections, and issue references belong outside
-`vendor/`.
+`vendor/`. The initial selection manifest is
+`corpus/overlays/xslt30/private-slice-v0.toml`; it names upstream case identity
+without copying suite content.
 
 ## Licensing boundary
 

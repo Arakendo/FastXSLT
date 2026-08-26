@@ -72,6 +72,9 @@ none are represented as supported or executable.
 - [ ] Compare staged-modern and version-specific alternatives against time to
   first useful release, data-model growth, diagnostics, and migration risk.
 - [ ] Define dependency-aware selection and reporting categories.
+- [x] Prove one overlay-selected XSLT30 case can retain upstream case,
+  environment, stylesheet, assertion, and revision identity without copying
+  fixture content.
 - [ ] Close AR-0001 through an accepted ADR.
 
 Exit state: source code, documentation, and test selection can name one initial
@@ -205,3 +208,19 @@ ambient I/O or public stability claim.
 - Next slice: obtain representative consumer transforms to close the
   standards-profile decision; defer cancellation and broader runtime budgets
   until a real host/control boundary can exercise them.
+
+### 2026-08-25: First pinned XSLT30 case executed
+
+- Work completed: added a first-party overlay selecting XSLT30 `template-006`,
+  loaded its environment, stylesheet, and XML assertion from the immutable
+  pinned suite, and executed it through the existing in-memory transform-set
+  path.
+- Validation: 27 focused tests pass. The result is compared as XML, so the
+  suite's `<o/>` assertion correctly matches the serializer's declaration plus
+  expanded empty-element form.
+- Findings: absence of `xsl:output` must remain semantically distinct from an
+  explicit XML method so runtime method inference can be correct. This case has
+  an `XSLT20+` dependency and is useful suite-linked evidence, not a profile or
+  conformance claim.
+- Next slice: define general dependency/classification reporting only after
+  representative consumer transforms supply the denominator for AR-0001.

@@ -11,7 +11,7 @@ pub(crate) struct StylesheetProgram {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct OutputSettings {
-    pub(crate) method: String,
+    pub(crate) method: Option<String>,
     pub(crate) omit_xml_declaration: bool,
 }
 

@@ -71,13 +71,10 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
 
     Ok(StylesheetProgram {
         declared_version,
-        output: output.ok_or_else(|| {
-            invalid(
-                "FXST0003",
-                "the private slice requires xsl:output",
-                document.location(root),
-            )
-        })?,
+        output: output.unwrap_or(OutputSettings {
+            method: None,
+            omit_xml_declaration: false,
+        }),
         root_template: root_template.ok_or_else(|| {
             invalid(
                 "FXST0004",
@@ -111,7 +108,7 @@ fn compile_output(document: &Document, element: NodeId) -> Result<OutputSettings
         }
     };
     Ok(OutputSettings {
-        method: method.to_owned(),
+        method: Some(method.to_owned()),
         omit_xml_declaration,
     })
 }
@@ -363,7 +360,7 @@ mod tests {
         let program = compile_stylesheet(&document).expect("golden stylesheet should compile");
 
         assert_eq!(program.declared_version, "1.0");
-        assert_eq!(program.output.method, "xml");
+        assert_eq!(program.output.method.as_deref(), Some("xml"));
         assert!(program.output.omit_xml_declaration);
         let [Instruction::LiteralElement { name, body, .. }] =
             program.root_template.body.as_slice()
@@ -384,6 +381,19 @@ mod tests {
             program.root_template.location.resource,
             "golden:hello/stylesheet.xsl"
         );
+    }
+
+    #[test]
+    fn preserves_absent_output_declaration_for_runtime_method_inference() {
+        let stylesheet = parse_stylesheet(
+            "memory:default-output.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
+        );
+
+        let program = compile_stylesheet(&stylesheet).expect("stylesheet should compile");
+
+        assert_eq!(program.output.method, None);
+        assert!(!program.output.omit_xml_declaration);
     }
 
     #[test]

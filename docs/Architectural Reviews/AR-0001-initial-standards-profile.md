@@ -8,7 +8,7 @@
 | Scope | Product standards and semantic baseline |
 | Trigger | The first transform slice needs a precise XPath/XSLT target |
 | Related ADRs | None |
-| Related evidence | `corpus/golden/hello`, peer review in `docs/Evidence/`, `docs/Evidence/w3c-suite-catalog-inventory-2026-08-25.md`, `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`, and `docs/Evidence/private-golden-transform-slice-2026-08-25.md` |
+| Related evidence | `corpus/golden/hello`, peer review in `docs/Evidence/`, `docs/Evidence/w3c-suite-catalog-inventory-2026-08-25.md`, `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`, `docs/Evidence/private-golden-transform-slice-2026-08-25.md`, and `docs/Evidence/xslt30-template-006-private-execution-2026-08-25.md` |
 
 ## Architectural question
 
@@ -99,6 +99,11 @@ suite selection are reported precisely.
   compilation, runtime, semantic result, and serialization. Its syntax remains
   common to all three alternatives and therefore confirms architecture without
   selecting a standards profile.
+- Pinned XSLT30 case `template-006` now executes from its unmodified upstream
+  test-set metadata through a first-party overlay. Its `XSLT20+` dependency and
+  very small root-template behavior show that honest suite-linked evidence can
+  start before broad conformance, but one intersection case still cannot choose
+  the product profile.
 
 ## Disposition
 
@@ -138,3 +143,6 @@ the selected internal model blocks a planned compatibility level.
   Alternative C became the working recommendation, pending consumer evidence.
 - 2026-08-25 -- Completed the private `hello` transform across the intended
   semantic owners; its version-intersection syntax did not resolve the profile.
+- 2026-08-25 -- Executed pinned XSLT30 `template-006` through an explicit local
+  overlay while retaining upstream environment, stylesheet, assertion, and case
+  identity; broader dependency-aware selection remains open.

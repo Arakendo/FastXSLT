@@ -42,8 +42,10 @@ The repository pins the W3C QT3 and XSLT 3.0 suites as Git submodules under
 `vendor/`. Their exact revisions and licensing boundary are recorded in
 [W3C Test Suite Provenance](Corpus/w3c-test-suites.md).
 
-The suites are inputs, not executable FastXSLT tests by themselves. A future
-harness must parse upstream dependency and environment metadata, retain the
+The suites are inputs, not executable FastXSLT tests by themselves. The first
+private XSLT30 slice resolves one explicit overlay selection and its upstream
+environment, stylesheet, and XML assertion. A broader harness must parse all
+relevant dependency and environment metadata, retain the
 unaltered case identity, classify cases against the accepted AR-0001 profile,
 and distinguish unsupported behavior from harness failure. Local selection and
 classification belong outside the submodules.
