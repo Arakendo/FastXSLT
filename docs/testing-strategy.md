@@ -68,9 +68,9 @@ The repository pins the W3C QT3 and XSLT 3.0 suites as Git submodules under
 [W3C Test Suite Provenance](Corpus/w3c-test-suites.md).
 
 The suites are inputs, not executable FastXSLT tests by themselves. The private
-XSLT30 slice resolves two explicit overlay selections and their upstream
+XSLT30 slice resolves four explicit overlay selections and their upstream
 environments, stylesheets, and XML assertions. The complete six-case `template`
-test set remains accounted for as two passes and four engine-unsupported cases.
+test set remains accounted for as four passes and two engine-unsupported cases.
 A private case-record experiment
 also observes QT3 `assert-eq` and an XSLT30 compound message assertion through
 suite-specific adapters. Their common projection separates selection from

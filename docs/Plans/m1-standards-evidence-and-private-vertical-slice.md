@@ -509,3 +509,14 @@ ambient I/O or public stability claim.
   four explicit engine-unsupported cases without changing membership.
 - Next slice: extend the same node-kind selection seam under
   `template-002/003` processing-instruction and `node()` pressure.
+
+### 2026-08-26: Processing-instruction and general node tests
+
+- Work completed: executed native XSLT30 `template-002/003` through
+  processing-instruction and general child-node selection and pattern matching.
+- Boundary correction: normalized the syntactic PI target/data separator at the
+  XML adapter and kept the root document node outside the child `node()` pattern.
+- Conservation: the six-case denominator now contains four passes and two
+  explicit engine-unsupported cases.
+- Next slice: implement attribute-axis selection and attribute patterns under
+  `template-004` without treating attributes as children.

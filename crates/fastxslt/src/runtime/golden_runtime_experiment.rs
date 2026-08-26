@@ -13,7 +13,7 @@ use crate::xml::quick_xml_experiment::{
 };
 use crate::xpath::path_experiment::evaluate_child_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, Instruction, MatchPattern, StylesheetProgram,
+    ApplySelection, Instruction, MatchPattern, NodeTest, StylesheetProgram,
 };
 
 mod serialization;
@@ -391,17 +391,24 @@ fn execute_sequence(
                             evaluate_child_path_controlled(source, context, path, control)
                                 .map_err(|failure| control_failure(failure, request_id))?
                         }
-                        ApplySelection::Comments => {
-                            let mut comments = Vec::new();
+                        ApplySelection::ChildNodes(node_test) => {
+                            let mut selected = Vec::new();
                             for child in source.children(context).iter().copied() {
                                 control
                                     .charge(WorkDomain::XPathNodeVisit, 1)
                                     .map_err(|failure| control_failure(failure, request_id))?;
-                                if source.kind(child) == NodeKind::Comment {
-                                    comments.push(child);
+                                let matches = match node_test {
+                                    NodeTest::Comment => source.kind(child) == NodeKind::Comment,
+                                    NodeTest::ProcessingInstruction => {
+                                        source.kind(child) == NodeKind::ProcessingInstruction
+                                    }
+                                    NodeTest::AnyNode => true,
+                                };
+                                if matches {
+                                    selected.push(child);
                                 }
                             }
-                            comments
+                            selected
                         }
                     }
                 } else {
@@ -438,9 +445,24 @@ fn apply_template(
         .matched_templates
         .iter()
         .filter(|template| template.mode.as_deref() == mode)
-        .find(|template| match &template.pattern {
+        .filter(|template| match &template.pattern {
             MatchPattern::Element(name) => source.name(node) == Some(name),
             MatchPattern::Comment => source.kind(node) == NodeKind::Comment,
+            MatchPattern::ProcessingInstruction => {
+                source.kind(node) == NodeKind::ProcessingInstruction
+            }
+            MatchPattern::AnyNode => matches!(
+                source.kind(node),
+                NodeKind::Element
+                    | NodeKind::Text
+                    | NodeKind::Comment
+                    | NodeKind::ProcessingInstruction
+            ),
+        })
+        .max_by_key(|template| match template.pattern {
+            MatchPattern::Element(_) => 2,
+            MatchPattern::Comment | MatchPattern::ProcessingInstruction => 1,
+            MatchPattern::AnyNode => 0,
         })
     {
         return execute_sequence(

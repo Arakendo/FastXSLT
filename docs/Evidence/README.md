@@ -18,6 +18,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 Case-Metadata Inventory](xslt30-case-metadata-inventory-2026-08-25.md)
 - [XSLT30 Template Preview Denominator](xslt30-template-preview-denominator-2026-08-26.md)
 - [XSLT30 `template-001` Comment and Mode Execution](xslt30-template-001-comment-mode-execution-2026-08-26.md)
+- [XSLT30 `template-002/003` Node-Kind Execution](xslt30-template-002-003-node-kind-execution-2026-08-26.md)
 - [OASIS XSLT/XPath 1.0 Suite Candidate Review](oasis-xslt10-suite-candidate-review-2026-08-25.md)
 - [Rust XML Parser Candidate Review](rust-xml-parser-candidate-review-2026-08-25.md)
 - [Owned XDM Tree Experiment](owned-xdm-tree-experiment-2026-08-25.md)

@@ -168,3 +168,6 @@ or another physical input strategy requires a different event seam.
 - 2026-08-26 -- ADR-0007 selected the XML and Namespaces reference editions.
   Encoding coverage, parser production admission, corpus rights, and executable
   subset selection remain open.
+- 2026-08-26 -- XSLT30 `template-002` exposed and verified adapter-owned PI
+  target/data separator normalization. The parser remains private and
+  production admission gates remain open.

@@ -1,8 +1,8 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xpath::path_experiment::{PathFailure, parse_child_path};
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, Instruction, MatchPattern, MatchedTemplate, OutputSettings, StylesheetProgram,
-    Template,
+    ApplySelection, Instruction, MatchPattern, MatchedTemplate, NodeTest, OutputSettings,
+    StylesheetProgram, Template,
 };
 
 const XSLT_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
@@ -153,19 +153,23 @@ fn compile_matched_template(
     element: NodeId,
     pattern: &str,
 ) -> Result<MatchedTemplate, CompileFailure> {
-    let pattern = if pattern == "comment()" {
-        MatchPattern::Comment
-    } else if is_ascii_ncname(pattern) {
-        MatchPattern::Element(crate::xml::quick_xml_experiment::ExpandedName {
-            namespace: None,
-            local: pattern.to_owned(),
-        })
-    } else {
-        return Err(unsupported(
-            "FXST1005",
-            format!("unsupported template match pattern: {pattern}"),
-            document.location(element),
-        ));
+    let pattern = match pattern {
+        "comment()" => MatchPattern::Comment,
+        "processing-instruction()" => MatchPattern::ProcessingInstruction,
+        "node()" => MatchPattern::AnyNode,
+        name if is_ascii_ncname(name) => {
+            MatchPattern::Element(crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: None,
+                local: name.to_owned(),
+            })
+        }
+        _ => {
+            return Err(unsupported(
+                "FXST1005",
+                format!("unsupported template match pattern: {pattern}"),
+                document.location(element),
+            ));
+        }
     };
     let mode = optional_attribute(document, element, None, "mode")
         .map(|mode| parse_mode(mode, document.location(element)))
@@ -272,8 +276,14 @@ fn parse_apply_selection(
     expression: &str,
     location: SourceLocation,
 ) -> Result<ApplySelection, CompileFailure> {
-    if expression == "comment()" {
-        return Ok(ApplySelection::Comments);
+    let node_test = match expression {
+        "comment()" => Some(NodeTest::Comment),
+        "processing-instruction()" => Some(NodeTest::ProcessingInstruction),
+        "node()" => Some(NodeTest::AnyNode),
+        _ => None,
+    };
+    if let Some(node_test) = node_test {
+        return Ok(ApplySelection::ChildNodes(node_test));
     }
     parse_child_path(expression, location)
         .map(ApplySelection::ChildPath)

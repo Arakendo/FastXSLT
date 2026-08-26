@@ -9,8 +9,8 @@ standards scope are decided.
 FastXSLT has accepted its staged-modern semantic direction and conserved the
 first complete XSLT30 test-set denominator. The current order of work is:
 
-1. continue the node-kind selection family from passing XSLT30 `template-001`
-   into processing-instruction and `node()` pressure from `template-002/003`;
+1. extend the passing XSLT30 node-kind family into attribute selection and
+   patterns under `template-004`, keeping attributes outside the child axis;
 2. map each selected suite environment into bounded sealed resources and add
    the comparison family required by that slice;
 3. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
@@ -95,6 +95,9 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [x] Execute XSLT30 `template-001` through built-in document dispatch,
   comment-node selection, and an isolated named mode while retaining the other
   four unsupported cases in the six-case denominator.
+- [x] Execute XSLT30 `template-002/003` through processing-instruction and
+  general child-node tests, retaining mode isolation and exact-pattern
+  precedence. Four of the six denominator cases now pass.
 - [ ] Establish explicit URI/resource resolution and execution limits.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by

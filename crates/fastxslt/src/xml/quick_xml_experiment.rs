@@ -347,6 +347,7 @@ fn parse_bytes(
                 let target = decode_name(instruction.target(), start)?;
                 let value = std::str::from_utf8(instruction.content())
                     .map_err(|error| malformed(start, error))?
+                    .trim_start_matches([' ', '\t', '\r', '\n'])
                     .to_owned();
                 processing_instruction_count += 1;
                 events.push(OwnedXmlEvent::ProcessingInstruction {
@@ -494,7 +495,9 @@ fn resolve_reference(
 
 #[cfg(test)]
 mod tests {
-    use super::{ExpandedName, LocatedFailure, ParseFailure, ParseLimits, parse_document};
+    use super::{
+        ExpandedName, LocatedFailure, OwnedXmlEvent, ParseFailure, ParseLimits, parse_document,
+    };
 
     const LIMITS: ParseLimits = ParseLimits {
         max_events: 64,
@@ -610,6 +613,15 @@ mod tests {
 
         assert_eq!(document.comment_count, 2);
         assert_eq!(document.processing_instruction_count, 2);
+        let processing_instruction_values: Vec<_> = document
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                OwnedXmlEvent::ProcessingInstruction { value, .. } => Some(value.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(processing_instruction_values, ["work", "work"]);
     }
 
     #[test]

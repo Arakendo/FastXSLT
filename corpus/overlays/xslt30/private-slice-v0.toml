@@ -11,16 +11,16 @@ rationale = "Built-in document dispatch, comment() child selection, comment-node
 [[case]]
 set_file = "tests/decl/template/_template-test-set.xml"
 case_name = "template-002"
-selection = "engine-unsupported"
-execution = "not-run"
-rationale = "The complete upstream case requires processing-instruction() node tests and modes, both outside the current private slice."
+selection = "selected"
+execution = "passed"
+rationale = "Processing-instruction child selection and pattern matching execute in an isolated named mode through the same node-kind seam as template-001."
 
 [[case]]
 set_file = "tests/decl/template/_template-test-set.xml"
 case_name = "template-003"
-selection = "engine-unsupported"
-execution = "not-run"
-rationale = "The complete upstream case requires node() tests and modes, both outside the current private slice."
+selection = "selected"
+execution = "passed"
+rationale = "General child-node selection and node() pattern matching execute in an isolated named mode while exact element rules retain higher priority."
 
 [[case]]
 set_file = "tests/decl/template/_template-test-set.xml"
