@@ -65,8 +65,11 @@ The repository pins the W3C QT3 and XSLT 3.0 suites as Git submodules under
 
 The suites are inputs, not executable FastXSLT tests by themselves. The first
 private XSLT30 slice resolves one explicit overlay selection and its upstream
-environment, stylesheet, and XML assertion. A broader harness must parse all
-relevant dependency and environment metadata, retain the
+environment, stylesheet, and XML assertion. A private case-record experiment
+also observes QT3 `assert-eq` and an XSLT30 compound message assertion through
+suite-specific adapters. Their common projection separates selection from
+execution disposition and makes unknown metadata a harness failure. A broader
+harness must parse all relevant dependency and environment metadata, retain the
 unaltered case identity, classify cases against the accepted AR-0001 profile,
 and distinguish unsupported behavior from harness failure. Local selection and
 classification belong outside the submodules.

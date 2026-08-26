@@ -38,6 +38,8 @@ portable design seed, not a public feature or commitment to an XSLT version.
 
 External suites must live in a separately documented location with provenance,
 license, acquisition, integrity, and selection instructions. Do not copy a
-downloaded suite into `golden/`. The first XSLT30 overlay selects upstream case
-`template-006`; its test loads the source, stylesheet, and assertion from the
-pinned submodule without modifying or duplicating those fixtures.
+downloaded suite into `golden/`. The XSLT30 overlay selects executable upstream
+case `template-006` and preserves `avt-0701` as a visible compound-assertion
+harness gap. The QT3 overlay preserves `Axes001-1` as selected but beyond the
+current private engine slice. Tests load metadata and fixtures from pinned
+submodules without modifying or duplicating them.

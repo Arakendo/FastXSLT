@@ -1,0 +1,9 @@
+suite = "QT3"
+revision = "83993587711dbd5c18ed846385ec37d079d6e492"
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes001-1"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Referenced source environment plus assert-eq exercise QT3-native metadata; the expression exceeds the current private XPath slice."

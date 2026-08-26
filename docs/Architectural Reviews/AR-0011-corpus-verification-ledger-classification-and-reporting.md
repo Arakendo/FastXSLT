@@ -201,6 +201,12 @@ the profile closes; generalized execution remains deferred.
   suite environments map to sealed snapshots, how expensive full ledgers are,
   and whether reports should be JSON, SQLite, another format, or ephemeral plus
   signed/hashed artifacts.
+- A private two-suite experiment now retains QT3 `assert-eq` and XSLT30
+  compound message-assertion metadata in suite-specific records, then projects
+  only identity plus separate selection/execution dispositions into a common
+  record. This is useful boundary evidence, not a stable schema. Unknown
+  assertion and dependency metadata becomes a visible harness-unsupported
+  outcome.
 
 ## Disposition
 
@@ -224,11 +230,11 @@ assertion/environment families provide boundary evidence.
 - [x] Inventory the W3C XML archive candidate and identify its secure catalog,
   selection, acquisition, and rights constraints without admitting it.
 - [ ] Close AR-0001 with an accepted profile that can classify applicability.
-- [ ] Define a private case-record experiment using at least one QT3 assertion
+- [x] Define a private case-record experiment using at least one QT3 assertion
   family and a second XSLT30 assertion/environment family.
 - [ ] Demonstrate conservation totals when a run is filtered, sharded,
   interrupted, retried, and merged in different completion orders.
-- [ ] Demonstrate that unknown dependency/assertion metadata becomes a visible
+- [x] Demonstrate that unknown dependency/assertion metadata becomes a visible
   harness classification failure rather than exclusion or pass.
 - [ ] Map selected suite environments into bounded sealed snapshots without
   ambient path/network/entity access or retained file handles.

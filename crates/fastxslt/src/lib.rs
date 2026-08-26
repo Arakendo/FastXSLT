@@ -13,6 +13,8 @@ mod execution_control_experiment;
 #[cfg(test)]
 mod resources;
 mod runtime;
+#[cfg(test)]
+mod verification_ledger_experiment;
 mod xdm;
 mod xml;
 mod xpath;

@@ -4,5 +4,13 @@ revision = "6f8fd9e966ae74a251a2604abef9d904c7bc5c9b"
 [[case]]
 set_file = "tests/decl/template/_template-test-set.xml"
 case_name = "template-006"
-classification = "executed"
+selection = "selected"
+execution = "passed"
 rationale = "Root template and an empty unnamespaced literal result element exercise the current private slice; the absent xsl:output declaration also pressures output-method inference."
+
+[[case]]
+set_file = "tests/attr/avt/_avt-test-set.xml"
+case_name = "avt-0701"
+selection = "selected"
+execution = "harness-unsupported"
+rationale = "Referenced environment plus all-of/assert-message/assert-eq preserves a compound assertion family that the private harness cannot yet compare."
