@@ -14,6 +14,7 @@ pub(crate) struct ChildPath {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PredicateAxis {
     Child,
+    Attribute,
     Ancestor,
     AncestorOrSelf,
 }
@@ -114,6 +115,8 @@ fn parse_final_axis_predicate(expression: &str) -> (&str, Option<ExistencePredic
     };
     let (axis, name) = if let Some(name) = predicate.strip_prefix("child::") {
         (PredicateAxis::Child, name)
+    } else if let Some(name) = predicate.strip_prefix("attribute::") {
+        (PredicateAxis::Attribute, name)
     } else if let Some(name) = predicate.strip_prefix("ancestor::") {
         (PredicateAxis::Ancestor, name)
     } else if let Some(name) = predicate.strip_prefix("ancestor-or-self::") {
@@ -189,6 +192,9 @@ pub(crate) fn evaluate_child_path_controlled(
                             PredicateAxis::Child => {
                                 has_named_child(document, child, &predicate.name, control)?
                             }
+                            PredicateAxis::Attribute => {
+                                has_named_attribute(document, child, &predicate.name, control)?
+                            }
                             PredicateAxis::Ancestor => has_named_ancestor(
                                 document,
                                 child,
@@ -237,6 +243,25 @@ fn has_named_child(
     for child in document.children(node).iter().copied() {
         control.charge(WorkDomain::XPathNodeVisit, 1)?;
         if node_has_unnamespaced_name(document, child, required) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn has_named_attribute(
+    document: &Document,
+    node: NodeId,
+    required: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    for attribute in document.attributes(node).iter().copied() {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if document.kind(attribute) == NodeKind::Attribute
+            && document
+                .name(attribute)
+                .is_some_and(|name| name.namespace.is_none() && name.local == required)
+        {
             return Ok(true);
         }
     }
@@ -467,6 +492,40 @@ mod tests {
             Some(ExistencePredicate {
                 axis: PredicateAxis::AncestorOrSelf,
                 name: "element2".to_owned(),
+            })
+        );
+    }
+
+    #[test]
+    fn attribute_predicate_inspects_attributes_without_making_them_children() {
+        let parsed = parse_document(
+            "memory:source.xml",
+            b"<doc><child2/><child2 attr1=\"yes\">right</child2></doc>",
+            ParseLimits {
+                max_events: 24,
+                max_depth: 8,
+            },
+        )
+        .expect("source should parse");
+        let document = Document::from_parsed(parsed).expect("source XDM should build");
+        let doc = document.children(document.document_node())[0];
+        let path = parse_child_path("//child2[attribute::attr1]", location())
+            .expect("path-004 expression should parse");
+
+        let mut control = InvocationControl::unbounded();
+        let selected = evaluate_child_path_controlled(&document, doc, &path, &mut control)
+            .expect("unbounded evaluation should succeed");
+
+        assert_eq!(selected.len(), 1);
+        assert_eq!(document.string_value(selected[0]), "right");
+        assert_eq!(document.children(selected[0]).len(), 1);
+        assert_eq!(document.attributes(selected[0]).len(), 1);
+        assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 4);
+        assert_eq!(
+            path.final_predicate,
+            Some(ExistencePredicate {
+                axis: PredicateAxis::Attribute,
+                name: "attr1".to_owned(),
             })
         );
     }

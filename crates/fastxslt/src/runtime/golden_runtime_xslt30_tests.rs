@@ -547,3 +547,9 @@ fn executes_pinned_xslt30_path_003_ancestor_or_self_predicate() {
     let (actual, expected) = execute_file_backed_path_case("path-003");
     assert_same_result_element_string(&actual, &expected, "out");
 }
+
+#[test]
+fn executes_pinned_xslt30_path_004_attribute_predicate() {
+    let (actual, expected) = execute_file_backed_path_case("path-004");
+    assert_same_result_element_string(&actual, &expected, "out");
+}

@@ -75,8 +75,8 @@ rationale = "The shared file-backed source snapshot executes through leading des
 set_file = "tests/expr/path/_path-test-set.xml"
 case_name = "path-004"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The attribute-axis predicate exceeds the current private XPath slice."
+execution = "passed"
+rationale = "The file-backed source snapshot executes through leading descendant navigation and a final attribute::attr1 existence predicate over separately owned, charged attribute nodes."
 
 [[case]]
 set_file = "tests/expr/path/_path-test-set.xml"

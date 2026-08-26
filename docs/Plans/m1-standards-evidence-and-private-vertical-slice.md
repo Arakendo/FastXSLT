@@ -588,3 +588,17 @@ ambient I/O or public stability claim.
   transform construction.
 - Next slice: execute `path-004` through an explicit named attribute existence
   predicate without treating attributes as children.
+
+### 2026-08-26: XSLT30 `path-004` attribute predicate
+
+- Work completed: executed the unmodified native `path-004` stylesheet and its
+  file-backed environment through the shared bounded snapshot harness.
+- XPath/XDM behavior: added a named attribute existence predicate over the
+  candidate's separately owned attribute collection; attributes remain absent
+  from the child axis.
+- Work accounting: every inspected attribute consumes the invocation's XPath
+  node-visit budget, with an exact small-case charge assertion.
+- Conservation: the complete `path` denominator now contains four passes and
+  six explicit engine-unsupported outcomes.
+- Next slice: execute `path-005` through the narrowly required
+  descendant-or-self existence predicate.

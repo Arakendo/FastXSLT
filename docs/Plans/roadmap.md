@@ -11,8 +11,8 @@ first complete XSLT30 test-set denominator and has now admitted the complete
 ten-case `path` denominator. The current order of work is:
 
 1. widen the selected `path` family one semantic unit at a time, continuing
-   with the attribute-axis predicate in `path-004`, while retaining all ten
-   dispositions and the paired QT3 `Axes002` group;
+   with the descendant-or-self predicate in `path-005`, while retaining all
+   ten dispositions and the paired QT3 `Axes002` group;
 2. reuse the bounded file-backed environment import established by `path-002`
    and add only the comparison behavior required by each case;
 3. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
@@ -80,9 +80,9 @@ implemented behavior belongs to a named standards slice.
   inside their physical owner, providing evidence for AR-0007.
 - [ ] Expand XPath lex/parse/evaluate tests before growing XSLT instructions.
 - [x] Admit all ten cases in the complete XSLT30 `path` test set and execute
-  `path-001/002/003` through charged child, ancestor, and ancestor-or-self
-  predicate slices, retaining the other seven as explicit engine-unsupported
-  outcomes.
+  `path-001` through `path-004` through charged child, ancestor,
+  ancestor-or-self, and attribute predicate slices, retaining the other six as
+  explicit engine-unsupported outcomes.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,
