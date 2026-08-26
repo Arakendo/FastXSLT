@@ -2,12 +2,15 @@
 
 use std::io::{self, BufReader, BufWriter, Read, Write};
 
-use fastxslt::workbench::{ExperimentalEngine, WorkbenchFailure, WorkbenchLimits};
+use fastxslt::workbench::{
+    ExperimentalEngine, WorkbenchCancellation, WorkbenchFailure, WorkbenchLimits,
+};
 
 const INITIALIZE: u8 = 1;
 const TRANSFORM: u8 = 2;
 const SHUTDOWN: u8 = 3;
 const NON_COOPERATING_PROBE: u8 = 4;
+const CANCELLED_TRANSFORM: u8 = 5;
 const READY: u8 = 0x81;
 const RESULT: u8 = 0x82;
 const STOPPED: u8 = 0x83;
@@ -52,27 +55,11 @@ fn main() -> io::Result<()> {
             }
             TRANSFORM => {
                 let request_id = read_string(&mut input, MAX_IDENTITY_BYTES)?;
-                let Some(engine) = &engine else {
-                    write_failure(
-                        &mut output,
-                        &WorkbenchFailure {
-                            code: "FXWB1001".to_owned(),
-                            category: "invalid".to_owned(),
-                            request_id: Some(request_id),
-                            detail: "worker has not been initialized".to_owned(),
-                        },
-                    )?;
-                    continue;
-                };
-                match engine.transform(&request_id) {
-                    Ok(result) => {
-                        write_byte(&mut output, RESULT)?;
-                        write_string(&mut output, &request_id)?;
-                        write_string(&mut output, &result)?;
-                        output.flush()?;
-                    }
-                    Err(failure) => write_failure(&mut output, &failure)?,
-                }
+                write_transform(&mut output, engine.as_ref(), &request_id, false)?;
+            }
+            CANCELLED_TRANSFORM => {
+                let request_id = read_string(&mut input, MAX_IDENTITY_BYTES)?;
+                write_transform(&mut output, engine.as_ref(), &request_id, true)?;
             }
             SHUTDOWN => {
                 write_byte(&mut output, STOPPED)?;
@@ -100,6 +87,42 @@ fn main() -> io::Result<()> {
                 )?;
             }
         }
+    }
+}
+
+fn write_transform(
+    output: &mut impl Write,
+    engine: Option<&ExperimentalEngine>,
+    request_id: &str,
+    cancelled: bool,
+) -> io::Result<()> {
+    let result = engine.map_or_else(
+        || {
+            Err(WorkbenchFailure {
+                code: "FXWB1001".to_owned(),
+                category: "invalid".to_owned(),
+                request_id: Some(request_id.to_owned()),
+                detail: "worker has not been initialized".to_owned(),
+            })
+        },
+        |engine| {
+            if cancelled {
+                let cancellation = WorkbenchCancellation::new();
+                cancellation.cancel();
+                engine.transform_with_cancellation(request_id, cancellation)
+            } else {
+                engine.transform(request_id)
+            }
+        },
+    );
+    match result {
+        Ok(result) => {
+            write_byte(output, RESULT)?;
+            write_string(output, request_id)?;
+            write_string(output, &result)?;
+            output.flush()
+        }
+        Err(failure) => write_failure(output, &failure),
     }
 }
 

@@ -87,6 +87,18 @@ try {
             }
         }
         if ($OperationalExperiments) {
+            $cancellation = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/cooperative-cancellation"
+            if ($cancellation.cancellation.failureCode -ne 'FXCT0001' -or
+                $cancellation.cancellation.failureCategory -ne 'cancelled' -or
+                $cancellation.cancellation.cancelledRequestIdentity -ne 'cooperative-cancelled' -or
+                $cancellation.cancellation.failureDetail -cne 'host cancellation observed while charging xslt-instruction work' -or
+                $cancellation.cancellation.processIdBefore -ne $cancellation.cancellation.processIdAfter -or
+                $cancellation.cancellation.recoveryResult -cne $expected -or
+                -not $cancellation.cancellationWasCooperative -or
+                $cancellation.workerWasTerminated -or
+                $cancellation.activeMidExecutionSignalSupported) {
+                throw "Cooperative cancellation experiment violated its guarantee class: $($cancellation | ConvertTo-Json -Depth 5)"
+            }
             $recovery = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/worker-recovery"
             if ($recovery.recovery.failureCode -ne 'FXWB2001' -or
                 $recovery.recovery.failureCategory -ne 'worker-terminated' -or
@@ -119,6 +131,14 @@ try {
                 -not $fileReplacement.originalFilesRenamedAndRemovedWhileGenerationWasLive -or
                 -not $fileReplacement.sourceBytesChanged) {
                 throw "Host file replacement violated snapshot isolation: $($fileReplacement | ConvertTo-Json -Depth 5)"
+            }
+            [pscustomobject]@{
+                Experiment = 'CooperativeCancellation'
+                FailureCode = $cancellation.cancellation.failureCode
+                FailureCategory = $cancellation.cancellation.failureCategory
+                WorkerReused = $cancellation.cancellation.processIdBefore -eq $cancellation.cancellation.processIdAfter
+                RecoveryCompleted = $cancellation.cancellation.recoveryResult -ceq $expected
+                ActiveMidExecutionSignalSupported = $cancellation.activeMidExecutionSignalSupported
             }
             [pscustomobject]@{
                 Experiment = 'WorkerRecovery'

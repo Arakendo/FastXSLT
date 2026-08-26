@@ -138,6 +138,51 @@ public sealed class FastXsltWorkerPool : IDisposable
         }
     }
 
+    public async Task<CooperativeCancellationEvidence> ExercisePreDispatchCancellationAsync(
+        string cancelledRequestIdentity,
+        string recoveryRequestIdentity)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        await _slots.WaitAsync();
+        WorkerSlot worker;
+        lock (_queueLock)
+        {
+            worker = _available.Dequeue();
+        }
+        try
+        {
+            var processId = worker.Client.ProcessId;
+            FastXsltWorkerException disposition;
+            try
+            {
+                await worker.Client.TransformCancelledBeforeDispatchAsync(cancelledRequestIdentity);
+                throw new InvalidOperationException("A signalled invocation unexpectedly completed.");
+            }
+            catch (FastXsltWorkerException failure)
+            {
+                disposition = failure;
+            }
+            var recoveryResult = await worker.Client.TransformAsync(recoveryRequestIdentity);
+            return new CooperativeCancellationEvidence(
+                disposition.Code,
+                disposition.Category,
+                disposition.RequestId,
+                disposition.Detail,
+                processId,
+                worker.Client.ProcessId,
+                recoveryRequestIdentity,
+                recoveryResult);
+        }
+        finally
+        {
+            lock (_queueLock)
+            {
+                _available.Enqueue(worker);
+            }
+            _slots.Release();
+        }
+    }
+
     public (TimeSpan ProcessorTime, long WorkingSetBytes) ObserveProcesses()
     {
         var processorTime = TimeSpan.Zero;
@@ -204,6 +249,16 @@ public sealed record WorkerRecoveryEvidence(
     string FailedRequestIdentity,
     int FormerProcessId,
     int ReplacementProcessId,
+    string RecoveryRequestIdentity,
+    string RecoveryResult);
+
+public sealed record CooperativeCancellationEvidence(
+    string FailureCode,
+    string FailureCategory,
+    string? CancelledRequestIdentity,
+    string FailureDetail,
+    int ProcessIdBefore,
+    int ProcessIdAfter,
     string RecoveryRequestIdentity,
     string RecoveryResult);
 

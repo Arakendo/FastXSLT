@@ -21,6 +21,7 @@ offers:
 - `POST /measure/dotnet-xslt1?requests=1000`
 - `POST /benchmark/tiers?requests=250&concurrency=4`
 - `POST /experiment/worker-recovery`
+- `POST /experiment/cooperative-cancellation`
 - `POST /experiment/generation-replacement`
 - `POST /experiment/host-file-replacement`
 - `POST /transform/saxoncs`
@@ -50,6 +51,14 @@ proves a sibling plus a later request still complete. A second experiment
 atomically promotes a new explicitly identified generation while an acquired old
 generation remains executable until its lease drains. These are workbench
 lifecycle observations, not a production restart policy or public API.
+
+The cooperative-cancellation probe carries a cancellation state that was
+already signalled by the host into a normal engine invocation. The engine
+observes it at its first owned charge point, returns `FXCT0001 / cancelled`, and
+the same process and prepared state execute a later request. The current
+single-request protocol cannot yet carry a new cancellation signal after
+execution begins; the endpoint reports that limitation explicitly. It neither
+kills nor replaces the worker.
 
 The host-file variant imports source and stylesheet files into owned bytes,
 closes the handles, renames and removes both originals while the old worker

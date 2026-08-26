@@ -8,6 +8,7 @@ public sealed class FastXsltWorkerClient : IDisposable
     private const byte Transform = 2;
     private const byte Shutdown = 3;
     private const byte NonCooperatingProbe = 4;
+    private const byte CancelledTransform = 5;
     private const byte Ready = 0x81;
     private const byte Result = 0x82;
     private const byte Stopped = 0x83;
@@ -101,6 +102,29 @@ public sealed class FastXsltWorkerClient : IDisposable
                 throw new InvalidDataException("Worker response identity did not match the request.");
             }
             return await ReadStringAsync();
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task TransformCancelledBeforeDispatchAsync(string requestIdentity)
+    {
+        await _gate.WaitAsync();
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            await WriteByteAsync(CancelledTransform);
+            await WriteStringAsync(requestIdentity);
+            await _input.FlushAsync();
+            var response = await ReadByteAsync();
+            if (response != Error)
+            {
+                throw new InvalidDataException(
+                    $"Cancelled transform unexpectedly returned response: {response}.");
+            }
+            throw await ReadFailureAsync();
         }
         finally
         {

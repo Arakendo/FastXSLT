@@ -57,6 +57,29 @@ pub struct WorkbenchFailure {
     pub detail: String,
 }
 
+/// Cooperative cancellation state supplied to one experimental invocation.
+#[derive(Debug, Clone)]
+pub struct WorkbenchCancellation(CancellationToken);
+
+impl WorkbenchCancellation {
+    /// Creates an unsignalled invocation-local cancellation state.
+    #[must_use]
+    pub fn new() -> Self {
+        Self(CancellationToken::new())
+    }
+
+    /// Signals cooperative cancellation for invocations observing this state.
+    pub fn cancel(&self) {
+        self.0.cancel();
+    }
+}
+
+impl Default for WorkbenchCancellation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Compile-once, prepare-once engine retained by the isolated host workbench.
 ///
 /// This type is feature-gated, documentation-hidden, and not a supported public
@@ -134,6 +157,20 @@ impl ExperimentalEngine {
     /// Returns a structured failure for invalid identity, exhausted limits,
     /// unsupported semantics, cancellation, or serialization failure.
     pub fn transform(&self, request_id: &str) -> Result<String, WorkbenchFailure> {
+        self.transform_with_cancellation(request_id, WorkbenchCancellation::new())
+    }
+
+    /// Executes one request with explicitly supplied cooperative cancellation.
+    ///
+    /// # Errors
+    ///
+    /// Returns `FXCT0001 / cancelled` when cancellation is observed at an
+    /// engine-owned charge point, or another structured workbench failure.
+    pub fn transform_with_cancellation(
+        &self,
+        request_id: &str,
+        cancellation: WorkbenchCancellation,
+    ) -> Result<String, WorkbenchFailure> {
         if request_id.is_empty() {
             return Err(workbench_failure(
                 "FXWB0003",
@@ -144,8 +181,7 @@ impl ExperimentalEngine {
         let document = self.prepared.get(&self.source_id).ok_or_else(|| {
             workbench_failure("FXWB0004", "internal", "prepared source is unavailable")
         })?;
-        let mut control =
-            InvocationControl::new(CancellationToken::new(), work_limits(self.limits));
+        let mut control = InvocationControl::new(cancellation.0, work_limits(self.limits));
         let semantic = execute_program(&self.program, &document, request_id, &mut control)
             .map_err(|failure| project_execution(&failure))?;
         serialize_xml(
@@ -212,7 +248,7 @@ fn workbench_failure(
 
 #[cfg(test)]
 mod tests {
-    use super::{ExperimentalEngine, WorkbenchLimits};
+    use super::{ExperimentalEngine, WorkbenchCancellation, WorkbenchLimits};
 
     #[test]
     fn compiles_prepares_and_reuses_one_native_workload() {
@@ -231,5 +267,31 @@ mod tests {
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>36.02</out>"
             );
         }
+    }
+
+    #[test]
+    fn cancelled_invocation_does_not_poison_reused_state() {
+        let engine = ExperimentalEngine::new(
+            "urn:w3c:xslt30:for-004:source",
+            include_bytes!("../../../../vendor/xslt30-test/tests/expr/for/for03.xml").to_vec(),
+            "urn:w3c:xslt30:for-004:stylesheet",
+            include_bytes!("../../../../vendor/xslt30-test/tests/expr/for/for-004.xsl").to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("workbench engine should initialize");
+        let cancellation = WorkbenchCancellation::new();
+        cancellation.cancel();
+
+        let failure = engine
+            .transform_with_cancellation("cancelled", cancellation)
+            .expect_err("signalled invocation should cancel");
+        assert_eq!(failure.code, "FXCT0001");
+        assert_eq!(failure.category, "cancelled");
+        assert_eq!(failure.request_id.as_deref(), Some("cancelled"));
+        assert_eq!(
+            failure.detail,
+            "host cancellation observed while charging xslt-instruction work"
+        );
+        assert!(engine.transform("after-cancel").is_ok());
     }
 }

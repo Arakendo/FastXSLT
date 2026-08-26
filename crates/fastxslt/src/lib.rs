@@ -28,6 +28,6 @@ mod xslt;
 #[doc(hidden)]
 pub mod workbench {
     pub use crate::runtime::workbench_experiment::{
-        ExperimentalEngine, WorkbenchFailure, WorkbenchLimits,
+        ExperimentalEngine, WorkbenchCancellation, WorkbenchFailure, WorkbenchLimits,
     };
 }

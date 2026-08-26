@@ -31,6 +31,30 @@ public static class OperationalExperiments
         };
     }
 
+    public static async Task<object> ExerciseCooperativeCancellationAsync(
+        string workerPath,
+        byte[] source,
+        byte[] stylesheet)
+    {
+        using var pool = await FastXsltWorkerPool.StartAsync(
+            workerPath,
+            "urn:w3c:xslt30:for-004:source",
+            source,
+            "urn:w3c:xslt30:for-004:stylesheet",
+            stylesheet,
+            workers: 1);
+        var cancellation = await pool.ExercisePreDispatchCancellationAsync(
+            "cooperative-cancelled",
+            "cooperative-after-cancel");
+        return new
+        {
+            cancellation,
+            cancellationWasCooperative = true,
+            workerWasTerminated = false,
+            activeMidExecutionSignalSupported = false
+        };
+    }
+
     public static async Task<object> ExerciseGenerationReplacementAsync(
         string workerPath,
         byte[] source,

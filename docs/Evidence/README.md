@@ -72,5 +72,6 @@ pressure architecture but does not silently create a public guarantee.
 - [ASP.NET XSLT Engine Comparison](aspnet-xslt-engine-comparison-2026-08-26.md)
 - [ASP.NET Tiered Workload and Bounded Concurrency](aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md)
 - [ASP.NET Worker Recovery and Generation Replacement](aspnet-worker-recovery-and-generation-replacement-2026-08-26.md)
+- [ASP.NET Pre-Dispatch Cooperative Cancellation](aspnet-predispatch-cooperative-cancellation-2026-08-26.md)
 - [Private Host-Owned Two-Stage Workflow](private-host-owned-two-stage-workflow-2026-08-25.md)
 - [Private Compiled Semantic Inspection](private-compiled-semantic-inspection-2026-08-25.md)

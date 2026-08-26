@@ -9,7 +9,7 @@
 | Trigger | A dispatcher was proposed as a security layer capable of detecting and recovering a rogue parser worker |
 | Related ADRs | ADR-0002, ADR-0005 |
 | Related reviews | AR-0002, AR-0003, AR-0004, AR-0008, AR-0009 |
-| Related evidence | `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-ar-0010-review-monday-2026-08-25.md`; `docs/Evidence/private-invocation-control-charge-points-2026-08-25.md`; `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`; future fault-injection and host-boundary measurements |
+| Related evidence | `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-ar-0010-review-monday-2026-08-25.md`; `docs/Evidence/private-invocation-control-charge-points-2026-08-25.md`; `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`; `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`; future fault-injection and host-boundary measurements |
 
 ## Architectural question
 
@@ -157,6 +157,11 @@ only mode.
   invocation, replaces the slot from the sealed generation, and preserves a
   sibling plus later execution. This is hard-isolation evidence, not
   cooperative cancellation or a production restart policy.
+- An already-signalled host cancellation now reaches the isolated semantic path,
+  produces the same exact structured diagnostic as the direct facade, and
+  leaves the process and prepared generation reusable. The serial protocol does
+  not yet support signalling after execution begins, so observation latency and
+  cancellation/completion races remain unmeasured.
 
 ## Disposition
 
@@ -251,3 +256,6 @@ is measured, or a stronger sandbox such as WASM becomes a viable host boundary.
 - 2026-08-26 -- Added an isolated ASP.NET fault probe that terminates an
   acknowledged non-cooperating worker request, preserves sibling execution, and
   reinitializes only the affected slot without retrying the failed invocation.
+- 2026-08-26 -- Added pre-dispatch cooperative cancellation through the isolated
+  boundary with direct diagnostic parity and same-worker reuse. Retained the
+  active-signal and wall-clock follow-ups.

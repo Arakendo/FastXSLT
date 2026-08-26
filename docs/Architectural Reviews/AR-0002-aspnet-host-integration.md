@@ -8,7 +8,7 @@
 | Scope | Non-Rust embedding, deployment, and performance boundary |
 | Trigger | ASP.NET applications are a motivating FastXSLT consumer class |
 | Related ADRs | ADR-0001 |
-| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
+| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`, `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
 
 ## Architectural question
 
@@ -121,6 +121,10 @@ security contracts.
   removed both original source and stylesheet while the old generation remained
   leased, reused the host paths for new bytes, and observed distinct old/new
   results after promotion. Paths remained outside engine identity and authority.
+- Pre-dispatch host cancellation now crosses the isolated boundary as
+  cooperative engine state, preserves exact direct/isolated code, category,
+  request identity, and detail, and leaves the worker reusable. The serial
+  protocol still cannot carry a cancellation signal after execution begins.
 
 ## Disposition
 
@@ -170,3 +174,6 @@ invalidates the selected mechanism.
 - 2026-08-26 -- Replaced imported source and stylesheet files while an old
   generation lease remained active, then proved old/new results stayed bound to
   their sealed generations.
+- 2026-08-26 -- Carried an already-signalled cooperative cancellation through
+  the isolated boundary with exact direct diagnostic parity and worker reuse.
+  Active mid-execution signalling remains open.
