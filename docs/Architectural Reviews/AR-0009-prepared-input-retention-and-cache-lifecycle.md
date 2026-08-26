@@ -157,12 +157,14 @@ incompatible with the current explicit-ownership direction.
   value only; the fixture is not consumer-representative and supplies no cache
   policy, memory, concurrency, or ASP.NET conclusion.
 - Prepared-set observations now report retained raw bytes, XDM nodes, and
-  XDM-owned capacity separately for each prepared identity and in aggregate.
-  The 87-byte hello source reports 6 nodes and 1,932 bytes of XDM capacity; a
-  generated 2,109-byte/100-item source reports 202 nodes and 63,755 bytes. The
-  diagnostic excludes allocator/map/Arc overhead, construction peak, derived
-  indexes, and runtime transients, so it cannot yet close the general memory
-  follow-up or select budgets.
+  parser-owned capacity at the completed-parse boundary, and XDM-owned capacity
+  separately for each prepared identity and in aggregate. The 87-byte hello
+  source reports 938 parsed-phase bytes, 6 nodes, and 1,932 XDM bytes; a
+  generated 2,109-byte/100-item source reports 46,862 parsed-phase bytes, 202
+  nodes, and 63,755 XDM bytes. The diagnostic excludes allocator/map/Arc
+  overhead, co-resident construction peak, derived indexes, and runtime
+  transients, so it cannot yet close the general memory follow-up or select
+  budgets.
 
 ## Disposition
 
@@ -202,7 +204,8 @@ thread-safety, eviction, or performance guarantee.
 - [ ] Separate budgets and observations for raw bytes, parsed XDM, derived
   indexes, in-flight construction, and runtime transient memory.
   - [x] Observe retained raw bytes, XDM node count, and current XDM-owned
-    capacity separately for explicitly prepared identities.
+    capacity separately for explicitly prepared identities, plus parser-owned
+    capacity at the completed-parse phase boundary.
 - [ ] Classify proposed indexes as source-only, stylesheet-derived, or
   invocation-specific before retaining them.
 - [ ] Exercise eviction/reconstruction and prove it affects performance only,
@@ -239,3 +242,6 @@ different retention seam.
   independent builders duplicate preparation; cancellation and budget failure
   leave no prepared entry and do not poison retry. Shared first access,
   single-flight, and waiter policy remain unresolved.
+- 2026-08-25 -- Added parser-event representation capacity at the
+  completed-parse boundary. This separates another transient class but does not
+  establish allocator-inclusive or co-resident peak construction memory.

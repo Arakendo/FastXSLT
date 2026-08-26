@@ -65,6 +65,70 @@ pub(crate) struct ParsedDocument {
     processing_instruction_count: usize,
 }
 
+impl ExpandedName {
+    fn owned_capacity_bytes(&self) -> usize {
+        self.local.capacity()
+            + self
+                .namespace
+                .as_ref()
+                .map_or(0, std::string::String::capacity)
+    }
+}
+
+impl XmlAttribute {
+    fn owned_capacity_bytes(&self) -> usize {
+        self.name.owned_capacity_bytes() + self.value.capacity()
+    }
+}
+
+impl OwnedXmlEvent {
+    fn nested_owned_capacity_bytes(&self) -> usize {
+        match self {
+            Self::Start {
+                name, attributes, ..
+            } => {
+                name.owned_capacity_bytes()
+                    + attributes.capacity() * std::mem::size_of::<XmlAttribute>()
+                    + attributes
+                        .iter()
+                        .map(XmlAttribute::owned_capacity_bytes)
+                        .sum::<usize>()
+            }
+            Self::End { name, .. } => name.owned_capacity_bytes(),
+            Self::Text { value, .. } | Self::Comment { value, .. } => value.capacity(),
+            Self::ProcessingInstruction { target, value, .. } => {
+                target.capacity() + value.capacity()
+            }
+        }
+    }
+}
+
+impl ParsedDocument {
+    pub(crate) fn owned_capacity_bytes(&self) -> usize {
+        let event_storage = self.events.capacity() * std::mem::size_of::<OwnedXmlEvent>();
+        let event_payloads = self
+            .events
+            .iter()
+            .map(OwnedXmlEvent::nested_owned_capacity_bytes)
+            .sum::<usize>();
+        let root_attribute_storage =
+            self.root_attributes.capacity() * std::mem::size_of::<ExpandedName>();
+        let root_attribute_payloads = self
+            .root_attributes
+            .iter()
+            .map(ExpandedName::owned_capacity_bytes)
+            .sum::<usize>();
+
+        std::mem::size_of::<Self>()
+            + self.resource.capacity()
+            + event_storage
+            + event_payloads
+            + self.root.owned_capacity_bytes()
+            + root_attribute_storage
+            + root_attribute_payloads
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 enum ParseFailure {
     Malformed { offset: usize, detail: String },

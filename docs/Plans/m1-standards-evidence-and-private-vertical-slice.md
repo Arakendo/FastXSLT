@@ -386,10 +386,11 @@ ambient I/O or public stability claim.
   explicit-construction concurrency and retry baseline.
 - Validation: the tiny built-in-rule source measured 3.23–3.62 times slower for
   parse/XDM construction per invocation than prepared reuse in three local
-  runs. The 87-byte hello source reports 6 XDM nodes and 1,932 bytes of owned
-  XDM capacity; a generated 2,109-byte source reports 202 nodes and 63,755
-  bytes. Independent concurrent builders produce distinct documents, while
-  cancelled and budget-exhausted attempts permit clean retries.
+  runs. The 87-byte hello source reports 938 bytes of parsed-phase capacity, 6
+  XDM nodes, and 1,932 bytes of XDM capacity; a generated 2,109-byte source
+  reports 46,862 parsed-phase bytes, 202 nodes, and 63,755 XDM bytes.
+  Independent concurrent builders produce distinct documents, while cancelled
+  and budget-exhausted attempts permit clean retries.
 - Findings: the seam has measurable private value and meaningful retention
   cost. The current builder performs explicit owned construction, so it has no
   shared first-access, single-flight, or waiter semantics to stabilize.

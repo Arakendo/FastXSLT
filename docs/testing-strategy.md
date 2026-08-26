@@ -90,8 +90,9 @@ Prepared-input timing remains an ignored release-mode probe. Normal correctness
 gates do not enforce timing, and local ratios from a tiny private fixture do not
 become cache defaults or ASP.NET performance claims.
 
-Prepared-retention tests report admitted raw bytes, XDM node count, and current
-XDM-owned capacity as separate classes. They must state excluded allocator,
+Prepared-retention tests report admitted raw bytes, parser-owned capacity at
+the completed-parse boundary, XDM node count, and current XDM-owned capacity as
+separate classes. They must state excluded allocator, co-resident
 construction-peak, index, and invocation memory rather than presenting the sum
 as process memory.
 

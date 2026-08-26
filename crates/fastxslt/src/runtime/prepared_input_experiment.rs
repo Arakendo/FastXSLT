@@ -25,6 +25,7 @@ enum PreparationFailure {
 struct PreparedInputBuilder {
     snapshot: ResourceSnapshot,
     documents: BTreeMap<String, Arc<Document>>,
+    parsed_phase_capacity_bytes: BTreeMap<String, usize>,
 }
 
 impl PreparedInputBuilder {
@@ -32,6 +33,7 @@ impl PreparedInputBuilder {
         Self {
             snapshot,
             documents: BTreeMap::new(),
+            parsed_phase_capacity_bytes: BTreeMap::new(),
         }
     }
 
@@ -61,6 +63,7 @@ impl PreparedInputBuilder {
                     |failure| PreparationFailure::Control(*failure),
                 )
             })?;
+        let parsed_phase_capacity_bytes = parsed.owned_capacity_bytes();
         let document =
             Document::from_parsed_controlled(parsed, control).map_err(|failure| match failure {
                 BuildFailure::Control(failure) => PreparationFailure::Control(failure),
@@ -71,6 +74,8 @@ impl PreparedInputBuilder {
             })?;
         self.documents
             .insert(identity.to_owned(), Arc::new(document));
+        self.parsed_phase_capacity_bytes
+            .insert(identity.to_owned(), parsed_phase_capacity_bytes);
         Ok(())
     }
 
@@ -78,6 +83,7 @@ impl PreparedInputBuilder {
         PreparedInputSet {
             snapshot: self.snapshot,
             documents: Arc::new(self.documents),
+            parsed_phase_capacity_bytes: Arc::new(self.parsed_phase_capacity_bytes),
         }
     }
 }
@@ -86,11 +92,13 @@ impl PreparedInputBuilder {
 struct PreparedInputSet {
     snapshot: ResourceSnapshot,
     documents: Arc<BTreeMap<String, Arc<Document>>>,
+    parsed_phase_capacity_bytes: Arc<BTreeMap<String, usize>>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 struct PreparedInputObservation {
     raw_bytes: usize,
+    parsed_phase_owned_capacity_bytes: usize,
     xdm_nodes: usize,
     xdm_owned_capacity_bytes: usize,
 }
@@ -107,8 +115,10 @@ impl PreparedInputSet {
     fn observe(&self, identity: &str) -> Option<PreparedInputObservation> {
         let raw_bytes = self.snapshot.get(identity)?.len();
         let document = self.documents.get(identity)?;
+        let parsed_phase_owned_capacity_bytes = *self.parsed_phase_capacity_bytes.get(identity)?;
         Some(PreparedInputObservation {
             raw_bytes,
+            parsed_phase_owned_capacity_bytes,
             xdm_nodes: document.node_count(),
             xdm_owned_capacity_bytes: document.owned_capacity_bytes(),
         })
@@ -120,6 +130,7 @@ impl PreparedInputSet {
             .filter_map(|identity| self.observe(identity))
             .fold(PreparedInputObservation::default(), |mut total, item| {
                 total.raw_bytes += item.raw_bytes;
+                total.parsed_phase_owned_capacity_bytes += item.parsed_phase_owned_capacity_bytes;
                 total.xdm_nodes += item.xdm_nodes;
                 total.xdm_owned_capacity_bytes += item.xdm_owned_capacity_bytes;
                 total
@@ -273,6 +284,7 @@ mod tests {
         let baseline = prepare(&baseline_snapshot, &[SOURCE_A]);
         let baseline_observation = baseline.observe(SOURCE_A).expect("observe baseline source");
         assert_eq!(baseline_observation.raw_bytes, 87);
+        assert!(baseline_observation.parsed_phase_owned_capacity_bytes > 87);
         assert_eq!(baseline_observation.xdm_nodes, 6);
         assert!(
             baseline_observation.xdm_owned_capacity_bytes > baseline_observation.raw_bytes,
@@ -299,6 +311,7 @@ mod tests {
             .expect("observe scaled prepared source");
 
         assert_eq!(scaled_observation.raw_bytes, raw_bytes);
+        assert!(scaled_observation.parsed_phase_owned_capacity_bytes > raw_bytes);
         assert_eq!(scaled_observation.xdm_nodes, 2 + ITEM_COUNT * 2);
         assert!(scaled_observation.xdm_owned_capacity_bytes > raw_bytes);
         assert_eq!(scaled.observe_totals(), scaled_observation);
