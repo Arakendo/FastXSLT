@@ -95,6 +95,12 @@ XDM-owned capacity as separate classes. They must state excluded allocator,
 construction-peak, index, and invocation memory rather than presenting the sum
 as process memory.
 
+Prepared-input concurrency tests distinguish concurrent immutable reads from
+concurrent construction. The current explicit builder baseline permits
+independent duplicate construction; cancellation and budget failures must not
+publish partial entries or poison a later retry. Single-flight and waiter
+behavior remain unimplemented policy, not implied guarantees.
+
 The W3C XML Conformance Test Suite 20130923 is a reviewed but non-admitted
 candidate for AR-0008. It is a dated archive rather than a Git submodule, its
 root catalog uses DTD/entity composition, and its older contributor notices

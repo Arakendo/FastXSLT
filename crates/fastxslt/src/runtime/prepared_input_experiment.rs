@@ -129,7 +129,11 @@ impl PreparedInputSet {
 
 #[cfg(test)]
 mod tests {
-    use std::{hint::black_box, sync::Arc, time::Instant};
+    use std::{
+        hint::black_box,
+        sync::{Arc, Barrier},
+        time::Instant,
+    };
 
     use crate::execution_control_experiment::{
         CancellationToken, ControlFailure, InvocationControl, WorkDomain, WorkLimits,
@@ -337,6 +341,45 @@ mod tests {
     }
 
     #[test]
+    fn independent_concurrent_builders_duplicate_preparation_by_design() {
+        let snapshot = snapshot();
+        let start = Arc::new(Barrier::new(2));
+        let workers: Vec<_> = (0..2)
+            .map(|_| {
+                let snapshot = snapshot.clone();
+                let start = Arc::clone(&start);
+                std::thread::spawn(move || {
+                    let mut builder = PreparedInputBuilder::new(snapshot);
+                    start.wait();
+                    builder
+                        .prepare(SOURCE_A, &mut InvocationControl::unbounded())
+                        .expect("independent preparation succeeds");
+                    builder
+                        .seal()
+                        .get(SOURCE_A)
+                        .expect("independently prepared source")
+                })
+            })
+            .collect();
+        let mut documents = workers
+            .into_iter()
+            .map(|worker| worker.join().expect("preparation worker should not panic"));
+        let first = documents.next().expect("first prepared document");
+        let second = documents.next().expect("second prepared document");
+
+        assert!(!Arc::ptr_eq(&first, &second));
+        assert_eq!(first.node_count(), second.node_count());
+        assert_eq!(
+            first.location(first.document_node()),
+            second.location(second.document_node())
+        );
+        assert_eq!(
+            first.string_value(first.document_node()),
+            second.string_value(second.document_node())
+        );
+    }
+
+    #[test]
     fn prepared_inputs_remain_bound_to_the_snapshot_generation_that_created_them() {
         let original = snapshot();
         let replacement = snapshot();
@@ -374,6 +417,10 @@ mod tests {
                 domain: WorkDomain::XmlEvent,
             }))
         );
+        cancelled
+            .prepare(SOURCE_A, &mut InvocationControl::unbounded())
+            .expect("cancelled preparation must not poison a retry");
+        assert!(cancelled.seal().get(SOURCE_A).is_some());
 
         let mut limits = WorkLimits::unbounded();
         limits.xdm_nodes = 1;
@@ -391,6 +438,10 @@ mod tests {
                 ..
             })
         ));
+        limited
+            .prepare(SOURCE_A, &mut InvocationControl::unbounded())
+            .expect("budget failure must not retain a partial entry");
+        assert!(limited.seal().get(SOURCE_A).is_some());
     }
 
     #[test]

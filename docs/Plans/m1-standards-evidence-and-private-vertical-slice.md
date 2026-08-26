@@ -378,3 +378,22 @@ ambient I/O or public stability claim.
 - Next slice: obtain intended-consumer transforms/workload envelopes. If those
   confirm this family, select the next required pattern/XPath feature and its
   native cases; otherwise redirect before accepting AR-0001.
+
+### 2026-08-25: Prepared-input lifecycle measurements
+
+- Work completed: retained a release-mode direct-versus-prepared timing probe,
+  separated raw-byte/XDM retention observations, and established the current
+  explicit-construction concurrency and retry baseline.
+- Validation: the tiny built-in-rule source measured 3.23–3.62 times slower for
+  parse/XDM construction per invocation than prepared reuse in three local
+  runs. The 87-byte hello source reports 6 XDM nodes and 1,932 bytes of owned
+  XDM capacity; a generated 2,109-byte source reports 202 nodes and 63,755
+  bytes. Independent concurrent builders produce distinct documents, while
+  cancelled and budget-exhausted attempts permit clean retries.
+- Findings: the seam has measurable private value and meaningful retention
+  cost. The current builder performs explicit owned construction, so it has no
+  shared first-access, single-flight, or waiter semantics to stabilize.
+- Next slice: obtain consumer workload envelopes before choosing lifecycle
+  defaults. Independently measure allocator-inclusive retained and peak
+  construction memory; evaluate single-flight only if duplicate construction
+  is observed under a representative workload.

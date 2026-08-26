@@ -194,6 +194,9 @@ thread-safety, eviction, or performance guarantee.
   for explicitly retained old work.
 - [ ] Test concurrent first access, duplicate construction versus single-flight,
   cancellation, construction failure, retry, and waiter behavior.
+  - [x] Establish the explicit-preparation baseline: independent concurrent
+    builders duplicate construction, while cancellation and budget failure
+    insert no partial entry and permit a clean retry.
 - [x] Establish that the current owned XDM representation can be shared
   immutably across concurrent readers without interior invocation mutation.
 - [ ] Separate budgets and observations for raw bytes, parsed XDM, derived
@@ -232,3 +235,7 @@ different retention seam.
 - 2026-08-25 -- Added per-identity and aggregate raw-byte/XDM retention
   observations and exercised them on the hello and generated 100-item sources.
   Allocator-inclusive peak, indexes, and runtime transient classes remain open.
+- 2026-08-25 -- Established the current concurrency/failure baseline. Explicit
+  independent builders duplicate preparation; cancellation and budget failure
+  leave no prepared entry and do not poison retry. Shared first access,
+  single-flight, and waiter policy remain unresolved.
