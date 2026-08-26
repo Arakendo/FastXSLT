@@ -51,7 +51,8 @@ sequences XML-specific acquisition and execution evidence.
 
 ## Phase 2: AR-0008 subset
 
-**Status:** Pending AR-0001 XML edition selection.
+**Status:** XML/Namespaces editions selected by ADR-0007; pending AR-0008 corpus
+rights, acquisition, encoding, and executable-subset decisions.
 
 - [ ] Select well-formed/not-well-formed and Namespaces cases applicable to the
   chosen editions and nonvalidating authority policy.
@@ -89,5 +90,5 @@ sequences XML-specific acquisition and execution evidence.
 
 ## Next slice
 
-Resolve the intended XML/Namespaces editions through AR-0001 and review whether
+Use the XML/Namespaces editions selected by ADR-0007 and review whether
 local-only hash-verified acquisition is sufficient for contributors and CI.

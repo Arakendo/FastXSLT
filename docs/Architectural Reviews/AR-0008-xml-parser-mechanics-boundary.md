@@ -127,7 +127,9 @@ boundary and FastXSLT remains responsible for accepted XML behavior.
 - [x] Pin `quick-xml` 0.40.1 as a dev-only dependency compatible with Rust 1.85.
 - [x] Demonstrate in-memory parsing, namespace expansion, logical provenance,
   DTD denial, unknown-entity denial, malformed structure, and explicit limits.
-- [ ] Select the supported XML and Namespaces editions with AR-0001.
+- [x] Select XML 1.0 Fifth Edition and Namespaces in XML 1.0 Third Edition as
+  the reference semantics through ADR-0007; parser and encoding admission remain
+  unresolved here.
 - [ ] Run a standards-derived XML well-formedness and namespace subset,
   especially names, namespace declarations, declarations, characters, and
   document structure.
@@ -163,3 +165,6 @@ or another physical input strategy requires a different event seam.
 - 2026-08-25 -- Inspected the official W3C XML 20130923 archive and retained it
   as a non-admitted candidate. Edition-aware selection, secure acquisition, and
   rights disposition remain before subset execution.
+- 2026-08-26 -- ADR-0007 selected the XML and Namespaces reference editions.
+  Encoding coverage, parser production admission, corpus rights, and executable
+  subset selection remain open.

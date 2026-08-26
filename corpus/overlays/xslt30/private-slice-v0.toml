@@ -3,6 +3,41 @@ revision = "6f8fd9e966ae74a251a2604abef9d904c7bc5c9b"
 
 [[case]]
 set_file = "tests/decl/template/_template-test-set.xml"
+case_name = "template-001"
+selection = "engine-unsupported"
+execution = "not-run"
+rationale = "The complete upstream case requires comment() node tests and modes; FastXSLT must not omit it merely because the current private compiler cannot admit those semantics."
+
+[[case]]
+set_file = "tests/decl/template/_template-test-set.xml"
+case_name = "template-002"
+selection = "engine-unsupported"
+execution = "not-run"
+rationale = "The complete upstream case requires processing-instruction() node tests and modes, both outside the current private slice."
+
+[[case]]
+set_file = "tests/decl/template/_template-test-set.xml"
+case_name = "template-003"
+selection = "engine-unsupported"
+execution = "not-run"
+rationale = "The complete upstream case requires node() tests and modes, both outside the current private slice."
+
+[[case]]
+set_file = "tests/decl/template/_template-test-set.xml"
+case_name = "template-004"
+selection = "engine-unsupported"
+execution = "not-run"
+rationale = "The complete upstream case requires attribute selection/patterns and modes, all outside the current private slice."
+
+[[case]]
+set_file = "tests/decl/template/_template-test-set.xml"
+case_name = "template-005"
+selection = "engine-unsupported"
+execution = "not-run"
+rationale = "The complete upstream case requires named templates, parameters, variables, conditionals, calls, and recursion; valid syntax remains distinct from invalid input."
+
+[[case]]
+set_file = "tests/decl/template/_template-test-set.xml"
 case_name = "template-006"
 selection = "selected"
 execution = "passed"

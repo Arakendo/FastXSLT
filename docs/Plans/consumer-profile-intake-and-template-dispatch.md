@@ -64,8 +64,9 @@ standards-driven preview.
 
 - [x] Inventory dependency, environment, stylesheet, and assertion families in
   the pinned XSLT30 suite.
-- [ ] Select a coherent preview denominator from complete upstream case
-  metadata rather than stylesheet filenames alone.
+- [x] Select the complete six-case XSLT30 `template` test set as the first
+  coherent preview denominator, retaining one pass and five engine-unsupported
+  cases from complete upstream metadata and compiler outcomes.
 - [ ] Compare the standards-driven preview and known consumer class against
   AR-0001 alternatives; use later consumer artifacts to reprioritize widening,
   not to retroactively define whether the preview was testable.

@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | Status | Draft, pre-stability |
-| Last updated | 2026-08-25 |
+| Last updated | 2026-08-26 |
 | Applies to | FastXSLT workspace |
 
 ## 1. Product intent
@@ -19,9 +19,10 @@ The engine is distributed under the MIT License so consuming applications can
 embed and redistribute it with minimal licensing friction. Dependency and corpus
 admission must preserve that distribution model and retain all required notices.
 
-The initial standards profile is intentionally unresolved. AR-0001 owns that
-question. Until it is decided, source code and documentation must not imply
-general XSLT 1.0, 2.0, or 3.0 conformance.
+ADR-0007 selects XSLT 3.0, XPath/XDM 3.1, Serialization 3.1, XML 1.0 Fifth
+Edition, and Namespaces 1.0 Third Edition as reference semantics for a staged
+modern profile. Support remains feature-enumerated and incomplete; the decision
+does not imply general XSLT 1.0, 2.0, or 3.0 conformance.
 
 ### Goals
 
@@ -38,7 +39,8 @@ general XSLT 1.0, 2.0, or 3.0 conformance.
 ### Non-goals for the scaffold
 
 - Selecting an XML parser or tree representation.
-- Claiming a standards version or conformance level.
+- Claiming a broad standards version or conformance level beyond implemented,
+  ledger-accounted features.
 - Streaming, schema-aware processing, packages, or extension functions.
 - A command-line interface, service, browser binding, or alternate backend.
 - Stable public APIs before an end-to-end transform exercises them.
@@ -397,8 +399,9 @@ unqualified percentage.
 ADR-0006 requires suite-native case identity, an explainable disposition for
 every discovered case, separate selection and execution outcomes, and conserved
 denominators across filtering, sharding, interruption, retry, and merging. It
-does not select the initial standards profile, a ledger schema or storage
-format, or wording for a published conformance claim.
+does not select a ledger schema or storage format, or wording for a published
+conformance claim. ADR-0007 selects the staged modern reference editions and
+widening discipline without claiming broad conformance.
 
 ## 6. Performance
 
@@ -436,7 +439,6 @@ initial read or explicit output publication escapes operating-system scanning.
 
 ### M0/M1 architectural decisions
 
-- Initial XSLT/XPath standards profile and conformance suite baseline.
 - XML parser and XDM physical representation.
 - Intermediate representation shape and stability.
 - Sync/async execution, input/output ownership, and initial public boundary.

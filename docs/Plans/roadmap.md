@@ -6,18 +6,16 @@ standards scope are decided.
 
 ## Current critical path
 
-FastXSLT has advanced beyond its original private-slice checklist, but it has
-not advanced beyond M1's product decision. The current order of work is:
+FastXSLT has accepted its staged-modern semantic direction and conserved the
+first complete XSLT30 test-set denominator. The current order of work is:
 
-1. inventory XSLT30 dependency, environment, stylesheet, and assertion families
-   and select a coherent standards-driven preview denominator;
-2. close AR-0001 through an ADR naming the staged initial standards profile,
-   deliberate exclusions, suite-selection policy, and widening criteria;
-3. implement the next standards-directed semantic slice and use its native QT3
+1. implement the next standards-directed semantic slice and use its native QT3
    and XSLT30 cases to extend comparison behavior;
-4. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
+2. map each selected suite environment into bounded sealed resources and add
+   the comparison family required by that slice;
+3. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
    memory, and peak construction memory under those representative workloads;
-5. exercise the same lifecycle through the bounded ASP.NET workbench before
+4. exercise the same lifecycle through the bounded ASP.NET workbench before
    stabilizing a host boundary or performance claim.
 
 Representative consumer transforms are not a prerequisite for a testable
@@ -31,9 +29,9 @@ claims.
 ADR-0006 now makes AR-0011's essential ledger invariants binding. Its remaining
 reporting, storage, CI, and comparison-family work proceeds when executable
 standards slices need it; those deferred choices are not the current release
-gate. AR-0005 and AR-0010 remain seam-preservation reviews. AR-0006 and AR-0007
-are deferred unless a representative case activates one of their reopening
-pressures.
+gate. AR-0005 and AR-0010 remain seam-preservation reviews. Compatibility AR-0006
+and streaming AR-0007 are deferred unless a representative case activates one
+of their reopening pressures.
 
 ## M0 -- Project scaffold
 
@@ -51,7 +49,7 @@ next architectural questions are visible rather than encoded accidentally.
   compatibility needs from the first intended consumer before claiming product
   fit or selecting host/performance defaults; this does not block the
   standards-driven preview.
-- [ ] Close AR-0001 through an accepted standards-profile ADR.
+- [x] Close AR-0001 through accepted ADR-0007.
 - [x] Select and document the leading private XML parser boundary for the slice.
 - [x] Compile one root template, evaluate one path/value expression, and produce
   one result through a private end-to-end engine path.
@@ -91,7 +89,7 @@ failed, and harness-error cases without an unqualified conformance claim.
 ## M3 -- Reusable stylesheet engine
 
 - [x] Separate reusable compiled stylesheet state from dynamic transform state
-  in the private reference path; public ownership remains pending AR-0001.
+  in the private reference path; its public representation remains unstabilized.
 - [ ] Add template selection, built-in rules, parameters, variables, and output
   behavior required by the accepted profile.
 - [ ] Establish explicit URI/resource resolution and execution limits.

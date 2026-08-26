@@ -8,9 +8,9 @@ as the primary product boundary.
 The repository is currently in **M1 pre-stability development**. A test-only
 private slice executes the `hello` golden transform through in-memory resources,
 XML, owned XDM, XSLT/XPath compilation, runtime, semantic result, and separate
-serialization. There is no public transform API or supported standards claim;
-the XSLT/XPath profile remains under
-[AR-0001](docs/Architectural%20Reviews/AR-0001-initial-standards-profile.md).
+serialization. There is no public transform API or broad conformance claim.
+[ADR-0007](docs/ADR/ADR-0007-staged-modern-standards-profile.md) selects modern
+reference editions for an explicitly incomplete, feature-enumerated preview.
 
 FastXSLT is not production ready and has not been security audited. Read
 [Safety and Limits](docs/safety-and-limits.md) before evaluating it for an
@@ -94,9 +94,9 @@ The [documentation index](docs/README.md) explains which records are binding:
 The [roadmap](docs/Plans/roadmap.md) defines milestone outcomes. The private
 architecture slice, bounded resources, invocation controls, prepared-input
 reuse, and corpus-ledger invariants are executable. M1 now uses complete pinned
-W3C case metadata to select a staged standards-driven preview and close AR-0001.
-Representative consumer transforms refine application priorities and
-ASP.NET/performance decisions in parallel; they do not block preview testing.
+W3C case metadata to widen the staged standards-driven preview accepted by
+ADR-0007. Representative consumer transforms refine application priorities and
+ASP.NET/performance decisions in parallel; they do not block standards testing.
 
 ## License
 

@@ -39,7 +39,7 @@ costs are included.
 
 ## Ownership and constraints
 
-- AR-0001 owns standards editions, profiles, suites, and semantic claims.
+- ADR-0007 owns standards editions, profiles, suites, and semantic claims.
 - Cargo package policy owns Rust API compatibility and MSRV declarations.
 - AR-0002 owns managed/native ABI, packaging, panic containment, and host
   lifecycle.
@@ -60,7 +60,7 @@ grant filesystem, network, extension, or host-object authority silently.
 
 | Domain | Example identity | Primary owner |
 | --- | --- | --- |
-| Standards semantics | XSLT/XPath/XML/XDM profile and edition | AR-0001 and specifications |
+| Standards semantics | XSLT/XPath/XML/XDM profile and edition | ADR-0007 and specifications |
 | Rust API | Crate SemVer and MSRV | Public facade and release policy |
 | Host ABI or binding | ABI or adapter contract version | AR-0002 and adapter |
 | Diagnostics | Code/category contract | AR-0004 |
@@ -126,7 +126,8 @@ version compatibility.
 
 ## Required follow-up
 
-- [ ] Record standards compatibility when AR-0001 reaches disposition.
+- [x] Record ADR-0007's staged-modern standards compatibility domain; shared
+  syntax does not imply XSLT 1.0 or 2.0 conformance.
 - [ ] Define pre-1.0 Rust API and MSRV change policy before general publication.
 - [ ] Have AR-0002 identify ABI/binding version and deployment needs.
 - [ ] Have AR-0004 and AR-0005 define forward and unknown identity behavior

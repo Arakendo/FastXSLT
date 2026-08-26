@@ -26,8 +26,8 @@ strategy later.
 
 **XSLT streaming conformance** is a standards feature involving the selected
 edition's formal streamability rules and required behavior. FastXSLT does not
-claim it. AR-0001 must first select a standards profile, and dedicated suites
-and implementation evidence would still be required.
+claim it. ADR-0007 deliberately excludes it from the initial profile; dedicated
+suites and implementation evidence would still be required after renewed review.
 
 Parsing XML as events, yielding output incrementally, or buffering a subtree is
 not by itself XSLT streaming conformance.
@@ -181,8 +181,8 @@ claim.
 
 ## Required follow-up
 
-- [ ] Let AR-0001 determine whether the selected standards edition defines a
-  streaming feature and whether it is excluded from the initial profile.
+- [x] ADR-0007 selects XSLT 3.0 as the reference edition and deliberately
+  excludes any XSLT streaming-conformance claim from the initial profile.
 - [ ] During M1/M2, inventory the navigation, order, ancestor, repeated-access,
   retention, and materialization needs of each implemented expression and
   instruction.
@@ -206,8 +206,8 @@ claim.
 
 ## Reopening triggers
 
-After disposition, reopen or supersede this review when AR-0001 includes formal
-streaming, a consumer supplies large forward-processable workloads, tree memory
+After disposition, reopen or supersede this review when the standards profile is
+revised to include formal streaming, a consumer supplies large forward-processable workloads, tree memory
 is a measured bottleneck, a concrete node API blocks another strategy, selective
 materialization proves useful, or abstraction cost harms the tree evaluator.
 
@@ -223,3 +223,6 @@ materialization proves useful, or abstraction cost harms the tree evaluator.
   tree slice confirmed the required seam can remain private; profile selection,
   representative workload pressure, or measured tree-memory pressure must
   trigger renewed review.
+- 2026-08-26 -- ADR-0007 selected modern reference semantics while deliberately
+  excluding streaming conformance from the initial profile. Architectural
+  optionality remains deferred under this review's existing triggers.

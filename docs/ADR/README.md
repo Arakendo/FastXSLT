@@ -37,3 +37,7 @@ but supersede a materially changed decision instead of rewriting its history.
   -- Accepted; every discovered standards case retains native identity and an
   explainable disposition, with separate selection/execution axes and conserved
   denominators across filtering, sharding, interruption, retry, and merging.
+- [ADR-0007: Staged Modern Standards Profile](ADR-0007-staged-modern-standards-profile.md)
+  -- Accepted; use XSLT 3.0, XPath/XDM 3.1, Serialization 3.1, XML 1.0 Fifth
+  Edition, and Namespaces 1.0 Third Edition as reference semantics while
+  widening an explicitly incomplete, ledger-accounted preview by feature.

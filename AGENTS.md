@@ -76,9 +76,9 @@ contract.
 - Do not introduce a second execution backend without a parity strategy against
   the reference semantics.
 - Do not describe architectural streaming optionality, event-fed parsing, or
-  bounded subtree buffering as XSLT streaming conformance. Any implementation
-  remains deferred and any standards claim depends on AR-0001 plus dedicated
-  conformance evidence.
+  bounded subtree buffering as XSLT streaming conformance. ADR-0007 deliberately
+  excludes that claim; any future implementation requires renewed review and
+  dedicated conformance evidence.
 - Do not split logical layers into crates until dependency direction, independent
   reuse, or release pressure makes the boundary valuable.
 - Follow ADR-0003. Do not add `unsafe` code merely because tests pass. The

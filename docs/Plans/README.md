@@ -16,5 +16,5 @@ silently rewriting their original outcome.
   -- secure, edition-aware XML-suite selection and separate hostile-input
   evidence for AR-0008/AR-0010.
 - [Consumer Profile Intake and Template-Dispatch Slice](consumer-profile-intake-and-template-dispatch.md)
-  -- active AR-0001 intake plus the next private standards-pressure slice.
+  -- ADR-0007 profile execution plus the next standards-pressure slice.
 - [Template](TEMPLATE.md) -- evidence-led implementation plan structure.

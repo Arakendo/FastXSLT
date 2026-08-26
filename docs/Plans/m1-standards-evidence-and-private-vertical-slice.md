@@ -70,23 +70,25 @@ none are represented as supported or executable.
   claims; this does not block standards-driven preview selection.
 - [x] Complete suite/harness evidence for the XSLT 1.0 alternative without
   admitting redistribution-constrained legacy material to the repository.
-- [ ] Compare staged-modern and version-specific alternatives against time to
+- [x] Compare staged-modern and version-specific alternatives against time to
   first useful release, data-model growth, diagnostics, and migration risk.
-- [ ] Define dependency-aware selection and reporting categories.
+- [x] Define dependency-aware selection and reporting categories.
 - [x] Prove one overlay-selected XSLT30 case can retain upstream case,
   environment, stylesheet, assertion, and revision identity without copying
   fixture content.
 - [x] Inventory dependency, environment, stylesheet, assertion, and combined
   metadata shapes across all 14,600 pinned XSLT30 cases.
-- [ ] Close AR-0001 through an accepted ADR.
+- [x] Retain the complete six-case XSLT30 `template` test set as the first
+  conserved preview denominator, including unsupported outcomes.
+- [x] Close AR-0001 through accepted ADR-0007.
 
 Exit state: source code, documentation, and test selection can name one initial
 profile without ambiguity.
 
 ## Slice 2: Private golden vertical behavior
 
-**Status:** Complete as a private, version-neutral experiment; public semantics
-remain pending AR-0001 disposition.
+**Status:** Complete as a private experiment; ADR-0007 now supplies its modern
+reference direction while public API and broad conformance remain unstabilized.
 
 - [x] Select a leading XML parser for private evaluation without delegating engine
   semantics.
@@ -481,3 +483,19 @@ ambient I/O or public stability claim.
 - Next slice: define a first coherent preview overlay around complete upstream
   cases and `assert-xml` comparison, using actual compiler/executor outcomes to
   distinguish applicable, unsupported, and harness-gap cases.
+
+### 2026-08-26: First conserved XSLT30 preview denominator
+
+- Work completed: expanded the first-party overlay from one green template case
+  to all six cases in the pinned XSLT30 `template` test set. The harness retains
+  every case's standards dependency, environment, stylesheet, and `assert-xml`
+  shape and imports each stylesheet through a bounded snapshot.
+- Validation: `template-006` compiles and executes; `template-001` through
+  `template-004` fail compilation as unsupported attribute/semantic shapes, and
+  `template-005` fails as unsupported named-template behavior. Valid named
+  templates are no longer misclassified as invalid missing-match input.
+- Conservation: six discovered cases equal one selected/pass plus five
+  engine-unsupported/not-run cases. No filename or completion outcome controls
+  membership.
+- Next slice: propose the staged standards-profile ADR around this selection
+  and ADR-0006, explicitly denying any broad XSLT version or conformance claim.

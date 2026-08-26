@@ -84,7 +84,9 @@ the FastXSLT library artifact.
 QT3 covers XPath and XQuery editions and optional features beyond whatever
 FastXSLT initially selects. The XSLT30 suite likewise includes dependencies and
 features that may remain outside the accepted profile. Presence in `vendor/`
-does not make a case supported and does not choose AR-0001's standards decision.
+does not make a case supported. ADR-0007 selects the modern reference editions,
+but applicability still depends on the explicitly implemented feature slice and
+recorded suite metadata.
 
 Any published report must record:
 

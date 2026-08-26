@@ -44,6 +44,13 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
                 output = Some(compile_output(document, child)?);
             }
             (Some(XSLT_NAMESPACE), "template") => {
+                if let Some(name) = optional_attribute(document, child, None, "name") {
+                    return Err(unsupported(
+                        "FXST1010",
+                        format!("named templates are outside the private slice: {name}"),
+                        document.location(child),
+                    ));
+                }
                 let pattern = required_attribute(document, child, None, "match")?;
                 if pattern == "/" {
                     if root_template.is_some() {
@@ -563,6 +570,15 @@ mod tests {
         assert_eq!(failure.category, CompileCategory::Unsupported);
         assert_eq!(failure.code, "FXST1006");
         assert_eq!(failure.location.resource, "memory:unsupported.xsl");
+
+        let named_template = parse_stylesheet(
+            "memory:named-template.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template name="worker"><out/></xsl:template><xsl:template match="/"><xsl:call-template name="worker"/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&named_template)
+            .expect_err("valid named-template syntax should be visibly unsupported");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+        assert_eq!(failure.code, "FXST1010");
     }
 
     #[test]

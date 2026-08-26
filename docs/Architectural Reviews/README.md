@@ -49,8 +49,8 @@ Copy [TEMPLATE.md](TEMPLATE.md), use the next unused independent sequence number
 and add the record to this index. Never reuse a retired number.
 
 - [AR-0001: Initial Standards Profile and Conformance Baseline](AR-0001-initial-standards-profile.md)
-  -- Under Review; required before FastXSLT claims a version or implements a
-  public transform slice.
+  -- Accepted through ADR-0007; modern reference editions guide a staged,
+  explicitly incomplete profile without creating a broad conformance claim.
 - [AR-0002: ASP.NET Host Integration Boundary](AR-0002-aspnet-host-integration.md)
   -- Proposed; determine how managed applications embed and reuse FastXSLT
   without confusing Rust-core speed with end-to-end host performance.

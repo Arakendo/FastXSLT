@@ -34,14 +34,14 @@ hash-identified local candidate rather than admitted corpus.
 
 The current evidence therefore covers corpus discovery and one vertical case,
 not a general classifier, assertion engine, execution ledger, reproducible
-report, shard/retry model, or public conformance statement. AR-0001 has also not
-selected the initial standards profile, so FastXSLT cannot yet define the
-applicable denominator.
+report, shard/retry model, or public conformance statement. ADR-0007 now selects
+the staged-modern profile, while applicability still grows one coherent
+implemented feature family at a time.
 
 ## Ownership and constraints
 
-- AR-0001 and its eventual ADR own the selected XSLT, XPath, XML, XDM, and
-  serialization profile. A harness does not infer the product contract from
+- ADR-0007 owns the selected XSLT, XPath, XML, XDM, and serialization reference
+  profile. A harness does not infer the product contract from
   whichever cases are easiest to run.
 - Corpus provenance owns canonical source, immutable revision/digest, license,
   acquisition, byte integrity, nested notices, and update procedure.
@@ -221,9 +221,9 @@ classify every discovered case, separate selection from execution, conserve
 denominators, retain report inputs, and keep corpus purposes distinct.
 
 ADR-0006 deliberately does not stabilize a universal harness, ledger schema,
-report database/API, CI topology, or published conformance percentage. Those
-follow-on choices remain deferred until AR-0001 closes and executable standards
-slices provide the relevant comparison and scale evidence.
+report database/API, CI topology, or published conformance percentage. ADR-0007
+now supplies the profile needed for applicability; the remaining choices stay
+deferred until executable standards slices provide comparison and scale evidence.
 
 ## Required follow-up
 
@@ -233,7 +233,8 @@ slices provide the relevant comparison and scale evidence.
   case, environment, stylesheet, assertion, dependency, and revision identity.
 - [x] Inventory the W3C XML archive candidate and identify its secure catalog,
   selection, acquisition, and rights constraints without admitting it.
-- [ ] Close AR-0001 with an accepted profile that can classify applicability.
+- [x] Close AR-0001 through ADR-0007 with an accepted profile that can classify
+  applicability.
 - [x] Define a private case-record experiment using at least one QT3 assertion
   family and a second XSLT30 assertion/environment family.
 - [x] Demonstrate conservation totals when a run is filtered, sharded,
@@ -258,8 +259,8 @@ slices provide the relevant comparison and scale evidence.
 
 ## Reopening triggers
 
-Revisit or supersede this review when AR-0001 accepts a standards profile, a
-second assertion family executes, XML candidate rights are resolved, report
+Revisit or supersede this review when a second assertion family executes, XML
+candidate rights are resolved, report
 volume requires persistent storage, sharding loses or duplicates cases, a
 consumer needs machine-readable verification results, or published conformance
 reporting becomes a release requirement.
@@ -273,3 +274,6 @@ reporting becomes a release requirement.
   conservation, provenance, and corpus-purpose invariants through ADR-0006;
   retained schema, storage, CI, comparison, and publication questions as
   deferred follow-up.
+- 2026-08-26 -- ADR-0007 supplied the staged-modern applicability profile. The
+  complete six-case XSLT30 `template` set is its first conserved preview
+  denominator; broader harness and publication choices remain deferred.

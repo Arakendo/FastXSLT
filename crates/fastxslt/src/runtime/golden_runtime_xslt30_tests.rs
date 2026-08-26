@@ -3,7 +3,8 @@
 use std::{collections::HashSet, fs, path::PathBuf};
 
 use super::{
-    ExecutionPolicy, TransformRequest, TransformSetBuilder, compile_resource, execute_transform_set,
+    ExecutionPolicy, FailureCategory, TransformRequest, TransformSetBuilder, compile_resource,
+    execute_transform_set,
 };
 use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
@@ -11,6 +12,14 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const CASE_NAME: &str = "template-006";
+const TEMPLATE_CASES: [&str; 6] = [
+    "template-001",
+    "template-002",
+    "template-003",
+    "template-004",
+    "template-005",
+    "template-006",
+];
 
 fn suite_test_set() -> (Document, PathBuf) {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -90,6 +99,70 @@ fn assert_same_empty_document_element(actual: &str, expected: &str) {
     assert_eq!(actual.name(actual_root), expected.name(expected_root));
     assert!(actual.children(actual_root).is_empty());
     assert!(expected.children(expected_root).is_empty());
+}
+
+#[test]
+fn classifies_the_complete_pinned_template_test_set_without_denominator_loss() {
+    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
+    let template_set = "set_file = \"tests/decl/template/_template-test-set.xml\"";
+    assert_eq!(overlay.matches(template_set).count(), TEMPLATE_CASES.len());
+    assert_eq!(
+        overlay
+            .matches("selection = \"engine-unsupported\"")
+            .count(),
+        5
+    );
+
+    let (test_set, set_path) = suite_test_set();
+    for case_name in TEMPLATE_CASES {
+        let test_case = find_element(
+            &test_set,
+            test_set.document_node(),
+            "test-case",
+            Some(("name", case_name)),
+        )
+        .expect("overlay case should exist in the complete pinned test set");
+        assert!(overlay.contains(&format!("case_name = \"{case_name}\"")));
+
+        let spec = find_element(&test_set, test_case, "spec", None)
+            .and_then(|node| attribute(&test_set, node, "value"))
+            .expect("template case should retain an explicit spec dependency");
+        assert!(matches!(spec, "XSLT10+" | "XSLT20+"));
+        assert!(find_element(&test_set, test_case, "environment", None).is_some());
+        assert!(find_element(&test_set, test_case, "assert-xml", None).is_some());
+
+        let stylesheet_file = find_element(&test_set, test_case, "stylesheet", None)
+            .and_then(|node| attribute(&test_set, node, "file"))
+            .expect("template case should reference one stylesheet");
+        let stylesheet = fs::read(
+            set_path
+                .parent()
+                .expect("test set should have a directory")
+                .join(stylesheet_file),
+        )
+        .expect("read upstream stylesheet and close handle");
+        let stylesheet_id = format!("urn:w3c:xslt30:{case_name}:stylesheet");
+        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, 8_192, 8_192));
+        resources
+            .admit(stylesheet_id.clone(), stylesheet)
+            .expect("admit one upstream stylesheet");
+        let snapshot = resources.seal();
+
+        if case_name == CASE_NAME {
+            compile_resource(&snapshot, &stylesheet_id)
+                .expect("the admitted preview case should compile");
+        } else {
+            let expected_code = if case_name == "template-005" {
+                "FXST1010"
+            } else {
+                "FXST1009"
+            };
+            let failure = compile_resource(&snapshot, &stylesheet_id)
+                .expect_err("the overlay must retain unsupported template cases visibly");
+            assert_eq!(failure.category, FailureCategory::Unsupported);
+            assert_eq!(failure.code, expected_code);
+        }
+    }
 }
 
 #[test]

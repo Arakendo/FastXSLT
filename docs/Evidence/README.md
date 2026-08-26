@@ -16,6 +16,7 @@ pressure architecture but does not silently create a public guarantee.
 - [Peer Streaming Architecture Review: Monday](peer-streaming-architecture-review-monday-2026-08-25.md)
 - [W3C Suite Catalog Inventory](w3c-suite-catalog-inventory-2026-08-25.md)
 - [XSLT30 Case-Metadata Inventory](xslt30-case-metadata-inventory-2026-08-25.md)
+- [XSLT30 Template Preview Denominator](xslt30-template-preview-denominator-2026-08-26.md)
 - [OASIS XSLT/XPath 1.0 Suite Candidate Review](oasis-xslt10-suite-candidate-review-2026-08-25.md)
 - [Rust XML Parser Candidate Review](rust-xml-parser-candidate-review-2026-08-25.md)
 - [Owned XDM Tree Experiment](owned-xdm-tree-experiment-2026-08-25.md)

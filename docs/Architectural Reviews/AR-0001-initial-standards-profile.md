@@ -2,12 +2,12 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Under Review |
+| Status | Accepted |
 | Opened | 2026-08-25 |
-| Last reviewed | 2026-08-25 |
+| Last reviewed | 2026-08-26 |
 | Scope | Product standards and semantic baseline |
 | Trigger | The first transform slice needs a precise XPath/XSLT target |
-| Related ADRs | None |
+| Related ADRs | ADR-0007 |
 | Related evidence | `corpus/golden/hello`, peer review in `docs/Evidence/`, `docs/Evidence/w3c-suite-catalog-inventory-2026-08-25.md`, `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`, `docs/Evidence/private-golden-transform-slice-2026-08-25.md`, and `docs/Evidence/xslt30-template-006-private-execution-2026-08-25.md` |
 
 ## Architectural question
@@ -115,6 +115,11 @@ suite selection are reported precisely.
   shapes, and 564 combined metadata shapes. This is sufficient to drive staged
   preview selection now, but it also proves that filename or superficial
   stylesheet syntax is not an honest denominator.
+- The complete six-case XSLT30 `template` test set now supplies the first
+  conserved preview denominator: `template-006` passes, while `template-001`
+  through `template-005` remain visibly engine-unsupported for modes, node
+  tests, attribute paths/patterns, and named-template semantics. All six retain
+  upstream dependency, environment, stylesheet, and `assert-xml` identity.
 - A review of the local TS XSLT peer at commit `9c48142` identifies a candidate
   progression from literal/value extraction through apply-template dispatch,
   parameters/variables/conditionals, and later explicit multi-resource
@@ -126,11 +131,11 @@ suite selection are reported precisely.
 
 ## Disposition
 
-**Under Review with Alternative C as the working recommendation.** A private
-standards-driven preview may use complete W3C case metadata to select coherent
-feature families and test ownership and resource boundaries. It must not imply
-broad version support. Do not label FastXSLT as conformant until the initial
-target, suites, exclusions, and reporting policy are accepted in an ADR.
+**Accepted through ADR-0007.** FastXSLT uses XSLT 3.0, XPath/XDM 3.1,
+Serialization 3.1, XML 1.0 Fifth Edition, and Namespaces 1.0 Third Edition as
+reference semantics while widening an explicitly incomplete staged preview.
+The decision does not claim broad version conformance. ADR-0006 continues to
+govern honest suite accounting.
 
 ## Required follow-up
 
@@ -148,9 +153,10 @@ target, suites, exclusions, and reporting policy are accepted in an ADR.
   needed to test architecture before disposition.
 - [x] Inventory XSLT30 dependency, environment, stylesheet, and assertion
   families across all 14,600 pinned cases.
-- [ ] Select a coherent preview denominator from complete case metadata and
-  executable engine outcomes.
-- [ ] Propose an ADR naming the target, deliberate exclusions, suites, and
+- [x] Select the complete six-case XSLT30 `template` test set as the first
+  coherent preview denominator and retain one pass plus five explicit
+  engine-unsupported outcomes.
+- [x] Propose an ADR naming the target, deliberate exclusions, suites, and
   criteria for widening scope.
 
 ## Reopening triggers
@@ -182,3 +188,9 @@ the selected internal model blocks a planned compatibility level.
 - 2026-08-25 -- Inventoried all XSLT30 case metadata and retained 564 distinct
   dependency/assertion/environment/stylesheet shapes. Preview denominator
   selection remains open and must use complete metadata plus engine outcomes.
+- 2026-08-26 -- Selected the complete six-case XSLT30 `template` test set as the
+  first conserved preview denominator. One case passes and five remain visibly
+  unsupported; no upstream case disappears from the accounting.
+- 2026-08-26 -- Accepted Alternative C through ADR-0007 with modern reference
+  editions, deliberate initial exclusions, pinned primary suites, and explicit
+  criteria for widening without making a broad conformance claim.
