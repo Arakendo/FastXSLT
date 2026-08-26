@@ -9,7 +9,7 @@
 | Trigger | A dispatcher was proposed as a security layer capable of detecting and recovering a rogue parser worker |
 | Related ADRs | ADR-0002, ADR-0005 |
 | Related reviews | AR-0002, AR-0003, AR-0004, AR-0008, AR-0009 |
-| Related evidence | `docs/Evidence/thread-pool-design-review-2026-08-25.md`; private parser and output-limit tests; future fault-injection and host-boundary measurements |
+| Related evidence | `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-ar-0010-review-monday-2026-08-25.md`; private parser and output-limit tests; future fault-injection and host-boundary measurements |
 
 ## Architectural question
 
@@ -182,3 +182,6 @@ is measured, or a stronger sandbox such as WASM becomes a viable host boundary.
 
 - 2026-08-25 -- Opened as Incubating from the project-owner dispatcher/security
   discussion; separated cooperative supervision from hard process isolation.
+- 2026-08-25 -- Peer review confirmed the guarantee classes, direct semantic
+  reference path, layer-owned accounting, and caution around panic recovery;
+  retained Incubating pending charge-point and fault-injection evidence.
