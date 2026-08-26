@@ -173,8 +173,8 @@ rationale = "The native XSLT20+ case executes an explicit, value-aware castabili
 set_file = "tests/expr/castable/_castable-test-set.xml"
 case_name = "castable-004"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The native XSLT20+ case and inline XML assertion are admitted; its selected built-in datatype castability checks exceed the current evaluator."
+execution = "passed"
+rationale = "The native XSLT20+ case executes duration-family castability and rejects unrelated date, time, boolean, and integer sources, matching its inline XML assertion."
 
 [[case]]
 set_file = "tests/expr/castable/_castable-test-set.xml"

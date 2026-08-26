@@ -52,7 +52,15 @@ const CASES: [CasePressure; 9] = [
         selection: "selected",
         execution: "passed",
     },
-    selected_engine_case("castable-004", "assert-xml"),
+    CasePressure {
+        name: "castable-004",
+        environment: Some("castbl01"),
+        spec: "XSLT20+",
+        features: &[],
+        assertion: "assert-xml",
+        selection: "selected",
+        execution: "passed",
+    },
     CasePressure {
         name: "castable-005",
         environment: None,
@@ -79,19 +87,52 @@ const CASES: [CasePressure; 9] = [
 #[test]
 fn executes_native_xslt30_castable_001() {
     let (actual, expected) = execute_principal_case("castable-001");
-    assert_eq!(actual, expected.trim());
+    assert_native_xml(&actual, &expected);
 }
 
 #[test]
 fn executes_native_xslt30_castable_002_with_typed_local_variables() {
     let (actual, expected) = execute_principal_case("castable-002");
-    assert_eq!(actual, expected.trim());
+    assert_native_xml(&actual, &expected);
 }
 
 #[test]
 fn executes_native_xslt30_castable_003_with_numeric_conversions() {
     let (actual, expected) = execute_principal_case("castable-003");
-    assert_eq!(actual, expected.trim());
+    assert_native_xml(&actual, &expected);
+}
+
+#[test]
+fn executes_native_xslt30_castable_004_with_duration_conversions() {
+    let (actual, expected) = execute_principal_case("castable-004");
+    assert_native_xml(&actual, &expected);
+}
+
+fn assert_native_xml(actual: &str, expected: &str) {
+    for (identity, xml) in [("actual", actual), ("expected", expected)] {
+        let resource = format!("urn:fastxslt:assert-xml:{identity}");
+        parse_document(
+            &resource,
+            xml.trim().as_bytes(),
+            ParseLimits {
+                max_events: 256,
+                max_depth: 32,
+            },
+        )
+        .unwrap_or_else(|failure| panic!("{identity} XML should parse: {failure:?}"));
+    }
+    assert_eq!(
+        without_xml_declaration(actual.trim()),
+        without_xml_declaration(expected.trim())
+    );
+}
+
+fn without_xml_declaration(xml: &str) -> &str {
+    if xml.starts_with("<?xml") {
+        xml.find("?>").map_or(xml, |end| &xml[end + 2..])
+    } else {
+        xml
+    }
 }
 
 fn execute_principal_case(case_name: &str) -> (String, String) {
@@ -116,9 +157,13 @@ fn execute_principal_case(case_name: &str) -> (String, String) {
         .expect("native source file");
     let result = child_named(&test_set, test_case, "result").expect("native result");
     let assertion = first_element_child(&test_set, result).expect("native assertion");
-    let expected_file = attribute(&test_set, assertion, "file").expect("native expected file");
-    let expected = fs::read_to_string(directory.join(expected_file))
-        .expect("read native assertion and close handle");
+    let expected = attribute(&test_set, assertion, "file").map_or_else(
+        || test_set.string_value(assertion),
+        |expected_file| {
+            fs::read_to_string(directory.join(expected_file))
+                .expect("read native assertion and close handle")
+        },
+    );
     let source_id = format!("urn:w3c:xslt30:{case_name}:source");
     let stylesheet_id = stylesheet_id(case_name);
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 65_536, 131_072));
@@ -161,18 +206,6 @@ fn execute_principal_case(case_name: &str) -> (String, String) {
 
     let results = execute_transform_set(set.seal()).expect("execute native castable case");
     (results.by_request[case_name].serialized.clone(), expected)
-}
-
-const fn selected_engine_case(name: &'static str, assertion: &'static str) -> CasePressure {
-    CasePressure {
-        name,
-        environment: Some("castbl01"),
-        spec: "XSLT20+",
-        features: &[],
-        assertion,
-        selection: "selected",
-        execution: "engine-unsupported",
-    }
 }
 
 const fn selected_harness_case(name: &'static str) -> CasePressure {

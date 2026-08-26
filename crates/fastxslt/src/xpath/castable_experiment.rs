@@ -1,4 +1,4 @@
-//! Built-in atomic castability for the native `castable-001` through `003` slices.
+//! Built-in atomic castability for the native `castable-001` through `004` slices.
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
@@ -165,6 +165,7 @@ fn castable_as(value: &AtomicValue, target: BuiltinAtomicType) -> bool {
                 "INF" | "-INF" | "NaN"
             )
         ),
+        (source, target) if source.is_duration() && target.is_duration() => true,
         _ => false,
     }
 }
@@ -174,6 +175,7 @@ fn variable_target_is_admitted(target: BuiltinAtomicType) -> bool {
         target,
         BuiltinAtomicType::String | BuiltinAtomicType::UntypedAtomic
     ) || target.is_numeric()
+        || target.is_duration()
 }
 
 impl BuiltinAtomicType {
@@ -217,6 +219,13 @@ impl BuiltinAtomicType {
         matches!(
             self,
             Self::Integer | Self::Decimal | Self::Float | Self::Double
+        )
+    }
+
+    fn is_duration(self) -> bool {
+        matches!(
+            self,
+            Self::Duration | Self::DayTimeDuration | Self::YearMonthDuration
         )
     }
 }
@@ -621,6 +630,66 @@ mod tests {
             assert!(
                 !evaluate_value(&expression, &value, &mut control).expect("castability"),
                 "{source_type:?} should not be castable as xs:float"
+            );
+        }
+    }
+
+    #[test]
+    fn applies_the_admitted_duration_family_castability_matrix() {
+        let location = SourceLocation {
+            resource: "memory:stylesheet".to_owned(),
+            span: 0..50,
+        };
+        let mut control = InvocationControl::unbounded();
+        for (source_type, lexical, target) in [
+            (
+                BuiltinAtomicType::Duration,
+                "P1Y2M3DT1H2M3S",
+                "dayTimeDuration",
+            ),
+            (
+                BuiltinAtomicType::Duration,
+                "P1Y2M3DT1H2M3S",
+                "yearMonthDuration",
+            ),
+            (
+                BuiltinAtomicType::DayTimeDuration,
+                "P3DT1H2M3S",
+                "yearMonthDuration",
+            ),
+            (
+                BuiltinAtomicType::YearMonthDuration,
+                "P1Y2M",
+                "dayTimeDuration",
+            ),
+        ] {
+            let value = crate::xdm::atomic_value_experiment::AtomicValue::from_validated_lexical(
+                source_type,
+                lexical,
+            );
+            let expression = parse(&format!("$value castable as xs:{target}"), &location)
+                .expect("native duration conversion edge should parse");
+            assert!(
+                evaluate_value(&expression, &value, &mut control).expect("castability"),
+                "{source_type:?} should be castable as xs:{target}"
+            );
+        }
+
+        for (source_type, lexical, target) in [
+            (BuiltinAtomicType::Date, "2006-05-16", "yearMonthDuration"),
+            (BuiltinAtomicType::Time, "23:17:00", "dayTimeDuration"),
+            (BuiltinAtomicType::Boolean, "true", "yearMonthDuration"),
+            (BuiltinAtomicType::Integer, "43", "dayTimeDuration"),
+        ] {
+            let value = crate::xdm::atomic_value_experiment::AtomicValue::from_validated_lexical(
+                source_type,
+                lexical,
+            );
+            let expression = parse(&format!("$value castable as xs:{target}"), &location)
+                .expect("native incompatible duration edge should parse");
+            assert!(
+                !evaluate_value(&expression, &value, &mut control).expect("castability"),
+                "{source_type:?} should not be castable as xs:{target}"
             );
         }
     }

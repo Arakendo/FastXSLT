@@ -904,3 +904,23 @@ ambient I/O or public stability claim.
 - Next slice: execute native `castable-004` through explicit duration-family
   conversion rules while keeping date, time, boolean, and numeric sources
   incompatible with duration targets where required.
+
+### 2026-08-26: Native XSLT30 `castable-004` duration conversion matrix
+
+- Work completed: executed the unmodified native stylesheet's four positive
+  duration-family castability checks and four incompatible source checks.
+- Conversion rule: duration, day-time-duration, and year-month-duration values
+  are mutually castable; unrelated date, time, boolean, and integer sources do
+  not become duration-compatible.
+- Assertion rule: the upstream inline `assert-xml` content is parsed and
+  compared with the serialized result after ignoring only an optional XML
+  declaration. Broader XML equivalence remains outside this adapter.
+- Conservation: the denominator remains seven selected plus two
+  profile-excluded; selected execution is four passes, no engine-unsupported,
+  and three harness-unsupported.
+- Claim control: castability does not construct converted duration values or
+  define duration storage, normalization, arithmetic, comparison, or canonical
+  serialization.
+- Next slice: measure the implemented parse, prepare, compile, and warm
+  execution lifecycle before selecting host-facing cache or performance
+  defaults.

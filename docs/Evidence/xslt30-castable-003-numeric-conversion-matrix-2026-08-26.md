@@ -42,10 +42,12 @@ whether the conversion is permitted.
 
 ## Conservation
 
-The complete nine-case denominator remains seven selected and two schema-aware
-profile exclusions. Selected execution advances to three passes, one
-engine-unsupported case, and three harness-unsupported cases. No case fails or
-disappears. Native `castable-004` remains valid-but-unsupported at compilation.
+At this checkpoint, the complete nine-case denominator remained seven selected
+and two schema-aware profile exclusions. Selected execution advanced to three
+passes, one engine-unsupported case, and three harness-unsupported cases. No
+case failed or disappeared. The later
+[`castable-004` evidence](xslt30-castable-004-duration-conversion-matrix-2026-08-26.md)
+advances that same conserved denominator.
 
 ## Claim boundary
 
@@ -53,4 +55,4 @@ This evidence establishes only the castability relationships above. It does
 not establish constructed cross-numeric results, public atomic values, numeric
 storage, arbitrary precision, implementation range, rounding, overflow,
 canonical lexical serialization, arithmetic promotion, or general static type
-checking. Duration-family conversion remains the next separate standards slice.
+checking. Duration-family conversion remained a separate later standards slice.

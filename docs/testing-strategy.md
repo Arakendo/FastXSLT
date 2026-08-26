@@ -100,8 +100,11 @@ inherited `xs` namespace binding. Native `castable-002` also passes through 12
 explicit casts into typed local variables and 24
 type-directed checks against `xs:string` and `xs:untypedAtomic`. The selected
 denominator now also executes native `castable-003` through 20 positive numeric
-conversion edges and three incompatible source/target edges. It is therefore
-three passes, one engine-unsupported, and three harness-unsupported cases.
+conversion edges and three incompatible source/target edges. Native
+`castable-004` adds four duration-family conversions; its four incompatible
+source/target edges also pass an inline XML assertion. The selected
+denominator is four passes, no engine-unsupported cases, and three
+harness-unsupported cases.
 The admission resolves every stylesheet, environment, source, dependency, and
 assertion shape without treating the two profile exclusions as undiscovered or
 silently dropping the compound-assertion cases.

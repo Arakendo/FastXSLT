@@ -14,14 +14,9 @@ bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
 current order of work is:
 
-1. define the explicit duration-family conversion/castability rules required by
-   native XSLT30 `castable-004` without generalizing them to unrelated temporal
-   types;
-2. execute `castable-004`, retaining the other five
-   dispositions;
-3. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
+1. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
    memory, and peak construction memory under those representative workloads;
-4. exercise the same lifecycle through the bounded ASP.NET workbench before
+2. exercise the same lifecycle through the bounded ASP.NET workbench before
    stabilizing a host boundary or performance claim.
 
 Representative consumer transforms are not a prerequisite for a testable
@@ -118,6 +113,9 @@ implemented behavior belongs to a named standards slice.
 - [x] Execute native `castable-003` through an explicit value-aware conversion
   matrix for boolean, integer, decimal, float, and double. The selected
   denominator is three passes, one engine gap, and three harness gaps.
+- [x] Execute native `castable-004` through explicit duration-family
+  castability and its inline XML assertion. The selected denominator is four
+  passes, no engine-classified gaps, and three harness gaps.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,
