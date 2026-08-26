@@ -17,6 +17,7 @@ enum PredicateAxis {
     Attribute,
     Ancestor,
     AncestorOrSelf,
+    DescendantOrSelf,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -121,6 +122,8 @@ fn parse_final_axis_predicate(expression: &str) -> (&str, Option<ExistencePredic
         (PredicateAxis::Ancestor, name)
     } else if let Some(name) = predicate.strip_prefix("ancestor-or-self::") {
         (PredicateAxis::AncestorOrSelf, name)
+    } else if let Some(name) = predicate.strip_prefix("descendant-or-self::") {
+        (PredicateAxis::DescendantOrSelf, name)
     } else {
         return (expression, None);
     };
@@ -205,6 +208,12 @@ pub(crate) fn evaluate_child_path_controlled(
                             PredicateAxis::AncestorOrSelf => {
                                 has_named_ancestor(document, child, &predicate.name, true, control)?
                             }
+                            PredicateAxis::DescendantOrSelf => has_named_descendant_or_self(
+                                document,
+                                child,
+                                &predicate.name,
+                                control,
+                            )?,
                         }
                     } else {
                         true
@@ -264,6 +273,23 @@ fn has_named_attribute(
         {
             return Ok(true);
         }
+    }
+    Ok(false)
+}
+
+fn has_named_descendant_or_self(
+    document: &Document,
+    node: NodeId,
+    required: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    let mut pending = vec![node];
+    while let Some(candidate) = pending.pop() {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if node_has_unnamespaced_name(document, candidate, required) {
+            return Ok(true);
+        }
+        pending.extend(document.children(candidate).iter().rev().copied());
     }
     Ok(false)
 }
@@ -526,6 +552,43 @@ mod tests {
             Some(ExistencePredicate {
                 axis: PredicateAxis::Attribute,
                 name: "attr1".to_owned(),
+            })
+        );
+    }
+
+    #[test]
+    fn descendant_or_self_predicate_checks_self_then_document_order_descendants() {
+        let parsed = parse_document(
+            "memory:source.xml",
+            b"<doc><element1><child2>right</child2></element1><element1><child1/></element1><child2>self</child2></doc>",
+            ParseLimits {
+                max_events: 32,
+                max_depth: 8,
+            },
+        )
+        .expect("source should parse");
+        let document = Document::from_parsed(parsed).expect("source XDM should build");
+        let doc = document.children(document.document_node())[0];
+        let descendant_path = parse_child_path("element1[descendant-or-self::child2]", location())
+            .expect("path-005 expression should parse");
+        let self_path = parse_child_path("child2[descendant-or-self::child2]", location())
+            .expect("descendant-or-self self match should parse");
+        let mut control = InvocationControl::unbounded();
+
+        let descendant_selected =
+            evaluate_child_path_controlled(&document, doc, &descendant_path, &mut control)
+                .expect("unbounded evaluation should succeed");
+        let self_selected = evaluate_child_path(&document, doc, &self_path);
+
+        assert_eq!(descendant_selected.len(), 1);
+        assert_eq!(document.string_value(descendant_selected[0]), "right");
+        assert_eq!(document.string_value(self_selected[0]), "self");
+        assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 7);
+        assert_eq!(
+            descendant_path.final_predicate,
+            Some(ExistencePredicate {
+                axis: PredicateAxis::DescendantOrSelf,
+                name: "child2".to_owned(),
             })
         );
     }

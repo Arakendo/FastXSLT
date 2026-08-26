@@ -602,3 +602,16 @@ ambient I/O or public stability claim.
   six explicit engine-unsupported outcomes.
 - Next slice: execute `path-005` through the narrowly required
   descendant-or-self existence predicate.
+
+### 2026-08-26: XSLT30 `path-005` descendant-or-self predicate
+
+- Work completed: executed the unmodified native `path-005` stylesheet and its
+  file-backed environment through the bounded snapshot harness.
+- XPath behavior: added a self-first, document-order descendant-or-self named
+  existence predicate.
+- Work accounting: every self or descendant inspection consumes the XPath
+  node-visit budget; a focused test fixes the small-case charge total.
+- Conservation: the complete `path` denominator now contains five passes and
+  five explicit engine-unsupported outcomes.
+- Next slice: execute `path-006` through the narrowly required named parent
+  existence predicate.
