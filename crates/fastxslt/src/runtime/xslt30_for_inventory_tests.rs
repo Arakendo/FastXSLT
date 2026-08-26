@@ -44,7 +44,7 @@ const CASES: [CasePressure; 4] = [
         name: "for-004",
         environment: Some("for03"),
         initial_template: None,
-        execution: "engine-unsupported",
+        execution: "passed",
     },
 ];
 
@@ -74,6 +74,18 @@ fn executes_native_xslt30_for_003_with_outer_focus_preserved() {
     assert_eq!(
         actual,
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>0</out>"
+    );
+}
+
+#[test]
+fn executes_native_xslt30_for_004_with_exact_decimal_sum() {
+    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
+    assert!(overlay_case(overlay, "for-004").contains("execution = \"passed\""));
+    let (actual, expected) = execute_principal_case("for-004");
+    assert_eq!(expected.trim(), "<out>36.02</out>");
+    assert_eq!(
+        actual,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>36.02</out>"
     );
 }
 

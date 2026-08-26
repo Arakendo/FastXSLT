@@ -798,3 +798,24 @@ ambient I/O or public stability claim.
 - Next slice: execute native `for-004` using `$i/@price` and `$i/@qty`, exact
   decimal multiplication/aggregation, and the narrow two-decimal
   `format-number` picture required by its assertion.
+
+### 2026-08-26: Native XSLT30 `for-004` and complete `expr/for` denominator
+
+- Work completed: executed unmodified native `for-004`, using each bound `$i`
+  as the origin for `price` and `qty` attribute paths without changing the
+  outer focus.
+- Numeric rule: finite decimals remain checked integer mantissa-plus-scale
+  values through multiplication and aggregation; no binary floating-point
+  conversion participates in the asserted result.
+- Formatting rule: only the native `'0.00'` picture is admitted, and a result
+  requiring nonzero discarded digits is refused rather than assigned an
+  unverified rounding rule.
+- Work accounting: the five products and aggregations plus final formatting
+  consume 11 `xpath-operation` units; navigation and string-value work retain
+  their own domains.
+- Conservation: all four selected cases in the complete pinned `expr/for` test
+  set pass, with zero unsupported, harness-unsupported, or failed cases.
+- Claim control: general numeric promotion, decimal syntax, rounding,
+  formatting pictures, function calls, and FLWOR syntax remain unsupported.
+- Next slice: inventory the next complete pinned expression-family denominator
+  and select it from native metadata and semantic pressure, not filename alone.

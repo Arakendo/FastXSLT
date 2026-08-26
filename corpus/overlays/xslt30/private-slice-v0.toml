@@ -145,5 +145,5 @@ rationale = "The native for03 source preserves the outer order focus across the 
 set_file = "tests/expr/for/_for-test-set.xml"
 case_name = "for-004"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The native for03 source, stylesheet, inline assert-xml, and XSLT20+ dependency are admitted; format-number, sum, variable binding, attributes, and decimal arithmetic exceed the current compiler."
+execution = "passed"
+rationale = "The native for03 source executes exact-decimal multiplication over bound-variable attributes, sum aggregation, and the narrow two-decimal format-number picture without binary floating-point conversion."

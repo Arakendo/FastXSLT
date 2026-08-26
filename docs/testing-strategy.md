@@ -79,17 +79,19 @@ native environment resolution, direct XPath execution, `fn:count`, and
 adjacent selected `Axes001-1` wildcard case remains explicitly unsupported.
 These local denominators do not imply support for adjacent test sets or broad
 standards conformance.
-The complete four-case XSLT30 `expr/for` test set is the next admitted
+The complete four-case XSLT30 `expr/for` test set is an admitted and passing
 denominator. Its native stylesheets, source environments, initial-template
 metadata, and XML assertions are resolved and retained without denominator
-loss. Native `for-001` now passes through ordered distinct-value binding,
+loss. Native `for-001` passes through ordered distinct-value binding,
 node-sequence selection, `xsl:sequence`, and exact file-backed XML comparison.
-Source-free native `for-002` also passes through an explicit initial-template
+Source-free native `for-002` passes through an explicit initial-template
 invocation entry, two ordered integer bindings, addition, and native
 `xsl:value-of` separator behavior. Native `for-003` additionally preserves the
 outer XPath focus across its binding, produces empty multiplication sequences,
-and applies the zero result of `sum(())`. The current denominator is three
-passes and one engine-unsupported case.
+and applies the zero result of `sum(())`. Native `for-004` uses its bound item as
+the origin of attribute paths, multiplies and aggregates exact finite decimals,
+and applies only the required two-decimal formatting picture. The current
+denominator is four passes with no unsupported or failed cases.
 A private case-record experiment
 also observes QT3 `assert-eq` and an XSLT30 compound message assertion through
 suite-specific adapters. Their common projection separates selection from

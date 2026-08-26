@@ -6,19 +6,19 @@ standards scope are decided.
 
 ## Current critical path
 
-FastXSLT has accepted its staged-modern semantic direction, passes the complete
-XSLT30 `template` and `path` test-set denominators, and executes the complete
-four-case QT3 `Axes002` group through a stylesheet-independent XPath seam. The
-complete four-case XSLT30 `expr/for` denominator was admitted with no hidden
-cases; native `for-001` and source-free initial-template case `for-002` now
-pass, and focus-sensitive `for-003` now returns the native empty-sequence sum.
-Only `for-004` remains engine-unsupported. The current order of work is:
+FastXSLT has accepted its staged-modern semantic direction and passes the
+complete XSLT30 `template`, `path`, and `expr/for` test-set denominators. It also
+executes the complete four-case QT3 `Axes002` group through a
+stylesheet-independent XPath seam. `for-004` closes its family through
+bound-variable attribute paths, checked exact-decimal multiplication and
+aggregation, and the single required two-decimal formatting picture. The
+current order of work is:
 
-1. implement native `for-004` with bound-variable attribute paths rather than
-   changing the outer focus, retaining exact decimal values through
-   multiplication and `sum()`;
-2. add only the `format-number(..., '0.00')` behavior required to produce the
-   native two-decimal result without adopting host floating-point artifacts;
+1. inventory and admit the next complete pinned XSLT30 expression-family
+   denominator using native dependencies, environments, entry modes, and
+   assertions rather than selecting from syntax or filenames alone;
+2. prefer a family that extends reusable sequence, value, or diagnostic
+   semantics over an isolated stylesheet special case;
 3. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
    memory, and peak construction memory under those representative workloads;
 4. exercise the same lifecycle through the bounded ASP.NET workbench before
@@ -102,6 +102,9 @@ implemented behavior belongs to a named standards slice.
 - [x] Execute native `for-003` with the outer focus preserved across its
   binding, empty-sequence multiplication, and the integer zero result of
   `sum(())`, while refusing non-empty numeric multiplication.
+- [x] Execute native `for-004` with bound-variable attribute navigation,
+  checked exact-decimal multiplication and aggregation, and only the required
+  `'0.00'` formatting picture. The complete four-case denominator now passes.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,

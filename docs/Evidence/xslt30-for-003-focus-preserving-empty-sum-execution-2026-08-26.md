@@ -46,8 +46,9 @@ not decimal arithmetic.
 
 ## Conservation and claim boundary
 
-The complete `expr/for` denominator is now three passed and one
-engine-unsupported. General focus manipulation, variables in path expressions,
-numeric multiplication, decimal values, non-empty `sum()` aggregation, and
-formatting remain outside this evidence. Those are native `for-004` pressure
-and must advance without weakening the `for-003` focus rule.
+At this checkpoint, the complete `expr/for` denominator was three passed and
+one engine-unsupported. General focus manipulation, variables in path
+expressions, numeric multiplication, decimal values, non-empty `sum()`
+aggregation, and formatting remained outside this evidence. Native `for-004`
+subsequently advanced those separate semantics without weakening this focus
+rule; see [the complete-denominator evidence](xslt30-for-004-exact-decimal-and-complete-for-denominator-2026-08-26.md).

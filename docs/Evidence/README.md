@@ -35,6 +35,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `for-001` Ordered Sequence Execution](xslt30-for-001-ordered-sequence-execution-2026-08-26.md)
 - [XSLT30 `for-002` Source-Free Initial-Template Execution](xslt30-for-002-source-free-initial-template-execution-2026-08-26.md)
 - [XSLT30 `for-003` Focus-Preserving Empty-Sum Execution](xslt30-for-003-focus-preserving-empty-sum-execution-2026-08-26.md)
+- [XSLT30 `for-004` Exact Decimal and Complete `for` Denominator](xslt30-for-004-exact-decimal-and-complete-for-denominator-2026-08-26.md)
 - [OASIS XSLT/XPath 1.0 Suite Candidate Review](oasis-xslt10-suite-candidate-review-2026-08-25.md)
 - [Rust XML Parser Candidate Review](rust-xml-parser-candidate-review-2026-08-25.md)
 - [Owned XDM Tree Experiment](owned-xdm-tree-experiment-2026-08-25.md)

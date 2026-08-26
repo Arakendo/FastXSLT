@@ -1,5 +1,6 @@
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xml::quick_xml_experiment::ExpandedName;
+use crate::xpath::decimal_sum_for_experiment::DecimalSumForExpression;
 use crate::xpath::focus_sum_for_experiment::FocusSumForExpression;
 use crate::xpath::for_distinct_values_experiment::ForDistinctValuesExpression;
 use crate::xpath::integer_for_experiment::IntegerForExpression;
@@ -107,6 +108,7 @@ pub(crate) enum ValueExpression {
     Variable(String),
     IntegerFor(Box<IntegerForExpression>),
     FocusSumFor(Box<FocusSumForExpression>),
+    DecimalSumFor(Box<DecimalSumForExpression>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -11,6 +11,9 @@ use crate::xdm::owned_tree_experiment::{
 use crate::xml::quick_xml_experiment::{
     ExpandedName, ParseLimits, parse_document, parse_document_controlled,
 };
+use crate::xpath::decimal_sum_for_experiment::{
+    DecimalSumEvaluationFailure, evaluate as evaluate_decimal_sum_for,
+};
 use crate::xpath::focus_sum_for_experiment::{
     FocusSumEvaluationFailure, evaluate as evaluate_focus_sum_for,
 };
@@ -655,6 +658,29 @@ fn execute_value_of(
                 },
             )?;
             append_text(result, &value.to_string(), inputs.request_id, control)?;
+        }
+        ValueExpression::DecimalSumFor(expression) => {
+            let (source, context) = required_source_context(inputs, context)?;
+            let value = evaluate_decimal_sum_for(expression, source, context, control).map_err(
+                |evaluation_failure| match evaluation_failure {
+                    DecimalSumEvaluationFailure::Control(control) => {
+                        control_failure(control, inputs.request_id)
+                    }
+                    DecimalSumEvaluationFailure::InvalidValue => failure(
+                        "FXRT0005",
+                        FailureCategory::Invalid,
+                        Some(inputs.request_id),
+                        "an exact-decimal operand has an invalid lexical value",
+                    ),
+                    DecimalSumEvaluationFailure::Unsupported => failure(
+                        "FXRT1006",
+                        FailureCategory::Unsupported,
+                        Some(inputs.request_id),
+                        "decimal overflow or rounding is outside the private exact-decimal sum slice",
+                    ),
+                },
+            )?;
+            append_text(result, &value, inputs.request_id, control)?;
         }
     }
     Ok(())
