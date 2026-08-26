@@ -92,9 +92,10 @@ The [documentation index](docs/README.md) explains which records are binding:
 ## Project status
 
 The [roadmap](docs/Plans/roadmap.md) defines milestone outcomes. The private
-architecture slice is executable; M1 still needs denied-authority/runtime-budget
-evidence and representative consumer transforms before AR-0001 can establish a
-named standards profile and public behavior.
+architecture slice, bounded resources, invocation controls, prepared-input
+reuse, and corpus-ledger invariants are executable. M1 now primarily needs
+representative consumer transforms and the resulting AR-0001 standards-profile
+decision before FastXSLT can establish named public behavior.
 
 ## License
 

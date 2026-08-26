@@ -152,6 +152,14 @@ construction needs no source reverse navigation. This one path still provides
 no evidence for a generalized provider, streaming strategy, or permanent
 full-tree requirement.
 
+The exact-name template-dispatch slice adds ordered selection of repeated
+element children, expanded-name rule lookup, and reuse of each selected node as
+the dynamic context for a separately compiled template body. The implemented
+case is forward-only and consumes results in source document order, but the
+reference evaluator still uses stable XDM node identity and a materialized
+tree. This is additional navigation evidence, not a streaming claim or a reason
+to introduce a provider abstraction.
+
 ## Disposition
 
 **Incubating. Do not implement streaming in the initial profile.** Preserve the

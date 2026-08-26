@@ -104,6 +104,14 @@ suite selection are reported precisely.
   very small root-template behavior show that honest suite-linked evidence can
   start before broad conformance, but one intersection case still cannot choose
   the product profile.
+- A review of the local TS XSLT peer at commit `9c48142` identifies a candidate
+  progression from literal/value extraction through apply-template dispatch,
+  parameters/variables/conditionals, and later explicit multi-resource
+  resolution. Exact element-name dispatch through `xsl:apply-templates` is the
+  strongest next private pressure because it appears in the peer's first
+  non-trivial golden, workbench, curated suite strategy, and large stylesheet
+  workload. The peer worktree was modified and is not the intended consumer;
+  this observation does not satisfy the remaining consumer-evidence gate.
 
 ## Disposition
 
@@ -146,3 +154,7 @@ the selected internal model blocks a planned compatibility level.
 - 2026-08-25 -- Executed pinned XSLT30 `template-006` through an explicit local
   overlay while retaining upstream environment, stylesheet, assertion, and case
   identity; broader dependency-aware selection remains open.
+- 2026-08-25 -- Inventoried TS XSLT peer transform families and selected exact
+  element-name apply-template dispatch as the next private candidate; retained
+  the first-consumer follow-up because peer implementation scope is not product
+  demand.

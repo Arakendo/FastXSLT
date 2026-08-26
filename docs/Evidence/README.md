@@ -30,3 +30,5 @@ pressure architecture but does not silently create a public guarantee.
 - [W3C XML Conformance Suite Candidate Review](w3c-xml-conformance-suite-candidate-review-2026-08-25.md)
 - [Private Corpus Case-Record Experiment](private-corpus-case-record-experiment-2026-08-25.md)
 - [Private Ledger Conservation Experiment](private-ledger-conservation-experiment-2026-08-25.md)
+- [TS XSLT Transform-Family Candidate Inventory](ts-xslt-transform-family-candidate-inventory-2026-08-25.md)
+- [Private Template-Dispatch Slice](private-template-dispatch-slice-2026-08-25.md)

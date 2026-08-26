@@ -308,6 +308,7 @@ pub(super) fn execute_program(
 ) -> Result<SemanticResult, ExecutionFailure> {
     Ok(SemanticResult {
         children: execute_sequence(
+            program,
             &program.root_template.body,
             source,
             source.document_node(),
@@ -318,6 +319,7 @@ pub(super) fn execute_program(
 }
 
 fn execute_sequence(
+    program: &StylesheetProgram,
     instructions: &[Instruction],
     source: &Document,
     context: crate::xdm::owned_tree_experiment::NodeId,
@@ -336,7 +338,9 @@ fn execute_sequence(
                     .map_err(|failure| control_failure(failure, request_id))?;
                 result.push(ResultNode::Element {
                     name: name.clone(),
-                    children: execute_sequence(body, source, context, request_id, control)?,
+                    children: execute_sequence(
+                        program, body, source, context, request_id, control,
+                    )?,
                 });
             }
             Instruction::Text { value, .. } => {
@@ -364,6 +368,44 @@ fn execute_sequence(
                             }
                             StringValueVisitFailure::Sink(failure) => failure,
                         })?;
+                }
+            }
+            Instruction::ApplyTemplates { select, .. } => {
+                let selected = evaluate_child_path_controlled(source, context, select, control)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                for selected_node in selected {
+                    let selected_name = source.name(selected_node).ok_or_else(|| {
+                        failure(
+                            "FXRT1002",
+                            FailureCategory::Unsupported,
+                            Some(request_id),
+                            "the private apply-templates slice selects only element nodes",
+                        )
+                    })?;
+                    let template = program
+                        .element_templates
+                        .iter()
+                        .find(|template| template.match_name == *selected_name)
+                        .ok_or_else(|| {
+                            failure(
+                                "FXRT1003",
+                                FailureCategory::Unsupported,
+                                Some(request_id),
+                                format!(
+                                    "no exact private template rule for {{{}}}{}",
+                                    selected_name.namespace.as_deref().unwrap_or(""),
+                                    selected_name.local
+                                ),
+                            )
+                        })?;
+                    result.extend(execute_sequence(
+                        program,
+                        &template.template.body,
+                        source,
+                        selected_node,
+                        request_id,
+                        control,
+                    )?);
                 }
             }
         }
@@ -632,6 +674,44 @@ mod tests {
             include_str!("../../../../corpus/golden/hello/expected.xml")
         );
         assert_eq!(results.by_request["request-b"].semantic, first.semantic);
+    }
+
+    #[test]
+    fn exact_element_templates_dispatch_repeated_nodes_in_document_order() {
+        const DISPATCH_SOURCE: &str = "urn:fastxslt:golden:template-dispatch:source";
+        const DISPATCH_STYLESHEET: &str = "urn:fastxslt:golden:template-dispatch:stylesheet";
+        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(4, 4_096, 8_192));
+        resources
+            .admit(
+                DISPATCH_SOURCE,
+                include_bytes!("../../../../corpus/golden/template-dispatch/input.xml").to_vec(),
+            )
+            .expect("admit dispatch source");
+        resources
+            .admit(
+                DISPATCH_STYLESHEET,
+                include_bytes!("../../../../corpus/golden/template-dispatch/stylesheet.xsl")
+                    .to_vec(),
+            )
+            .expect("admit dispatch stylesheet");
+        let snapshot = resources.seal();
+        let program = compile_resource(&snapshot, DISPATCH_STYLESHEET)
+            .expect("compile dispatch stylesheet once");
+        let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+        builder
+            .add(request(
+                "dispatch-request",
+                "dispatch-result",
+                DISPATCH_SOURCE,
+            ))
+            .expect("add dispatch request");
+
+        let results = execute_transform_set(builder.seal()).expect("execute dispatch set");
+
+        assert_eq!(
+            results.by_request["dispatch-request"].serialized,
+            include_str!("../../../../corpus/golden/template-dispatch/expected.xml").trim()
+        );
     }
 
     #[test]

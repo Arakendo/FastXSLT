@@ -8,7 +8,7 @@
 | Owner | FastXSLT maintainers |
 | Target | M1 standards decision and first private transform |
 | Related ADRs | ADR-0001, ADR-0002 |
-| Related reviews | AR-0001, AR-0003, AR-0004, AR-0007, AR-0008, AR-0009 |
+| Related reviews | AR-0001, AR-0003, AR-0004, AR-0007, AR-0008, AR-0009, AR-0011 |
 | Related change requests | None |
 | Depends on | Pinned W3C suites and representative consumer evidence |
 
@@ -324,3 +324,39 @@ ambient I/O or public stability claim.
 - Next slice: add a representative end-to-end accounting comparison only after
   broader consumer transforms exist; meanwhile continue adversarial structural
   limits that do not depend on the unresolved standards profile.
+
+### 2026-08-25: Roadmap reconciliation after corpus-ledger evidence
+
+- Work completed: private suite-specific records now retain QT3 `assert-eq` and
+  a second XSLT30 compound/message assertion family; unknown metadata fails
+  visibly and synthetic filtered/sharded/interrupted/retried reports conserve
+  both denominators independent of merge order.
+- Findings: AR-0011 has enough evidence to preserve its ledger seam but its
+  remaining report format, CI, and comparison-family work is downstream of
+  executable semantics. The roadmap understated completed handle-release,
+  batch, reusable-compilation, navigation, and suite-admission evidence.
+- Plan change: keep AR-0001 as the M1 exit gate. First inventory representative
+  transform families and compatibility needs, then accept a standards-profile
+  ADR, implement the next standards-directed slice, measure reuse, and exercise
+  that lifecycle through ASP.NET.
+- Next slice: inspect the TS XSLT peer for candidate transform families and
+  testing shapes. Treat them as peer-derived questions until an intended
+  consumer confirms which families and workload envelopes are representative.
+
+### 2026-08-25: Peer-family inventory and exact template dispatch
+
+- Work completed: inventoried the modified local TS XSLT peer at `9c48142` and
+  retained its goldens, 73-case curated XSLT30 subset, .NET resolver fixtures,
+  and large S1000D graph only as candidate pressure. Extended the private
+  reference backend with exact unprefixed element-name templates and explicit
+  `xsl:apply-templates` child-path selection.
+- Validation: the new `template-dispatch` golden selects two source items and
+  invokes one compiled rule in source order. Duplicate patterns and modes fail
+  visibly rather than acquiring accidental priority semantics. The workspace
+  has 47 passing tests and one ignored manual probe.
+- Findings: compiled rule state remains stylesheet-derived while selected nodes
+  and control remain invocation-local. Peer recurrence justifies the private
+  experiment but does not satisfy AR-0001's first-consumer requirement.
+- Next slice: identify a native XSLT30 case whose full dependency, environment,
+  and assertion shape fits exact-name dispatch, while requesting representative
+  stylesheets and workload envelopes from the intended consumer.

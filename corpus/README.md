@@ -35,6 +35,9 @@ change.
 The initial `hello` case now executes through a test-only private vertical slice
 that asserts its semantic result separately from serialization. It remains a
 portable design seed, not a public feature or commitment to an XSLT version.
+The `template-dispatch` golden extends that same private reference path with an
+explicit child-path apply-template selection and one exact element-name rule;
+priority, modes, and built-in rules remain outside the admitted slice.
 
 External suites must live in a separately documented location with provenance,
 license, acquisition, integrity, and selection instructions. Do not copy a

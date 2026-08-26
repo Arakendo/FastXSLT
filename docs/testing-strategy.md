@@ -78,6 +78,11 @@ Private ledger tests also conserve the discovered and selected denominators
 across filtering, sharding, interruption, retry, and different merge orders.
 These tests establish accounting invariants, not a stable report format.
 
+The second first-party golden, `corpus/golden/template-dispatch`, exercises
+exact unprefixed element-name rules through explicit `xsl:apply-templates`
+selection. Duplicate patterns and modes remain unsupported so this private
+case cannot be mistaken for general template-priority or built-in-rule support.
+
 The W3C XML Conformance Test Suite 20130923 is a reviewed but non-admitted
 candidate for AR-0008. It is a dated archive rather than a Git submodule, its
 root catalog uses DTD/entity composition, and its older contributor notices

@@ -4,6 +4,28 @@ The roadmap is ordered by executable semantic evidence, not by a desire to fill
 every conceptual module. Dates are intentionally absent until requirements and
 standards scope are decided.
 
+## Current critical path
+
+FastXSLT has advanced beyond its original private-slice checklist, but it has
+not advanced beyond M1's product decision. The current order of work is:
+
+1. inventory representative transform families and compatibility needs from an
+   intended embedded consumer;
+2. close AR-0001 through an ADR naming the initial standards profile,
+   deliberate exclusions, suite-selection policy, and widening criteria;
+3. implement the next standards-directed semantic slice and use its native QT3
+   and XSLT30 cases to extend comparison behavior;
+4. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
+   memory, and peak construction memory under those representative workloads;
+5. exercise the same lifecycle through the bounded ASP.NET workbench before
+   stabilizing a host boundary or performance claim.
+
+AR-0011's essential ledger invariants now have private evidence. Its remaining
+reporting, storage, CI, and comparison-family work proceeds when executable
+standards slices need it; completing that review is not the current release
+gate. AR-0005, AR-0006, AR-0007, and AR-0010 remain seam-preservation reviews
+unless a representative case activates one of their reopening pressures.
+
 ## M0 -- Project scaffold
 
 - [x] Buildable Rust workspace with formatting, lint, test, and docs gates.
@@ -16,6 +38,8 @@ next architectural questions are visible rather than encoded accidentally.
 
 ## M1 -- Standards decision and first vertical slice
 
+- [ ] Record representative transform families, input/output shapes, and
+  compatibility needs from the first intended consumer.
 - [ ] Close AR-0001 through an accepted standards-profile ADR.
 - [x] Select and document the leading private XML parser boundary for the slice.
 - [x] Compile one root template, evaluate one path/value expression, and produce
@@ -23,12 +47,15 @@ next architectural questions are visible rather than encoded accidentally.
 - [x] Run `corpus/golden/hello` with private structured failure identities.
 - [x] Load the golden source and stylesheet through a bounded resource set,
   seal it, and execute the case without engine-owned filesystem access.
-- [ ] Release import handles before sealing, then replace or remove the original
+- [x] Release import handles before sealing, then replace or remove the original
   fixture files and prove the snapshot still executes identically.
 - [x] Add negative cases that distinguish invalid input from unsupported syntax.
 - [x] Establish the first private structured boundary failures and reportable semantic
   outcomes from emitted behavior rather than an aspirational error catalog,
   providing evidence for AR-0004.
+- [x] Preserve native QT3/XSLT30 case identity, separate selection from
+  execution disposition, reject unknown metadata visibly, and conserve report
+  denominators through a private AR-0011 experiment.
 
 Exit criterion: the seed transform passes through the intended layers and every
 implemented behavior belongs to a named standards slice.
@@ -37,7 +64,7 @@ implemented behavior belongs to a named standards slice.
 
 - [ ] Define node identity, document order, names, strings, and sequence/value
   behavior needed by the accepted profile.
-- [ ] Record the navigation and retention capabilities the implemented XPath
+- [x] Record the navigation and retention capabilities the implemented XPath
   and XSLT slice actually requires; keep tree-specific random-access assumptions
   inside their physical owner, providing evidence for AR-0007.
 - [ ] Expand XPath lex/parse/evaluate tests before growing XSLT instructions.
@@ -45,18 +72,19 @@ implemented behavior belongs to a named standards slice.
 - [ ] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,
   providing evidence for AR-0005.
-- [ ] Import the first licensed, versioned, integrity-checked suite selection.
+- [x] Import the first licensed, versioned, integrity-checked suite selection.
 
 Exit criterion: a published test report identifies supported, unsupported,
 failed, and harness-error cases without an unqualified conformance claim.
 
 ## M3 -- Reusable stylesheet engine
 
-- [ ] Separate reusable compiled stylesheet state from dynamic transform state.
+- [x] Separate reusable compiled stylesheet state from dynamic transform state
+  in the private reference path; public ownership remains pending AR-0001.
 - [ ] Add template selection, built-in rules, parameters, variables, and output
   behavior required by the accepted profile.
 - [ ] Establish explicit URI/resource resolution and execution limits.
-- [ ] Execute a batch of independent requests with shared compiled stylesheets
+- [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.
 - [ ] Compare parse-per-invocation with private snapshot/work-generation prepared

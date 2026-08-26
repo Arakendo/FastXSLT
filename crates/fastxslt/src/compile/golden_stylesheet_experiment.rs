@@ -1,7 +1,7 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xpath::path_experiment::{PathFailure, parse_child_path};
 use crate::xslt::golden_semantics_experiment::{
-    Instruction, OutputSettings, StylesheetProgram, Template,
+    ElementTemplate, Instruction, OutputSettings, StylesheetProgram, Template,
 };
 
 const XSLT_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
@@ -27,6 +27,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
 
     let mut output = None;
     let mut root_template = None;
+    let mut element_templates = Vec::new();
     for child in meaningful_children(document, root) {
         let Some(name) = document.name(child) else {
             continue;
@@ -43,14 +44,31 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
                 output = Some(compile_output(document, child)?);
             }
             (Some(XSLT_NAMESPACE), "template") => {
-                if root_template.is_some() {
-                    return Err(unsupported(
-                        "FXST1001",
-                        "the private slice permits one root template",
-                        document.location(child),
-                    ));
+                let pattern = required_attribute(document, child, None, "match")?;
+                if pattern == "/" {
+                    if root_template.is_some() {
+                        return Err(unsupported(
+                            "FXST1001",
+                            "the private slice permits one root template",
+                            document.location(child),
+                        ));
+                    }
+                    root_template = Some(compile_template(document, child)?);
+                } else {
+                    let element_template = compile_element_template(document, child, pattern)?;
+                    if element_templates.iter().any(|existing: &ElementTemplate| {
+                        existing.match_name == element_template.match_name
+                    }) {
+                        return Err(unsupported(
+                            "FXST1008",
+                            format!(
+                                "template priority for duplicate match pattern is outside the private slice: {pattern}"
+                            ),
+                            document.location(child),
+                        ));
+                    }
+                    element_templates.push(element_template);
                 }
-                root_template = Some(compile_root_template(document, child)?);
             }
             (Some(XSLT_NAMESPACE), local) => {
                 return Err(unsupported(
@@ -82,10 +100,17 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
                 document.location(root),
             )
         })?,
+        element_templates,
     })
 }
 
 fn compile_output(document: &Document, element: NodeId) -> Result<OutputSettings, CompileFailure> {
+    ensure_only_attributes(
+        document,
+        element,
+        &["method", "omit-xml-declaration"],
+        "xsl:output",
+    )?;
     ensure_no_meaningful_children(document, element, "xsl:output")?;
     let method = required_attribute(document, element, None, "method")?;
     if method != "xml" {
@@ -113,15 +138,29 @@ fn compile_output(document: &Document, element: NodeId) -> Result<OutputSettings
     })
 }
 
-fn compile_root_template(document: &Document, element: NodeId) -> Result<Template, CompileFailure> {
-    let pattern = required_attribute(document, element, None, "match")?;
-    if pattern != "/" {
+fn compile_element_template(
+    document: &Document,
+    element: NodeId,
+    pattern: &str,
+) -> Result<ElementTemplate, CompileFailure> {
+    if !is_ascii_ncname(pattern) {
         return Err(unsupported(
             "FXST1005",
-            format!("the private slice supports only match='/': {pattern}"),
+            format!("unsupported template match pattern: {pattern}"),
             document.location(element),
         ));
     }
+    Ok(ElementTemplate {
+        match_name: crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: None,
+            local: pattern.to_owned(),
+        },
+        template: compile_template(document, element)?,
+    })
+}
+
+fn compile_template(document: &Document, element: NodeId) -> Result<Template, CompileFailure> {
+    ensure_only_attributes(document, element, &["match"], "xsl:template")?;
     Ok(Template {
         body: compile_sequence(document, element)?,
         location: document.location(element).clone(),
@@ -150,6 +189,8 @@ fn compile_sequence(
                 if name.namespace.as_deref() == Some(XSLT_NAMESPACE) {
                     if name.local == "value-of" {
                         instructions.push(compile_value_of(document, child)?);
+                    } else if name.local == "apply-templates" {
+                        instructions.push(compile_apply_templates(document, child)?);
                     } else {
                         return Err(unsupported(
                             "FXST1006",
@@ -184,12 +225,50 @@ fn compile_sequence(
     Ok(instructions)
 }
 
+fn compile_apply_templates(
+    document: &Document,
+    element: NodeId,
+) -> Result<Instruction, CompileFailure> {
+    ensure_only_attributes(document, element, &["select"], "xsl:apply-templates")?;
+    ensure_no_meaningful_children(document, element, "xsl:apply-templates")?;
+    let location = document.location(element).clone();
+    let expression = required_attribute(document, element, None, "select")?;
+    let select = parse_child_path(expression, location.clone()).map_err(map_path_failure)?;
+    Ok(Instruction::ApplyTemplates { select, location })
+}
+
 fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
+    ensure_only_attributes(document, element, &["select"], "xsl:value-of")?;
     ensure_no_meaningful_children(document, element, "xsl:value-of")?;
     let location = document.location(element).clone();
     let expression = required_attribute(document, element, None, "select")?;
     let select = parse_child_path(expression, location.clone()).map_err(map_path_failure)?;
     Ok(Instruction::ValueOf { select, location })
+}
+
+fn ensure_only_attributes(
+    document: &Document,
+    element: NodeId,
+    allowed: &[&str],
+    display_name: &str,
+) -> Result<(), CompileFailure> {
+    for attribute in document.attributes(element) {
+        let name = document
+            .name(*attribute)
+            .expect("attribute nodes have expanded names");
+        if name.namespace.is_some() || !allowed.contains(&name.local.as_str()) {
+            return Err(unsupported(
+                "FXST1009",
+                format!(
+                    "unsupported attribute on {display_name}: {{{}}}{}",
+                    name.namespace.as_deref().unwrap_or(""),
+                    name.local
+                ),
+                document.location(*attribute),
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn document_element(document: &Document) -> Result<NodeId, CompileFailure> {
@@ -265,6 +344,17 @@ fn required_attribute<'a>(
                 format!("missing required attribute: {local}"),
                 document.location(element),
             )
+        })
+}
+
+fn is_ascii_ncname(value: &str) -> bool {
+    let mut chars = value.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    (first.is_ascii_alphabetic() || first == '_')
+        && chars.all(|character| {
+            character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.')
         })
 }
 
@@ -394,6 +484,44 @@ mod tests {
 
         assert_eq!(program.output.method, None);
         assert!(!program.output.omit_xml_declaration);
+    }
+
+    #[test]
+    fn compiles_exact_element_template_dispatch_without_priority_semantics() {
+        let bytes = include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../corpus/golden/template-dispatch/stylesheet.xsl"
+        ));
+        let document = parse_stylesheet("golden:template-dispatch/stylesheet.xsl", bytes);
+
+        let program = compile_stylesheet(&document).expect("dispatch stylesheet should compile");
+
+        assert_eq!(program.element_templates.len(), 1);
+        assert_eq!(program.element_templates[0].match_name.local, "item");
+        assert!(matches!(
+            program.root_template.body.as_slice(),
+            [Instruction::LiteralElement { body, .. }]
+                if matches!(body.as_slice(), [Instruction::ApplyTemplates { select, .. }]
+                    if select.steps == ["catalog", "item"])
+        ));
+
+        let duplicate = parse_stylesheet(
+            "memory:duplicate-pattern.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out/></xsl:template><xsl:template match="item"><a/></xsl:template><xsl:template match="item"><b/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&duplicate)
+            .expect_err("priority conflict must remain visibly unsupported");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+        assert_eq!(failure.code, "FXST1008");
+
+        let mode = parse_stylesheet(
+            "memory:mode.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:apply-templates select="root/item" mode="detail"/></xsl:template><xsl:template match="item"><out/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure =
+            compile_stylesheet(&mode).expect_err("mode semantics must remain unsupported");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+        assert_eq!(failure.code, "FXST1009");
     }
 
     #[test]
