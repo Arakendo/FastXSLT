@@ -15,6 +15,7 @@ pub(crate) struct ChildPath {
 enum PredicateAxis {
     Child,
     Ancestor,
+    AncestorOrSelf,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -115,6 +116,8 @@ fn parse_final_axis_predicate(expression: &str) -> (&str, Option<ExistencePredic
         (PredicateAxis::Child, name)
     } else if let Some(name) = predicate.strip_prefix("ancestor::") {
         (PredicateAxis::Ancestor, name)
+    } else if let Some(name) = predicate.strip_prefix("ancestor-or-self::") {
+        (PredicateAxis::AncestorOrSelf, name)
     } else {
         return (expression, None);
     };
@@ -186,8 +189,15 @@ pub(crate) fn evaluate_child_path_controlled(
                             PredicateAxis::Child => {
                                 has_named_child(document, child, &predicate.name, control)?
                             }
-                            PredicateAxis::Ancestor => {
-                                has_named_ancestor(document, child, &predicate.name, control)?
+                            PredicateAxis::Ancestor => has_named_ancestor(
+                                document,
+                                child,
+                                &predicate.name,
+                                false,
+                                control,
+                            )?,
+                            PredicateAxis::AncestorOrSelf => {
+                                has_named_ancestor(document, child, &predicate.name, true, control)?
                             }
                         }
                     } else {
@@ -237,9 +247,12 @@ fn has_named_ancestor(
     document: &Document,
     node: NodeId,
     required: &str,
+    include_self: bool,
     control: &mut InvocationControl,
 ) -> Result<bool, ControlFailure> {
-    let mut ancestor = document.parent(node);
+    let mut ancestor = include_self
+        .then_some(node)
+        .or_else(|| document.parent(node));
     while let Some(node) = ancestor {
         control.charge(WorkDomain::XPathNodeVisit, 1)?;
         if node_has_unnamespaced_name(document, node, required) {
@@ -424,6 +437,38 @@ mod tests {
             })
         );
         assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 10);
+    }
+
+    #[test]
+    fn ancestor_or_self_predicate_checks_the_candidate_before_its_parent() {
+        let parsed = parse_document(
+            "memory:source.xml",
+            b"<doc><element2><child2>right</child2></element2></doc>",
+            ParseLimits {
+                max_events: 24,
+                max_depth: 8,
+            },
+        )
+        .expect("source should parse");
+        let document = Document::from_parsed(parsed).expect("source XDM should build");
+        let doc = document.children(document.document_node())[0];
+        let self_path = parse_child_path("//element2[ancestor-or-self::element2]", location())
+            .expect("ancestor-or-self self match should parse");
+        let ancestor_path = parse_child_path("//child2[ancestor-or-self::element2]", location())
+            .expect("path-003 expression should parse");
+
+        let self_selected = evaluate_child_path(&document, doc, &self_path);
+        let ancestor_selected = evaluate_child_path(&document, doc, &ancestor_path);
+
+        assert_eq!(self_selected.len(), 1);
+        assert_eq!(document.string_value(ancestor_selected[0]), "right");
+        assert_eq!(
+            self_path.final_predicate,
+            Some(ExistencePredicate {
+                axis: PredicateAxis::AncestorOrSelf,
+                name: "element2".to_owned(),
+            })
+        );
     }
 
     #[test]

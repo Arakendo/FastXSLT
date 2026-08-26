@@ -70,8 +70,9 @@ The repository pins the W3C QT3 and XSLT 3.0 suites as Git submodules under
 The suites are inputs, not executable FastXSLT tests by themselves. The private
 XSLT30 slice resolves all six `template` selections and their upstream
 environments, stylesheets, and XML assertions; that complete test set passes.
-The overlay also conserves the complete ten-case `path` test set: `path-001/002`
-pass and eight cases remain explicitly engine-unsupported. The paired QT3
+The overlay also conserves the complete ten-case `path` test set:
+`path-001/002/003` pass and seven cases remain explicitly engine-unsupported.
+The paired QT3
 `Axes002` named-child-axis group is inventoried but not yet executable. These
 local denominators do not imply support for adjacent test sets or broad
 standards conformance.

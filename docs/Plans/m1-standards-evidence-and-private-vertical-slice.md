@@ -572,3 +572,19 @@ ambient I/O or public stability claim.
   eight explicit engine-unsupported outcomes.
 - Next slice: execute `path-003` by extending the same predicate seam to the
   narrowly required ancestor-or-self behavior.
+
+### 2026-08-26: XSLT30 `path-003` ancestor-or-self execution
+
+- Work completed: executed the unmodified native `path-003` stylesheet through
+  the same bounded, sealed file-backed environment path used by `path-002`.
+- XPath behavior: represented ancestor-or-self distinctly, testing the
+  candidate before walking its parent chain and charging every inspection.
+- Verification: an independent self-match test prevents ancestor-or-self from
+  being implemented as an alias for ancestor-only behavior.
+- Conservation: the complete `path` denominator now contains three passes and
+  seven explicit engine-unsupported outcomes.
+- Cohesion: the corpus integration test now shares one file-backed path-case
+  executor instead of duplicating catalog resolution, resource admission, and
+  transform construction.
+- Next slice: execute `path-004` through an explicit named attribute existence
+  predicate without treating attributes as children.

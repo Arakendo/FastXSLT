@@ -163,6 +163,75 @@ fn assert_same_result_element_string(actual: &str, expected: &str, local: &str) 
     );
 }
 
+fn execute_file_backed_path_case(case_name: &str) -> (String, String) {
+    let (test_set, set_path) = path_test_set();
+    let test_case = find_element(
+        &test_set,
+        test_set.document_node(),
+        "test-case",
+        Some(("name", case_name)),
+    )
+    .expect("path case should exist in pinned suite");
+    let environment_ref = find_element(&test_set, test_case, "environment", None)
+        .and_then(|node| attribute(&test_set, node, "ref"))
+        .expect("path case should reference an environment");
+    let environment = find_element(
+        &test_set,
+        test_set.document_node(),
+        "environment",
+        Some(("name", environment_ref)),
+    )
+    .expect("referenced path environment should exist");
+    let source_file = find_element(&test_set, environment, "source", None)
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("path case should have a file-backed principal source");
+    let stylesheet_file = find_element(&test_set, test_case, "stylesheet", None)
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("path case should name a stylesheet");
+    let expected = find_element(&test_set, test_case, "assert-xml", None)
+        .map(|node| test_set.string_value(node))
+        .expect("path case should provide an XML assertion");
+    let case_directory = set_path
+        .parent()
+        .expect("path test set should have a directory");
+    let source = fs::read(case_directory.join(source_file))
+        .expect("read upstream path source and close handle");
+    let stylesheet = fs::read(case_directory.join(stylesheet_file))
+        .expect("read upstream path stylesheet and close handle");
+    let source_id = format!("urn:w3c:xslt30:{case_name}:source");
+    let stylesheet_id = format!("urn:w3c:xslt30:{case_name}:stylesheet");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(source_id.clone(), source)
+        .expect("admit path source bytes");
+    resources
+        .admit(stylesheet_id.clone(), stylesheet)
+        .expect("admit path stylesheet bytes");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, &stylesheet_id).expect("compile path case");
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 4_096,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    set.add(TransformRequest {
+        identity: case_name.to_owned(),
+        result_identity: format!("result:{case_name}"),
+        source_resource: source_id,
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    })
+    .expect("admit path request");
+
+    let results = execute_transform_set(set.seal()).expect("execute path case");
+    (results.by_request[case_name].serialized.clone(), expected)
+}
+
 #[test]
 fn classifies_the_complete_pinned_template_test_set_without_denominator_loss() {
     let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
@@ -469,71 +538,12 @@ fn executes_pinned_xslt30_path_001_child_axis_predicate() {
 
 #[test]
 fn executes_pinned_xslt30_path_002_from_a_file_backed_environment() {
-    let (test_set, set_path) = path_test_set();
-    let test_case = find_element(
-        &test_set,
-        test_set.document_node(),
-        "test-case",
-        Some(("name", "path-002")),
-    )
-    .expect("path-002 should exist in pinned suite");
-    let environment_ref = find_element(&test_set, test_case, "environment", None)
-        .and_then(|node| attribute(&test_set, node, "ref"))
-        .expect("path-002 should reference an environment");
-    let environment = find_element(
-        &test_set,
-        test_set.document_node(),
-        "environment",
-        Some(("name", environment_ref)),
-    )
-    .expect("path-002 environment should exist");
-    let source_file = find_element(&test_set, environment, "source", None)
-        .and_then(|node| attribute(&test_set, node, "file"))
-        .expect("path-002 should have a file-backed principal source");
-    let stylesheet_file = find_element(&test_set, test_case, "stylesheet", None)
-        .and_then(|node| attribute(&test_set, node, "file"))
-        .expect("path-002 should name a stylesheet");
-    let expected = find_element(&test_set, test_case, "assert-xml", None)
-        .map(|node| test_set.string_value(node))
-        .expect("path-002 should provide an XML assertion");
-    let case_directory = set_path
-        .parent()
-        .expect("path test set should have a directory");
-    let source = fs::read(case_directory.join(source_file))
-        .expect("read upstream path-002 source and close handle");
-    let stylesheet = fs::read(case_directory.join(stylesheet_file))
-        .expect("read upstream path-002 stylesheet and close handle");
+    let (actual, expected) = execute_file_backed_path_case("path-002");
+    assert_same_result_element_string(&actual, &expected, "out");
+}
 
-    let source_id = "urn:w3c:xslt30:path-002:source";
-    let stylesheet_id = "urn:w3c:xslt30:path-002:stylesheet";
-    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
-    resources
-        .admit(source_id, source)
-        .expect("admit path-002 source bytes");
-    resources
-        .admit(stylesheet_id, stylesheet)
-        .expect("admit path-002 stylesheet bytes");
-    let snapshot = resources.seal();
-    let program = compile_resource(&snapshot, stylesheet_id).expect("compile path-002");
-    let mut set = TransformSetBuilder::new(
-        snapshot,
-        program,
-        1,
-        ExecutionPolicy {
-            denied_sources: HashSet::new(),
-            serialized_byte_limit: 4_096,
-            work_limits: WorkLimits::unbounded(),
-        },
-    );
-    set.add(TransformRequest {
-        identity: "path-002".to_owned(),
-        result_identity: "result:path-002".to_owned(),
-        source_resource: source_id.to_owned(),
-        cancellation: CancellationToken::new(),
-        cancellation_fault: None,
-    })
-    .expect("admit path-002 request");
-
-    let results = execute_transform_set(set.seal()).expect("execute path-002");
-    assert_same_result_element_string(&results.by_request["path-002"].serialized, &expected, "out");
+#[test]
+fn executes_pinned_xslt30_path_003_ancestor_or_self_predicate() {
+    let (actual, expected) = execute_file_backed_path_case("path-003");
+    assert_same_result_element_string(&actual, &expected, "out");
 }

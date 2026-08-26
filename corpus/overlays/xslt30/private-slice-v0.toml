@@ -68,8 +68,8 @@ rationale = "The file-backed source is imported into a sealed snapshot, then lea
 set_file = "tests/expr/path/_path-test-set.xml"
 case_name = "path-003"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The ancestor-or-self-axis predicate and descendant abbreviation exceed the current private XPath slice."
+execution = "passed"
+rationale = "The shared file-backed source snapshot executes through leading descendant navigation and a final ancestor-or-self::element2 existence predicate with self-first, charged node inspection."
 
 [[case]]
 set_file = "tests/expr/path/_path-test-set.xml"
