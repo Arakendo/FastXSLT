@@ -331,12 +331,17 @@ fn execute_sequence(
             .map_err(|failure| control_failure(failure, request_id))?;
         match instruction {
             Instruction::LiteralElement { name, body, .. } => {
+                control
+                    .charge(WorkDomain::ResultNode, 1)
+                    .map_err(|failure| control_failure(failure, request_id))?;
                 result.push(ResultNode::Element {
                     name: name.clone(),
                     children: execute_sequence(body, source, context, request_id, control)?,
                 });
             }
-            Instruction::Text { value, .. } => append_text(&mut result, value),
+            Instruction::Text { value, .. } => {
+                append_text(&mut result, value, request_id, control)?;
+            }
             Instruction::ValueOf { select, .. } => {
                 let selected = evaluate_child_path_controlled(source, context, select, control)
                     .map_err(|failure| control_failure(failure, request_id))?;
@@ -355,22 +360,36 @@ fn execute_sequence(
                 } else {
                     String::new()
                 };
-                append_text(&mut result, &value);
+                append_text(&mut result, &value, request_id, control)?;
             }
         }
     }
     Ok(result)
 }
 
-fn append_text(nodes: &mut Vec<ResultNode>, value: &str) {
+fn append_text(
+    nodes: &mut Vec<ResultNode>,
+    value: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
     if value.is_empty() {
-        return;
+        return Ok(());
     }
+    if !matches!(nodes.last(), Some(ResultNode::Text(_))) {
+        control
+            .charge(WorkDomain::ResultNode, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+    }
+    control
+        .charge(WorkDomain::ResultTextByte, value.len())
+        .map_err(|failure| control_failure(failure, request_id))?;
     if let Some(ResultNode::Text(existing)) = nodes.last_mut() {
         existing.push_str(value);
     } else {
         nodes.push(ResultNode::Text(value.to_owned()));
     }
+    Ok(())
 }
 
 fn failure(
@@ -821,7 +840,7 @@ mod tests {
 
     #[test]
     fn each_implemented_layer_charges_its_own_work_domain() {
-        let cases: [(WorkDomain, ConfigureWorkLimits); 6] = [
+        let cases: [(WorkDomain, ConfigureWorkLimits); 8] = [
             (WorkDomain::XmlEvent, |limits: &mut WorkLimits| {
                 limits.xml_events = 0;
             }),
@@ -836,6 +855,12 @@ mod tests {
             }),
             (WorkDomain::XsltInstruction, |limits: &mut WorkLimits| {
                 limits.xslt_instructions = 0;
+            }),
+            (WorkDomain::ResultNode, |limits: &mut WorkLimits| {
+                limits.result_nodes = 0;
+            }),
+            (WorkDomain::ResultTextByte, |limits: &mut WorkLimits| {
+                limits.result_text_bytes = 0;
             }),
             (WorkDomain::SerializedByte, |limits: &mut WorkLimits| {
                 limits.serialized_bytes = 0;

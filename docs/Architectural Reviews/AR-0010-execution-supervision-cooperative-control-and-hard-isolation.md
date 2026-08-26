@@ -129,9 +129,10 @@ only mode.
 - No evidence selects threads, async tasks, work stealing, queue technology,
   worker count, deadline defaults, retry policy, or a public supervisor API.
 - A private invocation-control experiment now separates an atomic cooperative
-  cancellation signal from six independent work counters. XML events, allocated
-  XDM nodes, XDM string-value visits, XPath candidate-child visits, XSLT
-  instructions, and serialized bytes charge where their work occurs.
+  cancellation signal from eight independent work counters. XML events,
+  allocated XDM nodes, XDM string-value visits, XPath candidate-child visits,
+  XSLT instructions, semantic result nodes, result text bytes, and serialized
+  bytes charge where their work occurs.
 - XPath child-axis accounting is data-dependent rather than one unit per
   expression. Broader operation weights, composed budgets, accounting overhead,
   and defaults remain unmeasured.
@@ -139,7 +140,7 @@ only mode.
   dependency call remains non-interruptible until that call returns, so no
   wall-clock observation bound follows from the current experiment.
 - Deterministic test faults now signal cancellation after earlier work in each
-  implemented phase. All six paths retain request/domain identity, and the
+  implemented phase. All eight paths retain request/domain identity, and the
   private transform-set reference returns no partial result set even when a
   sibling completed first. This does not select future batch failure collection.
 
@@ -164,7 +165,11 @@ or mutate semantic state.
 - [x] Inventory the implemented XML, XDM, XPath, instruction, and serialization
   charge/check points.
 - [ ] Establish maximum observation gaps, including work inside dependency
-  calls, and extend accounting to result construction, messages, and diagnostics.
+  calls.
+- [x] Extend accounting to semantic result-node creation and retained UTF-8 text
+  bytes independently of serialization.
+- [ ] Extend accounting to messages and diagnostics, and bound temporary dynamic
+  string-value construction before it reaches the result meter.
 - [x] Force exhaustion in every currently implemented work domain and preserve
   domain plus request identity in the private structured failure.
 - [ ] Add adversarial cases for excessive input bytes, names/attributes, nodes,
@@ -210,3 +215,6 @@ is measured, or a stronger sandbox such as WASM becomes a viable host boundary.
 - 2026-08-25 -- Injected deterministic cancellation after partial work in every
   implemented charge domain and retained request/domain identity. The private
   set returns no partial results, but public batch collection remains open.
+- 2026-08-25 -- Added separate semantic result-node and UTF-8 text-byte work
+  domains before serialization. Temporary dynamic string-value allocation,
+  messages, diagnostics, observation gaps, and overhead remain unresolved.

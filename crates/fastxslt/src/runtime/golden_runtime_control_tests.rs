@@ -3,10 +3,12 @@
 use std::collections::HashSet;
 
 use super::{
-    ExecutionPolicy, FailureCategory, TransformRequest, TransformSetBuilder, compile_resource,
-    execute_transform_set,
+    ExecutionPolicy, FailureCategory, ResultNode, TransformRequest, TransformSetBuilder,
+    append_text, compile_resource, execute_transform_set,
 };
-use crate::execution_control_experiment::{CancellationToken, WorkDomain, WorkLimits};
+use crate::execution_control_experiment::{
+    CancellationToken, InvocationControl, WorkDomain, WorkLimits,
+};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 
 const SOURCE_ID: &str = "urn:fastxslt:golden:hello:input";
@@ -55,6 +57,8 @@ fn cancellation_after_partial_work_retains_phase_and_request_identity() {
         (WorkDomain::XsltInstruction, 1),
         (WorkDomain::XPathNodeVisit, 1),
         (WorkDomain::XdmStringValueNode, 1),
+        (WorkDomain::ResultNode, 1),
+        (WorkDomain::ResultTextByte, 0),
         (WorkDomain::SerializedByte, 2),
     ];
 
@@ -110,4 +114,25 @@ fn a_completed_sibling_is_not_exposed_when_the_set_returns_cancellation() {
         Some("cancelled-after-sibling")
     );
     assert_eq!(failure.work_domain, Some(WorkDomain::SerializedByte));
+}
+
+#[test]
+fn result_nodes_and_utf8_text_bytes_are_bounded_before_serialization() {
+    let mut limits = WorkLimits::unbounded();
+    limits.result_nodes = 1;
+    limits.result_text_bytes = 4;
+    limits.serialized_bytes = 0;
+    let mut control = InvocationControl::new(CancellationToken::new(), limits);
+    let mut nodes = Vec::new();
+
+    append_text(&mut nodes, "🚀", "result-growth", &mut control)
+        .expect("one node and four UTF-8 bytes should fit exactly");
+    assert_eq!(nodes, [ResultNode::Text("🚀".to_owned())]);
+
+    let failure = append_text(&mut nodes, "!", "result-growth", &mut control)
+        .expect_err("semantic result text should be bounded before serialization");
+    assert_eq!(failure.code, "FXCT0002");
+    assert_eq!(failure.category, FailureCategory::Limit);
+    assert_eq!(failure.request_id.as_deref(), Some("result-growth"));
+    assert_eq!(failure.work_domain, Some(WorkDomain::ResultTextByte));
 }

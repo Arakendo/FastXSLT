@@ -24,4 +24,5 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `template-006` Private Execution](xslt30-template-006-private-execution-2026-08-25.md)
 - [Peer AR-0010 Review: Monday](peer-ar-0010-review-monday-2026-08-25.md)
 - [Private Invocation-Control Charge Points](private-invocation-control-charge-points-2026-08-25.md)
+- [Golden Runtime Serialization Decomposition](golden-runtime-serialization-decomposition-2026-08-25.md)
 - [Private Prepared-Input Reuse](private-prepared-input-reuse-2026-08-25.md)

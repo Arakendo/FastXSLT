@@ -270,3 +270,23 @@ ambient I/O or public stability claim.
   unbounded. Public batch failure collection is still undecided.
 - Next slice: account for result construction and add adversarial growth cases
   before measuring observation gaps and hot-path accounting overhead.
+
+### 2026-08-25: Result-construction accounting
+
+- Work completed: extracted private serialization at the 38-test checkpoint,
+  then added independent semantic result-node and retained UTF-8 text-byte work
+  domains before serialization.
+- Validation: 39 tests pass. Every one of eight domains exhausts independently
+  and supports phase-specific cancellation. An exact four-byte budget admits a
+  single `🚀` result text node and rejects the next byte without consulting the
+  separately exhausted serialization budget.
+- Findings: semantic result retention and serialized output are distinct bounded
+  responsibilities. Dynamic string-value construction still creates a
+  temporary string before the result meter, so its peak is not yet bounded by
+  this change.
+- Cohesion: serialization moved from the 988-line composition unit into a
+  private 139-line child responsibility before semantic changes. The runtime
+  composition unit is 885 lines after this slice; no public types or calls were
+  added.
+- Next slice: bound or avoid the temporary dynamic string-value allocation, then
+  measure observation gaps and accounting overhead before selecting defaults.

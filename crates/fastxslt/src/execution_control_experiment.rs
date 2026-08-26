@@ -12,6 +12,8 @@ pub(crate) enum WorkDomain {
     XdmStringValueNode,
     XPathNodeVisit,
     XsltInstruction,
+    ResultNode,
+    ResultTextByte,
     SerializedByte,
 }
 
@@ -23,6 +25,8 @@ impl WorkDomain {
             Self::XdmStringValueNode => "xdm-string-value-node",
             Self::XPathNodeVisit => "xpath-node-visit",
             Self::XsltInstruction => "xslt-instruction",
+            Self::ResultNode => "result-node",
+            Self::ResultTextByte => "result-text-byte",
             Self::SerializedByte => "serialized-byte",
         }
     }
@@ -35,6 +39,8 @@ pub(crate) struct WorkLimits {
     pub(crate) xdm_string_value_nodes: usize,
     pub(crate) xpath_node_visits: usize,
     pub(crate) xslt_instructions: usize,
+    pub(crate) result_nodes: usize,
+    pub(crate) result_text_bytes: usize,
     pub(crate) serialized_bytes: usize,
 }
 
@@ -46,6 +52,8 @@ impl WorkLimits {
             xdm_string_value_nodes: usize::MAX,
             xpath_node_visits: usize::MAX,
             xslt_instructions: usize::MAX,
+            result_nodes: usize::MAX,
+            result_text_bytes: usize::MAX,
             serialized_bytes: usize::MAX,
         }
     }
@@ -57,6 +65,8 @@ impl WorkLimits {
             WorkDomain::XdmStringValueNode => self.xdm_string_value_nodes,
             WorkDomain::XPathNodeVisit => self.xpath_node_visits,
             WorkDomain::XsltInstruction => self.xslt_instructions,
+            WorkDomain::ResultNode => self.result_nodes,
+            WorkDomain::ResultTextByte => self.result_text_bytes,
             WorkDomain::SerializedByte => self.serialized_bytes,
         }
     }
@@ -68,6 +78,8 @@ impl WorkLimits {
             WorkDomain::XdmStringValueNode => &mut self.xdm_string_value_nodes,
             WorkDomain::XPathNodeVisit => &mut self.xpath_node_visits,
             WorkDomain::XsltInstruction => &mut self.xslt_instructions,
+            WorkDomain::ResultNode => &mut self.result_nodes,
+            WorkDomain::ResultTextByte => &mut self.result_text_bytes,
             WorkDomain::SerializedByte => &mut self.serialized_bytes,
         }
     }
