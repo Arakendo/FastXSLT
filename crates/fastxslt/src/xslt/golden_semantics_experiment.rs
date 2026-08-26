@@ -1,6 +1,6 @@
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
-use crate::xpath::castable_experiment::CastableExpression;
+use crate::xpath::castable_experiment::{CastExpression, CastableExpression};
 use crate::xpath::decimal_sum_for_experiment::DecimalSumForExpression;
 use crate::xpath::focus_sum_for_experiment::FocusSumForExpression;
 use crate::xpath::for_distinct_values_experiment::ForDistinctValuesExpression;
@@ -81,6 +81,11 @@ pub(crate) enum Instruction {
     ValueOf {
         select: ValueExpression,
         separator: String,
+        location: SourceLocation,
+    },
+    Variable {
+        name: String,
+        select: Box<CastExpression>,
         location: SourceLocation,
     },
     SequenceNodes {

@@ -5,13 +5,18 @@ use crate::execution_control_experiment::{
     CancellationToken, ControlFailure, InvocationControl, WorkDomain, WorkLimits,
 };
 use crate::resources::ResourceSnapshot;
+use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{
     BuildFailure, Document, NodeId, NodeKind, StringValueVisitFailure,
 };
 use crate::xml::quick_xml_experiment::{
     ExpandedName, ParseLimits, parse_document, parse_document_controlled,
 };
-use crate::xpath::castable_experiment::evaluate as evaluate_castable;
+use crate::xpath::castable_experiment::{
+    CastEvaluationFailure, CastExpression, CastableExpression, evaluate as evaluate_castable,
+    evaluate_cast, evaluate_value as evaluate_castable_value,
+    variable_name as castable_variable_name,
+};
 use crate::xpath::decimal_sum_for_experiment::{
     DecimalSumEvaluationFailure, evaluate as evaluate_decimal_sum_for,
 };
@@ -449,11 +454,11 @@ fn execute_sequence(
     inputs: &SequenceInputs<'_>,
     instructions: &[Instruction],
     context: Option<crate::xdm::owned_tree_experiment::NodeId>,
-    variables: &BTreeMap<String, String>,
+    variables: &BTreeMap<String, AtomicValue>,
     call_depth: usize,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    let mut result = Vec::new();
+    let (mut result, mut scoped_variables) = (Vec::new(), variables.clone());
     for instruction in instructions {
         control
             .charge(WorkDomain::XsltInstruction, 1)
@@ -472,7 +477,12 @@ fn execute_sequence(
                     name: name.clone(),
                     namespaces: namespaces.clone(),
                     children: execute_sequence(
-                        inputs, body, context, variables, call_depth, control,
+                        inputs,
+                        body,
+                        context,
+                        &scoped_variables,
+                        call_depth,
+                        control,
                     )?,
                 });
             }
@@ -487,7 +497,7 @@ fn execute_sequence(
                     select,
                     separator,
                     context,
-                    variables,
+                    &scoped_variables,
                     &mut result,
                     control,
                 )?;
@@ -499,6 +509,10 @@ fn execute_sequence(
                 for node in selected {
                     result.extend(copy_source_node(source, inputs.request_id, node, control)?);
                 }
+            }
+            Instruction::Variable { name, select, .. } => {
+                let value = execute_variable_binding(inputs, name, select, context, control)?;
+                scoped_variables.insert(name.clone(), value);
             }
             Instruction::ApplyTemplates { select, mode, .. } => {
                 let (source, context) = required_source_context(inputs, context)?;
@@ -515,7 +529,7 @@ fn execute_sequence(
                 }
             }
             Instruction::If { test, body, .. } => {
-                let value = variables.get(&test.variable).ok_or_else(|| {
+                let value = scoped_variables.get(&test.variable).ok_or_else(|| {
                     failure(
                         "FXRT0002",
                         FailureCategory::Invalid,
@@ -523,9 +537,14 @@ fn execute_sequence(
                         format!("unbound variable: ${}", test.variable),
                     )
                 })?;
-                if value.trim().parse::<i64>() == Ok(test.integer) {
+                if value.lexical().trim().parse::<i64>() == Ok(test.integer) {
                     result.extend(execute_sequence(
-                        inputs, body, context, variables, call_depth, control,
+                        inputs,
+                        body,
+                        context,
+                        &scoped_variables,
+                        call_depth,
+                        control,
                     )?);
                 }
             }
@@ -539,6 +558,27 @@ fn execute_sequence(
         }
     }
     Ok(result)
+}
+
+fn execute_variable_binding(
+    inputs: &SequenceInputs<'_>,
+    name: &str,
+    select: &CastExpression,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<AtomicValue, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    evaluate_cast(select, source, context, control).map_err(|evaluation_failure| {
+        match evaluation_failure {
+            CastEvaluationFailure::Control(control) => control_failure(control, inputs.request_id),
+            CastEvaluationFailure::InvalidValue => failure(
+                "FXRT0006",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("the value selected for ${name} cannot be cast to its target type"),
+            ),
+        }
+    })
 }
 
 fn copy_source_node(
@@ -600,7 +640,7 @@ fn execute_value_of(
     select: &ValueExpression,
     separator: &str,
     context: Option<NodeId>,
-    variables: &BTreeMap<String, String>,
+    variables: &BTreeMap<String, AtomicValue>,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
@@ -639,7 +679,7 @@ fn execute_value_of(
                     format!("unbound variable: ${name}"),
                 )
             })?;
-            append_text(result, value, inputs.request_id, control)?;
+            append_text(result, value.lexical(), inputs.request_id, control)?;
         }
         ValueExpression::IntegerFor(expression) => {
             let values = evaluate_integer_for(expression, control)
@@ -692,9 +732,8 @@ fn execute_value_of(
             append_text(result, &value, inputs.request_id, control)?;
         }
         ValueExpression::Castable(expression) => {
-            let (source, context) = required_source_context(inputs, context)?;
-            let value = evaluate_castable(expression, source, context, control)
-                .map_err(|control| control_failure(control, inputs.request_id))?;
+            let value =
+                execute_castable_expression(inputs, expression, context, variables, control)?;
             append_text(
                 result,
                 if value { "true" } else { "false" },
@@ -704,6 +743,30 @@ fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn execute_castable_expression(
+    inputs: &SequenceInputs<'_>,
+    expression: &CastableExpression,
+    context: Option<NodeId>,
+    variables: &BTreeMap<String, AtomicValue>,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if let Some(name) = castable_variable_name(expression) {
+        let value = variables.get(name).ok_or_else(|| {
+            failure(
+                "FXRT0002",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("unbound variable: ${name}"),
+            )
+        })?;
+        return evaluate_castable_value(expression, value, control)
+            .map_err(|control| control_failure(control, inputs.request_id));
+    }
+    let (source, context) = required_source_context(inputs, context)?;
+    evaluate_castable(expression, source, context, control)
+        .map_err(|control| control_failure(control, inputs.request_id))
 }
 
 fn select_apply_nodes(
@@ -782,10 +845,13 @@ fn execute_named_call(
     let mut frame: BTreeMap<_, _> = target
         .parameters
         .iter()
-        .map(|parameter| (parameter.clone(), String::new()))
+        .map(|parameter| (parameter.clone(), AtomicValue::string("")))
         .collect();
     for argument in arguments {
-        frame.insert(argument.name.clone(), argument.value.clone());
+        frame.insert(
+            argument.name.clone(),
+            AtomicValue::string(argument.value.clone()),
+        );
     }
     execute_sequence(
         inputs,

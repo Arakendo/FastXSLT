@@ -861,3 +861,25 @@ ambient I/O or public stability claim.
 - Next slice: inspect native `castable-002` as pressure for typed atomic values,
   explicit `cast as`, stylesheet variables, `xs:untypedAtomic`, and the
   relationship between lexical value and runtime type identity.
+
+### 2026-08-26: Native XSLT30 `castable-002` typed local values
+
+- Work completed: executed 12 native path-to-built-in casts, retained those
+  typed values in local variables, and passed 24 castability checks against
+  `xs:string` and `xs:untypedAtomic` with exact upstream XML comparison.
+- Value rule: the private XDM value carries built-in type identity and
+  retained lexical content separately; it does not select final numeric or
+  temporal storage representations.
+- Scope rule: local bindings affect following and nested instructions in one
+  invocation, nested frames are isolated, and duplicate same-sequence bindings
+  are rejected rather than overwritten.
+- Conservation: the denominator remains seven selected plus two
+  profile-excluded; selected execution is two passes, two engine-unsupported,
+  and three harness-unsupported.
+- Claim control: cross-numeric conversion, canonical values, arbitrary variable
+  expressions, globals, sequences, and a public XDM value API remain outside
+  the slice.
+- Next slice: execute native `castable-003` by adding an explicit built-in
+  conversion matrix for boolean/integer/decimal/float/double castability while
+  keeping strings, durations, and temporal values visibly incompatible where
+  required.

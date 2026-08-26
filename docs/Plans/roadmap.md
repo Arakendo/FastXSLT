@@ -14,11 +14,11 @@ bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
 current order of work is:
 
-1. model the smallest typed atomic runtime values and `cast as` behavior needed
-   by native XSLT30 `castable-002` without replacing invocation variables with
-   an unbounded general-purpose value API;
-2. execute `castable-002` through stylesheet-local typed variables and
-   castability to `xs:string` and `xs:untypedAtomic`, retaining the other seven
+1. define the explicit built-in numeric conversion/castability matrix required
+   by native XSLT30 `castable-003`, including boolean-to-numeric and
+   float/double-to-integer admission;
+2. execute `castable-003` without treating retained lexical strings as proof
+   that every cross-type conversion is supported, retaining the other six
    dispositions;
 3. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
    memory, and peak construction memory under those representative workloads;
@@ -113,6 +113,9 @@ implemented behavior belongs to a named standards slice.
   built-in lexical castability, retaining inherited prefixed namespaces on its
   literal result. The selected denominator is one pass, three engine gaps, and
   three harness gaps.
+- [x] Execute native `castable-002` through explicit built-in casts and typed
+  invocation-local variables. The selected denominator is two passes, two
+  engine gaps, and three harness gaps.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,

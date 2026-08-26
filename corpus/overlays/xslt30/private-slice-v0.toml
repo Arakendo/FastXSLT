@@ -159,8 +159,8 @@ rationale = "The native XSLT20+ case executes built-in atomic lexical castabilit
 set_file = "tests/expr/castable/_castable-test-set.xml"
 case_name = "castable-002"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The native XSLT20+ case is admitted; variable-held values, explicit casts, and built-in atomic castability exceed the current compiler and evaluator."
+execution = "passed"
+rationale = "The native XSLT20+ case executes typed local variables produced by explicit built-in casts, then verifies each value is castable to xs:string and xs:untypedAtomic."
 
 [[case]]
 set_file = "tests/expr/castable/_castable-test-set.xml"

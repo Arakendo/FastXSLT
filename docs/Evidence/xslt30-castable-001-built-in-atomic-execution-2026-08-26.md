@@ -44,10 +44,12 @@ on `out` without redundantly repeating it on every child.
 
 ## Conservation
 
-The complete `expr/castable` denominator remains nine discovered: seven
-selected and two schema-aware profile exclusions. Selected execution advances
-to one pass, three engine-unsupported cases, and three harness-unsupported
-cases, with no failures or hidden cases.
+At this checkpoint, the complete `expr/castable` denominator remained nine
+discovered: seven selected and two schema-aware profile exclusions. Selected
+execution advanced to one pass, three engine-unsupported cases, and three
+harness-unsupported cases, with no failures or hidden cases. Native
+`castable-002` subsequently advanced in
+[the typed-local-value evidence](xslt30-castable-002-typed-local-values-2026-08-26.md).
 
 ## Claim boundary
 

@@ -1,30 +1,27 @@
 //! Built-in atomic lexical castability for the native `castable-001` slice.
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
+use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
 
 use super::path_experiment::{
     ChildPath, PathFailure, evaluate_child_path_controlled, parse_child_path,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum BuiltinAtomicType {
-    String,
-    Boolean,
-    Integer,
-    Decimal,
-    Float,
-    Double,
-    Duration,
-    DayTimeDuration,
-    YearMonthDuration,
-    DateTime,
-    Date,
-    Time,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CastableExpression {
+    operand: AtomicOperand,
+    target: BuiltinAtomicType,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct CastableExpression {
+enum AtomicOperand {
+    Path(ChildPath),
+    Variable(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CastExpression {
     operand: ChildPath,
     target: BuiltinAtomicType,
 }
@@ -33,6 +30,12 @@ pub(crate) struct CastableExpression {
 pub(crate) struct CastableFailure {
     pub(crate) detail: String,
     pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum CastEvaluationFailure {
+    Control(ControlFailure),
+    InvalidValue,
 }
 
 pub(crate) fn parse(
@@ -45,16 +48,39 @@ pub(crate) fn parse(
         .ok_or_else(|| unsupported(normalized, location))?;
     let target =
         BuiltinAtomicType::parse(target).ok_or_else(|| unsupported(normalized, location))?;
-    let operand = parse_child_path(operand, location.clone()).map_err(|failure| {
-        let detail = match failure {
-            PathFailure::Invalid { detail, .. } | PathFailure::Unsupported { detail, .. } => detail,
-        };
-        CastableFailure {
-            detail,
-            location: location.clone(),
+    let operand = if let Some(variable) = operand.strip_prefix('$') {
+        if !is_ascii_ncname(variable)
+            || !matches!(
+                target,
+                BuiltinAtomicType::String | BuiltinAtomicType::UntypedAtomic
+            )
+        {
+            return Err(unsupported(normalized, location));
         }
-    })?;
+        AtomicOperand::Variable(variable.to_owned())
+    } else {
+        AtomicOperand::Path(parse_path_operand(operand, location)?)
+    };
     Ok(CastableExpression { operand, target })
+}
+
+pub(crate) fn parse_cast(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<CastExpression, CastableFailure> {
+    let normalized = expression.trim();
+    let (operand, target) = normalized
+        .split_once(" cast as xs:")
+        .ok_or_else(|| unsupported(normalized, location))?;
+    let target =
+        BuiltinAtomicType::parse(target).ok_or_else(|| unsupported(normalized, location))?;
+    if target == BuiltinAtomicType::UntypedAtomic {
+        return Err(unsupported(normalized, location));
+    }
+    Ok(CastExpression {
+        operand: parse_path_operand(operand, location)?,
+        target,
+    })
 }
 
 pub(crate) fn evaluate(
@@ -63,19 +89,82 @@ pub(crate) fn evaluate(
     context: NodeId,
     control: &mut InvocationControl,
 ) -> Result<bool, ControlFailure> {
-    let selected = evaluate_child_path_controlled(document, context, &expression.operand, control)?;
+    let AtomicOperand::Path(path) = &expression.operand else {
+        unreachable!("variable castability is evaluated from the runtime variable frame")
+    };
+    let selected = evaluate_child_path_controlled(document, context, path, control)?;
     control.charge(WorkDomain::XPathOperation, 1)?;
     let [node] = selected.as_slice() else {
         return Ok(false);
     };
     let lexical = document.string_value_controlled(*node, control)?;
-    Ok(expression.target.accepts(&lexical))
+    Ok(castable_as(
+        &AtomicValue::untyped(lexical),
+        expression.target,
+    ))
+}
+
+pub(crate) fn variable_name(expression: &CastableExpression) -> Option<&str> {
+    match &expression.operand {
+        AtomicOperand::Path(_) => None,
+        AtomicOperand::Variable(name) => Some(name),
+    }
+}
+
+pub(crate) fn evaluate_value(
+    expression: &CastableExpression,
+    value: &AtomicValue,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    control.charge(WorkDomain::XPathOperation, 1)?;
+    Ok(castable_as(value, expression.target))
+}
+
+pub(crate) fn evaluate_cast(
+    expression: &CastExpression,
+    document: &Document,
+    context: NodeId,
+    control: &mut InvocationControl,
+) -> Result<AtomicValue, CastEvaluationFailure> {
+    let selected = evaluate_child_path_controlled(document, context, &expression.operand, control)
+        .map_err(CastEvaluationFailure::Control)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(CastEvaluationFailure::Control)?;
+    let [node] = selected.as_slice() else {
+        return Err(CastEvaluationFailure::InvalidValue);
+    };
+    let lexical = document
+        .string_value_controlled(*node, control)
+        .map_err(CastEvaluationFailure::Control)?;
+    cast_untyped(&lexical, expression.target).ok_or(CastEvaluationFailure::InvalidValue)
+}
+
+fn cast_untyped(value: &str, target: BuiltinAtomicType) -> Option<AtomicValue> {
+    target
+        .accepts(value)
+        .then(|| AtomicValue::from_validated_lexical(target, value.trim().to_owned()))
+}
+
+fn castable_as(value: &AtomicValue, target: BuiltinAtomicType) -> bool {
+    if matches!(
+        target,
+        BuiltinAtomicType::String | BuiltinAtomicType::UntypedAtomic
+    ) {
+        return true;
+    }
+    value.atomic_type() == target
+        || matches!(
+            value.atomic_type(),
+            BuiltinAtomicType::String | BuiltinAtomicType::UntypedAtomic
+        ) && target.accepts(value.lexical())
 }
 
 impl BuiltinAtomicType {
     fn parse(local: &str) -> Option<Self> {
         Some(match local {
             "string" => Self::String,
+            "untypedAtomic" => Self::UntypedAtomic,
             "boolean" => Self::Boolean,
             "integer" => Self::Integer,
             "decimal" => Self::Decimal,
@@ -94,7 +183,7 @@ impl BuiltinAtomicType {
     fn accepts(self, lexical: &str) -> bool {
         let collapsed = lexical.trim();
         match self {
-            Self::String => true,
+            Self::String | Self::UntypedAtomic => true,
             Self::Boolean => matches!(collapsed, "true" | "false" | "1" | "0"),
             Self::Integer => signed_digits(collapsed),
             Self::Decimal => decimal(collapsed),
@@ -107,6 +196,31 @@ impl BuiltinAtomicType {
             Self::Time => time(collapsed),
         }
     }
+}
+
+fn parse_path_operand(
+    operand: &str,
+    location: &SourceLocation,
+) -> Result<ChildPath, CastableFailure> {
+    parse_child_path(operand, location.clone()).map_err(|failure| {
+        let detail = match failure {
+            PathFailure::Invalid { detail, .. } | PathFailure::Unsupported { detail, .. } => detail,
+        };
+        CastableFailure {
+            detail,
+            location: location.clone(),
+        }
+    })
+}
+
+fn is_ascii_ncname(value: &str) -> bool {
+    let mut characters = value.chars();
+    characters.next().is_some_and(|first| {
+        (first.is_ascii_alphabetic() || first == '_')
+            && characters.all(|character| {
+                character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.')
+            })
+    })
 }
 
 fn signed_digits(value: &str) -> bool {
@@ -317,8 +431,9 @@ fn unsupported(expression: &str, location: &SourceLocation) -> CastableFailure {
 
 #[cfg(test)]
 mod tests {
-    use super::{BuiltinAtomicType, evaluate, parse};
+    use super::{evaluate, evaluate_cast, evaluate_value, parse, parse_cast, variable_name};
     use crate::execution_control_experiment::{InvocationControl, WorkDomain};
+    use crate::xdm::atomic_value_experiment::BuiltinAtomicType;
     use crate::xdm::owned_tree_experiment::{Document, SourceLocation};
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
@@ -386,5 +501,38 @@ mod tests {
         assert_eq!(control.consumed(WorkDomain::XPathOperation), 1);
         assert!(control.consumed(WorkDomain::XPathNodeVisit) > 0);
         assert!(control.consumed(WorkDomain::XdmStringValueNode) > 0);
+    }
+
+    #[test]
+    fn cast_values_retain_type_identity_for_variable_castability() {
+        let parsed = parse_document(
+            "memory:cast",
+            b"<root><value>43</value></root>",
+            ParseLimits {
+                max_events: 8,
+                max_depth: 4,
+            },
+        )
+        .expect("source should parse");
+        let document = Document::from_parsed(parsed).expect("source XDM should build");
+        let location = SourceLocation {
+            resource: "memory:stylesheet".to_owned(),
+            span: 0..30,
+        };
+        let cast = parse_cast("//value cast as xs:integer", &location)
+            .expect("native cast shape should parse");
+        let mut control = InvocationControl::unbounded();
+        let value = evaluate_cast(&cast, &document, document.document_node(), &mut control)
+            .expect("valid integer cast should produce a value");
+        let to_string = parse("$value castable as xs:string", &location)
+            .expect("typed variable castability should parse");
+        let to_untyped = parse("$value castable as xs:untypedAtomic", &location)
+            .expect("untypedAtomic target should parse");
+
+        assert_eq!(value.atomic_type(), BuiltinAtomicType::Integer);
+        assert_eq!(value.lexical(), "43");
+        assert_eq!(variable_name(&to_string), Some("value"));
+        assert!(evaluate_value(&to_string, &value, &mut control).expect("castability"));
+        assert!(evaluate_value(&to_untyped, &value, &mut control).expect("castability"));
     }
 }
