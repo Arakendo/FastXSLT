@@ -6,15 +6,17 @@ standards scope are decided.
 
 ## Current critical path
 
-FastXSLT has accepted its staged-modern semantic direction and now passes the
-complete XSLT30 `template` and `path` test-set denominators. The current order
-of work is:
+FastXSLT has accepted its staged-modern semantic direction, passes the complete
+XSLT30 `template` and `path` test-set denominators, and executes the complete
+four-case QT3 `Axes002` group through a stylesheet-independent XPath seam. The
+current order of work is:
 
-1. activate the paired four-case QT3 `Axes002` group through native environment
-   resolution, explicit named child-axis steps, `fn:count`, and `assert-eq`,
-   retaining every disposition while the harness grows;
-2. select the next complete XSLT30 family only after the QT3 expression seam
-   can execute independently of an XSLT stylesheet;
+1. admit the complete four-case XSLT30 `expr/for` test set as the next conserved
+   denominator before implementation, retaining its initial-template harness
+   gap and every unsupported expression or instruction dependency;
+2. decompose the first applicable `expr/for` case into the minimum sequence,
+   expression, instruction, and assertion behavior required by its native
+   metadata rather than broadening from syntax alone;
 3. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
    memory, and peak construction memory under those representative workloads;
 4. exercise the same lifecycle through the bounded ASP.NET workbench before
@@ -83,6 +85,9 @@ implemented behavior belongs to a named standards slice.
   `path-001` through `path-010`, including charged axis predicates, per-step
   positions, `last()`, checked constant-integer arithmetic, integer-domain
   `floor()`, and the native complex relative match pattern.
+- [x] Execute the complete QT3 `Axes002` named-child-axis group through native
+  environments, direct XPath, `fn:count`, charged navigation, and `assert-eq`
+  comparison without an XSLT wrapper.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,

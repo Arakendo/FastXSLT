@@ -184,6 +184,10 @@ fn parse_position_steps(expression: &str) -> Option<(Vec<String>, Vec<Option<Pos
         } else {
             (raw_step, None)
         };
+        let name = name.strip_prefix("child::").unwrap_or(name);
+        if name.is_empty() {
+            return None;
+        }
         steps.push(name.to_owned());
         predicates.push(predicate);
     }
@@ -500,6 +504,17 @@ mod tests {
             parse_child_path("catalog/..", location()),
             Err(PathFailure::Unsupported { .. })
         ));
+    }
+
+    #[test]
+    fn explicit_named_child_axis_uses_the_same_child_navigation_semantics() {
+        let implicit = parse_child_path("//center/south-east", location())
+            .expect("implicit child steps should parse");
+        let explicit = parse_child_path("//center/child::south-east", location())
+            .expect("explicit named child-axis step should parse");
+
+        assert_eq!(explicit.steps, implicit.steps);
+        assert!(explicit.starts_with_descendant_search);
     }
 
     #[test]

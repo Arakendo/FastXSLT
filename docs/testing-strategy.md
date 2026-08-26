@@ -73,9 +73,11 @@ environments, stylesheets, and XML assertions; that complete test set passes.
 The overlay also conserves the complete ten-case `path` test set: `path-001`
 through `path-010` all pass. The complete `template` and `path` denominators are
 local executable evidence, not broad standards claims.
-The paired QT3
-`Axes002` named-child-axis group is inventoried but not yet executable. These
-local denominators do not imply support for adjacent test sets or broad
+The complete four-case QT3 `Axes002` named-child-axis group also passes through
+native environment resolution, direct XPath execution, `fn:count`, and
+`assert-eq` comparison. It is not routed through an XSLT stylesheet. The
+adjacent selected `Axes001-1` wildcard case remains explicitly unsupported.
+These local denominators do not imply support for adjacent test sets or broad
 standards conformance.
 A private case-record experiment
 also observes QT3 `assert-eq` and an XSLT30 compound message assertion through

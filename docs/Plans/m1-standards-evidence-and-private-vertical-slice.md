@@ -680,3 +680,24 @@ ambient I/O or public stability claim.
 - Next slice: execute the paired QT3 `Axes002-1` through `Axes002-4` group by
   adding native environment resolution, explicit named child-axis steps,
   `fn:count`, and `assert-eq` comparison without routing it through XSLT.
+
+### 2026-08-26: Native QT3 `Axes002` execution
+
+- Work completed: executed all four selected `Axes002` cases from the pinned
+  QT3 `AxisStep` test set through native environment, source, expression, and
+  `assert-eq` resolution.
+- Resource boundary: each upstream source is imported into a bounded sealed
+  snapshot and parsed from retained bytes after its import handle closes.
+- XPath behavior: leading descendant navigation and explicit named `child::`
+  steps share one path representation; a narrow `fn:count` seam reports the
+  selected sequence size without routing the case through XSLT.
+- Work accounting: every examined navigation node consumes the invocation's
+  XPath node-visit budget.
+- Conservation: the complete group reports four selected passes with expected
+  values `0`, `0`, `1`, and `2`; the adjacent `Axes001-1` wildcard case remains
+  explicitly unsupported.
+- Claim control: this is direct evidence for one expression and assertion
+  family, not a general function library or broad XPath/QT3 conformance claim.
+- Next slice: admit all four cases in XSLT30 `tests/expr/for/_for-test-set.xml`
+  before implementation, then let their native metadata expose the first
+  harness and semantic gaps without shrinking the denominator.

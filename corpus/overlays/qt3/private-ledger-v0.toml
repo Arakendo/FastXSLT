@@ -12,26 +12,26 @@ rationale = "Referenced source environment plus assert-eq exercise QT3-native me
 set_file = "prod/AxisStep.xml"
 case_name = "Axes002-1"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The first case in the complete named-child-axis group requires QT3 environment resolution, descendant navigation, explicit child-axis selection, and fn:count."
+execution = "passed"
+rationale = "The native TreeTrunc environment is imported into a sealed snapshot and fn:count over descendant center plus explicit child::south-east evaluates to the native assert-eq value 0."
 
 [[case]]
 set_file = "prod/AxisStep.xml"
 case_name = "Axes002-2"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The zero-result single-child environment pressures the same named-child-axis semantics while the QT3 executor remains deferred."
+execution = "passed"
+rationale = "The native Tree1Child environment executes through the same memory-resident XPath path and matches assert-eq value 0."
 
 [[case]]
 set_file = "prod/AxisStep.xml"
 case_name = "Axes002-3"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The one-result compass environment pressures the same named-child-axis semantics while the QT3 executor remains deferred."
+execution = "passed"
+rationale = "The native TreeCompass environment executes through the same memory-resident XPath path and matches assert-eq value 1."
 
 [[case]]
 set_file = "prod/AxisStep.xml"
 case_name = "Axes002-4"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The two-result repeated environment completes the named-child-axis group while the QT3 executor remains deferred."
+execution = "passed"
+rationale = "The native TreeRepeat environment executes through the same memory-resident XPath path and matches assert-eq value 2."
