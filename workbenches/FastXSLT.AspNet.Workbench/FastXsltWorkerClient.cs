@@ -11,6 +11,7 @@ public sealed class FastXsltWorkerClient : IDisposable
     private const byte CancelledTransform = 5;
     private const byte ControlledTransform = 6;
     private const byte Cancel = 7;
+    private const byte UnpausedControlledTransform = 8;
     private const byte Ready = 0x81;
     private const byte Result = 0x82;
     private const byte Stopped = 0x83;
@@ -136,13 +137,24 @@ public sealed class FastXsltWorkerClient : IDisposable
     }
 
     public async Task<ControlledTransformHandle> StartControlledTransformAsync(
-        string requestIdentity)
+        string requestIdentity) => await StartControlledTransformAsync(
+            requestIdentity,
+            ControlledTransform);
+
+    public async Task<ControlledTransformHandle> StartUnpausedControlledTransformAsync(
+        string requestIdentity) => await StartControlledTransformAsync(
+            requestIdentity,
+            UnpausedControlledTransform);
+
+    private async Task<ControlledTransformHandle> StartControlledTransformAsync(
+        string requestIdentity,
+        byte operation)
     {
         await _gate.WaitAsync();
         try
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            await WriteByteAsync(ControlledTransform);
+            await WriteByteAsync(operation);
             await WriteStringAsync(requestIdentity);
             await _input.FlushAsync();
             var response = await ReadByteAsync();

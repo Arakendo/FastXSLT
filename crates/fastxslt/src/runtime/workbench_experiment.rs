@@ -10,6 +10,7 @@ use crate::runtime::golden_runtime_experiment::{
 use crate::runtime::prepared_input_experiment::{
     PreparationFailure, PreparedInputBuilder, PreparedInputSet,
 };
+use crate::xml::quick_xml_experiment::ParseLimits;
 
 /// Explicit bounds for the isolated ASP.NET workbench experiment.
 #[derive(Debug, Clone, Copy)]
@@ -20,6 +21,8 @@ pub struct WorkbenchLimits {
     pub max_result_bytes: usize,
     /// Maximum XML events charged during source preparation.
     pub max_xml_events: usize,
+    /// Maximum XML element nesting depth during source preparation.
+    pub max_xml_depth: usize,
     /// Maximum XDM nodes charged during source preparation and execution.
     pub max_xdm_nodes: usize,
     /// Maximum `XPath` operations charged during one transformation.
@@ -36,6 +39,7 @@ impl Default for WorkbenchLimits {
             max_resource_bytes: 1_048_576,
             max_result_bytes: 1_048_576,
             max_xml_events: 100_000,
+            max_xml_depth: 64,
             max_xdm_nodes: 100_000,
             max_xpath_operations: 1_000_000,
             max_xslt_instructions: 1_000_000,
@@ -149,7 +153,13 @@ impl ExperimentalEngine {
         let snapshot = resources.seal();
         let program = compile_resource(&snapshot, &stylesheet_id)
             .map_err(|failure| project_execution(&failure))?;
-        let mut builder = PreparedInputBuilder::new(snapshot);
+        let mut builder = PreparedInputBuilder::with_parse_limits(
+            snapshot,
+            ParseLimits {
+                max_events: limits.max_xml_events,
+                max_depth: limits.max_xml_depth,
+            },
+        );
         let mut control = InvocationControl::new(CancellationToken::new(), work_limits(limits));
         builder
             .prepare(&source_id, &mut control)
@@ -305,5 +315,29 @@ mod tests {
             "host cancellation observed while charging xslt-instruction work"
         );
         assert!(engine.transform("after-cancel").is_ok());
+    }
+
+    #[test]
+    fn explicit_xml_event_limit_reaches_prepared_input_parser() {
+        let mut source = String::from("<order>");
+        for _ in 0..600 {
+            source.push_str("<order-item price='1.00' qty='1'/>");
+        }
+        source.push_str("</order>");
+        let engine = ExperimentalEngine::new(
+            "urn:fastxslt:workbench:larger-source",
+            source.into_bytes(),
+            "urn:w3c:xslt30:for-004:stylesheet",
+            include_bytes!("../../../../vendor/xslt30-test/tests/expr/for/for-004.xsl").to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("explicit workbench XML limit should replace the private test default");
+
+        assert_eq!(
+            engine
+                .transform("larger-source")
+                .expect("transform should run"),
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>600.00</out>"
+        );
     }
 }

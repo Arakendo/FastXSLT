@@ -114,6 +114,17 @@ try {
                 -not $activeCancellation.firstChargeBarrierWasExperimental) {
                 throw "Active cancellation experiment violated its race or reuse contract: $($activeCancellation | ConvertTo-Json -Depth 5)"
             }
+            $naturalCancellation = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/natural-cancellation-races"
+            if ($naturalCancellation.races.trials -ne 25 -or
+                ($naturalCancellation.races.cancellations + $naturalCancellation.races.completions) -ne 25 -or
+                $naturalCancellation.races.cancellations -lt 1 -or
+                $naturalCancellation.races.processIdBefore -ne $naturalCancellation.races.processIdAfter -or
+                $naturalCancellation.races.recoveryResult -cne '<?xml version="1.0" encoding="UTF-8"?><out>20000.00</out>' -or
+                $naturalCancellation.firstChargeBarrierUsed -or
+                -not $naturalCancellation.completionWinsIfCommittedBeforeSignal -or
+                $naturalCancellation.workerWasTerminated) {
+                throw "Natural cancellation race experiment violated its accounting or reuse contract: $($naturalCancellation | ConvertTo-Json -Depth 5)"
+            }
             $recovery = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/worker-recovery"
             if ($recovery.recovery.failureCode -ne 'FXWB2001' -or
                 $recovery.recovery.failureCategory -ne 'worker-terminated' -or
@@ -163,6 +174,16 @@ try {
                 WorkerReused = $activeCancellation.cancellation.processIdBefore -eq $activeCancellation.cancellation.processIdAfter
                 UnrelatedSignalIgnored = $activeCancellation.cancellation.unrelatedSignalIgnored
                 RecoveryCompleted = $activeCancellation.cancellation.recoveryResult -ceq '<?xml version="1.0" encoding="UTF-8"?><out>500.00</out>'
+            }
+            [pscustomobject]@{
+                Experiment = 'NaturalCancellationRaces'
+                Trials = $naturalCancellation.races.trials
+                Cancellations = $naturalCancellation.races.cancellations
+                Completions = $naturalCancellation.races.completions
+                MinimumCancellationMilliseconds = $naturalCancellation.races.minimumCancellationMilliseconds
+                MedianCancellationMilliseconds = $naturalCancellation.races.medianCancellationMilliseconds
+                MaximumCancellationMilliseconds = $naturalCancellation.races.maximumCancellationMilliseconds
+                WorkerReused = $naturalCancellation.races.processIdBefore -eq $naturalCancellation.races.processIdAfter
             }
             [pscustomobject]@{
                 Experiment = 'WorkerRecovery'

@@ -82,6 +82,34 @@ public static class OperationalExperiments
         };
     }
 
+    public static async Task<object> MeasureNaturalCancellationRacesAsync(
+        string workerPath,
+        byte[] stylesheet)
+    {
+        var source = BuildCancellationSource(20_000);
+        const string expected = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>20000.00</out>";
+        using var pool = await FastXsltWorkerPool.StartAsync(
+            workerPath,
+            "urn:fastxslt:natural-cancellation:source",
+            source,
+            "urn:fastxslt:natural-cancellation:stylesheet",
+            stylesheet,
+            workers: 1);
+        var races = await pool.MeasureUnpausedCancellationRacesAsync(
+            "natural-cancellation",
+            expected,
+            "natural-cancellation-recovery",
+            trials: 25);
+        return new
+        {
+            races,
+            sourceItems = 20_000,
+            firstChargeBarrierUsed = false,
+            completionWinsIfCommittedBeforeSignal = true,
+            workerWasTerminated = false
+        };
+    }
+
     public static async Task<object> ExerciseGenerationReplacementAsync(
         string workerPath,
         byte[] source,

@@ -16,6 +16,7 @@ const NON_COOPERATING_PROBE: u8 = 4;
 const CANCELLED_TRANSFORM: u8 = 5;
 const CONTROLLED_TRANSFORM: u8 = 6;
 const CANCEL: u8 = 7;
+const UNPAUSED_CONTROLLED_TRANSFORM: u8 = 8;
 const READY: u8 = 0x81;
 const RESULT: u8 = 0x82;
 const STOPPED: u8 = 0x83;
@@ -106,7 +107,14 @@ impl Supervisor {
                 request_id,
                 cancelled,
                 controlled,
-            } => self.begin_transform(request_id, cancelled, controlled, output)?,
+                first_charge_barrier,
+            } => self.begin_transform(
+                request_id,
+                cancelled,
+                controlled,
+                first_charge_barrier,
+                output,
+            )?,
             Command::Cancel { request_id } => {
                 if let Some(invocation) = &self.active
                     && invocation.request_id == request_id
@@ -149,6 +157,7 @@ impl Supervisor {
         request_id: String,
         cancelled: bool,
         controlled: bool,
+        first_charge_barrier: bool,
         output: &mut impl Write,
     ) -> io::Result<()> {
         if self.active.is_some() {
@@ -179,7 +188,11 @@ impl Supervisor {
             let result = engine.transform_with_cancellation(&request_id, cancellation);
             return write_transform_result(output, &request_id, result);
         }
-        let cancellation = WorkbenchCancellation::with_first_charge_barrier();
+        let cancellation = if first_charge_barrier {
+            WorkbenchCancellation::with_first_charge_barrier()
+        } else {
+            WorkbenchCancellation::new()
+        };
         start_transform(
             Arc::clone(engine),
             request_id.clone(),
@@ -190,7 +203,7 @@ impl Supervisor {
             request_id: request_id.clone(),
             cancellation,
         });
-        if controlled {
+        if first_charge_barrier {
             while !self
                 .active
                 .as_ref()
@@ -198,6 +211,8 @@ impl Supervisor {
             {
                 std::thread::yield_now();
             }
+        }
+        if controlled {
             write_byte(output, TRANSFORM_STARTED)?;
             write_string(output, &request_id)?;
             output.flush()?;
@@ -276,11 +291,17 @@ fn read_command(input: &mut impl Read) -> io::Result<Option<Command>> {
             stylesheet_id: read_string(input, MAX_IDENTITY_BYTES)?,
             stylesheet: read_bytes(input, MAX_RESOURCE_BYTES)?,
         },
-        TRANSFORM | CANCELLED_TRANSFORM | CONTROLLED_TRANSFORM => Command::Transform {
-            request_id: read_string(input, MAX_IDENTITY_BYTES)?,
-            cancelled: operation == CANCELLED_TRANSFORM,
-            controlled: operation == CONTROLLED_TRANSFORM,
-        },
+        TRANSFORM | CANCELLED_TRANSFORM | CONTROLLED_TRANSFORM | UNPAUSED_CONTROLLED_TRANSFORM => {
+            Command::Transform {
+                request_id: read_string(input, MAX_IDENTITY_BYTES)?,
+                cancelled: operation == CANCELLED_TRANSFORM,
+                controlled: matches!(
+                    operation,
+                    CONTROLLED_TRANSFORM | UNPAUSED_CONTROLLED_TRANSFORM
+                ),
+                first_charge_barrier: operation == CONTROLLED_TRANSFORM,
+            }
+        }
         CANCEL => Command::Cancel {
             request_id: read_string(input, MAX_IDENTITY_BYTES)?,
         },
@@ -313,6 +334,7 @@ enum Command {
         request_id: String,
         cancelled: bool,
         controlled: bool,
+        first_charge_barrier: bool,
     },
     Cancel {
         request_id: String,

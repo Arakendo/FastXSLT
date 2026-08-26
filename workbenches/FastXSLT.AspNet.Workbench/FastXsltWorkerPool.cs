@@ -237,6 +237,76 @@ public sealed class FastXsltWorkerPool : IDisposable
         }
     }
 
+    public async Task<UnpausedCancellationRaceEvidence> MeasureUnpausedCancellationRacesAsync(
+        string requestIdentityPrefix,
+        string expectedResult,
+        string recoveryRequestIdentity,
+        int trials)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(trials, 1);
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        await _slots.WaitAsync();
+        WorkerSlot worker;
+        lock (_queueLock)
+        {
+            worker = _available.Dequeue();
+        }
+        try
+        {
+            var processId = worker.Client.ProcessId;
+            var cancellationLatencies = new List<double>();
+            var completions = 0;
+            for (var trial = 0; trial < trials; trial++)
+            {
+                var requestIdentity = $"{requestIdentityPrefix}-{trial}";
+                var invocation = await worker.Client.StartUnpausedControlledTransformAsync(
+                    requestIdentity);
+                var observation = System.Diagnostics.Stopwatch.StartNew();
+                await invocation.CancelAsync();
+                try
+                {
+                    var result = await invocation.Completion;
+                    if (!StringComparer.Ordinal.Equals(result, expectedResult))
+                    {
+                        throw new InvalidDataException("Completion-race result changed semantics.");
+                    }
+                    completions++;
+                }
+                catch (FastXsltWorkerException failure) when (
+                    failure.Code == "FXCT0001" &&
+                    failure.Category == "cancelled" &&
+                    StringComparer.Ordinal.Equals(failure.RequestId, requestIdentity))
+                {
+                    observation.Stop();
+                    cancellationLatencies.Add(observation.Elapsed.TotalMilliseconds);
+                }
+            }
+            cancellationLatencies.Sort();
+            var recoveryResult = await worker.Client.TransformAsync(recoveryRequestIdentity);
+            return new UnpausedCancellationRaceEvidence(
+                trials,
+                cancellationLatencies.Count,
+                completions,
+                cancellationLatencies.Count == 0 ? null : cancellationLatencies[0],
+                cancellationLatencies.Count == 0
+                    ? null
+                    : cancellationLatencies[cancellationLatencies.Count / 2],
+                cancellationLatencies.Count == 0 ? null : cancellationLatencies[^1],
+                processId,
+                worker.Client.ProcessId,
+                recoveryRequestIdentity,
+                recoveryResult);
+        }
+        finally
+        {
+            lock (_queueLock)
+            {
+                _available.Enqueue(worker);
+            }
+            _slots.Release();
+        }
+    }
+
     public (TimeSpan ProcessorTime, long WorkingSetBytes) ObserveProcesses()
     {
         var processorTime = TimeSpan.Zero;
@@ -323,6 +393,18 @@ public sealed record ActiveCancellationEvidence(
     string FailureDetail,
     double SignalToObservationMilliseconds,
     bool UnrelatedSignalIgnored,
+    int ProcessIdBefore,
+    int ProcessIdAfter,
+    string RecoveryRequestIdentity,
+    string RecoveryResult);
+
+public sealed record UnpausedCancellationRaceEvidence(
+    int Trials,
+    int Cancellations,
+    int Completions,
+    double? MinimumCancellationMilliseconds,
+    double? MedianCancellationMilliseconds,
+    double? MaximumCancellationMilliseconds,
     int ProcessIdBefore,
     int ProcessIdAfter,
     string RecoveryRequestIdentity,

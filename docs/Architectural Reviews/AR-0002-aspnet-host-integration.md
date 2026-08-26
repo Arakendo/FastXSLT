@@ -8,7 +8,7 @@
 | Scope | Non-Rust embedding, deployment, and performance boundary |
 | Trigger | ASP.NET applications are a motivating FastXSLT consumer class |
 | Related ADRs | ADR-0001 |
-| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`, `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
+| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`, `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-natural-cancellation-races-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
 
 ## Architectural question
 
@@ -128,6 +128,10 @@ security contracts.
   signal after execution reaches a real charge point, ignores an unrelated
   identity, returns structured cancellation, and reuses the same worker. Its
   deterministic first-charge barrier prevents a natural latency claim.
+- In 25 unpaused 20,000-item trials, cancellation won every race with
+  0.0952–0.4285 ms signal-to-response and the worker remained reusable. An
+  earlier 500-item trial completed first. These are local workload observations,
+  not deadline bounds or managed API selection.
 
 ## Disposition
 
@@ -183,3 +187,6 @@ invalidates the selected mechanism.
 - 2026-08-26 -- Added one-active-invocation control-plane multiplexing and a
   deterministic first-charge cancellation probe with correlation and reuse.
   Natural observation latency and managed API selection remain open.
+- 2026-08-26 -- Sampled 25 unpaused cancellation races after propagating the
+  explicit XML-event limit into prepared parsing. All larger-workload trials
+  cancelled; the earlier small-workload completion preserved the opposite race.

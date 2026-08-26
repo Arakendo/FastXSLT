@@ -171,6 +171,20 @@ app.MapPost("/experiment/active-cancellation", async () =>
         operationalExperimentGate.Release();
     }
 });
+app.MapPost("/experiment/natural-cancellation-races", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await OperationalExperiments.MeasureNaturalCancellationRacesAsync(
+            workerPath,
+            stylesheet));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
 app.MapPost("/experiment/generation-replacement", async () =>
 {
     await operationalExperimentGate.WaitAsync();

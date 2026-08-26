@@ -9,7 +9,7 @@
 | Trigger | A dispatcher was proposed as a security layer capable of detecting and recovering a rogue parser worker |
 | Related ADRs | ADR-0002, ADR-0005 |
 | Related reviews | AR-0002, AR-0003, AR-0004, AR-0008, AR-0009 |
-| Related evidence | `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-ar-0010-review-monday-2026-08-25.md`; `docs/Evidence/private-invocation-control-charge-points-2026-08-25.md`; `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`; `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`; `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`; future fault-injection and host-boundary measurements |
+| Related evidence | `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-ar-0010-review-monday-2026-08-25.md`; `docs/Evidence/private-invocation-control-charge-points-2026-08-25.md`; `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`; `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`; `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`; `docs/Evidence/aspnet-natural-cancellation-races-2026-08-26.md`; future fault-injection and host-boundary measurements |
 
 ## Architectural question
 
@@ -167,6 +167,10 @@ only mode.
   first-charge barrier proved matching active cancellation, unrelated-signal
   rejection, exact failure identity, and same-process reuse. The barrier makes
   its 0.5392–1.2906 ms observations unsuitable as natural wall-clock evidence.
+- A 25-trial unpaused 20,000-item sample produced 25 structured cancellations,
+  a 0.1309 ms median signal-to-response, and same-worker recovery. The earlier
+  500-item attempt committed completion first. This covers both race outcomes
+  but not representative/adversarial observation bounds.
 
 ## Disposition
 
@@ -267,3 +271,6 @@ is measured, or a stronger sandbox such as WASM becomes a viable host boundary.
 - 2026-08-26 -- Added correlated control-plane multiplexing and a deterministic
   active first-charge cancellation probe. Retained natural observation latency,
   race sampling, and public adapter work as follow-ups.
+- 2026-08-26 -- Added an unpaused 25-trial larger-workload race sample after
+  propagating explicit XML limits into preparation. Retained representative and
+  adversarial wall-clock bounds as open.

@@ -7,6 +7,7 @@ use crate::resources::ResourceSnapshot;
 use crate::xdm::owned_tree_experiment::{BuildFailure, Document};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document_controlled};
 
+#[cfg(test)]
 const PREPARATION_XML_LIMITS: ParseLimits = ParseLimits {
     max_events: 1_024,
     max_depth: 64,
@@ -24,14 +25,26 @@ pub(super) enum PreparationFailure {
 #[derive(Debug)]
 pub(super) struct PreparedInputBuilder {
     snapshot: ResourceSnapshot,
+    parse_limits: ParseLimits,
     documents: BTreeMap<String, Arc<Document>>,
     parsed_phase_capacity_bytes: BTreeMap<String, usize>,
 }
 
 impl PreparedInputBuilder {
+    #[cfg(test)]
     pub(super) fn new(snapshot: ResourceSnapshot) -> Self {
         Self {
             snapshot,
+            parse_limits: PREPARATION_XML_LIMITS,
+            documents: BTreeMap::new(),
+            parsed_phase_capacity_bytes: BTreeMap::new(),
+        }
+    }
+
+    pub(super) fn with_parse_limits(snapshot: ResourceSnapshot, parse_limits: ParseLimits) -> Self {
+        Self {
+            snapshot,
+            parse_limits,
             documents: BTreeMap::new(),
             parsed_phase_capacity_bytes: BTreeMap::new(),
         }
@@ -53,7 +66,7 @@ impl PreparedInputBuilder {
                 .ok_or_else(|| PreparationFailure::MissingResource {
                     identity: identity.to_owned(),
                 })?;
-        let parsed = parse_document_controlled(identity, bytes, PREPARATION_XML_LIMITS, control)
+        let parsed = parse_document_controlled(identity, bytes, self.parse_limits, control)
             .map_err(|failure| {
                 failure.control_failure().map_or_else(
                     || PreparationFailure::InvalidXml {
