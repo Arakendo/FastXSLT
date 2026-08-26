@@ -69,5 +69,5 @@ relationship vectors, and owned string capacity. They exclude:
 - process, thread-stack, ASP.NET, FFI, or transport memory.
 
 Consequently these values are implementation/build observations, not stable
-formulas or host budget defaults. The workspace now has 54 tests: 51 pass and
-three manual timing probes remain ignored by default.
+formulas or host budget defaults. The workspace now has 55 tests: 51 pass and
+four manual measurement probes remain ignored by default.

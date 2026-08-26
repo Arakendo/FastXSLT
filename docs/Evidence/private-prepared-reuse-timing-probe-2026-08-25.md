@@ -73,5 +73,5 @@ excluded because both candidate lifecycles are compile-once.
   process start, or file import.
 - It does not compare eager, lazy, single-flight, eviction, or reconstruction
   policies and therefore cannot select one.
-- Normal verification now runs 54 tests: 51 pass and three manual measurement
+- Normal verification now runs 55 tests: 51 pass and four manual measurement
   probes are ignored by default.

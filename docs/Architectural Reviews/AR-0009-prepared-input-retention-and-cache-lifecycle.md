@@ -169,6 +169,12 @@ incompatible with the current explicit-ownership direction.
   construct-and-drop medians across three local runs. Different allocation
   lifetimes and cache state prevent treating their sum as an exact decomposition
   of the earlier end-to-end probe.
+- An exact-pinned dev-only allocator counter now measures the complete explicit
+  preparation closure on its calling thread. The hello source retained 2,744
+  allocator-requested bytes and peaked at 3,424; the generated 100-item source
+  retained 64,577 and peaked at 130,357. The tool excludes allocator metadata,
+  fragmentation, process memory, snapshot admission, and other threads. No
+  first-party unsafe exception or runtime dependency was introduced.
 
 ## Disposition
 
@@ -186,7 +192,7 @@ thread-safety, eviction, or performance guarantee.
 
 - [x] Measure admitted bytes, node count, and owned-XDM payload capacity for the
   golden source under the current representation.
-- [ ] Measure parse/XDM construction time, allocator-inclusive retained memory,
+- [x] Measure parse/XDM construction time, allocator-inclusive retained memory,
   and peak construction memory separately.
   - [x] Retain a reproducible release-mode probe that times XML parsing and XDM
     construction separately for the private 55-byte fixture.
@@ -254,3 +260,7 @@ different retention seam.
 - 2026-08-25 -- Added a separate-phase release-mode timing probe. Local tiny
   fixture results make parse and XDM construction independently visible but do
   not close representative workload, allocator, or host-boundary follow-up.
+- 2026-08-25 -- Admitted exact-pinned `allocation-counter` 0.8.1 as a dev-only
+  measurement tool after license and unsafe-surface review. The private probe
+  separates allocator-requested retained and peak preparation bytes; process
+  working set and representative consumer workloads remain open.

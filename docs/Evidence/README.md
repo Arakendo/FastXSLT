@@ -38,3 +38,4 @@ pressure architecture but does not silently create a public guarantee.
 - [Private Prepared-Retention Observation](private-prepared-retention-observation-2026-08-25.md)
 - [Private Preparation Concurrency and Retry Baseline](private-preparation-concurrency-and-retry-baseline-2026-08-25.md)
 - [Private Preparation-Phase Timing Probe](private-preparation-phase-timing-probe-2026-08-25.md)
+- [Allocation-Counter Review and Preparation Probe](allocation-counter-review-and-preparation-probe-2026-08-25.md)

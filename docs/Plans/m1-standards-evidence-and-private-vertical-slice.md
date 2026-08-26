@@ -395,6 +395,11 @@ ambient I/O or public stability claim.
   observed 1,123.9–1,133.3 ns XML-parse medians and 863.4–921.5 ns XDM
   construct-and-drop medians. Loop/allocation differences prevent adding these
   into an exact decomposition of the complete direct-path measurement.
+- Allocation measurement: three identical optimized runs observed 2,744
+  retained and 3,424 peak allocator-requested bytes while preparing hello. The
+  generated 100-item source retained 64,577 and peaked at 130,357 bytes. The
+  exact-pinned dev tool is current-thread-only and excludes allocator metadata,
+  snapshot admission, process memory, and host overhead.
 - Findings: the seam has measurable private value and meaningful retention
   cost. The current builder performs explicit owned construction, so it has no
   shared first-access, single-flight, or waiter semantics to stabilize.

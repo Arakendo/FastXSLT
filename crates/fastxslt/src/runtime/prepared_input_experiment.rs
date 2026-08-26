@@ -618,4 +618,53 @@ mod tests {
             xdm_ns[SAMPLES / 2]
         );
     }
+
+    #[test]
+    #[ignore = "manual allocator-requested retained and peak preparation probe"]
+    fn measures_preparation_allocations() {
+        const SCALED_SOURCE: &str = "urn:fastxslt:prepared:scaled-source";
+        const ITEM_COUNT: usize = 100;
+
+        let baseline_snapshot = snapshot();
+        let mut baseline_builder = PreparedInputBuilder::new(baseline_snapshot);
+        let mut baseline_control = InvocationControl::unbounded();
+        let baseline_allocations = allocation_counter::measure(|| {
+            baseline_builder
+                .prepare(SOURCE_A, &mut baseline_control)
+                .expect("prepare allocation baseline");
+        });
+        let baseline = baseline_builder.seal();
+
+        let mut xml = String::from("<catalog>");
+        for index in 0..ITEM_COUNT {
+            xml.push_str("<item>value-");
+            xml.push_str(&index.to_string());
+            xml.push_str("</item>");
+        }
+        xml.push_str("</catalog>");
+        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, 64_000, 64_000));
+        resources
+            .admit(SCALED_SOURCE, xml.into_bytes())
+            .expect("admit allocation source");
+        let mut scaled_builder = PreparedInputBuilder::new(resources.seal());
+        let mut scaled_control = InvocationControl::unbounded();
+        let scaled_allocations = allocation_counter::measure(|| {
+            scaled_builder
+                .prepare(SCALED_SOURCE, &mut scaled_control)
+                .expect("prepare scaled allocation source");
+        });
+        let scaled = scaled_builder.seal();
+
+        assert!(baseline_allocations.bytes_current > 0);
+        let baseline_retained = u64::try_from(baseline_allocations.bytes_current)
+            .expect("positive retained bytes fit the unsigned observation");
+        assert!(baseline_allocations.bytes_max >= baseline_retained);
+        assert!(scaled_allocations.bytes_current > baseline_allocations.bytes_current);
+        assert!(scaled_allocations.bytes_max > baseline_allocations.bytes_max);
+        println!(
+            "baseline_representation={:?} baseline_allocations={baseline_allocations:?} scaled_items={ITEM_COUNT} scaled_representation={:?} scaled_allocations={scaled_allocations:?}",
+            baseline.observe(SOURCE_A).expect("observe baseline"),
+            scaled.observe(SCALED_SOURCE).expect("observe scaled")
+        );
+    }
 }

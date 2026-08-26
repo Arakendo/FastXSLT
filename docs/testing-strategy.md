@@ -91,6 +91,11 @@ correctness gates do not enforce timing, and local ratios or phase times from a
 tiny private fixture do not become cache defaults or ASP.NET performance
 claims.
 
+Allocator-request probes are also manual evidence. They use the exact-pinned
+dev-only `allocation-counter` tool and report current-thread requested bytes,
+not allocator metadata, process working set, or host memory. Numeric results
+remain observations rather than cross-platform assertions.
+
 Prepared-retention tests report admitted raw bytes, parser-owned capacity at
 the completed-parse boundary, XDM node count, and current XDM-owned capacity as
 separate classes. They must state excluded allocator, co-resident
