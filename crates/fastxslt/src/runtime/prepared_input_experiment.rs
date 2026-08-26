@@ -139,6 +139,10 @@ impl PreparedInputSet {
 }
 
 #[cfg(test)]
+#[path = "prepared_input_representative_lifecycle_tests.rs"]
+mod representative_lifecycle_tests;
+
+#[cfg(test)]
 mod tests {
     use std::{
         hint::black_box,

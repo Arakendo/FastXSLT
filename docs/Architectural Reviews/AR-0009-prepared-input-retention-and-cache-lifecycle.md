@@ -8,7 +8,7 @@
 | Scope | Parsed source ownership, reusable source-derived state, retention, budgets, and concurrency |
 | Trigger | ADR-0005 leaves prepared-input reuse as the next volume-performance ownership question |
 | Related ADRs | ADR-0001, ADR-0002, ADR-0005 |
-| Related evidence | `docs/Evidence/owned-xdm-tree-experiment-2026-08-25.md`, `docs/Evidence/thread-pool-design-review-2026-08-25.md`, `docs/Evidence/peer-adr-0005-review-monday-2026-08-25.md`, and `docs/Evidence/private-prepared-input-reuse-2026-08-25.md` |
+| Related evidence | `docs/Evidence/owned-xdm-tree-experiment-2026-08-25.md`, `docs/Evidence/thread-pool-design-review-2026-08-25.md`, `docs/Evidence/peer-adr-0005-review-monday-2026-08-25.md`, `docs/Evidence/private-prepared-input-reuse-2026-08-25.md`, and `docs/Evidence/representative-standards-lifecycle-measurement-2026-08-26.md` |
 
 ## Architectural question
 
@@ -181,6 +181,16 @@ incompatible with the current explicit-ownership direction.
   sources and 3.22–3.43× for eight stylesheets over one source. Equal-byte tiny
   fixtures and warm single-threaded execution prevent a lifecycle default or
   consumer-volume conclusion.
+- A phase-separated release-mode probe now exercises two unmodified, executable
+  XSLT30 workloads. Across three local runs, prepared reuse measured 4.98–6.96×
+  for `for-004` and 1.21–1.50× for the evaluator-heavier `castable-004`;
+  compile-once measured 1.48–1.91× and 2.52–2.71× respectively against the same
+  paths compiling per invocation. The workload-sensitive ratios reinforce that
+  no universal cache or lifecycle default follows from the Rust-only evidence.
+- The matching allocator probe reports 9,124 retained / 15,943 peak requested
+  bytes for the 216-byte `for-004` source and 17,412 retained / 30,722 peak for
+  the 425-byte `castable-004` source. These are preparation-closure observations,
+  not process working set or a total snapshot/runtime memory budget.
 
 ## Disposition
 
@@ -208,6 +218,8 @@ thread-safety, eviction, or performance guarantee.
   comparing parse-per-invocation with reuse.
 - [x] Retain a reproducible private release-mode probe that holds compilation
   constant and compares one complete direct iteration with prepared reuse.
+- [x] Repeat phase, compiled-reuse, prepared-reuse, retained-capacity, and peak
+  preparation observations over more than one executable standards workload.
 - [x] Prove equal bytes under distinct resource identities retain distinct
   document identity and provenance when prepared.
 - [x] Replace a snapshot generation while old prepared inputs remain valid only
@@ -274,3 +286,7 @@ different retention seam.
 - 2026-08-25 -- Benchmarked both demonstrated reuse relationship shapes while
   holding compilation and preparation outside timing. Similar local ratios
   confirm seam value but do not activate cache or single-flight policy.
+- 2026-08-26 -- Added a phase-separated lifecycle and allocator probe over
+  unmodified XSLT30 `for-004` and `castable-004`. Prepared and compiled reuse
+  both remain measurable but workload-sensitive; ASP.NET, consumer workloads,
+  cache policy, and public lifecycle conclusions remain open.

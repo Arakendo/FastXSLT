@@ -14,9 +14,8 @@ bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
 current order of work is:
 
-1. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
-   memory, and peak construction memory under those representative workloads;
-2. exercise the same lifecycle through the bounded ASP.NET workbench before
+1. exercise the measured compile-once and prepared-input lifecycle through the
+   bounded ASP.NET workbench before
    stabilizing a host boundary or performance claim.
 
 Representative consumer transforms are not a prerequisite for a testable
@@ -149,6 +148,9 @@ failed, and harness-error cases without an unqualified conformance claim.
   identity, and prove a batch of one matches the convenience API.
 - [x] Compare parse-per-invocation with private snapshot/work-generation prepared
   input reuse, reporting retained XDM and peak construction memory separately.
+- [x] Measure parse, XDM construction, compilation, compiled/direct execution,
+  compiled/prepared execution, compile-per-invocation execution, retained XDM,
+  and preparation peak memory over native XSLT30 `for-004` and `castable-004`.
 - [x] Execute a two-stage host-owned workflow and prove stage-one results remain
   invisible until explicitly admitted into a stage-two snapshot.
 - [ ] Compare file-per-call, preloaded snapshot, warmed filesystem cache, and
