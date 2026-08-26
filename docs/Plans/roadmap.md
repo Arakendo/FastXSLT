@@ -158,6 +158,9 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [ ] Compare file-per-call, preloaded snapshot, warmed filesystem cache, and
   compile-once paths with correctness held constant.
 - [ ] Add differential and integration tests against named processors.
+  - [x] Establish a small ASP.NET comparison against Microsoft's built-in XSLT
+    1.0 processor and a locally acquired, non-distributed SaxonCS-HE 13.0.0
+    adapter, preserving exact-stylesheet versus equivalent-workload distinctions.
 - [ ] Run an ASP.NET consumer workbench through the selected host boundary,
   reusing compiled stylesheets across requests with explicit cancellation and
   resource policy.

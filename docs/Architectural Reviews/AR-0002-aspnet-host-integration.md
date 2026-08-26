@@ -8,7 +8,7 @@
 | Scope | Non-Rust embedding, deployment, and performance boundary |
 | Trigger | ASP.NET applications are a motivating FastXSLT consumer class |
 | Related ADRs | ADR-0001 |
-| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
+| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
 
 ## Architectural question
 
@@ -93,6 +93,17 @@ security contracts.
   cancellation, worker restart,
   snapshot replacement, consumer workloads, and comparison with in-process
   interop. Current evidence therefore remains insufficient to select a mechanism.
+- A five-run warm comparison placed the isolated FastXSLT path near an
+  in-process SaxonCS-HE 13.0.0 path for the exact tiny XSLT 2.0 workload:
+  23,994 versus 28,297 median transforms/second. Microsoft's in-process
+  `XslCompiledTransform` measured 108,612 median transforms/second for an
+  equivalent XSLT 1.0 rewrite, but could not execute the original XPath 2.0
+  expression. These are useful comparison bounds, not representative product
+  performance or an in-process FastXSLT boundary.
+- SaxonCS remains a gitignored, locally acquired comparison dependency. Its
+  13.0.0 NuGet payload carries license text inconsistent with Saxonica's public
+  SaxonCS-HE licensing description, so FastXSLT does not distribute or restore
+  it by default.
 
 ## Disposition
 
@@ -130,3 +141,6 @@ invalidates the selected mechanism.
 - 2026-08-26 -- Added the first ASP.NET 8 persistent isolated-worker baseline.
   It proves one-time resource transfer, compile/prepare reuse, correlation, and
   structured transport without selecting the production ABI or execution mode.
+- 2026-08-26 -- Compared the warm exact workload with locally acquired SaxonCS
+  and an equivalent XSLT 1.0 workload with Microsoft's built-in processor. Kept
+  SaxonCS outside source control and left this review Proposed.

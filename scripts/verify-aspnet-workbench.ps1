@@ -1,10 +1,15 @@
 [CmdletBinding()]
 param(
     [int]$Port = 5087,
-    [int]$MeasurementRequests = 1000
+    [int]$MeasurementRequests = 1000,
+    [int]$MeasurementRuns = 3,
+    [switch]$LocalSaxonCs
 )
 
 $ErrorActionPreference = 'Stop'
+if ($MeasurementRuns -lt 1) {
+    throw 'MeasurementRuns must be at least 1.'
+}
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $repositoryRoot 'workbenches/FastXSLT.AspNet.Workbench/FastXSLT.AspNet.Workbench.csproj'
 $workbenchDirectory = Join-Path $repositoryRoot '.workbench'
@@ -20,7 +25,11 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "Rust worker build failed with exit code $LASTEXITCODE"
     }
-    dotnet build $project --configuration Release
+    $dotnetBuildArguments = @('build', $project, '--configuration', 'Release')
+    if ($LocalSaxonCs) {
+        $dotnetBuildArguments += '-p:EnableLocalSaxonCs=true'
+    }
+    dotnet @dotnetBuildArguments
     if ($LASTEXITCODE -ne 0) {
         throw "ASP.NET workbench build failed with exit code $LASTEXITCODE"
     }
@@ -49,19 +58,53 @@ try {
         if (-not $ready) {
             throw 'ASP.NET workbench did not become ready.'
         }
+        if ($LocalSaxonCs -and -not $health.saxonCsAvailable) {
+            throw 'The local SaxonCS overlay was requested but was not available.'
+        }
 
         $result = Invoke-WebRequest -Method Post -Uri "$baseAddress/transform/smoke-001"
         $expected = '<?xml version="1.0" encoding="UTF-8"?><out>36.02</out>'
         if ($result.StatusCode -ne 200 -or $result.Content -ne $expected) {
             throw "Unexpected transform response: $($result.StatusCode) $($result.Content)"
         }
-        $measurement = Invoke-RestMethod -Method Post -Uri "$baseAddress/measure?requests=$MeasurementRequests"
-        [pscustomobject]@{
-            Mode = $health.mode
-            MaximumInFlight = $health.maximumInFlight
-            Requests = $measurement.requests
-            ElapsedMilliseconds = $measurement.elapsedMilliseconds
-            TransformsPerSecond = $measurement.transformsPerSecond
+        if ($health.dotNetXslt1ExactStylesheetExecuted) {
+            throw 'XslCompiledTransform unexpectedly executed the exact XSLT 2.0 stylesheet.'
+        }
+        $dotNetResult = Invoke-WebRequest -Method Post -Uri "$baseAddress/transform/dotnet-xslt1"
+        if ($dotNetResult.StatusCode -ne 200 -or $dotNetResult.Content -ne $expected) {
+            throw "Unexpected .NET XSLT 1.0 response: $($dotNetResult.StatusCode) $($dotNetResult.Content)"
+        }
+        if ($health.saxonCsAvailable) {
+            $saxonResult = Invoke-WebRequest -Method Post -Uri "$baseAddress/transform/saxoncs"
+            if ($saxonResult.StatusCode -ne 200 -or $saxonResult.Content -ne $expected) {
+                throw "Unexpected SaxonCS response: $($saxonResult.StatusCode) $($saxonResult.Content)"
+            }
+        }
+        for ($run = 1; $run -le $MeasurementRuns; $run++) {
+            $fastXslt = Invoke-RestMethod -Method Post -Uri "$baseAddress/measure?requests=$MeasurementRequests"
+            $dotNetXslt1 = Invoke-RestMethod -Method Post -Uri "$baseAddress/measure/dotnet-xslt1?requests=$MeasurementRequests"
+            $saxonCs = if ($health.saxonCsAvailable) {
+                Invoke-RestMethod -Method Post -Uri "$baseAddress/measure/saxoncs?requests=$MeasurementRequests"
+            }
+            else {
+                $null
+            }
+            [pscustomobject]@{
+                Run = $run
+                Mode = $health.mode
+                MaximumInFlight = $health.maximumInFlight
+                Requests = $fastXslt.requests
+                FastXsltElapsedMilliseconds = $fastXslt.elapsedMilliseconds
+                FastXsltTransformsPerSecond = $fastXslt.transformsPerSecond
+                DotNetXslt1ElapsedMilliseconds = $dotNetXslt1.elapsedMilliseconds
+                DotNetXslt1TransformsPerSecond = $dotNetXslt1.transformsPerSecond
+                DotNetToFastXsltRatio = $dotNetXslt1.transformsPerSecond / $fastXslt.transformsPerSecond
+                SaxonCsElapsedMilliseconds = if ($saxonCs) { $saxonCs.elapsedMilliseconds } else { $null }
+                SaxonCsTransformsPerSecond = if ($saxonCs) { $saxonCs.transformsPerSecond } else { $null }
+                SaxonCsToFastXsltRatio = if ($saxonCs) { $saxonCs.transformsPerSecond / $fastXslt.transformsPerSecond } else { $null }
+                ExactStylesheetExecutedByDotNet = $health.dotNetXslt1ExactStylesheetExecuted
+                ExactStylesheetDotNetDiagnostic = $health.dotNetXslt1ExactStylesheetDiagnostic
+            }
         }
     }
     finally {
