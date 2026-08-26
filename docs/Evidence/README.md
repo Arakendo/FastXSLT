@@ -68,5 +68,6 @@ pressure architecture but does not silently create a public guarantee.
 - [Allocation-Counter Review and Preparation Probe](allocation-counter-review-and-preparation-probe-2026-08-25.md)
 - [Private Prepared-Reuse Shape Timing Probe](private-prepared-reuse-shape-timing-probe-2026-08-25.md)
 - [Representative Standards Lifecycle Measurement](representative-standards-lifecycle-measurement-2026-08-26.md)
+- [ASP.NET Isolated Persistent-Worker Baseline](aspnet-isolated-persistent-worker-baseline-2026-08-26.md)
 - [Private Host-Owned Two-Stage Workflow](private-host-owned-two-stage-workflow-2026-08-25.md)
 - [Private Compiled Semantic Inspection](private-compiled-semantic-inspection-2026-08-25.md)

@@ -241,6 +241,7 @@ fn is_ascii_ncname(value: &str) -> bool {
         })
 }
 
+#[cfg(test)]
 pub(crate) fn evaluate_child_path(
     document: &Document,
     context: NodeId,

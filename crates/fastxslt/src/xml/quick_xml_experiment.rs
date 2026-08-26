@@ -193,7 +193,7 @@ pub(crate) fn parse_document_controlled(
 ) -> Result<ParsedDocument, LocatedFailure> {
     parse_bytes(input, limits, control)
         .map(|mut document| {
-            document.resource = resource.to_owned();
+            resource.clone_into(&mut document.resource);
             document
         })
         .map_err(|failure| LocatedFailure {

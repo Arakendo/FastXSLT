@@ -110,6 +110,7 @@ impl ResourceSetBuilder {
     pub(crate) fn seal(self) -> ResourceSnapshot {
         ResourceSnapshot {
             entries: Arc::new(self.entries),
+            #[cfg(test)]
             total_bytes: self.total_bytes,
         }
     }
@@ -118,6 +119,7 @@ impl ResourceSetBuilder {
 #[derive(Clone, Debug)]
 pub(crate) struct ResourceSnapshot {
     entries: Arc<BTreeMap<String, Arc<[u8]>>>,
+    #[cfg(test)]
     total_bytes: usize,
 }
 
@@ -126,14 +128,17 @@ impl ResourceSnapshot {
         self.entries.get(identity).map(AsRef::as_ref)
     }
 
+    #[cfg(test)]
     pub(crate) fn same_generation(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.entries, &other.entries)
     }
 
+    #[cfg(test)]
     fn len(&self) -> usize {
         self.entries.len()
     }
 
+    #[cfg(test)]
     fn total_bytes(&self) -> usize {
         self.total_bytes
     }

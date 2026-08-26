@@ -162,6 +162,7 @@ impl InvocationControl {
     /// This is not a deadline or production cancellation mechanism. It lets the
     /// private experiment prove phase-specific failure behavior after a chosen
     /// number of matching charges have already succeeded.
+    #[cfg(test)]
     pub(crate) fn cancelling_on_charge(
         mut self,
         domain: WorkDomain,
@@ -174,6 +175,7 @@ impl InvocationControl {
         self
     }
 
+    #[cfg(test)]
     pub(crate) fn consumed(&self, domain: WorkDomain) -> usize {
         self.limits
             .limit(domain)

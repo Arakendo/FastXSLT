@@ -1,6 +1,8 @@
 # Rust / Cargo
 /target/
 **/target/
+**/bin/
+**/obj/
 
 # Generated documentation and coverage
 /coverage/

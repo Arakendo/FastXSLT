@@ -4,11 +4,11 @@
 | --- | --- |
 | Status | Proposed |
 | Opened | 2026-08-25 |
-| Last reviewed | 2026-08-25 |
+| Last reviewed | 2026-08-26 |
 | Scope | Non-Rust embedding, deployment, and performance boundary |
 | Trigger | ASP.NET applications are a motivating FastXSLT consumer class |
 | Related ADRs | ADR-0001 |
-| Related evidence | Future ASP.NET consumer workbench, AR-0003, AR-0010, and end-to-end benchmarks |
+| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
 
 ## Architectural question
 
@@ -82,7 +82,17 @@ security contracts.
 - AR-0010 distinguishes cooperative in-process supervision from hard process
   isolation. Any host-facing hardened-mode claim must identify which boundary
   is actually deployed and include its transport and lifecycle costs.
-- Current evidence is insufficient to select a mechanism.
+- A first ASP.NET 8 workbench now imports one pinned source and stylesheet,
+  closes the import handles, transfers their bytes once to a persistent isolated
+  Rust worker, and reuses one compiled stylesheet and prepared source across
+  correlated HTTP requests. The safe length-prefixed protocol has 1 MiB frame
+  bounds and transfers structured engine failures.
+- The first baseline deliberately serializes work through one worker. Three
+  local 1,000-transform runs observed a native `for-004` rate of about
+  15,336–27,305 transforms/second, but excludes meaningful concurrency,
+  cancellation, worker restart,
+  snapshot replacement, consumer workloads, and comparison with in-process
+  interop. Current evidence therefore remains insufficient to select a mechanism.
 
 ## Disposition
 
@@ -93,12 +103,16 @@ ABI or managed API until a bounded ASP.NET workbench compares viable mechanisms.
 
 - [ ] Record representative transforms, input/output sizes, request concurrency,
   deployment targets, and latency/throughput budgets.
-- [ ] Define a minimal host-neutral compile/transform lifecycle to exercise.
+- [x] Define a minimal experimental host-neutral compile/prepare/transform
+  lifecycle to exercise without accepting it as the public API.
 - [ ] Exercise snapshot creation/replacement and a batch of transforms without
   transferring identical resource bytes on every invocation.
 - [ ] Verify imported files can be replaced during service operation while old
   in-flight requests continue on their sealed snapshots without held handles.
 - [ ] Prototype at least the leading in-process and isolated alternatives.
+  - [x] Establish a persistent isolated-worker baseline with bounded frames,
+    compile-once/prepared reuse, stable result correlation, and structured
+    failure transfer.
 - [ ] Measure cold start, compile-once/warm execution, marshaling, cancellation,
   errors, result transfer, and steady-state concurrency end to end.
 - [ ] Accept an ADR defining the selected boundary and its safety invariants.
@@ -113,3 +127,6 @@ invalidates the selected mechanism.
 
 - 2026-08-25 -- Opened as Proposed after ASP.NET was identified as a motivating
   consumer class.
+- 2026-08-26 -- Added the first ASP.NET 8 persistent isolated-worker baseline.
+  It proves one-time resource transfer, compile/prepare reuse, correlation, and
+  structured transport without selecting the production ABI or execution mode.

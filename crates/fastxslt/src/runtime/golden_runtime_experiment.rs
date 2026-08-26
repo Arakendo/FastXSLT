@@ -1,17 +1,19 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
+#[cfg(test)]
+use std::collections::HashSet;
 
 use crate::compile::golden_stylesheet_experiment::compile_stylesheet;
-use crate::execution_control_experiment::{
-    CancellationToken, ControlFailure, InvocationControl, WorkDomain, WorkLimits,
-};
+#[cfg(test)]
+use crate::execution_control_experiment::{CancellationToken, WorkLimits};
+use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::resources::ResourceSnapshot;
 use crate::xdm::atomic_value_experiment::AtomicValue;
-use crate::xdm::owned_tree_experiment::{
-    BuildFailure, Document, NodeId, NodeKind, StringValueVisitFailure,
-};
-use crate::xml::quick_xml_experiment::{
-    ExpandedName, ParseLimits, parse_document, parse_document_controlled,
-};
+#[cfg(test)]
+use crate::xdm::owned_tree_experiment::BuildFailure;
+use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, StringValueVisitFailure};
+#[cfg(test)]
+use crate::xml::quick_xml_experiment::parse_document_controlled;
+use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 use crate::xpath::castable_experiment::{
     CastEvaluationFailure, CastExpression, CastableExpression, evaluate as evaluate_castable,
     evaluate_cast, evaluate_value as evaluate_castable_value,
@@ -57,12 +59,14 @@ pub(super) struct SemanticResult {
 }
 
 #[derive(Debug)]
+#[cfg(test)]
 enum InvocationEntry {
     PrincipalSource { resource: String },
     InitialTemplate { name: String },
 }
 
 #[derive(Debug)]
+#[cfg(test)]
 struct TransformRequest {
     identity: String,
     result_identity: String,
@@ -72,6 +76,7 @@ struct TransformRequest {
 }
 
 #[derive(Debug)]
+#[cfg(test)]
 struct TransformSetBuilder {
     snapshot: ResourceSnapshot,
     stylesheet: StylesheetProgram,
@@ -83,6 +88,7 @@ struct TransformSetBuilder {
 }
 
 #[derive(Debug)]
+#[cfg(test)]
 struct TransformSet {
     snapshot: ResourceSnapshot,
     stylesheet: StylesheetProgram,
@@ -91,6 +97,7 @@ struct TransformSet {
 }
 
 #[derive(Debug, Clone)]
+#[cfg(test)]
 struct ExecutionPolicy {
     denied_sources: HashSet<String>,
     serialized_byte_limit: usize,
@@ -98,6 +105,7 @@ struct ExecutionPolicy {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(test)]
 struct ResultEntry {
     result_id: String,
     semantic: SemanticResult,
@@ -105,6 +113,7 @@ struct ResultEntry {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+#[cfg(test)]
 struct ResultSet {
     by_request: BTreeMap<String, ResultEntry>,
     completion_order: Vec<String>,
@@ -115,6 +124,7 @@ enum FailureCategory {
     Invalid,
     Unsupported,
     MissingResource,
+    #[cfg(test)]
     Denied,
     Limit,
     Cancelled,
@@ -129,6 +139,28 @@ pub(super) struct ExecutionFailure {
     detail: String,
 }
 
+#[cfg(feature = "workbench")]
+impl ExecutionFailure {
+    pub(super) fn workbench_parts(&self) -> (&'static str, &'static str, Option<&str>, &str) {
+        let category = match self.category {
+            FailureCategory::Invalid => "invalid",
+            FailureCategory::Unsupported => "unsupported",
+            FailureCategory::MissingResource => "missing-resource",
+            #[cfg(test)]
+            FailureCategory::Denied => "denied",
+            FailureCategory::Limit => "limit",
+            FailureCategory::Cancelled => "cancelled",
+        };
+        (
+            self.code,
+            category,
+            self.request_id.as_deref(),
+            &self.detail,
+        )
+    }
+}
+
+#[cfg(test)]
 impl TransformSetBuilder {
     fn new(
         snapshot: ResourceSnapshot,
@@ -279,6 +311,7 @@ pub(super) fn compile_resource(
     })
 }
 
+#[cfg(test)]
 fn execute_transform_set(set: TransformSet) -> Result<ResultSet, ExecutionFailure> {
     let mut by_request = BTreeMap::new();
     let mut completion_order = Vec::new();
@@ -386,6 +419,7 @@ pub(super) fn execute_program(
     Ok(SemanticResult { children })
 }
 
+#[cfg(test)]
 fn execute_initial_template(
     program: &StylesheetProgram,
     name: &str,

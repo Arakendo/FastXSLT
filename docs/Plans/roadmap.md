@@ -14,9 +14,11 @@ bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
 current order of work is:
 
-1. exercise the measured compile-once and prepared-input lifecycle through the
-   bounded ASP.NET workbench before
-   stabilizing a host boundary or performance claim.
+1. extend the persistent isolated ASP.NET baseline from one in-flight request to
+   bounded concurrency, cancellation, worker failure/restart, snapshot
+   replacement, and diagnostic parity;
+2. prototype the leading in-process .NET boundary against the same lifecycle;
+3. compare both modes before stabilizing a host boundary or performance claim.
 
 Representative consumer transforms are not a prerequisite for a testable
 standards-driven preview. The pinned W3C suites provide executable stylesheets,
@@ -159,6 +161,9 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [ ] Run an ASP.NET consumer workbench through the selected host boundary,
   reusing compiled stylesheets across requests with explicit cancellation and
   resource policy.
+  - [x] Establish the first ASP.NET 8 persistent isolated-worker baseline with
+    one-time bounded resource transfer, compile-once/prepared reuse, correlated
+    results, structured failures, and one explicit in-flight slot.
 - [ ] Exercise AR-0010's private invocation controls under adversarial work;
   distinguish deterministic budgets, cooperative cancellation, best-effort
   deadlines, panic handling, and process-level hard termination claims.

@@ -277,10 +277,12 @@ impl Document {
         self.document
     }
 
+    #[cfg(test)]
     pub(crate) fn node_count(&self) -> usize {
         self.nodes.len()
     }
 
+    #[cfg(test)]
     pub(crate) fn owned_capacity_bytes(&self) -> usize {
         let node_storage = self.nodes.capacity() * std::mem::size_of::<Node>();
         let nested_storage: usize = self

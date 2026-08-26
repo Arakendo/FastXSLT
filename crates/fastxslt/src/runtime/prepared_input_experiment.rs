@@ -13,7 +13,7 @@ const PREPARATION_XML_LIMITS: ParseLimits = ParseLimits {
 };
 
 #[derive(Debug, PartialEq, Eq)]
-enum PreparationFailure {
+pub(super) enum PreparationFailure {
     MissingResource { identity: String },
     DuplicateResource { identity: String },
     InvalidXml { identity: String, detail: String },
@@ -22,14 +22,14 @@ enum PreparationFailure {
 }
 
 #[derive(Debug)]
-struct PreparedInputBuilder {
+pub(super) struct PreparedInputBuilder {
     snapshot: ResourceSnapshot,
     documents: BTreeMap<String, Arc<Document>>,
     parsed_phase_capacity_bytes: BTreeMap<String, usize>,
 }
 
 impl PreparedInputBuilder {
-    fn new(snapshot: ResourceSnapshot) -> Self {
+    pub(super) fn new(snapshot: ResourceSnapshot) -> Self {
         Self {
             snapshot,
             documents: BTreeMap::new(),
@@ -37,7 +37,7 @@ impl PreparedInputBuilder {
         }
     }
 
-    fn prepare(
+    pub(super) fn prepare(
         &mut self,
         identity: &str,
         control: &mut InvocationControl,
@@ -79,22 +79,27 @@ impl PreparedInputBuilder {
         Ok(())
     }
 
-    fn seal(self) -> PreparedInputSet {
+    pub(super) fn seal(self) -> PreparedInputSet {
         PreparedInputSet {
+            #[cfg(test)]
             snapshot: self.snapshot,
             documents: Arc::new(self.documents),
+            #[cfg(test)]
             parsed_phase_capacity_bytes: Arc::new(self.parsed_phase_capacity_bytes),
         }
     }
 }
 
 #[derive(Clone, Debug)]
-struct PreparedInputSet {
+pub(super) struct PreparedInputSet {
+    #[cfg(test)]
     snapshot: ResourceSnapshot,
     documents: Arc<BTreeMap<String, Arc<Document>>>,
+    #[cfg(test)]
     parsed_phase_capacity_bytes: Arc<BTreeMap<String, usize>>,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 struct PreparedInputObservation {
     raw_bytes: usize,
@@ -104,14 +109,16 @@ struct PreparedInputObservation {
 }
 
 impl PreparedInputSet {
+    #[cfg(test)]
     fn belongs_to(&self, snapshot: &ResourceSnapshot) -> bool {
         self.snapshot.same_generation(snapshot)
     }
 
-    fn get(&self, identity: &str) -> Option<Arc<Document>> {
+    pub(super) fn get(&self, identity: &str) -> Option<Arc<Document>> {
         self.documents.get(identity).cloned()
     }
 
+    #[cfg(test)]
     fn observe(&self, identity: &str) -> Option<PreparedInputObservation> {
         let raw_bytes = self.snapshot.get(identity)?.len();
         let document = self.documents.get(identity)?;
@@ -124,6 +131,7 @@ impl PreparedInputSet {
         })
     }
 
+    #[cfg(test)]
     fn observe_totals(&self) -> PreparedInputObservation {
         self.documents
             .keys()

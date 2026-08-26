@@ -1,0 +1,78 @@
+using System.Diagnostics;
+
+var builder = WebApplication.CreateBuilder(args);
+var repositoryRoot = FindRepositoryRoot(builder.Environment.ContentRootPath);
+var executableName = OperatingSystem.IsWindows() ? "fastxslt-worker.exe" : "fastxslt-worker";
+var workerPath = Path.Combine(repositoryRoot, "target", "release", executableName);
+var sourcePath = Path.Combine(
+    repositoryRoot, "vendor", "xslt30-test", "tests", "expr", "for", "for03.xml");
+var stylesheetPath = Path.Combine(
+    repositoryRoot, "vendor", "xslt30-test", "tests", "expr", "for", "for-004.xsl");
+
+var worker = await FastXsltWorkerClient.StartAsync(
+    workerPath,
+    "urn:w3c:xslt30:for-004:source",
+    await File.ReadAllBytesAsync(sourcePath),
+    "urn:w3c:xslt30:for-004:stylesheet",
+    await File.ReadAllBytesAsync(stylesheetPath));
+builder.Services.AddSingleton(worker);
+
+var app = builder.Build();
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "ready",
+    mode = "isolated-persistent-worker",
+    maximumInFlight = 1,
+    semantics = "xslt30-for-004-private-slice"
+}));
+app.MapPost("/transform/{requestId}", async (string requestId, FastXsltWorkerClient client) =>
+{
+    try
+    {
+        var result = await client.TransformAsync(requestId);
+        return Results.Text(result, "application/xml");
+    }
+    catch (FastXsltWorkerException failure)
+    {
+        return Results.Json(new
+        {
+            failure.Code,
+            failure.Category,
+            failure.RequestId,
+            failure.Detail
+        }, statusCode: StatusCodes.Status422UnprocessableEntity);
+    }
+});
+app.MapPost("/measure", async (int? requests, FastXsltWorkerClient client) =>
+{
+    var count = Math.Clamp(requests ?? 100, 1, 10_000);
+    var stopwatch = Stopwatch.StartNew();
+    for (var index = 0; index < count; index++)
+    {
+        _ = await client.TransformAsync($"measure-{index}");
+    }
+    stopwatch.Stop();
+    return Results.Ok(new
+    {
+        requests = count,
+        elapsedMilliseconds = stopwatch.Elapsed.TotalMilliseconds,
+        transformsPerSecond = count / stopwatch.Elapsed.TotalSeconds,
+        maximumInFlight = 1
+    });
+});
+
+app.Lifetime.ApplicationStopping.Register(worker.Dispose);
+await app.RunAsync();
+
+static string FindRepositoryRoot(string start)
+{
+    for (var current = new DirectoryInfo(start); current is not null; current = current.Parent)
+    {
+        if (File.Exists(Path.Combine(current.FullName, "Cargo.toml")) &&
+            Directory.Exists(Path.Combine(current.FullName, "vendor", "xslt30-test")))
+        {
+            return current.FullName;
+        }
+    }
+    throw new InvalidOperationException("Could not locate the FastXSLT repository root.");
+}

@@ -1,6 +1,8 @@
 //! Transformation execution and dynamic evaluation context.
 
-#[cfg(test)]
+#[cfg(any(test, feature = "workbench"))]
 mod golden_runtime_experiment;
-#[cfg(test)]
-mod prepared_input_experiment;
+#[cfg(any(test, feature = "workbench"))]
+pub(crate) mod prepared_input_experiment;
+#[cfg(feature = "workbench")]
+pub(crate) mod workbench_experiment;
