@@ -112,6 +112,18 @@ pub(crate) fn parse_child_path(
         });
     }
     if steps.iter().any(|step| !is_ascii_ncname(step)) {
+        if steps.iter().any(|step| {
+            step.chars().any(|character| {
+                !character.is_ascii_alphanumeric() && !matches!(character, '_' | '-' | '.')
+            })
+        }) {
+            return Err(PathFailure::Unsupported {
+                detail: format!(
+                    "the expression uses syntax outside the private child-path grammar: {expression}"
+                ),
+                location,
+            });
+        }
         return Err(PathFailure::Invalid {
             detail: format!("the private slice found an invalid child name in: {expression}"),
             location,
@@ -488,6 +500,14 @@ mod tests {
         assert!(matches!(unsupported, PathFailure::Unsupported { .. }));
         assert_eq!(failure_location(&invalid), &location());
         assert_eq!(failure_location(&unsupported), &location());
+        assert!(matches!(
+            parse_child_path("sum(for $i in item return $i)", location()),
+            Err(PathFailure::Unsupported { .. })
+        ));
+        assert!(matches!(
+            parse_child_path("child::*", location()),
+            Err(PathFailure::Unsupported { .. })
+        ));
     }
 
     #[test]

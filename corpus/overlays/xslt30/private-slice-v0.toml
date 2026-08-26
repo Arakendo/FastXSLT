@@ -119,3 +119,31 @@ case_name = "path-010"
 selection = "selected"
 execution = "passed"
 rationale = "The file-backed source snapshot executes predicates on individual path steps, last() over the final name-matched sequence, and the same compiled path semantics as a template match pattern."
+
+[[case]]
+set_file = "tests/expr/for/_for-test-set.xml"
+case_name = "for-001"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The native source, stylesheet, file-backed assert-xml, and XSLT20+ dependency are admitted; xsl:sequence plus the for/distinct-values expression exceed the current compiler semantics."
+
+[[case]]
+set_file = "tests/expr/for/_for-test-set.xml"
+case_name = "for-002"
+selection = "selected"
+execution = "harness-unsupported"
+rationale = "The native stylesheet, inline assert-xml, XSLT20+ dependency, and initial-template main metadata are admitted; the harness cannot yet invoke an initial template without a principal source."
+
+[[case]]
+set_file = "tests/expr/for/_for-test-set.xml"
+case_name = "for-003"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The native for03 source, stylesheet, inline assert-xml, and XSLT20+ dependency are admitted; sum over a for expression and the required focus semantics exceed the current compiler."
+
+[[case]]
+set_file = "tests/expr/for/_for-test-set.xml"
+case_name = "for-004"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The native for03 source, stylesheet, inline assert-xml, and XSLT20+ dependency are admitted; format-number, sum, variable binding, attributes, and decimal arithmetic exceed the current compiler."

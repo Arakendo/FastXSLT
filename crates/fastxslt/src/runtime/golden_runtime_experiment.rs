@@ -1166,3 +1166,7 @@ mod workflow_tests;
 #[cfg(test)]
 #[path = "golden_runtime_xslt30_tests.rs"]
 mod xslt30_tests;
+
+#[cfg(test)]
+#[path = "xslt30_for_inventory_tests.rs"]
+mod xslt30_for_inventory_tests;

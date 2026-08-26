@@ -79,6 +79,11 @@ native environment resolution, direct XPath execution, `fn:count`, and
 adjacent selected `Axes001-1` wildcard case remains explicitly unsupported.
 These local denominators do not imply support for adjacent test sets or broad
 standards conformance.
+The complete four-case XSLT30 `expr/for` test set is the next admitted
+denominator. Its native stylesheets, source environments, initial-template
+metadata, and XML assertions are resolved and retained without denominator
+loss. It currently reports three engine-unsupported cases and one
+harness-unsupported initial-template case; none is counted as passing.
 A private case-record experiment
 also observes QT3 `assert-eq` and an XSLT30 compound message assertion through
 suite-specific adapters. Their common projection separates selection from

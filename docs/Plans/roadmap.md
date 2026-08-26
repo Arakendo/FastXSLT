@@ -9,14 +9,15 @@ standards scope are decided.
 FastXSLT has accepted its staged-modern semantic direction, passes the complete
 XSLT30 `template` and `path` test-set denominators, and executes the complete
 four-case QT3 `Axes002` group through a stylesheet-independent XPath seam. The
-current order of work is:
+complete four-case XSLT30 `expr/for` denominator is now admitted with three
+engine-unsupported and one harness-unsupported dispositions. The current order
+of work is:
 
-1. admit the complete four-case XSLT30 `expr/for` test set as the next conserved
-   denominator before implementation, retaining its initial-template harness
-   gap and every unsupported expression or instruction dependency;
-2. decompose the first applicable `expr/for` case into the minimum sequence,
-   expression, instruction, and assertion behavior required by its native
-   metadata rather than broadening from syntax alone;
+1. decompose native `for-001` into the minimum sequence/value representation,
+   `for` binding, `distinct-values`, comparison, path, and `xsl:sequence`
+   behavior needed to preserve its result-node order;
+2. implement that behavior behind the existing compiled/invocation ownership
+   boundary and advance only `for-001` when its upstream assertion passes;
 3. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
    memory, and peak construction memory under those representative workloads;
 4. exercise the same lifecycle through the bounded ASP.NET workbench before
@@ -88,6 +89,9 @@ implemented behavior belongs to a named standards slice.
 - [x] Execute the complete QT3 `Axes002` named-child-axis group through native
   environments, direct XPath, `fn:count`, charged navigation, and `assert-eq`
   comparison without an XSLT wrapper.
+- [x] Admit all four XSLT30 `expr/for` cases with their native environments,
+  stylesheets, entry metadata, XML assertions, and explicit unsupported
+  dispositions before implementing sequence semantics.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,

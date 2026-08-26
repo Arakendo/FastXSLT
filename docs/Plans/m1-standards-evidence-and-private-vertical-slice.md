@@ -701,3 +701,27 @@ ambient I/O or public stability claim.
 - Next slice: admit all four cases in XSLT30 `tests/expr/for/_for-test-set.xml`
   before implementation, then let their native metadata expose the first
   harness and semantic gaps without shrinking the denominator.
+
+### 2026-08-26: XSLT30 `expr/for` denominator admitted
+
+- Work completed: admitted all four cases in the complete pinned `expr/for`
+  test set, resolving every XSLT20+ dependency, stylesheet, environment,
+  principal source, initial-template declaration, and XML assertion.
+- Resource boundary: four stylesheets and three case-specific sources are
+  imported under qualified identities into one bounded sealed snapshot after
+  their file handles close; the file-backed `for-001` assertion is also
+  acquired and checked.
+- Conservation: the denominator reports zero passes, three
+  engine-unsupported cases, and one harness-unsupported case. `for-002` retains
+  its source-free initial-template entry instead of receiving a synthetic
+  principal source.
+- Diagnostic correction: valid expression syntax outside the private
+  child-path grammar now reports unsupported rather than invalid, while truly
+  malformed ASCII child names retain the invalid category.
+- Pressure map: `for-001` requires ordered node/atomic sequences,
+  `distinct-values`, binding, comparisons, path filtering, and `xsl:sequence`;
+  the later cases add initial-template entry, multiple clauses, focus-sensitive
+  evaluation, numeric aggregation, decimal behavior, and formatting.
+- Next slice: decompose and implement only the first `for-001` semantic layer
+  that can preserve sequence order and node identity; do not shrink the
+  four-case denominator or imply general XPath sequence support.
