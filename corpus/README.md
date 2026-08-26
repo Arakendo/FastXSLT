@@ -37,7 +37,10 @@ that asserts its semantic result separately from serialization. It remains a
 portable design seed, not a public feature or commitment to an XSLT version.
 The `template-dispatch` golden extends that same private reference path with an
 explicit child-path apply-template selection and one exact element-name rule;
-priority, modes, and built-in rules remain outside the admitted slice.
+priority and modes remain outside the admitted slice.
+The later `built-in-template-rules` golden records the deliberate addition of
+default child selection plus built-in document, element, and text behavior.
+Priority and modes remain outside the slice.
 
 External suites must live in a separately documented location with provenance,
 license, acquisition, integrity, and selection instructions. Do not copy a

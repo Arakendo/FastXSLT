@@ -33,12 +33,17 @@ to continue exercising the architecture.
   source document order.
 - [x] Retain compiled template rules separately from invocation context.
 - [x] Add a first-party golden and focused invalid/unsupported cases.
+- [x] Add default child selection, built-in document/element/text behavior, and
+  context-item value selection through the same reference path.
+- [x] Screen syntax-light XSLT30 apply-template candidates and retain the
+  dependency/feature gaps when no complete case fits.
 - [ ] Link one native XSLT30 case only when its complete dependency,
   environment, and assertion shape fits the implemented slice.
 
 This slice remains private and version-neutral. It does not accept match
-priority, modes, named templates, imports/includes, or generalized pattern
-grammar merely because the peer uses them.
+priority, modes, named templates, imports/includes, generalized pattern
+grammar, or `id()`/DTD semantics merely because the peer or a nearby suite case
+uses them.
 
 ## Slice 2: Intended-consumer intake
 

@@ -160,6 +160,13 @@ reference evaluator still uses stable XDM node identity and a materialized
 tree. This is additional navigation evidence, not a streaming claim or a reason
 to introduce a provider abstraction.
 
+Default apply-template selection adds recursive forward child traversal through
+built-in document and element rules, while the built-in text rule consumes the
+selected text node's owned value. Context-item `.` needs identity without
+navigation. The current implementation is naturally forward-oriented for this
+fixture, but template-rule lookup and stable dynamic context remain semantic
+requirements independent of any future physical source strategy.
+
 ## Disposition
 
 **Incubating. Do not implement streaming in the initial profile.** Preserve the

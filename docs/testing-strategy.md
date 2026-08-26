@@ -82,6 +82,9 @@ The second first-party golden, `corpus/golden/template-dispatch`, exercises
 exact unprefixed element-name rules through explicit `xsl:apply-templates`
 selection. Duplicate patterns and modes remain unsupported so this private
 case cannot be mistaken for general template-priority or built-in-rule support.
+The sibling `built-in-template-rules` golden adds default child application,
+built-in document/element/text behavior, and context-item value selection. It
+does not broaden match priority, modes, DTD/ID behavior, or complex XPath.
 
 The W3C XML Conformance Test Suite 20130923 is a reviewed but non-admitted
 candidate for AR-0008. It is a dated archive rather than a Git submodule, its

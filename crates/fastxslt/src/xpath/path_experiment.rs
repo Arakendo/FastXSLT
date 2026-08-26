@@ -5,6 +5,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ChildPath {
     pub(crate) steps: Vec<String>,
+    pub(crate) selects_context_item: bool,
     pub(crate) location: SourceLocation,
 }
 
@@ -30,6 +31,13 @@ pub(crate) fn parse_child_path(
             location,
         });
     }
+    if expression == "." {
+        return Ok(ChildPath {
+            steps: Vec::new(),
+            selects_context_item: true,
+            location,
+        });
+    }
     if expression.starts_with('/')
         || expression.ends_with('/')
         || expression.contains("//")
@@ -50,7 +58,11 @@ pub(crate) fn parse_child_path(
             location,
         });
     }
-    Ok(ChildPath { steps, location })
+    Ok(ChildPath {
+        steps,
+        selects_context_item: false,
+        location,
+    })
 }
 
 fn is_ascii_ncname(value: &str) -> bool {
@@ -80,6 +92,10 @@ pub(crate) fn evaluate_child_path_controlled(
     path: &ChildPath,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ControlFailure> {
+    if path.selects_context_item {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        return Ok(vec![context]);
+    }
     let mut current = vec![context];
     for step in &path.steps {
         let mut next = Vec::new();
@@ -121,7 +137,29 @@ mod tests {
         let path = parse_child_path("greeting/name", location()).expect("path should parse");
 
         assert_eq!(path.steps, ["greeting", "name"]);
+        assert!(!path.selects_context_item);
         assert_eq!(path.location, location());
+    }
+
+    #[test]
+    fn selects_the_context_item_without_navigation() {
+        let parsed = parse_document(
+            "memory:source.xml",
+            b"<item>value</item>",
+            ParseLimits {
+                max_events: 8,
+                max_depth: 4,
+            },
+        )
+        .expect("source should parse");
+        let document = Document::from_parsed(parsed).expect("source XDM should build");
+        let item = document.children(document.document_node())[0];
+        let path = parse_child_path(".", location()).expect("context item should parse");
+
+        let selected = evaluate_child_path(&document, item, &path);
+
+        assert_eq!(selected, [item]);
+        assert!(path.selects_context_item);
     }
 
     #[test]

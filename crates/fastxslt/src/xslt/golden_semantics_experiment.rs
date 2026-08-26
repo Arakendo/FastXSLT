@@ -44,7 +44,7 @@ pub(crate) enum Instruction {
         location: SourceLocation,
     },
     ApplyTemplates {
-        select: ChildPath,
+        select: Option<ChildPath>,
         location: SourceLocation,
     },
 }

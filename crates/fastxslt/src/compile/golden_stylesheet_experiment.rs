@@ -232,8 +232,9 @@ fn compile_apply_templates(
     ensure_only_attributes(document, element, &["select"], "xsl:apply-templates")?;
     ensure_no_meaningful_children(document, element, "xsl:apply-templates")?;
     let location = document.location(element).clone();
-    let expression = required_attribute(document, element, None, "select")?;
-    let select = parse_child_path(expression, location.clone()).map_err(map_path_failure)?;
+    let select = optional_attribute(document, element, None, "select")
+        .map(|expression| parse_child_path(expression, location.clone()).map_err(map_path_failure))
+        .transpose()?;
     Ok(Instruction::ApplyTemplates { select, location })
 }
 
@@ -345,6 +346,24 @@ fn required_attribute<'a>(
                 document.location(element),
             )
         })
+}
+
+fn optional_attribute<'a>(
+    document: &'a Document,
+    element: NodeId,
+    namespace: Option<&str>,
+    local: &str,
+) -> Option<&'a str> {
+    document
+        .attributes(element)
+        .iter()
+        .copied()
+        .find(|attribute| {
+            document
+                .name(*attribute)
+                .is_some_and(|name| name.namespace.as_deref() == namespace && name.local == local)
+        })
+        .and_then(|attribute| document.value(attribute))
 }
 
 fn is_ascii_ncname(value: &str) -> bool {
@@ -501,7 +520,7 @@ mod tests {
         assert!(matches!(
             program.root_template.body.as_slice(),
             [Instruction::LiteralElement { body, .. }]
-                if matches!(body.as_slice(), [Instruction::ApplyTemplates { select, .. }]
+                if matches!(body.as_slice(), [Instruction::ApplyTemplates { select: Some(select), .. }]
                     if select.steps == ["catalog", "item"])
         ));
 

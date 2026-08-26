@@ -360,3 +360,21 @@ ambient I/O or public stability claim.
 - Next slice: identify a native XSLT30 case whose full dependency, environment,
   and assertion shape fits exact-name dispatch, while requesting representative
   stylesheets and workload envelopes from the intended consumer.
+
+### 2026-08-25: Built-in rules and honest suite-fit boundary
+
+- Work completed: screened syntax-light XSLT30 apply-template stylesheets,
+  retained the closest candidate's `id()`/DTD and attribute-path dependencies,
+  and admitted no misleading overlay case. Added default child application,
+  built-in document/element/text behavior, and context-item selection to the
+  same private reference backend.
+- Validation: the independently authored `built-in-template-rules` golden
+  transforms two invoice items through an unmatched document element and one
+  exact item rule. The workspace has 49 passing tests and one ignored probe.
+- Findings: standards suites appropriately couple small instructions to deeper
+  semantic dependencies. FastXSLT should widen semantics from consumer and
+  architectural evidence, then select native cases whose full dependency shape
+  fits—not reverse-engineer scope from the desire for another green case.
+- Next slice: obtain intended-consumer transforms/workload envelopes. If those
+  confirm this family, select the next required pattern/XPath feature and its
+  native cases; otherwise redirect before accepting AR-0001.

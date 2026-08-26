@@ -5,7 +5,9 @@ use crate::execution_control_experiment::{
     CancellationToken, ControlFailure, InvocationControl, WorkDomain, WorkLimits,
 };
 use crate::resources::ResourceSnapshot;
-use crate::xdm::owned_tree_experiment::{BuildFailure, Document, StringValueVisitFailure};
+use crate::xdm::owned_tree_experiment::{
+    BuildFailure, Document, NodeId, NodeKind, StringValueVisitFailure,
+};
 use crate::xml::quick_xml_experiment::{
     ExpandedName, ParseLimits, parse_document, parse_document_controlled,
 };
@@ -371,36 +373,15 @@ fn execute_sequence(
                 }
             }
             Instruction::ApplyTemplates { select, .. } => {
-                let selected = evaluate_child_path_controlled(source, context, select, control)
-                    .map_err(|failure| control_failure(failure, request_id))?;
+                let selected = if let Some(select) = select {
+                    evaluate_child_path_controlled(source, context, select, control)
+                        .map_err(|failure| control_failure(failure, request_id))?
+                } else {
+                    source.children(context).to_vec()
+                };
                 for selected_node in selected {
-                    let selected_name = source.name(selected_node).ok_or_else(|| {
-                        failure(
-                            "FXRT1002",
-                            FailureCategory::Unsupported,
-                            Some(request_id),
-                            "the private apply-templates slice selects only element nodes",
-                        )
-                    })?;
-                    let template = program
-                        .element_templates
-                        .iter()
-                        .find(|template| template.match_name == *selected_name)
-                        .ok_or_else(|| {
-                            failure(
-                                "FXRT1003",
-                                FailureCategory::Unsupported,
-                                Some(request_id),
-                                format!(
-                                    "no exact private template rule for {{{}}}{}",
-                                    selected_name.namespace.as_deref().unwrap_or(""),
-                                    selected_name.local
-                                ),
-                            )
-                        })?;
-                    result.extend(execute_sequence(
+                    result.extend(apply_template(
                         program,
-                        &template.template.body,
                         source,
                         selected_node,
                         request_id,
@@ -411,6 +392,56 @@ fn execute_sequence(
         }
     }
     Ok(result)
+}
+
+fn apply_template(
+    program: &StylesheetProgram,
+    source: &Document,
+    node: NodeId,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    control
+        .charge(WorkDomain::XsltInstruction, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    if let Some(template) = source.name(node).and_then(|name| {
+        program
+            .element_templates
+            .iter()
+            .find(|template| template.match_name == *name)
+    }) {
+        return execute_sequence(
+            program,
+            &template.template.body,
+            source,
+            node,
+            request_id,
+            control,
+        );
+    }
+
+    match source.kind(node) {
+        NodeKind::Document | NodeKind::Element => {
+            let mut result = Vec::new();
+            for child in source.children(node) {
+                result.extend(apply_template(
+                    program, source, *child, request_id, control,
+                )?);
+            }
+            Ok(result)
+        }
+        NodeKind::Text => {
+            let mut result = Vec::new();
+            append_text(
+                &mut result,
+                source.value(node).unwrap_or_default(),
+                request_id,
+                control,
+            )?;
+            Ok(result)
+        }
+        NodeKind::Attribute | NodeKind::Comment | NodeKind::ProcessingInstruction => Ok(Vec::new()),
+    }
 }
 
 fn append_text(
@@ -711,6 +742,45 @@ mod tests {
         assert_eq!(
             results.by_request["dispatch-request"].serialized,
             include_str!("../../../../corpus/golden/template-dispatch/expected.xml").trim()
+        );
+    }
+
+    #[test]
+    fn default_selection_uses_built_in_element_and_text_rules() {
+        const BUILT_IN_SOURCE: &str = "urn:fastxslt:golden:built-in-rules:source";
+        const BUILT_IN_STYLESHEET: &str = "urn:fastxslt:golden:built-in-rules:stylesheet";
+        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(4, 4_096, 8_192));
+        resources
+            .admit(
+                BUILT_IN_SOURCE,
+                include_bytes!("../../../../corpus/golden/built-in-template-rules/input.xml")
+                    .to_vec(),
+            )
+            .expect("admit built-in-rule source");
+        resources
+            .admit(
+                BUILT_IN_STYLESHEET,
+                include_bytes!("../../../../corpus/golden/built-in-template-rules/stylesheet.xsl")
+                    .to_vec(),
+            )
+            .expect("admit built-in-rule stylesheet");
+        let snapshot = resources.seal();
+        let program = compile_resource(&snapshot, BUILT_IN_STYLESHEET)
+            .expect("compile built-in-rule stylesheet once");
+        let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+        builder
+            .add(request(
+                "built-in-request",
+                "built-in-result",
+                BUILT_IN_SOURCE,
+            ))
+            .expect("add built-in-rule request");
+
+        let results = execute_transform_set(builder.seal()).expect("execute built-in-rule set");
+
+        assert_eq!(
+            results.by_request["built-in-request"].serialized,
+            include_str!("../../../../corpus/golden/built-in-template-rules/expected.xml").trim()
         );
     }
 
