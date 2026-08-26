@@ -6,8 +6,8 @@
 | Package | `allocation-counter` 0.8.1 |
 | Cargo checksum | `beb9e990c0a33699f1984d85a6abead615ccc72dd8130bf3e15dcabe2ca149c9` |
 | License | MIT OR Apache-2.0 |
-| Admission | Exact-pinned development dependency only |
-| Command | `cargo test --release -p fastxslt measures_preparation_allocations -- --ignored --nocapture` |
+| Admission | Exact-pinned optional measurement dependency |
+| Command | `cargo test --release -p fastxslt --features allocation-observation measures_preparation_allocations -- --ignored --nocapture` |
 | Claim | Current-thread allocator-request observation; not process or host memory |
 
 ## Dependency review
@@ -33,10 +33,12 @@ Known limitations retained from source inspection:
   linked; and
 - the package declares no Rust version and has no dependencies of its own.
 
-The package is not a runtime dependency and does not propagate to FastXSLT
-consumers. Its dual MIT/Apache-2.0 terms are compatible with the repository's
-MIT distribution; the exact package and checksum remain recorded in
-`Cargo.lock`.
+The package is absent from default builds. Its only first-party use is behind
+both `cfg(test)` and the `allocation-observation` feature, so ordinary manual
+timing probes do not link the wrapper. It does not create a FastXSLT runtime
+facility or default consumer dependency. Its dual MIT/Apache-2.0 terms are
+compatible with the repository's MIT distribution; the exact package and
+checksum remain recorded in `Cargo.lock`.
 
 ## Measurement boundary
 

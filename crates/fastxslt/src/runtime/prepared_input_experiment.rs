@@ -619,6 +619,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "allocation-observation")]
     #[test]
     #[ignore = "manual allocator-requested retained and peak preparation probe"]
     fn measures_preparation_allocations() {

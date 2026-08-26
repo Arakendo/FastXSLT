@@ -398,8 +398,9 @@ ambient I/O or public stability claim.
 - Allocation measurement: three identical optimized runs observed 2,744
   retained and 3,424 peak allocator-requested bytes while preparing hello. The
   generated 100-item source retained 64,577 and peaked at 130,357 bytes. The
-  exact-pinned dev tool is current-thread-only and excludes allocator metadata,
-  snapshot admission, process memory, and host overhead.
+  exact-pinned optional tool is current-thread-only and excludes allocator
+  metadata, snapshot admission, process memory, and host overhead. Its explicit
+  feature remains disabled for timing probes.
 - Findings: the seam has measurable private value and meaningful retention
   cost. The current builder performs explicit owned construction, so it has no
   shared first-access, single-flight, or waiter semantics to stabilize.

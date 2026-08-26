@@ -162,7 +162,7 @@ incompatible with the current explicit-ownership direction.
   generated 2,109-byte/100-item source reports 46,862 parsed-phase bytes, 202
   nodes, and 63,755 XDM bytes. The diagnostic excludes allocator/map/Arc
   overhead, co-resident construction peak, derived indexes, and runtime
-  transients, so it cannot yet close the general memory follow-up or select
+  transients, so it cannot by itself close the general memory follow-up or select
   budgets.
 - A separate ignored release-mode phase probe over the 55-byte source observed
   1,123.9–1,133.3 ns XML-parse medians and 863.4–921.5 ns XDM
@@ -174,7 +174,7 @@ incompatible with the current explicit-ownership direction.
   allocator-requested bytes and peaked at 3,424; the generated 100-item source
   retained 64,577 and peaked at 130,357. The tool excludes allocator metadata,
   fragmentation, process memory, snapshot admission, and other threads. No
-  first-party unsafe exception or runtime dependency was introduced.
+  first-party unsafe exception or default runtime dependency was introduced.
 
 ## Disposition
 
@@ -260,7 +260,8 @@ different retention seam.
 - 2026-08-25 -- Added a separate-phase release-mode timing probe. Local tiny
   fixture results make parse and XDM construction independently visible but do
   not close representative workload, allocator, or host-boundary follow-up.
-- 2026-08-25 -- Admitted exact-pinned `allocation-counter` 0.8.1 as a dev-only
+- 2026-08-25 -- Admitted exact-pinned `allocation-counter` 0.8.1 as an optional
   measurement tool after license and unsafe-surface review. The private probe
-  separates allocator-requested retained and peak preparation bytes; process
+  separates allocator-requested retained and peak preparation bytes; its
+  explicit feature keeps the wrapper out of default timing binaries. Process
   working set and representative consumer workloads remain open.

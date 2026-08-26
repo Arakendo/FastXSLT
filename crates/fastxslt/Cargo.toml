@@ -10,6 +10,11 @@ publish = false
 [lints]
 workspace = true
 
+[features]
+allocation-observation = ["dep:allocation-counter"]
+
+[dependencies]
+allocation-counter = { version = "=0.8.1", optional = true }
+
 [dev-dependencies]
-allocation-counter = "=0.8.1"
 quick-xml = "=0.40.1"
