@@ -61,8 +61,8 @@ rationale = "A final explicit child::name existence predicate executes over the 
 set_file = "tests/expr/path/_path-test-set.xml"
 case_name = "path-002"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The ancestor-axis predicate and descendant abbreviation exceed the current private XPath slice."
+execution = "passed"
+rationale = "The file-backed source is imported into a sealed snapshot, then leading descendant navigation and a final ancestor::element2 existence predicate execute with charged node visits."
 
 [[case]]
 set_file = "tests/expr/path/_path-test-set.xml"

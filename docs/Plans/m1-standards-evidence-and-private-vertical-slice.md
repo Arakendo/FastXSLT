@@ -558,3 +558,17 @@ ambient I/O or public stability claim.
   engine-unsupported outcomes; QT3 retains four explicit unsupported outcomes.
 - Next slice: map the file-backed `path-002` environment into sealed resources
   and add only the ancestor/descendant XPath behavior its native case requires.
+
+### 2026-08-26: XSLT30 `path-002` file-backed execution
+
+- Work completed: resolved the native file-backed principal source, imported
+  its bytes into a bounded sealed snapshot, and executed the unmodified
+  `path-002` stylesheet without engine-owned filesystem access.
+- XPath behavior: added leading descendant navigation and a final named
+  ancestor existence predicate, preserving document order.
+- Work accounting: descendant candidates and examined ancestors consume the
+  invocation's XPath node-visit budget.
+- Conservation: the complete `path` denominator now contains two passes and
+  eight explicit engine-unsupported outcomes.
+- Next slice: execute `path-003` by extending the same predicate seam to the
+  narrowly required ancestor-or-self behavior.

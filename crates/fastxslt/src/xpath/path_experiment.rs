@@ -6,8 +6,21 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 pub(crate) struct ChildPath {
     pub(crate) steps: Vec<String>,
     pub(crate) selects_context_item: bool,
-    pub(crate) final_child_predicate: Option<String>,
+    pub(crate) starts_with_descendant_search: bool,
+    final_predicate: Option<ExistencePredicate>,
     pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PredicateAxis {
+    Child,
+    Ancestor,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ExistencePredicate {
+    axis: PredicateAxis,
+    name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,11 +49,15 @@ pub(crate) fn parse_child_path(
         return Ok(ChildPath {
             steps: Vec::new(),
             selects_context_item: true,
-            final_child_predicate: None,
+            starts_with_descendant_search: false,
+            final_predicate: None,
             location,
         });
     }
-    let (expression, final_child_predicate) = parse_final_child_predicate(expression);
+    let (expression, final_predicate) = parse_final_axis_predicate(expression);
+    let (expression, starts_with_descendant_search) = expression
+        .strip_prefix("//")
+        .map_or((expression, false), |expression| (expression, true));
     if expression.starts_with('/')
         || expression.ends_with('/')
         || expression.contains("//")
@@ -81,25 +98,36 @@ pub(crate) fn parse_child_path(
     Ok(ChildPath {
         steps,
         selects_context_item: false,
-        final_child_predicate,
+        starts_with_descendant_search,
+        final_predicate,
         location,
     })
 }
 
-fn parse_final_child_predicate(expression: &str) -> (&str, Option<String>) {
+fn parse_final_axis_predicate(expression: &str) -> (&str, Option<ExistencePredicate>) {
     let Some((path, predicate)) = expression.split_once('[') else {
         return (expression, None);
     };
     let Some(predicate) = predicate.strip_suffix(']') else {
         return (expression, None);
     };
-    let Some(child_name) = predicate.strip_prefix("child::") else {
+    let (axis, name) = if let Some(name) = predicate.strip_prefix("child::") {
+        (PredicateAxis::Child, name)
+    } else if let Some(name) = predicate.strip_prefix("ancestor::") {
+        (PredicateAxis::Ancestor, name)
+    } else {
         return (expression, None);
     };
-    if path.is_empty() || path.contains('[') || !is_ascii_ncname(child_name) {
+    if path.is_empty() || path.contains('[') || !is_ascii_ncname(name) {
         return (expression, None);
     }
-    (path, Some(child_name.to_owned()))
+    (
+        path,
+        Some(ExistencePredicate {
+            axis,
+            name: name.to_owned(),
+        }),
+    )
 }
 
 fn is_ascii_ncname(value: &str) -> bool {
@@ -137,32 +165,35 @@ pub(crate) fn evaluate_child_path_controlled(
     for (step_index, step) in path.steps.iter().enumerate() {
         let mut next = Vec::new();
         for node in current {
-            for child in document.children(node).iter().copied() {
-                control.charge(WorkDomain::XPathNodeVisit, 1)?;
+            let candidates = if step_index == 0 && path.starts_with_descendant_search {
+                descendant_nodes(document, node, control)?
+            } else {
+                document.children(node).to_vec()
+            };
+            for child in candidates {
+                if step_index != 0 || !path.starts_with_descendant_search {
+                    control.charge(WorkDomain::XPathNodeVisit, 1)?;
+                }
                 let matches_name = document.kind(child) == NodeKind::Element
                     && document
                         .name(child)
                         .is_some_and(|name| name.namespace.is_none() && name.local == *step);
-                let matches_predicate = if step_index + 1 == path.steps.len()
-                    && let Some(required) = &path.final_child_predicate
-                {
-                    let mut found = false;
-                    for predicate_child in document.children(child).iter().copied() {
-                        control.charge(WorkDomain::XPathNodeVisit, 1)?;
-                        if document.kind(predicate_child) == NodeKind::Element
-                            && document.name(predicate_child).is_some_and(|name| {
-                                name.namespace.is_none() && name.local == *required
-                            })
-                        {
-                            found = true;
-                            break;
+                let matches_predicate = matches_name
+                    && if step_index + 1 == path.steps.len()
+                        && let Some(predicate) = &path.final_predicate
+                    {
+                        match predicate.axis {
+                            PredicateAxis::Child => {
+                                has_named_child(document, child, &predicate.name, control)?
+                            }
+                            PredicateAxis::Ancestor => {
+                                has_named_ancestor(document, child, &predicate.name, control)?
+                            }
                         }
-                    }
-                    found
-                } else {
-                    true
-                };
-                if matches_name && matches_predicate {
+                    } else {
+                        true
+                    };
+                if matches_predicate {
                     next.push(child);
                 }
             }
@@ -172,12 +203,67 @@ pub(crate) fn evaluate_child_path_controlled(
     Ok(current)
 }
 
+fn descendant_nodes(
+    document: &Document,
+    context: NodeId,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ControlFailure> {
+    let mut descendants = Vec::new();
+    let mut pending: Vec<_> = document.children(context).iter().rev().copied().collect();
+    while let Some(node) = pending.pop() {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        pending.extend(document.children(node).iter().rev().copied());
+        descendants.push(node);
+    }
+    Ok(descendants)
+}
+
+fn has_named_child(
+    document: &Document,
+    node: NodeId,
+    required: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    for child in document.children(node).iter().copied() {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if node_has_unnamespaced_name(document, child, required) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn has_named_ancestor(
+    document: &Document,
+    node: NodeId,
+    required: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    let mut ancestor = document.parent(node);
+    while let Some(node) = ancestor {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if node_has_unnamespaced_name(document, node, required) {
+            return Ok(true);
+        }
+        ancestor = document.parent(node);
+    }
+    Ok(false)
+}
+
+fn node_has_unnamespaced_name(document: &Document, node: NodeId, required: &str) -> bool {
+    document.kind(node) == NodeKind::Element
+        && document
+            .name(node)
+            .is_some_and(|name| name.namespace.is_none() && name.local == required)
+}
+
 #[cfg(test)]
 mod tests {
     use std::ops::Range;
 
     use super::{
-        PathFailure, evaluate_child_path, evaluate_child_path_controlled, parse_child_path,
+        ExistencePredicate, PathFailure, PredicateAxis, evaluate_child_path,
+        evaluate_child_path_controlled, parse_child_path,
     };
     use crate::execution_control_experiment::{InvocationControl, WorkDomain};
     use crate::xdm::owned_tree_experiment::Document;
@@ -197,7 +283,8 @@ mod tests {
 
         assert_eq!(path.steps, ["greeting", "name"]);
         assert!(!path.selects_context_item);
-        assert_eq!(path.final_child_predicate, None);
+        assert_eq!(path.final_predicate, None);
+        assert!(!path.starts_with_descendant_search);
         assert_eq!(path.location, location());
     }
 
@@ -296,8 +383,47 @@ mod tests {
             .expect("unbounded evaluation should succeed");
 
         assert_eq!(selected.len(), 1);
-        assert_eq!(path.final_child_predicate.as_deref(), Some("child2"));
+        assert_eq!(
+            path.final_predicate,
+            Some(ExistencePredicate {
+                axis: PredicateAxis::Child,
+                name: "child2".to_owned(),
+            })
+        );
         assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 5);
+    }
+
+    #[test]
+    fn searches_descendants_and_filters_by_a_named_ancestor() {
+        let parsed = parse_document(
+            "memory:source.xml",
+            b"<doc><element1><child2>wrong</child2></element1><element2><child2>right</child2></element2></doc>",
+            ParseLimits {
+                max_events: 32,
+                max_depth: 8,
+            },
+        )
+        .expect("source should parse");
+        let document = Document::from_parsed(parsed).expect("source XDM should build");
+        let doc = document.children(document.document_node())[0];
+        let path = parse_child_path("//child2[ancestor::element2]", location())
+            .expect("path-002 expression should parse");
+
+        let mut control = InvocationControl::unbounded();
+        let selected = evaluate_child_path_controlled(&document, doc, &path, &mut control)
+            .expect("unbounded evaluation should succeed");
+
+        assert!(path.starts_with_descendant_search);
+        assert_eq!(selected.len(), 1);
+        assert_eq!(document.string_value(selected[0]), "right");
+        assert_eq!(
+            path.final_predicate,
+            Some(ExistencePredicate {
+                axis: PredicateAxis::Ancestor,
+                name: "element2".to_owned(),
+            })
+        );
+        assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 10);
     }
 
     #[test]
