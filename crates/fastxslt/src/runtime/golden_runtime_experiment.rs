@@ -5,7 +5,7 @@ use crate::execution_control_experiment::{
     CancellationToken, ControlFailure, InvocationControl, WorkDomain, WorkLimits,
 };
 use crate::resources::ResourceSnapshot;
-use crate::xdm::owned_tree_experiment::{BuildFailure, Document};
+use crate::xdm::owned_tree_experiment::{BuildFailure, Document, StringValueVisitFailure};
 use crate::xml::quick_xml_experiment::{
     ExpandedName, ParseLimits, parse_document, parse_document_controlled,
 };
@@ -353,14 +353,18 @@ fn execute_sequence(
                         "the private value-of slice does not define multi-node conversion",
                     ));
                 }
-                let value = if let Some(node) = selected.first() {
+                if let Some(node) = selected.first() {
                     source
-                        .string_value_controlled(*node, control)
-                        .map_err(|failure| control_failure(failure, request_id))?
-                } else {
-                    String::new()
-                };
-                append_text(&mut result, &value, request_id, control)?;
+                        .visit_string_value_controlled(*node, control, &mut |part, control| {
+                            append_text(&mut result, part, request_id, control)
+                        })
+                        .map_err(|failure| match failure {
+                            StringValueVisitFailure::Control(failure) => {
+                                control_failure(failure, request_id)
+                            }
+                            StringValueVisitFailure::Sink(failure) => failure,
+                        })?;
+                }
             }
         }
     }

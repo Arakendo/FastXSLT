@@ -143,6 +143,9 @@ only mode.
   implemented phase. All eight paths retain request/domain identity, and the
   private transform-set reference returns no partial result set even when a
   sibling completed first. This does not select future batch failure collection.
+- Dynamic XDM string value reaches result construction as ordered borrowed
+  fragments. The runtime meters and retains each fragment directly rather than
+  allocating an aggregate temporary string before the result-text limit.
 
 ## Disposition
 
@@ -168,8 +171,9 @@ or mutate semantic state.
   calls.
 - [x] Extend accounting to semantic result-node creation and retained UTF-8 text
   bytes independently of serialization.
-- [ ] Extend accounting to messages and diagnostics, and bound temporary dynamic
-  string-value construction before it reaches the result meter.
+- [x] Avoid aggregate temporary dynamic string-value allocation by writing
+  XDM-owned fragments through the result meter in semantic order.
+- [ ] Extend accounting to messages and diagnostics.
 - [x] Force exhaustion in every currently implemented work domain and preserve
   domain plus request identity in the private structured failure.
 - [ ] Add adversarial cases for excessive input bytes, names/attributes, nodes,
@@ -218,3 +222,6 @@ is measured, or a stronger sandbox such as WASM becomes a viable host boundary.
 - 2026-08-25 -- Added separate semantic result-node and UTF-8 text-byte work
   domains before serialization. Temporary dynamic string-value allocation,
   messages, diagnostics, observation gaps, and overhead remain unresolved.
+- 2026-08-25 -- Replaced aggregate runtime string-value materialization with an
+  XDM-owned controlled fragment sink feeding result construction. This is a
+  tree-evaluation memory improvement, not streaming conformance.

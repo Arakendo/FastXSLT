@@ -4,7 +4,7 @@
 | --- | --- |
 | Date | 2026-08-25 |
 | Scope | First private XML-event to engine-owned document model |
-| Input | `corpus/golden/hello/input.xml` and two focused in-memory fixtures |
+| Input | `corpus/golden/hello/input.xml` and three focused in-memory fixtures |
 | Implementation | `crates/fastxslt/src/xdm/owned_tree_experiment.rs` under `cfg(test)` |
 | Informs | AR-0007, AR-0008, and M1 Slice 2 |
 
@@ -27,7 +27,7 @@ It is not a public XDM API or a conformance result.
 
 ## Observations
 
-Three focused XDM cases pass in addition to the ten resource/XML cases:
+Four focused XDM cases pass in addition to the resource/XML cases:
 
 - the golden document retains expanded element names, parent/child relations,
   string value, logical resource identity, and non-empty byte spans after the
@@ -40,7 +40,9 @@ Three focused XDM cases pass in addition to the ten resource/XML cases:
 - adjacent text, predefined references, and CDATA become one text node with the
   value `one&twothree`; and
 - comments and processing instructions have owned event and node paths rather
-  than being discarded by the parser adapter.
+  than being discarded by the parser adapter; and
+- controlled string-value traversal emits borrowed value fragments in semantic
+  order, allowing a bounded result sink to avoid an aggregate temporary string.
 
 No parser or `quick-xml` type is stored in the XDM tree. No filesystem path,
 open handle, resolver, or ambient authority is stored either.
@@ -68,6 +70,8 @@ justified by this experiment.
 The node kinds and arena are deliberately private. Namespace declaration nodes,
 base URI, typed values, exact document-order rules for namespace nodes, line and
 column indexing, whitespace stripping, and the selected XDM edition remain open.
+The fragment sink traverses the fully materialized owned tree and is not an XSLT
+streaming claim or a generalized source-provider interface.
 The current builder assumes it receives structurally balanced events from the
 XML adapter; production construction will need a typed invariant or explicit
 failure path at that seam.

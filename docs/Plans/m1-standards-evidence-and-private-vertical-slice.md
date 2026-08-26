@@ -290,3 +290,18 @@ ambient I/O or public stability claim.
   added.
 - Next slice: bound or avoid the temporary dynamic string-value allocation, then
   measure observation gaps and accounting overhead before selecting defaults.
+
+### 2026-08-25: Direct bounded string-value construction
+
+- Work completed: added an XDM-owned controlled fragment sink and changed
+  `xsl:value-of` execution to append borrowed fragments directly through the
+  semantic result meter.
+- Validation: 40 tests pass. A nested `one`, `two`, `three` fixture preserves
+  fragment order and concatenates to the same convenience string value. Golden,
+  prepared-input, work-limit, and phase-cancellation behavior remain unchanged.
+- Findings: execution no longer allocates an aggregate dynamic string value and
+  then copies it into the result. Source fragments still reside in the fully
+  materialized owned XDM; this is neither source streaming nor a generalized
+  provider contract.
+- Next slice: measure charge-point observation gaps and accounting overhead,
+  then add diagnostic/message bounds when those facilities become real.

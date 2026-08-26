@@ -47,6 +47,12 @@ pub(crate) enum BuildFailure {
     Control(ControlFailure),
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum StringValueVisitFailure<SinkFailure> {
+    Control(ControlFailure),
+    Sink(SinkFailure),
+}
+
 impl Document {
     #[allow(
         clippy::too_many_lines,
@@ -328,21 +334,44 @@ impl Document {
         id: NodeId,
         control: &mut InvocationControl,
     ) -> Result<String, ControlFailure> {
-        control.charge(WorkDomain::XdmStringValueNode, 1)?;
+        let mut value = String::new();
+        self.visit_string_value_controlled(id, control, &mut |part, _| {
+            value.push_str(part);
+            Ok::<_, std::convert::Infallible>(())
+        })
+        .map_err(|failure| match failure {
+            StringValueVisitFailure::Control(failure) => failure,
+            StringValueVisitFailure::Sink(never) => match never {},
+        })?;
+        Ok(value)
+    }
+
+    pub(crate) fn visit_string_value_controlled<SinkFailure>(
+        &self,
+        id: NodeId,
+        control: &mut InvocationControl,
+        sink: &mut impl FnMut(&str, &mut InvocationControl) -> Result<(), SinkFailure>,
+    ) -> Result<(), StringValueVisitFailure<SinkFailure>> {
+        control
+            .charge(WorkDomain::XdmStringValueNode, 1)
+            .map_err(StringValueVisitFailure::Control)?;
         let node = &self.nodes[id.0];
-        Ok(match node.kind {
+        match node.kind {
             NodeKind::Text
             | NodeKind::Attribute
             | NodeKind::Comment
-            | NodeKind::ProcessingInstruction => node.value.clone().unwrap_or_default(),
-            NodeKind::Document | NodeKind::Element => {
-                let mut value = String::new();
-                for child in &node.children {
-                    value.push_str(&self.string_value_controlled(*child, control)?);
+            | NodeKind::ProcessingInstruction => {
+                if let Some(value) = node.value.as_deref() {
+                    sink(value, control).map_err(StringValueVisitFailure::Sink)?;
                 }
-                value
             }
-        })
+            NodeKind::Document | NodeKind::Element => {
+                for child in &node.children {
+                    self.visit_string_value_controlled(*child, control, sink)?;
+                }
+            }
+        }
+        Ok(())
     }
 }
 
@@ -444,5 +473,29 @@ mod tests {
 
         assert_eq!(document.nodes[root.0].children.len(), 1);
         assert_eq!(document.string_value(root), "one&twothree");
+    }
+
+    #[test]
+    fn controlled_string_value_sink_preserves_fragment_order_without_an_intermediate_value() {
+        let parsed = parse_document(
+            "memory:string-value-parts.xml",
+            b"<root>one<part>two</part>three</root>",
+            LIMITS,
+        )
+        .expect("fragment fixture should parse");
+        let document = Document::from_parsed(parsed).expect("owned XDM should build");
+        let root = document.nodes[document.document.0].children[0];
+        let mut control = crate::execution_control_experiment::InvocationControl::unbounded();
+        let mut fragments = Vec::new();
+
+        document
+            .visit_string_value_controlled(root, &mut control, &mut |part, _| {
+                fragments.push(part.to_owned());
+                Ok::<_, std::convert::Infallible>(())
+            })
+            .expect("unbounded fragment sink should succeed");
+
+        assert_eq!(fragments, ["one", "two", "three"]);
+        assert_eq!(fragments.concat(), document.string_value(root));
     }
 }

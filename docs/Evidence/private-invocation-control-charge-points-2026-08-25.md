@@ -47,7 +47,7 @@ keys, or future optimized operations.
 
 ## Results
 
-Thirty-nine tests pass. Focused cases prove:
+Forty tests pass. Focused cases prove:
 
 - a boundary-sized charge succeeds and the next charge reports its domain,
   configured limit, prior consumption, and attempted debit;
@@ -99,9 +99,10 @@ This experiment has no deadline, dispatcher, thread pool, async task, panic
 containment, process isolation, calibrated default, aggregate cross-domain
 budget, allocation meter, benchmark, public API, or ASP.NET adapter. The
 messages and diagnostic growth do not yet have their own work domains. Dynamic
-XDM string-value construction currently allocates its temporary `String` before
-the result-text byte charge, so that transient allocation still needs a separate
-bound or a construction path that writes through the meter.
+XDM string values now visit borrowed fragments in semantic order and write them
+directly through result construction, avoiding an aggregate temporary string.
+The source fragment strings remain retained by the owned XDM, and this does not
+bound unrelated runtime temporaries or establish streaming behavior.
 
 The work limits use independent counters so evidence remains attributable.
 Whether a future host receives individual controls, a composed total budget, or

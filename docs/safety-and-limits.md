@@ -58,8 +58,9 @@ cannot interrupt work already executing inside one dependency call, and no
 maximum observation latency has been established.
 
 Semantic result nodes and retained UTF-8 text bytes are charged independently
-from serialized bytes. Temporary dynamic string-value construction, messages,
-and diagnostics are not yet fully bounded.
+from serialized bytes. Dynamic string-value fragments are appended directly
+from the owned XDM through that meter rather than collected into an aggregate
+temporary string. Messages and diagnostics are not yet fully bounded.
 
 Test-only faults exercise cancellation after partial work in every implemented
 charge domain. The private reference transform set returns a structured failure
