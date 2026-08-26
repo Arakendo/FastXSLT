@@ -169,6 +169,10 @@ and measurements.
 - Private transform-set validation now applies explicit per-set request limits,
   source denial before execution, and byte-bounded in-memory serialization.
   Exact policy ownership and defaults remain under review.
+- A separate private experiment explicitly prepares selected snapshot resources
+  into immutable XDM documents and functionally reuses them across the two
+  volume-work shapes. It is not integrated into transform sets and supplies no
+  cache, concurrency, retention, or performance contract.
 - AR-0010 now owns supervision and hard-isolation guarantees. Executor mechanics
   in this review cannot assume an in-process worker can be forcibly terminated.
 
@@ -190,7 +194,8 @@ whole-workload retention, implicit caches, ordered batches, or graph execution.
   change.
 - [ ] After import, rename, replace, and remove source files on Windows and
   verify no engine handle or lazy path dependency remains.
-- [ ] Run one stylesheet over many sources and many stylesheets over one source.
+- [x] Functionally run one stylesheet over multiple prepared sources and
+  multiple stylesheets over one prepared source; performance remains unmeasured.
 - [x] Resolve initial independent-batch versus output-dependent workflow
   ownership through ADR-0005; graph execution remains deferred.
 - [ ] Prototype declarative transform-set sealing with duplicate request/result,
@@ -228,3 +233,5 @@ pipeline outputs beyond the selected batch contract.
   result correlation, batch-of-one parity, and sibling-result invisibility.
 - 2026-08-25 -- Added explicit admitted-source denial and a serialization byte
   limit without granting filesystem output authority.
+- 2026-08-25 -- Added explicit selected-source preparation tied to one snapshot
+  generation, with functional reuse and parse-per-invocation parity evidence.

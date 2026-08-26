@@ -8,7 +8,7 @@
 | Scope | Parsed source ownership, reusable source-derived state, retention, budgets, and concurrency |
 | Trigger | ADR-0005 leaves prepared-input reuse as the next volume-performance ownership question |
 | Related ADRs | ADR-0001, ADR-0002, ADR-0005 |
-| Related evidence | `docs/Evidence/owned-xdm-tree-experiment-2026-08-25.md`, `docs/Evidence/thread-pool-design-review-2026-08-25.md`, and `docs/Evidence/peer-adr-0005-review-monday-2026-08-25.md` |
+| Related evidence | `docs/Evidence/owned-xdm-tree-experiment-2026-08-25.md`, `docs/Evidence/thread-pool-design-review-2026-08-25.md`, `docs/Evidence/peer-adr-0005-review-monday-2026-08-25.md`, and `docs/Evidence/private-prepared-input-reuse-2026-08-25.md` |
 
 ## Architectural question
 
@@ -134,6 +134,16 @@ incompatible with the current explicit-ownership direction.
   poisoning/retry, memory measurement, host visibility, and cross-snapshot reuse
   are unresolved.
 - No evidence yet justifies a public pool/cache API or an ambient global cache.
+- A private explicit-preparation experiment now seals selected source identities
+  into immutable shared XDM documents tied to one snapshot generation. It is a
+  caller-visible lifecycle experiment rather than lazy or ambient caching.
+- One prepared source produces the same result as parse per invocation when
+  reused by two compiled stylesheet programs. One stylesheet also executes over
+  two separately prepared equal-byte resources without merging allocation or
+  provenance.
+- Preparation has explicit cancellation and XML/XDM work budgets. The 87-byte
+  golden source produces six retained nodes, but retained bytes, peak
+  construction memory, timing, and concurrency remain unmeasured.
 
 ## Disposition
 
@@ -151,11 +161,13 @@ thread-safety, eviction, or performance guarantee.
 
 - [ ] Measure admitted bytes, owned-XDM retained bytes, node count, parse/XDM
   construction time, and peak construction memory separately.
-- [ ] Run one stylesheet over many sources and many stylesheets over one source,
+- [x] Run one stylesheet over multiple prepared sources and multiple stylesheets
+  over one prepared source, comparing semantics with parse per invocation.
+- [ ] Benchmark those workload shapes,
   comparing parse-per-invocation with reuse.
-- [ ] Prove equal bytes under distinct resource identities retain distinct
+- [x] Prove equal bytes under distinct resource identities retain distinct
   document identity and provenance when prepared.
-- [ ] Replace a snapshot generation while old prepared inputs remain valid only
+- [x] Replace a snapshot generation while old prepared inputs remain valid only
   for explicitly retained old work.
 - [ ] Test concurrent first access, duplicate construction versus single-flight,
   cancellation, construction failure, retry, and waiter behavior.
@@ -184,3 +196,7 @@ different retention seam.
   prepared-input ownership as the next volume-design question.
 - 2026-08-25 -- The first private transform set exercised parse-per-invocation as
   the reference path; prepared reuse remains unimplemented.
+- 2026-08-25 -- Added an explicit selected-input preparation experiment tied to
+  one snapshot generation. Functional reuse, reference parity, identity,
+  provenance, replacement lifetime, and preparation limits pass; retention,
+  concurrency, eviction, and performance policy remain Incubating.

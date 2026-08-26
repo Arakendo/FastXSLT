@@ -263,6 +263,10 @@ impl Document {
         self.document
     }
 
+    pub(crate) fn node_count(&self) -> usize {
+        self.nodes.len()
+    }
+
     pub(crate) fn kind(&self, id: NodeId) -> NodeKind {
         self.nodes[id.0].kind
     }

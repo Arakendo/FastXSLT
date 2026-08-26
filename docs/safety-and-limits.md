@@ -57,6 +57,11 @@ Those counters have no calibrated defaults or public contract. Cancellation
 cannot interrupt work already executing inside one dependency call, and no
 maximum observation latency has been established.
 
+A separate private experiment can explicitly prepare selected snapshot sources
+as immutable XDM documents for functional reuse. It is not a hidden or public
+cache, is not used by the transform-set path, and has no measured retention,
+concurrency, eviction, or performance policy.
+
 ## Concurrency and reuse
 
 Compile-once and transform-many is an intended product boundary. ADR-0005 fixes

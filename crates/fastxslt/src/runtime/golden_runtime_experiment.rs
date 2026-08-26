@@ -27,7 +27,7 @@ enum ResultNode {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct SemanticResult {
+pub(super) struct SemanticResult {
     children: Vec<ResultNode>,
 }
 
@@ -89,7 +89,7 @@ enum FailureCategory {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct ExecutionFailure {
+pub(super) struct ExecutionFailure {
     code: &'static str,
     category: FailureCategory,
     request_id: Option<String>,
@@ -179,7 +179,7 @@ impl TransformSetBuilder {
     }
 }
 
-fn compile_resource(
+pub(super) fn compile_resource(
     snapshot: &ResourceSnapshot,
     stylesheet_id: &str,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
@@ -292,7 +292,7 @@ fn execute_transform_set(set: TransformSet) -> Result<ResultSet, ExecutionFailur
     })
 }
 
-fn execute_program(
+pub(super) fn execute_program(
     program: &StylesheetProgram,
     source: &Document,
     request_id: &str,
@@ -365,7 +365,7 @@ fn append_text(nodes: &mut Vec<ResultNode>, value: &str) {
     }
 }
 
-fn serialize_xml(
+pub(super) fn serialize_xml(
     result: &SemanticResult,
     settings: &OutputSettings,
     request_id: &str,

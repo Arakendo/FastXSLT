@@ -126,6 +126,10 @@ impl ResourceSnapshot {
         self.entries.get(identity).map(AsRef::as_ref)
     }
 
+    pub(crate) fn same_generation(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.entries, &other.entries)
+    }
+
     fn len(&self) -> usize {
         self.entries.len()
     }

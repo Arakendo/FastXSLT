@@ -240,3 +240,18 @@ ambient I/O or public stability claim.
   before proposing work-unit composition or defaults. Phase-specific
   cancellation, deadlines, panic containment, and process isolation remain
   AR-0010 follow-up.
+
+### 2026-08-25: Explicit prepared-input reuse
+
+- Work completed: explicitly prepared selected resource identities into sealed
+  immutable XDM documents tied to their originating snapshot generation.
+- Validation: 35 tests pass. Two stylesheets reuse one prepared document; one
+  stylesheet executes over two separately prepared equal-byte identities; the
+  prepared path matches parse-per-invocation semantics and serialization.
+- Findings: equal content cannot merge logical document allocation or
+  provenance. Preparation has its own cancellation and XML/XDM work budgets.
+  The golden source is 87 bytes and currently constructs six nodes, which is not
+  a retained-memory measurement.
+- Next slice: measure XDM retained/peak memory, preparation time, and concurrent
+  reuse before choosing eager, lazy, transform-set, eviction, or public handle
+  policy in AR-0009.
