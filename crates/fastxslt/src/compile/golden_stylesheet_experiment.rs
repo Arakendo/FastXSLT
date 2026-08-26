@@ -1,4 +1,5 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
+use crate::xpath::focus_sum_for_experiment::parse as parse_focus_sum_for;
 use crate::xpath::for_distinct_values_experiment::{
     ForExpressionFailure, parse as parse_for_distinct_values,
 };
@@ -411,7 +412,16 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
     ensure_no_meaningful_children(document, element, "xsl:value-of")?;
     let location = document.location(element).clone();
     let expression = required_attribute(document, element, None, "select")?;
-    let select = if expression.trim_start().starts_with("for $") {
+    let select = if expression.trim_start().starts_with("sum(for $") {
+        ValueExpression::FocusSumFor(Box::new(
+            parse_focus_sum_for(expression, &location).map_err(|failure| CompileFailure {
+                code: "FXXP1005",
+                category: CompileCategory::Unsupported,
+                detail: failure.detail,
+                location: failure.location,
+            })?,
+        ))
+    } else if expression.trim_start().starts_with("for $") {
         ValueExpression::IntegerFor(Box::new(
             parse_integer_for(expression, location.clone()).map_err(|failure| CompileFailure {
                 code: "FXXP1004",

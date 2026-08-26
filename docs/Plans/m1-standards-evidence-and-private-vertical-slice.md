@@ -775,3 +775,26 @@ ambient I/O or public stability claim.
 - Next slice: execute native `for-003` while preserving XPath focus across the
   binding, so its unqualified attribute paths remain relative to `order` and
   its empty multiplication results make `sum()` return zero.
+
+### 2026-08-26: Native XSLT30 `for-003` focus preservation
+
+- Work completed: executed native `for-003` through its `for` binding,
+  unqualified attribute multiplication, empty return sequences, and the zero
+  result of `sum(())`.
+- Focus rule: binding each `order-item` to `$i` does not replace the matched
+  `order` context item. A focused case with attributes only on bound children
+  fixes this behavior independently of the upstream assertion.
+- Claim control: when both multiplication operands exist on the outer focus,
+  evaluation fails as unsupported rather than introducing partial numeric
+  semantics under the empty-sequence case.
+- Work accounting: tuple iterations and final aggregation consume
+  `xpath-operation`; navigation and attribute inspection retain
+  `xpath-node-visit` charges.
+- Cohesion: the shared principal-source corpus executor now owns repeated
+  environment/source/stylesheet/assertion resolution for `for-001` and
+  `for-003`, reducing duplicated harness responsibility.
+- Conservation: the complete denominator advances to three passes and one
+  engine-unsupported case.
+- Next slice: execute native `for-004` using `$i/@price` and `$i/@qty`, exact
+  decimal multiplication/aggregation, and the narrow two-decimal
+  `format-number` picture required by its assertion.

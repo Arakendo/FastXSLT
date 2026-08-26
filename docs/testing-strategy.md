@@ -86,8 +86,10 @@ loss. Native `for-001` now passes through ordered distinct-value binding,
 node-sequence selection, `xsl:sequence`, and exact file-backed XML comparison.
 Source-free native `for-002` also passes through an explicit initial-template
 invocation entry, two ordered integer bindings, addition, and native
-`xsl:value-of` separator behavior. The denominator currently reports two passes
-and two engine-unsupported cases.
+`xsl:value-of` separator behavior. Native `for-003` additionally preserves the
+outer XPath focus across its binding, produces empty multiplication sequences,
+and applies the zero result of `sum(())`. The current denominator is three
+passes and one engine-unsupported case.
 A private case-record experiment
 also observes QT3 `assert-eq` and an XSLT30 compound message assertion through
 suite-specific adapters. Their common projection separates selection from

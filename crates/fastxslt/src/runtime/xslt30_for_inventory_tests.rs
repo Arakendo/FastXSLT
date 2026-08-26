@@ -38,7 +38,7 @@ const CASES: [CasePressure; 4] = [
         name: "for-003",
         environment: Some("for03"),
         initial_template: None,
-        execution: "engine-unsupported",
+        execution: "passed",
     },
     CasePressure {
         name: "for-004",
@@ -61,77 +61,20 @@ fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'
 fn executes_native_xslt30_for_001_in_order() {
     let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
     assert!(overlay_case(overlay, "for-001").contains("execution = \"passed\""));
-    let (test_set, set_path) = load_test_set();
-    let directory = set_path
-        .parent()
-        .expect("for test set should have a directory");
-    let test_case = find_element(
-        &test_set,
-        test_set.document_node(),
-        "test-case",
-        Some(("name", "for-001")),
-    )
-    .expect("for-001 should exist in the pinned test set");
-    let environment_ref = find_element(&test_set, test_case, "environment", None)
-        .and_then(|node| attribute(&test_set, node, "ref"))
-        .expect("for-001 should reference an environment");
-    let environment = find_element(
-        &test_set,
-        test_set.document_node(),
-        "environment",
-        Some(("name", environment_ref)),
-    )
-    .expect("for-001 environment should exist");
-    let source_file = find_element(&test_set, environment, "source", None)
-        .and_then(|node| attribute(&test_set, node, "file"))
-        .expect("for-001 environment should name a source");
-    let stylesheet_file = find_element(&test_set, test_case, "stylesheet", None)
-        .and_then(|node| attribute(&test_set, node, "file"))
-        .expect("for-001 should name a stylesheet");
-    let expected_file = find_element(&test_set, test_case, "assert-xml", None)
-        .and_then(|node| attribute(&test_set, node, "file"))
-        .expect("for-001 should name its expected XML file");
+    let (actual, expected) = execute_principal_case("for-001");
+    assert_eq!(actual, expected.trim());
+}
 
-    let source =
-        fs::read(directory.join(source_file)).expect("read for-001 source and close import handle");
-    let stylesheet = fs::read(directory.join(stylesheet_file))
-        .expect("read for-001 stylesheet and close import handle");
-    let expected = fs::read_to_string(directory.join(expected_file))
-        .expect("read for-001 expected XML and close handle");
-    let source_id = "urn:w3c:xslt30:for-001:source";
-    let stylesheet_id = "urn:w3c:xslt30:for-001:stylesheet";
-    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
-    resources
-        .admit(source_id, source)
-        .expect("admit for-001 source");
-    resources
-        .admit(stylesheet_id, stylesheet)
-        .expect("admit for-001 stylesheet");
-    let snapshot = resources.seal();
-    let program = compile_resource(&snapshot, stylesheet_id).expect("compile native for-001");
-    let mut set = TransformSetBuilder::new(
-        snapshot,
-        program,
-        1,
-        ExecutionPolicy {
-            denied_sources: HashSet::new(),
-            serialized_byte_limit: 4_096,
-            work_limits: WorkLimits::unbounded(),
-        },
+#[test]
+fn executes_native_xslt30_for_003_with_outer_focus_preserved() {
+    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
+    assert!(overlay_case(overlay, "for-003").contains("execution = \"passed\""));
+    let (actual, expected) = execute_principal_case("for-003");
+    assert_eq!(expected.trim(), "<out>0</out>");
+    assert_eq!(
+        actual,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>0</out>"
     );
-    set.add(TransformRequest {
-        identity: "for-001".to_owned(),
-        result_identity: "result:for-001".to_owned(),
-        entry: InvocationEntry::PrincipalSource {
-            resource: source_id.to_owned(),
-        },
-        cancellation: CancellationToken::new(),
-        cancellation_fault: None,
-    })
-    .expect("admit native for-001 request");
-
-    let results = execute_transform_set(set.seal()).expect("execute native for-001");
-    assert_eq!(results.by_request["for-001"].serialized, expected.trim());
 }
 
 #[test]
@@ -240,6 +183,83 @@ fn load_test_set() -> (Document, PathBuf) {
         Document::from_parsed(parsed).expect("build XSLT30 for test-set document"),
         path,
     )
+}
+
+fn execute_principal_case(case_name: &str) -> (String, String) {
+    let (test_set, set_path) = load_test_set();
+    let directory = set_path
+        .parent()
+        .expect("for test set should have a directory");
+    let test_case = find_element(
+        &test_set,
+        test_set.document_node(),
+        "test-case",
+        Some(("name", case_name)),
+    )
+    .expect("for case should exist in the pinned test set");
+    let environment_ref = find_element(&test_set, test_case, "environment", None)
+        .and_then(|node| attribute(&test_set, node, "ref"))
+        .expect("principal for case should reference an environment");
+    let environment = find_element(
+        &test_set,
+        test_set.document_node(),
+        "environment",
+        Some(("name", environment_ref)),
+    )
+    .expect("referenced for environment should exist");
+    let source_file = find_element(&test_set, environment, "source", None)
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("for environment should name a source");
+    let stylesheet_file = find_element(&test_set, test_case, "stylesheet", None)
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("for case should name a stylesheet");
+    let assertion = find_element(&test_set, test_case, "assert-xml", None)
+        .expect("for case should provide expected XML");
+    let expected = attribute(&test_set, assertion, "file").map_or_else(
+        || test_set.string_value(assertion),
+        |file| {
+            fs::read_to_string(directory.join(file))
+                .expect("read file-backed for assertion and close handle")
+        },
+    );
+    let source = fs::read(directory.join(source_file))
+        .expect("read upstream for source and close import handle");
+    let stylesheet = fs::read(directory.join(stylesheet_file))
+        .expect("read upstream for stylesheet and close import handle");
+    let source_id = format!("urn:w3c:xslt30:{case_name}:source");
+    let stylesheet_id = format!("urn:w3c:xslt30:{case_name}:stylesheet");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(source_id.clone(), source)
+        .expect("admit native for source");
+    resources
+        .admit(stylesheet_id.clone(), stylesheet)
+        .expect("admit native for stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, &stylesheet_id).expect("compile native for case");
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 4_096,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    set.add(TransformRequest {
+        identity: case_name.to_owned(),
+        result_identity: format!("result:{case_name}"),
+        entry: InvocationEntry::PrincipalSource {
+            resource: source_id,
+        },
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    })
+    .expect("admit native for request");
+
+    let results = execute_transform_set(set.seal()).expect("execute native for case");
+    (results.by_request[case_name].serialized.clone(), expected)
 }
 
 fn overlay_case<'a>(overlay: &'a str, case_name: &str) -> &'a str {

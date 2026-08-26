@@ -11,6 +11,9 @@ use crate::xdm::owned_tree_experiment::{
 use crate::xml::quick_xml_experiment::{
     ExpandedName, ParseLimits, parse_document, parse_document_controlled,
 };
+use crate::xpath::focus_sum_for_experiment::{
+    FocusSumEvaluationFailure, evaluate as evaluate_focus_sum_for,
+};
 use crate::xpath::for_distinct_values_experiment::evaluate as evaluate_for_distinct_values;
 use crate::xpath::integer_for_experiment::evaluate as evaluate_integer_for;
 use crate::xpath::path_experiment::evaluate_child_path_controlled;
@@ -635,6 +638,23 @@ fn execute_value_of(
                 }
                 append_text(result, &value.to_string(), inputs.request_id, control)?;
             }
+        }
+        ValueExpression::FocusSumFor(expression) => {
+            let (source, context) = required_source_context(inputs, context)?;
+            let value = evaluate_focus_sum_for(expression, source, context, control).map_err(
+                |evaluation_failure| match evaluation_failure {
+                    FocusSumEvaluationFailure::Control(failure) => {
+                        control_failure(failure, inputs.request_id)
+                    }
+                    FocusSumEvaluationFailure::Unsupported => failure(
+                        "FXRT1005",
+                        FailureCategory::Unsupported,
+                        Some(inputs.request_id),
+                        "non-empty numeric multiplication is outside the private focus-preserving sum slice",
+                    ),
+                },
+            )?;
+            append_text(result, &value.to_string(), inputs.request_id, control)?;
         }
     }
     Ok(())

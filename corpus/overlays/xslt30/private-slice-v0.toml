@@ -138,8 +138,8 @@ rationale = "The source-free request invokes native initial template main, evalu
 set_file = "tests/expr/for/_for-test-set.xml"
 case_name = "for-003"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The native for03 source, stylesheet, inline assert-xml, and XSLT20+ dependency are admitted; sum over a for expression and the required focus semantics exceed the current compiler."
+execution = "passed"
+rationale = "The native for03 source preserves the outer order focus across the for binding, so unqualified attribute multiplication produces an empty sequence and sum() returns the asserted zero."
 
 [[case]]
 set_file = "tests/expr/for/_for-test-set.xml"

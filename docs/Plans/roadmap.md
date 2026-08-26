@@ -11,13 +11,14 @@ XSLT30 `template` and `path` test-set denominators, and executes the complete
 four-case QT3 `Axes002` group through a stylesheet-independent XPath seam. The
 complete four-case XSLT30 `expr/for` denominator was admitted with no hidden
 cases; native `for-001` and source-free initial-template case `for-002` now
-pass, leaving two engine-unsupported cases. The current order of work is:
+pass, and focus-sensitive `for-003` now returns the native empty-sequence sum.
+Only `for-004` remains engine-unsupported. The current order of work is:
 
-1. implement native `for-003` while preserving its crucial focus rule: binding
-   `$i` must not silently make it the context item for unqualified `@price` and
-   `@qty` paths in the return expression;
-2. add only the empty-sequence multiplication and `sum()` behavior required for
-   that native case to produce zero;
+1. implement native `for-004` with bound-variable attribute paths rather than
+   changing the outer focus, retaining exact decimal values through
+   multiplication and `sum()`;
+2. add only the `format-number(..., '0.00')` behavior required to produce the
+   native two-decimal result without adopting host floating-point artifacts;
 3. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
    memory, and peak construction memory under those representative workloads;
 4. exercise the same lifecycle through the bounded ASP.NET workbench before
@@ -98,6 +99,9 @@ implemented behavior belongs to a named standards slice.
 - [x] Execute source-free native `for-002` through an invocation-local
   initial-template entry, ordered integer bindings/addition, an independently
   bounded XPath-operation domain, and `xsl:value-of` separator semantics.
+- [x] Execute native `for-003` with the outer focus preserved across its
+  binding, empty-sequence multiplication, and the integer zero result of
+  `sum(())`, while refusing non-empty numeric multiplication.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,

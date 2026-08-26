@@ -50,9 +50,12 @@ existing independent limits.
 
 ## Conservation and claim boundary
 
-The complete `expr/for` denominator is now two passed and two
-engine-unsupported, with no remaining harness-unsupported case. This evidence
-does not establish general initial-template parameters, dynamic context,
-arbitrary `for` clauses, integer types, overflow behavior, operators, atomic
-sequences, or general `xsl:value-of` sequence conversion. The admitted parser
-accepts only two literal integer bindings and their ordered addition return.
+At this checkpoint, the complete `expr/for` denominator was two passed and two
+engine-unsupported, with no remaining harness-unsupported case. Native
+`for-003` subsequently advanced in
+[XSLT30 `for-003` Focus-Preserving Empty-Sum Execution](xslt30-for-003-focus-preserving-empty-sum-execution-2026-08-26.md).
+This evidence does not establish general initial-template parameters, dynamic
+context, arbitrary `for` clauses, integer types, overflow behavior, operators,
+atomic sequences, or general `xsl:value-of` sequence conversion. The admitted
+parser accepts only two literal integer bindings and their ordered addition
+return.
