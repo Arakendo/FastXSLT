@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | Date | 2026-08-25 |
-| Revision under test | Working tree after `11f9ae5` |
+| Revision under test | Working tree after `ad0e688` |
 | Scope | Private AR-0010 cooperative cancellation and deterministic work accounting experiment |
 | Informs | AR-0010, AR-0004, and M1 vertical-slice planning |
 | Public guarantee | None |
@@ -47,7 +47,8 @@ keys, or future optimized operations.
 
 ## Results
 
-Forty tests pass. Focused cases prove:
+Forty-one ordinary tests pass and one manual release-mode measurement test is
+ignored by default. Focused cases prove:
 
 - a boundary-sized charge succeeds and the next charge reports its domain,
   configured limit, prior consumption, and attempted debit;
@@ -62,6 +63,63 @@ Forty tests pass. Focused cases prove:
   and
 - the existing serialized-output limit remains a separate failure without a
   work-domain label.
+
+The golden source path has this exact current charge profile:
+
+| Domain | Consumed units |
+| --- | ---: |
+| XML event | 10 |
+| XDM node | 6 |
+| XSLT instruction | 4 |
+| XPath node visit | 4 |
+| XDM string-value node | 2 |
+| Result node | 2 |
+| Result text byte | 16 |
+| Serialized byte | 35 |
+
+This fixture-specific conservation assertion catches an accidentally removed,
+duplicated, or reassigned charge. It is not a budget recommendation.
+
+## Observation-gap inventory
+
+| Domain | Maximum gap in the current semantic unit | Work hidden inside one gap |
+| --- | --- | --- |
+| XML event | One returned non-EOF event | One `quick-xml` read/decode plus FastXSLT handling between returned events; event byte size is bounded only by admitted input policy |
+| XDM node | One reserved node | Cloning the owned event fields and linking that node; parser/event construction happened earlier |
+| XDM string-value node | One visited node | Node dispatch and at most one borrowed fragment callback; fragment append has its own byte charge |
+| XPath node visit | One candidate child | Kind/name checks for that candidate |
+| XSLT instruction | One entered instruction | Instruction-specific work, which uses narrower XPath, XDM, result, and serializer checks where implemented |
+| Result node | One reserved semantic node | Element-name clone or text-node creation; descendant construction has its own checks |
+| Result text byte | One borrowed fragment's UTF-8 length | One `String` append; cancellation is not observed per byte inside that append |
+| Serialized byte | One serializer append chunk's UTF-8 length | Capacity growth and copy for that chunk; text escaping currently emits per character or escape sequence |
+
+These are maximum gaps in named semantic units, not time. A single dependency
+call, allocation, or large fragment can take variable wall time, so no deadline
+or maximum cancellation latency follows.
+
+## Local accounting-cost probe
+
+The final ignored probe implementation was run three times with:
+
+```text
+cargo test --release --workspace --all-features measures_unexhausted_charge_cost -- --ignored --nocapture
+```
+
+Environment: Rust/Cargo 1.95.0, `x86_64-pc-windows-msvc`, LLVM 22.1.2,
+`AMD64 Family 25 Model 97 Stepping 2`, 16 reported logical processors. Each run
+used seven samples of 10,000,000 successful `XPathNodeVisit` charges.
+
+| Run | Black-box loop median | Successful charge median | Difference |
+| --- | ---: | ---: | ---: |
+| 1 | 0.205 ns/iteration | 1.249 ns/charge | 1.044 ns |
+| 2 | 0.205 ns/iteration | 1.241 ns/charge | 1.036 ns |
+| 3 | 0.207 ns/iteration | 1.215 ns/charge | 1.008 ns |
+
+The probe measures one uncontended atomic cancellation read, domain lookup,
+counter comparison, and decrement in a tight optimized loop. The subtraction is
+descriptive, not a statistically isolated causal cost. It does not measure a
+transform, cache behavior, contention, cancellation signalling, pipeline
+slowdown, tail latency, or an ASP.NET boundary and cannot justify defaults.
 
 ## Phase-specific cancellation injection
 

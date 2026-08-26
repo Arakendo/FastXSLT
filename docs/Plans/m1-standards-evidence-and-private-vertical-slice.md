@@ -305,3 +305,22 @@ ambient I/O or public stability claim.
   provider contract.
 - Next slice: measure charge-point observation gaps and accounting overhead,
   then add diagnostic/message bounds when those facilities become real.
+
+### 2026-08-25: Charge profile, gaps, and local cost
+
+- Work completed: exposed private consumed-unit observations, asserted the exact
+  golden charge profile across all eight domains, inventoried the maximum gap in
+  each current semantic unit, and added an ignored release-mode cost probe.
+- Validation: 41 ordinary tests pass; one ignored measurement test passed in
+  three manual optimized runs. The golden path consumes 10 XML events, 6 XDM nodes, 4
+  instructions, 4 XPath visits, 2 string-value nodes, 2 result nodes, 16 result
+  text bytes, and 35 serialized bytes.
+- Measurement: three seven-sample runs observed 1.249, 1.241, and 1.215 ns median
+  per successful charge versus 0.205, 0.205, and 0.207 ns for their black-box
+  baselines on the recorded Windows/Rust environment.
+- Findings: semantic-unit gaps are attributable, but dependency work and append
+  chunks prevent a wall-clock cancellation guarantee. The microprobe does not
+  establish complete-transform or ASP.NET overhead.
+- Next slice: add a representative end-to-end accounting comparison only after
+  broader consumer transforms exist; meanwhile continue adversarial structural
+  limits that do not depend on the unresolved standards profile.

@@ -10,6 +10,8 @@ use crate::execution_control_experiment::{
     CancellationToken, InvocationControl, WorkDomain, WorkLimits,
 };
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
+use crate::xdm::owned_tree_experiment::Document;
+use crate::xml::quick_xml_experiment::{ParseLimits, parse_document_controlled};
 
 const SOURCE_ID: &str = "urn:fastxslt:golden:hello:input";
 const STYLESHEET_ID: &str = "urn:fastxslt:golden:hello:stylesheet";
@@ -135,4 +137,61 @@ fn result_nodes_and_utf8_text_bytes_are_bounded_before_serialization() {
     assert_eq!(failure.category, FailureCategory::Limit);
     assert_eq!(failure.request_id.as_deref(), Some("result-growth"));
     assert_eq!(failure.work_domain, Some(WorkDomain::ResultTextByte));
+}
+
+#[test]
+fn golden_path_has_an_exact_attributable_charge_profile() {
+    let snapshot = snapshot();
+    let program = compile_resource(&snapshot, STYLESHEET_ID).expect("compile golden program");
+    let mut control = InvocationControl::unbounded();
+    let parsed = parse_document_controlled(
+        SOURCE_ID,
+        snapshot.get(SOURCE_ID).expect("golden source"),
+        ParseLimits {
+            max_events: 1_024,
+            max_depth: 64,
+        },
+        &mut control,
+    )
+    .expect("parse controlled golden source");
+    let source = Document::from_parsed_controlled(parsed, &mut control)
+        .expect("construct controlled golden XDM");
+    let semantic = super::execute_program(&program, &source, "charge-profile", &mut control)
+        .expect("execute controlled golden program");
+    let serialized = super::serialize_xml(
+        &semantic,
+        &program.output,
+        "charge-profile",
+        4_096,
+        &mut control,
+    )
+    .expect("serialize controlled golden result");
+    let profile: Vec<_> = [
+        WorkDomain::XmlEvent,
+        WorkDomain::XdmNode,
+        WorkDomain::XsltInstruction,
+        WorkDomain::XPathNodeVisit,
+        WorkDomain::XdmStringValueNode,
+        WorkDomain::ResultNode,
+        WorkDomain::ResultTextByte,
+        WorkDomain::SerializedByte,
+    ]
+    .into_iter()
+    .map(|domain| (domain.name(), control.consumed(domain)))
+    .collect();
+
+    assert_eq!(serialized, "<message>Hello, FastXSLT!</message>");
+    assert_eq!(
+        profile,
+        [
+            ("xml-event", 10),
+            ("xdm-node", 6),
+            ("xslt-instruction", 4),
+            ("xpath-node-visit", 4),
+            ("xdm-string-value-node", 2),
+            ("result-node", 2),
+            ("result-text-byte", 16),
+            ("serialized-byte", 35),
+        ]
+    );
 }

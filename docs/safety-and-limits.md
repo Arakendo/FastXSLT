@@ -57,6 +57,12 @@ Those counters have no calibrated defaults or public contract. Cancellation
 cannot interrupt work already executing inside one dependency call, and no
 maximum observation latency has been established.
 
+The current semantic-unit gaps and golden charge totals are asserted. A narrow
+optimized local probe observed roughly one nanosecond per successful charge on
+one machine, but complete-transform, contention, tail-latency, and host-boundary
+overhead remain unmeasured. Neither the unit inventory nor that probe creates a
+wall-clock cancellation guarantee.
+
 Semantic result nodes and retained UTF-8 text bytes are charged independently
 from serialized bytes. Dynamic string-value fragments are appended directly
 from the owned XDM through that meter rather than collected into an aggregate

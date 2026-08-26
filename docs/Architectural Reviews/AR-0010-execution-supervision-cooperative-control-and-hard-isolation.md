@@ -146,6 +146,12 @@ only mode.
 - Dynamic XDM string value reaches result construction as ordered borrowed
   fragments. The runtime meters and retains each fragment directly rather than
   allocating an aggregate temporary string before the result-text limit.
+- The golden path now asserts an exact eight-domain charge profile. Structural
+  observation gaps are one named semantic unit, but work inside a dependency
+  call, allocation, or fragment append remains variable in wall time.
+- A local optimized microprobe observed 1.215–1.249 ns per successful charge
+  versus 0.205–0.207 ns for its black-box loop baseline on the recorded machine.
+  It is not an end-to-end overhead or host-performance result.
 
 ## Disposition
 
@@ -167,13 +173,20 @@ or mutate semantic state.
   remains deliberately absent.
 - [x] Inventory the implemented XML, XDM, XPath, instruction, and serialization
   charge/check points.
-- [ ] Establish maximum observation gaps, including work inside dependency
-  calls.
+- [x] Establish maximum observation gaps in current named semantic units and
+  identify work hidden inside dependency calls and append chunks.
+- [ ] Measure wall-clock cancellation observation under adversarial dependency
+  calls and representative end-to-end workloads; do not infer it from units.
 - [x] Extend accounting to semantic result-node creation and retained UTF-8 text
   bytes independently of serialization.
 - [x] Avoid aggregate temporary dynamic string-value allocation by writing
   XDM-owned fragments through the result meter in semantic order.
 - [ ] Extend accounting to messages and diagnostics.
+- [x] Retain a reproducible release-mode microprobe for successful local charge
+  cost, with environment and interpretation limits.
+- [ ] Measure accounting enabled/disabled through representative complete
+  transforms and the ASP.NET host boundary before selecting check frequency or
+  defaults.
 - [x] Force exhaustion in every currently implemented work domain and preserve
   domain plus request identity in the private structured failure.
 - [ ] Add adversarial cases for excessive input bytes, names/attributes, nodes,
@@ -225,3 +238,6 @@ is measured, or a stronger sandbox such as WASM becomes a viable host boundary.
 - 2026-08-25 -- Replaced aggregate runtime string-value materialization with an
   XDM-owned controlled fragment sink feeding result construction. This is a
   tree-evaluation memory improvement, not streaming conformance.
+- 2026-08-25 -- Asserted the golden eight-domain charge profile, inventoried
+  semantic-unit observation gaps, and retained a three-run local charge-cost
+  microprobe. Wall-clock and end-to-end overhead remain open.

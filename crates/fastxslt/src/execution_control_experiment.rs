@@ -168,6 +168,12 @@ impl InvocationControl {
         self
     }
 
+    pub(crate) fn consumed(&self, domain: WorkDomain) -> usize {
+        self.limits
+            .limit(domain)
+            .saturating_sub(self.remaining.limit(domain))
+    }
+
     pub(crate) fn charge(
         &mut self,
         domain: WorkDomain,
@@ -204,6 +210,8 @@ impl InvocationControl {
 
 #[cfg(test)]
 mod tests {
+    use std::{hint::black_box, time::Instant};
+
     use super::{CancellationToken, ControlFailure, InvocationControl, WorkDomain, WorkLimits};
 
     #[test]
@@ -232,6 +240,46 @@ mod tests {
             Err(ControlFailure::Cancelled {
                 domain: WorkDomain::XmlEvent,
             })
+        );
+    }
+
+    #[test]
+    #[ignore = "manual release-mode accounting-cost probe"]
+    fn measures_unexhausted_charge_cost() {
+        const ITERATIONS: usize = 10_000_000;
+        const ITERATIONS_F64: f64 = 10_000_000.0;
+        const SAMPLES: usize = 7;
+        let mut baseline_ns = Vec::with_capacity(SAMPLES);
+        let mut charged_ns = Vec::with_capacity(SAMPLES);
+
+        for _ in 0..SAMPLES {
+            let baseline_start = Instant::now();
+            for value in 0..ITERATIONS {
+                black_box(value);
+            }
+            baseline_ns
+                .push(baseline_start.elapsed().as_secs_f64() * 1_000_000_000.0 / ITERATIONS_F64);
+
+            let mut control = InvocationControl::unbounded();
+            let charged_start = Instant::now();
+            for _ in 0..ITERATIONS {
+                black_box(control.charge(WorkDomain::XPathNodeVisit, 1))
+                    .expect("unbounded charge should succeed");
+            }
+            charged_ns
+                .push(charged_start.elapsed().as_secs_f64() * 1_000_000_000.0 / ITERATIONS_F64);
+            assert_eq!(
+                black_box(control.consumed(WorkDomain::XPathNodeVisit)),
+                ITERATIONS
+            );
+        }
+
+        baseline_ns.sort_by(f64::total_cmp);
+        charged_ns.sort_by(f64::total_cmp);
+        println!(
+            "iterations={ITERATIONS} samples={SAMPLES} baseline_median_ns={:.3} charge_median_ns={:.3}",
+            baseline_ns[SAMPLES / 2],
+            charged_ns[SAMPLES / 2]
         );
     }
 }

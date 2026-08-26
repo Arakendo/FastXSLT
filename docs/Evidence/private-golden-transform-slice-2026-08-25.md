@@ -73,7 +73,7 @@ test compares the serializer output plus that harness terminator to the exact
 fixture bytes; the semantic result and serializer string are asserted
 separately.
 
-Forty focused unit tests pass across resource, XML, XDM, XPath, compile,
+Forty-one focused unit tests pass across resource, XML, XDM, XPath, compile,
 runtime, batch, and serialization experiments. Negative cases establish private
 machine identities and categories for:
 
