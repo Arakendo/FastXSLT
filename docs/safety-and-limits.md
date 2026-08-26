@@ -62,6 +62,10 @@ as immutable XDM documents for functional reuse. It is not a hidden or public
 cache, is not used by the transform-set path, and has no measured retention,
 concurrency, eviction, or performance policy.
 
+The current prepared document and compiled program pass a small concurrent-read
+experiment with invocation-local controls. This does not select a worker model,
+prove behavior under contention, or create a public `Send + Sync` guarantee.
+
 ## Concurrency and reuse
 
 Compile-once and transform-many is an intended product boundary. ADR-0005 fixes

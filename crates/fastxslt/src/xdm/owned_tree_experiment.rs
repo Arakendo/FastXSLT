@@ -267,6 +267,28 @@ impl Document {
         self.nodes.len()
     }
 
+    pub(crate) fn owned_capacity_bytes(&self) -> usize {
+        let node_storage = self.nodes.capacity() * std::mem::size_of::<Node>();
+        let nested_storage: usize = self
+            .nodes
+            .iter()
+            .map(|node| {
+                let relationships = (node.children.capacity() + node.attributes.capacity())
+                    * std::mem::size_of::<NodeId>();
+                let name_bytes = node.name.as_ref().map_or(0, |name| {
+                    name.local.capacity()
+                        + name
+                            .namespace
+                            .as_ref()
+                            .map_or(0, std::string::String::capacity)
+                });
+                let value_bytes = node.value.as_ref().map_or(0, std::string::String::capacity);
+                relationships + name_bytes + value_bytes + node.location.resource.capacity()
+            })
+            .sum();
+        std::mem::size_of::<Self>() + node_storage + nested_storage
+    }
+
     pub(crate) fn kind(&self, id: NodeId) -> NodeKind {
         self.nodes[id.0].kind
     }

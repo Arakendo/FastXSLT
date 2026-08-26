@@ -142,8 +142,13 @@ incompatible with the current explicit-ownership direction.
   two separately prepared equal-byte resources without merging allocation or
   provenance.
 - Preparation has explicit cancellation and XML/XDM work budgets. The 87-byte
-  golden source produces six retained nodes, but retained bytes, peak
-  construction memory, timing, and concurrency remain unmeasured.
+  golden source produces six retained nodes and reports 1,932 bytes of owned
+  representation capacity on the recorded build. That diagnostic excludes
+  allocator/snapshot/temporary overhead; peak memory and timing remain
+  unmeasured.
+- Eight threads can concurrently read the same prepared document and compiled
+  program with isolated invocation controls and equal results. This establishes
+  immutable sharing for the current slice, not an executor or contention policy.
 
 ## Disposition
 
@@ -159,8 +164,10 @@ thread-safety, eviction, or performance guarantee.
 
 ## Required follow-up
 
-- [ ] Measure admitted bytes, owned-XDM retained bytes, node count, parse/XDM
-  construction time, and peak construction memory separately.
+- [x] Measure admitted bytes, node count, and owned-XDM payload capacity for the
+  golden source under the current representation.
+- [ ] Measure parse/XDM construction time, allocator-inclusive retained memory,
+  and peak construction memory separately.
 - [x] Run one stylesheet over multiple prepared sources and multiple stylesheets
   over one prepared source, comparing semantics with parse per invocation.
 - [ ] Benchmark those workload shapes,
@@ -171,8 +178,8 @@ thread-safety, eviction, or performance guarantee.
   for explicitly retained old work.
 - [ ] Test concurrent first access, duplicate construction versus single-flight,
   cancellation, construction failure, retry, and waiter behavior.
-- [ ] Establish whether the owned XDM representation can be shared safely across
-  workers without interior invocation mutation.
+- [x] Establish that the current owned XDM representation can be shared
+  immutably across concurrent readers without interior invocation mutation.
 - [ ] Separate budgets and observations for raw bytes, parsed XDM, derived
   indexes, in-flight construction, and runtime transient memory.
 - [ ] Classify proposed indexes as source-only, stylesheet-derived, or

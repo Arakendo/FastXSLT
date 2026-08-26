@@ -39,7 +39,7 @@ snapshot containing equal bytes is a different generation.
 
 ## Results
 
-Thirty-five tests pass. The focused experiment establishes:
+Thirty-six tests pass. The focused experiment establishes:
 
 - one prepared document allocation is reused by two independently compiled
   stylesheet programs;
@@ -51,13 +51,18 @@ Thirty-five tests pass. The focused experiment establishes:
   document allocations and retain different provenance;
 - the 87-byte golden source currently constructs six XDM nodes for each logical
   document, including the document node and retained whitespace text;
+- the current representation reports 1,932 bytes of owned payload capacity for
+  that document on the recorded Rust build, versus 87 admitted source bytes;
 - a prepared set recognizes its original snapshot generation and rejects a
   separately sealed equal-content generation as the same owner;
 - dropping another reference to the original snapshot does not invalidate the
   prepared document because the sealed set retains its generation;
 - missing and duplicate preparation requests fail explicitly; and
 - preparation observes the same cooperative cancellation token and XML/XDM work
-  limits as invocation parsing and construction.
+  limits as invocation parsing and construction; and
+- eight real Rust threads concurrently read the same prepared-document
+  allocation and compiled-program allocation while retaining separate invocation
+  controls and producing equal results.
 
 ## Ownership observations
 
@@ -79,8 +84,14 @@ whole-snapshot preparation, lazy memoization, eviction, reconstruction,
 single-flight construction, concurrent first access, failure memoization,
 retry, stylesheet-derived index, cross-snapshot reuse, or global cache.
 
-Node count is not retained-memory measurement. The experiment has not measured
-the allocation capacity of strings/vectors, parser construction peak, elapsed
-parse time, contention, `Send + Sync` use across actual workers, or end-to-end
-ASP.NET benefit. Parse per invocation remains the semantic reference until those
-costs and concurrency properties are established.
+The 1,932-byte observation counts the `Document` value, reserved node storage,
+relationship-vector capacity, and owned string capacity. It excludes allocator
+metadata, `Arc` control blocks, the retained raw-byte snapshot, temporary parser
+allocations, thread stacks, and peak construction memory. It is a
+representation-specific diagnostic, not a stable size, budget formula, or
+public guarantee.
+
+The experiment has not measured elapsed parse time, peak memory, contention,
+concurrent preparation, or end-to-end ASP.NET benefit. Parse per invocation
+remains the semantic reference until those costs and broader concurrency
+properties are established.

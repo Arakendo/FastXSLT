@@ -213,6 +213,8 @@ mod tests {
         assert!(!Arc::ptr_eq(&first, &second));
         assert_eq!(first.node_count(), 6);
         assert_eq!(second.node_count(), 6);
+        assert!(first.owned_capacity_bytes() > 87);
+        assert!(second.owned_capacity_bytes() > 87);
         assert_eq!(first.location(first.document_node()).resource, SOURCE_A);
         assert_eq!(second.location(second.document_node()).resource, SOURCE_B);
 
@@ -228,6 +230,39 @@ mod tests {
             );
         }
         assert_eq!(serialized[0], serialized[1]);
+    }
+
+    #[test]
+    fn prepared_document_and_compiled_program_are_shared_across_concurrent_reads() {
+        let snapshot = snapshot();
+        let prepared = prepare(&snapshot, &[SOURCE_A]);
+        let expected_document = prepared.get(SOURCE_A).expect("prepared source");
+        let program =
+            Arc::new(compile_resource(&snapshot, STYLE_A).expect("compile shared stylesheet"));
+
+        let workers: Vec<_> = (0..8)
+            .map(|worker| {
+                let prepared = prepared.clone();
+                let program = Arc::clone(&program);
+                std::thread::spawn(move || {
+                    let document = prepared.get(SOURCE_A).expect("shared prepared source");
+                    let mut control = InvocationControl::unbounded();
+                    let request_id = format!("concurrent-{worker}");
+                    let semantic = execute_program(&program, &document, &request_id, &mut control)
+                        .expect("execute concurrent read");
+                    let serialized =
+                        serialize_xml(&semantic, &program.output, &request_id, 4_096, &mut control)
+                            .expect("serialize concurrent read");
+                    (document, serialized)
+                })
+            })
+            .collect();
+
+        for worker in workers {
+            let (document, serialized) = worker.join().expect("worker should not panic");
+            assert!(Arc::ptr_eq(&document, &expected_document));
+            assert_eq!(serialized, "<message>Hello, FastXSLT!</message>");
+        }
     }
 
     #[test]
