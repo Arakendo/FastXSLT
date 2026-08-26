@@ -56,9 +56,10 @@ are charged through the XDM string-value domain. `xsl:sequence`, result-node and
 text construction, and serialization retain their existing independent work
 charges.
 
-The conserved four-case denominator is now one passed, two
+At this checkpoint, the conserved four-case denominator was one passed, two
 engine-unsupported, one harness-unsupported, zero failed, and zero metadata
-failures.
+failures. Native `for-002` subsequently advanced in
+[XSLT30 `for-002` Source-Free Initial-Template Execution](xslt30-for-002-source-free-initial-template-execution-2026-08-26.md).
 
 ## Claim boundary
 

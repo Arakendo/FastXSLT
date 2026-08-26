@@ -3,8 +3,8 @@
 use std::{collections::HashSet, fs, path::PathBuf};
 
 use super::{
-    ExecutionPolicy, FailureCategory, TransformRequest, TransformSetBuilder, compile_resource,
-    execute_transform_set,
+    ExecutionPolicy, FailureCategory, InvocationEntry, TransformRequest, TransformSetBuilder,
+    compile_resource, execute_transform_set,
 };
 use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
@@ -32,7 +32,7 @@ const CASES: [CasePressure; 4] = [
         name: "for-002",
         environment: None,
         initial_template: Some("main"),
-        execution: "harness-unsupported",
+        execution: "passed",
     },
     CasePressure {
         name: "for-003",
@@ -122,7 +122,9 @@ fn executes_native_xslt30_for_001_in_order() {
     set.add(TransformRequest {
         identity: "for-001".to_owned(),
         result_identity: "result:for-001".to_owned(),
-        source_resource: source_id.to_owned(),
+        entry: InvocationEntry::PrincipalSource {
+            resource: source_id.to_owned(),
+        },
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     })
@@ -130,6 +132,72 @@ fn executes_native_xslt30_for_001_in_order() {
 
     let results = execute_transform_set(set.seal()).expect("execute native for-001");
     assert_eq!(results.by_request["for-001"].serialized, expected.trim());
+}
+
+#[test]
+fn executes_source_free_native_xslt30_for_002_initial_template() {
+    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
+    assert!(overlay_case(overlay, "for-002").contains("execution = \"passed\""));
+    let (test_set, set_path) = load_test_set();
+    let directory = set_path
+        .parent()
+        .expect("for test set should have a directory");
+    let test_case = find_element(
+        &test_set,
+        test_set.document_node(),
+        "test-case",
+        Some(("name", "for-002")),
+    )
+    .expect("for-002 should exist in the pinned test set");
+    assert!(find_element(&test_set, test_case, "environment", None).is_none());
+    let initial_template = find_element(&test_set, test_case, "initial-template", None)
+        .and_then(|node| attribute(&test_set, node, "name"))
+        .expect("for-002 should declare an initial template");
+    let stylesheet_file = find_element(&test_set, test_case, "stylesheet", None)
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("for-002 should name a stylesheet");
+    let expected = find_element(&test_set, test_case, "assert-xml", None)
+        .map(|node| test_set.string_value(node))
+        .expect("for-002 should provide inline expected XML");
+    let stylesheet = fs::read(directory.join(stylesheet_file))
+        .expect("read for-002 stylesheet and close import handle");
+    let stylesheet_id = "urn:w3c:xslt30:for-002:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, 8_192, 8_192));
+    resources
+        .admit(stylesheet_id, stylesheet)
+        .expect("admit for-002 stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, stylesheet_id).expect("compile native for-002");
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 4_096,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    set.add(TransformRequest {
+        identity: "for-002".to_owned(),
+        result_identity: "result:for-002".to_owned(),
+        entry: InvocationEntry::InitialTemplate {
+            name: initial_template.to_owned(),
+        },
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    })
+    .expect("admit source-free for-002 request");
+
+    let results = execute_transform_set(set.seal()).expect("execute native for-002");
+    assert_eq!(expected.trim(), "<out>11, 12, 21, 22</out>");
+    assert_eq!(
+        results.by_request["for-002"].serialized,
+        format!(
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>{}",
+            expected.trim()
+        )
+    );
 }
 
 fn find_element(

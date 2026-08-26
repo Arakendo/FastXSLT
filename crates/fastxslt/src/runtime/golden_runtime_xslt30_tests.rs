@@ -3,7 +3,8 @@
 use std::{collections::HashSet, fs, path::PathBuf};
 
 use super::{
-    ExecutionPolicy, TransformRequest, TransformSetBuilder, compile_resource, execute_transform_set,
+    ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, compile_resource,
+    execute_transform_set,
 };
 use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
@@ -227,7 +228,9 @@ fn execute_path_case(case_name: &str) -> (String, String) {
     set.add(TransformRequest {
         identity: case_name.to_owned(),
         result_identity: format!("result:{case_name}"),
-        source_resource: source_id,
+        entry: InvocationEntry::PrincipalSource {
+            resource: source_id,
+        },
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     })
@@ -359,7 +362,9 @@ fn executes_pinned_xslt30_template_001_through_005() {
         set.add(TransformRequest {
             identity: case_name.to_owned(),
             result_identity: format!("result:{case_name}"),
-            source_resource: source_id,
+            entry: InvocationEntry::PrincipalSource {
+                resource: source_id,
+            },
             cancellation: CancellationToken::new(),
             cancellation_fault: None,
         })
@@ -435,7 +440,9 @@ fn executes_pinned_xslt30_template_006_from_its_upstream_test_set() {
     set.add(TransformRequest {
         identity: CASE_NAME.to_owned(),
         result_identity: "result:template-006".to_owned(),
-        source_resource: source_id.to_owned(),
+        entry: InvocationEntry::PrincipalSource {
+            resource: source_id.to_owned(),
+        },
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     })
@@ -531,7 +538,9 @@ fn executes_pinned_xslt30_path_001_child_axis_predicate() {
     set.add(TransformRequest {
         identity: "path-001".to_owned(),
         result_identity: "result:path-001".to_owned(),
-        source_resource: source_id.to_owned(),
+        entry: InvocationEntry::PrincipalSource {
+            resource: source_id.to_owned(),
+        },
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     })

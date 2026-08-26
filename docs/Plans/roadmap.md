@@ -10,14 +10,14 @@ FastXSLT has accepted its staged-modern semantic direction, passes the complete
 XSLT30 `template` and `path` test-set denominators, and executes the complete
 four-case QT3 `Axes002` group through a stylesheet-independent XPath seam. The
 complete four-case XSLT30 `expr/for` denominator was admitted with no hidden
-cases; native `for-001` now passes, leaving two engine-unsupported cases and one
-harness-unsupported case. The current order of work is:
+cases; native `for-001` and source-free initial-template case `for-002` now
+pass, leaving two engine-unsupported cases. The current order of work is:
 
-1. add an invocation-local initial-template entry seam for source-free native
-   `for-002` without fabricating a principal source or moving entry state into
-   the compiled stylesheet;
-2. implement only the multiple integer bindings, arithmetic return sequence,
-   and `xsl:value-of` separator behavior required by `for-002`;
+1. implement native `for-003` while preserving its crucial focus rule: binding
+   `$i` must not silently make it the context item for unqualified `@price` and
+   `@qty` paths in the return expression;
+2. add only the empty-sequence multiplication and `sum()` behavior required for
+   that native case to produce zero;
 3. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
    memory, and peak construction memory under those representative workloads;
 4. exercise the same lifecycle through the bounded ASP.NET workbench before
@@ -95,6 +95,9 @@ implemented behavior belongs to a named standards slice.
 - [x] Execute native `for-001` through ordered distinct-value binding,
   comparison/path selection, source-node identity preservation, and
   `xsl:sequence` result construction against its complete upstream assertion.
+- [x] Execute source-free native `for-002` through an invocation-local
+  initial-template entry, ordered integer bindings/addition, an independently
+  bounded XPath-operation domain, and `xsl:value-of` separator semantics.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,

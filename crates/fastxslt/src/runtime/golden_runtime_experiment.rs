@@ -12,6 +12,7 @@ use crate::xml::quick_xml_experiment::{
     ExpandedName, ParseLimits, parse_document, parse_document_controlled,
 };
 use crate::xpath::for_distinct_values_experiment::evaluate as evaluate_for_distinct_values;
+use crate::xpath::integer_for_experiment::evaluate as evaluate_integer_for;
 use crate::xpath::path_experiment::evaluate_child_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, Instruction, MatchPattern, NodeTest, StylesheetProgram, TemplateArgument,
@@ -43,10 +44,16 @@ pub(super) struct SemanticResult {
 }
 
 #[derive(Debug)]
+enum InvocationEntry {
+    PrincipalSource { resource: String },
+    InitialTemplate { name: String },
+}
+
+#[derive(Debug)]
 struct TransformRequest {
     identity: String,
     result_identity: String,
-    source_resource: String,
+    entry: InvocationEntry,
     cancellation: CancellationToken,
     cancellation_fault: Option<(WorkDomain, usize)>,
 }
@@ -153,29 +160,46 @@ impl TransformSetBuilder {
                 "duplicate result identity",
             ));
         }
-        if self
-            .policy
-            .denied_sources
-            .contains(&request.source_resource)
-        {
-            self.request_ids.remove(&request.identity);
-            self.result_ids.remove(&request.result_identity);
-            return Err(failure(
-                "FXRS0003",
-                FailureCategory::Denied,
-                Some(&request.identity),
-                format!("source authority is denied: {}", request.source_resource),
-            ));
-        }
-        if self.snapshot.get(&request.source_resource).is_none() {
-            self.request_ids.remove(&request.identity);
-            self.result_ids.remove(&request.result_identity);
-            return Err(failure(
-                "FXRS0001",
-                FailureCategory::MissingResource,
-                Some(&request.identity),
-                format!("source is not admitted: {}", request.source_resource),
-            ));
+        match &request.entry {
+            InvocationEntry::PrincipalSource { resource } => {
+                if self.policy.denied_sources.contains(resource) {
+                    self.request_ids.remove(&request.identity);
+                    self.result_ids.remove(&request.result_identity);
+                    return Err(failure(
+                        "FXRS0003",
+                        FailureCategory::Denied,
+                        Some(&request.identity),
+                        format!("source authority is denied: {resource}"),
+                    ));
+                }
+                if self.snapshot.get(resource).is_none() {
+                    self.request_ids.remove(&request.identity);
+                    self.result_ids.remove(&request.result_identity);
+                    return Err(failure(
+                        "FXRS0001",
+                        FailureCategory::MissingResource,
+                        Some(&request.identity),
+                        format!("source is not admitted: {resource}"),
+                    ));
+                }
+            }
+            InvocationEntry::InitialTemplate { name } => {
+                if !self
+                    .stylesheet
+                    .named_templates
+                    .iter()
+                    .any(|template| template.name == *name)
+                {
+                    self.request_ids.remove(&request.identity);
+                    self.result_ids.remove(&request.result_identity);
+                    return Err(failure(
+                        "FXRT0004",
+                        FailureCategory::Invalid,
+                        Some(&request.identity),
+                        format!("unknown initial template: {name}"),
+                    ));
+                }
+            }
         }
         self.requests.push(request);
         Ok(())
@@ -252,13 +276,14 @@ fn execute_transform_set(set: TransformSet) -> Result<ResultSet, ExecutionFailur
         if let Some((domain, accepted_charges_before_signal)) = request.cancellation_fault {
             control = control.cancelling_on_charge(domain, accepted_charges_before_signal);
         }
-        let bytes = set
-            .snapshot
-            .get(&request.source_resource)
-            .expect("sealed transform sets contain admitted sources");
-        let parsed =
-            parse_document_controlled(&request.source_resource, bytes, XML_LIMITS, &mut control)
-                .map_err(|error| {
+        let semantic = match &request.entry {
+            InvocationEntry::PrincipalSource { resource } => {
+                let bytes = set
+                    .snapshot
+                    .get(resource)
+                    .expect("sealed transform sets contain admitted sources");
+                let parsed = parse_document_controlled(resource, bytes, XML_LIMITS, &mut control)
+                    .map_err(|error| {
                     error.control_failure().map_or_else(
                         || {
                             failure(
@@ -271,19 +296,26 @@ fn execute_transform_set(set: TransformSet) -> Result<ResultSet, ExecutionFailur
                         |failure| control_failure(*failure, &request.identity),
                     )
                 })?;
-        let source =
-            Document::from_parsed_controlled(parsed, &mut control).map_err(
-                |error| match error {
-                    BuildFailure::Control(failure) => control_failure(failure, &request.identity),
-                    _ => failure(
-                        "FXXD0002",
-                        FailureCategory::Invalid,
-                        Some(&request.identity),
-                        format!("source XDM construction failed: {error:?}"),
-                    ),
-                },
-            )?;
-        let semantic = execute_program(&set.stylesheet, &source, &request.identity, &mut control)?;
+                let source =
+                    Document::from_parsed_controlled(parsed, &mut control).map_err(|error| {
+                        match error {
+                            BuildFailure::Control(failure) => {
+                                control_failure(failure, &request.identity)
+                            }
+                            _ => failure(
+                                "FXXD0002",
+                                FailureCategory::Invalid,
+                                Some(&request.identity),
+                                format!("source XDM construction failed: {error:?}"),
+                            ),
+                        }
+                    })?;
+                execute_program(&set.stylesheet, &source, &request.identity, &mut control)?
+            }
+            InvocationEntry::InitialTemplate { name } => {
+                execute_initial_template(&set.stylesheet, name, &request.identity, &mut control)?
+            }
+        };
         let serialized = serialize_xml(
             &semantic,
             &set.stylesheet.output,
@@ -316,14 +348,14 @@ pub(super) fn execute_program(
     let variables = BTreeMap::new();
     let inputs = SequenceInputs {
         program,
-        source,
+        source: Some(source),
         request_id,
     };
     let children = if let Some(root_template) = &program.root_template {
         execute_sequence(
             &inputs,
             &root_template.body,
-            source.document_node(),
+            Some(source.document_node()),
             &variables,
             0,
             control,
@@ -341,16 +373,74 @@ pub(super) fn execute_program(
     Ok(SemanticResult { children })
 }
 
+fn execute_initial_template(
+    program: &StylesheetProgram,
+    name: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<SemanticResult, ExecutionFailure> {
+    let template = program
+        .named_templates
+        .iter()
+        .find(|template| template.name == name)
+        .expect("initial-template entries are validated during request admission");
+    if !template.parameters.is_empty() {
+        return Err(failure(
+            "FXRT1003",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "initial-template parameters are outside the private invocation-entry slice",
+        ));
+    }
+    let inputs = SequenceInputs {
+        program,
+        source: None,
+        request_id,
+    };
+    let children = execute_sequence(
+        &inputs,
+        &template.template.body,
+        None,
+        &BTreeMap::new(),
+        0,
+        control,
+    )?;
+    Ok(SemanticResult { children })
+}
+
 struct SequenceInputs<'a> {
     program: &'a StylesheetProgram,
-    source: &'a Document,
+    source: Option<&'a Document>,
     request_id: &'a str,
+}
+
+fn required_source_context<'a>(
+    inputs: &SequenceInputs<'a>,
+    context: Option<NodeId>,
+) -> Result<(&'a Document, NodeId), ExecutionFailure> {
+    let source = inputs.source.ok_or_else(|| {
+        failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "the instruction requires a principal source and context item",
+        )
+    })?;
+    let context = context.ok_or_else(|| {
+        failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "the instruction requires a principal source and context item",
+        )
+    })?;
+    Ok((source, context))
 }
 
 fn execute_sequence(
     inputs: &SequenceInputs<'_>,
     instructions: &[Instruction],
-    context: crate::xdm::owned_tree_experiment::NodeId,
+    context: Option<crate::xdm::owned_tree_experiment::NodeId>,
     variables: &BTreeMap<String, String>,
     call_depth: usize,
     control: &mut InvocationControl,
@@ -375,22 +465,34 @@ fn execute_sequence(
             Instruction::Text { value, .. } => {
                 append_text(&mut result, value, inputs.request_id, control)?;
             }
-            Instruction::ValueOf { select, .. } => {
-                execute_value_of(inputs, select, context, variables, &mut result, control)?;
+            Instruction::ValueOf {
+                select, separator, ..
+            } => {
+                execute_value_of(
+                    inputs,
+                    select,
+                    separator,
+                    context,
+                    variables,
+                    &mut result,
+                    control,
+                )?;
             }
             Instruction::SequenceNodes { select, .. } => {
-                let selected = evaluate_for_distinct_values(select, inputs.source, control)
+                let (source, _) = required_source_context(inputs, context)?;
+                let selected = evaluate_for_distinct_values(select, source, control)
                     .map_err(|failure| control_failure(failure, inputs.request_id))?;
                 for node in selected {
-                    result.extend(copy_source_node(inputs, node, control)?);
+                    result.extend(copy_source_node(source, inputs.request_id, node, control)?);
                 }
             }
             Instruction::ApplyTemplates { select, mode, .. } => {
+                let (source, context) = required_source_context(inputs, context)?;
                 let selected = select_apply_nodes(inputs, select.as_ref(), context, control)?;
                 for selected_node in selected {
                     result.extend(apply_template(
                         inputs.program,
-                        inputs.source,
+                        source,
                         selected_node,
                         mode.as_deref(),
                         inputs.request_id,
@@ -426,30 +528,30 @@ fn execute_sequence(
 }
 
 fn copy_source_node(
-    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    request_id: &str,
     node: NodeId,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    match inputs.source.kind(node) {
+    match source.kind(node) {
         NodeKind::Element => {
-            if !inputs.source.attributes(node).is_empty() {
+            if !source.attributes(node).is_empty() {
                 return Err(failure(
                     "FXRT1002",
                     FailureCategory::Unsupported,
-                    Some(inputs.request_id),
+                    Some(request_id),
                     "copying selected source attributes is outside the private xsl:sequence slice",
                 ));
             }
             control
                 .charge(WorkDomain::ResultNode, 1)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                .map_err(|failure| control_failure(failure, request_id))?;
             let mut children = Vec::new();
-            for child in inputs.source.children(node).iter().copied() {
-                children.extend(copy_source_node(inputs, child, control)?);
+            for child in source.children(node).iter().copied() {
+                children.extend(copy_source_node(source, request_id, child, control)?);
             }
             Ok(vec![ResultNode::Element {
-                name: inputs
-                    .source
+                name: source
                     .name(node)
                     .expect("source element nodes have names")
                     .clone(),
@@ -460,8 +562,8 @@ fn copy_source_node(
             let mut copied = Vec::new();
             append_text(
                 &mut copied,
-                inputs.source.value(node).unwrap_or_default(),
-                inputs.request_id,
+                source.value(node).unwrap_or_default(),
+                request_id,
                 control,
             )?;
             Ok(copied)
@@ -472,7 +574,7 @@ fn copy_source_node(
         | NodeKind::ProcessingInstruction => Err(failure(
             "FXRT1002",
             FailureCategory::Unsupported,
-            Some(inputs.request_id),
+            Some(request_id),
             "the selected source node kind is outside the private xsl:sequence copy slice",
         )),
     }
@@ -481,14 +583,16 @@ fn copy_source_node(
 fn execute_value_of(
     inputs: &SequenceInputs<'_>,
     select: &ValueExpression,
-    context: NodeId,
+    separator: &str,
+    context: Option<NodeId>,
     variables: &BTreeMap<String, String>,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     match select {
         ValueExpression::ChildPath(path) => {
-            let selected = evaluate_child_path_controlled(inputs.source, context, path, control)
+            let (source, context) = required_source_context(inputs, context)?;
+            let selected = evaluate_child_path_controlled(source, context, path, control)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
             if selected.len() > 1 {
                 return Err(failure(
@@ -499,8 +603,7 @@ fn execute_value_of(
                 ));
             }
             if let Some(node) = selected.first() {
-                inputs
-                    .source
+                source
                     .visit_string_value_controlled(*node, control, &mut |part, control| {
                         append_text(result, part, inputs.request_id, control)
                     })
@@ -523,6 +626,16 @@ fn execute_value_of(
             })?;
             append_text(result, value, inputs.request_id, control)?;
         }
+        ValueExpression::IntegerFor(expression) => {
+            let values = evaluate_integer_for(expression, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            for (index, value) in values.iter().enumerate() {
+                if index > 0 {
+                    append_text(result, separator, inputs.request_id, control)?;
+                }
+                append_text(result, &value.to_string(), inputs.request_id, control)?;
+            }
+        }
     }
     Ok(())
 }
@@ -533,24 +646,25 @@ fn select_apply_nodes(
     context: NodeId,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let source = inputs.source.expect("apply selection requires a source");
     let Some(select) = select else {
-        return Ok(inputs.source.children(context).to_vec());
+        return Ok(source.children(context).to_vec());
     };
     match select {
         ApplySelection::ChildPath(path) => {
-            evaluate_child_path_controlled(inputs.source, context, path, control)
+            evaluate_child_path_controlled(source, context, path, control)
                 .map_err(|failure| control_failure(failure, inputs.request_id))
         }
         ApplySelection::ChildNodes(node_test) => {
             let mut selected = Vec::new();
-            for child in inputs.source.children(context).iter().copied() {
+            for child in source.children(context).iter().copied() {
                 control
                     .charge(WorkDomain::XPathNodeVisit, 1)
                     .map_err(|failure| control_failure(failure, inputs.request_id))?;
                 let matches = match node_test {
-                    NodeTest::Comment => inputs.source.kind(child) == NodeKind::Comment,
+                    NodeTest::Comment => source.kind(child) == NodeKind::Comment,
                     NodeTest::ProcessingInstruction => {
-                        inputs.source.kind(child) == NodeKind::ProcessingInstruction
+                        source.kind(child) == NodeKind::ProcessingInstruction
                     }
                     NodeTest::AnyNode => true,
                 };
@@ -562,11 +676,11 @@ fn select_apply_nodes(
         }
         ApplySelection::Attribute(name) => {
             let mut selected = Vec::new();
-            for attribute in inputs.source.attributes(context).iter().copied() {
+            for attribute in source.attributes(context).iter().copied() {
                 control
                     .charge(WorkDomain::XPathNodeVisit, 1)
                     .map_err(|failure| control_failure(failure, inputs.request_id))?;
-                if inputs.source.name(attribute) == Some(name) {
+                if source.name(attribute) == Some(name) {
                     selected.push(attribute);
                 }
             }
@@ -579,7 +693,7 @@ fn execute_named_call(
     inputs: &SequenceInputs<'_>,
     name: &str,
     arguments: &[TemplateArgument],
-    context: NodeId,
+    context: Option<NodeId>,
     call_depth: usize,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
@@ -650,13 +764,13 @@ fn apply_template(
     if let Some(template) = selected_template {
         let inputs = SequenceInputs {
             program,
-            source,
+            source: Some(source),
             request_id,
         };
         return execute_sequence(
             &inputs,
             &template.template.body,
-            node,
+            Some(node),
             &BTreeMap::new(),
             0,
             control,
@@ -823,8 +937,9 @@ mod tests {
     use crate::resources::{ResourceLimits, ResourceSetBuilder};
 
     use super::{
-        ExecutionPolicy, FailureCategory, ResultNode, SemanticResult, TransformRequest,
-        TransformSetBuilder, compile_resource, execute_transform_set, serialize_xml,
+        ExecutionPolicy, FailureCategory, InvocationEntry, ResultNode, SemanticResult,
+        TransformRequest, TransformSetBuilder, compile_resource, execute_transform_set,
+        serialize_xml,
     };
 
     const SOURCE_ID: &str = "urn:fastxslt:golden:hello:source";
@@ -852,7 +967,9 @@ mod tests {
         TransformRequest {
             identity: request_id.to_owned(),
             result_identity: result_id.to_owned(),
-            source_resource: source_id.to_owned(),
+            entry: InvocationEntry::PrincipalSource {
+                resource: source_id.to_owned(),
+            },
             cancellation: CancellationToken::new(),
             cancellation_fault: None,
         }
@@ -1107,6 +1224,29 @@ mod tests {
             .expect_err("request limit should fail");
         assert_eq!(failure.code, "FXBT0001");
         assert_eq!(failure.category, FailureCategory::Limit);
+    }
+
+    #[test]
+    fn initial_template_entry_rejects_an_unknown_compiled_name_without_a_source() {
+        let snapshot = snapshot();
+        let program = compile_resource(&snapshot, STYLESHEET_ID).expect("compile once");
+        let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+
+        let failure = builder
+            .add(TransformRequest {
+                identity: "unknown-entry".to_owned(),
+                result_identity: "unknown-result".to_owned(),
+                entry: InvocationEntry::InitialTemplate {
+                    name: "missing".to_owned(),
+                },
+                cancellation: CancellationToken::new(),
+                cancellation_fault: None,
+            })
+            .expect_err("unknown initial-template entry should fail admission");
+
+        assert_eq!(failure.code, "FXRT0004");
+        assert_eq!(failure.category, FailureCategory::Invalid);
+        assert_eq!(failure.request_id.as_deref(), Some("unknown-entry"));
     }
 
     #[test]

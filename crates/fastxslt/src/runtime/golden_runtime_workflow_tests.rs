@@ -3,8 +3,8 @@
 use std::collections::HashSet;
 
 use super::{
-    ExecutionPolicy, FailureCategory, TransformRequest, TransformSetBuilder, compile_resource,
-    execute_transform_set,
+    ExecutionPolicy, FailureCategory, InvocationEntry, TransformRequest, TransformSetBuilder,
+    compile_resource, execute_transform_set,
 };
 use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
@@ -18,7 +18,9 @@ fn request(request_id: &str, result_id: &str, source_id: &str) -> TransformReque
     TransformRequest {
         identity: request_id.to_owned(),
         result_identity: result_id.to_owned(),
-        source_resource: source_id.to_owned(),
+        entry: InvocationEntry::PrincipalSource {
+            resource: source_id.to_owned(),
+        },
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     }

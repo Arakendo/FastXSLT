@@ -2,6 +2,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocati
 use crate::xpath::for_distinct_values_experiment::{
     ForExpressionFailure, parse as parse_for_distinct_values,
 };
+use crate::xpath::integer_for_experiment::parse as parse_integer_for;
 use crate::xpath::path_experiment::{PathFailure, parse_child_path};
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, EqualityTest, Instruction, MatchPattern, MatchedTemplate, NamedTemplate,
@@ -406,11 +407,20 @@ fn parse_mode(mode: &str, location: &SourceLocation) -> Result<String, CompileFa
 }
 
 fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
-    ensure_only_attributes(document, element, &["select"], "xsl:value-of")?;
+    ensure_only_attributes(document, element, &["select", "separator"], "xsl:value-of")?;
     ensure_no_meaningful_children(document, element, "xsl:value-of")?;
     let location = document.location(element).clone();
     let expression = required_attribute(document, element, None, "select")?;
-    let select = if let Some(variable) = expression.strip_prefix('$') {
+    let select = if expression.trim_start().starts_with("for $") {
+        ValueExpression::IntegerFor(Box::new(
+            parse_integer_for(expression, location.clone()).map_err(|failure| CompileFailure {
+                code: "FXXP1004",
+                category: CompileCategory::Unsupported,
+                detail: failure.detail,
+                location: failure.location,
+            })?,
+        ))
+    } else if let Some(variable) = expression.strip_prefix('$') {
         if !is_ascii_ncname(variable) {
             return Err(invalid(
                 "FXXP0002",
@@ -424,7 +434,14 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
             parse_child_path(expression, location.clone()).map_err(map_path_failure)?,
         )
     };
-    Ok(Instruction::ValueOf { select, location })
+    let separator = optional_attribute(document, element, None, "separator")
+        .unwrap_or(" ")
+        .to_owned();
+    Ok(Instruction::ValueOf {
+        select,
+        separator,
+        location,
+    })
 }
 
 fn compile_sequence_nodes(

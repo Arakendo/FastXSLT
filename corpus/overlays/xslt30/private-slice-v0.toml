@@ -131,8 +131,8 @@ rationale = "The native source and stylesheet execute xsl:sequence with ordered 
 set_file = "tests/expr/for/_for-test-set.xml"
 case_name = "for-002"
 selection = "selected"
-execution = "harness-unsupported"
-rationale = "The native stylesheet, inline assert-xml, XSLT20+ dependency, and initial-template main metadata are admitted; the harness cannot yet invoke an initial template without a principal source."
+execution = "passed"
+rationale = "The source-free request invokes native initial template main, evaluates two ordered integer bindings and addition results, and joins the atomic sequence with the native xsl:value-of separator."
 
 [[case]]
 set_file = "tests/expr/for/_for-test-set.xml"

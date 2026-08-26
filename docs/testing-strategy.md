@@ -84,8 +84,10 @@ denominator. Its native stylesheets, source environments, initial-template
 metadata, and XML assertions are resolved and retained without denominator
 loss. Native `for-001` now passes through ordered distinct-value binding,
 node-sequence selection, `xsl:sequence`, and exact file-backed XML comparison.
-The denominator currently reports one pass, two engine-unsupported cases, and
-one harness-unsupported initial-template case.
+Source-free native `for-002` also passes through an explicit initial-template
+invocation entry, two ordered integer bindings, addition, and native
+`xsl:value-of` separator behavior. The denominator currently reports two passes
+and two engine-unsupported cases.
 A private case-record experiment
 also observes QT3 `assert-eq` and an XSLT30 compound message assertion through
 suite-specific adapters. Their common projection separates selection from

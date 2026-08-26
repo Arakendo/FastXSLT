@@ -750,3 +750,28 @@ ambient I/O or public stability claim.
 - Next slice: enable source-free initial-template entry for native `for-002`,
   then implement only its multiple integer bindings, addition, ordered atomic
   return sequence, and `xsl:value-of` separator behavior.
+
+### 2026-08-26: Source-free native XSLT30 `for-002`
+
+- Work completed: executed native `for-002` by adding explicit principal-source
+  and initial-template invocation-entry variants. The case invokes `main`
+  without a fabricated source document or context item.
+- Ownership: the named template remains immutable compiled state; the selected
+  entry name is request-local. Unknown names fail request admission with
+  structured request identity, and initial-template parameters remain outside
+  the private seam.
+- XPath behavior: two literal integer bindings iterate in clause order, their
+  addition return produces `11`, `12`, `21`, `22`, and the native
+  `xsl:value-of separator=", "` constructs the expected text.
+- Work accounting: atomic expression work now has a distinct
+  `xpath-operation` domain. Four additions consume four units, and a focused
+  three-unit limit stops before the fourth result without borrowing the node
+  navigation meter.
+- Conservation: the complete `expr/for` denominator advances to two passes and
+  two engine-unsupported cases; no harness-unsupported case remains.
+- Claim control: arbitrary initial-template parameters/dynamic context,
+  generalized FLWOR clauses, numeric types, overflow, operators, and atomic
+  sequence conversion remain unsupported.
+- Next slice: execute native `for-003` while preserving XPath focus across the
+  binding, so its unqualified attribute paths remain relative to `order` and
+  its empty multiplication results make `sum()` return zero.

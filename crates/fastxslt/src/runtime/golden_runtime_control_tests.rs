@@ -3,8 +3,8 @@
 use std::collections::HashSet;
 
 use super::{
-    ExecutionPolicy, FailureCategory, ResultNode, TransformRequest, TransformSetBuilder,
-    append_text, compile_resource, execute_transform_set,
+    ExecutionPolicy, FailureCategory, InvocationEntry, ResultNode, TransformRequest,
+    TransformSetBuilder, append_text, compile_resource, execute_transform_set,
 };
 use crate::execution_control_experiment::{
     CancellationToken, InvocationControl, WorkDomain, WorkLimits,
@@ -37,7 +37,9 @@ fn request(
     TransformRequest {
         identity: identity.to_owned(),
         result_identity: result_identity.to_owned(),
-        source_resource: SOURCE_ID.to_owned(),
+        entry: InvocationEntry::PrincipalSource {
+            resource: SOURCE_ID.to_owned(),
+        },
         cancellation: CancellationToken::new(),
         cancellation_fault,
     }
@@ -171,6 +173,7 @@ fn golden_path_has_an_exact_attributable_charge_profile() {
         WorkDomain::XdmNode,
         WorkDomain::XsltInstruction,
         WorkDomain::XPathNodeVisit,
+        WorkDomain::XPathOperation,
         WorkDomain::XdmStringValueNode,
         WorkDomain::ResultNode,
         WorkDomain::ResultTextByte,
@@ -188,6 +191,7 @@ fn golden_path_has_an_exact_attributable_charge_profile() {
             ("xdm-node", 6),
             ("xslt-instruction", 4),
             ("xpath-node-visit", 4),
+            ("xpath-operation", 0),
             ("xdm-string-value-node", 2),
             ("result-node", 2),
             ("result-text-byte", 16),
