@@ -107,6 +107,19 @@ try {
                 -not $replacement.oldGenerationDrainsOnLeaseRelease) {
                 throw "Generation replacement experiment violated its expected lifecycle: $($replacement | ConvertTo-Json -Depth 5)"
             }
+            $fileReplacement = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/host-file-replacement"
+            $oldFileExpected = '<?xml version="1.0" encoding="UTF-8"?><out>1.00</out>'
+            $newFileExpected = '<?xml version="1.0" encoding="UTF-8"?><out>2.00</out>'
+            if ($fileReplacement.retiredGeneration -ne 'file-generation-001' -or
+                $fileReplacement.oldGenerationIdentity -ne 'file-generation-001' -or
+                $fileReplacement.newGeneration.generationIdentity -ne 'file-generation-002' -or
+                $fileReplacement.oldResult -cne $oldFileExpected -or
+                $fileReplacement.newGeneration.result -cne $newFileExpected -or
+                -not $fileReplacement.importedHandlesClosedBeforePromotion -or
+                -not $fileReplacement.originalFilesRenamedAndRemovedWhileGenerationWasLive -or
+                -not $fileReplacement.sourceBytesChanged) {
+                throw "Host file replacement violated snapshot isolation: $($fileReplacement | ConvertTo-Json -Depth 5)"
+            }
             [pscustomobject]@{
                 Experiment = 'WorkerRecovery'
                 FailureCode = $recovery.recovery.failureCode
@@ -122,6 +135,14 @@ try {
                 NewGeneration = $replacement.newGeneration.generationIdentity
                 OldLeaseCompleted = $replacement.oldResult -ceq $expected
                 NewRequestCompleted = $replacement.newGeneration.result -ceq $expected
+            }
+            [pscustomobject]@{
+                Experiment = 'HostFileReplacement'
+                RetiredGeneration = $fileReplacement.retiredGeneration
+                NewGeneration = $fileReplacement.newGeneration.generationIdentity
+                OldResultRetained = $fileReplacement.oldResult -ceq $oldFileExpected
+                NewResultPromoted = $fileReplacement.newGeneration.result -ceq $newFileExpected
+                OriginalFilesReleased = $fileReplacement.originalFilesRenamedAndRemovedWhileGenerationWasLive
             }
         }
         for ($run = 1; $run -le $MeasurementRuns; $run++) {

@@ -15,9 +15,9 @@ aggregation, and the single required two-decimal formatting picture. The
 current order of work is:
 
 1. extend the bounded-concurrency isolated ASP.NET experiment with cancellation,
-   diagnostic parity, representative workload evidence, and changed-resource
-   file-replacement evidence; worker failure/restart and explicit snapshot
-   generation promotion now have a private executable baseline;
+   diagnostic parity and representative workload evidence; worker
+   failure/restart, explicit snapshot generation promotion, and changed-resource
+   file replacement now have private executable baselines;
 2. prototype the leading in-process .NET boundary against the same lifecycle;
 3. compare both modes before stabilizing a host boundary or performance claim.
 
@@ -174,6 +174,9 @@ failed, and harness-error cases without an unqualified conformance claim.
   - [x] Terminate an acknowledged non-cooperating isolated request without
     poisoning a sibling, decline ambiguous retry, replace only its worker slot,
     and promote/drain explicitly identified snapshot generations.
+  - [x] Import and close host files, replace them while an old generation lease
+    remains active, and prove old/new requests retain their sealed source
+    semantics without engine-owned filesystem access.
 - [ ] Exercise AR-0010's private invocation controls under adversarial work;
   distinguish deterministic budgets, cooperative cancellation, best-effort
   deadlines, panic handling, and process-level hard termination claims.

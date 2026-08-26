@@ -42,10 +42,28 @@ derived from filenames, paths, process identifiers, or content hashes. Resource
 bytes crossed the boundary once per worker generation rather than once per
 transform. No result was implicitly admitted as a later resource.
 
-The experiment used identical semantic bytes in the two generations so both
-results could be compared exactly. It therefore proves promotion and draining
-mechanics, not changed-resource semantics or original-file replacement while
-requests are active.
+The first generation experiment used identical semantic bytes so both results
+could be compared exactly. It proves promotion and draining mechanics
+independently of a semantic change.
+
+## Host file replacement with changed bytes
+
+A second generation experiment created source and stylesheet files under the
+gitignored `.workbench/` area and imported each through an explicitly scoped
+host file stream. After the streams closed, the host started
+`file-generation-001` and acquired an old-generation lease. While that
+generation remained live, Windows permitted both original files to be renamed
+and deleted. The host wrote a changed source and replacement stylesheet at the
+same paths, imported and closed them, and promoted `file-generation-002`.
+
+The old leased generation returned `<out>1.00</out>` from the original one-item
+source. A new request returned `<out>2.00</out>` from the replacement two-item
+source. This proves that the worker retains sealed resource bytes rather than a
+host path or file handle, and that path reuse does not mutate old-generation
+semantics. Scratch files were removed after both generations drained.
+
+This remains adapter evidence. FastXSLT did not gain filesystem authority, a
+path-based resource identity, or an automatic file-watching/reload contract.
 
 ## Disposition
 

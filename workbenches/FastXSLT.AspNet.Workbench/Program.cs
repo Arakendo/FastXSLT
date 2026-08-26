@@ -157,6 +157,21 @@ app.MapPost("/experiment/generation-replacement", async () =>
         operationalExperimentGate.Release();
     }
 });
+app.MapPost("/experiment/host-file-replacement", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await OperationalExperiments.ExerciseHostFileReplacementAsync(
+            workerPath,
+            Path.Combine(repositoryRoot, ".workbench"),
+            stylesheet));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
 #if SAXONCS_LOCAL
 app.MapPost("/measure/saxoncs", (int? requests, SaxonCsBaseline baseline) =>
 {

@@ -22,6 +22,7 @@ offers:
 - `POST /benchmark/tiers?requests=250&concurrency=4`
 - `POST /experiment/worker-recovery`
 - `POST /experiment/generation-replacement`
+- `POST /experiment/host-file-replacement`
 - `POST /transform/saxoncs`
 - `POST /measure/saxoncs?requests=1000`
 
@@ -49,6 +50,13 @@ proves a sibling plus a later request still complete. A second experiment
 atomically promotes a new explicitly identified generation while an acquired old
 generation remains executable until its lease drains. These are workbench
 lifecycle observations, not a production restart policy or public API.
+
+The host-file variant imports source and stylesheet files into owned bytes,
+closes the handles, renames and removes both originals while the old worker
+generation remains live, writes changed source bytes at the same host path, and
+promotes the newly imported generation. The old lease retains its old result;
+new requests observe only the new generation. The scratch files live under the
+gitignored `.workbench/` directory and are removed after the experiment.
 
 Run those checks with:
 

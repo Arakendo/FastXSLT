@@ -117,7 +117,10 @@ security contracts.
 - A private host-owned generation experiment initialized a replacement before
   atomic promotion, routed new requests to its explicit generation identity,
   and allowed an acquired old-generation request to drain before disposal.
-  Changed-resource and imported-file replacement remain untested.
+- A changed-resource variant imported and closed host file streams, renamed and
+  removed both original source and stylesheet while the old generation remained
+  leased, reused the host paths for new bytes, and observed distinct old/new
+  results after promotion. Paths remained outside engine identity and authority.
 
 ## Disposition
 
@@ -132,7 +135,7 @@ ABI or managed API until a bounded ASP.NET workbench compares viable mechanisms.
   lifecycle to exercise without accepting it as the public API.
 - [x] Exercise snapshot creation/replacement and a batch of transforms without
   transferring identical resource bytes on every invocation.
-- [ ] Verify imported files can be replaced during service operation while old
+- [x] Verify imported files can be replaced during service operation while old
   in-flight requests continue on their sealed snapshots without held handles.
 - [ ] Prototype at least the leading in-process and isolated alternatives.
   - [x] Establish a persistent isolated-worker baseline with bounded frames,
@@ -164,3 +167,6 @@ invalidates the selected mechanism.
 - 2026-08-26 -- Added non-cooperating worker termination/replacement and explicit
   generation promotion/draining evidence. Kept restart policy and the workbench
   lifecycle private.
+- 2026-08-26 -- Replaced imported source and stylesheet files while an old
+  generation lease remained active, then proved old/new results stayed bound to
+  their sealed generations.
