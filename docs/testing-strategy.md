@@ -86,6 +86,10 @@ The sibling `built-in-template-rules` golden adds default child application,
 built-in document/element/text behavior, and context-item value selection. It
 does not broaden match priority, modes, DTD/ID behavior, or complex XPath.
 
+Prepared-input timing remains an ignored release-mode probe. Normal correctness
+gates do not enforce timing, and local ratios from a tiny private fixture do not
+become cache defaults or ASP.NET performance claims.
+
 The W3C XML Conformance Test Suite 20130923 is a reviewed but non-admitted
 candidate for AR-0008. It is a dated archive rather than a Git submodule, its
 root catalog uses DTD/entity composition, and its older contributor notices

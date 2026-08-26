@@ -100,7 +100,7 @@ impl PreparedInputSet {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::{hint::black_box, sync::Arc, time::Instant};
 
     use crate::execution_control_experiment::{
         CancellationToken, ControlFailure, InvocationControl, WorkDomain, WorkLimits,
@@ -340,6 +340,98 @@ mod tests {
             Err(PreparationFailure::DuplicateResource {
                 identity: SOURCE_A.to_owned(),
             })
+        );
+    }
+
+    #[test]
+    #[ignore = "manual release-mode parse-per-invocation versus prepared-input probe"]
+    fn measures_parse_per_invocation_against_prepared_reuse() {
+        const BENCH_SOURCE: &str = "urn:fastxslt:measure:built-in:source";
+        const BENCH_STYLE: &str = "urn:fastxslt:measure:built-in:stylesheet";
+        const ITERATIONS: usize = 10_000;
+        const ITERATIONS_F64: f64 = 10_000.0;
+        const SAMPLES: usize = 7;
+
+        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(4, 4_096, 8_192));
+        resources
+            .admit(
+                BENCH_SOURCE,
+                include_bytes!("../../../../corpus/golden/built-in-template-rules/input.xml")
+                    .to_vec(),
+            )
+            .expect("admit measurement source");
+        resources
+            .admit(
+                BENCH_STYLE,
+                include_bytes!("../../../../corpus/golden/built-in-template-rules/stylesheet.xsl")
+                    .to_vec(),
+            )
+            .expect("admit measurement stylesheet");
+        let snapshot = resources.seal();
+        let program = compile_resource(&snapshot, BENCH_STYLE).expect("compile measurement style");
+        let prepared = prepare(&snapshot, &[BENCH_SOURCE]);
+
+        let run = |document: &Document, request_id: &str| {
+            let mut control = InvocationControl::unbounded();
+            let semantic = execute_program(&program, document, request_id, &mut control)
+                .expect("execute measured transform");
+            serialize_xml(&semantic, &program.output, request_id, 4_096, &mut control)
+                .expect("serialize measured transform")
+        };
+        let source_bytes = snapshot
+            .get(BENCH_SOURCE)
+            .expect("measurement source remains admitted");
+        let direct_document = Document::from_parsed(
+            parse_document(BENCH_SOURCE, source_bytes, super::PREPARATION_XML_LIMITS)
+                .expect("parse direct correctness reference"),
+        )
+        .expect("build direct correctness reference");
+        let prepared_document = prepared
+            .get(BENCH_SOURCE)
+            .expect("prepared measurement source");
+        assert_eq!(
+            run(&direct_document, "direct-correctness"),
+            run(&prepared_document, "prepared-correctness")
+        );
+
+        let mut direct_ns = Vec::with_capacity(SAMPLES);
+        let mut prepared_ns = Vec::with_capacity(SAMPLES);
+        for _ in 0..SAMPLES {
+            let direct_start = Instant::now();
+            for iteration in 0..ITERATIONS {
+                let parsed = parse_document(
+                    BENCH_SOURCE,
+                    black_box(source_bytes),
+                    super::PREPARATION_XML_LIMITS,
+                )
+                .expect("parse measured direct source");
+                let document = Document::from_parsed(parsed).expect("build measured direct XDM");
+                black_box(run(&document, black_box("direct")));
+                black_box(iteration);
+            }
+            direct_ns.push(direct_start.elapsed().as_secs_f64() * 1_000_000_000.0 / ITERATIONS_F64);
+
+            let prepared_start = Instant::now();
+            for iteration in 0..ITERATIONS {
+                let document = black_box(
+                    prepared
+                        .get(BENCH_SOURCE)
+                        .expect("get measured prepared source"),
+                );
+                black_box(run(&document, black_box("prepared")));
+                black_box(iteration);
+            }
+            prepared_ns
+                .push(prepared_start.elapsed().as_secs_f64() * 1_000_000_000.0 / ITERATIONS_F64);
+        }
+
+        direct_ns.sort_by(f64::total_cmp);
+        prepared_ns.sort_by(f64::total_cmp);
+        let direct_median = direct_ns[SAMPLES / 2];
+        let prepared_median = prepared_ns[SAMPLES / 2];
+        println!(
+            "iterations={ITERATIONS} samples={SAMPLES} direct_median_ns={direct_median:.1} prepared_median_ns={prepared_median:.1} ratio={:.2}",
+            direct_median / prepared_median
         );
     }
 }

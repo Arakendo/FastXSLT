@@ -149,6 +149,13 @@ incompatible with the current explicit-ownership direction.
 - Eight threads can concurrently read the same prepared document and compiled
   program with isolated invocation controls and equal results. This establishes
   immutable sharing for the current slice, not an executor or contention policy.
+- A reproducible ignored release-mode probe now compares the complete
+  parse/XDM/execute/serialize reference path with prepared lookup/execute/
+  serialize while holding compilation constant. Three local runs over the
+  55-byte built-in-rule golden observed 2,596.3–2,922.9 ns direct medians and
+  804.2–814.9 ns prepared medians, or 3.23–3.62×. This proves measurable seam
+  value only; the fixture is not consumer-representative and supplies no cache
+  policy, memory, concurrency, or ASP.NET conclusion.
 
 ## Disposition
 
@@ -172,6 +179,8 @@ thread-safety, eviction, or performance guarantee.
   over one prepared source, comparing semantics with parse per invocation.
 - [ ] Benchmark those workload shapes,
   comparing parse-per-invocation with reuse.
+- [x] Retain a reproducible private release-mode probe that holds compilation
+  constant and compares one complete direct iteration with prepared reuse.
 - [x] Prove equal bytes under distinct resource identities retain distinct
   document identity and provenance when prepared.
 - [x] Replace a snapshot generation while old prepared inputs remain valid only
@@ -207,3 +216,7 @@ different retention seam.
   one snapshot generation. Functional reuse, reference parity, identity,
   provenance, replacement lifetime, and preparation limits pass; retention,
   concurrency, eviction, and performance policy remain Incubating.
+- 2026-08-25 -- Added a release-mode direct-versus-prepared timing probe over
+  the private built-in-rule golden. Retained the general benchmark and memory
+  follow-ups because the tiny fixture and Rust-only boundary cannot select a
+  lifecycle or establish consumer benefit.
