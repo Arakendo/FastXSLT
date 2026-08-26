@@ -41,6 +41,7 @@ struct TransformSetBuilder {
     request_ids: HashSet<String>,
     result_ids: HashSet<String>,
     request_limit: usize,
+    policy: ExecutionPolicy,
 }
 
 #[derive(Debug)]
@@ -48,6 +49,13 @@ struct TransformSet {
     snapshot: ResourceSnapshot,
     stylesheet: StylesheetProgram,
     requests: Vec<TransformRequest>,
+    policy: ExecutionPolicy,
+}
+
+#[derive(Debug, Clone)]
+struct ExecutionPolicy {
+    denied_sources: HashSet<String>,
+    serialized_byte_limit: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -68,6 +76,7 @@ enum FailureCategory {
     Invalid,
     Unsupported,
     MissingResource,
+    Denied,
     Limit,
 }
 
@@ -84,6 +93,7 @@ impl TransformSetBuilder {
         snapshot: ResourceSnapshot,
         stylesheet: StylesheetProgram,
         request_limit: usize,
+        policy: ExecutionPolicy,
     ) -> Self {
         Self {
             snapshot,
@@ -92,6 +102,7 @@ impl TransformSetBuilder {
             request_ids: HashSet::new(),
             result_ids: HashSet::new(),
             request_limit,
+            policy,
         }
     }
 
@@ -121,6 +132,20 @@ impl TransformSetBuilder {
                 "duplicate result identity",
             ));
         }
+        if self
+            .policy
+            .denied_sources
+            .contains(&request.source_resource)
+        {
+            self.request_ids.remove(&request.identity);
+            self.result_ids.remove(&request.result_identity);
+            return Err(failure(
+                "FXRS0003",
+                FailureCategory::Denied,
+                Some(&request.identity),
+                format!("source authority is denied: {}", request.source_resource),
+            ));
+        }
         if self.snapshot.get(&request.source_resource).is_none() {
             self.request_ids.remove(&request.identity);
             self.result_ids.remove(&request.result_identity);
@@ -140,6 +165,7 @@ impl TransformSetBuilder {
             snapshot: self.snapshot,
             stylesheet: self.stylesheet,
             requests: self.requests,
+            policy: self.policy,
         }
     }
 }
@@ -222,7 +248,12 @@ fn execute_transform_set(set: TransformSet) -> Result<ResultSet, ExecutionFailur
             )
         })?;
         let semantic = execute_program(&set.stylesheet, &source, &request.identity)?;
-        let serialized = serialize_xml(&semantic, &set.stylesheet.output, &request.identity)?;
+        let serialized = serialize_xml(
+            &semantic,
+            &set.stylesheet.output,
+            &request.identity,
+            set.policy.serialized_byte_limit,
+        )?;
         completion_order.push(request.identity.clone());
         by_request.insert(
             request.identity,
@@ -305,6 +336,7 @@ fn serialize_xml(
     result: &SemanticResult,
     settings: &OutputSettings,
     request_id: &str,
+    byte_limit: usize,
 ) -> Result<String, ExecutionFailure> {
     if settings.method != "xml" {
         return Err(failure(
@@ -314,54 +346,100 @@ fn serialize_xml(
             "only XML serialization is available in the private slice",
         ));
     }
-    let mut output = String::new();
+    let mut output = BudgetedString::new(byte_limit, request_id);
     if !settings.omit_xml_declaration {
-        output.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+        output.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")?;
     }
     for node in &result.children {
-        serialize_node(node, &mut output, request_id)?;
+        serialize_node(node, &mut output)?;
     }
-    Ok(output)
+    Ok(output.finish())
 }
 
-fn serialize_node(
-    node: &ResultNode,
-    output: &mut String,
-    request_id: &str,
-) -> Result<(), ExecutionFailure> {
+fn serialize_node(node: &ResultNode, output: &mut BudgetedString) -> Result<(), ExecutionFailure> {
     match node {
-        ResultNode::Text(value) => escape_text(value, output),
+        ResultNode::Text(value) => escape_text(value, output)?,
         ResultNode::Element { name, children } => {
             if name.namespace.is_some() {
                 return Err(failure(
                     "FXSR1002",
                     FailureCategory::Unsupported,
-                    Some(request_id),
+                    Some(&output.request_id),
                     "namespaced result serialization is outside the private slice",
                 ));
             }
-            output.push('<');
-            output.push_str(&name.local);
-            output.push('>');
+            output.push('<')?;
+            output.push_str(&name.local)?;
+            output.push('>')?;
             for child in children {
-                serialize_node(child, output, request_id)?;
+                serialize_node(child, output)?;
             }
-            output.push_str("</");
-            output.push_str(&name.local);
-            output.push('>');
+            output.push_str("</")?;
+            output.push_str(&name.local)?;
+            output.push('>')?;
         }
     }
     Ok(())
 }
 
-fn escape_text(value: &str, output: &mut String) {
+fn escape_text(value: &str, output: &mut BudgetedString) -> Result<(), ExecutionFailure> {
     for character in value.chars() {
         match character {
-            '&' => output.push_str("&amp;"),
-            '<' => output.push_str("&lt;"),
-            '>' => output.push_str("&gt;"),
-            _ => output.push(character),
+            '&' => output.push_str("&amp;")?,
+            '<' => output.push_str("&lt;")?,
+            '>' => output.push_str("&gt;")?,
+            _ => output.push(character)?,
         }
+    }
+    Ok(())
+}
+
+struct BudgetedString {
+    value: String,
+    byte_limit: usize,
+    request_id: String,
+}
+
+impl BudgetedString {
+    fn new(byte_limit: usize, request_id: &str) -> Self {
+        Self {
+            value: String::new(),
+            byte_limit,
+            request_id: request_id.to_owned(),
+        }
+    }
+
+    fn push_str(&mut self, value: &str) -> Result<(), ExecutionFailure> {
+        let attempted = self.value.len().checked_add(value.len()).ok_or_else(|| {
+            failure(
+                "FXSR0001",
+                FailureCategory::Limit,
+                Some(&self.request_id),
+                "serialized result byte count overflowed",
+            )
+        })?;
+        if attempted > self.byte_limit {
+            return Err(failure(
+                "FXSR0002",
+                FailureCategory::Limit,
+                Some(&self.request_id),
+                format!(
+                    "serialized result requires at least {attempted} bytes; limit is {}",
+                    self.byte_limit
+                ),
+            ));
+        }
+        self.value.push_str(value);
+        Ok(())
+    }
+
+    fn push(&mut self, character: char) -> Result<(), ExecutionFailure> {
+        let mut encoded = [0_u8; 4];
+        self.push_str(character.encode_utf8(&mut encoded))
+    }
+
+    fn finish(self) -> String {
+        self.value
     }
 }
 
@@ -381,11 +459,13 @@ fn failure(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use crate::resources::{ResourceLimits, ResourceSetBuilder};
 
     use super::{
-        FailureCategory, ResultNode, TransformRequest, TransformSetBuilder, compile_resource,
-        execute_transform_set,
+        ExecutionPolicy, FailureCategory, ResultNode, TransformRequest, TransformSetBuilder,
+        compile_resource, execute_transform_set,
     };
 
     const SOURCE_ID: &str = "urn:fastxslt:golden:hello:source";
@@ -416,11 +496,18 @@ mod tests {
         }
     }
 
+    fn policy(serialized_byte_limit: usize) -> ExecutionPolicy {
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit,
+        }
+    }
+
     #[test]
     fn golden_transform_executes_through_an_unordered_identified_set() {
         let snapshot = snapshot();
         let program = compile_resource(&snapshot, STYLESHEET_ID).expect("compile once");
-        let mut builder = TransformSetBuilder::new(snapshot, program, 4);
+        let mut builder = TransformSetBuilder::new(snapshot, program, 4, policy(4_096));
         builder
             .add(request("request-a", "result-a.html", SOURCE_ID))
             .expect("add first request");
@@ -455,7 +542,7 @@ mod tests {
     fn batch_of_one_matches_the_same_semantic_and_serialization_path() {
         let snapshot = snapshot();
         let program = compile_resource(&snapshot, STYLESHEET_ID).expect("compile once");
-        let mut builder = TransformSetBuilder::new(snapshot, program, 1);
+        let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
         builder
             .add(request("only", "only-result", SOURCE_ID))
             .expect("add request");
@@ -473,7 +560,7 @@ mod tests {
     fn builder_rejects_duplicates_limits_and_unadmitted_sibling_results() {
         let snapshot = snapshot();
         let program = compile_resource(&snapshot, STYLESHEET_ID).expect("compile once");
-        let mut builder = TransformSetBuilder::new(snapshot, program, 2);
+        let mut builder = TransformSetBuilder::new(snapshot, program, 2, policy(4_096));
         builder
             .add(request("first", "future.xml", SOURCE_ID))
             .expect("add first request");
@@ -503,5 +590,46 @@ mod tests {
             .expect_err("request limit should fail");
         assert_eq!(failure.code, "FXBT0001");
         assert_eq!(failure.category, FailureCategory::Limit);
+    }
+
+    #[test]
+    fn explicit_source_denial_is_distinct_from_missing_resource() {
+        let snapshot = snapshot();
+        let program = compile_resource(&snapshot, STYLESHEET_ID).expect("compile once");
+        let mut denied_sources = HashSet::new();
+        denied_sources.insert(SOURCE_ID.to_owned());
+        let mut builder = TransformSetBuilder::new(
+            snapshot,
+            program,
+            1,
+            ExecutionPolicy {
+                denied_sources,
+                serialized_byte_limit: 4_096,
+            },
+        );
+
+        let failure = builder
+            .add(request("denied", "denied-result", SOURCE_ID))
+            .expect_err("admitted source should still be deniable");
+
+        assert_eq!(failure.code, "FXRS0003");
+        assert_eq!(failure.category, FailureCategory::Denied);
+        assert_eq!(failure.request_id.as_deref(), Some("denied"));
+    }
+
+    #[test]
+    fn serialization_stops_before_exceeding_the_host_byte_limit() {
+        let snapshot = snapshot();
+        let program = compile_resource(&snapshot, STYLESHEET_ID).expect("compile once");
+        let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16));
+        builder
+            .add(request("limited", "limited-result", SOURCE_ID))
+            .expect("add limited request");
+
+        let failure = execute_transform_set(builder.seal()).expect_err("output should be limited");
+
+        assert_eq!(failure.code, "FXSR0002");
+        assert_eq!(failure.category, FailureCategory::Limit);
+        assert_eq!(failure.request_id.as_deref(), Some("limited"));
     }
 }

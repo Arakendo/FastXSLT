@@ -103,6 +103,9 @@ selects a host mechanism risks treating transport as the semantic model.
   XSLT/XPath behavior can remain distinct without a global error enum. The batch
   builder likewise distinguishes missing resources, duplicate identities, and
   request-budget exhaustion before execution.
+- An explicitly denied admitted source now remains distinct from a missing
+  resource, and serialization stops through a byte-counted sink before crossing
+  its host-supplied limit. Both retain request identity.
 
 ## Disposition
 
@@ -116,8 +119,10 @@ fixtures, and consumer-shaped handling evidence.
 - [x] Exercise invalid stylesheet syntax, unsupported XSLT/XPath behavior, a
   missing resource, and an enforced transform-set limit through the first
   vertical slice.
-- [ ] Exercise invalid XML, denied authority, runtime/output limits, and
-  cancellation through the boundary path.
+- [x] Exercise denied source authority and a serialization-output limit through
+  the private boundary path.
+- [ ] Exercise invalid XML, non-output runtime limits, and cancellation through
+  the boundary path.
 - [ ] Record which conditions are reportable outcomes and which prevent a
   trustworthy result.
 - [ ] Map standards-defined errors separately from FastXSLT operational errors.
@@ -145,3 +150,5 @@ a serialized form needs versioning.
 - 2026-08-25 -- Recorded the first private structured compiler, resource, batch,
   and runtime identities from the executable golden slice; no public catalog was
   accepted.
+- 2026-08-25 -- Added distinct denied-authority and bounded-serialization
+  failures with request correlation.

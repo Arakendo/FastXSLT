@@ -166,6 +166,9 @@ and measurements.
   correlates equal results by request identity. Source parsing remains
   per-invocation, so this is ordering/lifecycle evidence rather than prepared
   input reuse or throughput evidence.
+- Private transform-set validation now applies explicit per-set request limits,
+  source denial before execution, and byte-bounded in-memory serialization.
+  Exact policy ownership and defaults remain under review.
 
 ## Disposition
 
@@ -221,3 +224,5 @@ pipeline outputs beyond the selected batch contract.
   prepared-input ownership question into incubating AR-0009.
 - 2026-08-25 -- The private golden set exercised reversed scheduling, stable
   result correlation, batch-of-one parity, and sibling-result invisibility.
+- 2026-08-25 -- Added explicit admitted-source denial and a serialization byte
+  limit without granting filesystem output authority.

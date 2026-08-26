@@ -72,7 +72,7 @@ test compares the serializer output plus that harness terminator to the exact
 fixture bytes; the semantic result and serializer string are asserted
 separately.
 
-Twenty-two focused unit tests pass across resource, XML, XDM, XPath, compile,
+Twenty-four focused unit tests pass across resource, XML, XDM, XPath, compile,
 runtime, batch, and serialization experiments. Negative cases establish private
 machine identities and categories for:
 
@@ -80,8 +80,9 @@ machine identities and categories for:
 - well-formed but unsupported XSLT instructions;
 - well-formed but unsupported XPath syntax;
 - missing source or stylesheet resources;
+- explicit denial of an otherwise admitted source;
 - duplicate request and result identities; and
-- transform-set request budget exhaustion.
+- transform-set request budget exhaustion and bounded serialization output.
 
 A request whose source identity equals a sibling's logical result identity is
 rejected as missing because that result was never admitted to the snapshot. This
@@ -103,13 +104,13 @@ is direct evidence for ADR-0005's “produced does not mean admitted” rule.
 ## Limitations
 
 This is not XSLT, XPath, XML, XDM, or serialization conformance evidence. It has
-no public facade, host adapter, real parallel executor, cancellation, denied
-resolver case, parameters, messages, namespaces in results, attributes in
-literal results, template selection, general XPath, multi-node `xsl:value-of`
-conversion, output budgets, or failure collection. Private `FX*` identifiers are
+no public facade, host adapter, real parallel executor, cancellation, parameters,
+messages, namespaces in results, attributes in literal results, template
+selection, general XPath, multi-node `xsl:value-of` conversion, non-output
+runtime budgets, or failure collection. Private `FX*` identifiers are
 experimental and are not stable standards codes or public compatibility
 promises.
 
-The next architecture work should add denied-authority and enforced runtime
-budget cases, then use representative consumer transforms to close AR-0001
-before widening language behavior.
+The next architecture work should use representative consumer transforms to
+close AR-0001 before widening language behavior. Cancellation and broader
+runtime budgets need a real host/control boundary rather than a synthetic flag.

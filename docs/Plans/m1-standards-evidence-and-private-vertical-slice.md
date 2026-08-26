@@ -92,7 +92,9 @@ remain pending AR-0001 disposition.
 - [x] Compare the semantic result separately from serialization.
 - [x] Add invalid, unsupported, missing-resource, and transform-set budget cases
   with private structured diagnostics.
-- [ ] Add denied-authority, cancellation, and runtime/output budget cases.
+- [x] Add denied-authority and serialization-output budget cases.
+- [ ] Add cancellation and non-output runtime budget cases through a real
+  host/control boundary.
 - [x] Record navigation capabilities actually required by the slice for AR-0007.
 
 Exit state: one exact golden result passes through named semantic owners with no
@@ -192,13 +194,14 @@ ambient I/O or public stability claim.
   relative child path, executed two identified requests in reverse submission
   order, built a semantic result, and serialized it separately to the expected
   XML.
-- Validation: 22 focused tests cover the full private path, batch-of-one parity,
+- Validation: 24 focused tests cover the full private path, batch-of-one parity,
   stable result correlation, invalid versus unsupported compile failures,
-  missing resources, duplicate request/result identities, request budgets, and
-  sibling-result invisibility.
+  missing versus denied resources, duplicate request/result identities, request
+  and output budgets, and sibling-result invisibility.
 - Findings: the layer boundaries support the first exact transform without
   leaking parser or XDM representation into compiled semantics. Parse per
   invocation remains AR-0009's reference behavior. The syntax intersection does
   not decide AR-0001 or establish conformance.
-- Next slice: add denied authority and runtime/output budgets, then obtain
-  representative consumer transforms to close the standards-profile decision.
+- Next slice: obtain representative consumer transforms to close the
+  standards-profile decision; defer cancellation and broader runtime budgets
+  until a real host/control boundary can exercise them.
