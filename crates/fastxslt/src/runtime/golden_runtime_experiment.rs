@@ -410,6 +410,18 @@ fn execute_sequence(
                             }
                             selected
                         }
+                        ApplySelection::Attribute(name) => {
+                            let mut selected = Vec::new();
+                            for attribute in source.attributes(context).iter().copied() {
+                                control
+                                    .charge(WorkDomain::XPathNodeVisit, 1)
+                                    .map_err(|failure| control_failure(failure, request_id))?;
+                                if source.name(attribute) == Some(name) {
+                                    selected.push(attribute);
+                                }
+                            }
+                            selected
+                        }
                     }
                 } else {
                     source.children(context).to_vec()
@@ -447,6 +459,9 @@ fn apply_template(
         .filter(|template| template.mode.as_deref() == mode)
         .filter(|template| match &template.pattern {
             MatchPattern::Element(name) => source.name(node) == Some(name),
+            MatchPattern::Attribute(name) => {
+                source.kind(node) == NodeKind::Attribute && source.name(node) == Some(name)
+            }
             MatchPattern::Comment => source.kind(node) == NodeKind::Comment,
             MatchPattern::ProcessingInstruction => {
                 source.kind(node) == NodeKind::ProcessingInstruction
@@ -460,7 +475,7 @@ fn apply_template(
             ),
         })
         .max_by_key(|template| match template.pattern {
-            MatchPattern::Element(_) => 2,
+            MatchPattern::Element(_) | MatchPattern::Attribute(_) => 2,
             MatchPattern::Comment | MatchPattern::ProcessingInstruction => 1,
             MatchPattern::AnyNode => 0,
         })

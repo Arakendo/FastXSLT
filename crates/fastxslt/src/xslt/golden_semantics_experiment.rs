@@ -32,6 +32,7 @@ pub(crate) struct MatchedTemplate {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum MatchPattern {
     Element(ExpandedName),
+    Attribute(ExpandedName),
     Comment,
     ProcessingInstruction,
     AnyNode,
@@ -41,6 +42,7 @@ pub(crate) enum MatchPattern {
 pub(crate) enum ApplySelection {
     ChildPath(ChildPath),
     ChildNodes(NodeTest),
+    Attribute(ExpandedName),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

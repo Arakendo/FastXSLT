@@ -520,3 +520,14 @@ ambient I/O or public stability claim.
   explicit engine-unsupported cases.
 - Next slice: implement attribute-axis selection and attribute patterns under
   `template-004` without treating attributes as children.
+
+### 2026-08-26: Attribute selection and patterns
+
+- Work completed: executed native XSLT30 `template-004` through unprefixed
+  attribute-axis selection, exact attribute matching, and named-mode isolation.
+- XDM boundary: attributes remain separately owned and are not exposed through
+  the child axis.
+- Conservation: the six-case denominator now contains five passes and one
+  explicit engine-unsupported case.
+- Next slice: decompose `template-005` into named-template lookup, parameters,
+  conditional evaluation, calls, and bounded recursion before implementation.

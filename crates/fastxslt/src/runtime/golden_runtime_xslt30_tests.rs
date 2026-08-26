@@ -150,7 +150,7 @@ fn classifies_the_complete_pinned_template_test_set_without_denominator_loss() {
         overlay
             .matches("selection = \"engine-unsupported\"")
             .count(),
-        2
+        1
     );
 
     let (test_set, set_path) = suite_test_set();
@@ -190,7 +190,7 @@ fn classifies_the_complete_pinned_template_test_set_without_denominator_loss() {
 
         if matches!(
             case_name,
-            "template-001" | "template-002" | "template-003" | CASE_NAME
+            "template-001" | "template-002" | "template-003" | "template-004" | CASE_NAME
         ) {
             compile_resource(&snapshot, &stylesheet_id)
                 .expect("the admitted preview case should compile");
@@ -209,10 +209,15 @@ fn classifies_the_complete_pinned_template_test_set_without_denominator_loss() {
 }
 
 #[test]
-fn executes_pinned_xslt30_node_kind_selection_and_modes() {
+fn executes_pinned_xslt30_node_and_attribute_selection_with_modes() {
     let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
     let (test_set, set_path) = suite_test_set();
-    for case_name in ["template-001", "template-002", "template-003"] {
+    for case_name in [
+        "template-001",
+        "template-002",
+        "template-003",
+        "template-004",
+    ] {
         assert!(overlay.contains(&format!("case_name = \"{case_name}\"")));
         let test_case = find_element(
             &test_set,

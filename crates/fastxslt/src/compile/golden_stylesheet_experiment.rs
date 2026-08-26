@@ -157,6 +157,12 @@ fn compile_matched_template(
         "comment()" => MatchPattern::Comment,
         "processing-instruction()" => MatchPattern::ProcessingInstruction,
         "node()" => MatchPattern::AnyNode,
+        attribute if attribute.starts_with('@') && is_ascii_ncname(&attribute[1..]) => {
+            MatchPattern::Attribute(crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: None,
+                local: attribute[1..].to_owned(),
+            })
+        }
         name if is_ascii_ncname(name) => {
             MatchPattern::Element(crate::xml::quick_xml_experiment::ExpandedName {
                 namespace: None,
@@ -284,6 +290,16 @@ fn parse_apply_selection(
     };
     if let Some(node_test) = node_test {
         return Ok(ApplySelection::ChildNodes(node_test));
+    }
+    if let Some(attribute) = expression.strip_prefix('@') {
+        if is_ascii_ncname(attribute) {
+            return Ok(ApplySelection::Attribute(
+                crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: None,
+                    local: attribute.to_owned(),
+                },
+            ));
+        }
     }
     parse_child_path(expression, location)
         .map(ApplySelection::ChildPath)

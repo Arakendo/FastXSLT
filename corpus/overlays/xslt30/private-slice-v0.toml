@@ -25,9 +25,9 @@ rationale = "General child-node selection and node() pattern matching execute in
 [[case]]
 set_file = "tests/decl/template/_template-test-set.xml"
 case_name = "template-004"
-selection = "engine-unsupported"
-execution = "not-run"
-rationale = "The complete upstream case requires attribute selection/patterns and modes, all outside the current private slice."
+selection = "selected"
+execution = "passed"
+rationale = "Unprefixed attribute-axis selection and attribute pattern matching execute in an isolated named mode without treating attributes as children."
 
 [[case]]
 set_file = "tests/decl/template/_template-test-set.xml"
