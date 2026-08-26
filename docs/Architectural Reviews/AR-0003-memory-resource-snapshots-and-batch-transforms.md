@@ -8,7 +8,7 @@
 | Scope | Resource loading, compilation reuse, and volume execution |
 | Trigger | Volume consumers should avoid repeated file I/O and single-file call overhead |
 | Related ADRs | ADR-0001, ADR-0002, ADR-0005 |
-| Related evidence | Tokimu AR-0009/AR-0010 Resource Space work; `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-adr-0005-review-monday-2026-08-25.md`; AR-0009; future FastXSLT benchmarks |
+| Related evidence | Tokimu AR-0009/AR-0010 Resource Space work; `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-adr-0005-review-monday-2026-08-25.md`; AR-0009; AR-0010; future FastXSLT benchmarks |
 
 ## Architectural question
 
@@ -169,6 +169,8 @@ and measurements.
 - Private transform-set validation now applies explicit per-set request limits,
   source denial before execution, and byte-bounded in-memory serialization.
   Exact policy ownership and defaults remain under review.
+- AR-0010 now owns supervision and hard-isolation guarantees. Executor mechanics
+  in this review cannot assume an in-process worker can be forcibly terminated.
 
 ## Disposition
 

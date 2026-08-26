@@ -60,6 +60,21 @@ safety, reentrancy, cancellation, concurrent invocation, resolver safety,
 snapshot replacement, worker/in-flight limits, and failure collection remain
 open. No type currently carries a public concurrency guarantee.
 
+## Supervision and hard isolation
+
+An eventual dispatcher may bound admission, queues, in-flight work, and
+concurrency; signal cancellation or deadlines; and correlate worker completion
+or failure. It is defense in depth, not authority to kill and repair an
+arbitrary Rust thread. Ordinary hostile work must terminate through explicit
+checks in the parser, XDM, XPath, XSLT runtime, result construction, and
+serializer.
+
+A wall-clock timeout in the same process is best effort: a deadlock, unchecked
+loop, blocking dependency, or corrupted shared state cannot be made safe by a
+thread supervisor. A workload requiring forcible termination needs a process or
+stronger isolation boundary that can be discarded and replaced. AR-0010 owns
+this incubating distinction; no hardened execution mode exists yet.
+
 ## Diagnostics and inspection
 
 The design requires structured, source-located diagnostics. Stable error codes,

@@ -78,3 +78,6 @@ and add the record to this index. Never reuse a retired number.
 - [AR-0009: Prepared Input Retention and Cache Lifecycle](AR-0009-prepared-input-retention-and-cache-lifecycle.md)
   -- Incubating; determine what immutable source-derived state may be reused and
   who owns its bounded lifetime without creating hidden semantics or authority.
+- [AR-0010: Execution Supervision, Cooperative Control, and Hard Isolation](AR-0010-execution-supervision-cooperative-control-and-hard-isolation.md)
+  -- Incubating; separate bounded cooperative dispatch from the process boundary
+  required for forcible termination and hard recovery.

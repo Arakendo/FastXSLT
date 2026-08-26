@@ -5,7 +5,7 @@
 | Date | 2026-08-25 |
 | Input | Project-owner design conversation about pooled volume execution |
 | Scope | Prepared inputs, transform-set construction, scheduling, and workflow ownership |
-| Informs | ADR-0005 and AR-0003 |
+| Informs | ADR-0005, AR-0003, and AR-0010 |
 
 ## Accepted conclusion
 
@@ -71,3 +71,7 @@ transformation executes and compiled/source state has measured sharing behavior.
 AR-0003 remains Under Review for budgets, reuse, executor mechanics, and public
 lifecycle. M3 is the earliest roadmap milestone for a correctness-gated
 independent batch experiment.
+
+AR-0010 separately owns whether an executor supervisor provides cooperative
+control or hard isolation. This review supplies no evidence that an in-process
+worker thread can be forcibly terminated or safely reused after a panic.

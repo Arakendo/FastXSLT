@@ -8,7 +8,7 @@
 | Scope | Non-Rust embedding, deployment, and performance boundary |
 | Trigger | ASP.NET applications are a motivating FastXSLT consumer class |
 | Related ADRs | ADR-0001 |
-| Related evidence | Future ASP.NET consumer workbench, AR-0003, and end-to-end benchmarks |
+| Related evidence | Future ASP.NET consumer workbench, AR-0003, AR-0010, and end-to-end benchmarks |
 
 ## Architectural question
 
@@ -79,6 +79,9 @@ security contracts.
   behavior, not only Rust execution time.
 - Cancellation, resolver callbacks, diagnostic transfer, output ownership, and
   concurrent invocation are likely to discriminate among alternatives.
+- AR-0010 distinguishes cooperative in-process supervision from hard process
+  isolation. Any host-facing hardened-mode claim must identify which boundary
+  is actually deployed and include its transport and lifecycle costs.
 - Current evidence is insufficient to select a mechanism.
 
 ## Disposition

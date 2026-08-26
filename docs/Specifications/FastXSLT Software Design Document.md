@@ -351,6 +351,12 @@ Authority failures and budget exhaustion are distinct diagnostic conditions.
 Whether each limit is a deterministic semantic counter, a best-effort host
 safeguard, or both remains an explicit open decision.
 
+Execution supervision cannot substitute for those local checks. An in-process
+dispatcher may coordinate cooperative cancellation and bounded work but cannot
+safely terminate and repair an arbitrary Rust thread. Any hard-termination
+guarantee requires a discardable process or stronger isolation boundary; the
+mode and evidence are tracked by AR-0010.
+
 ## 4. Public boundary
 
 The public API remains intentionally empty during M0. The first API must be
@@ -444,6 +450,9 @@ initial read or explicit output publication escapes operating-system scanning.
   AR-0003. ADR-0005 fixes unordered independent execution and host-owned workflow
   ordering; transformation graphs are deferred. Prepared-input definition,
   retention, and cache lifecycle are tracked by AR-0009.
+- Execution supervision, cooperative cancellation/deadline observation, panic
+  containment, worker health, and the process boundary required for hard
+  termination, tracked by AR-0010.
 
 ### Deferred capability decisions
 

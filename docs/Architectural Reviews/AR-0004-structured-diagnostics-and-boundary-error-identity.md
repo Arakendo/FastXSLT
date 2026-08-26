@@ -8,7 +8,7 @@
 | Scope | Engine diagnostics, operation failures, and host translation |
 | Trigger | M1 needs machine-readable negative results; the peer database review exposed the cost of string-shaped failures |
 | Related ADRs | ADR-0001, ADR-0002 |
-| Related evidence | `docs/Evidence/peer-database-documentation-review-2026-08-25.md`; `docs/Evidence/private-golden-transform-slice-2026-08-25.md`; future host consumers |
+| Related evidence | `docs/Evidence/peer-database-documentation-review-2026-08-25.md`; `docs/Evidence/private-golden-transform-slice-2026-08-25.md`; AR-0010; future host consumers |
 
 ## Architectural question
 
@@ -47,6 +47,9 @@ or stability promises.
   admitted profile.
 - Resource and runtime policy own denied authority, missing admitted resources,
   cancellation, and exhausted budgets.
+- Execution supervision owns deadline, worker-crash, and transport containment
+  failures without relabeling them as language errors; AR-0010 keeps those
+  distinct from cancellation and deterministic budget exhaustion.
 - Local modules may use focused private errors, preserving causes and context
   needed by the facade.
 - The facade owns the host-neutral boundary report. Host adapters own

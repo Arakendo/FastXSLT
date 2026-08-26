@@ -69,6 +69,9 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [ ] Run an ASP.NET consumer workbench through the selected host boundary,
   reusing compiled stylesheets across requests with explicit cancellation and
   resource policy.
+- [ ] Exercise AR-0010's private invocation controls under adversarial work;
+  distinguish deterministic budgets, cooperative cancellation, best-effort
+  deadlines, panic handling, and process-level hard termination claims.
 
 Exit criterion: representative stylesheets compile once, transform multiple
 documents without leaked state, fail through structured diagnostics, and expose
