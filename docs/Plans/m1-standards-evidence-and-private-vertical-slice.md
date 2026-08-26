@@ -499,3 +499,13 @@ ambient I/O or public stability claim.
   membership.
 - Next slice: propose the staged standards-profile ADR around this selection
   and ADR-0006, explicitly denying any broad XSLT version or conformance claim.
+
+### 2026-08-26: First post-profile semantic widening
+
+- Work completed: implemented built-in document dispatch, comment-node
+  selection and pattern matching, and unprefixed mode isolation through native
+  XSLT30 `template-001`.
+- Conservation: the six-case denominator advanced to two selected passes and
+  four explicit engine-unsupported cases without changing membership.
+- Next slice: extend the same node-kind selection seam under
+  `template-002/003` processing-instruction and `node()` pressure.

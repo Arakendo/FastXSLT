@@ -67,12 +67,14 @@ fn inspect_compiled(
 
     let mut feature_counts = BTreeMap::new();
     let mut instruction_count = 0_usize;
-    observe_instructions(
-        &program.root_template.body,
-        &mut instruction_count,
-        &mut feature_counts,
-    )?;
-    for template in &program.element_templates {
+    if let Some(root_template) = &program.root_template {
+        observe_instructions(
+            &root_template.body,
+            &mut instruction_count,
+            &mut feature_counts,
+        )?;
+    }
+    for template in &program.matched_templates {
         observe_instructions(
             &template.template.body,
             &mut instruction_count,
@@ -93,8 +95,17 @@ fn inspect_compiled(
             method: program.output.method.clone(),
             omit_xml_declaration: program.output.omit_xml_declaration,
         },
-        root_template_count: 1,
-        exact_element_template_count: program.element_templates.len(),
+        root_template_count: usize::from(program.root_template.is_some()),
+        exact_element_template_count: program
+            .matched_templates
+            .iter()
+            .filter(|template| {
+                matches!(
+                    template.pattern,
+                    super::golden_semantics_experiment::MatchPattern::Element(_)
+                )
+            })
+            .count(),
         instruction_count,
         features: feature_counts
             .into_iter()

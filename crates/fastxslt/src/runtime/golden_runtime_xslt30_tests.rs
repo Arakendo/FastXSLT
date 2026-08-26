@@ -101,6 +101,46 @@ fn assert_same_empty_document_element(actual: &str, expected: &str) {
     assert!(expected.children(expected_root).is_empty());
 }
 
+fn assert_same_result_element_string(actual: &str, expected: &str, local: &str) {
+    let limits = ParseLimits {
+        max_events: 32,
+        max_depth: 8,
+    };
+    let actual_document = Document::from_parsed(
+        parse_document("urn:fastxslt:actual", actual.as_bytes(), limits)
+            .expect("actual result should parse"),
+    )
+    .expect("actual result should build");
+    let expected_document = Document::from_parsed(
+        parse_document("urn:w3c:expected", expected.trim().as_bytes(), limits)
+            .expect("expected result should parse"),
+    )
+    .expect("expected result should build");
+    let actual_element = find_element(
+        &actual_document,
+        actual_document.document_node(),
+        local,
+        None,
+    )
+    .expect("actual result element");
+    let expected_element = find_element(
+        &expected_document,
+        expected_document.document_node(),
+        local,
+        None,
+    )
+    .expect("expected result element");
+
+    assert_eq!(
+        actual_document.name(actual_element),
+        expected_document.name(expected_element)
+    );
+    assert_eq!(
+        actual_document.string_value(actual_element),
+        expected_document.string_value(expected_element)
+    );
+}
+
 #[test]
 fn classifies_the_complete_pinned_template_test_set_without_denominator_loss() {
     let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
@@ -110,7 +150,7 @@ fn classifies_the_complete_pinned_template_test_set_without_denominator_loss() {
         overlay
             .matches("selection = \"engine-unsupported\"")
             .count(),
-        5
+        4
     );
 
     let (test_set, set_path) = suite_test_set();
@@ -148,14 +188,14 @@ fn classifies_the_complete_pinned_template_test_set_without_denominator_loss() {
             .expect("admit one upstream stylesheet");
         let snapshot = resources.seal();
 
-        if case_name == CASE_NAME {
+        if matches!(case_name, "template-001" | CASE_NAME) {
             compile_resource(&snapshot, &stylesheet_id)
                 .expect("the admitted preview case should compile");
         } else {
             let expected_code = if case_name == "template-005" {
                 "FXST1010"
             } else {
-                "FXST1009"
+                "FXXP1001"
             };
             let failure = compile_resource(&snapshot, &stylesheet_id)
                 .expect_err("the overlay must retain unsupported template cases visibly");
@@ -163,6 +203,83 @@ fn classifies_the_complete_pinned_template_test_set_without_denominator_loss() {
             assert_eq!(failure.code, expected_code);
         }
     }
+}
+
+#[test]
+fn executes_pinned_xslt30_template_001_with_comment_selection_and_mode() {
+    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
+    let case_name = "template-001";
+    assert!(overlay.contains("case_name = \"template-001\""));
+
+    let (test_set, set_path) = suite_test_set();
+    let test_case = find_element(
+        &test_set,
+        test_set.document_node(),
+        "test-case",
+        Some(("name", case_name)),
+    )
+    .expect("overlay case should exist in pinned suite");
+    let environment_ref = find_element(&test_set, test_case, "environment", None)
+        .and_then(|node| attribute(&test_set, node, "ref"))
+        .expect("case should reference an environment");
+    let environment = find_element(
+        &test_set,
+        test_set.document_node(),
+        "environment",
+        Some(("name", environment_ref)),
+    )
+    .expect("referenced environment should exist");
+    let source = find_element(&test_set, environment, "content", None)
+        .map(|node| test_set.string_value(node))
+        .expect("environment should contain the principal source");
+    let stylesheet_file = find_element(&test_set, test_case, "stylesheet", None)
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("case should name a stylesheet");
+    let expected = find_element(&test_set, test_case, "assert-xml", None)
+        .map(|node| test_set.string_value(node))
+        .expect("case should provide an XML assertion");
+    let stylesheet = fs::read(
+        set_path
+            .parent()
+            .expect("test set should have a directory")
+            .join(stylesheet_file),
+    )
+    .expect("read upstream stylesheet and close handle");
+
+    let source_id = "urn:w3c:xslt30:template-001:source";
+    let stylesheet_id = "urn:w3c:xslt30:template-001:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(source_id, source.into_bytes())
+        .expect("admit upstream source");
+    resources
+        .admit(stylesheet_id, stylesheet)
+        .expect("admit upstream stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, stylesheet_id).expect("compile suite case");
+    assert!(program.root_template.is_none());
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 4_096,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    set.add(TransformRequest {
+        identity: case_name.to_owned(),
+        result_identity: "result:template-001".to_owned(),
+        source_resource: source_id.to_owned(),
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    })
+    .expect("admit suite request");
+
+    let results = execute_transform_set(set.seal()).expect("execute suite case");
+    let actual = &results.by_request[case_name].serialized;
+    assert_same_result_element_string(actual, &expected, "out");
 }
 
 #[test]

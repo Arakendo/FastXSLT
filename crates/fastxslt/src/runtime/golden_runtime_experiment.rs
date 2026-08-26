@@ -12,7 +12,9 @@ use crate::xml::quick_xml_experiment::{
     ExpandedName, ParseLimits, parse_document, parse_document_controlled,
 };
 use crate::xpath::path_experiment::evaluate_child_path_controlled;
-use crate::xslt::golden_semantics_experiment::{Instruction, StylesheetProgram};
+use crate::xslt::golden_semantics_experiment::{
+    ApplySelection, Instruction, MatchPattern, StylesheetProgram,
+};
 
 mod serialization;
 
@@ -308,16 +310,26 @@ pub(super) fn execute_program(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
-    Ok(SemanticResult {
-        children: execute_sequence(
+    let children = if let Some(root_template) = &program.root_template {
+        execute_sequence(
             program,
-            &program.root_template.body,
+            &root_template.body,
             source,
             source.document_node(),
             request_id,
             control,
-        )?,
-    })
+        )?
+    } else {
+        apply_template(
+            program,
+            source,
+            source.document_node(),
+            None,
+            request_id,
+            control,
+        )?
+    };
+    Ok(SemanticResult { children })
 }
 
 fn execute_sequence(
@@ -372,10 +384,26 @@ fn execute_sequence(
                         })?;
                 }
             }
-            Instruction::ApplyTemplates { select, .. } => {
+            Instruction::ApplyTemplates { select, mode, .. } => {
                 let selected = if let Some(select) = select {
-                    evaluate_child_path_controlled(source, context, select, control)
-                        .map_err(|failure| control_failure(failure, request_id))?
+                    match select {
+                        ApplySelection::ChildPath(path) => {
+                            evaluate_child_path_controlled(source, context, path, control)
+                                .map_err(|failure| control_failure(failure, request_id))?
+                        }
+                        ApplySelection::Comments => {
+                            let mut comments = Vec::new();
+                            for child in source.children(context).iter().copied() {
+                                control
+                                    .charge(WorkDomain::XPathNodeVisit, 1)
+                                    .map_err(|failure| control_failure(failure, request_id))?;
+                                if source.kind(child) == NodeKind::Comment {
+                                    comments.push(child);
+                                }
+                            }
+                            comments
+                        }
+                    }
                 } else {
                     source.children(context).to_vec()
                 };
@@ -384,6 +412,7 @@ fn execute_sequence(
                         program,
                         source,
                         selected_node,
+                        mode.as_deref(),
                         request_id,
                         control,
                     )?);
@@ -398,18 +427,22 @@ fn apply_template(
     program: &StylesheetProgram,
     source: &Document,
     node: NodeId,
+    mode: Option<&str>,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     control
         .charge(WorkDomain::XsltInstruction, 1)
         .map_err(|failure| control_failure(failure, request_id))?;
-    if let Some(template) = source.name(node).and_then(|name| {
-        program
-            .element_templates
-            .iter()
-            .find(|template| template.match_name == *name)
-    }) {
+    if let Some(template) = program
+        .matched_templates
+        .iter()
+        .filter(|template| template.mode.as_deref() == mode)
+        .find(|template| match &template.pattern {
+            MatchPattern::Element(name) => source.name(node) == Some(name),
+            MatchPattern::Comment => source.kind(node) == NodeKind::Comment,
+        })
+    {
         return execute_sequence(
             program,
             &template.template.body,
@@ -425,7 +458,7 @@ fn apply_template(
             let mut result = Vec::new();
             for child in source.children(node) {
                 result.extend(apply_template(
-                    program, source, *child, request_id, control,
+                    program, source, *child, mode, request_id, control,
                 )?);
             }
             Ok(result)

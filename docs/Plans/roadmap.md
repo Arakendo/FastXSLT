@@ -9,8 +9,8 @@ standards scope are decided.
 FastXSLT has accepted its staged-modern semantic direction and conserved the
 first complete XSLT30 test-set denominator. The current order of work is:
 
-1. implement the next standards-directed semantic slice and use its native QT3
-   and XSLT30 cases to extend comparison behavior;
+1. continue the node-kind selection family from passing XSLT30 `template-001`
+   into processing-instruction and `node()` pressure from `template-002/003`;
 2. map each selected suite environment into bounded sealed resources and add
    the comparison family required by that slice;
 3. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
@@ -92,6 +92,9 @@ failed, and harness-error cases without an unqualified conformance claim.
   in the private reference path; its public representation remains unstabilized.
 - [ ] Add template selection, built-in rules, parameters, variables, and output
   behavior required by the accepted profile.
+- [x] Execute XSLT30 `template-001` through built-in document dispatch,
+  comment-node selection, and an isolated named mode while retaining the other
+  four unsupported cases in the six-case denominator.
 - [ ] Establish explicit URI/resource resolution and execution limits.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by

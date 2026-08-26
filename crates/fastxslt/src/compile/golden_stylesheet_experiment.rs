@@ -1,7 +1,8 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xpath::path_experiment::{PathFailure, parse_child_path};
 use crate::xslt::golden_semantics_experiment::{
-    ElementTemplate, Instruction, OutputSettings, StylesheetProgram, Template,
+    ApplySelection, Instruction, MatchPattern, MatchedTemplate, OutputSettings, StylesheetProgram,
+    Template,
 };
 
 const XSLT_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
@@ -27,7 +28,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
 
     let mut output = None;
     let mut root_template = None;
-    let mut element_templates = Vec::new();
+    let mut matched_templates = Vec::new();
     for child in meaningful_children(document, root) {
         let Some(name) = document.name(child) else {
             continue;
@@ -53,6 +54,13 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
                 }
                 let pattern = required_attribute(document, child, None, "match")?;
                 if pattern == "/" {
+                    if optional_attribute(document, child, None, "mode").is_some() {
+                        return Err(unsupported(
+                            "FXST1011",
+                            "a mode on the root match pattern is outside the private slice",
+                            document.location(child),
+                        ));
+                    }
                     if root_template.is_some() {
                         return Err(unsupported(
                             "FXST1001",
@@ -62,9 +70,10 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
                     }
                     root_template = Some(compile_template(document, child)?);
                 } else {
-                    let element_template = compile_element_template(document, child, pattern)?;
-                    if element_templates.iter().any(|existing: &ElementTemplate| {
-                        existing.match_name == element_template.match_name
+                    let matched_template = compile_matched_template(document, child, pattern)?;
+                    if matched_templates.iter().any(|existing: &MatchedTemplate| {
+                        existing.pattern == matched_template.pattern
+                            && existing.mode == matched_template.mode
                     }) {
                         return Err(unsupported(
                             "FXST1008",
@@ -74,7 +83,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
                             document.location(child),
                         ));
                     }
-                    element_templates.push(element_template);
+                    matched_templates.push(matched_template);
                 }
             }
             (Some(XSLT_NAMESPACE), local) => {
@@ -100,14 +109,8 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
             method: None,
             omit_xml_declaration: false,
         }),
-        root_template: root_template.ok_or_else(|| {
-            invalid(
-                "FXST0004",
-                "the private slice requires a root template",
-                document.location(root),
-            )
-        })?,
-        element_templates,
+        root_template,
+        matched_templates,
     })
 }
 
@@ -145,29 +148,37 @@ fn compile_output(document: &Document, element: NodeId) -> Result<OutputSettings
     })
 }
 
-fn compile_element_template(
+fn compile_matched_template(
     document: &Document,
     element: NodeId,
     pattern: &str,
-) -> Result<ElementTemplate, CompileFailure> {
-    if !is_ascii_ncname(pattern) {
+) -> Result<MatchedTemplate, CompileFailure> {
+    let pattern = if pattern == "comment()" {
+        MatchPattern::Comment
+    } else if is_ascii_ncname(pattern) {
+        MatchPattern::Element(crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: None,
+            local: pattern.to_owned(),
+        })
+    } else {
         return Err(unsupported(
             "FXST1005",
             format!("unsupported template match pattern: {pattern}"),
             document.location(element),
         ));
-    }
-    Ok(ElementTemplate {
-        match_name: crate::xml::quick_xml_experiment::ExpandedName {
-            namespace: None,
-            local: pattern.to_owned(),
-        },
+    };
+    let mode = optional_attribute(document, element, None, "mode")
+        .map(|mode| parse_mode(mode, document.location(element)))
+        .transpose()?;
+    Ok(MatchedTemplate {
+        pattern,
+        mode,
         template: compile_template(document, element)?,
     })
 }
 
 fn compile_template(document: &Document, element: NodeId) -> Result<Template, CompileFailure> {
-    ensure_only_attributes(document, element, &["match"], "xsl:template")?;
+    ensure_only_attributes(document, element, &["match", "mode"], "xsl:template")?;
     Ok(Template {
         body: compile_sequence(document, element)?,
         location: document.location(element).clone(),
@@ -236,13 +247,49 @@ fn compile_apply_templates(
     document: &Document,
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
-    ensure_only_attributes(document, element, &["select"], "xsl:apply-templates")?;
+    ensure_only_attributes(
+        document,
+        element,
+        &["select", "mode"],
+        "xsl:apply-templates",
+    )?;
     ensure_no_meaningful_children(document, element, "xsl:apply-templates")?;
     let location = document.location(element).clone();
     let select = optional_attribute(document, element, None, "select")
-        .map(|expression| parse_child_path(expression, location.clone()).map_err(map_path_failure))
+        .map(|expression| parse_apply_selection(expression, location.clone()))
         .transpose()?;
-    Ok(Instruction::ApplyTemplates { select, location })
+    let mode = optional_attribute(document, element, None, "mode")
+        .map(|mode| parse_mode(mode, document.location(element)))
+        .transpose()?;
+    Ok(Instruction::ApplyTemplates {
+        select,
+        mode,
+        location,
+    })
+}
+
+fn parse_apply_selection(
+    expression: &str,
+    location: SourceLocation,
+) -> Result<ApplySelection, CompileFailure> {
+    if expression == "comment()" {
+        return Ok(ApplySelection::Comments);
+    }
+    parse_child_path(expression, location)
+        .map(ApplySelection::ChildPath)
+        .map_err(map_path_failure)
+}
+
+fn parse_mode(mode: &str, location: &SourceLocation) -> Result<String, CompileFailure> {
+    if is_ascii_ncname(mode) {
+        Ok(mode.to_owned())
+    } else {
+        Err(unsupported(
+            "FXST1012",
+            format!("unsupported mode name: {mode}"),
+            location,
+        ))
+    }
 }
 
 fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
@@ -478,8 +525,12 @@ mod tests {
         assert_eq!(program.declared_version, "1.0");
         assert_eq!(program.output.method.as_deref(), Some("xml"));
         assert!(program.output.omit_xml_declaration);
-        let [Instruction::LiteralElement { name, body, .. }] =
-            program.root_template.body.as_slice()
+        let [Instruction::LiteralElement { name, body, .. }] = program
+            .root_template
+            .as_ref()
+            .expect("root template")
+            .body
+            .as_slice()
         else {
             panic!("root template should contain one literal result element");
         };
@@ -494,7 +545,12 @@ mod tests {
             ] if first == "Hello, " && select.steps == ["greeting", "name"] && last == "!"
         ));
         assert_eq!(
-            program.root_template.location.resource,
+            program
+                .root_template
+                .as_ref()
+                .expect("root template")
+                .location
+                .resource,
             "golden:hello/stylesheet.xsl"
         );
     }
@@ -522,13 +578,24 @@ mod tests {
 
         let program = compile_stylesheet(&document).expect("dispatch stylesheet should compile");
 
-        assert_eq!(program.element_templates.len(), 1);
-        assert_eq!(program.element_templates[0].match_name.local, "item");
+        assert_eq!(program.matched_templates.len(), 1);
         assert!(matches!(
-            program.root_template.body.as_slice(),
+            &program.matched_templates[0].pattern,
+            crate::xslt::golden_semantics_experiment::MatchPattern::Element(name)
+                if name.local == "item"
+        ));
+        assert!(matches!(
+            program
+                .root_template
+                .as_ref()
+                .expect("root template")
+                .body
+                .as_slice(),
             [Instruction::LiteralElement { body, .. }]
                 if matches!(body.as_slice(), [Instruction::ApplyTemplates { select: Some(select), .. }]
-                    if select.steps == ["catalog", "item"])
+                    if matches!(select,
+                        crate::xslt::golden_semantics_experiment::ApplySelection::ChildPath(path)
+                            if path.steps == ["catalog", "item"]))
         ));
 
         let duplicate = parse_stylesheet(
@@ -542,12 +609,10 @@ mod tests {
 
         let mode = parse_stylesheet(
             "memory:mode.xsl",
-            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:apply-templates select="root/item" mode="detail"/></xsl:template><xsl:template match="item"><out/></xsl:template></xsl:stylesheet>"#,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:apply-templates select="root/item" mode="detail"/></xsl:template><xsl:template match="item" mode="detail"><out/></xsl:template></xsl:stylesheet>"#,
         );
-        let failure =
-            compile_stylesheet(&mode).expect_err("mode semantics must remain unsupported");
-        assert_eq!(failure.category, CompileCategory::Unsupported);
-        assert_eq!(failure.code, "FXST1009");
+        let program = compile_stylesheet(&mode).expect("unprefixed modes should compile");
+        assert_eq!(program.matched_templates[0].mode.as_deref(), Some("detail"));
     }
 
     #[test]

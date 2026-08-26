@@ -4,9 +4,9 @@ revision = "6f8fd9e966ae74a251a2604abef9d904c7bc5c9b"
 [[case]]
 set_file = "tests/decl/template/_template-test-set.xml"
 case_name = "template-001"
-selection = "engine-unsupported"
-execution = "not-run"
-rationale = "The complete upstream case requires comment() node tests and modes; FastXSLT must not omit it merely because the current private compiler cannot admit those semantics."
+selection = "selected"
+execution = "passed"
+rationale = "Built-in document dispatch, comment() child selection, comment-node pattern matching, and an unprefixed named mode now execute through the private semantic path."
 
 [[case]]
 set_file = "tests/decl/template/_template-test-set.xml"

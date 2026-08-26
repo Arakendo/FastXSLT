@@ -6,8 +6,8 @@ use crate::xpath::path_experiment::ChildPath;
 pub(crate) struct StylesheetProgram {
     pub(crate) declared_version: String,
     pub(crate) output: OutputSettings,
-    pub(crate) root_template: Template,
-    pub(crate) element_templates: Vec<ElementTemplate>,
+    pub(crate) root_template: Option<Template>,
+    pub(crate) matched_templates: Vec<MatchedTemplate>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,9 +23,22 @@ pub(crate) struct Template {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ElementTemplate {
-    pub(crate) match_name: ExpandedName,
+pub(crate) struct MatchedTemplate {
+    pub(crate) pattern: MatchPattern,
+    pub(crate) mode: Option<String>,
     pub(crate) template: Template,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum MatchPattern {
+    Element(ExpandedName),
+    Comment,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ApplySelection {
+    ChildPath(ChildPath),
+    Comments,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,7 +57,8 @@ pub(crate) enum Instruction {
         location: SourceLocation,
     },
     ApplyTemplates {
-        select: Option<ChildPath>,
+        select: Option<ApplySelection>,
+        mode: Option<String>,
         location: SourceLocation,
     },
 }
