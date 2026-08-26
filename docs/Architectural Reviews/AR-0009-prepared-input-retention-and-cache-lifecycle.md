@@ -144,8 +144,7 @@ incompatible with the current explicit-ownership direction.
 - Preparation has explicit cancellation and XML/XDM work budgets. The 87-byte
   golden source produces six retained nodes and reports 1,932 bytes of owned
   representation capacity on the recorded build. That diagnostic excludes
-  allocator/snapshot/temporary overhead; peak memory and timing remain
-  unmeasured.
+  allocator/snapshot/temporary overhead; peak memory remains unmeasured.
 - Eight threads can concurrently read the same prepared document and compiled
   program with isolated invocation controls and equal results. This establishes
   immutable sharing for the current slice, not an executor or contention policy.
@@ -165,6 +164,11 @@ incompatible with the current explicit-ownership direction.
   overhead, co-resident construction peak, derived indexes, and runtime
   transients, so it cannot yet close the general memory follow-up or select
   budgets.
+- A separate ignored release-mode phase probe over the 55-byte source observed
+  1,123.9–1,133.3 ns XML-parse medians and 863.4–921.5 ns XDM
+  construct-and-drop medians across three local runs. Different allocation
+  lifetimes and cache state prevent treating their sum as an exact decomposition
+  of the earlier end-to-end probe.
 
 ## Disposition
 
@@ -184,6 +188,8 @@ thread-safety, eviction, or performance guarantee.
   golden source under the current representation.
 - [ ] Measure parse/XDM construction time, allocator-inclusive retained memory,
   and peak construction memory separately.
+  - [x] Retain a reproducible release-mode probe that times XML parsing and XDM
+    construction separately for the private 55-byte fixture.
 - [x] Run one stylesheet over multiple prepared sources and multiple stylesheets
   over one prepared source, comparing semantics with parse per invocation.
 - [ ] Benchmark those workload shapes,
@@ -245,3 +251,6 @@ different retention seam.
 - 2026-08-25 -- Added parser-event representation capacity at the
   completed-parse boundary. This separates another transient class but does not
   establish allocator-inclusive or co-resident peak construction memory.
+- 2026-08-25 -- Added a separate-phase release-mode timing probe. Local tiny
+  fixture results make parse and XDM construction independently visible but do
+  not close representative workload, allocator, or host-boundary follow-up.

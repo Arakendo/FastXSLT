@@ -569,4 +569,53 @@ mod tests {
             direct_median / prepared_median
         );
     }
+
+    #[test]
+    #[ignore = "manual release-mode XML-parse versus XDM-construction probe"]
+    fn measures_preparation_phase_time_separately() {
+        const BENCH_SOURCE: &str = "urn:fastxslt:measure:preparation-phases";
+        const ITERATIONS: usize = 10_000;
+        const ITERATIONS_F64: f64 = 10_000.0;
+        const SAMPLES: usize = 7;
+        let source_bytes =
+            include_bytes!("../../../../corpus/golden/built-in-template-rules/input.xml");
+        let mut parse_ns = Vec::with_capacity(SAMPLES);
+        let mut xdm_ns = Vec::with_capacity(SAMPLES);
+
+        for _ in 0..SAMPLES {
+            let parse_start = Instant::now();
+            for iteration in 0..ITERATIONS {
+                black_box(
+                    parse_document(
+                        BENCH_SOURCE,
+                        black_box(source_bytes),
+                        super::PREPARATION_XML_LIMITS,
+                    )
+                    .expect("parse measured preparation source"),
+                );
+                black_box(iteration);
+            }
+            parse_ns.push(parse_start.elapsed().as_secs_f64() * 1_000_000_000.0 / ITERATIONS_F64);
+
+            let parsed_documents: Vec<_> = (0..ITERATIONS)
+                .map(|_| {
+                    parse_document(BENCH_SOURCE, source_bytes, super::PREPARATION_XML_LIMITS)
+                        .expect("prepare XDM timing input")
+                })
+                .collect();
+            let xdm_start = Instant::now();
+            for parsed in parsed_documents {
+                black_box(Document::from_parsed(parsed).expect("build measured XDM document"));
+            }
+            xdm_ns.push(xdm_start.elapsed().as_secs_f64() * 1_000_000_000.0 / ITERATIONS_F64);
+        }
+
+        parse_ns.sort_by(f64::total_cmp);
+        xdm_ns.sort_by(f64::total_cmp);
+        println!(
+            "iterations={ITERATIONS} samples={SAMPLES} parse_median_ns={:.1} xdm_median_ns={:.1}",
+            parse_ns[SAMPLES / 2],
+            xdm_ns[SAMPLES / 2]
+        );
+    }
 }

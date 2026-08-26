@@ -86,9 +86,10 @@ The sibling `built-in-template-rules` golden adds default child application,
 built-in document/element/text behavior, and context-item value selection. It
 does not broaden match priority, modes, DTD/ID behavior, or complex XPath.
 
-Prepared-input timing remains an ignored release-mode probe. Normal correctness
-gates do not enforce timing, and local ratios from a tiny private fixture do not
-become cache defaults or ASP.NET performance claims.
+Prepared-input timing remains in ignored release-mode probes. Normal
+correctness gates do not enforce timing, and local ratios or phase times from a
+tiny private fixture do not become cache defaults or ASP.NET performance
+claims.
 
 Prepared-retention tests report admitted raw bytes, parser-owned capacity at
 the completed-parse boundary, XDM node count, and current XDM-owned capacity as

@@ -391,6 +391,10 @@ ambient I/O or public stability claim.
   reports 46,862 parsed-phase bytes, 202 nodes, and 63,755 XDM bytes.
   Independent concurrent builders produce distinct documents, while cancelled
   and budget-exhausted attempts permit clean retries.
+- Measurement: three separate-phase release runs over the 55-byte source
+  observed 1,123.9–1,133.3 ns XML-parse medians and 863.4–921.5 ns XDM
+  construct-and-drop medians. Loop/allocation differences prevent adding these
+  into an exact decomposition of the complete direct-path measurement.
 - Findings: the seam has measurable private value and meaningful retention
   cost. The current builder performs explicit owned construction, so it has no
   shared first-access, single-flight, or waiter semantics to stabilize.
