@@ -22,3 +22,10 @@ classification or harness corrections in reviewable overlays with rationale.
 - [W3C QT3 and XSLT 3.0 suite provenance](w3c-test-suites.md) records the two
   Git submodules, immutable revisions, licensing boundary, acquisition check,
   and update procedure.
+
+## Reviewed candidates
+
+- [W3C XML Conformance Suite Candidate Review](../Evidence/w3c-xml-conformance-suite-candidate-review-2026-08-25.md)
+  records the official 20130923 archive, SHA-256, local structural inventory,
+  catalog/entity mechanics, classification needs, and unresolved redistribution
+  boundary. It is not admitted to the repository.

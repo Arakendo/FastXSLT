@@ -17,6 +17,21 @@ golden/<case>/expected.xml   Expected serialized result
 overlays/<suite>/*.toml      First-party selections and classifications
 ```
 
+Future first-party adversarial and performance inputs may use named owner or
+workload directories once real cases exist. They remain distinct from immutable
+external suites:
+
+```text
+adversarial/<owner>/<case>/  Hostile/boundary fixtures with named expected controls
+performance/<workload>/     Correctness-gated benchmark inputs and manifests
+```
+
+Conformance asks whether selected standards behavior is correct. Adversarial
+cases ask whether bounded hostile work terminates predictably. Performance cases
+measure cost under a recorded configuration. A fixture may inform another
+family, but its provenance, classification, and reported claim must not silently
+change.
+
 The initial `hello` case now executes through a test-only private vertical slice
 that asserts its semantic result separately from serialization. It remains a
 portable design seed, not a public feature or commitment to an XSLT version.

@@ -14,6 +14,22 @@ them.
 | Property/fuzz | Parser safety, invariants, round trips, and adversarial inputs | focused fuzz targets |
 | Benchmark | Compile, warm transform, cold transform, allocation, and scale behavior | benchmark harness |
 
+## Corpus purposes
+
+Conformance, adversarial, and performance corpora answer different questions
+and must not share an unexplained denominator:
+
+| Corpus family | Primary question | Must not imply |
+| --- | --- | --- |
+| Conformance | Is behavior correct for a named standards edition and selected feature profile? | Support for excluded/unsupported cases or security under load |
+| Adversarial | Does hostile-but-bounded work terminate through the expected structural/work control? | Standards conformance or a production budget default |
+| Performance | What does a correctness-gated workload cost under a recorded configuration? | Correctness outside the cases or end-to-end host speed from a Rust-only number |
+
+An upstream suite may inspire an adversarial regression, but copied/minimized or
+generated fixtures need their own provenance and cease to be unmodified upstream
+conformance cases. A benchmark may reuse a correct fixture, but its sampling,
+warmup, scaling, and host configuration belong to performance evidence.
+
 ## Comparison rules
 
 XML serialization is not generally safe to compare as raw text. Each golden or
@@ -49,6 +65,13 @@ relevant dependency and environment metadata, retain the
 unaltered case identity, classify cases against the accepted AR-0001 profile,
 and distinguish unsupported behavior from harness failure. Local selection and
 classification belong outside the submodules.
+
+The W3C XML Conformance Test Suite 20130923 is a reviewed but non-admitted
+candidate for AR-0008. It is a dated archive rather than a Git submodule, its
+root catalog uses DTD/entity composition, and its older contributor notices
+require a focused rights decision before redistribution. Optional local use must
+verify the recorded archive digest and classify XML edition, namespace mode,
+case type, entity mode, and assertion capability before execution.
 
 ## Resource and batch testing
 

@@ -8,7 +8,7 @@
 | Scope | XML byte decoding, tokenization, namespaces, provenance, limits, and XDM handoff |
 | Trigger | M1's private transform slice needs to turn admitted bytes into FastXSLT-owned document semantics |
 | Related ADRs | ADR-0001, ADR-0002, ADR-0003 |
-| Related evidence | `docs/Evidence/rust-xml-parser-candidate-review-2026-08-25.md` and `docs/Evidence/owned-xdm-tree-experiment-2026-08-25.md` |
+| Related evidence | `docs/Evidence/rust-xml-parser-candidate-review-2026-08-25.md`, `docs/Evidence/owned-xdm-tree-experiment-2026-08-25.md`, and `docs/Evidence/w3c-xml-conformance-suite-candidate-review-2026-08-25.md` |
 
 ## Architectural question
 
@@ -105,6 +105,15 @@ evidence does not justify it.
 - Complete XML name and namespace validation, declaration rules, character and
   encoding support, source line mapping, entity policy, performance, and
   adversarial robustness remain uncertain.
+- The official W3C XML 20130923 archive supplies 2,586 catalog cases across XML
+  editions, namespaces, validity, well-formedness, entity modes, and canonical
+  output. It is suitable pressure but requires dependency-aware selection.
+- The archive's root catalog composes 21 fragments through DTD entities. A
+  harness must inventory those local fragments explicitly rather than granting
+  ambient entity resolution.
+- Older mixed contributor notices remain in the archive and the current W3C
+  dual-license policy is not retroactive by default. The archive is therefore a
+  locally inspected candidate, not an admitted redistributable corpus.
 
 ## Disposition
 
@@ -122,6 +131,10 @@ boundary and FastXSLT remains responsible for accepted XML behavior.
 - [ ] Run a standards-derived XML well-formedness and namespace subset,
   especially names, namespace declarations, declarations, characters, and
   document structure.
+- [x] Inventory the W3C XML 20130923 candidate archive, case classes, metadata,
+  entity/catalog mechanics, SHA-256, and redistribution uncertainty.
+- [ ] Decide local-only acquisition versus repository/CI admission after a
+  focused rights review, preserving the exact archive digest.
 - [ ] Decide UTF-8-only versus explicit supported encodings and test declaration
   mismatches and byte-order marks.
 - [ ] Define offset-to-line/column indexing without copying parser types or
@@ -147,3 +160,6 @@ or another physical input strategy requires a different event seam.
 - 2026-08-25 -- Opened Under Review with a dev-only `quick-xml` experiment.
 - 2026-08-25 -- Confirmed the adapter can feed an owned private XDM tree after
   source bytes are released; production admission gates remain open.
+- 2026-08-25 -- Inspected the official W3C XML 20130923 archive and retained it
+  as a non-admitted candidate. Edition-aware selection, secure acquisition, and
+  rights disposition remain before subset execution.
