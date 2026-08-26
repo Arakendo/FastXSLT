@@ -29,3 +29,4 @@ pressure architecture but does not silently create a public guarantee.
 - [Peer Test-Corpus Review: Monday](peer-test-corpus-review-monday-2026-08-25.md)
 - [W3C XML Conformance Suite Candidate Review](w3c-xml-conformance-suite-candidate-review-2026-08-25.md)
 - [Private Corpus Case-Record Experiment](private-corpus-case-record-experiment-2026-08-25.md)
+- [Private Ledger Conservation Experiment](private-ledger-conservation-experiment-2026-08-25.md)

@@ -14,6 +14,8 @@ mod execution_control_experiment;
 mod resources;
 mod runtime;
 #[cfg(test)]
+mod verification_ledger_conservation_experiment;
+#[cfg(test)]
 mod verification_ledger_experiment;
 mod xdm;
 mod xml;

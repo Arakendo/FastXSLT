@@ -74,6 +74,10 @@ unaltered case identity, classify cases against the accepted AR-0001 profile,
 and distinguish unsupported behavior from harness failure. Local selection and
 classification belong outside the submodules.
 
+Private ledger tests also conserve the discovered and selected denominators
+across filtering, sharding, interruption, retry, and different merge orders.
+These tests establish accounting invariants, not a stable report format.
+
 The W3C XML Conformance Test Suite 20130923 is a reviewed but non-admitted
 candidate for AR-0008. It is a dated archive rather than a Git submodule, its
 root catalog uses DTD/entity composition, and its older contributor notices

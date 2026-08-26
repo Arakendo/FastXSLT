@@ -207,6 +207,12 @@ the profile closes; generalized execution remains deferred.
   record. This is useful boundary evidence, not a stable schema. Unknown
   assertion and dependency metadata becomes a visible harness-unsupported
   outcome.
+- A separate private accounting experiment conserves discovered and selected
+  totals across profile filtering, two shards, an interrupted case, and a
+  successful retry. Merge order does not affect the result; conflicting
+  same-attempt outcomes, mixed run/shard identity, duplicate inventory cases,
+  and execution observations outside the selected set fail visibly. Attempt
+  ordinals remain experimental mechanics rather than an adopted schema.
 
 ## Disposition
 
@@ -232,7 +238,7 @@ assertion/environment families provide boundary evidence.
 - [ ] Close AR-0001 with an accepted profile that can classify applicability.
 - [x] Define a private case-record experiment using at least one QT3 assertion
   family and a second XSLT30 assertion/environment family.
-- [ ] Demonstrate conservation totals when a run is filtered, sharded,
+- [x] Demonstrate conservation totals when a run is filtered, sharded,
   interrupted, retried, and merged in different completion orders.
 - [x] Demonstrate that unknown dependency/assertion metadata becomes a visible
   harness classification failure rather than exclusion or pass.
