@@ -8,6 +8,7 @@ pub(crate) struct StylesheetProgram {
     pub(crate) output: OutputSettings,
     pub(crate) root_template: Option<Template>,
     pub(crate) matched_templates: Vec<MatchedTemplate>,
+    pub(crate) named_templates: Vec<NamedTemplate>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,6 +27,13 @@ pub(crate) struct Template {
 pub(crate) struct MatchedTemplate {
     pub(crate) pattern: MatchPattern,
     pub(crate) mode: Option<String>,
+    pub(crate) template: Template,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct NamedTemplate {
+    pub(crate) name: String,
+    pub(crate) parameters: Vec<String>,
     pub(crate) template: Template,
 }
 
@@ -64,7 +72,7 @@ pub(crate) enum Instruction {
         location: SourceLocation,
     },
     ValueOf {
-        select: ChildPath,
+        select: ValueExpression,
         location: SourceLocation,
     },
     ApplyTemplates {
@@ -72,4 +80,32 @@ pub(crate) enum Instruction {
         mode: Option<String>,
         location: SourceLocation,
     },
+    If {
+        test: EqualityTest,
+        body: Vec<Instruction>,
+        location: SourceLocation,
+    },
+    CallTemplate {
+        name: String,
+        arguments: Vec<TemplateArgument>,
+        location: SourceLocation,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ValueExpression {
+    ChildPath(ChildPath),
+    Variable(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct EqualityTest {
+    pub(crate) variable: String,
+    pub(crate) integer: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct TemplateArgument {
+    pub(crate) name: String,
+    pub(crate) value: String,
 }

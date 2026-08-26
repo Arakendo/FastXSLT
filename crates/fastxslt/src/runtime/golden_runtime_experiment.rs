@@ -13,7 +13,8 @@ use crate::xml::quick_xml_experiment::{
 };
 use crate::xpath::path_experiment::evaluate_child_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, Instruction, MatchPattern, NodeTest, StylesheetProgram,
+    ApplySelection, Instruction, MatchPattern, NodeTest, StylesheetProgram, TemplateArgument,
+    ValueExpression,
 };
 
 mod serialization;
@@ -24,6 +25,7 @@ const XML_LIMITS: ParseLimits = ParseLimits {
     max_events: 1_024,
     max_depth: 64,
 };
+const MAX_NAMED_TEMPLATE_CALL_DEPTH: usize = 256;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ResultNode {
@@ -310,13 +312,19 @@ pub(super) fn execute_program(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
+    let variables = BTreeMap::new();
+    let inputs = SequenceInputs {
+        program,
+        source,
+        request_id,
+    };
     let children = if let Some(root_template) = &program.root_template {
         execute_sequence(
-            program,
+            &inputs,
             &root_template.body,
-            source,
             source.document_node(),
-            request_id,
+            &variables,
+            0,
             control,
         )?
     } else {
@@ -332,114 +340,220 @@ pub(super) fn execute_program(
     Ok(SemanticResult { children })
 }
 
+struct SequenceInputs<'a> {
+    program: &'a StylesheetProgram,
+    source: &'a Document,
+    request_id: &'a str,
+}
+
 fn execute_sequence(
-    program: &StylesheetProgram,
+    inputs: &SequenceInputs<'_>,
     instructions: &[Instruction],
-    source: &Document,
     context: crate::xdm::owned_tree_experiment::NodeId,
-    request_id: &str,
+    variables: &BTreeMap<String, String>,
+    call_depth: usize,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let mut result = Vec::new();
     for instruction in instructions {
         control
             .charge(WorkDomain::XsltInstruction, 1)
-            .map_err(|failure| control_failure(failure, request_id))?;
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
         match instruction {
             Instruction::LiteralElement { name, body, .. } => {
                 control
                     .charge(WorkDomain::ResultNode, 1)
-                    .map_err(|failure| control_failure(failure, request_id))?;
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
                 result.push(ResultNode::Element {
                     name: name.clone(),
                     children: execute_sequence(
-                        program, body, source, context, request_id, control,
+                        inputs, body, context, variables, call_depth, control,
                     )?,
                 });
             }
             Instruction::Text { value, .. } => {
-                append_text(&mut result, value, request_id, control)?;
+                append_text(&mut result, value, inputs.request_id, control)?;
             }
             Instruction::ValueOf { select, .. } => {
-                let selected = evaluate_child_path_controlled(source, context, select, control)
-                    .map_err(|failure| control_failure(failure, request_id))?;
-                if selected.len() > 1 {
-                    return Err(failure(
-                        "FXRT1001",
-                        FailureCategory::Unsupported,
-                        Some(request_id),
-                        "the private value-of slice does not define multi-node conversion",
-                    ));
-                }
-                if let Some(node) = selected.first() {
-                    source
-                        .visit_string_value_controlled(*node, control, &mut |part, control| {
-                            append_text(&mut result, part, request_id, control)
-                        })
-                        .map_err(|failure| match failure {
-                            StringValueVisitFailure::Control(failure) => {
-                                control_failure(failure, request_id)
-                            }
-                            StringValueVisitFailure::Sink(failure) => failure,
-                        })?;
-                }
+                execute_value_of(inputs, select, context, variables, &mut result, control)?;
             }
             Instruction::ApplyTemplates { select, mode, .. } => {
-                let selected = if let Some(select) = select {
-                    match select {
-                        ApplySelection::ChildPath(path) => {
-                            evaluate_child_path_controlled(source, context, path, control)
-                                .map_err(|failure| control_failure(failure, request_id))?
-                        }
-                        ApplySelection::ChildNodes(node_test) => {
-                            let mut selected = Vec::new();
-                            for child in source.children(context).iter().copied() {
-                                control
-                                    .charge(WorkDomain::XPathNodeVisit, 1)
-                                    .map_err(|failure| control_failure(failure, request_id))?;
-                                let matches = match node_test {
-                                    NodeTest::Comment => source.kind(child) == NodeKind::Comment,
-                                    NodeTest::ProcessingInstruction => {
-                                        source.kind(child) == NodeKind::ProcessingInstruction
-                                    }
-                                    NodeTest::AnyNode => true,
-                                };
-                                if matches {
-                                    selected.push(child);
-                                }
-                            }
-                            selected
-                        }
-                        ApplySelection::Attribute(name) => {
-                            let mut selected = Vec::new();
-                            for attribute in source.attributes(context).iter().copied() {
-                                control
-                                    .charge(WorkDomain::XPathNodeVisit, 1)
-                                    .map_err(|failure| control_failure(failure, request_id))?;
-                                if source.name(attribute) == Some(name) {
-                                    selected.push(attribute);
-                                }
-                            }
-                            selected
-                        }
-                    }
-                } else {
-                    source.children(context).to_vec()
-                };
+                let selected = select_apply_nodes(inputs, select.as_ref(), context, control)?;
                 for selected_node in selected {
                     result.extend(apply_template(
-                        program,
-                        source,
+                        inputs.program,
+                        inputs.source,
                         selected_node,
                         mode.as_deref(),
-                        request_id,
+                        inputs.request_id,
                         control,
                     )?);
                 }
             }
+            Instruction::If { test, body, .. } => {
+                let value = variables.get(&test.variable).ok_or_else(|| {
+                    failure(
+                        "FXRT0002",
+                        FailureCategory::Invalid,
+                        Some(inputs.request_id),
+                        format!("unbound variable: ${}", test.variable),
+                    )
+                })?;
+                if value.trim().parse::<i64>() == Ok(test.integer) {
+                    result.extend(execute_sequence(
+                        inputs, body, context, variables, call_depth, control,
+                    )?);
+                }
+            }
+            Instruction::CallTemplate {
+                name, arguments, ..
+            } => {
+                result.extend(execute_named_call(
+                    inputs, name, arguments, context, call_depth, control,
+                )?);
+            }
         }
     }
     Ok(result)
+}
+
+fn execute_value_of(
+    inputs: &SequenceInputs<'_>,
+    select: &ValueExpression,
+    context: NodeId,
+    variables: &BTreeMap<String, String>,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    match select {
+        ValueExpression::ChildPath(path) => {
+            let selected = evaluate_child_path_controlled(inputs.source, context, path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            if selected.len() > 1 {
+                return Err(failure(
+                    "FXRT1001",
+                    FailureCategory::Unsupported,
+                    Some(inputs.request_id),
+                    "the private value-of slice does not define multi-node conversion",
+                ));
+            }
+            if let Some(node) = selected.first() {
+                inputs
+                    .source
+                    .visit_string_value_controlled(*node, control, &mut |part, control| {
+                        append_text(result, part, inputs.request_id, control)
+                    })
+                    .map_err(|failure| match failure {
+                        StringValueVisitFailure::Control(failure) => {
+                            control_failure(failure, inputs.request_id)
+                        }
+                        StringValueVisitFailure::Sink(failure) => failure,
+                    })?;
+            }
+        }
+        ValueExpression::Variable(name) => {
+            let value = variables.get(name).ok_or_else(|| {
+                failure(
+                    "FXRT0002",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    format!("unbound variable: ${name}"),
+                )
+            })?;
+            append_text(result, value, inputs.request_id, control)?;
+        }
+    }
+    Ok(())
+}
+
+fn select_apply_nodes(
+    inputs: &SequenceInputs<'_>,
+    select: Option<&ApplySelection>,
+    context: NodeId,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let Some(select) = select else {
+        return Ok(inputs.source.children(context).to_vec());
+    };
+    match select {
+        ApplySelection::ChildPath(path) => {
+            evaluate_child_path_controlled(inputs.source, context, path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))
+        }
+        ApplySelection::ChildNodes(node_test) => {
+            let mut selected = Vec::new();
+            for child in inputs.source.children(context).iter().copied() {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                let matches = match node_test {
+                    NodeTest::Comment => inputs.source.kind(child) == NodeKind::Comment,
+                    NodeTest::ProcessingInstruction => {
+                        inputs.source.kind(child) == NodeKind::ProcessingInstruction
+                    }
+                    NodeTest::AnyNode => true,
+                };
+                if matches {
+                    selected.push(child);
+                }
+            }
+            Ok(selected)
+        }
+        ApplySelection::Attribute(name) => {
+            let mut selected = Vec::new();
+            for attribute in inputs.source.attributes(context).iter().copied() {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                if inputs.source.name(attribute) == Some(name) {
+                    selected.push(attribute);
+                }
+            }
+            Ok(selected)
+        }
+    }
+}
+
+fn execute_named_call(
+    inputs: &SequenceInputs<'_>,
+    name: &str,
+    arguments: &[TemplateArgument],
+    context: NodeId,
+    call_depth: usize,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    if call_depth >= MAX_NAMED_TEMPLATE_CALL_DEPTH {
+        return Err(failure(
+            "FXRT0003",
+            FailureCategory::Limit,
+            Some(inputs.request_id),
+            format!(
+                "named-template call depth exceeds private limit {MAX_NAMED_TEMPLATE_CALL_DEPTH}"
+            ),
+        ));
+    }
+    let target = inputs
+        .program
+        .named_templates
+        .iter()
+        .find(|template| template.name == name)
+        .expect("named-template references were validated during compilation");
+    let mut frame: BTreeMap<_, _> = target
+        .parameters
+        .iter()
+        .map(|parameter| (parameter.clone(), String::new()))
+        .collect();
+    for argument in arguments {
+        frame.insert(argument.name.clone(), argument.value.clone());
+    }
+    execute_sequence(
+        inputs,
+        &target.template.body,
+        context,
+        &frame,
+        call_depth + 1,
+        control,
+    )
 }
 
 fn apply_template(
@@ -480,12 +594,17 @@ fn apply_template(
             MatchPattern::AnyNode => 0,
         })
     {
-        return execute_sequence(
+        let inputs = SequenceInputs {
             program,
-            &template.template.body,
             source,
-            node,
             request_id,
+        };
+        return execute_sequence(
+            &inputs,
+            &template.template.body,
+            node,
+            &BTreeMap::new(),
+            0,
             control,
         );
     }
@@ -770,6 +889,36 @@ mod tests {
             results.by_request["built-in-request"].serialized,
             include_str!("../../../../corpus/golden/built-in-template-rules/expected.xml").trim()
         );
+    }
+
+    #[test]
+    fn named_template_recursion_stops_at_the_private_depth_limit() {
+        const SOURCE: &str = "urn:fastxslt:recursion:source";
+        const STYLESHEET: &str = "urn:fastxslt:recursion:stylesheet";
+        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+        resources
+            .admit(SOURCE, b"<doc/>".to_vec())
+            .expect("admit recursion source");
+        resources
+            .admit(
+                STYLESHEET,
+                br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template name="loop"><xsl:call-template name="loop"/></xsl:template><xsl:template match="/"><xsl:call-template name="loop"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            )
+            .expect("admit recursive stylesheet");
+        let snapshot = resources.seal();
+        let program =
+            compile_resource(&snapshot, STYLESHEET).expect("compile recursive stylesheet");
+        let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+        builder
+            .add(request("recursive", "recursive-result", SOURCE))
+            .expect("admit recursive request");
+
+        let failure = execute_transform_set(builder.seal())
+            .expect_err("recursive call chain must stop at the private depth limit");
+
+        assert_eq!(failure.code, "FXRT0003");
+        assert_eq!(failure.category, FailureCategory::Limit);
+        assert_eq!(failure.request_id.as_deref(), Some("recursive"));
     }
 
     #[test]

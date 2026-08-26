@@ -3,8 +3,7 @@
 use std::{collections::HashSet, fs, path::PathBuf};
 
 use super::{
-    ExecutionPolicy, FailureCategory, TransformRequest, TransformSetBuilder, compile_resource,
-    execute_transform_set,
+    ExecutionPolicy, TransformRequest, TransformSetBuilder, compile_resource, execute_transform_set,
 };
 use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
@@ -150,7 +149,7 @@ fn classifies_the_complete_pinned_template_test_set_without_denominator_loss() {
         overlay
             .matches("selection = \"engine-unsupported\"")
             .count(),
-        1
+        0
     );
 
     let (test_set, set_path) = suite_test_set();
@@ -188,28 +187,13 @@ fn classifies_the_complete_pinned_template_test_set_without_denominator_loss() {
             .expect("admit one upstream stylesheet");
         let snapshot = resources.seal();
 
-        if matches!(
-            case_name,
-            "template-001" | "template-002" | "template-003" | "template-004" | CASE_NAME
-        ) {
-            compile_resource(&snapshot, &stylesheet_id)
-                .expect("the admitted preview case should compile");
-        } else {
-            let expected_code = if case_name == "template-005" {
-                "FXST1010"
-            } else {
-                "FXXP1001"
-            };
-            let failure = compile_resource(&snapshot, &stylesheet_id)
-                .expect_err("the overlay must retain unsupported template cases visibly");
-            assert_eq!(failure.category, FailureCategory::Unsupported);
-            assert_eq!(failure.code, expected_code);
-        }
+        compile_resource(&snapshot, &stylesheet_id)
+            .expect("every case in the complete admitted template set should compile");
     }
 }
 
 #[test]
-fn executes_pinned_xslt30_node_and_attribute_selection_with_modes() {
+fn executes_pinned_xslt30_template_001_through_005() {
     let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
     let (test_set, set_path) = suite_test_set();
     for case_name in [
@@ -217,6 +201,7 @@ fn executes_pinned_xslt30_node_and_attribute_selection_with_modes() {
         "template-002",
         "template-003",
         "template-004",
+        "template-005",
     ] {
         assert!(overlay.contains(&format!("case_name = \"{case_name}\"")));
         let test_case = find_element(

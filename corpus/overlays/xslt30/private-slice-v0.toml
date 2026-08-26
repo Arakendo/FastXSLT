@@ -32,9 +32,9 @@ rationale = "Unprefixed attribute-axis selection and attribute pattern matching 
 [[case]]
 set_file = "tests/decl/template/_template-test-set.xml"
 case_name = "template-005"
-selection = "engine-unsupported"
-execution = "not-run"
-rationale = "The complete upstream case requires named templates, parameters, variables, conditionals, calls, and recursion; valid syntax remains distinct from invalid input."
+selection = "selected"
+execution = "passed"
+rationale = "Named-template lookup, string parameter binding, variable value access, integer equality conditionals, calls, and bounded recursion execute through the private semantic path."
 
 [[case]]
 set_file = "tests/decl/template/_template-test-set.xml"

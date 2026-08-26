@@ -95,7 +95,9 @@ The [roadmap](docs/Plans/roadmap.md) defines milestone outcomes. The private
 architecture slice, bounded resources, invocation controls, prepared-input
 reuse, and corpus-ledger invariants are executable. M1 now uses complete pinned
 W3C case metadata to widen the staged standards-driven preview accepted by
-ADR-0007. Representative consumer transforms refine application priorities and
+ADR-0007. All six cases in the first complete XSLT30 `template` test-set
+denominator now pass, without creating a broader conformance claim.
+Representative consumer transforms refine application priorities and
 ASP.NET/performance decisions in parallel; they do not block standards testing.
 
 ## License

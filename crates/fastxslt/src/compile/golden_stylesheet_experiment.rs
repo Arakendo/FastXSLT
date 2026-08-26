@@ -1,8 +1,8 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xpath::path_experiment::{PathFailure, parse_child_path};
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, Instruction, MatchPattern, MatchedTemplate, NodeTest, OutputSettings,
-    StylesheetProgram, Template,
+    ApplySelection, EqualityTest, Instruction, MatchPattern, MatchedTemplate, NamedTemplate,
+    NodeTest, OutputSettings, StylesheetProgram, Template, TemplateArgument, ValueExpression,
 };
 
 const XSLT_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
@@ -29,6 +29,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
     let mut output = None;
     let mut root_template = None;
     let mut matched_templates = Vec::new();
+    let mut named_templates = Vec::new();
     for child in meaningful_children(document, root) {
         let Some(name) = document.name(child) else {
             continue;
@@ -46,11 +47,18 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
             }
             (Some(XSLT_NAMESPACE), "template") => {
                 if let Some(name) = optional_attribute(document, child, None, "name") {
-                    return Err(unsupported(
-                        "FXST1010",
-                        format!("named templates are outside the private slice: {name}"),
-                        document.location(child),
-                    ));
+                    if named_templates
+                        .iter()
+                        .any(|template: &NamedTemplate| template.name == name)
+                    {
+                        return Err(invalid(
+                            "FXST0010",
+                            format!("duplicate named template: {name}"),
+                            document.location(child),
+                        ));
+                    }
+                    named_templates.push(compile_named_template(document, child, name)?);
+                    continue;
                 }
                 let pattern = required_attribute(document, child, None, "match")?;
                 if pattern == "/" {
@@ -103,7 +111,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
         }
     }
 
-    Ok(StylesheetProgram {
+    let program = StylesheetProgram {
         declared_version,
         output: output.unwrap_or(OutputSettings {
             method: None,
@@ -111,7 +119,10 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
         }),
         root_template,
         matched_templates,
-    })
+        named_templates,
+    };
+    validate_named_template_references(&program)?;
+    Ok(program)
 }
 
 fn compile_output(document: &Document, element: NodeId) -> Result<OutputSettings, CompileFailure> {
@@ -195,12 +206,76 @@ fn compile_template(document: &Document, element: NodeId) -> Result<Template, Co
     })
 }
 
+fn compile_named_template(
+    document: &Document,
+    element: NodeId,
+    name: &str,
+) -> Result<NamedTemplate, CompileFailure> {
+    ensure_only_attributes(document, element, &["name"], "xsl:template")?;
+    if !is_ascii_ncname(name) {
+        return Err(unsupported(
+            "FXST1013",
+            format!("unsupported named-template name: {name}"),
+            document.location(element),
+        ));
+    }
+    let mut parameters = Vec::new();
+    let mut parameter_nodes = Vec::new();
+    let mut body_started = false;
+    for child in meaningful_children(document, element) {
+        if is_xslt_element(document, child, "param") {
+            if body_started {
+                return Err(invalid(
+                    "FXST0011",
+                    "xsl:param must precede the named-template body",
+                    document.location(child),
+                ));
+            }
+            ensure_only_attributes(document, child, &["name"], "xsl:param")?;
+            ensure_no_meaningful_children(document, child, "xsl:param")?;
+            let parameter = required_attribute(document, child, None, "name")?;
+            if !is_ascii_ncname(parameter) || parameters.iter().any(|name| name == parameter) {
+                return Err(invalid(
+                    "FXST0012",
+                    format!("invalid or duplicate named-template parameter: {parameter}"),
+                    document.location(child),
+                ));
+            }
+            parameters.push(parameter.to_owned());
+            parameter_nodes.push(child);
+        } else {
+            body_started = true;
+        }
+    }
+    Ok(NamedTemplate {
+        name: name.to_owned(),
+        parameters,
+        template: Template {
+            body: compile_sequence_excluding(document, element, &parameter_nodes)?,
+            location: document.location(element).clone(),
+        },
+    })
+}
+
 fn compile_sequence(
     document: &Document,
     parent: NodeId,
 ) -> Result<Vec<Instruction>, CompileFailure> {
+    compile_sequence_excluding(document, parent, &[])
+}
+
+fn compile_sequence_excluding(
+    document: &Document,
+    parent: NodeId,
+    excluded: &[NodeId],
+) -> Result<Vec<Instruction>, CompileFailure> {
     let mut instructions = Vec::new();
-    for child in document.children(parent).iter().copied() {
+    for child in document
+        .children(parent)
+        .iter()
+        .copied()
+        .filter(|child| !excluded.contains(child))
+    {
         match document.kind(child) {
             NodeKind::Text => {
                 let value = document.value(child).unwrap_or_default();
@@ -219,6 +294,10 @@ fn compile_sequence(
                         instructions.push(compile_value_of(document, child)?);
                     } else if name.local == "apply-templates" {
                         instructions.push(compile_apply_templates(document, child)?);
+                    } else if name.local == "if" {
+                        instructions.push(compile_if(document, child)?);
+                    } else if name.local == "call-template" {
+                        instructions.push(compile_call_template(document, child)?);
                     } else {
                         return Err(unsupported(
                             "FXST1006",
@@ -323,8 +402,172 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
     ensure_no_meaningful_children(document, element, "xsl:value-of")?;
     let location = document.location(element).clone();
     let expression = required_attribute(document, element, None, "select")?;
-    let select = parse_child_path(expression, location.clone()).map_err(map_path_failure)?;
+    let select = if let Some(variable) = expression.strip_prefix('$') {
+        if !is_ascii_ncname(variable) {
+            return Err(invalid(
+                "FXXP0002",
+                format!("invalid variable reference: {expression}"),
+                &location,
+            ));
+        }
+        ValueExpression::Variable(variable.to_owned())
+    } else {
+        ValueExpression::ChildPath(
+            parse_child_path(expression, location.clone()).map_err(map_path_failure)?,
+        )
+    };
     Ok(Instruction::ValueOf { select, location })
+}
+
+fn compile_if(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
+    ensure_only_attributes(document, element, &["test"], "xsl:if")?;
+    let location = document.location(element).clone();
+    let expression = required_attribute(document, element, None, "test")?;
+    let (variable, integer) = expression.split_once('=').ok_or_else(|| {
+        unsupported(
+            "FXXP1002",
+            format!("unsupported conditional expression: {expression}"),
+            &location,
+        )
+    })?;
+    let variable = variable.trim().strip_prefix('$').unwrap_or_default();
+    let integer = integer.trim().parse::<i64>().map_err(|_| {
+        unsupported(
+            "FXXP1002",
+            format!("unsupported conditional expression: {expression}"),
+            &location,
+        )
+    })?;
+    if !is_ascii_ncname(variable) {
+        return Err(unsupported(
+            "FXXP1002",
+            format!("unsupported conditional expression: {expression}"),
+            &location,
+        ));
+    }
+    Ok(Instruction::If {
+        test: EqualityTest {
+            variable: variable.to_owned(),
+            integer,
+        },
+        body: compile_sequence(document, element)?,
+        location,
+    })
+}
+
+fn compile_call_template(
+    document: &Document,
+    element: NodeId,
+) -> Result<Instruction, CompileFailure> {
+    ensure_only_attributes(document, element, &["name"], "xsl:call-template")?;
+    let name = required_attribute(document, element, None, "name")?;
+    if !is_ascii_ncname(name) {
+        return Err(unsupported(
+            "FXST1013",
+            format!("unsupported named-template name: {name}"),
+            document.location(element),
+        ));
+    }
+    let mut arguments = Vec::new();
+    for child in meaningful_children(document, element) {
+        if !is_xslt_element(document, child, "with-param") {
+            return Err(unsupported(
+                "FXST1014",
+                "the private call-template slice permits only xsl:with-param children",
+                document.location(child),
+            ));
+        }
+        ensure_only_attributes(document, child, &["name"], "xsl:with-param")?;
+        let argument_name = required_attribute(document, child, None, "name")?;
+        if !is_ascii_ncname(argument_name)
+            || arguments
+                .iter()
+                .any(|argument: &TemplateArgument| argument.name == argument_name)
+        {
+            return Err(invalid(
+                "FXST0013",
+                format!("invalid or duplicate template argument: {argument_name}"),
+                document.location(child),
+            ));
+        }
+        arguments.push(TemplateArgument {
+            name: argument_name.to_owned(),
+            value: document.string_value(child),
+        });
+    }
+    Ok(Instruction::CallTemplate {
+        name: name.to_owned(),
+        arguments,
+        location: document.location(element).clone(),
+    })
+}
+
+fn is_xslt_element(document: &Document, node: NodeId, local: &str) -> bool {
+    document.name(node).is_some_and(|name| {
+        document.kind(node) == NodeKind::Element
+            && name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+            && name.local == local
+    })
+}
+
+fn validate_named_template_references(program: &StylesheetProgram) -> Result<(), CompileFailure> {
+    if let Some(root) = &program.root_template {
+        validate_named_calls(program, &root.body)?;
+    }
+    for template in &program.matched_templates {
+        validate_named_calls(program, &template.template.body)?;
+    }
+    for template in &program.named_templates {
+        validate_named_calls(program, &template.template.body)?;
+    }
+    Ok(())
+}
+
+fn validate_named_calls(
+    program: &StylesheetProgram,
+    instructions: &[Instruction],
+) -> Result<(), CompileFailure> {
+    for instruction in instructions {
+        match instruction {
+            Instruction::LiteralElement { body, .. } | Instruction::If { body, .. } => {
+                validate_named_calls(program, body)?;
+            }
+            Instruction::CallTemplate {
+                name,
+                arguments,
+                location,
+            } => {
+                let target = program
+                    .named_templates
+                    .iter()
+                    .find(|template| template.name == *name)
+                    .ok_or_else(|| {
+                        invalid(
+                            "FXST0014",
+                            format!("unknown named template: {name}"),
+                            location,
+                        )
+                    })?;
+                if let Some(argument) = arguments
+                    .iter()
+                    .find(|argument| !target.parameters.contains(&argument.name))
+                {
+                    return Err(invalid(
+                        "FXST0015",
+                        format!(
+                            "unknown parameter {} for named template {name}",
+                            argument.name
+                        ),
+                        location,
+                    ));
+                }
+            }
+            Instruction::Text { .. }
+            | Instruction::ValueOf { .. }
+            | Instruction::ApplyTemplates { .. } => {}
+        }
+    }
+    Ok(())
 }
 
 fn ensure_only_attributes(
@@ -524,7 +767,7 @@ fn unsupported(
 mod tests {
     use crate::xdm::owned_tree_experiment::Document;
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
-    use crate::xslt::golden_semantics_experiment::Instruction;
+    use crate::xslt::golden_semantics_experiment::{Instruction, ValueExpression};
 
     use super::{CompileCategory, compile_stylesheet};
 
@@ -568,7 +811,10 @@ mod tests {
                 Instruction::Text { value: first, .. },
                 Instruction::ValueOf { select, .. },
                 Instruction::Text { value: last, .. }
-            ] if first == "Hello, " && select.steps == ["greeting", "name"] && last == "!"
+            ] if first == "Hello, "
+                && matches!(select, ValueExpression::ChildPath(path)
+                    if path.steps == ["greeting", "name"])
+                && last == "!"
         ));
         assert_eq!(
             program
@@ -666,10 +912,18 @@ mod tests {
             "memory:named-template.xsl",
             br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template name="worker"><out/></xsl:template><xsl:template match="/"><xsl:call-template name="worker"/></xsl:template></xsl:stylesheet>"#,
         );
-        let failure = compile_stylesheet(&named_template)
-            .expect_err("valid named-template syntax should be visibly unsupported");
-        assert_eq!(failure.category, CompileCategory::Unsupported);
-        assert_eq!(failure.code, "FXST1010");
+        let program = compile_stylesheet(&named_template).expect("named template should compile");
+        assert_eq!(program.named_templates.len(), 1);
+        assert_eq!(program.named_templates[0].name, "worker");
+
+        let unknown_call = parse_stylesheet(
+            "memory:unknown-template.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:call-template name="missing"/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&unknown_call)
+            .expect_err("unknown named-template references are statically invalid");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+        assert_eq!(failure.code, "FXST0014");
     }
 
     #[test]

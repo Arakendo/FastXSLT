@@ -23,6 +23,8 @@ enum SemanticFeature {
     Text,
     ValueOf,
     ApplyTemplates,
+    If,
+    CallTemplate,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,6 +46,7 @@ struct CompiledInspection {
     output: OutputInspection,
     root_template_count: usize,
     exact_element_template_count: usize,
+    named_template_count: usize,
     instruction_count: usize,
     features: Vec<FeatureObservation>,
 }
@@ -81,6 +84,13 @@ fn inspect_compiled(
             &mut feature_counts,
         )?;
     }
+    for template in &program.named_templates {
+        observe_instructions(
+            &template.template.body,
+            &mut instruction_count,
+            &mut feature_counts,
+        )?;
+    }
     if feature_counts.len() > limits.max_feature_kinds {
         return Err(InspectionFailure::FeatureKindLimit {
             maximum: limits.max_feature_kinds,
@@ -106,6 +116,7 @@ fn inspect_compiled(
                 )
             })
             .count(),
+        named_template_count: program.named_templates.len(),
         instruction_count,
         features: feature_counts
             .into_iter()
@@ -133,6 +144,8 @@ fn observe_instructions(
             Instruction::Text { .. } => (SemanticFeature::Text, None),
             Instruction::ValueOf { .. } => (SemanticFeature::ValueOf, None),
             Instruction::ApplyTemplates { .. } => (SemanticFeature::ApplyTemplates, None),
+            Instruction::If { body, .. } => (SemanticFeature::If, Some(body.as_slice())),
+            Instruction::CallTemplate { .. } => (SemanticFeature::CallTemplate, None),
         };
         let occurrences = feature_counts.entry(feature).or_default();
         *occurrences = occurrences
@@ -199,6 +212,7 @@ mod tests {
                 },
                 root_template_count: 1,
                 exact_element_template_count: 0,
+                named_template_count: 0,
                 instruction_count: 4,
                 features: vec![
                     FeatureObservation {

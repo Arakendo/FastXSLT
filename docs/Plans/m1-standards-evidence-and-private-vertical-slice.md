@@ -531,3 +531,16 @@ ambient I/O or public stability claim.
   explicit engine-unsupported case.
 - Next slice: decompose `template-005` into named-template lookup, parameters,
   conditional evaluation, calls, and bounded recursion before implementation.
+
+### 2026-08-26: Complete XSLT30 template denominator
+
+- Work completed: executed native XSLT30 `template-005` through statically
+  resolved named templates, invocation-local string parameters, variable access,
+  integer equality conditionals, calls, and recursion.
+- Limit evidence: an independent infinite recursive call returns structured
+  limit failure at the private depth boundary; calls also consume the existing
+  XSLT instruction work budget.
+- Conservation: all six cases in the complete `template` denominator are now
+  selected and passing, with zero exclusions or hidden unsupported outcomes.
+- Next slice: select the next complete XSLT30 family together with the QT3
+  expression cases needed to implement it honestly.
