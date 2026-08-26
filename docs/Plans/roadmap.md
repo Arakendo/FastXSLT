@@ -14,11 +14,10 @@ bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
 current order of work is:
 
-1. inventory and admit the next complete pinned XSLT30 expression-family
-   denominator using native dependencies, environments, entry modes, and
-   assertions rather than selecting from syntax or filenames alone;
-2. prefer a family that extends reusable sequence, value, or diagnostic
-   semantics over an isolated stylesheet special case;
+1. define the smallest engine-owned atomic-value and lexical castability seam
+   required by native XSLT30 `castable-001`;
+2. execute `castable-001` through reusable XPath/XDM type semantics rather than
+   stylesheet-specific validators, retaining the other eight dispositions;
 3. measure parse-per-invocation, prepared-input reuse, compiled reuse, retained
    memory, and peak construction memory under those representative workloads;
 4. exercise the same lifecycle through the bounded ASP.NET workbench before
@@ -105,6 +104,9 @@ implemented behavior belongs to a named standards slice.
 - [x] Execute native `for-004` with bound-variable attribute navigation,
   checked exact-decimal multiplication and aggregation, and only the required
   `'0.00'` formatting picture. The complete four-case denominator now passes.
+- [x] Admit the complete nine-case XSLT30 `expr/castable` denominator: seven
+  selected cases, two explicit schema-aware profile exclusions, four current
+  engine gaps, and three current harness gaps.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,

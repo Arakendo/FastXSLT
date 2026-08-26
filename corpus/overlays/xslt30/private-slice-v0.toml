@@ -147,3 +147,66 @@ case_name = "for-004"
 selection = "selected"
 execution = "passed"
 rationale = "The native for03 source executes exact-decimal multiplication over bound-variable attributes, sum aggregation, and the narrow two-decimal format-number picture without binary floating-point conversion."
+
+[[case]]
+set_file = "tests/expr/castable/_castable-test-set.xml"
+case_name = "castable-001"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The native XSLT20+ source, stylesheet, and file-backed XML assertion are admitted; built-in atomic castability across string, numeric, duration, date, and time types exceeds the current XPath evaluator."
+
+[[case]]
+set_file = "tests/expr/castable/_castable-test-set.xml"
+case_name = "castable-002"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The native XSLT20+ case is admitted; variable-held values, explicit casts, and built-in atomic castability exceed the current compiler and evaluator."
+
+[[case]]
+set_file = "tests/expr/castable/_castable-test-set.xml"
+case_name = "castable-003"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The native XSLT20+ case is admitted; its variable, cast, and castable-as semantics exceed the current compiler and evaluator."
+
+[[case]]
+set_file = "tests/expr/castable/_castable-test-set.xml"
+case_name = "castable-004"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The native XSLT20+ case and inline XML assertion are admitted; its selected built-in datatype castability checks exceed the current evaluator."
+
+[[case]]
+set_file = "tests/expr/castable/_castable-test-set.xml"
+case_name = "castable-005"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native schema-aware union-type and higher-order-function dependencies are deliberately excluded by ADR-0007, while case identity and metadata remain in the denominator."
+
+[[case]]
+set_file = "tests/expr/castable/_castable-test-set.xml"
+case_name = "castable-006"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native schema-aware list-type and higher-order-function dependencies are deliberately excluded by ADR-0007, while case identity and metadata remain in the denominator."
+
+[[case]]
+set_file = "tests/expr/castable/_castable-test-set.xml"
+case_name = "castable-007"
+selection = "selected"
+execution = "harness-unsupported"
+rationale = "The XSLT30+ stylesheet is admitted, but source-free standard initial-template dispatch and compound all-of/assert XPath comparison exceed the private harness."
+
+[[case]]
+set_file = "tests/expr/castable/_castable-test-set.xml"
+case_name = "castable-008"
+selection = "selected"
+execution = "harness-unsupported"
+rationale = "The XSLT30+ stylesheet is admitted, but source-free standard initial-template dispatch and compound all-of/assert XPath comparison exceed the private harness."
+
+[[case]]
+set_file = "tests/expr/castable/_castable-test-set.xml"
+case_name = "castable-009"
+selection = "selected"
+execution = "harness-unsupported"
+rationale = "The XSLT30+ stylesheet is admitted, but source-free standard initial-template dispatch and compound all-of/assert XPath comparison exceed the private harness."

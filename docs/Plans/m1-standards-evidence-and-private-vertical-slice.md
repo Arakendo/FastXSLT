@@ -819,3 +819,22 @@ ambient I/O or public stability claim.
   formatting pictures, function calls, and FLWOR syntax remain unsupported.
 - Next slice: inventory the next complete pinned expression-family denominator
   and select it from native metadata and semantic pressure, not filename alone.
+
+### 2026-08-26: XSLT30 `expr/castable` denominator admitted
+
+- Candidate review: the two smaller uncompleted four-case families,
+  `treat-as` and `type-expr`, carry test-set-wide schema-aware dependencies and
+  are deliberately outside ADR-0007's initial profile.
+- Selection: `castable` is the smallest remaining complete expression family
+  containing non-schema-aware cases. All nine native cases are retained.
+- Conservation: seven cases are selected and two are excluded by profile. Of
+  the selected cases, four are engine-unsupported and three are
+  harness-unsupported; none pass or fail at this admission checkpoint.
+- Resource evidence: all nine stylesheets and four logical uses of the shared
+  source are imported with closed handles into a bounded sealed snapshot; all
+  file-backed assertions resolve.
+- Diagnostic evidence: each directly engine-classified stylesheet produces a
+  structured unsupported failure rather than being mislabeled invalid.
+- Next slice: design the smallest owned atomic-value and lexical castability
+  boundary needed by native `castable-001`, then execute it without turning
+  one stylesheet shape into a general type-system claim.

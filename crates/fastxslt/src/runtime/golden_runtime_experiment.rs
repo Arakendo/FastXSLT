@@ -1417,3 +1417,7 @@ mod xslt30_tests;
 #[cfg(test)]
 #[path = "xslt30_for_inventory_tests.rs"]
 mod xslt30_for_inventory_tests;
+
+#[cfg(test)]
+#[path = "xslt30_castable_inventory_tests.rs"]
+mod xslt30_castable_inventory_tests;

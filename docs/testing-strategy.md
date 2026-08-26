@@ -92,6 +92,13 @@ and applies the zero result of `sum(())`. Native `for-004` uses its bound item a
 the origin of attribute paths, multiplies and aggregates exact finite decimals,
 and applies only the required two-decimal formatting picture. The current
 denominator is four passes with no unsupported or failed cases.
+The next admitted expression denominator is the complete nine-case XSLT30
+`expr/castable` test set. Seven cases are selected and two schema-aware cases
+remain visibly excluded under ADR-0007. Of the selected cases, four are
+engine-unsupported and three are harness-unsupported; none currently pass.
+The admission resolves every stylesheet, environment, source, dependency, and
+assertion shape without treating the two profile exclusions as undiscovered or
+silently dropping the compound-assertion cases.
 A private case-record experiment
 also observes QT3 `assert-eq` and an XSLT30 compound message assertion through
 suite-specific adapters. Their common projection separates selection from
