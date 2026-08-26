@@ -89,7 +89,7 @@ failed, and harness-error cases without an unqualified conformance claim.
   identity, and prove a batch of one matches the convenience API.
 - [x] Compare parse-per-invocation with private snapshot/work-generation prepared
   input reuse, reporting retained XDM and peak construction memory separately.
-- [ ] Execute a two-stage host-owned workflow and prove stage-one results remain
+- [x] Execute a two-stage host-owned workflow and prove stage-one results remain
   invisible until explicitly admitted into a stage-two snapshot.
 - [ ] Compare file-per-call, preloaded snapshot, warmed filesystem cache, and
   compile-once paths with correctness held constant.

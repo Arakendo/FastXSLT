@@ -145,6 +145,11 @@ single-transform convenience API. Stage tests must prove sibling results are not
 visible and become resources only after the host explicitly admits them into a
 later snapshot.
 
+The `host-owned-two-stage` golden exercises that conservation rule end to end:
+an earlier sealed snapshot reports the produced-but-unadmitted identity as
+missing, while a new host-built snapshot can consume the same bytes only after
+explicit admission.
+
 ## Performance reporting
 
 Benchmarks run only after correctness checks for the measured cases. Record the

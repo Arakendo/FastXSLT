@@ -73,5 +73,5 @@ excluded because both candidate lifecycles are compile-once.
   process start, or file import.
 - It does not compare eager, lazy, single-flight, eviction, or reconstruction
   policies and therefore cannot select one.
-- All-feature verification now runs 56 tests: 51 pass and five manual measurement
+- All-feature verification now runs 57 tests: 52 pass and five manual measurement
   probes are ignored by default.

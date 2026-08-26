@@ -410,6 +410,20 @@ ambient I/O or public stability claim.
   cost. The current builder performs explicit owned construction, so it has no
   shared first-access, single-flight, or waiter semantics to stabilize.
 - Next slice: obtain consumer workload envelopes before choosing lifecycle
-  defaults. Independently measure allocator-inclusive retained and peak
-  construction memory; evaluate single-flight only if duplicate construction
-  is observed under a representative workload.
+  defaults; evaluate single-flight only if duplicate construction is observed
+  under a representative workload.
+
+### 2026-08-25: Host-owned two-stage workflow
+
+- Work completed: added a reviewed two-stage golden and executed each stage as
+  a separate batch of one over a separately sealed snapshot.
+- Validation: stage one produces an identified `<message>` result. An earlier
+  stage-two snapshot still rejects that identity with `FXRS0001`; after the host
+  explicitly admits the result bytes under that identity into a new snapshot,
+  stage two produces the expected `<stage-two>` result.
+- Findings: result identity supplies correlation, not authority. Production
+  does not mutate a snapshot, publish a file, or promote a sibling result. The
+  host owns stage order, selected-result retention/copy, admission, and sealing.
+- Next slice: retain this behavior when a real host adapter exists. Do not add a
+  graph, implicit promotion, or zero-copy public representation without
+  consumer and performance evidence.

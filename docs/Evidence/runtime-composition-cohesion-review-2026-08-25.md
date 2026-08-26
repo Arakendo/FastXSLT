@@ -4,7 +4,7 @@
 | --- | --- |
 | Date | 2026-08-25 |
 | Unit | `crates/fastxslt/src/runtime/golden_runtime_experiment.rs` |
-| Line count | 1,039 after built-in template-rule slice |
+| Line count | 1,039 at initial review; 901 after focused test extractions |
 | Trigger | ADR-0004 1,001–2,000 inspection band during substantive modification |
 | Disposition | Retain; reopen at named pressure |
 
@@ -19,10 +19,11 @@ Lines 1–517 contain the private reference runtime composition path:
 - semantic result construction and work-control translation; and
 - private structured operation failures.
 
-Serialization is already a private child module. Lines 518 onward are focused
-tests over that same composition boundary, including batch identity, resource
-authority, limits, cancellation, upstream-case execution, template dispatch,
-and result behavior.
+Serialization is already a private child module. Lines 518 onward retain
+focused semantic-composition tests for batch identity, resource authority,
+limits, template dispatch, and result behavior. Phase-specific control tests,
+host-owned workflow tests, and pinned-XSLT30 catalog adapter tests now live in
+three named private sibling test modules.
 
 The unit is modified by AR-0003, AR-0004, AR-0009, and AR-0010 evidence, which
 supplies a responsibility trigger in addition to the size band. The reviews
@@ -46,6 +47,15 @@ exercise private composition types and functions. Moving them unchanged would
 improve scrolling while preserving nearly total coupling, so it is not yet an
 ADR-0004 decomposition win.
 
+### Extract independently understandable test responsibilities
+
+Selected when later work supplied named seams. Phase-control fault injection
+moved to `golden_runtime_control_tests.rs`; the host-staging golden moved to
+`golden_runtime_workflow_tests.rs`; and pinned-suite catalog navigation moved
+to `golden_runtime_xslt30_tests.rs`. Each owns distinct fixtures and change
+pressure while calling the same private semantic reference path. The main unit
+fell from 1,120 lines at workflow-review pressure to 901 lines.
+
 ### Retain the composition owner
 
 Selected. The production portion remains 517 lines, has one direction from
@@ -55,10 +65,11 @@ alternate-backend mechanics.
 
 ## Conservation and consequences
 
-Before disposition, all 50 tests, Clippy with warnings denied, formatting,
-documentation, Markdown links, submodule integrity, and the 46,421-case
-inventory passed. No public/API/ABI, dependency, unsafe, filesystem-authority,
-or serialization ownership change results from retaining the unit.
+At the latest disposition, all-feature verification covers 57 tests, Clippy
+with warnings denied, formatting, documentation, Markdown links, submodule
+integrity, and the 46,421-case inventory. No public/API/ABI, dependency, unsafe,
+filesystem-authority, hot-path call, or serialization ownership change results
+from the test-only extractions.
 
 Keeping direct calls avoids adding hot-path indirection. The cost is navigation
 pressure from a large colocated test body; the named triggers below prevent

@@ -69,5 +69,5 @@ relationship vectors, and owned string capacity. They exclude:
 - process, thread-stack, ASP.NET, FFI, or transport memory.
 
 Consequently these values are implementation/build observations, not stable
-formulas or host budget defaults. All-feature verification now runs 56 tests:
-51 pass and five manual measurement probes remain ignored by default.
+formulas or host budget defaults. All-feature verification now runs 57 tests:
+52 pass and five manual measurement probes remain ignored by default.
