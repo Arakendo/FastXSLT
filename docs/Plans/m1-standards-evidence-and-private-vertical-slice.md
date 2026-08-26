@@ -615,3 +615,17 @@ ambient I/O or public stability claim.
   five explicit engine-unsupported outcomes.
 - Next slice: execute `path-006` through the narrowly required named parent
   existence predicate.
+
+### 2026-08-26: XSLT30 `path-006` parent predicate
+
+- Work completed: executed the unmodified native `path-006` stylesheet and its
+  file-backed environment through the bounded snapshot harness.
+- XPath/XDM behavior: added a named parent existence predicate over the XDM
+  parent link; it inspects only the immediate parent.
+- Work accounting: each present parent inspection consumes one XPath node visit,
+  and a focused case fixes the full evaluation at eight visits.
+- Conservation: the complete `path` denominator now contains six passes and
+  four explicit engine-unsupported outcomes.
+- Next slice: decompose `path-007`'s arithmetic positional predicate into the
+  minimum grammar and numeric semantics needed by the native case before
+  implementation.

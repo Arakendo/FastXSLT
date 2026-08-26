@@ -559,3 +559,9 @@ fn executes_pinned_xslt30_path_005_descendant_or_self_predicate() {
     let (actual, expected) = execute_file_backed_path_case("path-005");
     assert_same_result_element_string(&actual, &expected, "out");
 }
+
+#[test]
+fn executes_pinned_xslt30_path_006_parent_predicate() {
+    let (actual, expected) = execute_file_backed_path_case("path-006");
+    assert_same_result_element_string(&actual, &expected, "out");
+}

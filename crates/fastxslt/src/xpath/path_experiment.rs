@@ -18,6 +18,7 @@ enum PredicateAxis {
     Ancestor,
     AncestorOrSelf,
     DescendantOrSelf,
+    Parent,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -124,6 +125,8 @@ fn parse_final_axis_predicate(expression: &str) -> (&str, Option<ExistencePredic
         (PredicateAxis::AncestorOrSelf, name)
     } else if let Some(name) = predicate.strip_prefix("descendant-or-self::") {
         (PredicateAxis::DescendantOrSelf, name)
+    } else if let Some(name) = predicate.strip_prefix("parent::") {
+        (PredicateAxis::Parent, name)
     } else {
         return (expression, None);
     };
@@ -214,6 +217,9 @@ pub(crate) fn evaluate_child_path_controlled(
                                 &predicate.name,
                                 control,
                             )?,
+                            PredicateAxis::Parent => {
+                                has_named_parent(document, child, &predicate.name, control)?
+                            }
                         }
                     } else {
                         true
@@ -292,6 +298,19 @@ fn has_named_descendant_or_self(
         pending.extend(document.children(candidate).iter().rev().copied());
     }
     Ok(false)
+}
+
+fn has_named_parent(
+    document: &Document,
+    node: NodeId,
+    required: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    let Some(parent) = document.parent(node) else {
+        return Ok(false);
+    };
+    control.charge(WorkDomain::XPathNodeVisit, 1)?;
+    Ok(node_has_unnamespaced_name(document, parent, required))
 }
 
 fn has_named_ancestor(
@@ -589,6 +608,38 @@ mod tests {
             Some(ExistencePredicate {
                 axis: PredicateAxis::DescendantOrSelf,
                 name: "child2".to_owned(),
+            })
+        );
+    }
+
+    #[test]
+    fn parent_predicate_checks_only_the_immediate_parent() {
+        let parsed = parse_document(
+            "memory:source.xml",
+            b"<doc><element1><child1>right</child1></element1><element2><child1>wrong</child1></element2></doc>",
+            ParseLimits {
+                max_events: 32,
+                max_depth: 8,
+            },
+        )
+        .expect("source should parse");
+        let document = Document::from_parsed(parsed).expect("source XDM should build");
+        let doc = document.children(document.document_node())[0];
+        let path = parse_child_path("//child1[parent::element1]", location())
+            .expect("path-006 expression should parse");
+        let mut control = InvocationControl::unbounded();
+
+        let selected = evaluate_child_path_controlled(&document, doc, &path, &mut control)
+            .expect("unbounded evaluation should succeed");
+
+        assert_eq!(selected.len(), 1);
+        assert_eq!(document.string_value(selected[0]), "right");
+        assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 8);
+        assert_eq!(
+            path.final_predicate,
+            Some(ExistencePredicate {
+                axis: PredicateAxis::Parent,
+                name: "element1".to_owned(),
             })
         );
     }

@@ -89,8 +89,8 @@ rationale = "The file-backed source snapshot executes a final descendant-or-self
 set_file = "tests/expr/path/_path-test-set.xml"
 case_name = "path-006"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The parent-axis predicate and descendant abbreviation exceed the current private XPath slice."
+execution = "passed"
+rationale = "The file-backed source snapshot executes leading descendant navigation and a final parent::element1 existence predicate through the charged XDM parent link."
 
 [[case]]
 set_file = "tests/expr/path/_path-test-set.xml"
