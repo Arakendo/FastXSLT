@@ -6,13 +6,13 @@
 | Opened | 2026-08-25 |
 | Owner | FastXSLT maintainers |
 | Related reviews | AR-0001, AR-0002, AR-0003, AR-0004, AR-0007, AR-0011 |
-| Depends on | Intended-consumer examples for profile closure |
+| Depends on | Pinned W3C metadata for preview scope; consumer examples for product-fit and host priorities |
 
 ## Purpose
 
-Turn representative embedded-consumer transforms into an accepted initial
-standards profile while allowing one narrowly justified private semantic slice
-to continue exercising the architecture.
+Use pinned W3C cases to establish a testable staged standards profile while
+collecting representative embedded-consumer transforms in parallel to refine
+product priorities, compatibility, workloads, and host integration.
 
 ## Slice 0: Peer-derived candidate inventory
 
@@ -45,9 +45,10 @@ priority, modes, named templates, imports/includes, generalized pattern
 grammar, or `id()`/DTD semantics merely because the peer or a nearby suite case
 uses them.
 
-## Slice 2: Intended-consumer intake
+## Slice 2: Parallel intended-consumer intake
 
-**Status:** Blocked on consumer artifacts or answers.
+**Status:** Awaiting consumer artifacts or answers; not blocking the
+standards-driven preview.
 
 - [ ] Record representative stylesheets or reduced semantic equivalents.
 - [ ] Record current processor/version compatibility requirements.
@@ -59,9 +60,15 @@ uses them.
 
 ## Slice 3: Standards disposition
 
-**Status:** Pending.
+**Status:** In Progress from pinned W3C evidence.
 
-- [ ] Compare the confirmed workload against AR-0001 alternatives.
+- [x] Inventory dependency, environment, stylesheet, and assertion families in
+  the pinned XSLT30 suite.
+- [ ] Select a coherent preview denominator from complete upstream case
+  metadata rather than stylesheet filenames alone.
+- [ ] Compare the standards-driven preview and known consumer class against
+  AR-0001 alternatives; use later consumer artifacts to reprioritize widening,
+  not to retroactively define whether the preview was testable.
 - [ ] Propose and accept an ADR naming the initial profile, exclusions, suites,
   reporting policy, and widening criteria.
 - [ ] Replace provisional semantic-slice language with the accepted standards

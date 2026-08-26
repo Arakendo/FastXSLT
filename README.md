@@ -93,9 +93,10 @@ The [documentation index](docs/README.md) explains which records are binding:
 
 The [roadmap](docs/Plans/roadmap.md) defines milestone outcomes. The private
 architecture slice, bounded resources, invocation controls, prepared-input
-reuse, and corpus-ledger invariants are executable. M1 now primarily needs
-representative consumer transforms and the resulting AR-0001 standards-profile
-decision before FastXSLT can establish named public behavior.
+reuse, and corpus-ledger invariants are executable. M1 now uses complete pinned
+W3C case metadata to select a staged standards-driven preview and close AR-0001.
+Representative consumer transforms refine application priorities and
+ASP.NET/performance decisions in parallel; they do not block preview testing.
 
 ## License
 

@@ -25,6 +25,9 @@ Invoke-Gate 'Tests' { cargo test --workspace --all-features }
 Invoke-Gate 'Markdown links' { & "$PSScriptRoot/check-markdown-links.ps1" }
 Invoke-Gate 'Conformance sources' { & "$PSScriptRoot/check-conformance-sources.ps1" }
 Invoke-Gate 'Conformance inventory' { & "$PSScriptRoot/inventory-conformance-sources.ps1" }
+Invoke-Gate 'XSLT30 metadata inventory' {
+    & "$PSScriptRoot/inventory-xslt30-case-metadata.ps1" | Out-Null
+}
 
 $previousRustdocFlags = $env:RUSTDOCFLAGS
 try {

@@ -10,7 +10,7 @@
 | Related ADRs | ADR-0001, ADR-0002 |
 | Related reviews | AR-0001, AR-0003, AR-0004, AR-0007, AR-0008, AR-0009, AR-0011 |
 | Related change requests | None |
-| Depends on | Pinned W3C suites and representative consumer evidence |
+| Depends on | Pinned W3C suites and complete case metadata; consumer evidence remains parallel product-fit input |
 
 ## Purpose
 
@@ -65,8 +65,9 @@ none are represented as supported or executable.
 
 **Status:** In Progress.
 
-- [ ] Obtain representative transform families and compatibility needs from the
-  first consumer.
+- [ ] Obtain representative transform families and compatibility needs from an
+  intended consumer before application-fit, host-default, or performance
+  claims; this does not block standards-driven preview selection.
 - [x] Complete suite/harness evidence for the XSLT 1.0 alternative without
   admitting redistribution-constrained legacy material to the repository.
 - [ ] Compare staged-modern and version-specific alternatives against time to
@@ -75,6 +76,8 @@ none are represented as supported or executable.
 - [x] Prove one overlay-selected XSLT30 case can retain upstream case,
   environment, stylesheet, assertion, and revision identity without copying
   fixture content.
+- [x] Inventory dependency, environment, stylesheet, assertion, and combined
+  metadata shapes across all 14,600 pinned XSLT30 cases.
 - [ ] Close AR-0001 through an accepted ADR.
 
 Exit state: source code, documentation, and test selection can name one initial
@@ -461,3 +464,20 @@ ambient I/O or public stability claim.
 - Next slice: obtain intended-consumer transforms before selecting another
   expression family. Keep general tokenization, Unicode name classification,
   axes, predicates, functions, operators, and sequences standards-directed.
+
+### 2026-08-25: W3C-driven preview replanning and metadata inventory
+
+- Plan change: representative consumer transforms no longer block a testable
+  standards-driven preview. They remain necessary for product priority,
+  compatibility, ASP.NET lifecycle, and representative performance evidence.
+- Work completed: reproducibly inventoried all 14,600 pinned XSLT30 cases,
+  including 9,663 stylesheet references, 7,646 distinct referenced stylesheet
+  files, 22 dependency kinds, 15 top-level assertion kinds, three environment
+  binding shapes, and 564 combined metadata shapes.
+- Findings: the suite provides enough complete inputs to drive implementation
+  now, but stylesheet filenames or syntax-only screening cannot define an
+  honest denominator. Selection must retain dependency, environment, assertion,
+  revision, and engine outcome.
+- Next slice: define a first coherent preview overlay around complete upstream
+  cases and `assert-xml` comparison, using actual compiler/executor outcomes to
+  distinguish applicable, unsupported, and harness-gap cases.

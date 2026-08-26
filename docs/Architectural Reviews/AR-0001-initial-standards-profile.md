@@ -30,10 +30,11 @@ user requirements, Rust ecosystem constraints, or acceptable implementation
 schedule.
 
 A concrete consumer class is now known: performance-sensitive applications,
-including ASP.NET services, will embed FastXSLT. Missing evidence still includes
-their representative transform families, compatibility requirements, priority
-features, deployment constraints, acceptable time to first useful release, and
-any need to compare with 1.0-only processors.
+including ASP.NET services, will embed FastXSLT. Their representative transform
+families, compatibility requirements, priority features, deployment
+constraints, and workload envelopes remain missing product evidence. They are
+needed before application-fit and host-performance claims, but they do not block
+a deliberately staged standards-driven preview.
 
 The pinned-suite inventory now establishes 31,821 QT3 cases across 428 catalog
 test sets and 14,600 XSLT30 cases across 234 catalog test sets at the revisions
@@ -89,12 +90,16 @@ suite selection are reported precisely.
   evidence by itself.
 - The test harness should be designed to catalog unsupported and excluded cases
   explicitly regardless of target.
-- There is not yet enough product evidence to choose among the alternatives.
+- The pinned suites provide enough standards evidence to select a staged,
+  explicitly incomplete preview without waiting for consumer artifacts. They do
+  not establish which optional features or workload shapes matter most to
+  embedded applications.
 - Current suite and data-model evidence favors Alternative C over a 1.0-only
   internal model: modern suites are immutable Git inputs with richer dependency
   metadata, while the strongest legacy candidate is archival and redistribution
-  constrained. Representative consumer transforms are still required before
-  this recommendation becomes an accepted product decision.
+  constrained. Representative consumer transforms remain parallel evidence for
+  prioritization, compatibility, and host design rather than a prerequisite for
+  a testable standards-profile decision.
 - The private golden slice now executes through XML, owned XDM, XSLT/XPath
   compilation, runtime, semantic result, and serialization. Its syntax remains
   common to all three alternatives and therefore confirms architecture without
@@ -104,6 +109,12 @@ suite selection are reported precisely.
   very small root-template behavior show that honest suite-linked evidence can
   start before broad conformance, but one intersection case still cannot choose
   the product profile.
+- A complete aggregate pass over all 14,600 XSLT30 cases finds 9,663 case-local
+  stylesheet references, 7,646 distinct referenced stylesheet files, 22
+  dependency kinds, 15 top-level assertion kinds, three environment-binding
+  shapes, and 564 combined metadata shapes. This is sufficient to drive staged
+  preview selection now, but it also proves that filename or superficial
+  stylesheet syntax is not an honest denominator.
 - A review of the local TS XSLT peer at commit `9c48142` identifies a candidate
   progression from literal/value extraction through apply-template dispatch,
   parameters/variables/conditionals, and later explicit multi-resource
@@ -111,21 +122,23 @@ suite selection are reported precisely.
   strongest next private pressure because it appears in the peer's first
   non-trivial golden, workbench, curated suite strategy, and large stylesheet
   workload. The peer worktree was modified and is not the intended consumer;
-  this observation does not satisfy the remaining consumer-evidence gate.
+  this observation cannot support consumer-fit or performance claims.
 
 ## Disposition
 
 **Under Review with Alternative C as the working recommendation.** A private
-`hello` experiment may use the syntax intersection to test ownership and
-resource boundaries, but must not stabilize a public API or imply a version.
-Do not label FastXSLT as conformant until the initial target, suites, exclusions,
-and reporting policy are accepted in an ADR.
+standards-driven preview may use complete W3C case metadata to select coherent
+feature families and test ownership and resource boundaries. It must not imply
+broad version support. Do not label FastXSLT as conformant until the initial
+target, suites, exclusions, and reporting policy are accepted in an ADR.
 
 ## Required follow-up
 
 - [x] Record the first intended consumer class: embedded applications including
   performance-sensitive ASP.NET services.
-- [ ] Record representative transform families from the first consumer.
+- [ ] Record representative transform families from an intended consumer before
+  claiming application fit or selecting host/performance defaults; do not use
+  this as a gate on standards-driven preview testing.
 - [x] Pin and structurally inventory the QT3 and XSLT30 suites used by the
   modern-profile alternatives.
 - [x] Inventory the official candidate suites, versions, licenses, acquisition,
@@ -133,6 +146,10 @@ and reporting policy are accepted in an ADR.
   OASIS archive as local-only evidence rather than admitted corpus.
 - [x] Prototype the `hello` case only as a throwaway/private vertical slice if
   needed to test architecture before disposition.
+- [x] Inventory XSLT30 dependency, environment, stylesheet, and assertion
+  families across all 14,600 pinned cases.
+- [ ] Select a coherent preview denominator from complete case metadata and
+  executable engine outcomes.
 - [ ] Propose an ADR naming the target, deliberate exclusions, suites, and
   criteria for widening scope.
 
@@ -158,3 +175,10 @@ the selected internal model blocks a planned compatibility level.
   element-name apply-template dispatch as the next private candidate; retained
   the first-consumer follow-up because peer implementation scope is not product
   demand.
+- 2026-08-25 -- Clarified that the admitted W3C suites can drive a testable
+  staged standards preview before consumer artifacts arrive. Consumer evidence
+  remains required for application-fit, priority, host-lifecycle, and
+  performance decisions rather than profile testability itself.
+- 2026-08-25 -- Inventoried all XSLT30 case metadata and retained 564 distinct
+  dependency/assertion/environment/stylesheet shapes. Preview denominator
+  selection remains open and must use complete metadata plus engine outcomes.

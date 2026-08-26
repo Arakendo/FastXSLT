@@ -9,9 +9,9 @@ standards scope are decided.
 FastXSLT has advanced beyond its original private-slice checklist, but it has
 not advanced beyond M1's product decision. The current order of work is:
 
-1. inventory representative transform families and compatibility needs from an
-   intended embedded consumer;
-2. close AR-0001 through an ADR naming the initial standards profile,
+1. inventory XSLT30 dependency, environment, stylesheet, and assertion families
+   and select a coherent standards-driven preview denominator;
+2. close AR-0001 through an ADR naming the staged initial standards profile,
    deliberate exclusions, suite-selection policy, and widening criteria;
 3. implement the next standards-directed semantic slice and use its native QT3
    and XSLT30 cases to extend comparison behavior;
@@ -19,6 +19,14 @@ not advanced beyond M1's product decision. The current order of work is:
    memory, and peak construction memory under those representative workloads;
 5. exercise the same lifecycle through the bounded ASP.NET workbench before
    stabilizing a host boundary or performance claim.
+
+Representative consumer transforms are not a prerequisite for a testable
+standards-driven preview. The pinned W3C suites provide executable stylesheets,
+sources, dependency metadata, environments, assertions, and expected errors and
+can drive incremental implementation now. Consumer examples remain necessary
+to prioritize optional compatibility, validate useful workload coverage, choose
+host-facing lifecycle details, and make ASP.NET or application-performance
+claims.
 
 ADR-0006 now makes AR-0011's essential ledger invariants binding. Its remaining
 reporting, storage, CI, and comparison-family work proceeds when executable
@@ -40,7 +48,9 @@ next architectural questions are visible rather than encoded accidentally.
 ## M1 -- Standards decision and first vertical slice
 
 - [ ] Record representative transform families, input/output shapes, and
-  compatibility needs from the first intended consumer.
+  compatibility needs from the first intended consumer before claiming product
+  fit or selecting host/performance defaults; this does not block the
+  standards-driven preview.
 - [ ] Close AR-0001 through an accepted standards-profile ADR.
 - [x] Select and document the leading private XML parser boundary for the slice.
 - [x] Compile one root template, evaluate one path/value expression, and produce

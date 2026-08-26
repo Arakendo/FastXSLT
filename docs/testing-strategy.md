@@ -45,6 +45,10 @@ adapters may proceed privately, but shared record types, persistence, and report
 APIs remain unstabilized until multiple assertion/environment families provide
 evidence.
 
+`scripts/inventory-xslt30-case-metadata.ps1` provides the reproducible aggregate
+inventory used to plan XSLT30 preview selection. It classifies metadata shape;
+it does not establish engine support or a conformance denominator by itself.
+
 Every report must record:
 
 - standards edition and claimed profile;
