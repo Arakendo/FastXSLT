@@ -106,3 +106,14 @@ Reopen the review if the child still consumes most parent state, work charging
 must move across the seam, diagnostics lose provenance, performance changes
 materially, another independent responsibility appears, or either resulting
 unit again crosses an ADR-0004 threshold.
+
+## Follow-up evolution
+
+The next K-family corpus slices validated the seam. Atomic constructor and
+three-item sequence corrections remained in the atomic child, now 516 lines.
+Static arity and explicit codepoint-collation recognition remained in the
+711-line parent. Outer `not(...)` and boolean-equality composition became a
+separate 96-line owner above the function rather than adding a third
+responsibility to either existing unit. Dependency direction remains one way:
+composition calls the function parent, which calls the atomic child. No unit
+has reached a reopening threshold.

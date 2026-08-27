@@ -9,9 +9,8 @@ use crate::xpath::castable_experiment::{
 use crate::xpath::decimal_sum_for_experiment::{
     DecimalSumEvaluationFailure, evaluate as evaluate_decimal_sum_for,
 };
-use crate::xpath::deep_equal_experiment::{
-    DeepEqualEvaluationFailure, evaluate as evaluate_deep_equal,
-};
+use crate::xpath::deep_equal_boolean_experiment::evaluate as evaluate_deep_equal;
+use crate::xpath::deep_equal_experiment::DeepEqualEvaluationFailure;
 use crate::xpath::focus_sum_for_experiment::{
     FocusSumEvaluationFailure, evaluate as evaluate_focus_sum_for,
 };
@@ -131,7 +130,7 @@ pub(super) fn execute_value_of(
 
 fn execute_deep_equal(
     inputs: &SequenceInputs<'_>,
-    expression: &crate::xpath::deep_equal_experiment::DeepEqualExpression,
+    expression: &crate::xpath::deep_equal_boolean_experiment::DeepEqualBooleanExpression,
     context: Option<NodeId>,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {

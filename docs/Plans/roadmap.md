@@ -10,11 +10,13 @@ Completing the 31-case QT3 mixed deep-equal group raised
 `deep_equal_experiment.rs` to 1,054 lines and exposed independent atomic and
 node responsibilities. The mandatory
 [deep-equal source-unit cohesion review](../Evidence/deep-equal-source-unit-cohesion-review-2026-08-27.md)
-is now discharged by a private 505-line atomic parsing/value/comparison owner;
-the 661-line parent retains function recognition, node semantics, diagnostics,
-and invocation work accounting. Representation-local tests need neither XDM nor
-execution control, while the prior complete denominator and exact early-mismatch
-charges remain conservation evidence.
+is discharged by a private 516-line atomic parsing/value/comparison owner; the
+711-line parent retains function recognition, node semantics, diagnostics, and
+invocation work accounting. A separate 96-line boolean-composition owner now
+adds only identity, `not(...)`, and boolean-equality projections above the
+function. Representation-local tests need neither XDM nor execution control,
+while the prior complete denominator and exact early-mismatch charges remain
+conservation evidence.
 
 ADR-0004's first mandatory 2,000-line review has fired. The retained
 [runtime and compiler decomposition review](../Evidence/runtime-and-compiler-decomposition-review-2026-08-27.md)
@@ -81,6 +83,11 @@ The next explicit K-family tranche executes case 6 under the exact standard
 codepoint collation URI and cases 8 through 11 through paired float/double NaN
 semantics. Unknown and empty collation arguments remain unsupported rather than
 being optimized around.
+The following nine-case tranche executes case 7, cases 12 through 16, and cases
+18 through 20 through one shared compiler/runtime/direct boolean-composition
+owner. Corpus pressure also corrected quoted integer/decimal constructors and
+three-item parenthesized sequence parsing without moving those responsibilities
+out of the atomic child.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -273,6 +280,11 @@ implemented behavior belongs to a named standards slice.
   second tranche: admit only the standard codepoint collation URI and verify
   paired NaN across both float/double argument orders. Keep unknown and empty
   collations unsupported and leave outer XPath operator cases unselected.
+- [x] Execute QT3 `K-SeqDeepEqualFunc-7`, `-12` through `-16`, and `-18`
+  through `-20` through a private boolean-composition owner shared by direct
+  XPath and stylesheet execution. Preserve exact inner work charges and early
+  mismatch, admit quoted integer/decimal constructor lexicals and recursive
+  three-item sequence tails, and leave QName/binary/index-of cases unselected.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.

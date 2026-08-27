@@ -549,6 +549,69 @@ rationale = "Applies the deep-equal paired-NaN rule to xs:double and xs:float va
 
 [[case]]
 set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-7"
+selection = "selected"
+execution = "passed"
+rationale = "Compares empty sequences and composes the boolean result through eq true()."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-12"
+selection = "selected"
+execution = "passed"
+rationale = "Negates unequal xs:float NaN and zero values without changing inner work accounting."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-13"
+selection = "selected"
+execution = "passed"
+rationale = "Negates unequal xs:float zero and NaN values in reversed argument order."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-14"
+selection = "selected"
+execution = "passed"
+rationale = "Negates unequal xs:double zero and NaN values."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-15"
+selection = "selected"
+execution = "passed"
+rationale = "Negates unequal xs:double NaN and zero values in reversed argument order."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-16"
+selection = "selected"
+execution = "passed"
+rationale = "Negates an unequal decimal and anyURI comparison while retaining their type identities."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-18"
+selection = "selected"
+execution = "passed"
+rationale = "Negates a three-item sequence comparison that reaches an anyURI/integer mismatch at the final item."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-19"
+selection = "selected"
+execution = "passed"
+rationale = "Negates a three-item sequence comparison that reaches a fractional decimal/integer mismatch at the second item."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-20"
+selection = "selected"
+execution = "passed"
+rationale = "Negates a three-item sequence comparison that reaches a boolean/integer mismatch at the first item."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equal-mix-args-001"
 selection = "selected"
 execution = "passed"

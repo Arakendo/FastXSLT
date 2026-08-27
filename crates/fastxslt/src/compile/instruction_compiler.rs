@@ -5,7 +5,10 @@ use crate::xml::quick_xml_experiment::NamespaceBinding;
 use crate::xpath::castable_experiment::{parse as parse_castable, parse_cast};
 use crate::xpath::constant_numeric_experiment::{self, ConstantNumericFailure};
 use crate::xpath::decimal_sum_for_experiment::parse as parse_decimal_sum_for;
-use crate::xpath::deep_equal_experiment::{DeepEqualFailureKind, parse as parse_deep_equal};
+use crate::xpath::deep_equal_boolean_experiment::{
+    parse as parse_deep_equal, recognizes as recognizes_deep_equal,
+};
+use crate::xpath::deep_equal_experiment::DeepEqualFailureKind;
 use crate::xpath::focus_sum_for_experiment::parse as parse_focus_sum_for;
 use crate::xpath::for_distinct_values_experiment::{
     ForExpressionFailure, parse as parse_for_distinct_values,
@@ -275,7 +278,7 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
     ensure_no_meaningful_children(document, element, "xsl:value-of")?;
     let location = document.location(element).clone();
     let expression = required_attribute(document, element, None, "select")?;
-    let select = if expression.starts_with("deep-equal(") {
+    let select = if recognizes_deep_equal(expression) {
         ValueExpression::DeepEqual(Box::new(parse_deep_equal(expression, &location).map_err(
             |failure| {
                 let (code, category) = match failure.kind {

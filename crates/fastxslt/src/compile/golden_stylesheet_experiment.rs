@@ -1040,5 +1040,23 @@ mod tests {
         assert_eq!(failure.code, "FXXP1010");
         assert_eq!(failure.location.resource, "memory:deep-equal-collation.xsl");
         assert!(!failure.location.span.is_empty());
+
+        let composed = parse_stylesheet(
+            "memory:deep-equal-composed.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="not(deep-equal((1, 2), (2, 1)))"/></xsl:template></xsl:stylesheet>"#,
+        );
+        let program = compile_stylesheet(&composed)
+            .expect("composed deep-equal expression should use the shared owner");
+        assert!(matches!(
+            program
+                .root_template
+                .expect("root template")
+                .body
+                .as_slice(),
+            [Instruction::ValueOf {
+                select: ValueExpression::DeepEqual(_),
+                ..
+            }]
+        ));
     }
 }

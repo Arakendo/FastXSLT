@@ -74,14 +74,19 @@ fn parse_atomic_sequence(expression: &str) -> Option<Vec<AtomicValue>> {
         if inner.is_empty() {
             return Some(Vec::new());
         }
-        if let Some((left, right)) = split_top_level_once(inner) {
-            let mut values = parse_atomic_sequence(left)?;
-            values.extend(parse_atomic_sequence(right)?);
-            return Some(values);
-        }
-        return parse_atomic_sequence(inner);
+        return parse_atomic_sequence_items(inner);
     }
     parse_atomic_value(expression).map(|value| vec![value])
+}
+
+fn parse_atomic_sequence_items(expression: &str) -> Option<Vec<AtomicValue>> {
+    if let Some((left, right)) = split_top_level_once(expression) {
+        let mut values = parse_atomic_sequence(left)?;
+        values.extend(parse_atomic_sequence_items(right)?);
+        Some(values)
+    } else {
+        parse_atomic_sequence(expression)
+    }
 }
 
 fn strip_outer_parentheses(expression: &str) -> Option<&str> {
@@ -126,17 +131,13 @@ fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
     {
         return (!value.contains('"')).then(|| AtomicValue::String(value.to_owned()));
     }
-    if let Some(value) = expression
-        .strip_prefix("xs:integer(")
-        .and_then(|value| value.strip_suffix(')'))
-        .and_then(|value| value.parse::<i128>().ok())
+    if let Some(value) =
+        constructor_lexical(expression, "xs:integer").and_then(|value| value.parse::<i128>().ok())
     {
         return Some(AtomicValue::Integer(value));
     }
-    if let Some(value) = expression
-        .strip_prefix("xs:decimal(")
-        .and_then(|value| value.strip_suffix(')'))
-        .and_then(parse_decimal_lexical)
+    if let Some(value) =
+        constructor_lexical(expression, "xs:decimal").and_then(parse_decimal_lexical)
     {
         return Some(AtomicValue::Decimal(value));
     }
@@ -461,6 +462,14 @@ mod tests {
                 scale: 1,
             })
         );
+        assert_eq!(
+            sequences_equal("xs:decimal(\"1\")", "xs:decimal(1.0)"),
+            Some(true)
+        );
+        assert_eq!(
+            sequences_equal("xs:integer(\"1\")", "xs:integer(1)"),
+            Some(true)
+        );
     }
 
     #[test]
@@ -468,6 +477,8 @@ mod tests {
         assert_eq!(sequences_equal("((), (1, 2))", "(1, 2)"), Some(true));
         assert_eq!(sequences_equal("(1, 2)", "(2, 1)"), Some(false));
         assert_eq!(sequences_equal("()", "(())"), Some(true));
+        assert_eq!(sequences_equal("(1, 2, 3)", "(1, (2, 3))"), Some(true));
+        assert!(parse_sequence("1, 2, 3").is_none());
     }
 
     #[test]

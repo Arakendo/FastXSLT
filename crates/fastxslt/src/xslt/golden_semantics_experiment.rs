@@ -2,7 +2,7 @@ use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::castable_experiment::{CastExpression, CastableExpression};
 use crate::xpath::decimal_sum_for_experiment::DecimalSumForExpression;
-use crate::xpath::deep_equal_experiment::DeepEqualExpression;
+use crate::xpath::deep_equal_boolean_experiment::DeepEqualBooleanExpression;
 use crate::xpath::focus_sum_for_experiment::FocusSumForExpression;
 use crate::xpath::for_distinct_values_experiment::ForDistinctValuesExpression;
 use crate::xpath::format_number_experiment::FormatNumberExpression;
@@ -182,7 +182,7 @@ pub(crate) enum ValueExpression {
     DecimalSumFor(Box<DecimalSumForExpression>),
     FormatNumber(Box<FormatNumberExpression>),
     Castable(Box<CastableExpression>),
-    DeepEqual(Box<DeepEqualExpression>),
+    DeepEqual(Box<DeepEqualBooleanExpression>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

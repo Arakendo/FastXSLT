@@ -239,9 +239,32 @@ Only the exact standard codepoint collation URI is admitted. Focused controls
 keep an unknown collation URI and an empty collation argument unsupported,
 despite the suite permitting an optimized `true` alternative for those equal
 operands. FastXSLT therefore does not claim collation resolution, fallback, or
-function-conversion semantics that it has not implemented. Cases 7 and 12
-onward remain unselected where outer XPath operators or additional atomic types
-exceed the current expression seam.
+function-conversion semantics that it has not implemented. The following
+checkpoint treats outer boolean composition separately from collation behavior.
+
+## QT3 boolean-composition tranche
+
+A private boolean-composition owner now wraps the existing deep-equal function
+with only identity, `not(...)`, and `eq true()/false()` projections. It delegates
+function parsing, standards/private diagnostics, node and atomic comparison,
+and all work charging to the existing owners. The stylesheet compiler/runtime
+and direct QT3 harness use the same composed representation; the harness does
+not strip operators or manufacture expected booleans.
+
+This admits `K-SeqDeepEqualFunc-7`, `-12` through `-16`, and `-18` through
+`-20`. The nine cases cover empty-sequence equality, negated float/double NaN
+versus zero in both orders, decimal-versus-URI type inequality, and first-,
+second-, or third-position mismatches in three-item sequences. Exact operation
+counts prove that the outer boolean projection adds no invented function work
+and preserves inner early-exit behavior.
+
+The upstream cases exposed and now control two atomic parser gaps: quoted
+`xs:decimal`/`xs:integer` constructor arguments normalize through the same
+lexical path as direct constructor arguments, and parenthesized sequences parse
+arbitrary top-level item tails recursively rather than stopping at two items.
+Comma-separated items outside sequence parentheses remain rejected. QName,
+binary, `index-of`, and broader boolean-expression composition remain outside
+this tranche.
 
 ## QT3 mixed atomic-sequence tranche
 
