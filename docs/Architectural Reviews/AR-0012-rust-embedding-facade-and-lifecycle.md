@@ -97,7 +97,9 @@ facade strategy.
 Remain **Proposed**. Preserve the proven lifecycle internally and collect
 consumer-shaped evidence before proposing a public contract or ADR. CR-0001 is
 pressure to design the seam, not permission to publish private experimental
-types.
+types. CR-0001's deferral while Tokimu likely uses Saxon removes it from the
+critical path; it does not remove the eventual need for a supported Rust
+facade.
 
 ## Required follow-up
 
@@ -122,3 +124,5 @@ ownership needs, or a public preview requires a supported Rust API.
 ## Review history
 
 - 2026-08-26 -- Opened as Proposed from CR-0001 Tokimu/Web3D consumer pressure.
+- 2026-08-26 -- CR-0001 deferred while Tokimu likely uses Saxon; AR-0012 remains
+  Proposed as a general product boundary rather than scheduled Tokimu work.

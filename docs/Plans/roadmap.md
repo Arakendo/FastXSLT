@@ -31,10 +31,12 @@ to prioritize optional compatibility, validate useful workload coverage, choose
 host-facing lifecycle details, and make ASP.NET or application-performance
 claims.
 
-CR-0001 now records Tokimu's Web3D X3D-to-VRML workflow as the first concrete
+CR-0001 records Tokimu's Web3D X3D-to-VRML workflow as the first concrete
 Rust-native consumer pressure and opens AR-0012 for the supported Rust facade.
-It does not yet close the representative-workload item: the authoritative
-Web3D invocation, pinned/licensed stylesheet and resources, parameters, trusted
+The request is deferred while Tokimu likely uses Saxon in the near term, so it
+does not displace standards-driven engine work or select a facade. It also does
+not yet close the representative-workload item: the authoritative Web3D
+invocation, pinned/licensed stylesheet and resources, parameters, trusted
 sentinels/output, input distributions, trust model, and performance budgets are
 still missing.
 
@@ -256,3 +258,26 @@ CLI, WASM, streaming implementation or conformance, schema awareness, extension
 functions, packages, alternate execution backends, transformation graphs, and
 specific parallel executor strategies require their own product evidence and
 architectural review. Their presence in this list is not a commitment.
+
+### Deferred Tokimu/Web3D consumer workload
+
+CR-0001 remains a future real-world compiler, resource, parameter, fidelity,
+Rust-facade, and performance workload. Tokimu's likely near-term use of Saxon
+does not make Saxon behavior normative and does not authorize FastXSLT-specific
+Web3D semantics.
+
+- [ ] Reopen CR-0001 when Tokimu needs to replace or supplement Saxon and has
+  reproduced the authoritative Web3D invocation.
+- [ ] Record the pinned stylesheet revision and redistribution terms, complete
+  logical resource graph, catalog/base-URI behavior, and required parameters.
+- [ ] Admit only licensed representative inputs and independently trusted
+  outputs or semantic sentinels; keep the quarantined incomplete output out of
+  expected corpus data.
+- [ ] Inventory required standards features and compile to the first explicit
+  unsupported frontier, then feed independently justified features into normal
+  standards-driven slices.
+- [ ] Exercise the AR-0012 Rust facade, bounded execution, structured
+  diagnostics, compiled reuse, and in-memory result handling before claiming
+  Tokimu compatibility.
+- [ ] Benchmark cold compilation, warm execution, preparation, result transfer,
+  allocation, and retained memory only after semantic fidelity passes.

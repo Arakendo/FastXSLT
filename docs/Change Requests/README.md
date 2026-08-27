@@ -25,6 +25,6 @@ fixtures, and plans beside the request when one consumer generates several
 artifacts.
 
 - [CR-0001: Tokimu Web3D X3D-to-VRML Transformation](CR-0001-tokimu-web3d-x3d-to-vrml-transformation.md)
-  -- Proposed; first concrete Rust-native consumer pressure, pending an
-  authoritative Web3D invocation, legal fixture treatment, feature inventory,
-  and AR-0012 facade evidence.
+  -- Deferred while Tokimu likely uses Saxon; retain as future Rust-native
+  consumer pressure pending an authoritative Web3D invocation, legal fixture
+  treatment, feature inventory, and AR-0012 facade evidence.

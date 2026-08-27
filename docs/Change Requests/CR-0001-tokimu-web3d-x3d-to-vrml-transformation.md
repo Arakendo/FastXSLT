@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Proposed |
+| Status | Deferred |
 | Requested by | Tokimu |
 | Opened | 2026-08-26 |
 | Last reviewed | 2026-08-26 |
@@ -142,14 +142,19 @@ isolated execution profile and must not be implied by an in-process timeout.
   or result publication.
 - A performance comparison before authoritative correctness is reproduced.
 
-## Proposed disposition
+## Disposition
 
-Retain as **Proposed** consumer and implementation-queue evidence. Investigate
-the supported Rust lifecycle through AR-0012. Before planning Web3D execution,
-Tokimu must reproduce the authoritative pipeline and FastXSLT must record the
-pinned stylesheet revision and license, explicit resource graph and parameters,
-representative input, trusted result or sentinels, and the first unsupported
-standards frontier.
+Defer consumer-specific execution work while Tokimu uses Saxon as its likely
+near-term processor. Retain this request as future consumer and
+implementation-queue evidence; Saxon remains a tooling/reference path rather
+than the definition of FastXSLT semantics.
+
+Reopen planning when Tokimu has a concrete reason to replace or supplement
+Saxon and can reproduce the authoritative pipeline. FastXSLT must then record
+the pinned stylesheet revision and license, explicit resource graph and
+parameters, representative input, trusted result or sentinels, and the first
+unsupported standards frontier. AR-0012 continues to own the general Rust
+facade question independently of this request's schedule.
 
 Required capabilities should then enter ordinary standards-driven vertical
 slices. Periodic compilation may move the unsupported frontier, but only
@@ -168,3 +173,6 @@ semantic sentinels and complete expected output pass repeatably.
 - 2026-08-26 -- Opened as Proposed from Tokimu/Web3D consumer pressure; the
   incomplete local output remains quarantined and no compatibility claim is
   made.
+- 2026-08-26 -- Deferred because Tokimu is likely to use Saxon in the near term;
+  retain the workload for later standards, facade, fidelity, and performance
+  evidence.
