@@ -1,18 +1,10 @@
 use std::collections::BTreeMap;
-#[cfg(test)]
-use std::collections::HashSet;
 
 use crate::compile::golden_stylesheet_experiment::compile_stylesheet;
-#[cfg(test)]
-use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::resources::ResourceSnapshot;
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
-#[cfg(test)]
-use crate::xdm::owned_tree_experiment::BuildFailure;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, StringValueVisitFailure};
-#[cfg(test)]
-use crate::xml::quick_xml_experiment::parse_document_controlled;
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 use crate::xpath::castable_experiment::{
     CastEvaluationFailure, CastExpression, CastableExpression, evaluate as evaluate_castable,
@@ -43,8 +35,15 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 mod serialization;
+#[cfg(test)]
+#[path = "transform_set_experiment.rs"]
+mod transform_set_experiment;
 
 pub(super) use serialization::serialize_xml;
+#[cfg(test)]
+use transform_set_experiment::{
+    ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, execute_transform_set,
+};
 
 const XML_LIMITS: ParseLimits = ParseLimits {
     max_events: 1_024,
@@ -67,73 +66,10 @@ pub(super) struct SemanticResult {
     children: Vec<ResultNode>,
 }
 
-#[derive(Debug)]
-#[cfg(test)]
-enum InvocationEntry {
-    PrincipalSource { resource: String },
-    InitialMode { resource: String, name: String },
-    InitialTemplate { name: String },
-}
-
-#[derive(Debug)]
-#[cfg(test)]
-struct TransformRequest {
-    identity: String,
-    result_identity: String,
-    entry: InvocationEntry,
-    parameters: BTreeMap<String, InvocationParameter>,
-    cancellation: CancellationToken,
-    cancellation_fault: Option<(WorkDomain, usize)>,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct InvocationParameter {
     value: AtomicValue,
     tunnel: bool,
-}
-
-#[derive(Debug)]
-#[cfg(test)]
-struct TransformSetBuilder {
-    snapshot: ResourceSnapshot,
-    stylesheet: StylesheetProgram,
-    requests: Vec<TransformRequest>,
-    request_ids: HashSet<String>,
-    result_ids: HashSet<String>,
-    request_limit: usize,
-    policy: ExecutionPolicy,
-}
-
-#[derive(Debug)]
-#[cfg(test)]
-struct TransformSet {
-    snapshot: ResourceSnapshot,
-    stylesheet: StylesheetProgram,
-    requests: Vec<TransformRequest>,
-    policy: ExecutionPolicy,
-}
-
-#[derive(Debug, Clone)]
-#[cfg(test)]
-struct ExecutionPolicy {
-    denied_sources: HashSet<String>,
-    serialized_byte_limit: usize,
-    work_limits: WorkLimits,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg(test)]
-struct ResultEntry {
-    result_id: String,
-    semantic: SemanticResult,
-    serialized: String,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-#[cfg(test)]
-struct ResultSet {
-    by_request: BTreeMap<String, ResultEntry>,
-    completion_order: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -174,135 +110,6 @@ impl ExecutionFailure {
             self.request_id.as_deref(),
             &self.detail,
         )
-    }
-}
-
-#[cfg(test)]
-impl TransformSetBuilder {
-    fn new(
-        snapshot: ResourceSnapshot,
-        stylesheet: StylesheetProgram,
-        request_limit: usize,
-        policy: ExecutionPolicy,
-    ) -> Self {
-        Self {
-            snapshot,
-            stylesheet,
-            requests: Vec::new(),
-            request_ids: HashSet::new(),
-            result_ids: HashSet::new(),
-            request_limit,
-            policy,
-        }
-    }
-
-    fn add(&mut self, request: TransformRequest) -> Result<(), ExecutionFailure> {
-        if self.requests.len() >= self.request_limit {
-            return Err(failure(
-                "FXBT0001",
-                FailureCategory::Limit,
-                Some(&request.identity),
-                format!("transform-set request limit is {}", self.request_limit),
-            ));
-        }
-        if !self.request_ids.insert(request.identity.clone()) {
-            return Err(failure(
-                "FXBT0002",
-                FailureCategory::Invalid,
-                Some(&request.identity),
-                "duplicate request identity",
-            ));
-        }
-        if !self.result_ids.insert(request.result_identity.clone()) {
-            self.request_ids.remove(&request.identity);
-            return Err(failure(
-                "FXBT0003",
-                FailureCategory::Invalid,
-                Some(&request.identity),
-                "duplicate result identity",
-            ));
-        }
-        if let Some(failure) = self.entry_failure(&request) {
-            self.request_ids.remove(&request.identity);
-            self.result_ids.remove(&request.result_identity);
-            return Err(failure);
-        }
-        self.requests.push(request);
-        Ok(())
-    }
-
-    fn entry_failure(&self, request: &TransformRequest) -> Option<ExecutionFailure> {
-        match &request.entry {
-            InvocationEntry::PrincipalSource { resource } => {
-                if self.policy.denied_sources.contains(resource) {
-                    return Some(failure(
-                        "FXRS0003",
-                        FailureCategory::Denied,
-                        Some(&request.identity),
-                        format!("source authority is denied: {resource}"),
-                    ));
-                }
-                if self.snapshot.get(resource).is_none() {
-                    return Some(failure(
-                        "FXRS0001",
-                        FailureCategory::MissingResource,
-                        Some(&request.identity),
-                        format!("source is not admitted: {resource}"),
-                    ));
-                }
-            }
-            InvocationEntry::InitialMode { resource, name } => {
-                if self.policy.denied_sources.contains(resource) {
-                    return Some(failure(
-                        "FXRS0003",
-                        FailureCategory::Denied,
-                        Some(&request.identity),
-                        format!("source authority is denied: {resource}"),
-                    ));
-                }
-                if self.snapshot.get(resource).is_none() {
-                    return Some(failure(
-                        "FXRS0001",
-                        FailureCategory::MissingResource,
-                        Some(&request.identity),
-                        format!("source is not admitted: {resource}"),
-                    ));
-                }
-                if !program_has_mode(&self.stylesheet, name) {
-                    return Some(failure(
-                        "XTDE0045",
-                        FailureCategory::Invalid,
-                        Some(&request.identity),
-                        format!("unknown initial mode: {name}"),
-                    ));
-                }
-            }
-            InvocationEntry::InitialTemplate { name } => {
-                if !self
-                    .stylesheet
-                    .named_templates
-                    .iter()
-                    .any(|template| template.name == *name)
-                {
-                    return Some(failure(
-                        "FXRT0004",
-                        FailureCategory::Invalid,
-                        Some(&request.identity),
-                        format!("unknown initial template: {name}"),
-                    ));
-                }
-            }
-        }
-        None
-    }
-
-    fn seal(self) -> TransformSet {
-        TransformSet {
-            snapshot: self.snapshot,
-            stylesheet: self.stylesheet,
-            requests: self.requests,
-            policy: self.policy,
-        }
     }
 }
 
@@ -354,111 +161,6 @@ pub(super) fn compile_resource(
                 error.location.span.end
             ),
         )
-    })
-}
-
-#[cfg(test)]
-fn execute_transform_set(set: TransformSet) -> Result<ResultSet, ExecutionFailure> {
-    let mut by_request = BTreeMap::new();
-    let mut completion_order = Vec::new();
-
-    for request in set.requests.into_iter().rev() {
-        let mut control =
-            InvocationControl::new(request.cancellation.clone(), set.policy.work_limits);
-        if let Some((domain, accepted_charges_before_signal)) = request.cancellation_fault {
-            control = control.cancelling_on_charge(domain, accepted_charges_before_signal);
-        }
-        let semantic = match &request.entry {
-            InvocationEntry::PrincipalSource { resource } => {
-                let source = prepare_request_source(
-                    &set.snapshot,
-                    resource,
-                    &request.identity,
-                    &mut control,
-                )?;
-                execute_program_with_parameters(
-                    &set.stylesheet,
-                    &source,
-                    &request.parameters,
-                    &request.identity,
-                    &mut control,
-                )?
-            }
-            InvocationEntry::InitialMode { resource, name } => {
-                let source = prepare_request_source(
-                    &set.snapshot,
-                    resource,
-                    &request.identity,
-                    &mut control,
-                )?;
-                execute_initial_mode(
-                    &set.stylesheet,
-                    &source,
-                    name,
-                    &request.parameters,
-                    &request.identity,
-                    &mut control,
-                )?
-            }
-            InvocationEntry::InitialTemplate { name } => {
-                execute_initial_template(&set.stylesheet, name, &request.identity, &mut control)?
-            }
-        };
-        let serialized = serialize_xml(
-            &semantic,
-            &set.stylesheet.output,
-            &request.identity,
-            set.policy.serialized_byte_limit,
-            &mut control,
-        )?;
-        completion_order.push(request.identity.clone());
-        by_request.insert(
-            request.identity,
-            ResultEntry {
-                result_id: request.result_identity,
-                semantic,
-                serialized,
-            },
-        );
-    }
-    Ok(ResultSet {
-        by_request,
-        completion_order,
-    })
-}
-
-#[cfg(test)]
-fn prepare_request_source(
-    snapshot: &ResourceSnapshot,
-    resource: &str,
-    request_id: &str,
-    control: &mut InvocationControl,
-) -> Result<Document, ExecutionFailure> {
-    let bytes = snapshot
-        .get(resource)
-        .expect("sealed transform sets contain admitted sources");
-    let parsed =
-        parse_document_controlled(resource, bytes, XML_LIMITS, control).map_err(|error| {
-            error.control_failure().map_or_else(
-                || {
-                    failure(
-                        "FXXM0002",
-                        FailureCategory::Invalid,
-                        Some(request_id),
-                        format!("source XML is invalid: {error:?}"),
-                    )
-                },
-                |failure| control_failure(*failure, request_id),
-            )
-        })?;
-    Document::from_parsed_controlled(parsed, control).map_err(|error| match error {
-        BuildFailure::Control(failure) => control_failure(failure, request_id),
-        _ => failure(
-            "FXXD0002",
-            FailureCategory::Invalid,
-            Some(request_id),
-            format!("source XDM construction failed: {error:?}"),
-        ),
     })
 }
 

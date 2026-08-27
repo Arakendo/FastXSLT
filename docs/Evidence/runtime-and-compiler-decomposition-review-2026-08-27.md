@@ -7,7 +7,9 @@
 | Governing decision | ADR-0004 |
 | Runtime before review | 2,431 physical lines |
 | Runtime after preparatory test move | 1,862 physical lines |
+| Runtime after first semantic extraction | 1,564 physical lines |
 | Extracted general test unit | 564 physical lines |
+| Extracted transform-set unit | 304 physical lines |
 | Stylesheet compiler | 1,771 physical lines |
 | Disposition | Active checkpointed decomposition required |
 
@@ -67,16 +69,29 @@ semantics, but it does not reduce semantic coupling: those tests intentionally
 exercise much of the private composition owner. It is therefore a preparatory
 checkpoint, not sufficient evidence that the runtime decomposition is complete.
 
+## First semantic extraction
+
+Private transform-set composition moved to `transform_set_experiment.rs`. The
+unit owns request/result identities, request and result admission limits,
+source-authority and admitted-resource checks, unordered execution correlation,
+per-request control construction, source preparation, and final serialization
+coordination for the test-only batch experiment.
+
+The unit consumes the existing semantic entry points for principal-source,
+initial-mode, and initial-template invocation. It does not evaluate
+instructions, select templates, own XPath semantics, construct result nodes, or
+implement serialization. The runtime parent imports only the private request,
+policy, builder, and execution names needed by its child tests; production
+workbench paths do not acquire the test-only batch surface.
+
+This is a responsibility-coupling reduction rather than a line-only move. Batch
+admission can change independently of sequence evaluation, while the invocation
+engine remains the single semantic path used by batch execution.
+
 ## Required semantic seams
 
-The next behavior-preserving extraction should separate private transform-set
-composition from invocation semantics. That unit should own request/result
-identity, admission limits, source-authority validation, unordered result
-correlation, and the test-only scheduling loop. It may call the semantic
-invocation entry points but must not own instruction evaluation, template
-selection, or result serialization.
-
-After that extraction, review these independently demonstrated seams:
+The first required seam is now extracted. Continue by reviewing these
+independently demonstrated seams:
 
 1. invocation setup, globals, parameters, and temporary-tree materialization;
 2. instruction evaluation and result construction;
@@ -102,14 +117,15 @@ codes/locations, cancellation or budget charging, result correlation,
 serialization, unsafe surface, or corpus classification. Structural commits
 remain separate from semantic fixes and optimizations.
 
-The preparatory move preserves all 56 focused runtime tests. Full repository
-verification remains the conservation gate before the move is committed.
+Both structural moves preserve all 56 focused runtime tests. Full repository
+verification remains the conservation gate before the semantic extraction is
+committed.
 
 ## Disposition and reopening
 
-Pause further denominator-driven growth in these two units until the first
-runtime semantic extraction is complete. Resume standards work after the same
-focused and repository-wide gates pass across that checkpoint. Reassess the
+The first runtime semantic extraction is complete. Reassess the remaining
+1,564-line invocation engine before adding another semantic family that touches
+template dispatch, temporary trees, or sequence evaluation. Reassess the
 compiler before its next semantic family or at 2,000 physical lines, whichever
 comes first.
 

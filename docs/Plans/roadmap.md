@@ -9,11 +9,12 @@ standards scope are decided.
 ADR-0004's first mandatory 2,000-line review has fired. The retained
 [runtime and compiler decomposition review](../Evidence/runtime-and-compiler-decomposition-review-2026-08-27.md)
 moves general runtime contract tests out as a preparatory navigation checkpoint
-and pauses further growth in the two pressured units until the first semantic
-runtime extraction conserves the existing behavior. The target seam is private
-transform-set admission/result correlation calling, but not owning, invocation
-semantics. The 1,771-line stylesheet compiler must be reassessed before another
-semantic family grows it or when it reaches 2,000 lines.
+and then separates private transform-set admission/result correlation from the
+invocation engine. The runtime composition owner fell from 2,431 to 1,564 lines;
+its 304-line transform-set child calls, but does not own, invocation semantics.
+The remaining runtime and the 1,771-line stylesheet compiler must be reassessed
+before another semantic family grows the relevant responsibility, with 2,000
+lines remaining a mandatory compiler-review boundary.
 
 FastXSLT has accepted its staged-modern semantic direction and passes the
 complete XSLT30 `template`, `path`, and `expr/for` test-set denominators. It also
