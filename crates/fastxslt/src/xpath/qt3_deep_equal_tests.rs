@@ -78,6 +78,13 @@ const NON_NEGATIVE_INTEGER_CASES: [(&str, bool); 5] = [
     ("fn-deep-equalnni2args-4", false),
     ("fn-deep-equalnni2args-5", false),
 ];
+const SHORT_CASES: [(&str, bool); 5] = [
+    ("fn-deep-equalsht2args-1", true),
+    ("fn-deep-equalsht2args-2", false),
+    ("fn-deep-equalsht2args-3", false),
+    ("fn-deep-equalsht2args-4", false),
+    ("fn-deep-equalsht2args-5", false),
+];
 
 #[test]
 fn executes_complete_qt3_deep_equal_xs_int_group() {
@@ -127,6 +134,11 @@ fn executes_complete_qt3_deep_equal_xs_non_positive_integer_group() {
 #[test]
 fn executes_complete_qt3_deep_equal_xs_non_negative_integer_group() {
     execute_group("fn-deep-equalnni2args-", &NON_NEGATIVE_INTEGER_CASES);
+}
+
+#[test]
+fn executes_complete_qt3_deep_equal_xs_short_group() {
+    execute_group("fn-deep-equalsht2args-", &SHORT_CASES);
 }
 
 fn execute_group(prefix: &str, expected_cases: &[(&str, bool)]) {

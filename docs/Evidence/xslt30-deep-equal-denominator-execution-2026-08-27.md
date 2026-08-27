@@ -179,3 +179,16 @@ this inclusive boundary from both `xs:positiveInteger` and unrestricted
 `xs:integer`. This is still a bounded subset of the arbitrary-precision type;
 values outside `i128`, lexical whitespace normalization, cross-type promotion,
 and general sequence equality remain unclaimed.
+
+## QT3 bounded-short extension
+
+The adjacent complete five-case `fn-deep-equalsht2args` group also passes.
+Each admitted `xs:short` constructor is range-checked through Rust's signed
+16-bit integer representation before comparison. The upstream group exercises
+equal lower-bound values and unequal lower-, middle-, and upper-bound
+combinations in both argument orders.
+
+Focused controls accept both `-32768` and `32767` while rejecting `-32769` and
+`32768`, making both fixed boundaries executable. This evidence does not add
+numeric promotion, lexical whitespace normalization, general constructor
+semantics, or general sequence equality.

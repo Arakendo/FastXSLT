@@ -49,7 +49,9 @@ boundaries. The complete five-case `fn-deep-equalnpi2args` group adds a
 checked-`i128` `xs:nonPositiveInteger` subset whose inclusive zero boundary is
 verified independently. The adjacent five-case `fn-deep-equalnni2args` group
 adds its checked-`i128` `xs:nonNegativeInteger` mirror, also with an independently
-verified inclusive zero boundary.
+verified inclusive zero boundary. The complete five-case
+`fn-deep-equalsht2args` group adds an exact checked-`i16` `xs:short` path with
+controls immediately inside and outside both fixed boundaries.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -189,6 +191,10 @@ implemented behavior belongs to a named standards slice.
   checked `i128` values constrained at or above zero. Distinguish its inclusive
   boundary by accepting both `0` and `1` while rejecting `-1`, and retain the
   arbitrary-precision and cross-type exclusions.
+- [x] Execute the complete five-case QT3 `fn-deep-equalsht2args` group through
+  checked signed 16-bit values. Accept `-32768` and `32767` while rejecting
+  `-32769` and `32768`, without inferring cross-type promotion or general
+  constructor support.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.
