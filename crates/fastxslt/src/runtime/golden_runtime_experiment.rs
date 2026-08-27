@@ -22,6 +22,7 @@ use crate::xpath::castable_experiment::{
 use crate::xpath::decimal_sum_for_experiment::{
     DecimalSumEvaluationFailure, evaluate as evaluate_decimal_sum_for,
 };
+use crate::xpath::deep_equal_experiment::evaluate as evaluate_deep_equal;
 use crate::xpath::focus_sum_for_experiment::{
     FocusSumEvaluationFailure, evaluate as evaluate_focus_sum_for,
 };
@@ -1291,6 +1292,17 @@ fn execute_value_of(
                 control,
             )?;
         }
+        ValueExpression::DeepEqual(expression) => {
+            let (source, _) = required_source_context(inputs, context)?;
+            let value = evaluate_deep_equal(expression, source, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            append_text(
+                result,
+                if value { "true" } else { "false" },
+                inputs.request_id,
+                control,
+            )?;
+        }
     }
     Ok(())
 }
@@ -2391,3 +2403,7 @@ mod xslt30_data_manipulation_inventory_tests;
 #[cfg(test)]
 #[path = "xslt30_initial_mode_inventory_tests.rs"]
 mod xslt30_initial_mode_inventory_tests;
+
+#[cfg(test)]
+#[path = "xslt30_deep_equal_inventory_tests.rs"]
+mod xslt30_deep_equal_inventory_tests;

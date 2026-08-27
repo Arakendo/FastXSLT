@@ -9,7 +9,9 @@ standards scope are decided.
 FastXSLT has accepted its staged-modern semantic direction and passes the
 complete XSLT30 `template`, `path`, and `expr/for` test-set denominators. It also
 executes the complete four-case QT3 `Axes002` group through a
-stylesheet-independent XPath seam. `for-004` closes its family through
+stylesheet-independent XPath seam and the complete two-case XSLT30
+`fn/deep-equal` denominator through attribute/comment node comparison.
+`for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
 complete 28-case `expr/data-manipulation` denominator now passes through native
@@ -98,6 +100,11 @@ implemented behavior belongs to a named standards slice.
 - [x] Execute the complete QT3 `Axes002` named-child-axis group through native
   environments, direct XPath, `fn:count`, charged navigation, and `assert-eq`
   comparison without an XSLT wrapper.
+- [x] Admit and execute the complete two-case XSLT30 `fn/deep-equal` denominator
+  through positioned descendant attribute/comment selection and charged,
+  pairwise node comparison. Preserve distinct XDM identity while comparing
+  attribute expanded names and values or comment values; broader node kinds,
+  sequences, typed values, and collations remain outside this slice.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.

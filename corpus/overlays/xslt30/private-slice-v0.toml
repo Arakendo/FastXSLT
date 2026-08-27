@@ -184,6 +184,20 @@ execution = "passed"
 rationale = "The native for03 source executes exact-decimal multiplication over bound-variable attributes, sum aggregation, and the narrow two-decimal format-number picture without binary floating-point conversion."
 
 [[case]]
+set_file = "tests/fn/deep-equal/_deep-equal-test-set.xml"
+case_name = "deep-equal-001"
+selection = "selected"
+execution = "native-pass"
+rationale = "Executes positioned descendant attribute selection and compares attribute kind, expanded name, and value without confusing distinct node identity with deep equality."
+
+[[case]]
+set_file = "tests/fn/deep-equal/_deep-equal-test-set.xml"
+case_name = "deep-equal-002"
+selection = "selected"
+execution = "native-pass"
+rationale = "Executes positioned descendant comment selection and compares comment kind and value in document order."
+
+[[case]]
 set_file = "tests/expr/castable/_castable-test-set.xml"
 case_name = "castable-001"
 selection = "selected"
