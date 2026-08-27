@@ -144,12 +144,18 @@ fn parse_integer(expression: &str) -> Option<i128> {
         .and_then(|value| value.strip_suffix("\"))"))
         .and_then(|value| value.parse::<i128>().ok())
         .filter(|value| *value <= 0);
+    let non_negative_integer = expression
+        .strip_prefix("(xs:nonNegativeInteger(\"")
+        .and_then(|value| value.strip_suffix("\"))"))
+        .and_then(|value| value.parse::<i128>().ok())
+        .filter(|value| *value >= 0);
     int.or(long)
         .or(unsigned_short)
         .or(unsigned_long)
         .or(negative_integer)
         .or(positive_integer)
         .or(non_positive_integer)
+        .or(non_negative_integer)
         .or_else(|| {
             expression
                 .strip_prefix("(xs:integer(\"")
@@ -546,6 +552,30 @@ mod tests {
         assert!(
             parse(
                 "fn:deep-equal((xs:nonPositiveInteger(\"1\")),(xs:nonPositiveInteger(\"1\")))",
+                &location(),
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn enforces_the_xs_non_negative_integer_value_space() {
+        for valid in ["0", "1"] {
+            let parsed = parse(
+                &format!(
+                    "fn:deep-equal((xs:nonNegativeInteger(\"{valid}\")),(xs:nonNegativeInteger(\"{valid}\")))"
+                ),
+                &location(),
+            )
+            .expect("parse valid xs:nonNegativeInteger value");
+            assert!(
+                evaluate(&parsed, None, &mut InvocationControl::unbounded())
+                    .expect("evaluate xs:nonNegativeInteger equality")
+            );
+        }
+        assert!(
+            parse(
+                "fn:deep-equal((xs:nonNegativeInteger(\"-1\")),(xs:nonNegativeInteger(\"-1\")))",
                 &location(),
             )
             .is_err()

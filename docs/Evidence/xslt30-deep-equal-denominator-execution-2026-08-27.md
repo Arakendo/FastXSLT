@@ -165,3 +165,17 @@ this inclusive boundary from both `xs:negativeInteger` and unrestricted
 `xs:integer`. This is still a bounded subset of the arbitrary-precision type;
 values outside `i128`, lexical whitespace normalization, cross-type promotion,
 and general sequence equality remain unclaimed.
+
+## QT3 non-negative-integer extension
+
+The adjacent complete five-case `fn-deep-equalnni2args` group also passes.
+FastXSLT parses each `xs:nonNegativeInteger` constructor through checked `i128`
+and enforces the derived type's greater-than-or-equal-to-zero value space. The
+group covers equal zero values and unequal zero, middle, and upper-fixture
+combinations in both argument orders.
+
+Focused controls accept both `0` and `1` while rejecting `-1`, distinguishing
+this inclusive boundary from both `xs:positiveInteger` and unrestricted
+`xs:integer`. This is still a bounded subset of the arbitrary-precision type;
+values outside `i128`, lexical whitespace normalization, cross-type promotion,
+and general sequence equality remain unclaimed.
