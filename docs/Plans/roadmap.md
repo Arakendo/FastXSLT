@@ -12,8 +12,11 @@ moves general runtime contract tests out as a preparatory navigation checkpoint
 and then separates private transform-set admission/result correlation from the
 invocation engine. A second semantic extraction gives dynamic `xsl:value-of`
 and its XPath adapters a one-way private owner. The runtime composition owner
-fell from 2,431 to 1,310 lines; its 304-line transform-set and 267-line value
-children call, but do not own, the remaining invocation semantics.
+also delegates invocation-local globals, variable frames, parameter binding,
+source-context requirements, and temporary-tree preparation to a 207-line
+context owner. It fell from 2,431 to 1,123 lines; its 304-line transform-set and
+267-line value children call, but do not own, the remaining invocation
+semantics.
 The stylesheet compiler is now divided between a 1,019-line top-level assembly
 and validation owner and a 775-line private instruction compiler. The remaining
 runtime must be reassessed before another semantic family grows template

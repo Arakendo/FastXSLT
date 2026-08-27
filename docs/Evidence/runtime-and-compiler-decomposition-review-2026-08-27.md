@@ -9,9 +9,11 @@
 | Runtime after preparatory test move | 1,862 physical lines |
 | Runtime after first semantic extraction | 1,564 physical lines |
 | Runtime after value-evaluation extraction | 1,310 physical lines |
+| Runtime after invocation-context extraction | 1,123 physical lines |
 | Extracted general test unit | 564 physical lines |
 | Extracted transform-set unit | 304 physical lines |
 | Extracted value-evaluation unit | 267 physical lines |
+| Extracted invocation-context unit | 207 physical lines |
 | Stylesheet compiler before extraction | 1,771 physical lines |
 | Top-level compiler after extraction | 1,019 physical lines |
 | Extracted instruction compiler | 775 physical lines |
@@ -110,15 +112,32 @@ allows value semantics to change without navigating template selection.
 The runtime composition owner falls from 1,564 to 1,310 physical lines; the
 value-evaluation owner is 267 lines.
 
+## Third runtime semantic extraction
+
+Invocation-local state preparation moved to `runtime_context.rs`. The unit owns
+global default materialization, supplied-parameter selection, runtime variable
+frames, template-parameter binding, principal-source/context requirements, and
+the compact temporary-tree representation and construction path.
+
+The invocation engine constructs and consumes these values through explicit
+private types and functions. The context owner evaluates only source-dependent
+global paths during setup; it does not execute instruction sequences, dispatch
+templates, serialize results, schedule transform sets, or import host adapters.
+Temporary-tree construction continues to charge XDM nodes at the point of
+materialization.
+
+The runtime composition owner falls from 1,310 to 1,123 physical lines; the
+invocation-context owner is 207 lines. Its state remains invocation-local and
+does not migrate into compiled or prepared artifacts.
+
 ## Required semantic seams
 
 The first required seam is now extracted. Continue by reviewing these
 independently demonstrated seams:
 
-1. invocation setup, globals, parameters, and temporary-tree materialization;
-2. remaining instruction control flow and result construction;
-3. template selection, modes, pattern matching, and named-call depth; and
-4. structured failure construction and control-failure translation.
+1. remaining instruction control flow and result construction;
+2. template selection, modes, pattern matching, and named-call depth; and
+3. structured failure construction and control-failure translation.
 
 ## Compiler extraction
 
@@ -160,14 +179,14 @@ committed.
 
 ## Disposition and reopening
 
-Two runtime semantic extractions and the compiler instruction extraction are
-complete. Reassess the remaining 1,310-line invocation engine before adding
-another semantic family that touches template dispatch, temporary trees, or
-sequence control flow. Retain the 1,019-line top-level compiler at this
-checkpoint; reopen it at 1,200 lines or when a new top-level declaration or
-validation phase demonstrates another owner. Reopen the 775-line instruction
-compiler if instruction lowering and expression parsing develop independently
-pressured subsystems or it crosses 1,000 lines.
+Three runtime semantic extractions and the compiler instruction extraction are
+complete. Reassess the remaining 1,123-line invocation engine before adding
+another semantic family that touches template dispatch or sequence control
+flow. Retain the 1,019-line top-level compiler at this checkpoint; reopen it at
+1,200 lines or when a new top-level declaration or validation phase demonstrates
+another owner. Reopen the 775-line instruction compiler if instruction lowering
+and expression parsing develop independently pressured subsystems or it crosses
+1,000 lines.
 
 The campaign is complete only when named modules reduce responsibility
 coupling; line count below a threshold alone does not close this review.
