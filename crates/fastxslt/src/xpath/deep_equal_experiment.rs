@@ -3,9 +3,20 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocati
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DeepEqualExpression {
-    left: NodeSelection,
-    right: NodeSelection,
+    operands: DeepEqualOperands,
     pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum DeepEqualOperands {
+    Nodes {
+        left: NodeSelection,
+        right: NodeSelection,
+    },
+    Ints {
+        left: i32,
+        right: i32,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,20 +37,43 @@ pub(crate) struct DeepEqualFailure {
     pub(crate) location: SourceLocation,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DeepEqualEvaluationFailure {
+    Control(ControlFailure),
+    MissingNodeContext,
+}
+
 pub(crate) fn parse(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<DeepEqualExpression, DeepEqualFailure> {
     let arguments = expression
         .strip_prefix("deep-equal(")
+        .or_else(|| expression.strip_prefix("fn:deep-equal("))
         .and_then(|value| value.strip_suffix(')'))
         .and_then(|value| value.split_once(','))
         .ok_or_else(|| unsupported(expression, location))?;
+    let left = arguments.0.trim();
+    let right = arguments.1.trim();
+    let operands = match (parse_int(left), parse_int(right)) {
+        (Some(left), Some(right)) => DeepEqualOperands::Ints { left, right },
+        (None, None) => DeepEqualOperands::Nodes {
+            left: parse_selection(left, location)?,
+            right: parse_selection(right, location)?,
+        },
+        _ => return Err(unsupported(expression, location)),
+    };
     Ok(DeepEqualExpression {
-        left: parse_selection(arguments.0.trim(), location)?,
-        right: parse_selection(arguments.1.trim(), location)?,
+        operands,
         location: location.clone(),
     })
+}
+
+fn parse_int(expression: &str) -> Option<i32> {
+    expression
+        .strip_prefix("(xs:int(\"")
+        .and_then(|value| value.strip_suffix("\"))"))
+        .and_then(|value| value.parse::<i32>().ok())
 }
 
 fn parse_selection(
@@ -91,16 +125,40 @@ fn unsupported(expression: &str, location: &SourceLocation) -> DeepEqualFailure 
 
 pub(crate) fn evaluate(
     expression: &DeepEqualExpression,
+    document: Option<&Document>,
+    control: &mut InvocationControl,
+) -> Result<bool, DeepEqualEvaluationFailure> {
+    match &expression.operands {
+        DeepEqualOperands::Ints { left, right } => {
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(DeepEqualEvaluationFailure::Control)?;
+            Ok(left == right)
+        }
+        DeepEqualOperands::Nodes { left, right } => {
+            let document = document.ok_or(DeepEqualEvaluationFailure::MissingNodeContext)?;
+            evaluate_nodes(left, right, document, control)
+        }
+    }
+}
+
+fn evaluate_nodes(
+    left: &NodeSelection,
+    right: &NodeSelection,
     document: &Document,
     control: &mut InvocationControl,
-) -> Result<bool, ControlFailure> {
-    let left = select_nodes(&expression.left, document, control)?;
-    let right = select_nodes(&expression.right, document, control)?;
+) -> Result<bool, DeepEqualEvaluationFailure> {
+    let left =
+        select_nodes(left, document, control).map_err(DeepEqualEvaluationFailure::Control)?;
+    let right =
+        select_nodes(right, document, control).map_err(DeepEqualEvaluationFailure::Control)?;
     if left.len() != right.len() {
         return Ok(false);
     }
     for (left, right) in left.into_iter().zip(right) {
-        control.charge(WorkDomain::XPathOperation, 1)?;
+        control
+            .charge(WorkDomain::XPathOperation, 1)
+            .map_err(DeepEqualEvaluationFailure::Control)?;
         if !nodes_deep_equal(document, left, right) {
             return Ok(false);
         }
@@ -228,17 +286,30 @@ mod tests {
         let mut control = InvocationControl::unbounded();
         let equal = parse("deep-equal(//a[1]/@a, //a[2]/@a)", &location())
             .expect("parse attribute equality");
-        assert!(evaluate(&equal, &document, &mut control).expect("evaluate equal attributes"));
+        assert!(
+            evaluate(&equal, Some(&document), &mut control).expect("evaluate equal attributes")
+        );
 
         let equal_value = parse("deep-equal(//a[1]/@a, //c[1]/@c)", &location())
             .expect("parse attribute comparison");
         assert!(
-            !evaluate(&equal_value, &document, &mut control)
+            !evaluate(&equal_value, Some(&document), &mut control)
                 .expect("compare equal values under different names")
         );
 
         let comments = parse("deep-equal(//comment()[1], //comment()[3])", &location())
             .expect("parse comment comparison");
-        assert!(!evaluate(&comments, &document, &mut control).expect("evaluate comments"));
+        assert!(!evaluate(&comments, Some(&document), &mut control).expect("evaluate comments"));
+    }
+
+    #[test]
+    fn compares_qt3_xs_int_values_numerically() {
+        let mut control = InvocationControl::unbounded();
+        let equal = parse(
+            "fn:deep-equal((xs:int(\"-2147483648\")),(xs:int(\"-2147483648\")))",
+            &location(),
+        )
+        .expect("parse typed integer equality");
+        assert!(evaluate(&equal, None, &mut control).expect("evaluate typed integers"));
     }
 }

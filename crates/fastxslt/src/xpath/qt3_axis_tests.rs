@@ -78,7 +78,11 @@ fn executes_complete_qt3_axes002_named_child_axis_group() {
         CASES.len()
     );
     assert_eq!(
-        overlay.matches("execution = \"passed\"").count(),
+        overlay
+            .split("[[case]]")
+            .filter(|record| record.contains("case_name = \"Axes002-"))
+            .filter(|record| record.contains("execution = \"passed\""))
+            .count(),
         CASES.len()
     );
     let (test_set, set_path) = load_axis_test_set();

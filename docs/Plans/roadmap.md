@@ -11,6 +11,8 @@ complete XSLT30 `template`, `path`, and `expr/for` test-set denominators. It als
 executes the complete four-case QT3 `Axes002` group through a
 stylesheet-independent XPath seam and the complete two-case XSLT30
 `fn/deep-equal` denominator through attribute/comment node comparison.
+The complete five-case QT3 `fn-deep-equalint2args` group also executes through
+source-free checked `xs:int` comparison.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -105,6 +107,11 @@ implemented behavior belongs to a named standards slice.
   pairwise node comparison. Preserve distinct XDM identity while comparing
   attribute expanded names and values or comment values; broader node kinds,
   sequences, typed values, and collations remain outside this slice.
+- [x] Execute the complete five-case QT3 `fn-deep-equalint2args` group through
+  checked `xs:int` constructors and source-free numeric value comparison,
+  including both argument orders and the type's lower and upper bounds. Keep
+  cross-type promotion, floating-point/NaN rules, arbitrary sequences, and the
+  remainder of the 263-case QT3 function test set explicitly unclaimed.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.

@@ -35,3 +35,38 @@ case_name = "Axes002-4"
 selection = "selected"
 execution = "passed"
 rationale = "The native TreeRepeat environment executes through the same memory-resident XPath path and matches assert-eq value 2."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equalint2args-1"
+selection = "selected"
+execution = "passed"
+rationale = "Parses two xs:int constructors at the lower bound and compares their typed numeric values through one charged XPath operation."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equalint2args-2"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the QT3 mid-range and lower-bound xs:int values and returns the native false assertion."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equalint2args-3"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the QT3 upper-bound and lower-bound xs:int values and returns the native false assertion."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equalint2args-4"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the QT3 lower-bound and mid-range xs:int values in reversed argument order and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equalint2args-5"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the QT3 lower-bound and upper-bound xs:int values in reversed argument order and returns false."

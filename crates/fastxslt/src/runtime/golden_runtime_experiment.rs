@@ -22,7 +22,9 @@ use crate::xpath::castable_experiment::{
 use crate::xpath::decimal_sum_for_experiment::{
     DecimalSumEvaluationFailure, evaluate as evaluate_decimal_sum_for,
 };
-use crate::xpath::deep_equal_experiment::evaluate as evaluate_deep_equal;
+use crate::xpath::deep_equal_experiment::{
+    DeepEqualEvaluationFailure, evaluate as evaluate_deep_equal,
+};
 use crate::xpath::focus_sum_for_experiment::{
     FocusSumEvaluationFailure, evaluate as evaluate_focus_sum_for,
 };
@@ -1293,9 +1295,7 @@ fn execute_value_of(
             )?;
         }
         ValueExpression::DeepEqual(expression) => {
-            let (source, _) = required_source_context(inputs, context)?;
-            let value = evaluate_deep_equal(expression, source, control)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let value = execute_deep_equal(inputs, expression, context, control)?;
             append_text(
                 result,
                 if value { "true" } else { "false" },
@@ -1305,6 +1305,28 @@ fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn execute_deep_equal(
+    inputs: &SequenceInputs<'_>,
+    expression: &crate::xpath::deep_equal_experiment::DeepEqualExpression,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, _) = required_source_context(inputs, context)?;
+    evaluate_deep_equal(expression, Some(source), control).map_err(|evaluation_failure| {
+        match evaluation_failure {
+            DeepEqualEvaluationFailure::Control(control) => {
+                control_failure(control, inputs.request_id)
+            }
+            DeepEqualEvaluationFailure::MissingNodeContext => failure(
+                "FXRT1004",
+                FailureCategory::Unsupported,
+                Some(inputs.request_id),
+                "node deep-equal requires a principal source",
+            ),
+        }
+    })
 }
 
 fn append_variable_value(

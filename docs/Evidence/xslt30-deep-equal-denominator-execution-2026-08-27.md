@@ -46,3 +46,18 @@ complete XPath grammar.
 The implementation remains a private XPath semantic path. It does not publish
 its selector representation, make a conformance percentage claim, or alter the
 host resource and invocation contracts.
+
+## QT3 typed-integer extension
+
+The same private function parser now also executes the complete five-case QT3
+`fn-deep-equalint2args` group from `fn/deep-equal.xml` at pinned QT3 revision
+`83993587711dbd5c18ed846385ec37d079d6e492`. The group covers equal lower-bound
+`xs:int` values and unequal lower-, middle-, and upper-bound combinations in
+both argument orders. All five native boolean assertions pass.
+
+These source-free expressions parse each `xs:int` constructor into its checked
+32-bit numeric value and charge one XPath operation for the comparison; they do
+not perform node visits. This extends the evidence from node comparison to one
+typed atomic family without claiming arbitrary atomic sequences, numeric type
+promotion, cross-type comparison, float/NaN behavior, or the other 258 cases in
+the QT3 `fn-deep-equal` test set.
