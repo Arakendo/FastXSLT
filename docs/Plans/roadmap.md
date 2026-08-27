@@ -171,15 +171,16 @@ failed, and harness-error cases without an unqualified conformance claim.
   recursion. The complete six-case denominator now passes.
 - [x] Admit the complete five-case XSLT30 `misc/initial-mode` denominator,
   preserving each mode identity and expected error or XML assertion through
-  bounded snapshots. All five are selected engine gaps at their exact current
-  compiler boundaries. A focused host-neutral initial-mode entry now executes
-  with an admitted principal source and rejects unknown compiled mode identity;
-  none of the parameter-heavy upstream cases is promoted by that seam alone.
+  bounded snapshots. A focused host-neutral initial-mode entry executes with an
+  admitted principal source and rejects unknown compiled mode identity.
 - [x] Add invocation-owned atomic parameter values to the private transform
   request and use them to override matching global `xsl:param` defaults without
   mutating reusable compiled state or leaking values between sibling requests.
-  Template-local parameters, expanded QName identity, tunnel propagation, and
-  the mixed node/atomic sequence required by `initial-mode-004` remain open.
+- [x] Execute pinned `initial-mode-004` with leading template-local parameters,
+  expanded QName identity, tunnel/non-tunnel matching, inherited
+  `exclude-result-prefixes`, and its ordered child-node/atomic sequence. The
+  complete denominator is now one native pass and four explicit engine gaps;
+  general parameter defaults/types and tunnel propagation remain open.
 - [ ] Establish explicit URI/resource resolution and execution limits.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by

@@ -23,24 +23,26 @@ bounded sealed snapshot.
 
 ## Current disposition
 
-| Case | Initial mode | Expected result | First compiler boundary |
+| Case | Initial mode | Expected result | Current disposition |
 | --- | --- | --- | --- |
 | `initial-mode-001` | `inimode` | XML | `FXST1009`: typed constructed variable attributes |
 | `initial-mode-002` | `inimode` | `XTDE0045` | `FXST1009`: `xsl:output/@indent` |
 | `initial-mode-003` | `inimode` | `XTDE0050` | `FXST1009`: `xsl:output/@indent` |
-| `initial-mode-004` | `flobble` | XML | `FXST1006`: local `xsl:param` instruction |
+| `initial-mode-004` | `flobble` | XML | Native pass: local expanded-QName and tunnel parameters plus mixed node/atomic sequence |
 | `initial-mode-005` | `b` | XML | `FXST1015`: element-bearing global sequence constructor |
 
-The denominator is five discovered and selected: zero pass, five are explicit
-engine gaps, and none are excluded, harness-unsupported, failed, or lost.
+The denominator is five discovered and selected: one native pass, four explicit
+engine gaps, and none excluded, harness-unsupported, failed, or lost.
 
 ## Claim boundary
 
 This evidence establishes corpus ownership, entry-metadata preservation,
-expected-error identity, and reproducible first-gap classification. It does not
-establish an initial-mode engine entry, multi-mode template declarations,
-`#all` semantics, required global parameters, invocation/tunnel parameters,
-temporary trees, typed sequence constructors, or either expected dynamic error.
+expected-error identity, reproducible first-gap classification, and the narrow
+initial-mode parameter semantics exercised by case 004. It does not establish
+general template-parameter defaults/types, tunnel propagation across template
+application, multi-mode declarations, `#all` semantics, required global
+parameters, temporary trees, general sequence constructors, or either expected
+dynamic error.
 
 The first implementation decision should be the host-neutral invocation shape:
 an initial mode is standards-defined entry state, not a special ASP.NET or CLI
@@ -54,6 +56,18 @@ The private runtime now admits a principal-source plus initial-mode entry,
 rejects an unknown compiled mode with structured `FXRT0005`, and executes a
 focused root template in a named mode through the same parsing, XDM,
 invocation-control, result, and serialization path as principal-source work.
-This advances case 004 beyond `FXST1011` to `FXST1006`; it does not promote any
-corpus case because the upstream template's local and tunnel parameters remain
-unsupported.
+This originally advanced case 004 beyond `FXST1011` to `FXST1006` without
+promoting a corpus case.
+
+## Subsequent parameter and sequence evidence
+
+Case 004 now compiles leading local `xsl:param` declarations, canonicalizes
+prefixed parameter identity to expanded QName form, distinguishes tunnel from
+non-tunnel invocation values, excludes `my` and `xs` result namespaces through
+the stylesheet's `exclude-result-prefixes`, and executes the asserted ordered
+sequence `*,$a,$my:b`. A mismatch control proves that a non-tunnel value with
+the same expanded name does not satisfy the tunnel parameter. The produced
+`<doc></doc>` spelling is XML-equivalent to the suite assertion's `<doc/>`.
+
+These mechanisms remain private implementation evidence. They do not publish a
+host parameter API or imply support for arbitrary XPath sequence expressions.

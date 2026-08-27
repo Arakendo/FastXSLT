@@ -26,8 +26,8 @@ rationale = "The expected missing-required-parameter error is inventoried; compi
 set_file = "tests/misc/initial-mode/_initial-mode-test-set.xml"
 case_name = "initial-mode-004"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The root initial-mode entry now compiles; the case remains unsupported at its local parameter, tunnel identity, and sequence-construction boundary."
+execution = "native-pass"
+rationale = "Executes the pinned initial-mode invocation with local expanded-QName parameters, tunnel identity, and the case's mixed child-node/atomic sequence."
 
 [[case]]
 set_file = "tests/misc/initial-mode/_initial-mode-test-set.xml"

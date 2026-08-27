@@ -35,7 +35,7 @@ use crate::xpath::integer_for_experiment::evaluate as evaluate_integer_for;
 use crate::xpath::path_experiment::evaluate_child_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, BooleanExpression, GlobalBindingDefault, Instruction, MatchPattern, NodeTest,
-    StylesheetProgram, TemplateArgument, ValueExpression,
+    SequenceItemExpression, StylesheetProgram, Template, TemplateArgument, ValueExpression,
 };
 
 mod serialization;
@@ -77,9 +77,15 @@ struct TransformRequest {
     identity: String,
     result_identity: String,
     entry: InvocationEntry,
-    parameters: BTreeMap<String, AtomicValue>,
+    parameters: BTreeMap<String, InvocationParameter>,
     cancellation: CancellationToken,
     cancellation_fault: Option<(WorkDomain, usize)>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct InvocationParameter {
+    value: AtomicValue,
+    tunnel: bool,
 }
 
 #[derive(Debug)]
@@ -464,7 +470,7 @@ pub(super) fn execute_program(
 fn execute_program_with_parameters(
     program: &StylesheetProgram,
     source: &Document,
-    parameters: &BTreeMap<String, AtomicValue>,
+    parameters: &BTreeMap<String, InvocationParameter>,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
@@ -481,11 +487,12 @@ fn execute_program_with_parameters(
         .as_ref()
         .filter(|_| program.root_template_mode.is_none())
     {
+        let variables = bind_template_parameters(root_template, &BTreeMap::new(), &globals.atomics);
         execute_sequence(
             &inputs,
             &root_template.body,
             Some(source.document_node()),
-            &globals.atomics,
+            &variables,
             0,
             control,
         )?
@@ -508,7 +515,7 @@ fn execute_initial_mode(
     program: &StylesheetProgram,
     source: &Document,
     name: &str,
-    parameters: &BTreeMap<String, AtomicValue>,
+    parameters: &BTreeMap<String, InvocationParameter>,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
@@ -532,11 +539,12 @@ fn execute_initial_mode(
         request_id,
         globals: &globals,
     };
+    let variables = bind_template_parameters(template, parameters, &globals.atomics);
     let children = execute_sequence(
         &inputs,
         &template.body,
         Some(source.document_node()),
-        &globals.atomics,
+        &variables,
         0,
         control,
     )?;
@@ -598,15 +606,20 @@ struct RuntimeGlobals {
 fn materialize_global_defaults(
     program: &StylesheetProgram,
     source: Option<&Document>,
-    parameters: &BTreeMap<String, AtomicValue>,
+    parameters: &BTreeMap<String, InvocationParameter>,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<RuntimeGlobals, ExecutionFailure> {
     let mut globals = RuntimeGlobals::default();
     for binding in &program.global_bindings {
         if binding.kind == crate::xslt::golden_semantics_experiment::GlobalBindingKind::Parameter {
-            if let Some(value) = parameters.get(&binding.name) {
-                globals.atomics.insert(binding.name.clone(), value.clone());
+            if let Some(parameter) = parameters
+                .get(&binding.name)
+                .filter(|parameter| !parameter.tunnel)
+            {
+                globals
+                    .atomics
+                    .insert(binding.name.clone(), parameter.value.clone());
                 continue;
             }
         }
@@ -649,6 +662,25 @@ fn materialize_global_defaults(
     Ok(globals)
 }
 
+fn bind_template_parameters(
+    template: &Template,
+    supplied: &BTreeMap<String, InvocationParameter>,
+    base: &BTreeMap<String, AtomicValue>,
+) -> BTreeMap<String, AtomicValue> {
+    let mut frame = base.clone();
+    for parameter in &template.parameters {
+        let value = supplied
+            .get(&parameter.name)
+            .filter(|supplied| supplied.tunnel == parameter.tunnel)
+            .map_or_else(
+                || AtomicValue::string(""),
+                |supplied| supplied.value.clone(),
+            );
+        frame.insert(parameter.name.clone(), value);
+    }
+    frame
+}
+
 fn required_source_context<'a>(
     inputs: &SequenceInputs<'a>,
     context: Option<NodeId>,
@@ -680,7 +712,7 @@ fn execute_sequence(
     call_depth: usize,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    let (mut result, mut scoped_variables) = (Vec::new(), variables.clone());
+    let (mut result, mut scope) = (Vec::new(), variables.clone());
     for instruction in instructions {
         charge_xslt_instruction(control, inputs.request_id)?;
         match instruction {
@@ -696,14 +728,7 @@ fn execute_sequence(
                 result.push(ResultNode::Element {
                     name: name.clone(),
                     namespaces: namespaces.clone(),
-                    children: execute_sequence(
-                        inputs,
-                        body,
-                        context,
-                        &scoped_variables,
-                        call_depth,
-                        control,
-                    )?,
+                    children: execute_sequence(inputs, body, context, &scope, call_depth, control)?,
                 });
             }
             Instruction::Text { value, .. } => {
@@ -717,7 +742,7 @@ fn execute_sequence(
                     select,
                     separator,
                     context,
-                    &scoped_variables,
+                    &scope,
                     &mut result,
                     control,
                 )?;
@@ -725,9 +750,14 @@ fn execute_sequence(
             Instruction::SequenceNodes { select, .. } => {
                 result.extend(execute_sequence_nodes(inputs, select, context, control)?);
             }
+            Instruction::SequenceItems { select, .. } => {
+                result.extend(execute_sequence_items(
+                    inputs, select, context, &scope, control,
+                )?);
+            }
             Instruction::Variable { name, select, .. } => {
                 let value = execute_variable_binding(inputs, name, select, context, control)?;
-                scoped_variables.insert(name.clone(), value);
+                scope.insert(name.clone(), value);
             }
             Instruction::ApplyTemplates { select, mode, .. } => {
                 let (source, context) = required_source_context(inputs, context)?;
@@ -746,13 +776,7 @@ fn execute_sequence(
             }
             Instruction::If { test, body, .. } => {
                 result.extend(execute_if(
-                    inputs,
-                    test,
-                    body,
-                    context,
-                    &scoped_variables,
-                    call_depth,
-                    control,
+                    inputs, test, body, context, &scope, call_depth, control,
                 )?);
             }
             Instruction::Choose {
@@ -761,13 +785,7 @@ fn execute_sequence(
                 ..
             } => {
                 result.extend(execute_choose(
-                    inputs,
-                    branches,
-                    otherwise,
-                    context,
-                    &scoped_variables,
-                    call_depth,
-                    control,
+                    inputs, branches, otherwise, context, &scope, call_depth, control,
                 )?);
             }
             Instruction::CallTemplate {
@@ -803,6 +821,49 @@ fn execute_sequence_nodes(
     let mut result = Vec::new();
     for node in selected {
         result.extend(copy_source_node(source, inputs.request_id, node, control)?);
+    }
+    Ok(result)
+}
+
+fn execute_sequence_items(
+    inputs: &SequenceInputs<'_>,
+    select: &[SequenceItemExpression],
+    context: Option<NodeId>,
+    variables: &BTreeMap<String, AtomicValue>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let mut result = Vec::new();
+    let mut previous_was_atomic = false;
+    for item in select {
+        match item {
+            SequenceItemExpression::ChildElements => {
+                let (source, context) = required_source_context(inputs, context)?;
+                for child in source.children(context).iter().copied() {
+                    control
+                        .charge(WorkDomain::XPathNodeVisit, 1)
+                        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                    if source.kind(child) == NodeKind::Element {
+                        result.extend(copy_source_node(source, inputs.request_id, child, control)?);
+                    }
+                }
+                previous_was_atomic = false;
+            }
+            SequenceItemExpression::Variable(name) => {
+                let value = variables.get(name).ok_or_else(|| {
+                    failure(
+                        "FXRT0002",
+                        FailureCategory::Invalid,
+                        Some(inputs.request_id),
+                        format!("unbound variable: ${name}"),
+                    )
+                })?;
+                if previous_was_atomic {
+                    append_text(&mut result, " ", inputs.request_id, control)?;
+                }
+                append_text(&mut result, value.lexical(), inputs.request_id, control)?;
+                previous_was_atomic = true;
+            }
+        }
     }
     Ok(result)
 }
@@ -1261,11 +1322,13 @@ fn apply_template(
             request_id,
             globals,
         };
+        let variables =
+            bind_template_parameters(&template.template, &BTreeMap::new(), &globals.atomics);
         return execute_sequence(
             &inputs,
             &template.template.body,
             Some(node),
-            &globals.atomics,
+            &variables,
             0,
             control,
         );
@@ -1432,9 +1495,9 @@ mod tests {
     use crate::xdm::atomic_value_experiment::AtomicValue;
 
     use super::{
-        ExecutionPolicy, FailureCategory, InvocationEntry, ResultNode, SemanticResult,
-        TransformRequest, TransformSetBuilder, compile_resource, execute_transform_set,
-        serialize_xml,
+        ExecutionPolicy, FailureCategory, InvocationEntry, InvocationParameter, ResultNode,
+        SemanticResult, TransformRequest, TransformSetBuilder, compile_resource,
+        execute_transform_set, serialize_xml,
     };
 
     const SOURCE_ID: &str = "urn:fastxslt:golden:hello:source";
@@ -1737,9 +1800,13 @@ mod tests {
             .add(request("default", "default-result", SOURCE_ID))
             .expect("admit defaulted request");
         let mut overridden = request("overridden", "overridden-result", SOURCE_ID);
-        overridden
-            .parameters
-            .insert("message".to_owned(), AtomicValue::string("host supplied"));
+        overridden.parameters.insert(
+            "message".to_owned(),
+            InvocationParameter {
+                value: AtomicValue::string("host supplied"),
+                tunnel: false,
+            },
+        );
         builder
             .add(overridden)
             .expect("admit parameterized request");

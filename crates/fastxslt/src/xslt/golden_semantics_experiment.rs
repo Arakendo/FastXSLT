@@ -50,8 +50,15 @@ pub(crate) struct OutputSettings {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Template {
+    pub(crate) parameters: Vec<TemplateParameter>,
     pub(crate) body: Vec<Instruction>,
     pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct TemplateParameter {
+    pub(crate) name: String,
+    pub(crate) tunnel: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -118,6 +125,10 @@ pub(crate) enum Instruction {
         select: Box<ForDistinctValuesExpression>,
         location: SourceLocation,
     },
+    SequenceItems {
+        select: Vec<SequenceItemExpression>,
+        location: SourceLocation,
+    },
     ApplyTemplates {
         select: Option<ApplySelection>,
         mode: Option<String>,
@@ -149,6 +160,12 @@ pub(crate) enum ValueExpression {
     DecimalSumFor(Box<DecimalSumForExpression>),
     FormatNumber(Box<FormatNumberExpression>),
     Castable(Box<CastableExpression>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum SequenceItemExpression {
+    ChildElements,
+    Variable(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

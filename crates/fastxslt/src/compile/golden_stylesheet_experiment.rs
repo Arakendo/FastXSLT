@@ -13,8 +13,9 @@ use crate::xpath::path_experiment::{PathFailure, parse_child_path};
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, BooleanExpression, ChooseBranch, EqualityTest, GlobalBinding,
     GlobalBindingDefault, GlobalBindingKind, Instruction, MatchPattern, MatchedTemplate,
-    NamedTemplate, NodeTest, OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME, StylesheetProgram,
-    Template, TemplateArgument, ValueExpression,
+    NamedTemplate, NodeTest, OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME,
+    SequenceItemExpression, StylesheetProgram, Template, TemplateArgument, TemplateParameter,
+    ValueExpression,
 };
 
 const XSLT_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
@@ -308,8 +309,52 @@ fn compile_matched_template(
 
 fn compile_template(document: &Document, element: NodeId) -> Result<Template, CompileFailure> {
     ensure_only_attributes(document, element, &["match", "mode"], "xsl:template")?;
+    let mut parameters = Vec::new();
+    let mut parameter_nodes = Vec::new();
+    let mut body_started = false;
+    for child in meaningful_children(document, element) {
+        if is_xslt_element(document, child, "param") {
+            if body_started {
+                return Err(invalid(
+                    "FXST0011",
+                    "xsl:param must precede the template body",
+                    document.location(child),
+                ));
+            }
+            ensure_only_attributes(document, child, &["name", "tunnel"], "xsl:param")?;
+            ensure_no_meaningful_children(document, child, "xsl:param")?;
+            let lexical_name = required_attribute(document, child, None, "name")?;
+            let name = normalize_variable_qname(document, child, lexical_name)?;
+            if parameters
+                .iter()
+                .any(|parameter: &TemplateParameter| parameter.name == name)
+            {
+                return Err(invalid(
+                    "FXST0012",
+                    format!("duplicate template parameter: {lexical_name}"),
+                    document.location(child),
+                ));
+            }
+            let tunnel = match optional_attribute(document, child, None, "tunnel") {
+                None | Some("no") => false,
+                Some("yes") => true,
+                Some(value) => {
+                    return Err(invalid(
+                        "FXST0024",
+                        format!("invalid xsl:param tunnel value: {value}"),
+                        document.location(child),
+                    ));
+                }
+            };
+            parameters.push(TemplateParameter { name, tunnel });
+            parameter_nodes.push(child);
+        } else {
+            body_started = true;
+        }
+    }
     Ok(Template {
-        body: compile_sequence(document, element)?,
+        parameters,
+        body: compile_sequence_excluding(document, element, &parameter_nodes)?,
         location: document.location(element).clone(),
     })
 }
@@ -352,6 +397,7 @@ fn compile_named_template(
         name: name.to_owned(),
         parameters,
         template: Template {
+            parameters: Vec::new(),
             body: compile_sequence_excluding(document, element, &parameter_nodes)?,
             location: document.location(element).clone(),
         },
@@ -397,6 +443,46 @@ fn normalize_named_template_name(
     Err(unsupported(
         "FXST1013",
         format!("unsupported named-template name: {name}"),
+        document.location(element),
+    ))
+}
+
+fn normalize_variable_qname(
+    document: &Document,
+    element: NodeId,
+    lexical_name: &str,
+) -> Result<String, CompileFailure> {
+    if is_ascii_ncname(lexical_name) {
+        return Ok(lexical_name.to_owned());
+    }
+    let Some((prefix, local)) = lexical_name.split_once(':') else {
+        return Err(invalid(
+            "FXST0012",
+            format!("invalid template parameter name: {lexical_name}"),
+            document.location(element),
+        ));
+    };
+    if !is_ascii_ncname(prefix) || !is_ascii_ncname(local) || local.contains(':') {
+        return Err(invalid(
+            "FXST0012",
+            format!("invalid template parameter name: {lexical_name}"),
+            document.location(element),
+        ));
+    }
+    let mut current = Some(element);
+    while let Some(node) = current {
+        if let Some(binding) = document
+            .namespace_declarations(node)
+            .iter()
+            .find(|binding| binding.prefix.as_deref() == Some(prefix))
+        {
+            return Ok(format!("Q{{{}}}{local}", binding.namespace));
+        }
+        current = document.parent(node);
+    }
+    Err(invalid(
+        "FXST0012",
+        format!("unbound prefix in template parameter name: {lexical_name}"),
         document.location(element),
     ))
 }
@@ -498,6 +584,23 @@ fn compile_sequence_excluding(
 
 fn literal_result_namespaces(document: &Document, element: NodeId) -> Vec<NamespaceBinding> {
     let mut namespaces = Vec::new();
+    let mut excluded_prefixes = Vec::new();
+    let mut exclude_all = false;
+    let mut current = Some(element);
+    while let Some(node) = current {
+        if let Some(exclusions) =
+            optional_attribute(document, node, None, "exclude-result-prefixes")
+        {
+            for prefix in exclusions.split_whitespace() {
+                if prefix == "#all" {
+                    exclude_all = true;
+                } else if !excluded_prefixes.contains(&prefix) {
+                    excluded_prefixes.push(prefix);
+                }
+            }
+        }
+        current = document.parent(node);
+    }
     let mut current = Some(element);
     while let Some(node) = current {
         for binding in document.namespace_declarations(node) {
@@ -507,6 +610,8 @@ fn literal_result_namespaces(document: &Document, element: NodeId) -> Vec<Namesp
             if prefix != "xml"
                 && binding.namespace != XSLT_NAMESPACE
                 && !binding.namespace.is_empty()
+                && !exclude_all
+                && !excluded_prefixes.contains(&prefix)
                 && !namespaces
                     .iter()
                     .any(|existing: &NamespaceBinding| existing.prefix.as_deref() == Some(prefix))
@@ -694,6 +799,29 @@ fn compile_sequence_nodes(
     ensure_no_meaningful_children(document, element, "xsl:sequence")?;
     let location = document.location(element).clone();
     let expression = required_attribute(document, element, None, "select")?;
+    let sequence_items: Vec<_> = expression.split(',').map(str::trim).collect();
+    if sequence_items
+        .iter()
+        .all(|item| *item == "*" || item.starts_with('$'))
+    {
+        let mut select = Vec::new();
+        for item in sequence_items {
+            if item == "*" {
+                select.push(SequenceItemExpression::ChildElements);
+            } else if let Some(variable) = item.strip_prefix('$') {
+                select.push(SequenceItemExpression::Variable(normalize_variable_qname(
+                    document, element, variable,
+                )?));
+            } else {
+                return Err(unsupported(
+                    "FXXP1003",
+                    format!("unsupported xsl:sequence item expression: {item}"),
+                    &location,
+                ));
+            }
+        }
+        return Ok(Instruction::SequenceItems { select, location });
+    }
     let select =
         parse_for_distinct_values(expression, location.clone()).map_err(
             |failure| match failure {
@@ -981,6 +1109,7 @@ fn validate_named_calls(
             | Instruction::ValueOf { .. }
             | Instruction::Variable { .. }
             | Instruction::SequenceNodes { .. }
+            | Instruction::SequenceItems { .. }
             | Instruction::ApplyTemplates { .. } => {}
         }
     }

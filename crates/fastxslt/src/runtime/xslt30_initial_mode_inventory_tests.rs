@@ -1,13 +1,25 @@
 //! Conserved admission for the complete XSLT30 `misc/initial-mode` denominator.
 
-use std::{fs, path::PathBuf};
+use std::{
+    collections::{BTreeMap, HashSet},
+    fs,
+    path::PathBuf,
+};
 
-use super::{FailureCategory, compile_resource};
+use super::{
+    ExecutionPolicy, FailureCategory, InvocationEntry, InvocationParameter, TransformRequest,
+    TransformSetBuilder, compile_resource, execute_transform_set,
+};
+use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
+use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const SET_FILE: &str = "tests/misc/initial-mode/_initial-mode-test-set.xml";
+const INITIAL_MODE_004: &str = "initial-mode-004";
+const INITIAL_MODE_004_SOURCE: &str = "urn:w3c:xslt30:initial-mode-004:source";
+const INITIAL_MODE_004_STYLESHEET: &str = "urn:w3c:xslt30:initial-mode-004:stylesheet";
 
 struct CaseMetadata {
     name: &'static str,
@@ -15,7 +27,7 @@ struct CaseMetadata {
     mode: &'static str,
     assertion: &'static str,
     error: Option<&'static str>,
-    compile_code: &'static str,
+    compile_code: Option<&'static str>,
 }
 
 const CASES: [CaseMetadata; 5] = [
@@ -25,7 +37,7 @@ const CASES: [CaseMetadata; 5] = [
         mode: "inimode",
         assertion: "assert-xml",
         error: None,
-        compile_code: "FXST1009",
+        compile_code: Some("FXST1009"),
     },
     CaseMetadata {
         name: "initial-mode-002",
@@ -33,7 +45,7 @@ const CASES: [CaseMetadata; 5] = [
         mode: "inimode",
         assertion: "error",
         error: Some("XTDE0045"),
-        compile_code: "FXST1009",
+        compile_code: Some("FXST1009"),
     },
     CaseMetadata {
         name: "initial-mode-003",
@@ -41,7 +53,7 @@ const CASES: [CaseMetadata; 5] = [
         mode: "inimode",
         assertion: "error",
         error: Some("XTDE0050"),
-        compile_code: "FXST1009",
+        compile_code: Some("FXST1009"),
     },
     CaseMetadata {
         name: "initial-mode-004",
@@ -49,7 +61,7 @@ const CASES: [CaseMetadata; 5] = [
         mode: "flobble",
         assertion: "assert-xml",
         error: None,
-        compile_code: "FXST1006",
+        compile_code: None,
     },
     CaseMetadata {
         name: "initial-mode-005",
@@ -57,7 +69,7 @@ const CASES: [CaseMetadata; 5] = [
         mode: "b",
         assertion: "assert-xml",
         error: None,
-        compile_code: "FXST1015",
+        compile_code: Some("FXST1015"),
     },
 ];
 
@@ -72,7 +84,11 @@ fn admits_complete_initial_mode_denominator_and_reaches_engine_boundaries() {
     for metadata in &CASES {
         let record = overlay_case(overlay, metadata.name);
         assert!(record.contains("selection = \"selected\""));
-        assert!(record.contains("execution = \"engine-unsupported\""));
+        assert!(record.contains(if metadata.compile_code.is_some() {
+            "execution = \"engine-unsupported\""
+        } else {
+            "execution = \"native-pass\""
+        }));
 
         let case = cases
             .iter()
@@ -103,10 +119,138 @@ fn admits_complete_initial_mode_denominator_and_reaches_engine_boundaries() {
             .admit(stylesheet_id.clone(), stylesheet)
             .expect("admit stylesheet bytes");
         let snapshot = resources.seal();
-        let failure = compile_resource(&snapshot, &stylesheet_id)
-            .expect_err("initial-mode case should reach an explicit engine gap");
-        assert_eq!(failure.category, FailureCategory::Unsupported);
-        assert_eq!(failure.code, metadata.compile_code);
+        if let Some(compile_code) = metadata.compile_code {
+            let failure = compile_resource(&snapshot, &stylesheet_id)
+                .expect_err("initial-mode case should reach an explicit engine gap");
+            assert_eq!(failure.category, FailureCategory::Unsupported);
+            assert_eq!(failure.code, compile_code);
+        } else {
+            compile_resource(&snapshot, &stylesheet_id)
+                .expect("native initial-mode case should compile");
+        }
+    }
+}
+
+#[test]
+fn executes_initial_mode_004_with_local_qname_and_tunnel_parameters() {
+    let (test_set, set_path) = load_test_set();
+    let case = descendants_named(&test_set, test_set.document_node(), "test-case")
+        .into_iter()
+        .find(|node| attribute(&test_set, *node, "name") == Some(INITIAL_MODE_004))
+        .expect("pinned initial-mode-004 metadata");
+    let test = child_named(&test_set, case, "test").expect("test metadata");
+    let initial_mode = child_named(&test_set, test, "initial-mode").expect("initial mode");
+    let parameter_nodes = children_named(&test_set, initial_mode, "param");
+    assert_eq!(parameter_nodes.len(), 2);
+    assert_eq!(attribute(&test_set, parameter_nodes[0], "name"), Some("a"));
+    assert_eq!(
+        attribute(&test_set, parameter_nodes[0], "select"),
+        Some("1234")
+    );
+    assert_eq!(
+        attribute(&test_set, parameter_nodes[1], "name"),
+        Some("my:b")
+    );
+    assert_eq!(
+        attribute(&test_set, parameter_nodes[1], "tunnel"),
+        Some("yes")
+    );
+    assert_eq!(
+        attribute(&test_set, parameter_nodes[1], "select"),
+        Some("999")
+    );
+    let expected = child_named(&test_set, case, "result")
+        .and_then(|node| child_named(&test_set, node, "assert-xml"))
+        .map(|node| test_set.string_value(node))
+        .expect("XML assertion");
+    assert_eq!(expected.trim(), "<out><doc/>1234 999</out>");
+
+    let environment = descendants_named(&test_set, test_set.document_node(), "environment")
+        .into_iter()
+        .find(|node| attribute(&test_set, *node, "name") == Some("inimode001"))
+        .expect("referenced source environment");
+    let source = child_named(&test_set, environment, "source")
+        .and_then(|node| child_named(&test_set, node, "content"))
+        .map(|node| test_set.string_value(node).into_bytes())
+        .expect("inline source content");
+    let stylesheet_file = child_named(&test_set, test, "stylesheet")
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("stylesheet file");
+    let stylesheet = fs::read(
+        set_path
+            .parent()
+            .expect("test-set directory")
+            .join(stylesheet_file),
+    )
+    .expect("read pinned stylesheet");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 65_536, 131_072));
+    resources
+        .admit(INITIAL_MODE_004_SOURCE, source)
+        .expect("admit inline source");
+    resources
+        .admit(INITIAL_MODE_004_STYLESHEET, stylesheet)
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, INITIAL_MODE_004_STYLESHEET).expect("compile initial-mode-004");
+    let mut builder = TransformSetBuilder::new(
+        snapshot,
+        program,
+        2,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 4_096,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    builder
+        .add(initial_mode_004_request(INITIAL_MODE_004, "999", true))
+        .expect("admit initial-mode invocation");
+    builder
+        .add(initial_mode_004_request(
+            "initial-mode-004-wrong-tunnel",
+            "must not bind",
+            false,
+        ))
+        .expect("admit tunnel-mismatch control invocation");
+
+    let results = execute_transform_set(builder.seal()).expect("execute initial-mode-004");
+    assert_eq!(
+        results.by_request[INITIAL_MODE_004].serialized,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out><doc></doc>1234 999</out>"
+    );
+    assert_eq!(
+        results.by_request["initial-mode-004-wrong-tunnel"].serialized,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out><doc></doc>1234 </out>"
+    );
+}
+
+fn initial_mode_004_request(identity: &str, b_value: &str, b_tunnel: bool) -> TransformRequest {
+    TransformRequest {
+        identity: identity.to_owned(),
+        result_identity: format!("result:{identity}"),
+        entry: InvocationEntry::InitialMode {
+            resource: INITIAL_MODE_004_SOURCE.to_owned(),
+            name: "flobble".to_owned(),
+        },
+        parameters: BTreeMap::from([
+            (
+                "a".to_owned(),
+                InvocationParameter {
+                    value: AtomicValue::string("1234"),
+                    tunnel: false,
+                },
+            ),
+            (
+                "Q{http://my.net/}b".to_owned(),
+                InvocationParameter {
+                    value: AtomicValue::string(b_value),
+                    tunnel: b_tunnel,
+                },
+            ),
+        ]),
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
     }
 }
 
@@ -158,6 +302,17 @@ fn child_named(document: &Document, parent: NodeId, local: &str) -> Option<NodeI
     document.children(parent).iter().copied().find(|node| {
         document.kind(*node) == NodeKind::Element && local_name(document, *node) == local
     })
+}
+
+fn children_named(document: &Document, parent: NodeId, local: &str) -> Vec<NodeId> {
+    document
+        .children(parent)
+        .iter()
+        .copied()
+        .filter(|node| {
+            document.kind(*node) == NodeKind::Element && local_name(document, *node) == local
+        })
+        .collect()
 }
 
 fn first_element_child(document: &Document, parent: NodeId) -> Option<NodeId> {
