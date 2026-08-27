@@ -7,8 +7,8 @@
 | Date | 2026-08-27 |
 | Governing decision | [ADR-0004](../ADR/ADR-0004-source-unit-cohesion-size-pressure-and-decomposition.md) |
 | Reviewed unit | `crates/fastxslt/src/xpath/deep_equal_experiment.rs` |
-| Physical size | 1,054 lines after completing the mixed atomic group |
-| Disposition | Decompose at the next structural checkpoint |
+| Physical size | 1,054 lines before extraction; 661-line parent and 505-line child after extraction |
+| Disposition | Completed: private atomic owner extracted |
 
 ## Trigger
 
@@ -39,9 +39,9 @@ The semantic checkpoint executes:
 The semantic work is checkpointed before extraction so a later structural
 change cannot quietly repair or reinterpret it.
 
-## Proposed ownership seam
+## Selected ownership seam
 
-A private atomic deep-equality child should own:
+The private `deep_equal_atomic.rs` child owns:
 
 - the private atomic value and exact-decimal representations;
 - depth-aware parsing of the admitted parenthesized atomic sequences;
@@ -54,7 +54,7 @@ sequences or an explicit non-match/parse result consumed by the parent. It does
 not own XDM documents, node navigation, invocation control, diagnostics,
 stylesheet compilation, serialization, host resources, or public API.
 
-The existing deep-equal parent should retain:
+The existing deep-equal parent retains:
 
 - recognition and location of the function call;
 - selection among node, scalar, and atomic operand paths;
@@ -65,14 +65,17 @@ The existing deep-equal parent should retain:
 Dependency direction is one way: the parent calls the private atomic child.
 The child must not call back into the parent or receive a broad shared context.
 
-## Expected coupling reduction
+## Coupling result
 
 The extraction removes constructor and atomic comparison growth from the node
 owner. Future node kinds can evolve without touching float, boolean, or calendar
 logic; future atomic types can evolve without importing XDM navigation. A
-useful result is a child whose focused tests require no `Document` or
-`InvocationControl`, while the parent continues to own work accounting at the
-comparison boundary.
+505-line child now has focused tests requiring no `Document` or
+`InvocationControl`, while the 661-line parent continues to own work accounting
+at the comparison boundary. The child receives no shared context and has no
+dependency on the parent, XDM, execution control, diagnostics, or resource
+authority. Its narrow surface consists of private parse results, sequence
+length/item comparison, and the top-level delimiter helper used by the parent.
 
 ## Contract and risk consequences
 
@@ -87,10 +90,17 @@ comparison boundary.
 
 ## Disposition
 
-Checkpoint the complete mixed denominator in its current unit, then perform the
-private atomic extraction before adding another deep-equal standards slice.
-The current 1,054-line unit is temporarily retained only to keep semantic and
-structural changes independently reviewable.
+The private atomic extraction is complete. The parent retains function
+recognition, node semantics, diagnostics, source locations, and invocation work
+charging. The child owns the admitted atomic representations, constructor
+lexicals, sequence parsing, promotions, and item comparison.
+
+The conservation checkpoint passed after extraction: the focused deep-equal
+selection ran 36 tests, including the complete QT3 and XSLT30 denominators and
+five new representation-local controls. Existing boundary tests continue to
+verify exact early-mismatch charging through `InvocationControl`. No public
+API, host ABI, crate boundary, dependency, resource authority, unsafe surface,
+or claimed standards behavior changed.
 
 Reopen the review if the child still consumes most parent state, work charging
 must move across the seam, diagnostics lose provenance, performance changes

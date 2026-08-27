@@ -1,0 +1,505 @@
+//! Private atomic parsing and value-comparison semantics for the admitted
+//! `deep-equal` experiment slice.
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct AtomicSequence(Vec<AtomicValue>);
+
+impl AtomicSequence {
+    pub(super) fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub(super) fn item_equals(&self, other: &Self, index: usize) -> bool {
+        atomic_values_equal(&self.0[index], &other.0[index])
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum AtomicValue {
+    Integer(i128),
+    Decimal(ExactDecimal),
+    Float(u32),
+    Double(u64),
+    Boolean(bool),
+    String(String),
+    AnyUri(String),
+    Date(DateValue),
+    DateTime { date: DateValue, time: TimeValue },
+    Time(TimeValue),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DateValue {
+    year: u16,
+    month: u8,
+    day: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct TimeValue {
+    hour: u8,
+    minute: u8,
+    second: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct ExactDecimal {
+    coefficient: i128,
+    scale: u32,
+}
+
+pub(super) fn split_top_level_once(value: &str) -> Option<(&str, &str)> {
+    let mut depth = 0_u32;
+    let mut in_string = false;
+    for (index, character) in value.char_indices() {
+        match character {
+            '"' => in_string = !in_string,
+            '(' if !in_string => depth = depth.checked_add(1)?,
+            ')' if !in_string => depth = depth.checked_sub(1)?,
+            ',' if !in_string && depth == 0 => return Some((&value[..index], &value[index + 1..])),
+            _ => {}
+        }
+    }
+    None
+}
+
+pub(super) fn parse_sequence(expression: &str) -> Option<AtomicSequence> {
+    parse_atomic_sequence(expression).map(AtomicSequence)
+}
+
+fn parse_atomic_sequence(expression: &str) -> Option<Vec<AtomicValue>> {
+    let expression = expression.trim();
+    if let Some(inner) = strip_outer_parentheses(expression) {
+        let inner = inner.trim();
+        if inner.is_empty() {
+            return Some(Vec::new());
+        }
+        if let Some((left, right)) = split_top_level_once(inner) {
+            let mut values = parse_atomic_sequence(left)?;
+            values.extend(parse_atomic_sequence(right)?);
+            return Some(values);
+        }
+        return parse_atomic_sequence(inner);
+    }
+    parse_atomic_value(expression).map(|value| vec![value])
+}
+
+fn strip_outer_parentheses(expression: &str) -> Option<&str> {
+    if !expression.starts_with('(') || !expression.ends_with(')') {
+        return None;
+    }
+    let mut depth = 0_u32;
+    let mut in_string = false;
+    let last = expression.len() - 1;
+    for (index, character) in expression.char_indices() {
+        match character {
+            '"' => in_string = !in_string,
+            '(' if !in_string => depth = depth.checked_add(1)?,
+            ')' if !in_string => {
+                depth = depth.checked_sub(1)?;
+                if depth == 0 && index != last {
+                    return None;
+                }
+            }
+            _ => {}
+        }
+    }
+    (!in_string && depth == 0).then_some(&expression[1..last])
+}
+
+fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
+    if let Some(value) = expression
+        .strip_prefix("xs:anyURI(\"")
+        .and_then(|value| value.strip_suffix("\")"))
+    {
+        return (!value.contains('"')).then(|| AtomicValue::AnyUri(value.to_owned()));
+    }
+    if let Some(value) = expression
+        .strip_prefix("xs:string(\"")
+        .and_then(|value| value.strip_suffix("\")"))
+    {
+        return (!value.contains('"')).then(|| AtomicValue::String(value.to_owned()));
+    }
+    if let Some(value) = expression
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+    {
+        return (!value.contains('"')).then(|| AtomicValue::String(value.to_owned()));
+    }
+    if let Some(value) = expression
+        .strip_prefix("xs:integer(")
+        .and_then(|value| value.strip_suffix(')'))
+        .and_then(|value| value.parse::<i128>().ok())
+    {
+        return Some(AtomicValue::Integer(value));
+    }
+    if let Some(value) = expression
+        .strip_prefix("xs:decimal(")
+        .and_then(|value| value.strip_suffix(')'))
+        .and_then(parse_decimal_lexical)
+    {
+        return Some(AtomicValue::Decimal(value));
+    }
+    if let Some(value) = constructor_lexical(expression, "xs:float")
+        .and_then(parse_float)
+        .map(f32::to_bits)
+    {
+        return Some(AtomicValue::Float(value));
+    }
+    if let Some(value) = constructor_lexical(expression, "xs:double")
+        .and_then(parse_double)
+        .map(f64::to_bits)
+    {
+        return Some(AtomicValue::Double(value));
+    }
+    if let Some(value) = constructor_lexical(expression, "xs:boolean").and_then(parse_boolean) {
+        return Some(AtomicValue::Boolean(value));
+    }
+    if let Some(value) = constructor_lexical(expression, "xs:date").and_then(parse_date) {
+        return Some(AtomicValue::Date(value));
+    }
+    if let Some((date, time)) = constructor_lexical(expression, "xs:dateTime")
+        .and_then(|value| value.split_once('T'))
+        .and_then(|(date, time)| Some((parse_date(date)?, parse_time(time)?)))
+    {
+        return Some(AtomicValue::DateTime { date, time });
+    }
+    if let Some(value) = constructor_lexical(expression, "xs:time").and_then(parse_time) {
+        return Some(AtomicValue::Time(value));
+    }
+    match expression {
+        "true()" => return Some(AtomicValue::Boolean(true)),
+        "false()" => return Some(AtomicValue::Boolean(false)),
+        _ => {}
+    }
+    expression.parse::<i128>().ok().map(AtomicValue::Integer)
+}
+
+fn constructor_lexical<'a>(expression: &'a str, name: &str) -> Option<&'a str> {
+    let inner = expression
+        .strip_prefix(name)?
+        .strip_prefix('(')?
+        .strip_suffix(')')?;
+    if let Some(quoted) = inner
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+    {
+        return (!quoted.contains('"')).then_some(quoted);
+    }
+    Some(inner)
+}
+
+fn parse_float(lexical: &str) -> Option<f32> {
+    match lexical {
+        "INF" => Some(f32::INFINITY),
+        "-INF" => Some(f32::NEG_INFINITY),
+        "NaN" => Some(f32::NAN),
+        value => value.parse().ok(),
+    }
+}
+
+fn parse_double(lexical: &str) -> Option<f64> {
+    match lexical {
+        "INF" => Some(f64::INFINITY),
+        "-INF" => Some(f64::NEG_INFINITY),
+        "NaN" => Some(f64::NAN),
+        value => value.parse().ok(),
+    }
+}
+
+fn parse_boolean(lexical: &str) -> Option<bool> {
+    match lexical {
+        "1" | "true" => Some(true),
+        "0" | "false" => Some(false),
+        _ => None,
+    }
+}
+
+fn parse_date(lexical: &str) -> Option<DateValue> {
+    let mut fields = lexical.split('-');
+    let year = parse_fixed_digits(fields.next()?, 4)?;
+    let month = u8::try_from(parse_fixed_digits(fields.next()?, 2)?).ok()?;
+    let day = u8::try_from(parse_fixed_digits(fields.next()?, 2)?).ok()?;
+    if fields.next().is_some() || !(1..=12).contains(&month) {
+        return None;
+    }
+    let maximum_day = match month {
+        4 | 6 | 9 | 11 => 30,
+        2 if is_leap_year(year) => 29,
+        2 => 28,
+        _ => 31,
+    };
+    (day > 0 && day <= maximum_day).then_some(DateValue { year, month, day })
+}
+
+fn parse_time(lexical: &str) -> Option<TimeValue> {
+    let mut fields = lexical.split(':');
+    let hour = u8::try_from(parse_fixed_digits(fields.next()?, 2)?).ok()?;
+    let minute = u8::try_from(parse_fixed_digits(fields.next()?, 2)?).ok()?;
+    let second = u8::try_from(parse_fixed_digits(fields.next()?, 2)?).ok()?;
+    if fields.next().is_some() || hour > 23 || minute > 59 || second > 59 {
+        return None;
+    }
+    Some(TimeValue {
+        hour,
+        minute,
+        second,
+    })
+}
+
+fn parse_fixed_digits(value: &str, width: usize) -> Option<u16> {
+    (value.len() == width && value.bytes().all(|byte| byte.is_ascii_digit()))
+        .then(|| value.parse().ok())
+        .flatten()
+}
+
+fn is_leap_year(year: u16) -> bool {
+    year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
+}
+
+pub(super) fn parse_decimal(expression: &str) -> Option<ExactDecimal> {
+    let lexical = expression
+        .strip_prefix("(xs:decimal(\"")
+        .and_then(|value| value.strip_suffix("\"))"))?;
+    parse_decimal_lexical(lexical)
+}
+
+fn parse_decimal_lexical(lexical: &str) -> Option<ExactDecimal> {
+    let (negative, magnitude) = lexical
+        .strip_prefix('-')
+        .map_or((false, lexical), |value| (true, value));
+    let (integer, fraction) = magnitude.split_once('.').unwrap_or((magnitude, ""));
+    if integer.is_empty()
+        || !integer.bytes().all(|byte| byte.is_ascii_digit())
+        || !fraction.bytes().all(|byte| byte.is_ascii_digit())
+    {
+        return None;
+    }
+    let mut scale = u32::try_from(fraction.len()).ok()?;
+    let digits = format!("{integer}{fraction}");
+    let mut coefficient = digits.parse::<i128>().ok()?;
+    while scale > 0 && coefficient % 10 == 0 {
+        coefficient /= 10;
+        scale -= 1;
+    }
+    if negative {
+        coefficient = coefficient.checked_neg()?;
+    }
+    Some(ExactDecimal { coefficient, scale })
+}
+
+pub(super) fn parse_integer(expression: &str) -> Option<i128> {
+    let int = expression
+        .strip_prefix("(xs:int(\"")
+        .and_then(|value| value.strip_suffix("\"))"))
+        .and_then(|value| value.parse::<i32>().ok())
+        .map(i128::from);
+    let long = expression
+        .strip_prefix("(xs:long(\"")
+        .and_then(|value| value.strip_suffix("\"))"))
+        .and_then(|value| value.parse::<i64>().ok())
+        .map(i128::from);
+    let short = expression
+        .strip_prefix("(xs:short(\"")
+        .and_then(|value| value.strip_suffix("\"))"))
+        .and_then(|value| value.parse::<i16>().ok())
+        .map(i128::from);
+    let unsigned_short = expression
+        .strip_prefix("(xs:unsignedShort(\"")
+        .and_then(|value| value.strip_suffix("\"))"))
+        .and_then(|value| value.parse::<u16>().ok())
+        .map(i128::from);
+    let unsigned_long = expression
+        .strip_prefix("(xs:unsignedLong(\"")
+        .and_then(|value| value.strip_suffix("\"))"))
+        .and_then(|value| value.parse::<u64>().ok())
+        .map(i128::from);
+    let negative_integer = expression
+        .strip_prefix("(xs:negativeInteger(\"")
+        .and_then(|value| value.strip_suffix("\"))"))
+        .and_then(|value| value.parse::<i128>().ok())
+        .filter(|value| *value < 0);
+    let positive_integer = expression
+        .strip_prefix("(xs:positiveInteger(\"")
+        .and_then(|value| value.strip_suffix("\"))"))
+        .and_then(|value| value.parse::<i128>().ok())
+        .filter(|value| *value > 0);
+    let non_positive_integer = expression
+        .strip_prefix("(xs:nonPositiveInteger(\"")
+        .and_then(|value| value.strip_suffix("\"))"))
+        .and_then(|value| value.parse::<i128>().ok())
+        .filter(|value| *value <= 0);
+    let non_negative_integer = expression
+        .strip_prefix("(xs:nonNegativeInteger(\"")
+        .and_then(|value| value.strip_suffix("\"))"))
+        .and_then(|value| value.parse::<i128>().ok())
+        .filter(|value| *value >= 0);
+    int.or(long)
+        .or(short)
+        .or(unsigned_short)
+        .or(unsigned_long)
+        .or(negative_integer)
+        .or(positive_integer)
+        .or(non_positive_integer)
+        .or(non_negative_integer)
+        .or_else(|| {
+            expression
+                .strip_prefix("(xs:integer(\"")
+                .and_then(|value| value.strip_suffix("\"))"))
+                .and_then(|value| value.parse::<i128>().ok())
+        })
+}
+
+// XPath numeric promotion requires exact equality after the specified lossy
+// conversion; an epsilon comparison would change the language semantics.
+#[allow(clippy::cast_precision_loss, clippy::float_cmp)]
+fn atomic_values_equal(left: &AtomicValue, right: &AtomicValue) -> bool {
+    if atomic_is_nan(left) && atomic_is_nan(right) {
+        return true;
+    }
+    match (left, right) {
+        (AtomicValue::Integer(left), AtomicValue::Decimal(right))
+        | (AtomicValue::Decimal(right), AtomicValue::Integer(left)) => {
+            right.scale == 0 && right.coefficient == *left
+        }
+        (AtomicValue::String(left), AtomicValue::AnyUri(right))
+        | (AtomicValue::AnyUri(right), AtomicValue::String(left)) => left == right,
+        (AtomicValue::Integer(left), AtomicValue::Float(right))
+        | (AtomicValue::Float(right), AtomicValue::Integer(left)) => {
+            (*left as f32) == f32::from_bits(*right)
+        }
+        (AtomicValue::Integer(left), AtomicValue::Double(right))
+        | (AtomicValue::Double(right), AtomicValue::Integer(left)) => {
+            (*left as f64) == f64::from_bits(*right)
+        }
+        (AtomicValue::Decimal(left), AtomicValue::Float(right))
+        | (AtomicValue::Float(right), AtomicValue::Decimal(left)) => {
+            decimal_as_f32(*left) == f32::from_bits(*right)
+        }
+        (AtomicValue::Decimal(left), AtomicValue::Double(right))
+        | (AtomicValue::Double(right), AtomicValue::Decimal(left)) => {
+            decimal_as_f64(*left) == f64::from_bits(*right)
+        }
+        (AtomicValue::Float(left), AtomicValue::Double(right))
+        | (AtomicValue::Double(right), AtomicValue::Float(left)) => {
+            f64::from(f32::from_bits(*left)) == f64::from_bits(*right)
+        }
+        (AtomicValue::Float(left), AtomicValue::Float(right)) => {
+            f32::from_bits(*left) == f32::from_bits(*right)
+        }
+        (AtomicValue::Double(left), AtomicValue::Double(right)) => {
+            f64::from_bits(*left) == f64::from_bits(*right)
+        }
+        _ => left == right,
+    }
+}
+
+fn atomic_is_nan(value: &AtomicValue) -> bool {
+    match value {
+        AtomicValue::Float(bits) => f32::from_bits(*bits).is_nan(),
+        AtomicValue::Double(bits) => f64::from_bits(*bits).is_nan(),
+        _ => false,
+    }
+}
+
+#[allow(clippy::cast_precision_loss)]
+fn decimal_as_f32(value: ExactDecimal) -> f32 {
+    let scale = i32::try_from(value.scale).unwrap_or(i32::MAX);
+    (value.coefficient as f32) / 10_f32.powi(scale)
+}
+
+#[allow(clippy::cast_precision_loss)]
+fn decimal_as_f64(value: ExactDecimal) -> f64 {
+    let scale = i32::try_from(value.scale).unwrap_or(i32::MAX);
+    (value.coefficient as f64) / 10_f64.powi(scale)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ExactDecimal, parse_decimal, parse_integer, parse_sequence};
+
+    fn sequences_equal(left: &str, right: &str) -> Option<bool> {
+        let left = parse_sequence(left)?;
+        let right = parse_sequence(right)?;
+        if left.len() != right.len() {
+            return Some(false);
+        }
+        Some((0..left.len()).all(|index| left.item_equals(&right, index)))
+    }
+
+    #[test]
+    fn enforces_admitted_integer_constructor_value_spaces() {
+        assert_eq!(
+            parse_integer("(xs:int(\"-2147483648\"))"),
+            Some(-2_147_483_648)
+        );
+        assert_eq!(
+            parse_integer("(xs:long(\"9223372036854775807\"))"),
+            Some(9_223_372_036_854_775_807)
+        );
+        assert_eq!(
+            parse_integer("(xs:unsignedLong(\"18446744073709551615\"))"),
+            Some(18_446_744_073_709_551_615)
+        );
+        assert_eq!(parse_integer("(xs:positiveInteger(\"0\"))"), None);
+        assert_eq!(parse_integer("(xs:unsignedShort(\"65536\"))"), None);
+    }
+
+    #[test]
+    fn normalizes_exact_decimals_without_binary_floating_point() {
+        assert_eq!(
+            parse_decimal("(xs:decimal(\"1.00\"))"),
+            Some(ExactDecimal {
+                coefficient: 1,
+                scale: 0,
+            })
+        );
+        assert_eq!(
+            parse_decimal("(xs:decimal(\"-12.30\"))"),
+            Some(ExactDecimal {
+                coefficient: -123,
+                scale: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn flattens_nested_atomic_sequences_and_preserves_order() {
+        assert_eq!(sequences_equal("((), (1, 2))", "(1, 2)"), Some(true));
+        assert_eq!(sequences_equal("(1, 2)", "(2, 1)"), Some(false));
+        assert_eq!(sequences_equal("()", "(())"), Some(true));
+    }
+
+    #[test]
+    fn applies_only_the_admitted_atomic_promotions() {
+        assert_eq!(
+            sequences_equal("xs:anyURI(\"urn:example\")", "xs:string(\"urn:example\")"),
+            Some(true)
+        );
+        assert_eq!(
+            sequences_equal("xs:integer(1)", "xs:decimal(1.0)"),
+            Some(true)
+        );
+        assert_eq!(
+            sequences_equal("xs:integer(1)", "xs:decimal(1.01)"),
+            Some(false)
+        );
+        assert_eq!(
+            sequences_equal("xs:float(\"NaN\")", "xs:double(\"NaN\")"),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn validates_boolean_and_calendar_lexicals_locally() {
+        assert_eq!(sequences_equal("xs:boolean(\"1\")", "true()"), Some(true));
+        assert!(parse_sequence("xs:boolean(\"yes\")").is_none());
+        assert_eq!(
+            sequences_equal("xs:date(\"2000-02-29\")", "xs:date(\"2000-02-29\")"),
+            Some(true)
+        );
+        assert!(parse_sequence("xs:date(\"1993-02-29\")").is_none());
+        assert!(parse_sequence("xs:time(\"24:01:00\")").is_none());
+        assert!(parse_sequence("xs:dateTime(\"1972-13-01T00:00:00\")").is_none());
+    }
+}

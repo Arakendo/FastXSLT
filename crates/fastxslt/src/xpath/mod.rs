@@ -10,6 +10,8 @@ pub(crate) mod count_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod decimal_sum_for_experiment;
 #[cfg(any(test, feature = "workbench"))]
+mod deep_equal_atomic;
+#[cfg(any(test, feature = "workbench"))]
 pub(crate) mod deep_equal_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod focus_sum_for_experiment;

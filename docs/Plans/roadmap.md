@@ -10,9 +10,11 @@ Completing the 31-case QT3 mixed deep-equal group raised
 `deep_equal_experiment.rs` to 1,054 lines and exposed independent atomic and
 node responsibilities. The mandatory
 [deep-equal source-unit cohesion review](../Evidence/deep-equal-source-unit-cohesion-review-2026-08-27.md)
-requires a private atomic parsing/value/comparison extraction before another
-deep-equal semantic slice. The complete denominator is checkpointed first so
-the structural change remains mechanically attributable.
+is now discharged by a private 505-line atomic parsing/value/comparison owner;
+the 661-line parent retains function recognition, node semantics, diagnostics,
+and invocation work accounting. Representation-local tests need neither XDM nor
+execution control, while the prior complete denominator and exact early-mismatch
+charges remain conservation evidence.
 
 ADR-0004's first mandatory 2,000-line review has fired. The retained
 [runtime and compiler decomposition review](../Evidence/runtime-and-compiler-decomposition-review-2026-08-27.md)
@@ -239,6 +241,11 @@ implemented behavior belongs to a named standards slice.
   whole-second, timezone-free date/time forms and retain their typed identity
   against equal strings. Keep timezones, fractional seconds, 24:00:00, and
   negative or expanded years explicitly outside the claim.
+- [x] Discharge the ADR-0004 deep-equal cohesion review by extracting a private
+  atomic owner for representations, lexical validation, sequence parsing,
+  numeric promotion, and item comparison. Retain recognition, node behavior,
+  diagnostics, and exact invocation work charging in the parent, with one-way
+  dependency and representation-local tests that need no XDM/control context.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.
