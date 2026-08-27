@@ -41,7 +41,9 @@ range-checked signed 64-bit `xs:long` constructor. The adjacent five-case
 constructor with explicit lower- and upper-bound rejection controls. The
 complete five-case `fn-deep-equalnint2args` group adds a checked-`i128`
 `xs:negativeInteger` subset with executable rejection of zero and positive
-values.
+values. Its adjacent five-case `fn-deep-equalpint2args` group adds the mirrored
+checked-`i128` `xs:positiveInteger` subset with zero and negative values
+rejected.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -161,6 +163,11 @@ implemented behavior belongs to a named standards slice.
 - [x] Execute the complete five-case QT3 `fn-deep-equalnint2args` group through
   checked `i128` values constrained to be strictly below zero. Prove the
   derived type boundary by accepting `-1` and rejecting both `0` and `1`, while
+  leaving arbitrary precision and the other derived-integer families
+  unclaimed.
+- [x] Execute the complete five-case QT3 `fn-deep-equalpint2args` group through
+  checked `i128` values constrained to be strictly above zero. Prove the
+  derived type boundary by accepting `1` and rejecting both `0` and `-1`, while
   leaving arbitrary precision and the other derived-integer families
   unclaimed.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,

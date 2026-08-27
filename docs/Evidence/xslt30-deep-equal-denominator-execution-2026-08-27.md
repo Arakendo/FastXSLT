@@ -122,3 +122,17 @@ therefore cannot silently collapse into the broader admitted `xs:integer`
 subset. This evidence does not establish arbitrary-precision integers, values
 outside `i128`, the other derived-integer families, lexical whitespace
 normalization, cross-type promotion, or general sequence equality.
+
+## QT3 positive-integer extension
+
+The adjacent complete five-case `fn-deep-equalpint2args` group also passes.
+FastXSLT parses each `xs:positiveInteger` constructor through the checked
+`i128` integer path and enforces the derived type's strictly-greater-than-zero
+value space. The group covers an equal lower-bound pair and unequal lower-,
+middle-, and upper-magnitude combinations in both argument orders.
+
+Focused controls accept `1` while rejecting both `0` and `-1`; the constructor
+cannot silently collapse into the broader admitted `xs:integer` subset. This
+evidence does not establish arbitrary-precision integers, values outside
+`i128`, the other derived-integer families, lexical whitespace normalization,
+cross-type promotion, or general sequence equality.

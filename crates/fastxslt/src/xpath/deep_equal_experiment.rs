@@ -129,9 +129,15 @@ fn parse_integer(expression: &str) -> Option<i128> {
         .and_then(|value| value.strip_suffix("\"))"))
         .and_then(|value| value.parse::<i128>().ok())
         .filter(|value| *value < 0);
+    let positive_integer = expression
+        .strip_prefix("(xs:positiveInteger(\"")
+        .and_then(|value| value.strip_suffix("\"))"))
+        .and_then(|value| value.parse::<i128>().ok())
+        .filter(|value| *value > 0);
     int.or(long)
         .or(unsigned_short)
         .or(negative_integer)
+        .or(positive_integer)
         .or_else(|| {
             expression
                 .strip_prefix("(xs:integer(\"")
@@ -454,6 +460,30 @@ mod tests {
                 parse(
                     &format!(
                         "fn:deep-equal((xs:negativeInteger(\"{invalid}\")),(xs:negativeInteger(\"{invalid}\")))"
+                    ),
+                    &location(),
+                )
+                .is_err()
+            );
+        }
+    }
+
+    #[test]
+    fn enforces_the_xs_positive_integer_value_space() {
+        let in_range = parse(
+            "fn:deep-equal((xs:positiveInteger(\"1\")),(xs:positiveInteger(\"1\")))",
+            &location(),
+        )
+        .expect("parse lower xs:positiveInteger value");
+        assert!(
+            evaluate(&in_range, None, &mut InvocationControl::unbounded())
+                .expect("evaluate xs:positiveInteger equality")
+        );
+        for invalid in ["0", "-1"] {
+            assert!(
+                parse(
+                    &format!(
+                        "fn:deep-equal((xs:positiveInteger(\"{invalid}\")),(xs:positiveInteger(\"{invalid}\")))"
                     ),
                     &location(),
                 )

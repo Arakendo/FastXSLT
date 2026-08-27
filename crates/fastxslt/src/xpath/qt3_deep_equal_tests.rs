@@ -1,4 +1,4 @@
-//! Executable QT3 `fn-deep-equalint2args` typed-integer group.
+//! Executable QT3 `fn:deep-equal` typed-atomic groups.
 
 use std::{fs, path::PathBuf};
 
@@ -50,6 +50,13 @@ const NEGATIVE_INTEGER_CASES: [(&str, bool); 5] = [
     ("fn-deep-equalnint2args-4", false),
     ("fn-deep-equalnint2args-5", false),
 ];
+const POSITIVE_INTEGER_CASES: [(&str, bool); 5] = [
+    ("fn-deep-equalpint2args-1", true),
+    ("fn-deep-equalpint2args-2", false),
+    ("fn-deep-equalpint2args-3", false),
+    ("fn-deep-equalpint2args-4", false),
+    ("fn-deep-equalpint2args-5", false),
+];
 
 #[test]
 fn executes_complete_qt3_deep_equal_xs_int_group() {
@@ -79,6 +86,11 @@ fn executes_complete_qt3_deep_equal_xs_unsigned_short_group() {
 #[test]
 fn executes_complete_qt3_deep_equal_xs_negative_integer_group() {
     execute_group("fn-deep-equalnint2args-", &NEGATIVE_INTEGER_CASES);
+}
+
+#[test]
+fn executes_complete_qt3_deep_equal_xs_positive_integer_group() {
+    execute_group("fn-deep-equalpint2args-", &POSITIVE_INTEGER_CASES);
 }
 
 fn execute_group(prefix: &str, expected_cases: &[(&str, bool)]) {
