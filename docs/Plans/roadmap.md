@@ -69,6 +69,10 @@ same tranche now covers numeric promotion through float/double, infinities,
 paired NaN, and the four boolean lexical forms plus boolean functions. Its
 final cases retain validated date/time type identity against equal lexical
 strings, while broader calendar lexical forms remain outside the slice.
+The adjacent complete five-case `fn-deep-equalflt2args` and five-case
+`fn-deep-equaldbl2args` groups now independently verify equal and unequal finite
+boundary fixtures through retained IEEE `f32`/`f64` values and exact singleton
+sequence work charges.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -246,6 +250,13 @@ implemented behavior belongs to a named standards slice.
   numeric promotion, and item comparison. Retain recognition, node behavior,
   diagnostics, and exact invocation work charging in the parent, with one-way
   dependency and representation-local tests that need no XDM/control context.
+- [x] Execute the complete five-case QT3 `fn-deep-equalflt2args` group through
+  retained IEEE `f32` values. Conserve the exact upstream and overlay
+  denominators and charge singleton sequence length plus the reached item,
+  without claiming the complete XML Schema floating lexical space.
+- [x] Execute the complete five-case QT3 `fn-deep-equaldbl2args` group through
+  retained IEEE `f64` values under the same denominator and work-accounting
+  controls, without inferring general floating arithmetic or lexical coverage.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.

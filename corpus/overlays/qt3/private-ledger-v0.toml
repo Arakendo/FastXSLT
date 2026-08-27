@@ -423,6 +423,76 @@ rationale = "Compares the xs:short lower and upper boundaries in reversed argume
 
 [[case]]
 set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equalflt2args-1"
+selection = "selected"
+execution = "passed"
+rationale = "Compares two equal finite xs:float lower-bound fixtures by their parsed IEEE value."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equalflt2args-2"
+selection = "selected"
+execution = "passed"
+rationale = "Compares zero with the finite xs:float lower-bound fixture and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equalflt2args-3"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the finite xs:float upper- and lower-bound fixtures and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equalflt2args-4"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the finite xs:float lower-bound fixture with zero and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equalflt2args-5"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the finite xs:float lower- and upper-bound fixtures and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equaldbl2args-1"
+selection = "selected"
+execution = "passed"
+rationale = "Compares two equal finite xs:double lower-bound fixtures by their parsed IEEE value."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equaldbl2args-2"
+selection = "selected"
+execution = "passed"
+rationale = "Compares zero with the finite xs:double lower-bound fixture and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equaldbl2args-3"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the finite xs:double upper- and lower-bound fixtures and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equaldbl2args-4"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the finite xs:double lower-bound fixture with zero and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equaldbl2args-5"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the finite xs:double lower- and upper-bound fixtures and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equal-mix-args-001"
 selection = "selected"
 execution = "passed"

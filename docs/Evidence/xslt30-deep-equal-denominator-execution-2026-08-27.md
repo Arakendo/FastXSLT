@@ -193,6 +193,24 @@ Focused controls accept both `-32768` and `32767` while rejecting `-32769` and
 numeric promotion, lexical whitespace normalization, general constructor
 semantics, or general sequence equality.
 
+## QT3 float and double extensions
+
+The complete five-case `fn-deep-equalflt2args` and five-case
+`fn-deep-equaldbl2args` groups now pass through the private atomic owner. Each
+group exercises an equal finite lower-bound pair plus unequal zero, lower, and
+upper fixture combinations in both argument orders. The harness asserts all
+five upstream cases and all five first-party overlay records for each group, so
+neither denominator can shrink silently.
+
+The constructors parse the suite's scientific-notation lexicals into Rust
+`f32` and `f64` values and retain their IEEE bit patterns for typed comparison.
+Each singleton comparison charges one XPath operation for sequence length and
+one for the reached item, with no XDM node visits. These groups establish the
+selected finite fixtures only; they do not claim the complete XML Schema
+float/double lexical spaces, whitespace normalization, every rounding edge,
+cross-type promotion beyond the separately admitted mixed group, or general
+floating-point arithmetic.
+
 ## QT3 mixed atomic-sequence tranche
 
 FastXSLT now executes the complete 31-case

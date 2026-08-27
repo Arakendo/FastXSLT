@@ -85,6 +85,20 @@ const SHORT_CASES: [(&str, bool); 5] = [
     ("fn-deep-equalsht2args-4", false),
     ("fn-deep-equalsht2args-5", false),
 ];
+const FLOAT_CASES: [(&str, bool); 5] = [
+    ("fn-deep-equalflt2args-1", true),
+    ("fn-deep-equalflt2args-2", false),
+    ("fn-deep-equalflt2args-3", false),
+    ("fn-deep-equalflt2args-4", false),
+    ("fn-deep-equalflt2args-5", false),
+];
+const DOUBLE_CASES: [(&str, bool); 5] = [
+    ("fn-deep-equaldbl2args-1", true),
+    ("fn-deep-equaldbl2args-2", false),
+    ("fn-deep-equaldbl2args-3", false),
+    ("fn-deep-equaldbl2args-4", false),
+    ("fn-deep-equaldbl2args-5", false),
+];
 const MIXED_ATOMIC_CASES: [(&str, bool, usize); 31] = [
     ("fn-deep-equal-mix-args-001", false, 2),
     ("fn-deep-equal-mix-args-002", true, 3),
@@ -121,57 +135,67 @@ const MIXED_ATOMIC_CASES: [(&str, bool, usize); 31] = [
 
 #[test]
 fn executes_complete_qt3_deep_equal_xs_int_group() {
-    execute_group("fn-deep-equalint2args-", &INT_CASES);
+    execute_group("fn-deep-equalint2args-", &INT_CASES, 1);
 }
 
 #[test]
 fn executes_complete_qt3_deep_equal_xs_integer_group() {
-    execute_group("fn-deep-equalintg2args-", &INTEGER_CASES);
+    execute_group("fn-deep-equalintg2args-", &INTEGER_CASES, 1);
 }
 
 #[test]
 fn executes_complete_qt3_deep_equal_xs_decimal_group() {
-    execute_group("fn-deep-equaldec2args-", &DECIMAL_CASES);
+    execute_group("fn-deep-equaldec2args-", &DECIMAL_CASES, 1);
 }
 
 #[test]
 fn executes_complete_qt3_deep_equal_xs_long_group() {
-    execute_group("fn-deep-equallng2args-", &LONG_CASES);
+    execute_group("fn-deep-equallng2args-", &LONG_CASES, 1);
 }
 
 #[test]
 fn executes_complete_qt3_deep_equal_xs_unsigned_short_group() {
-    execute_group("fn-deep-equalusht2args-", &UNSIGNED_SHORT_CASES);
+    execute_group("fn-deep-equalusht2args-", &UNSIGNED_SHORT_CASES, 1);
 }
 
 #[test]
 fn executes_complete_qt3_deep_equal_xs_negative_integer_group() {
-    execute_group("fn-deep-equalnint2args-", &NEGATIVE_INTEGER_CASES);
+    execute_group("fn-deep-equalnint2args-", &NEGATIVE_INTEGER_CASES, 1);
 }
 
 #[test]
 fn executes_complete_qt3_deep_equal_xs_positive_integer_group() {
-    execute_group("fn-deep-equalpint2args-", &POSITIVE_INTEGER_CASES);
+    execute_group("fn-deep-equalpint2args-", &POSITIVE_INTEGER_CASES, 1);
 }
 
 #[test]
 fn executes_complete_qt3_deep_equal_xs_unsigned_long_group() {
-    execute_group("fn-deep-equalulng2args-", &UNSIGNED_LONG_CASES);
+    execute_group("fn-deep-equalulng2args-", &UNSIGNED_LONG_CASES, 1);
 }
 
 #[test]
 fn executes_complete_qt3_deep_equal_xs_non_positive_integer_group() {
-    execute_group("fn-deep-equalnpi2args-", &NON_POSITIVE_INTEGER_CASES);
+    execute_group("fn-deep-equalnpi2args-", &NON_POSITIVE_INTEGER_CASES, 1);
 }
 
 #[test]
 fn executes_complete_qt3_deep_equal_xs_non_negative_integer_group() {
-    execute_group("fn-deep-equalnni2args-", &NON_NEGATIVE_INTEGER_CASES);
+    execute_group("fn-deep-equalnni2args-", &NON_NEGATIVE_INTEGER_CASES, 1);
 }
 
 #[test]
 fn executes_complete_qt3_deep_equal_xs_short_group() {
-    execute_group("fn-deep-equalsht2args-", &SHORT_CASES);
+    execute_group("fn-deep-equalsht2args-", &SHORT_CASES, 1);
+}
+
+#[test]
+fn executes_complete_qt3_deep_equal_xs_float_group() {
+    execute_group("fn-deep-equalflt2args-", &FLOAT_CASES, 2);
+}
+
+#[test]
+fn executes_complete_qt3_deep_equal_xs_double_group() {
+    execute_group("fn-deep-equaldbl2args-", &DOUBLE_CASES, 2);
 }
 
 #[test]
@@ -239,7 +263,7 @@ fn executes_complete_qt3_deep_equal_mixed_atomic_group() {
     }
 }
 
-fn execute_group(prefix: &str, expected_cases: &[(&str, bool)]) {
+fn execute_group(prefix: &str, expected_cases: &[(&str, bool)], expected_operations: usize) {
     let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
     assert_eq!(
         overlay.matches(&format!("case_name = \"{prefix}")).count(),
@@ -289,7 +313,10 @@ fn execute_group(prefix: &str, expected_cases: &[(&str, bool)]) {
         let mut control = InvocationControl::unbounded();
         let actual = evaluate(&parsed, None, &mut control).expect("evaluate typed deep-equal");
         assert_eq!(actual, expected, "native QT3 assertion for {name}");
-        assert_eq!(control.consumed(WorkDomain::XPathOperation), 1);
+        assert_eq!(
+            control.consumed(WorkDomain::XPathOperation),
+            expected_operations
+        );
         assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 0);
     }
 }
