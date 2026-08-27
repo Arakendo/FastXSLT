@@ -678,7 +678,8 @@ fn parse_boolean_expression(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<BooleanExpression, CompileFailure> {
-    if let Some((variable, integer)) = expression.split_once('=') {
+    let parsed = strip_enclosing_parentheses(expression.trim());
+    if let Some((variable, integer)) = parsed.split_once('=') {
         let variable = variable.trim().strip_prefix('$').unwrap_or_default();
         if is_ascii_ncname(variable) {
             let integer = integer
@@ -691,9 +692,9 @@ fn parse_boolean_expression(
             }));
         }
     }
-    let (left, right, greater_than) = if let Some((left, right)) = expression.split_once('>') {
+    let (left, right, greater_than) = if let Some((left, right)) = parsed.split_once('>') {
         (left, right, true)
-    } else if let Some((left, right)) = expression.split_once('=') {
+    } else if let Some((left, right)) = parsed.split_once('=') {
         (left, right, false)
     } else {
         return Err(unsupported_boolean_expression(expression, location));
@@ -716,6 +717,34 @@ fn parse_boolean_expression(
     } else {
         ordering.is_eq()
     }))
+}
+
+fn strip_enclosing_parentheses(mut expression: &str) -> &str {
+    loop {
+        let bytes = expression.as_bytes();
+        if bytes.first() != Some(&b'(') || bytes.last() != Some(&b')') {
+            return expression;
+        }
+        let mut depth = 0_usize;
+        let mut encloses_all = true;
+        for (index, byte) in bytes.iter().copied().enumerate() {
+            match byte {
+                b'(' => depth += 1,
+                b')' => {
+                    depth = depth.saturating_sub(1);
+                    if depth == 0 && index + 1 != bytes.len() {
+                        encloses_all = false;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        if !encloses_all || depth != 0 {
+            return expression;
+        }
+        expression = expression[1..expression.len() - 1].trim();
+    }
 }
 
 fn unsupported_boolean_expression(expression: &str, location: &SourceLocation) -> CompileFailure {

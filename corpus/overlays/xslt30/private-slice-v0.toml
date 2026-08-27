@@ -257,15 +257,15 @@ rationale = "Native xsl:choose selects otherwise after a false checked constant-
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-007"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Decimal round() predicate semantics remain outside the admitted boolean-expression slice."
+execution = "passed"
+rationale = "Native xsl:if evaluates round() over an exact nonnegative decimal constant and executes its true body without binary floating-point conversion."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-008"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Decimal round() predicate semantics remain outside the admitted boolean-expression slice."
+execution = "passed"
+rationale = "Native xsl:choose evaluates round() over an exact nonnegative decimal constant and selects its true branch without binary floating-point conversion."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"

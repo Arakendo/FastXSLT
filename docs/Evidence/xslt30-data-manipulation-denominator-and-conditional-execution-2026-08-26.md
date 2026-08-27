@@ -28,7 +28,7 @@ or file-backed expected result.
 
 ## Executed slice
 
-Cases `data-manipulation-001` through `data-manipulation-006` execute through
+Cases `data-manipulation-001` through `data-manipulation-008` execute through
 the native compiler and runtime against their upstream XML assertions. Together
 they establish:
 
@@ -39,6 +39,8 @@ they establish:
   `mod` within the admitted constant predicate grammar;
 - exact rational comparison for chained division, so 5 divided by 2 remains
   2.5 without binary floating-point approximation;
+- exact nonnegative decimal literals and XPath `round()` for the two admitted
+  constant predicates;
 - instruction work charging only for the chosen sequence constructor; and
 - built-in document/element dispatch into the exact `doc` template.
 
@@ -50,12 +52,11 @@ silently become a valid integer position.
 
 | Cases | Selection | Execution | Principal pressure |
 | --- | --- | --- | --- |
-| `001`–`006` | selected | passed | conditional instructions and exact constant numeric predicates |
-| `007`–`008` | selected | engine unsupported | decimal literals and `round()` predicates |
+| `001`–`008` | selected | passed | conditional instructions, exact constant numeric predicates, and nonnegative decimal `round()` |
 | `009`–`019` | selected | engine unsupported | general formatting plus global variable/parameter state |
 | `020`–`028` | selected | engine unsupported | node-valued global bindings, dependencies, and broader paths |
 
-The denominator is 28 discovered and selected: six pass, 22 are explicit
+The denominator is 28 discovered and selected: eight pass, 20 are explicit
 engine gaps, and none are excluded, harness-unsupported, failed, or lost.
 
 ## Claim boundary
@@ -67,6 +68,9 @@ boolean value over general sequences, dynamic predicates, general
 admitted compilation strategy for source-independent expressions; it is not a
 claim that every predicate is evaluated statically.
 
-The next adjacent pressure is `data-manipulation-007/008`, but admitting
-`round(3.7)` should use an explicit decimal numeric representation rather than
-route through binary floating point merely to advance two cases.
+Cases `data-manipulation-007/008` advanced using an exact decimal
+representation and nonnegative XPath `round()` semantics. Negative numeric
+literals, other rounding functions, and general runtime numeric expressions
+remain outside this narrow constant-folding slice. The next pressure begins at
+`data-manipulation-009` with composed string functions and general
+`format-number` behavior.

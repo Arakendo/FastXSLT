@@ -112,6 +112,22 @@ impl Rational {
         }
         Ok(Self::integer(self.numerator % right.numerator))
     }
+
+    fn round(self) -> Result<Self, ConstantNumericFailure> {
+        if self.numerator < 0 || self.denominator <= 0 {
+            return Err(ConstantNumericFailure::Unsupported);
+        }
+        let doubled = self
+            .numerator
+            .checked_mul(2)
+            .and_then(|value| value.checked_add(self.denominator))
+            .ok_or(ConstantNumericFailure::Invalid)?;
+        let divisor = self
+            .denominator
+            .checked_mul(2)
+            .ok_or(ConstantNumericFailure::Invalid)?;
+        Ok(Self::integer(doubled / divisor))
+    }
 }
 
 fn evaluate(expression: &str) -> Result<Rational, ConstantNumericFailure> {
@@ -166,6 +182,18 @@ impl Parser<'_> {
 
     fn primary(&mut self) -> Result<Rational, ConstantNumericFailure> {
         self.whitespace();
+        if self.consume_keyword(b"round") {
+            self.whitespace();
+            if !self.consume(b'(') {
+                return Err(ConstantNumericFailure::Invalid);
+            }
+            let value = self.additive()?;
+            self.whitespace();
+            if !self.consume(b')') {
+                return Err(ConstantNumericFailure::Invalid);
+            }
+            return value.round();
+        }
         if self.consume(b'(') {
             let value = self.additive()?;
             self.whitespace();
@@ -174,18 +202,44 @@ impl Parser<'_> {
             }
             return Ok(value);
         }
-        let start = self.offset;
+        let integer_start = self.offset;
         while self.input.get(self.offset).is_some_and(u8::is_ascii_digit) {
             self.offset += 1;
         }
-        if self.offset == start {
+        if self.offset == integer_start {
             return Err(ConstantNumericFailure::Unsupported);
         }
-        let value = std::str::from_utf8(&self.input[start..self.offset])
+        let integer = std::str::from_utf8(&self.input[integer_start..self.offset])
             .expect("ASCII digits are valid UTF-8")
             .parse()
             .map_err(|_| ConstantNumericFailure::Invalid)?;
-        Ok(Rational::integer(value))
+        if !self.consume(b'.') {
+            return Ok(Rational::integer(integer));
+        }
+        let fraction_start = self.offset;
+        while self.input.get(self.offset).is_some_and(u8::is_ascii_digit) {
+            self.offset += 1;
+        }
+        if self.offset == fraction_start {
+            return Err(ConstantNumericFailure::Invalid);
+        }
+        let fraction: i128 = std::str::from_utf8(&self.input[fraction_start..self.offset])
+            .expect("ASCII digits are valid UTF-8")
+            .parse()
+            .map_err(|_| ConstantNumericFailure::Invalid)?;
+        let fraction_digits = u32::try_from(self.offset - fraction_start)
+            .map_err(|_| ConstantNumericFailure::Invalid)?;
+        let denominator = 10_i128
+            .checked_pow(fraction_digits)
+            .ok_or(ConstantNumericFailure::Invalid)?;
+        let numerator = integer
+            .checked_mul(denominator)
+            .and_then(|value| value.checked_add(fraction))
+            .ok_or(ConstantNumericFailure::Invalid)?;
+        Ok(Rational {
+            numerator,
+            denominator,
+        })
     }
 
     fn whitespace(&mut self) {
@@ -233,9 +287,16 @@ mod tests {
     }
 
     #[test]
-    fn rejects_unadmitted_decimal_and_invalid_division() {
+    fn rounds_admitted_nonnegative_exact_decimals() {
+        assert_eq!(compare("round(3.7)", "4"), Ok(Ordering::Equal));
+        assert_eq!(compare("round(3.5)", "4"), Ok(Ordering::Equal));
+        assert_eq!(compare("round(3.4)", "3"), Ok(Ordering::Equal));
+    }
+
+    #[test]
+    fn rejects_unadmitted_numeric_functions_and_invalid_division() {
         assert_eq!(
-            compare("round(3.7)", "3"),
+            compare("ceiling(3.7)", "3"),
             Err(ConstantNumericFailure::Unsupported)
         );
         assert_eq!(
