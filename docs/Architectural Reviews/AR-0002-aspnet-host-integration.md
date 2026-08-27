@@ -139,6 +139,10 @@ security contracts.
 - A narrow invocation-local instruction-budget command now returns structured
   limit exhaustion without retrying or replacing the worker, followed by a
   successful ordinary request on the same compiled/prepared process.
+- The leading in-process design now has a proposed ADR-0003 exception: a
+  workbench-only native library with copied buffers, numeric handles, no
+  callbacks, exact unsafe containment, and permanent panic quarantine. No
+  native implementation is authorized while that ADR remains Proposed.
 
 ## Disposition
 
@@ -159,6 +163,8 @@ ABI or managed API until a bounded ASP.NET workbench compares viable mechanisms.
   - [x] Establish a persistent isolated-worker baseline with bounded frames,
     compile-once/prepared reuse, stable result correlation, and structured
     failure transfer.
+  - [ ] Decide the proposed unsafe native-workbench exception, then implement
+    the in-process candidate only if accepted.
 - [ ] Measure cold start, compile-once/warm execution, marshaling, cancellation,
   errors, result transfer, and steady-state concurrency end to end.
 - [ ] Accept an ADR defining the selected boundary and its safety invariants.
@@ -203,3 +209,6 @@ invalidates the selected mechanism.
 - 2026-08-26 -- Carried deterministic XSLT-instruction budget exhaustion across
   the worker boundary and retained same-process reuse. The private command does
   not select a public limit-policy representation.
+- 2026-08-26 -- Proposed the exact unsafe surface and safety contract for a
+  workbench-only native .NET candidate. Retained the implementation gate under
+  ADR-0003 pending explicit acceptance.
