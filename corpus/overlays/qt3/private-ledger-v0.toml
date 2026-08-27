@@ -518,3 +518,59 @@ case_name = "fn-deep-equal-mix-args-014"
 selection = "selected"
 execution = "passed"
 rationale = "Compares unequal xs:integer values through the mixed atomic sequence path and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-015"
+selection = "selected"
+execution = "passed"
+rationale = "Promotes xs:integer one to xs:float for comparison with 1.0 and returns true."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-016"
+selection = "selected"
+execution = "passed"
+rationale = "Promotes xs:integer one to xs:double for comparison with 1.0 and returns true."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-017"
+selection = "selected"
+execution = "passed"
+rationale = "Converts exact xs:decimal 1.01 to xs:float for comparison with the float constructor and returns true."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-018"
+selection = "selected"
+execution = "passed"
+rationale = "Converts exact xs:decimal 1.01 to xs:double for comparison with the double constructor and returns true."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-019"
+selection = "selected"
+execution = "passed"
+rationale = "Promotes the rounded xs:float 1.01 value to double, preserves its difference from xs:double 1.01, and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-020"
+selection = "selected"
+execution = "passed"
+rationale = "Promotes positive xs:float infinity to double and compares it equal to positive xs:double infinity."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-021"
+selection = "selected"
+execution = "passed"
+rationale = "Promotes negative xs:float infinity to double and compares it equal to negative xs:double infinity."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-022"
+selection = "selected"
+execution = "passed"
+rationale = "Applies the fn:deep-equal special rule that paired float and double NaN values are deep-equal."

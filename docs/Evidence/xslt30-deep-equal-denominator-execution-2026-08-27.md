@@ -195,8 +195,9 @@ semantics, or general sequence equality.
 
 ## QT3 mixed atomic-sequence tranche
 
-FastXSLT now executes the first fourteen contiguous `fn-deep-equal-mix-args-*`
-cases, 001 through 014. This is an explicit tranche of the 31-case mixed group,
+FastXSLT now executes the first twenty-two contiguous
+`fn-deep-equal-mix-args-*` cases, 001 through 022. This is an explicit tranche
+of the 31-case mixed group,
 not a claim that the complete group passes. The admitted expressions cover:
 
 - ordered one- and two-item integer sequences;
@@ -205,7 +206,11 @@ not a claim that the complete group passes. The admitted expressions cover:
 - empty strings as one-item sequences; and
 - empty sequences under ordinary, nested, and whitespace-bearing parentheses;
 - `xs:anyURI` comparison against equal string literals and `xs:string`; and
-- exact `xs:integer`/`xs:decimal` equality without binary floating point.
+- exact `xs:integer`/`xs:decimal` equality without binary floating point;
+- integer and decimal promotion to float or double;
+- float-to-double promotion that preserves the float's rounded value; and
+- positive infinity, negative infinity, and the `fn:deep-equal` paired-NaN
+  rule.
 
 The parser finds the function's argument separator at parenthesis depth zero,
 so a comma inside an operand sequence cannot be mistaken for the separator.
@@ -219,8 +224,13 @@ identity. The admitted comparison step applies string-like equality between
 URI and string values and exact integer/decimal equality only when the
 normalized decimal has no fractional component.
 
-Cases 015 through 031 remain unselected. They introduce float/double promotion,
-infinity and NaN, boolean lexical equivalence, and date/time versus string
-behavior. This tranche also does not claim general XPath sequence parsing,
-escaped string literals, collations, broader typed-value promotion, or general
+Float and double values retain their IEEE bit patterns in the private atomic
+representation. Comparison reconstructs the typed value, promotes float to
+double without reparsing its original lexical form, and treats two NaN values
+as deep-equal while leaving ordinary numeric equality rules unchanged.
+
+Cases 023 through 031 remain unselected. They introduce boolean lexical
+equivalence and date/time versus string behavior. This tranche also does not
+claim general XPath sequence parsing, escaped string literals, collations,
+broader typed-value promotion, every floating-point lexical form, or general
 `fn:deep-equal` semantics.

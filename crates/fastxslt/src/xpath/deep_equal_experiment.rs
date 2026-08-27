@@ -31,6 +31,8 @@ enum DeepEqualOperands {
 enum AtomicValue {
     Integer(i128),
     Decimal(ExactDecimal),
+    Float(u32),
+    Double(u64),
     String(String),
     AnyUri(String),
 }
@@ -185,7 +187,51 @@ fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
     {
         return Some(AtomicValue::Decimal(value));
     }
+    if let Some(value) = constructor_lexical(expression, "xs:float")
+        .and_then(parse_float)
+        .map(f32::to_bits)
+    {
+        return Some(AtomicValue::Float(value));
+    }
+    if let Some(value) = constructor_lexical(expression, "xs:double")
+        .and_then(parse_double)
+        .map(f64::to_bits)
+    {
+        return Some(AtomicValue::Double(value));
+    }
     expression.parse::<i128>().ok().map(AtomicValue::Integer)
+}
+
+fn constructor_lexical<'a>(expression: &'a str, name: &str) -> Option<&'a str> {
+    let inner = expression
+        .strip_prefix(name)?
+        .strip_prefix('(')?
+        .strip_suffix(')')?;
+    if let Some(quoted) = inner
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+    {
+        return (!quoted.contains('"')).then_some(quoted);
+    }
+    Some(inner)
+}
+
+fn parse_float(lexical: &str) -> Option<f32> {
+    match lexical {
+        "INF" => Some(f32::INFINITY),
+        "-INF" => Some(f32::NEG_INFINITY),
+        "NaN" => Some(f32::NAN),
+        value => value.parse().ok(),
+    }
+}
+
+fn parse_double(lexical: &str) -> Option<f64> {
+    match lexical {
+        "INF" => Some(f64::INFINITY),
+        "-INF" => Some(f64::NEG_INFINITY),
+        "NaN" => Some(f64::NAN),
+        value => value.parse().ok(),
+    }
 }
 
 fn parse_decimal(expression: &str) -> Option<ExactDecimal> {
@@ -368,7 +414,13 @@ pub(crate) fn evaluate(
     }
 }
 
+// XPath numeric promotion requires exact equality after the specified lossy
+// conversion; an epsilon comparison would change the language semantics.
+#[allow(clippy::cast_precision_loss, clippy::float_cmp)]
 fn atomic_values_equal(left: &AtomicValue, right: &AtomicValue) -> bool {
+    if atomic_is_nan(left) && atomic_is_nan(right) {
+        return true;
+    }
     match (left, right) {
         (AtomicValue::Integer(left), AtomicValue::Decimal(right))
         | (AtomicValue::Decimal(right), AtomicValue::Integer(left)) => {
@@ -376,8 +428,54 @@ fn atomic_values_equal(left: &AtomicValue, right: &AtomicValue) -> bool {
         }
         (AtomicValue::String(left), AtomicValue::AnyUri(right))
         | (AtomicValue::AnyUri(right), AtomicValue::String(left)) => left == right,
+        (AtomicValue::Integer(left), AtomicValue::Float(right))
+        | (AtomicValue::Float(right), AtomicValue::Integer(left)) => {
+            (*left as f32) == f32::from_bits(*right)
+        }
+        (AtomicValue::Integer(left), AtomicValue::Double(right))
+        | (AtomicValue::Double(right), AtomicValue::Integer(left)) => {
+            (*left as f64) == f64::from_bits(*right)
+        }
+        (AtomicValue::Decimal(left), AtomicValue::Float(right))
+        | (AtomicValue::Float(right), AtomicValue::Decimal(left)) => {
+            decimal_as_f32(*left) == f32::from_bits(*right)
+        }
+        (AtomicValue::Decimal(left), AtomicValue::Double(right))
+        | (AtomicValue::Double(right), AtomicValue::Decimal(left)) => {
+            decimal_as_f64(*left) == f64::from_bits(*right)
+        }
+        (AtomicValue::Float(left), AtomicValue::Double(right))
+        | (AtomicValue::Double(right), AtomicValue::Float(left)) => {
+            f64::from(f32::from_bits(*left)) == f64::from_bits(*right)
+        }
+        (AtomicValue::Float(left), AtomicValue::Float(right)) => {
+            f32::from_bits(*left) == f32::from_bits(*right)
+        }
+        (AtomicValue::Double(left), AtomicValue::Double(right)) => {
+            f64::from_bits(*left) == f64::from_bits(*right)
+        }
         _ => left == right,
     }
+}
+
+fn atomic_is_nan(value: &AtomicValue) -> bool {
+    match value {
+        AtomicValue::Float(bits) => f32::from_bits(*bits).is_nan(),
+        AtomicValue::Double(bits) => f64::from_bits(*bits).is_nan(),
+        _ => false,
+    }
+}
+
+#[allow(clippy::cast_precision_loss)]
+fn decimal_as_f32(value: ExactDecimal) -> f32 {
+    let scale = i32::try_from(value.scale).unwrap_or(i32::MAX);
+    (value.coefficient as f32) / 10_f32.powi(scale)
+}
+
+#[allow(clippy::cast_precision_loss)]
+fn decimal_as_f64(value: ExactDecimal) -> f64 {
+    let scale = i32::try_from(value.scale).unwrap_or(i32::MAX);
+    (value.coefficient as f64) / 10_f64.powi(scale)
 }
 
 fn evaluate_nodes(
@@ -794,6 +892,31 @@ mod tests {
         assert!(
             !evaluate(&fractional, None, &mut InvocationControl::unbounded())
                 .expect("evaluate exact numeric comparison")
+        );
+    }
+
+    #[test]
+    fn applies_float_promotion_and_deep_equal_nan_rules() {
+        for expression in [
+            "fn:deep-equal(xs:decimal(1.01), xs:float(1.01))",
+            "fn:deep-equal(xs:decimal(1.01), xs:double(1.01))",
+            "fn:deep-equal(xs:float(\"INF\"), xs:double(\"INF\"))",
+            "fn:deep-equal(xs:float(\"NaN\"), xs:double(\"NaN\"))",
+        ] {
+            let parsed = parse(expression, &location()).expect("parse floating comparison");
+            assert!(
+                evaluate(&parsed, None, &mut InvocationControl::unbounded())
+                    .expect("evaluate floating comparison")
+            );
+        }
+        let distinct = parse(
+            "fn:deep-equal(xs:float(1.01), xs:double(1.01))",
+            &location(),
+        )
+        .expect("parse promoted float/double comparison");
+        assert!(
+            !evaluate(&distinct, None, &mut InvocationControl::unbounded())
+                .expect("evaluate promoted float/double comparison")
         );
     }
 }

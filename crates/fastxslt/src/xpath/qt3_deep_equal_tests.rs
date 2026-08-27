@@ -85,7 +85,7 @@ const SHORT_CASES: [(&str, bool); 5] = [
     ("fn-deep-equalsht2args-4", false),
     ("fn-deep-equalsht2args-5", false),
 ];
-const MIXED_ATOMIC_CASES: [(&str, bool, usize); 14] = [
+const MIXED_ATOMIC_CASES: [(&str, bool, usize); 22] = [
     ("fn-deep-equal-mix-args-001", false, 2),
     ("fn-deep-equal-mix-args-002", true, 3),
     ("fn-deep-equal-mix-args-003", true, 2),
@@ -100,6 +100,14 @@ const MIXED_ATOMIC_CASES: [(&str, bool, usize); 14] = [
     ("fn-deep-equal-mix-args-012", true, 2),
     ("fn-deep-equal-mix-args-013", true, 2),
     ("fn-deep-equal-mix-args-014", false, 2),
+    ("fn-deep-equal-mix-args-015", true, 2),
+    ("fn-deep-equal-mix-args-016", true, 2),
+    ("fn-deep-equal-mix-args-017", true, 2),
+    ("fn-deep-equal-mix-args-018", true, 2),
+    ("fn-deep-equal-mix-args-019", false, 2),
+    ("fn-deep-equal-mix-args-020", true, 2),
+    ("fn-deep-equal-mix-args-021", true, 2),
+    ("fn-deep-equal-mix-args-022", true, 2),
 ];
 
 #[test]
