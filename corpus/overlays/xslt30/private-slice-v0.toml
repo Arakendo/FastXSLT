@@ -12,8 +12,8 @@ rationale = "Initial-mode metadata is admitted; compilation stops before executi
 set_file = "tests/misc/initial-mode/_initial-mode-test-set.xml"
 case_name = "initial-mode-002"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The expected missing-initial-mode error is inventoried; output indent metadata now compiles and the first boundary is mode #all invocation semantics."
+execution = "native-pass"
+rationale = "Compiles mode #all as template metadata without treating it as an arbitrary initial-mode wildcard, and returns the expected XTDE0045 for inimode."
 
 [[case]]
 set_file = "tests/misc/initial-mode/_initial-mode-test-set.xml"

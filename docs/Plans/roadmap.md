@@ -184,8 +184,12 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [x] Execute pinned `initial-mode-003` as its expected `XTDE0050` outcome by
   preserving `xsl:output/@indent`, required global-parameter identity, and mode
   identity from matched templates. Indented serialization remains explicitly
-  unsupported rather than being silently ignored. The denominator is now two
+  unsupported rather than being silently ignored. The denominator reached two
   native passes and three explicit engine gaps.
+- [x] Execute pinned `initial-mode-002` as its expected `XTDE0045` outcome by
+  preserving `mode="#all"` declaration metadata without treating it as a
+  wildcard that makes every initial mode available. The denominator is now
+  three native passes and two explicit engine gaps.
 - [ ] Establish explicit URI/resource resolution and execution limits.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by

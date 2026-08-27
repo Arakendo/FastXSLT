@@ -266,7 +266,7 @@ impl TransformSetBuilder {
                 }
                 if !program_has_mode(&self.stylesheet, name) {
                     return Some(failure(
-                        "FXRT0005",
+                        "XTDE0045",
                         FailureCategory::Invalid,
                         Some(&request.identity),
                         format!("unknown initial mode: {name}"),
@@ -521,7 +521,7 @@ fn execute_initial_mode(
 ) -> Result<SemanticResult, ExecutionFailure> {
     if !program_has_mode(program, name) {
         return Err(failure(
-            "FXRT0005",
+            "XTDE0045",
             FailureCategory::Invalid,
             Some(request_id),
             format!("unknown initial mode: {name}"),
@@ -1787,7 +1787,7 @@ mod tests {
                 cancellation_fault: None,
             })
             .expect_err("unknown initial mode should fail request admission");
-        assert_eq!(failure.code, "FXRT0005");
+        assert_eq!(failure.code, "XTDE0045");
         assert_eq!(failure.category, FailureCategory::Invalid);
 
         builder

@@ -26,12 +26,12 @@ bounded sealed snapshot.
 | Case | Initial mode | Expected result | Current disposition |
 | --- | --- | --- | --- |
 | `initial-mode-001` | `inimode` | XML | `FXST1009`: typed constructed variable attributes |
-| `initial-mode-002` | `inimode` | `XTDE0045` | `FXST1012`: `mode="#all"` invocation semantics |
+| `initial-mode-002` | `inimode` | `XTDE0045` | Native pass: `mode="#all"` does not declare arbitrary initial modes |
 | `initial-mode-003` | `inimode` | `XTDE0050` | Native pass: absent required global parameter reports expected error |
 | `initial-mode-004` | `flobble` | XML | Native pass: local expanded-QName and tunnel parameters plus mixed node/atomic sequence |
 | `initial-mode-005` | `b` | XML | `FXST1015`: element-bearing global sequence constructor |
 
-The denominator is five discovered and selected: two native passes, three
+The denominator is five discovered and selected: three native passes, two
 explicit engine gaps, and none excluded, harness-unsupported, failed, or lost.
 
 ## Claim boundary
@@ -42,7 +42,7 @@ initial-mode parameter semantics exercised by case 004, plus the required
 global-parameter failure exercised by case 003. It does not establish general
 template-parameter defaults/types, tunnel propagation across template
 application, multi-mode declarations, `#all` semantics, temporary trees,
-general sequence constructors, or the `XTDE0045` expected dynamic error.
+general sequence constructors, or general `#all` dispatch behavior.
 
 The first implementation decision should be the host-neutral invocation shape:
 an initial mode is standards-defined entry state, not a special ASP.NET or CLI
@@ -53,7 +53,7 @@ must remain independently classified.
 ## Subsequent entry-seam evidence
 
 The private runtime now admits a principal-source plus initial-mode entry,
-rejects an unknown compiled mode with structured `FXRT0005`, and executes a
+rejects an unavailable compiled mode with standards code `XTDE0045`, and executes a
 focused root template in a named mode through the same parsing, XDM,
 invocation-control, result, and serialization path as principal-source work.
 This originally advanced case 004 beyond `FXST1011` to `FXST1006` without
@@ -81,3 +81,12 @@ parameter is unused. The error occurs before template evaluation and before
 serialization. Indentation remains an explicit serialization boundary:
 successful work requesting indentation reports `FXSR1003` rather than silently
 emitting unindented bytes.
+
+## Subsequent unavailable-mode evidence
+
+Case 002 now compiles `mode="#all"` as template declaration metadata while
+keeping it distinct from a named mode made available for initial invocation.
+Requesting `inimode` therefore returns the expected `XTDE0045` during request
+admission. This does not claim general `#all` dispatch; it proves the narrower
+and crucial negative rule that `#all` is not a wildcard declaration of every
+possible initial-mode name.

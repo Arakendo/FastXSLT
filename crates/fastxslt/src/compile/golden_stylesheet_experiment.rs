@@ -154,7 +154,7 @@ fn compile_top_level_template(
             ));
         }
         *root_template_mode = optional_attribute(document, element, None, "mode")
-            .map(|mode| parse_mode(mode, document.location(element)))
+            .map(|mode| parse_template_mode(mode, document.location(element)))
             .transpose()?;
         *root_template = Some(compile_template(document, element)?);
         return Ok(());
@@ -337,7 +337,7 @@ fn compile_matched_template(
         }
     };
     let mode = optional_attribute(document, element, None, "mode")
-        .map(|mode| parse_mode(mode, document.location(element)))
+        .map(|mode| parse_template_mode(mode, document.location(element)))
         .transpose()?;
     Ok(MatchedTemplate {
         pattern,
@@ -725,6 +725,14 @@ fn parse_mode(mode: &str, location: &SourceLocation) -> Result<String, CompileFa
             format!("unsupported mode name: {mode}"),
             location,
         ))
+    }
+}
+
+fn parse_template_mode(mode: &str, location: &SourceLocation) -> Result<String, CompileFailure> {
+    if mode == "#all" {
+        Ok(mode.to_owned())
+    } else {
+        parse_mode(mode, location)
     }
 }
 
