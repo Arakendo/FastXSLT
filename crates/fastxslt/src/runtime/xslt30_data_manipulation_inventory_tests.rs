@@ -3,8 +3,8 @@
 use std::{collections::HashSet, fs, path::PathBuf};
 
 use super::{
-    ExecutionPolicy, FailureCategory, InvocationEntry, TransformRequest, TransformSetBuilder,
-    compile_resource, execute_transform_set,
+    ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, compile_resource,
+    execute_transform_set,
 };
 use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
@@ -13,10 +13,10 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const SET_FILE: &str = "tests/expr/data-manipulation/_data-manipulation-test-set.xml";
 const CASE_COUNT: usize = 28;
-const PASSING_CASE_COUNT: usize = 19;
+const PASSING_CASE_COUNT: usize = 28;
 
 #[test]
-fn executes_first_nineteen_native_data_manipulation_cases() {
+fn executes_complete_native_data_manipulation_test_set() {
     for ordinal in 1..=PASSING_CASE_COUNT {
         let case_name = case_name(ordinal);
         let (actual, expected) = execute_case(&case_name);
@@ -80,18 +80,7 @@ fn admits_complete_data_manipulation_test_set_without_denominator_loss() {
             .admit(source_id(&name), source)
             .expect("admit logical source");
     }
-
-    let snapshot = resources.seal();
-    for ordinal in (PASSING_CASE_COUNT + 1)..=CASE_COUNT {
-        let name = case_name(ordinal);
-        let failure = compile_resource(&snapshot, &stylesheet_id(&name))
-            .expect_err("engine-unsupported case should fail compilation");
-        assert_eq!(
-            failure.category,
-            FailureCategory::Unsupported,
-            "{name} should remain valid-but-unsupported: {failure:?}"
-        );
-    }
+    let _snapshot = resources.seal();
 }
 
 fn execute_case(case_name: &str) -> (String, String) {

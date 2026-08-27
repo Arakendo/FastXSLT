@@ -31,7 +31,14 @@ pub(crate) enum GlobalBindingKind {
 pub(crate) struct GlobalBinding {
     pub(crate) kind: GlobalBindingKind,
     pub(crate) name: String,
-    pub(crate) default: String,
+    pub(crate) default: GlobalBindingDefault,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum GlobalBindingDefault {
+    Text(String),
+    ChildPath(ChildPath),
+    Variable(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

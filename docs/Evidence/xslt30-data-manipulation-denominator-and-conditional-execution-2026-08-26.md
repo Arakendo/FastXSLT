@@ -28,7 +28,7 @@ or file-backed expected result.
 
 ## Executed slice
 
-Cases `data-manipulation-001` through `data-manipulation-019` execute through
+All 28 `data-manipulation` cases execute through
 the native compiler and runtime against their upstream XML assertions. Together
 they establish:
 
@@ -49,6 +49,12 @@ they establish:
   values for each transform;
 - dynamic `format-number` operands resolved from those invocation-local default
   values without storing mutable parameter state in the compiled stylesheet;
+- source-derived global node sequences evaluated against the invocation's
+  principal source, retaining node identity and document order across simple
+  declaration-order variable/parameter aliases;
+- global path defaults using the already admitted `last()`, checked
+  constant-integer position, descendant search, and ancestor predicate
+  semantics;
 - instruction work charging only for the chosen sequence constructor; and
 - built-in document/element dispatch into the exact `doc` template.
 
@@ -63,10 +69,12 @@ silently become a valid integer position.
 | `001`–`008` | selected | passed | conditional instructions, exact constant numeric predicates, and nonnegative decimal `round()` |
 | `009`–`011` | selected | passed | constant exact-decimal formatting and literal string-function composition |
 | `012`–`019` | selected | passed | dynamic formatting over invocation-local top-level variable/parameter defaults |
-| `020`–`028` | selected | engine unsupported | node-valued global bindings, dependencies, and broader paths |
+| `020`–`023` | selected | passed | source-derived global node sequences and declaration-order aliases |
+| `024`–`026` | selected | passed | global path defaults with positional and checked arithmetic predicates |
+| `027`–`028` | selected | passed | global descendant search with ancestor predicates |
 
-The denominator is 28 discovered and selected: 19 pass, 9 are explicit
-engine gaps, and none are excluded, harness-unsupported, failed, or lost.
+The denominator is 28 discovered, selected, and passed. No case is excluded,
+harness-unsupported, failed, or lost.
 
 ## Claim boundary
 
@@ -74,8 +82,8 @@ This evidence does not establish general XPath numeric semantics, decimal
 literals, IEEE floating-point behavior, arbitrary comparisons, effective
 boolean value over general sequences, dynamic predicates, general
 `format-number`, host-supplied parameter overrides, required parameters,
-dependency ordering between globals, node-valued globals, or general global
-sequence constructors. Constant folding is an
+forward references or general dependency ordering between globals, arbitrary
+node-valued expressions, or general global sequence constructors. Constant folding is an
 admitted compilation strategy for source-independent expressions; it is not a
 claim that every predicate is evaluated statically.
 
@@ -87,6 +95,8 @@ advanced through checked constant formatting; this does not establish general
 XPath double conversion, arbitrary decimal pictures, rounding during
 formatting, locale-dependent symbols, or arbitrary dynamic formatting. Cases
 012 through 019 establish only text-default declarations and variable operands
-within the same narrow formatting grammar. The next pressure begins at
-`data-manipulation-020` with select-bearing, node-valued global bindings and
-their dependency semantics.
+within the same narrow formatting grammar. Cases 020 through 028 add only
+source-relative paths accepted by the existing path evaluator and aliases to
+earlier declarations. They do not establish arbitrary global expression
+evaluation, dependency-graph construction, circularity diagnostics, or a host
+parameter override surface.

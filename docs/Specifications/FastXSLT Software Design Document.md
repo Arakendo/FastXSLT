@@ -96,6 +96,9 @@ open:
   stylesheet-defined default expression or value, but each invocation owns the
   resulting binding value and any host-supplied parameter override. Compilation
   must not turn an invocation parameter value into shared mutable state.
+- Source-derived global values retain identities only within the prepared input
+  and invocation that produced them. A compiled stylesheet must not retain node
+  identities from one principal source for reuse by another invocation.
 - The invocation explicitly selects its standards-defined entry, such as a
   principal source or named initial template. A source-free initial-template
   invocation must not acquire a fabricated source document or context item;

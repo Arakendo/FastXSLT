@@ -34,8 +34,8 @@ use crate::xpath::format_number_experiment::{
 use crate::xpath::integer_for_experiment::evaluate as evaluate_integer_for;
 use crate::xpath::path_experiment::evaluate_child_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, BooleanExpression, Instruction, MatchPattern, NodeTest, StylesheetProgram,
-    TemplateArgument, ValueExpression,
+    ApplySelection, BooleanExpression, GlobalBindingDefault, Instruction, MatchPattern, NodeTest,
+    StylesheetProgram, TemplateArgument, ValueExpression,
 };
 
 mod serialization;
@@ -396,19 +396,19 @@ pub(super) fn execute_program(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
-    let variables = materialize_global_defaults(program);
+    let globals = materialize_global_defaults(program, Some(source), request_id, control)?;
     let inputs = SequenceInputs {
         program,
         source: Some(source),
         request_id,
-        globals: &variables,
+        globals: &globals,
     };
     let children = if let Some(root_template) = &program.root_template {
         execute_sequence(
             &inputs,
             &root_template.body,
             Some(source.document_node()),
-            &variables,
+            &globals.atomics,
             0,
             control,
         )?
@@ -419,7 +419,7 @@ pub(super) fn execute_program(
             source.document_node(),
             None,
             request_id,
-            &variables,
+            &globals,
             control,
         )?
     };
@@ -446,18 +446,18 @@ fn execute_initial_template(
             "initial-template parameters are outside the private invocation-entry slice",
         ));
     }
-    let variables = materialize_global_defaults(program);
+    let globals = materialize_global_defaults(program, None, request_id, control)?;
     let inputs = SequenceInputs {
         program,
         source: None,
         request_id,
-        globals: &variables,
+        globals: &globals,
     };
     let children = execute_sequence(
         &inputs,
         &template.template.body,
         None,
-        &variables,
+        &globals.atomics,
         0,
         control,
     )?;
@@ -468,20 +468,60 @@ struct SequenceInputs<'a> {
     program: &'a StylesheetProgram,
     source: Option<&'a Document>,
     request_id: &'a str,
-    globals: &'a BTreeMap<String, AtomicValue>,
+    globals: &'a RuntimeGlobals,
 }
 
-fn materialize_global_defaults(program: &StylesheetProgram) -> BTreeMap<String, AtomicValue> {
-    program
-        .global_bindings
-        .iter()
-        .map(|binding| {
-            (
-                binding.name.clone(),
-                AtomicValue::untyped(binding.default.clone()),
-            )
-        })
-        .collect()
+#[derive(Debug, Default)]
+struct RuntimeGlobals {
+    atomics: BTreeMap<String, AtomicValue>,
+    nodes: BTreeMap<String, Vec<NodeId>>,
+}
+
+fn materialize_global_defaults(
+    program: &StylesheetProgram,
+    source: Option<&Document>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<RuntimeGlobals, ExecutionFailure> {
+    let mut globals = RuntimeGlobals::default();
+    for binding in &program.global_bindings {
+        match &binding.default {
+            GlobalBindingDefault::Text(value) => {
+                globals
+                    .atomics
+                    .insert(binding.name.clone(), AtomicValue::untyped(value.clone()));
+            }
+            GlobalBindingDefault::ChildPath(path) => {
+                let source = source.ok_or_else(|| {
+                    failure(
+                        "FXRT1004",
+                        FailureCategory::Unsupported,
+                        Some(request_id),
+                        "a source-dependent global binding requires a principal source",
+                    )
+                })?;
+                let nodes =
+                    evaluate_child_path_controlled(source, source.document_node(), path, control)
+                        .map_err(|failure| control_failure(failure, request_id))?;
+                globals.nodes.insert(binding.name.clone(), nodes);
+            }
+            GlobalBindingDefault::Variable(name) => {
+                if let Some(value) = globals.atomics.get(name).cloned() {
+                    globals.atomics.insert(binding.name.clone(), value);
+                } else if let Some(nodes) = globals.nodes.get(name).cloned() {
+                    globals.nodes.insert(binding.name.clone(), nodes);
+                } else {
+                    return Err(failure(
+                        "FXRT0002",
+                        FailureCategory::Invalid,
+                        Some(request_id),
+                        format!("unbound global dependency: ${name}"),
+                    ));
+                }
+            }
+        }
+    }
+    Ok(globals)
 }
 
 fn required_source_context<'a>(
@@ -801,28 +841,27 @@ fn execute_value_of(
                 ));
             }
             if let Some(node) = selected.first() {
-                source
-                    .visit_string_value_controlled(*node, control, &mut |part, control| {
-                        append_text(result, part, inputs.request_id, control)
-                    })
-                    .map_err(|failure| match failure {
-                        StringValueVisitFailure::Control(failure) => {
-                            control_failure(failure, inputs.request_id)
-                        }
-                        StringValueVisitFailure::Sink(failure) => failure,
-                    })?;
+                append_source_string_value(inputs, *node, result, control)?;
             }
         }
         ValueExpression::Variable(name) => {
-            let value = variables.get(name).ok_or_else(|| {
-                failure(
+            if let Some(value) = variables.get(name) {
+                append_text(result, value.lexical(), inputs.request_id, control)?;
+            } else if let Some(nodes) = inputs.globals.nodes.get(name) {
+                for (index, node) in nodes.iter().enumerate() {
+                    if index > 0 {
+                        append_text(result, separator, inputs.request_id, control)?;
+                    }
+                    append_source_string_value(inputs, *node, result, control)?;
+                }
+            } else {
+                return Err(failure(
                     "FXRT0002",
                     FailureCategory::Invalid,
                     Some(inputs.request_id),
                     format!("unbound variable: ${name}"),
-                )
-            })?;
-            append_text(result, value.lexical(), inputs.request_id, control)?;
+                ));
+            }
         }
         ValueExpression::IntegerFor(expression) => {
             let values = evaluate_integer_for(expression, control)
@@ -885,6 +924,32 @@ fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_source_string_value(
+    inputs: &SequenceInputs<'_>,
+    node: NodeId,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let source = inputs.source.ok_or_else(|| {
+        failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "a source-derived value requires its principal source",
+        )
+    })?;
+    source
+        .visit_string_value_controlled(node, control, &mut |part, control| {
+            append_text(result, part, inputs.request_id, control)
+        })
+        .map_err(|failure| match failure {
+            StringValueVisitFailure::Control(failure) => {
+                control_failure(failure, inputs.request_id)
+            }
+            StringValueVisitFailure::Sink(failure) => failure,
+        })
 }
 
 fn execute_decimal_sum(
@@ -1039,7 +1104,7 @@ fn apply_template(
     node: NodeId,
     mode: Option<&str>,
     request_id: &str,
-    globals: &BTreeMap<String, AtomicValue>,
+    globals: &RuntimeGlobals,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     control
@@ -1075,7 +1140,7 @@ fn apply_template(
             &inputs,
             &template.template.body,
             Some(node),
-            globals,
+            &globals.atomics,
             0,
             control,
         );

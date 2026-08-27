@@ -12,9 +12,9 @@ use crate::xpath::integer_for_experiment::parse as parse_integer_for;
 use crate::xpath::path_experiment::{PathFailure, parse_child_path};
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, BooleanExpression, ChooseBranch, EqualityTest, GlobalBinding,
-    GlobalBindingKind, Instruction, MatchPattern, MatchedTemplate, NamedTemplate, NodeTest,
-    OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME, StylesheetProgram, Template, TemplateArgument,
-    ValueExpression,
+    GlobalBindingDefault, GlobalBindingKind, Instruction, MatchPattern, MatchedTemplate,
+    NamedTemplate, NodeTest, OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME, StylesheetProgram,
+    Template, TemplateArgument, ValueExpression,
 };
 
 const XSLT_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
@@ -183,7 +183,7 @@ fn compile_global_binding(
         GlobalBindingKind::Variable => "xsl:variable",
         GlobalBindingKind::Parameter => "xsl:param",
     };
-    ensure_only_attributes(document, element, &["name"], label)?;
+    ensure_only_attributes(document, element, &["name", "select"], label)?;
     let name = required_attribute(document, element, None, "name")?;
     if !is_ascii_ncname(name) {
         return Err(invalid(
@@ -203,10 +203,30 @@ fn compile_global_binding(
             document.location(element),
         ));
     }
+    let default = if let Some(select) = optional_attribute(document, element, None, "select") {
+        ensure_no_meaningful_children(document, element, label)?;
+        if let Some(variable) = select.strip_prefix('$') {
+            if !is_ascii_ncname(variable) {
+                return Err(invalid(
+                    "FXXP0002",
+                    format!("invalid variable reference: {select}"),
+                    document.location(element),
+                ));
+            }
+            GlobalBindingDefault::Variable(variable.to_owned())
+        } else {
+            GlobalBindingDefault::ChildPath(
+                parse_child_path(select, document.location(element).clone())
+                    .map_err(map_path_failure)?,
+            )
+        }
+    } else {
+        GlobalBindingDefault::Text(document.string_value(element))
+    };
     Ok(GlobalBinding {
         kind,
         name: name.to_owned(),
-        default: document.string_value(element),
+        default,
     })
 }
 

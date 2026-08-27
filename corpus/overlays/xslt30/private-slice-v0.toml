@@ -348,61 +348,61 @@ rationale = "An invocation-local parameter default and compiled variable default
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-020"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Top-level node-valued variables and dependent global bindings remain outside the admitted slice."
+execution = "passed"
+rationale = "A source-derived global node sequence retains node identity through an invocation-local dependent variable."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-021"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Top-level node-valued parameters and dependent global bindings remain outside the admitted slice."
+execution = "passed"
+rationale = "A source-derived parameter default and its dependent parameter are materialized for one invocation."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-022"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Mixed top-level node parameter/variable dependencies remain outside the admitted slice."
+execution = "passed"
+rationale = "A variable default can depend on an earlier source-derived parameter default without entering compiled mutable state."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-023"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Mixed top-level node variable/parameter dependencies remain outside the admitted slice."
+execution = "passed"
+rationale = "The admitted mixed declaration spelling preserves a source-derived node sequence through an earlier global binding."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-024"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Top-level node parameters with positional predicates remain outside the admitted slice."
+execution = "passed"
+rationale = "A source-derived parameter default reuses the charged per-step last-position predicate semantics."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-025"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Top-level node parameters with arithmetic predicates remain outside the admitted slice."
+execution = "passed"
+rationale = "A source-derived parameter default reuses checked constant-integer predicate evaluation."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-026"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Top-level node parameters with deeper arithmetic predicates remain outside the admitted slice."
+execution = "passed"
+rationale = "The second parameter spelling executes through the same checked constant-integer predicate semantics."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-027"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Top-level descendant-axis variables with ancestor predicates remain outside the admitted slice."
+execution = "passed"
+rationale = "A source-derived variable default preserves document order through descendant search and an ancestor predicate."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-028"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Top-level descendant-axis parameters with ancestor predicates remain outside the admitted slice."
+execution = "passed"
+rationale = "A source-derived parameter default uses the same charged descendant and ancestor navigation semantics."
