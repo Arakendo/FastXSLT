@@ -41,6 +41,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `castable-002` Typed Local Values](xslt30-castable-002-typed-local-values-2026-08-26.md)
 - [XSLT30 `castable-003` Numeric Conversion Matrix](xslt30-castable-003-numeric-conversion-matrix-2026-08-26.md)
 - [XSLT30 `castable-004` Duration Conversion Matrix](xslt30-castable-004-duration-conversion-matrix-2026-08-26.md)
+- [XSLT30 Initial-Mode Denominator Admission](xslt30-initial-mode-denominator-admission-2026-08-26.md)
 - [OASIS XSLT/XPath 1.0 Suite Candidate Review](oasis-xslt10-suite-candidate-review-2026-08-25.md)
 - [Rust XML Parser Candidate Review](rust-xml-parser-candidate-review-2026-08-25.md)
 - [Owned XDM Tree Experiment](owned-xdm-tree-experiment-2026-08-25.md)

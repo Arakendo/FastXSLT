@@ -1749,3 +1749,6 @@ mod xslt30_castable_inventory_tests;
 #[cfg(test)]
 #[path = "xslt30_data_manipulation_inventory_tests.rs"]
 mod xslt30_data_manipulation_inventory_tests;
+#[cfg(test)]
+#[path = "xslt30_initial_mode_inventory_tests.rs"]
+mod xslt30_initial_mode_inventory_tests;

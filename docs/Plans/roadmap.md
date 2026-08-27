@@ -160,6 +160,10 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [x] Execute XSLT30 `template-005` through statically resolved named templates,
   invocation-local parameters, conditional equality, calls, and bounded
   recursion. The complete six-case denominator now passes.
+- [x] Admit the complete five-case XSLT30 `misc/initial-mode` denominator,
+  preserving each mode identity and expected error or XML assertion through
+  bounded snapshots. All five are selected engine gaps at their exact current
+  compiler boundaries; no initial-mode execution support is claimed.
 - [ ] Establish explicit URI/resource resolution and execution limits.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
