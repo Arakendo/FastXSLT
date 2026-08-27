@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use super::golden_semantics_experiment::{Instruction, StylesheetProgram};
+use super::golden_semantics_experiment::{GlobalBindingKind, Instruction, StylesheetProgram};
 
 #[derive(Debug, Clone, Copy)]
 struct InspectionLimits {
@@ -50,6 +50,8 @@ struct CompiledInspection {
     root_template_count: usize,
     exact_element_template_count: usize,
     named_template_count: usize,
+    global_variable_count: usize,
+    global_parameter_count: usize,
     instruction_count: usize,
     features: Vec<FeatureObservation>,
 }
@@ -120,6 +122,16 @@ fn inspect_compiled(
             })
             .count(),
         named_template_count: program.named_templates.len(),
+        global_variable_count: program
+            .global_bindings
+            .iter()
+            .filter(|binding| binding.kind == GlobalBindingKind::Variable)
+            .count(),
+        global_parameter_count: program
+            .global_bindings
+            .iter()
+            .filter(|binding| binding.kind == GlobalBindingKind::Parameter)
+            .count(),
         instruction_count,
         features: feature_counts
             .into_iter()
@@ -230,6 +242,8 @@ mod tests {
                 root_template_count: 1,
                 exact_element_template_count: 0,
                 named_template_count: 0,
+                global_variable_count: 0,
+                global_parameter_count: 0,
                 instruction_count: 4,
                 features: vec![
                     FeatureObservation {

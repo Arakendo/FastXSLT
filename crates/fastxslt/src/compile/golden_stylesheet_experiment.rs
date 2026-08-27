@@ -1,19 +1,20 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xml::quick_xml_experiment::NamespaceBinding;
 use crate::xpath::castable_experiment::{parse as parse_castable, parse_cast};
-use crate::xpath::constant_format_number_experiment::parse as parse_constant_format_number;
 use crate::xpath::constant_numeric_experiment::{self, ConstantNumericFailure};
 use crate::xpath::decimal_sum_for_experiment::parse as parse_decimal_sum_for;
 use crate::xpath::focus_sum_for_experiment::parse as parse_focus_sum_for;
 use crate::xpath::for_distinct_values_experiment::{
     ForExpressionFailure, parse as parse_for_distinct_values,
 };
+use crate::xpath::format_number_experiment::parse as parse_format_number;
 use crate::xpath::integer_for_experiment::parse as parse_integer_for;
 use crate::xpath::path_experiment::{PathFailure, parse_child_path};
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, BooleanExpression, ChooseBranch, EqualityTest, Instruction, MatchPattern,
-    MatchedTemplate, NamedTemplate, NodeTest, OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME,
-    StylesheetProgram, Template, TemplateArgument, ValueExpression,
+    ApplySelection, BooleanExpression, ChooseBranch, EqualityTest, GlobalBinding,
+    GlobalBindingKind, Instruction, MatchPattern, MatchedTemplate, NamedTemplate, NodeTest,
+    OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME, StylesheetProgram, Template, TemplateArgument,
+    ValueExpression,
 };
 
 const XSLT_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
@@ -41,6 +42,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
     let mut root_template = None;
     let mut matched_templates = Vec::new();
     let mut named_templates = Vec::new();
+    let mut global_bindings = Vec::new();
     for child in meaningful_children(document, root) {
         let Some(name) = document.name(child) else {
             continue;
@@ -57,54 +59,32 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
                 output = Some(compile_output(document, child)?);
             }
             (Some(XSLT_NAMESPACE), "template") => {
-                if let Some(name) = optional_attribute(document, child, None, "name") {
-                    let name = normalize_named_template_name(document, child, name)?;
-                    if named_templates
-                        .iter()
-                        .any(|template: &NamedTemplate| template.name == name)
-                    {
-                        return Err(invalid(
-                            "FXST0010",
-                            format!("duplicate named template: {name}"),
-                            document.location(child),
-                        ));
-                    }
-                    named_templates.push(compile_named_template(document, child, &name)?);
-                    continue;
-                }
-                let pattern = required_attribute(document, child, None, "match")?;
-                if pattern == "/" {
-                    if optional_attribute(document, child, None, "mode").is_some() {
-                        return Err(unsupported(
-                            "FXST1011",
-                            "a mode on the root match pattern is outside the private slice",
-                            document.location(child),
-                        ));
-                    }
-                    if root_template.is_some() {
-                        return Err(unsupported(
-                            "FXST1001",
-                            "the private slice permits one root template",
-                            document.location(child),
-                        ));
-                    }
-                    root_template = Some(compile_template(document, child)?);
+                compile_top_level_template(
+                    document,
+                    child,
+                    &mut root_template,
+                    &mut matched_templates,
+                    &mut named_templates,
+                )?;
+            }
+            (Some(XSLT_NAMESPACE), "variable" | "param") => {
+                let kind = if name.local == "variable" {
+                    GlobalBindingKind::Variable
                 } else {
-                    let matched_template = compile_matched_template(document, child, pattern)?;
-                    if matched_templates.iter().any(|existing: &MatchedTemplate| {
-                        existing.pattern == matched_template.pattern
-                            && existing.mode == matched_template.mode
-                    }) {
-                        return Err(unsupported(
-                            "FXST1008",
-                            format!(
-                                "template priority for duplicate match pattern is outside the private slice: {pattern}"
-                            ),
-                            document.location(child),
-                        ));
-                    }
-                    matched_templates.push(matched_template);
+                    GlobalBindingKind::Parameter
+                };
+                let binding = compile_global_binding(document, child, kind)?;
+                if global_bindings
+                    .iter()
+                    .any(|existing: &GlobalBinding| existing.name == binding.name)
+                {
+                    return Err(invalid(
+                        "FXST0022",
+                        format!("duplicate global binding: ${}", binding.name),
+                        document.location(child),
+                    ));
                 }
+                global_bindings.push(binding);
             }
             (Some(XSLT_NAMESPACE), local) => {
                 return Err(unsupported(
@@ -132,9 +112,102 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
         root_template,
         matched_templates,
         named_templates,
+        global_bindings,
     };
     validate_named_template_references(&program)?;
     Ok(program)
+}
+
+fn compile_top_level_template(
+    document: &Document,
+    element: NodeId,
+    root_template: &mut Option<Template>,
+    matched_templates: &mut Vec<MatchedTemplate>,
+    named_templates: &mut Vec<NamedTemplate>,
+) -> Result<(), CompileFailure> {
+    if let Some(name) = optional_attribute(document, element, None, "name") {
+        let name = normalize_named_template_name(document, element, name)?;
+        if named_templates.iter().any(|template| template.name == name) {
+            return Err(invalid(
+                "FXST0010",
+                format!("duplicate named template: {name}"),
+                document.location(element),
+            ));
+        }
+        named_templates.push(compile_named_template(document, element, &name)?);
+        return Ok(());
+    }
+
+    let pattern = required_attribute(document, element, None, "match")?;
+    if pattern == "/" {
+        if optional_attribute(document, element, None, "mode").is_some() {
+            return Err(unsupported(
+                "FXST1011",
+                "a mode on the root match pattern is outside the private slice",
+                document.location(element),
+            ));
+        }
+        if root_template.is_some() {
+            return Err(unsupported(
+                "FXST1001",
+                "the private slice permits one root template",
+                document.location(element),
+            ));
+        }
+        *root_template = Some(compile_template(document, element)?);
+        return Ok(());
+    }
+
+    let matched_template = compile_matched_template(document, element, pattern)?;
+    if matched_templates.iter().any(|existing| {
+        existing.pattern == matched_template.pattern && existing.mode == matched_template.mode
+    }) {
+        return Err(unsupported(
+            "FXST1008",
+            format!(
+                "template priority for duplicate match pattern is outside the private slice: {pattern}"
+            ),
+            document.location(element),
+        ));
+    }
+    matched_templates.push(matched_template);
+    Ok(())
+}
+
+fn compile_global_binding(
+    document: &Document,
+    element: NodeId,
+    kind: GlobalBindingKind,
+) -> Result<GlobalBinding, CompileFailure> {
+    let label = match kind {
+        GlobalBindingKind::Variable => "xsl:variable",
+        GlobalBindingKind::Parameter => "xsl:param",
+    };
+    ensure_only_attributes(document, element, &["name"], label)?;
+    let name = required_attribute(document, element, None, "name")?;
+    if !is_ascii_ncname(name) {
+        return Err(invalid(
+            "FXST0023",
+            format!("invalid global binding name: ${name}"),
+            document.location(element),
+        ));
+    }
+    if document
+        .children(element)
+        .iter()
+        .any(|node| document.kind(*node) == NodeKind::Element)
+    {
+        return Err(unsupported(
+            "FXST1015",
+            format!("{label} sequence constructors with elements are outside the private slice"),
+            document.location(element),
+        ));
+    }
+    Ok(GlobalBinding {
+        kind,
+        name: name.to_owned(),
+        default: document.string_value(element),
+    })
 }
 
 fn compile_output(document: &Document, element: NodeId) -> Result<OutputSettings, CompileFailure> {
@@ -517,14 +590,12 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
             })?,
         ))
     } else if expression.trim_start().starts_with("format-number(") {
-        ValueExpression::ConstantFormatNumber(Box::new(
-            parse_constant_format_number(expression, &location).map_err(|failure| {
-                CompileFailure {
-                    code: "FXXP1009",
-                    category: CompileCategory::Unsupported,
-                    detail: failure.detail,
-                    location: failure.location,
-                }
+        ValueExpression::FormatNumber(Box::new(
+            parse_format_number(expression, &location).map_err(|failure| CompileFailure {
+                code: "FXXP1009",
+                category: CompileCategory::Unsupported,
+                detail: failure.detail,
+                location: failure.location,
             })?,
         ))
     } else if expression.trim_start().starts_with("sum(for $") {

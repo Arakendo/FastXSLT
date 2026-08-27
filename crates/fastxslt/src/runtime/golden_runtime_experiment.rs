@@ -28,6 +28,9 @@ use crate::xpath::focus_sum_for_experiment::{
 use crate::xpath::for_distinct_values_experiment::{
     ForDistinctValuesExpression, evaluate as evaluate_for_distinct_values,
 };
+use crate::xpath::format_number_experiment::{
+    FormatNumberEvaluationFailure, evaluate as evaluate_format_number,
+};
 use crate::xpath::integer_for_experiment::evaluate as evaluate_integer_for;
 use crate::xpath::path_experiment::evaluate_child_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
@@ -393,11 +396,12 @@ pub(super) fn execute_program(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
-    let variables = BTreeMap::new();
+    let variables = materialize_global_defaults(program);
     let inputs = SequenceInputs {
         program,
         source: Some(source),
         request_id,
+        globals: &variables,
     };
     let children = if let Some(root_template) = &program.root_template {
         execute_sequence(
@@ -415,6 +419,7 @@ pub(super) fn execute_program(
             source.document_node(),
             None,
             request_id,
+            &variables,
             control,
         )?
     };
@@ -441,16 +446,18 @@ fn execute_initial_template(
             "initial-template parameters are outside the private invocation-entry slice",
         ));
     }
+    let variables = materialize_global_defaults(program);
     let inputs = SequenceInputs {
         program,
         source: None,
         request_id,
+        globals: &variables,
     };
     let children = execute_sequence(
         &inputs,
         &template.template.body,
         None,
-        &BTreeMap::new(),
+        &variables,
         0,
         control,
     )?;
@@ -461,6 +468,20 @@ struct SequenceInputs<'a> {
     program: &'a StylesheetProgram,
     source: Option<&'a Document>,
     request_id: &'a str,
+    globals: &'a BTreeMap<String, AtomicValue>,
+}
+
+fn materialize_global_defaults(program: &StylesheetProgram) -> BTreeMap<String, AtomicValue> {
+    program
+        .global_bindings
+        .iter()
+        .map(|binding| {
+            (
+                binding.name.clone(),
+                AtomicValue::untyped(binding.default.clone()),
+            )
+        })
+        .collect()
 }
 
 fn required_source_context<'a>(
@@ -553,6 +574,7 @@ fn execute_sequence(
                         selected_node,
                         mode.as_deref(),
                         inputs.request_id,
+                        inputs.globals,
                         control,
                     )?);
                 }
@@ -833,8 +855,23 @@ fn execute_value_of(
             let value = execute_decimal_sum(inputs, expression, context, control)?;
             append_text(result, &value, inputs.request_id, control)?;
         }
-        ValueExpression::ConstantFormatNumber(expression) => {
-            append_text(result, expression.formatted(), inputs.request_id, control)?;
+        ValueExpression::FormatNumber(expression) => {
+            let formatted =
+                evaluate_format_number(expression, variables).map_err(|error| match error {
+                    FormatNumberEvaluationFailure::UnboundVariable(name) => failure(
+                        "FXRT0002",
+                        FailureCategory::Invalid,
+                        Some(inputs.request_id),
+                        format!("unbound variable: ${name}"),
+                    ),
+                    FormatNumberEvaluationFailure::Unsupported => failure(
+                        "FXRT1007",
+                        FailureCategory::Unsupported,
+                        Some(inputs.request_id),
+                        "dynamic value or picture exceeds the admitted format-number slice",
+                    ),
+                })?;
+            append_text(result, &formatted, inputs.request_id, control)?;
         }
         ValueExpression::Castable(expression) => {
             let value =
@@ -1002,6 +1039,7 @@ fn apply_template(
     node: NodeId,
     mode: Option<&str>,
     request_id: &str,
+    globals: &BTreeMap<String, AtomicValue>,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     control
@@ -1031,12 +1069,13 @@ fn apply_template(
             program,
             source: Some(source),
             request_id,
+            globals,
         };
         return execute_sequence(
             &inputs,
             &template.template.body,
             Some(node),
-            &BTreeMap::new(),
+            globals,
             0,
             control,
         );
@@ -1047,7 +1086,7 @@ fn apply_template(
             let mut result = Vec::new();
             for child in source.children(node) {
                 result.extend(apply_template(
-                    program, source, *child, mode, request_id, control,
+                    program, source, *child, mode, request_id, globals, control,
                 )?);
             }
             Ok(result)

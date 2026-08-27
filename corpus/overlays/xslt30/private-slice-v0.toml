@@ -292,57 +292,57 @@ rationale = "Constant format-number composes number() and substring-after() over
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-012"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Top-level variable bindings and general formatting remain outside the admitted compiled-state slice."
+execution = "passed"
+rationale = "A stylesheet-derived top-level variable default supplies the admitted format picture to invocation-time format-number evaluation."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-013"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Top-level parameter bindings and general formatting remain outside the admitted compiled/invocation-state slice."
+execution = "passed"
+rationale = "A top-level parameter declaration retains its stylesheet default while each invocation materializes an isolated runtime binding."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-014"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Top-level sequence-constructor variables and general formatting remain outside the admitted slice."
+execution = "passed"
+rationale = "A stylesheet-derived top-level variable default supplies the exact decimal value to invocation-time formatting."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-015"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Top-level sequence-constructor parameters and general formatting remain outside the admitted slice."
+execution = "passed"
+rationale = "A top-level parameter default supplies the exact decimal value through a fresh invocation-local binding."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-016"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Multiple top-level parameters and dynamic format pictures remain outside the admitted slice."
+execution = "passed"
+rationale = "Two top-level parameter defaults independently supply the exact decimal and picture through invocation-local bindings."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-017"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Multiple top-level variables and dynamic format pictures remain outside the admitted slice."
+execution = "passed"
+rationale = "Two stylesheet-derived global variable defaults supply the exact decimal and picture without dynamic state entering compiled artifacts."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-018"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Mixed top-level variable/parameter bindings and formatting remain outside the admitted slice."
+execution = "passed"
+rationale = "A compiled variable default and invocation-local parameter default compose without sharing mutable invocation state."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-019"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Mixed top-level parameter/variable bindings and formatting remain outside the admitted slice."
+execution = "passed"
+rationale = "An invocation-local parameter default and compiled variable default compose without sharing mutable invocation state."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"

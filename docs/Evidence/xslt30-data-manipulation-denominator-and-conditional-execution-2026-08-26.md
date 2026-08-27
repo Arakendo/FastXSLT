@@ -28,7 +28,7 @@ or file-backed expected result.
 
 ## Executed slice
 
-Cases `data-manipulation-001` through `data-manipulation-011` execute through
+Cases `data-manipulation-001` through `data-manipulation-019` execute through
 the native compiler and runtime against their upstream XML assertions. Together
 they establish:
 
@@ -44,6 +44,11 @@ they establish:
 - constant `format-number` composition with exact decimals, `number()` over a
   string literal, and `substring-after()` over string literals for the single
   admitted `#,###.00` picture;
+- top-level `xsl:variable` and `xsl:param` declarations with text defaults,
+  retained as compiled declarations and materialized into fresh invocation-local
+  values for each transform;
+- dynamic `format-number` operands resolved from those invocation-local default
+  values without storing mutable parameter state in the compiled stylesheet;
 - instruction work charging only for the chosen sequence constructor; and
 - built-in document/element dispatch into the exact `doc` template.
 
@@ -57,10 +62,10 @@ silently become a valid integer position.
 | --- | --- | --- | --- |
 | `001`–`008` | selected | passed | conditional instructions, exact constant numeric predicates, and nonnegative decimal `round()` |
 | `009`–`011` | selected | passed | constant exact-decimal formatting and literal string-function composition |
-| `012`–`019` | selected | engine unsupported | dynamic formatting plus global variable/parameter state |
+| `012`–`019` | selected | passed | dynamic formatting over invocation-local top-level variable/parameter defaults |
 | `020`–`028` | selected | engine unsupported | node-valued global bindings, dependencies, and broader paths |
 
-The denominator is 28 discovered and selected: 11 pass, 17 are explicit
+The denominator is 28 discovered and selected: 19 pass, 9 are explicit
 engine gaps, and none are excluded, harness-unsupported, failed, or lost.
 
 ## Claim boundary
@@ -68,7 +73,9 @@ engine gaps, and none are excluded, harness-unsupported, failed, or lost.
 This evidence does not establish general XPath numeric semantics, decimal
 literals, IEEE floating-point behavior, arbitrary comparisons, effective
 boolean value over general sequences, dynamic predicates, general
-`format-number`, or global variable/parameter behavior. Constant folding is an
+`format-number`, host-supplied parameter overrides, required parameters,
+dependency ordering between globals, node-valued globals, or general global
+sequence constructors. Constant folding is an
 admitted compilation strategy for source-independent expressions; it is not a
 claim that every predicate is evaluated statically.
 
@@ -78,5 +85,8 @@ literals, other rounding functions, and general runtime numeric expressions
 remain outside this narrow constant-folding slice. Cases 009 through 011 then
 advanced through checked constant formatting; this does not establish general
 XPath double conversion, arbitrary decimal pictures, rounding during
-formatting, locale-dependent symbols, or dynamic formatting. The next pressure
-begins at `data-manipulation-012` with top-level variable and parameter state.
+formatting, locale-dependent symbols, or arbitrary dynamic formatting. Cases
+012 through 019 establish only text-default declarations and variable operands
+within the same narrow formatting grammar. The next pressure begins at
+`data-manipulation-020` with select-bearing, node-valued global bindings and
+their dependency semantics.

@@ -13,7 +13,7 @@ stylesheet-independent XPath seam. `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
 complete 28-case `expr/data-manipulation` denominator is now admitted, with its
-first 11 cases passing and the remaining 17 retained
+first 19 cases passing and the remaining 9 retained
 as explicit engine gaps. The current order of work is:
 
 1. obtain representative consumer transforms, input/result distributions,
@@ -128,10 +128,11 @@ implemented behavior belongs to a named standards slice.
   is four passes, three engine gaps, and no harness gaps.
 - [x] Admit all 28 XSLT30 `expr/data-manipulation` cases with their referenced
   inline/file-backed environments and XML assertions, then execute `001`
-  through `011` using ordered conditional instructions, checked exact-rational
-  predicates, nonnegative `round()`, and constant exact-decimal formatting with
-  literal `number()`/`substring-after()` composition. Eleven pass and 17 remain
-  explicit engine gaps.
+  through `019` using ordered conditional instructions, checked exact-rational
+  predicates, nonnegative `round()`, exact-decimal formatting, and
+  invocation-local materialization of top-level variable/parameter text
+  defaults. Nineteen pass and nine remain explicit engine gaps; host parameter
+  overrides and node-valued or dependency-bearing globals are not claimed.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,

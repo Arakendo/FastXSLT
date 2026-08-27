@@ -1,10 +1,10 @@
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::castable_experiment::{CastExpression, CastableExpression};
-use crate::xpath::constant_format_number_experiment::ConstantFormatNumberExpression;
 use crate::xpath::decimal_sum_for_experiment::DecimalSumForExpression;
 use crate::xpath::focus_sum_for_experiment::FocusSumForExpression;
 use crate::xpath::for_distinct_values_experiment::ForDistinctValuesExpression;
+use crate::xpath::format_number_experiment::FormatNumberExpression;
 use crate::xpath::integer_for_experiment::IntegerForExpression;
 use crate::xpath::path_experiment::ChildPath;
 
@@ -18,6 +18,20 @@ pub(crate) struct StylesheetProgram {
     pub(crate) root_template: Option<Template>,
     pub(crate) matched_templates: Vec<MatchedTemplate>,
     pub(crate) named_templates: Vec<NamedTemplate>,
+    pub(crate) global_bindings: Vec<GlobalBinding>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum GlobalBindingKind {
+    Variable,
+    Parameter,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct GlobalBinding {
+    pub(crate) kind: GlobalBindingKind,
+    pub(crate) name: String,
+    pub(crate) default: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -125,7 +139,7 @@ pub(crate) enum ValueExpression {
     IntegerFor(Box<IntegerForExpression>),
     FocusSumFor(Box<FocusSumForExpression>),
     DecimalSumFor(Box<DecimalSumForExpression>),
-    ConstantFormatNumber(Box<ConstantFormatNumberExpression>),
+    FormatNumber(Box<FormatNumberExpression>),
     Castable(Box<CastableExpression>),
 }
 

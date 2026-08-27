@@ -92,6 +92,10 @@ open:
 - A compiled stylesheet contains stylesheet-derived static state only. Source
   documents, invocation parameters, messages, clocks, resolver state, budgets,
   and other per-transform mutable state belong to a runtime invocation.
+- A compiled global variable or parameter declaration may retain its
+  stylesheet-defined default expression or value, but each invocation owns the
+  resulting binding value and any host-supplied parameter override. Compilation
+  must not turn an invocation parameter value into shared mutable state.
 - The invocation explicitly selects its standards-defined entry, such as a
   principal source or named initial template. A source-free initial-template
   invocation must not acquire a fabricated source document or context item;

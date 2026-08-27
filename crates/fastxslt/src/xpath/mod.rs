@@ -3,7 +3,6 @@
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod castable_experiment;
 #[cfg(any(test, feature = "workbench"))]
-pub(crate) mod constant_format_number_experiment;
 pub(crate) mod constant_integer_experiment;
 pub(crate) mod constant_numeric_experiment;
 #[cfg(test)]
@@ -14,6 +13,7 @@ pub(crate) mod decimal_sum_for_experiment;
 pub(crate) mod focus_sum_for_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod for_distinct_values_experiment;
+pub(crate) mod format_number_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod integer_for_experiment;
 #[cfg(any(test, feature = "workbench"))]
