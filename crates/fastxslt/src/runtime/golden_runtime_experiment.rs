@@ -264,7 +264,7 @@ impl TransformSetBuilder {
                         format!("source is not admitted: {resource}"),
                     ));
                 }
-                if self.stylesheet.root_template_mode.as_deref() != Some(name) {
+                if !program_has_mode(&self.stylesheet, name) {
                     return Some(failure(
                         "FXRT0005",
                         FailureCategory::Invalid,
@@ -519,7 +519,7 @@ fn execute_initial_mode(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
-    if program.root_template_mode.as_deref() != Some(name) {
+    if !program_has_mode(program, name) {
         return Err(failure(
             "FXRT0005",
             FailureCategory::Invalid,
@@ -527,28 +527,49 @@ fn execute_initial_mode(
             format!("unknown initial mode: {name}"),
         ));
     }
-    let template = program
-        .root_template
-        .as_ref()
-        .expect("an admitted initial mode has a root template");
     let globals =
         materialize_global_defaults(program, Some(source), parameters, request_id, control)?;
-    let inputs = SequenceInputs {
-        program,
-        source: Some(source),
-        request_id,
-        globals: &globals,
+    let children = if program.root_template_mode.as_deref() == Some(name) {
+        let template = program
+            .root_template
+            .as_ref()
+            .expect("a compiled root initial mode has a root template");
+        let inputs = SequenceInputs {
+            program,
+            source: Some(source),
+            request_id,
+            globals: &globals,
+        };
+        let variables = bind_template_parameters(template, parameters, &globals.atomics);
+        execute_sequence(
+            &inputs,
+            &template.body,
+            Some(source.document_node()),
+            &variables,
+            0,
+            control,
+        )?
+    } else {
+        apply_template(
+            program,
+            source,
+            source.document_node(),
+            Some(name),
+            request_id,
+            &globals,
+            control,
+        )?
     };
-    let variables = bind_template_parameters(template, parameters, &globals.atomics);
-    let children = execute_sequence(
-        &inputs,
-        &template.body,
-        Some(source.document_node()),
-        &variables,
-        0,
-        control,
-    )?;
     Ok(SemanticResult { children })
+}
+
+#[cfg(test)]
+fn program_has_mode(program: &StylesheetProgram, name: &str) -> bool {
+    program.root_template_mode.as_deref() == Some(name)
+        || program
+            .matched_templates
+            .iter()
+            .any(|template| template.mode.as_deref() == Some(name))
 }
 
 #[cfg(test)]
@@ -621,6 +642,17 @@ fn materialize_global_defaults(
                     .atomics
                     .insert(binding.name.clone(), parameter.value.clone());
                 continue;
+            }
+            if binding.required {
+                return Err(failure(
+                    "XTDE0050",
+                    FailureCategory::Invalid,
+                    Some(request_id),
+                    format!(
+                        "required global parameter was not supplied: ${}",
+                        binding.name
+                    ),
+                ));
             }
         }
         match &binding.default {
@@ -1837,6 +1869,7 @@ mod tests {
         let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
             method: None,
             omit_xml_declaration: false,
+            indent: None,
         };
 
         let mut control = InvocationControl::unbounded();
@@ -1846,6 +1879,33 @@ mod tests {
         assert_eq!(failure.code, "FXSR1001");
         assert_eq!(failure.category, FailureCategory::Unsupported);
         assert_eq!(failure.request_id.as_deref(), Some("html-result"));
+    }
+
+    #[test]
+    fn requested_indentation_is_preserved_as_an_explicit_serialization_boundary() {
+        let result = SemanticResult {
+            children: vec![ResultNode::Element {
+                name: crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: None,
+                    local: "out".to_owned(),
+                },
+                namespaces: Vec::new(),
+                children: Vec::new(),
+            }],
+        };
+        let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
+            method: Some("xml".to_owned()),
+            omit_xml_declaration: false,
+            indent: Some(true),
+        };
+
+        let mut control = InvocationControl::unbounded();
+        let failure = serialize_xml(&result, &settings, "indented-result", 4_096, &mut control)
+            .expect_err("indentation must not be silently ignored");
+
+        assert_eq!(failure.code, "FXSR1003");
+        assert_eq!(failure.category, FailureCategory::Unsupported);
+        assert_eq!(failure.request_id.as_deref(), Some("indented-result"));
     }
 
     #[test]

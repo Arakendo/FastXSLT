@@ -13,14 +13,14 @@ set_file = "tests/misc/initial-mode/_initial-mode-test-set.xml"
 case_name = "initial-mode-002"
 selection = "selected"
 execution = "engine-unsupported"
-rationale = "The expected missing-initial-mode error is inventoried; compilation first stops at the unsupported indent output attribute before mode #all invocation semantics."
+rationale = "The expected missing-initial-mode error is inventoried; output indent metadata now compiles and the first boundary is mode #all invocation semantics."
 
 [[case]]
 set_file = "tests/misc/initial-mode/_initial-mode-test-set.xml"
 case_name = "initial-mode-003"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "The expected missing-required-parameter error is inventoried; compilation first stops at the unsupported indent output attribute before required-global validation."
+execution = "native-pass"
+rationale = "Executes the pinned initial-mode invocation through required-global-parameter validation and returns the expected XTDE0050 error before template evaluation or serialization."
 
 [[case]]
 set_file = "tests/misc/initial-mode/_initial-mode-test-set.xml"

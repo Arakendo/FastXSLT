@@ -179,8 +179,13 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [x] Execute pinned `initial-mode-004` with leading template-local parameters,
   expanded QName identity, tunnel/non-tunnel matching, inherited
   `exclude-result-prefixes`, and its ordered child-node/atomic sequence. The
-  complete denominator is now one native pass and four explicit engine gaps;
+  complete denominator reached one native pass and four explicit engine gaps;
   general parameter defaults/types and tunnel propagation remain open.
+- [x] Execute pinned `initial-mode-003` as its expected `XTDE0050` outcome by
+  preserving `xsl:output/@indent`, required global-parameter identity, and mode
+  identity from matched templates. Indented serialization remains explicitly
+  unsupported rather than being silently ignored. The denominator is now two
+  native passes and three explicit engine gaps.
 - [ ] Establish explicit URI/resource resolution and execution limits.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by

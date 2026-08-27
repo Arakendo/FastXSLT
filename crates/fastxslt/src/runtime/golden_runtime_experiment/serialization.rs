@@ -36,6 +36,14 @@ pub(in crate::runtime) fn serialize_xml(
             "the selected output method is outside the private XML serialization slice",
         ));
     }
+    if settings.indent == Some(true) {
+        return Err(failure(
+            "FXSR1003",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "indenting XML serialization is outside the private serialization slice",
+        ));
+    }
     let mut output = BudgetedString::new(byte_limit, request_id, control);
     if !settings.omit_xml_declaration {
         output.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")?;

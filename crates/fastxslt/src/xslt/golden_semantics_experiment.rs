@@ -32,6 +32,7 @@ pub(crate) enum GlobalBindingKind {
 pub(crate) struct GlobalBinding {
     pub(crate) kind: GlobalBindingKind,
     pub(crate) name: String,
+    pub(crate) required: bool,
     pub(crate) default: GlobalBindingDefault,
 }
 
@@ -46,6 +47,7 @@ pub(crate) enum GlobalBindingDefault {
 pub(crate) struct OutputSettings {
     pub(crate) method: Option<String>,
     pub(crate) omit_xml_declaration: bool,
+    pub(crate) indent: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

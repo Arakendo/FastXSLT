@@ -111,6 +111,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
         output: output.unwrap_or(OutputSettings {
             method: None,
             omit_xml_declaration: false,
+            indent: None,
         }),
         root_template,
         root_template_mode,
@@ -184,7 +185,11 @@ fn compile_global_binding(
         GlobalBindingKind::Variable => "xsl:variable",
         GlobalBindingKind::Parameter => "xsl:param",
     };
-    ensure_only_attributes(document, element, &["name", "select"], label)?;
+    let allowed_attributes = match kind {
+        GlobalBindingKind::Variable => &["name", "select"][..],
+        GlobalBindingKind::Parameter => &["name", "select", "required"][..],
+    };
+    ensure_only_attributes(document, element, allowed_attributes, label)?;
     let name = required_attribute(document, element, None, "name")?;
     if !is_ascii_ncname(name) {
         return Err(invalid(
@@ -201,6 +206,27 @@ fn compile_global_binding(
         return Err(unsupported(
             "FXST1015",
             format!("{label} sequence constructors with elements are outside the private slice"),
+            document.location(element),
+        ));
+    }
+    let required = match optional_attribute(document, element, None, "required") {
+        None | Some("no") => false,
+        Some("yes") => true,
+        Some(value) => {
+            return Err(invalid(
+                "FXST0025",
+                format!("invalid xsl:param required value: {value}"),
+                document.location(element),
+            ));
+        }
+    };
+    if required
+        && (optional_attribute(document, element, None, "select").is_some()
+            || !document.string_value(element).trim().is_empty())
+    {
+        return Err(invalid(
+            "FXST0026",
+            "a required global parameter cannot declare a default value",
             document.location(element),
         ));
     }
@@ -227,6 +253,7 @@ fn compile_global_binding(
     Ok(GlobalBinding {
         kind,
         name: name.to_owned(),
+        required,
         default,
     })
 }
@@ -235,34 +262,46 @@ fn compile_output(document: &Document, element: NodeId) -> Result<OutputSettings
     ensure_only_attributes(
         document,
         element,
-        &["method", "omit-xml-declaration"],
+        &["method", "omit-xml-declaration", "indent"],
         "xsl:output",
     )?;
     ensure_no_meaningful_children(document, element, "xsl:output")?;
-    let method = required_attribute(document, element, None, "method")?;
-    if method != "xml" {
+    let method = optional_attribute(document, element, None, "method");
+    if method.is_some_and(|method| method != "xml") {
         return Err(unsupported(
             "FXST1004",
-            format!("unsupported output method: {method}"),
+            format!("unsupported output method: {}", method.unwrap_or_default()),
             document.location(element),
         ));
     }
-    let omit = required_attribute(document, element, None, "omit-xml-declaration")?;
-    let omit_xml_declaration = match omit {
-        "yes" => true,
-        "no" => false,
-        _ => {
-            return Err(invalid(
-                "FXST0005",
-                "omit-xml-declaration must be 'yes' or 'no'",
-                document.location(element),
-            ));
-        }
-    };
+    let omit_xml_declaration = optional_attribute(document, element, None, "omit-xml-declaration")
+        .map(|value| parse_yes_no(value, "omit-xml-declaration", document.location(element)))
+        .transpose()?
+        .unwrap_or(false);
+    let indent = optional_attribute(document, element, None, "indent")
+        .map(|value| parse_yes_no(value, "indent", document.location(element)))
+        .transpose()?;
     Ok(OutputSettings {
-        method: Some(method.to_owned()),
+        method: method.map(str::to_owned),
         omit_xml_declaration,
+        indent,
     })
+}
+
+fn parse_yes_no(
+    value: &str,
+    attribute: &str,
+    location: &SourceLocation,
+) -> Result<bool, CompileFailure> {
+    match value {
+        "yes" => Ok(true),
+        "no" => Ok(false),
+        _ => Err(invalid(
+            "FXST0005",
+            format!("{attribute} must be 'yes' or 'no'"),
+            location,
+        )),
+    }
 }
 
 fn compile_matched_template(

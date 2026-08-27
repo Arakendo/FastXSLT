@@ -41,6 +41,7 @@ struct FeatureObservation {
 struct OutputInspection {
     method: Option<String>,
     omit_xml_declaration: bool,
+    indent: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -114,6 +115,7 @@ fn inspect_compiled(
         output: OutputInspection {
             method: program.output.method.clone(),
             omit_xml_declaration: program.output.omit_xml_declaration,
+            indent: program.output.indent,
         },
         root_template_count: usize::from(program.root_template.is_some()),
         root_template_mode: program.root_template_mode.clone(),
@@ -245,6 +247,7 @@ mod tests {
                 output: OutputInspection {
                     method: Some("xml".to_owned()),
                     omit_xml_declaration: true,
+                    indent: None,
                 },
                 root_template_count: 1,
                 root_template_mode: None,

@@ -26,23 +26,23 @@ bounded sealed snapshot.
 | Case | Initial mode | Expected result | Current disposition |
 | --- | --- | --- | --- |
 | `initial-mode-001` | `inimode` | XML | `FXST1009`: typed constructed variable attributes |
-| `initial-mode-002` | `inimode` | `XTDE0045` | `FXST1009`: `xsl:output/@indent` |
-| `initial-mode-003` | `inimode` | `XTDE0050` | `FXST1009`: `xsl:output/@indent` |
+| `initial-mode-002` | `inimode` | `XTDE0045` | `FXST1012`: `mode="#all"` invocation semantics |
+| `initial-mode-003` | `inimode` | `XTDE0050` | Native pass: absent required global parameter reports expected error |
 | `initial-mode-004` | `flobble` | XML | Native pass: local expanded-QName and tunnel parameters plus mixed node/atomic sequence |
 | `initial-mode-005` | `b` | XML | `FXST1015`: element-bearing global sequence constructor |
 
-The denominator is five discovered and selected: one native pass, four explicit
-engine gaps, and none excluded, harness-unsupported, failed, or lost.
+The denominator is five discovered and selected: two native passes, three
+explicit engine gaps, and none excluded, harness-unsupported, failed, or lost.
 
 ## Claim boundary
 
 This evidence establishes corpus ownership, entry-metadata preservation,
 expected-error identity, reproducible first-gap classification, and the narrow
-initial-mode parameter semantics exercised by case 004. It does not establish
-general template-parameter defaults/types, tunnel propagation across template
-application, multi-mode declarations, `#all` semantics, required global
-parameters, temporary trees, general sequence constructors, or either expected
-dynamic error.
+initial-mode parameter semantics exercised by case 004, plus the required
+global-parameter failure exercised by case 003. It does not establish general
+template-parameter defaults/types, tunnel propagation across template
+application, multi-mode declarations, `#all` semantics, temporary trees,
+general sequence constructors, or the `XTDE0045` expected dynamic error.
 
 The first implementation decision should be the host-neutral invocation shape:
 an initial mode is standards-defined entry state, not a special ASP.NET or CLI
@@ -71,3 +71,13 @@ the same expanded name does not satisfy the tunnel parameter. The produced
 
 These mechanisms remain private implementation evidence. They do not publish a
 host parameter API or imply support for arbitrary XPath sequence expressions.
+
+## Subsequent required-global evidence
+
+Case 003 now preserves `xsl:output/@indent`, compiles a required global
+`xsl:param`, recognizes `inimode` from the stylesheet's matched-template mode,
+and reports `XTDE0050` when the invocation supplies no value even though the
+parameter is unused. The error occurs before template evaluation and before
+serialization. Indentation remains an explicit serialization boundary:
+successful work requesting indentation reports `FXSR1003` rather than silently
+emitting unindented bytes.
