@@ -77,6 +77,10 @@ The first three `K-SeqDeepEqualFunc` cases now preserve `XPST0017` as an
 XPath-owned static arity identity while stylesheet compilation translates it
 to private `FXXP0005 / invalid`; valid three-argument collation calls remain
 distinctly unsupported.
+The next explicit K-family tranche executes case 6 under the exact standard
+codepoint collation URI and cases 8 through 11 through paired float/double NaN
+semantics. Unknown and empty collation arguments remain unsupported rather than
+being optimized around.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -265,6 +269,10 @@ implemented behavior belongs to a named standards slice.
   arity-error tranche. Retain `XPST0017` separately from private
   `FXXP0005 / invalid`, conserve expression/stylesheet locations, and keep a
   valid but unimplemented three-argument collation call classified unsupported.
+- [x] Execute QT3 `K-SeqDeepEqualFunc-6` and `-8` through `-11` as an explicit
+  second tranche: admit only the standard codepoint collation URI and verify
+  paired NaN across both float/double argument orders. Keep unknown and empty
+  collations unsupported and leave outer XPath operator cases unselected.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.

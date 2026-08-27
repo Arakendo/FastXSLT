@@ -104,6 +104,13 @@ const ARITY_ERROR_CASES: [&str; 3] = [
     "K-SeqDeepEqualFunc-2",
     "K-SeqDeepEqualFunc-3",
 ];
+const CODEPOINT_AND_NAN_CASES: [(&str, usize); 5] = [
+    ("K-SeqDeepEqualFunc-6", 2),
+    ("K-SeqDeepEqualFunc-8", 2),
+    ("K-SeqDeepEqualFunc-9", 2),
+    ("K-SeqDeepEqualFunc-10", 2),
+    ("K-SeqDeepEqualFunc-11", 2),
+];
 const MIXED_ATOMIC_CASES: [(&str, bool, usize); 31] = [
     ("fn-deep-equal-mix-args-001", false, 2),
     ("fn-deep-equal-mix-args-002", true, 3),
@@ -249,6 +256,60 @@ fn classifies_first_qt3_deep_equal_arity_error_tranche() {
                 standard_code: "XPST0017"
             }
         );
+    }
+}
+
+#[test]
+fn executes_qt3_codepoint_collation_and_paired_nan_tranche() {
+    let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
+    let test_set = load_test_set();
+    let cases = descendants_named(&test_set, test_set.document_node(), "test-case");
+    assert_eq!(
+        cases
+            .iter()
+            .filter(|node| {
+                attribute(&test_set, **node, "name").is_some_and(|name| {
+                    CODEPOINT_AND_NAN_CASES
+                        .iter()
+                        .any(|(expected, _)| *expected == name)
+                })
+            })
+            .count(),
+        CODEPOINT_AND_NAN_CASES.len()
+    );
+
+    for (name, expected_operations) in CODEPOINT_AND_NAN_CASES {
+        let record = overlay_case(overlay, name);
+        assert!(record.contains("selection = \"selected\""));
+        assert!(record.contains("execution = \"passed\""));
+        let case = cases
+            .iter()
+            .copied()
+            .find(|node| attribute(&test_set, *node, "name") == Some(name))
+            .expect("pinned QT3 codepoint/NaN case");
+        let expression = child_named(&test_set, case, "test")
+            .map(|node| test_set.string_value(node).trim().to_owned())
+            .expect("QT3 expression");
+        let result = child_named(&test_set, case, "result")
+            .and_then(|node| first_element_child(&test_set, node))
+            .expect("QT3 boolean assertion");
+        assert_eq!(local_name(&test_set, result), "assert-true");
+
+        let parsed = parse(
+            &expression,
+            &SourceLocation {
+                resource: format!("urn:w3c:qt3:{name}:expression"),
+                span: 0..expression.len(),
+            },
+        )
+        .expect("parse admitted codepoint/NaN deep-equal expression");
+        let mut control = InvocationControl::unbounded();
+        assert!(evaluate(&parsed, None, &mut control).expect("evaluate codepoint/NaN deep-equal"));
+        assert_eq!(
+            control.consumed(WorkDomain::XPathOperation),
+            expected_operations
+        );
+        assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 0);
     }
 }
 

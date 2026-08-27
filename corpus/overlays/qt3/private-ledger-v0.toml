@@ -514,6 +514,41 @@ rationale = "Rejects a four-argument deep-equal call with the expected XPath sta
 
 [[case]]
 set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-6"
+selection = "selected"
+execution = "passed"
+rationale = "Compares equal strings under the explicit standard Unicode codepoint collation."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-8"
+selection = "selected"
+execution = "passed"
+rationale = "Applies the deep-equal paired-NaN rule to two xs:float values."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-9"
+selection = "selected"
+execution = "passed"
+rationale = "Applies the deep-equal paired-NaN rule to two xs:double values."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-10"
+selection = "selected"
+execution = "passed"
+rationale = "Applies the deep-equal paired-NaN rule to xs:float and xs:double values."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-11"
+selection = "selected"
+execution = "passed"
+rationale = "Applies the deep-equal paired-NaN rule to xs:double and xs:float values in reversed order."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equal-mix-args-001"
 selection = "selected"
 execution = "passed"

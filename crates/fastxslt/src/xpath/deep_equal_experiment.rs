@@ -74,14 +74,17 @@ pub(crate) fn parse(
         .ok_or_else(|| unsupported(expression, location))?;
     let arguments =
         split_top_level_once(body).ok_or_else(|| invalid_arity(expression, location))?;
-    if let Some((_, remaining)) = split_top_level_once(arguments.1) {
-        if split_top_level_once(remaining).is_some() {
+    let (left, right) = if let Some((right, collation)) = split_top_level_once(arguments.1) {
+        if split_top_level_once(collation).is_some() {
             return Err(invalid_arity(expression, location));
         }
-        return Err(unsupported(expression, location));
-    }
-    let left = arguments.0.trim();
-    let right = arguments.1.trim();
+        if collation.trim() != "\"http://www.w3.org/2005/xpath-functions/collation/codepoint\"" {
+            return Err(unsupported(expression, location));
+        }
+        (arguments.0.trim(), right.trim())
+    } else {
+        (arguments.0.trim(), arguments.1.trim())
+    };
     let operands = if let (Some(left), Some(right)) = (parse_integer(left), parse_integer(right)) {
         DeepEqualOperands::Integers { left, right }
     } else if let (Some(left), Some(right)) = (parse_decimal(left), parse_decimal(right)) {
@@ -311,7 +314,7 @@ fn is_ascii_ncname(value: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{evaluate, parse};
+    use super::{DeepEqualFailureKind, evaluate, parse};
     use crate::execution_control_experiment::InvocationControl;
     use crate::xdm::owned_tree_experiment::{Document, SourceLocation};
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
@@ -367,6 +370,28 @@ mod tests {
         )
         .expect("parse typed integer equality");
         assert!(evaluate(&equal, None, &mut control).expect("evaluate typed integers"));
+    }
+
+    #[test]
+    fn admits_only_the_explicit_standard_codepoint_collation() {
+        let codepoint = parse(
+            "deep-equal(\"same\", \"same\", \"http://www.w3.org/2005/xpath-functions/collation/codepoint\")",
+            &location(),
+        )
+        .expect("parse explicit codepoint collation");
+        assert!(
+            evaluate(&codepoint, None, &mut InvocationControl::unbounded())
+                .expect("compare under codepoint collation")
+        );
+
+        for collation in ["\"http://www.example.com/COLLATION/NOT/SUPPORTED\"", "()"] {
+            let failure = parse(
+                &format!("deep-equal(\"same\", \"same\", {collation})"),
+                &location(),
+            )
+            .expect_err("reject unadmitted collation");
+            assert_eq!(failure.kind, DeepEqualFailureKind::Unsupported);
+        }
     }
 
     #[test]

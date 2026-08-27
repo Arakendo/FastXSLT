@@ -226,6 +226,23 @@ admitted collation semantics. This is evidence for one standards/private-code
 mapping under AR-0004, not a public diagnostic catalog or a claim that all
 function-signature errors are implemented.
 
+## QT3 codepoint-collation and paired-NaN tranche
+
+The explicit second K-family tranche selects `K-SeqDeepEqualFunc-6` and
+`K-SeqDeepEqualFunc-8` through `-11`. Case 6 compares equal strings under the
+standard Unicode codepoint collation. The other four cases verify paired NaN
+for float/float, double/double, float/double, and double/float argument orders.
+Every singleton comparison retains the existing two-operation charge and
+performs no node visits.
+
+Only the exact standard codepoint collation URI is admitted. Focused controls
+keep an unknown collation URI and an empty collation argument unsupported,
+despite the suite permitting an optimized `true` alternative for those equal
+operands. FastXSLT therefore does not claim collation resolution, fallback, or
+function-conversion semantics that it has not implemented. Cases 7 and 12
+onward remain unselected where outer XPath operators or additional atomic types
+exceed the current expression seam.
+
 ## QT3 mixed atomic-sequence tranche
 
 FastXSLT now executes the complete 31-case
