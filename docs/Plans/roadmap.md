@@ -38,7 +38,10 @@ checked `i128` coefficient boundary, without using binary floating point. The
 complete five-case `fn-deep-equallng2args` group now also passes through a
 range-checked signed 64-bit `xs:long` constructor. The adjacent five-case
 `fn-deep-equalusht2args` group adds a range-checked `xs:unsignedShort`
-constructor with explicit lower- and upper-bound rejection controls.
+constructor with explicit lower- and upper-bound rejection controls. The
+complete five-case `fn-deep-equalnint2args` group adds a checked-`i128`
+`xs:negativeInteger` subset with executable rejection of zero and positive
+values.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -155,6 +158,11 @@ implemented behavior belongs to a named standards slice.
   checked unsigned 16-bit values. Prove the derived type boundary by accepting
   `65535` and rejecting both `-1` and `65536`, without claiming the other
   derived-integer families.
+- [x] Execute the complete five-case QT3 `fn-deep-equalnint2args` group through
+  checked `i128` values constrained to be strictly below zero. Prove the
+  derived type boundary by accepting `-1` and rejecting both `0` and `1`, while
+  leaving arbitrary precision and the other derived-integer families
+  unclaimed.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.

@@ -124,12 +124,20 @@ fn parse_integer(expression: &str) -> Option<i128> {
         .and_then(|value| value.strip_suffix("\"))"))
         .and_then(|value| value.parse::<u16>().ok())
         .map(i128::from);
-    int.or(long).or(unsigned_short).or_else(|| {
-        expression
-            .strip_prefix("(xs:integer(\"")
-            .and_then(|value| value.strip_suffix("\"))"))
-            .and_then(|value| value.parse::<i128>().ok())
-    })
+    let negative_integer = expression
+        .strip_prefix("(xs:negativeInteger(\"")
+        .and_then(|value| value.strip_suffix("\"))"))
+        .and_then(|value| value.parse::<i128>().ok())
+        .filter(|value| *value < 0);
+    int.or(long)
+        .or(unsigned_short)
+        .or(negative_integer)
+        .or_else(|| {
+            expression
+                .strip_prefix("(xs:integer(\"")
+                .and_then(|value| value.strip_suffix("\"))"))
+                .and_then(|value| value.parse::<i128>().ok())
+        })
 }
 
 fn parse_selection(
@@ -422,6 +430,30 @@ mod tests {
                 parse(
                     &format!(
                         "fn:deep-equal((xs:unsignedShort(\"{invalid}\")),(xs:unsignedShort(\"{invalid}\")))"
+                    ),
+                    &location(),
+                )
+                .is_err()
+            );
+        }
+    }
+
+    #[test]
+    fn enforces_the_xs_negative_integer_value_space() {
+        let in_range = parse(
+            "fn:deep-equal((xs:negativeInteger(\"-1\")),(xs:negativeInteger(\"-1\")))",
+            &location(),
+        )
+        .expect("parse upper xs:negativeInteger value");
+        assert!(
+            evaluate(&in_range, None, &mut InvocationControl::unbounded())
+                .expect("evaluate xs:negativeInteger equality")
+        );
+        for invalid in ["0", "1"] {
+            assert!(
+                parse(
+                    &format!(
+                        "fn:deep-equal((xs:negativeInteger(\"{invalid}\")),(xs:negativeInteger(\"{invalid}\")))"
                     ),
                     &location(),
                 )

@@ -108,3 +108,17 @@ rather than inferred from the selected fixtures.
 This evidence is limited to this constructor and these scalar comparisons. It
 does not establish the remaining XML Schema derived-integer families, lexical
 whitespace normalization, cross-type promotion, or general sequence equality.
+
+## QT3 negative-integer extension
+
+The adjacent complete five-case `fn-deep-equalnint2args` group also passes.
+FastXSLT parses each `xs:negativeInteger` constructor through the checked
+`i128` integer path and then enforces the derived type's strictly-less-than-zero
+value space. The group covers an equal negative pair and unequal negative
+lower-, middle-, and upper-magnitude combinations in both argument orders.
+
+Focused controls accept `-1` while rejecting both `0` and `1`; the constructor
+therefore cannot silently collapse into the broader admitted `xs:integer`
+subset. This evidence does not establish arbitrary-precision integers, values
+outside `i128`, the other derived-integer families, lexical whitespace
+normalization, cross-type promotion, or general sequence equality.
