@@ -103,8 +103,11 @@ facade.
 
 ## Required follow-up
 
-- [ ] Reproduce and document CR-0001's authoritative Web3D invocation, pinned
-  stylesheet revision/license, resources, parameters, sentinels, and output.
+- [ ] Independently reproduce and document CR-0001's authoritative Web3D
+  invocation using Tokimu's known-good revision `35289`; verify license,
+  resources, parameters, five fidelity-sentinel categories, and complete
+  output. Treat revision `40046` as negative fidelity evidence rather than an
+  expected-result source.
 - [ ] Inventory the Web3D stylesheet to its first unsupported frontier without
   copying non-admitted bytes into the MIT crate.
 - [ ] Build a narrow Tokimu-shaped adapter experiment over the private safe Rust
@@ -126,3 +129,6 @@ ownership needs, or a public preview requires a supported Rust API.
 - 2026-08-26 -- Opened as Proposed from CR-0001 Tokimu/Web3D consumer pressure.
 - 2026-08-26 -- CR-0001 deferred while Tokimu likely uses Saxon; AR-0012 remains
   Proposed as a general product boundary rather than scheduled Tokimu work.
+- 2026-08-26 -- Tokimu reported revision `35289` as its known-good immutable
+  Web3D stylesheet and revision `40046` as a reproducible authored-field loss;
+  this sharpens the future fixture and fidelity gates without advancing review.

@@ -1,6 +1,10 @@
 //! Conserved admission and execution for the XSLT30 `expr/data-manipulation` denominator.
 
-use std::{collections::HashSet, fs, path::PathBuf};
+use std::{
+    collections::{BTreeMap, HashSet},
+    fs,
+    path::PathBuf,
+};
 
 use super::{
     ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, compile_resource,
@@ -133,6 +137,7 @@ fn execute_case(case_name: &str) -> (String, String) {
         entry: InvocationEntry::PrincipalSource {
             resource: source_id(case_name),
         },
+        parameters: BTreeMap::new(),
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     })

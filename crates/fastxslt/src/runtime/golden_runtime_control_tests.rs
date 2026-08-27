@@ -1,6 +1,6 @@
 //! Phase-specific cancellation tests for the private golden runtime.
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 
 use super::{
     ExecutionPolicy, FailureCategory, InvocationEntry, ResultNode, TransformRequest,
@@ -40,6 +40,7 @@ fn request(
         entry: InvocationEntry::PrincipalSource {
             resource: SOURCE_ID.to_owned(),
         },
+        parameters: BTreeMap::new(),
         cancellation: CancellationToken::new(),
         cancellation_fault,
     }

@@ -1,6 +1,10 @@
 //! Pinned XSLT30 corpus integration tests for the private golden runtime.
 
-use std::{collections::HashSet, fs, path::PathBuf};
+use std::{
+    collections::{BTreeMap, HashSet},
+    fs,
+    path::PathBuf,
+};
 
 use super::{
     ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, compile_resource,
@@ -231,6 +235,7 @@ fn execute_path_case(case_name: &str) -> (String, String) {
         entry: InvocationEntry::PrincipalSource {
             resource: source_id,
         },
+        parameters: BTreeMap::new(),
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     })
@@ -365,6 +370,7 @@ fn executes_pinned_xslt30_template_001_through_005() {
             entry: InvocationEntry::PrincipalSource {
                 resource: source_id,
             },
+            parameters: BTreeMap::new(),
             cancellation: CancellationToken::new(),
             cancellation_fault: None,
         })
@@ -443,6 +449,7 @@ fn executes_pinned_xslt30_template_006_from_its_upstream_test_set() {
         entry: InvocationEntry::PrincipalSource {
             resource: source_id.to_owned(),
         },
+        parameters: BTreeMap::new(),
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     })
@@ -541,6 +548,7 @@ fn executes_pinned_xslt30_path_001_child_axis_predicate() {
         entry: InvocationEntry::PrincipalSource {
             resource: source_id.to_owned(),
         },
+        parameters: BTreeMap::new(),
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     })

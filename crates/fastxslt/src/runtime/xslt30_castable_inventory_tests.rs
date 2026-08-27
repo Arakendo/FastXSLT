@@ -1,6 +1,10 @@
 //! Conserved admission for the complete XSLT30 `expr/castable` denominator.
 
-use std::{collections::HashSet, fs, path::PathBuf};
+use std::{
+    collections::{BTreeMap, HashSet},
+    fs,
+    path::PathBuf,
+};
 
 use super::{
     ExecutionPolicy, FailureCategory, InvocationEntry, TransformRequest, TransformSetBuilder,
@@ -200,6 +204,7 @@ fn execute_principal_case(case_name: &str) -> (String, String) {
         entry: InvocationEntry::PrincipalSource {
             resource: source_id,
         },
+        parameters: BTreeMap::new(),
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     })

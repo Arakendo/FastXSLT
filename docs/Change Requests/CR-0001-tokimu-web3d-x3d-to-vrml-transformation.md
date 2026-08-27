@@ -18,12 +18,14 @@ Tokimu is a separate Rust project that consumes X3D content. A future import
 path may need Web3D's published `X3dToVrml97.xslt` transformation to produce
 VRML97 output before Tokimu validates and imports it.
 
-The current independent Tokimu investigation uses Saxon and has produced a
-non-authoritative result that omitted selected authored field values. Tokimu
-has quarantined that output. The documented Web3D invocation appears to involve
-processor options, resource/catalog behavior, and stylesheet parameters beyond
-merely naming a stylesheet. FastXSLT must not be used to conceal or reinterpret
-that unresolved fidelity problem.
+The independent Tokimu investigation isolated a stylesheet-version fidelity
+problem rather than an XSLT-processor defect. Web3D stylesheet revision `40046`
+deterministically omitted selected authored fields under the existing
+Saxon-HE 10.9 pipeline. Tokimu reports that the published working stylesheet
+matches immutable SVN revision `35289`, which preserves its selected values.
+The older output remains unsuitable as expected corpus data. FastXSLT must not
+conceal or reinterpret a stylesheet fidelity problem merely because execution
+is reproducible.
 
 This request records a representative consumer workload. It does not change
 FastXSLT's selected profile, make the complete Web3D stylesheet an immediate
@@ -90,20 +92,27 @@ optional host/security profile rather than an inherent requirement of Tokimu.
 
 - Tokimu is a concrete Rust consumer with an X3D-to-VRML workflow.
 - Web3D publishes `X3dToVrml97.xslt` and documents a Saxon-oriented conversion
-  path, but its authoritative invocation has not yet been reproduced here.
-- A local conversion dropped authored values and is explicitly quarantined.
+  path. Tokimu reports revision `35289` as its known-good immutable reference
+  and revision `40046` as deterministically omitting authored fields. FastXSLT
+  has not independently reproduced the complete invocation here.
+- Tokimu regenerated 13 derived VRML97 fixtures from revision `35289` and added
+  executable fidelity sentinels for translations, indexed topology and
+  coordinates, texture URLs, material colours, and interpolator keys/values.
+  Those consumer-owned checks are future acceptance evidence, not FastXSLT
+  conformance evidence.
 - FastXSLT already has private memory-resident resource, compile/reuse,
   prepared-input, structured-diagnostic, budget, cancellation, and in-memory
   result experiments. It does not expose a supported Rust facade.
-- The exact stylesheet revision, license/redistribution terms, complete resource
-  graph, parameter set, representative inputs, trusted outputs, semantic
-  sentinels, and workload distribution remain missing evidence.
+- The stylesheet candidate and consumer sentinel categories are now known.
+  License/redistribution terms, complete resource graph, parameter set, fixture
+  provenance available to FastXSLT, complete trusted outputs, and workload
+  distribution remain missing evidence in this repository.
 
 ## Acceptance evidence
 
 | Case | Pressure | Expected result | Evidence |
 | --- | --- | --- | --- |
-| Representative success | Pinned Web3D stylesheet and X3D input | In-memory VRML result with trusted sentinels preserved | Pending |
+| Representative success | Web3D revision `35289` and representative X3D input | In-memory VRML result with Tokimu's trusted sentinels preserved | Consumer evidence exists; FastXSLT reproduction pending |
 | Rust lifecycle | Tokimu-shaped adapter | Admit, seal, compile once, transform many, and release through supported types | Pending; AR-0012 |
 | Invalid input | Malformed X3D XML | Structured invalid-input outcome with location | Pending |
 | Unsupported behavior | Valid unimplemented stylesheet construct | Distinct unsupported capability and stable source identity | Pending |
@@ -112,7 +121,7 @@ optional host/security profile rather than an inherent requirement of Tokimu.
 | Parameter problem | Missing, invalid, or unknown required parameter | Structured parameter/static/dynamic outcome as applicable | Pending |
 | Limit or cancellation | Bounded realistic Web3D work | Classified termination without poisoning reusable compiled state | Pending |
 | Handle release | File-backed Tokimu import adapter | Original files replaceable after admission | Existing generic evidence; workload-specific evidence pending |
-| Semantic fidelity | Authored field sentinels | Match independently trusted Web3D/reference evidence | Pending |
+| Semantic fidelity | Translation, indexed topology/coordinates, texture URL, material colour, and interpolator sentinels | Match Tokimu's independently trusted revision-`35289` evidence | Consumer sentinels exist; FastXSLT execution pending |
 | Reuse and performance | Repeated representative conversions | Separate cold compile, preparation, warm execution, result, allocation, and retention measurements | Pending after correctness |
 
 ## Compatibility and migration
@@ -150,11 +159,11 @@ implementation-queue evidence; Saxon remains a tooling/reference path rather
 than the definition of FastXSLT semantics.
 
 Reopen planning when Tokimu has a concrete reason to replace or supplement
-Saxon and can reproduce the authoritative pipeline. FastXSLT must then record
-the pinned stylesheet revision and license, explicit resource graph and
-parameters, representative input, trusted result or sentinels, and the first
-unsupported standards frontier. AR-0012 continues to own the general Rust
-facade question independently of this request's schedule.
+Saxon. Revision `35289` and Tokimu's five sentinel categories are the current
+reference candidate. FastXSLT must then independently record its license,
+explicit resource graph and parameters, representative input, trusted result,
+and the first unsupported standards frontier. AR-0012 continues to own the
+general Rust facade question independently of this request's schedule.
 
 Required capabilities should then enter ordinary standards-driven vertical
 slices. Periodic compilation may move the unsupported frontier, but only
@@ -176,3 +185,7 @@ semantic sentinels and complete expected output pass repeatably.
 - 2026-08-26 -- Deferred because Tokimu is likely to use Saxon in the near term;
   retain the workload for later standards, facade, fidelity, and performance
   evidence.
+- 2026-08-26 -- Recorded Tokimu's finding that revision `40046` reproducibly
+  loses authored fields while immutable revision `35289` preserves its selected
+  values under Saxon-HE 10.9; five consumer-owned fidelity sentinel categories
+  now define the future correctness target without reopening the request.

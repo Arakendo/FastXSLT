@@ -77,6 +77,7 @@ struct TransformRequest {
     identity: String,
     result_identity: String,
     entry: InvocationEntry,
+    parameters: BTreeMap<String, AtomicValue>,
     cancellation: CancellationToken,
     cancellation_fault: Option<(WorkDomain, usize)>,
 }
@@ -365,7 +366,13 @@ fn execute_transform_set(set: TransformSet) -> Result<ResultSet, ExecutionFailur
                     &request.identity,
                     &mut control,
                 )?;
-                execute_program(&set.stylesheet, &source, &request.identity, &mut control)?
+                execute_program_with_parameters(
+                    &set.stylesheet,
+                    &source,
+                    &request.parameters,
+                    &request.identity,
+                    &mut control,
+                )?
             }
             InvocationEntry::InitialMode { resource, name } => {
                 let source = prepare_request_source(
@@ -378,6 +385,7 @@ fn execute_transform_set(set: TransformSet) -> Result<ResultSet, ExecutionFailur
                     &set.stylesheet,
                     &source,
                     name,
+                    &request.parameters,
                     &request.identity,
                     &mut control,
                 )?
@@ -450,7 +458,18 @@ pub(super) fn execute_program(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
-    let globals = materialize_global_defaults(program, Some(source), request_id, control)?;
+    execute_program_with_parameters(program, source, &BTreeMap::new(), request_id, control)
+}
+
+fn execute_program_with_parameters(
+    program: &StylesheetProgram,
+    source: &Document,
+    parameters: &BTreeMap<String, AtomicValue>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<SemanticResult, ExecutionFailure> {
+    let globals =
+        materialize_global_defaults(program, Some(source), parameters, request_id, control)?;
     let inputs = SequenceInputs {
         program,
         source: Some(source),
@@ -489,6 +508,7 @@ fn execute_initial_mode(
     program: &StylesheetProgram,
     source: &Document,
     name: &str,
+    parameters: &BTreeMap<String, AtomicValue>,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
@@ -504,7 +524,8 @@ fn execute_initial_mode(
         .root_template
         .as_ref()
         .expect("an admitted initial mode has a root template");
-    let globals = materialize_global_defaults(program, Some(source), request_id, control)?;
+    let globals =
+        materialize_global_defaults(program, Some(source), parameters, request_id, control)?;
     let inputs = SequenceInputs {
         program,
         source: Some(source),
@@ -542,7 +563,8 @@ fn execute_initial_template(
             "initial-template parameters are outside the private invocation-entry slice",
         ));
     }
-    let globals = materialize_global_defaults(program, None, request_id, control)?;
+    let globals =
+        materialize_global_defaults(program, None, &BTreeMap::new(), request_id, control)?;
     let inputs = SequenceInputs {
         program,
         source: None,
@@ -576,11 +598,18 @@ struct RuntimeGlobals {
 fn materialize_global_defaults(
     program: &StylesheetProgram,
     source: Option<&Document>,
+    parameters: &BTreeMap<String, AtomicValue>,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<RuntimeGlobals, ExecutionFailure> {
     let mut globals = RuntimeGlobals::default();
     for binding in &program.global_bindings {
+        if binding.kind == crate::xslt::golden_semantics_experiment::GlobalBindingKind::Parameter {
+            if let Some(value) = parameters.get(&binding.name) {
+                globals.atomics.insert(binding.name.clone(), value.clone());
+                continue;
+            }
+        }
         match &binding.default {
             GlobalBindingDefault::Text(value) => {
                 globals
@@ -1394,12 +1423,13 @@ fn control_failure(failure: ControlFailure, request_id: &str) -> ExecutionFailur
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use std::collections::{BTreeMap, HashSet};
 
     use crate::execution_control_experiment::{
         CancellationToken, InvocationControl, WorkDomain, WorkLimits,
     };
     use crate::resources::{ResourceLimits, ResourceSetBuilder};
+    use crate::xdm::atomic_value_experiment::AtomicValue;
 
     use super::{
         ExecutionPolicy, FailureCategory, InvocationEntry, ResultNode, SemanticResult,
@@ -1435,6 +1465,7 @@ mod tests {
             entry: InvocationEntry::PrincipalSource {
                 resource: source_id.to_owned(),
             },
+            parameters: BTreeMap::new(),
             cancellation: CancellationToken::new(),
             cancellation_fault: None,
         }
@@ -1656,6 +1687,7 @@ mod tests {
                     resource: SOURCE_ID.to_owned(),
                     name: "missing".to_owned(),
                 },
+                parameters: BTreeMap::new(),
                 cancellation: CancellationToken::new(),
                 cancellation_fault: None,
             })
@@ -1671,6 +1703,7 @@ mod tests {
                     resource: SOURCE_ID.to_owned(),
                     name: "audit".to_owned(),
                 },
+                parameters: BTreeMap::new(),
                 cancellation: CancellationToken::new(),
                 cancellation_fault: None,
             })
@@ -1679,6 +1712,46 @@ mod tests {
         assert_eq!(
             results.by_request["known-mode"].serialized,
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>mode</out>"
+        );
+    }
+
+    #[test]
+    fn invocation_parameters_override_global_defaults_without_cross_request_state() {
+        const PARAMETER_STYLESHEET: &str = "urn:fastxslt:invocation-parameter:stylesheet";
+        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+        resources
+            .admit(SOURCE_ID, br"<doc/>".to_vec())
+            .expect("admit invocation-parameter source");
+        resources
+            .admit(
+                PARAMETER_STYLESHEET,
+                br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:param name="message">default</xsl:param><xsl:template match="/"><out><xsl:value-of select="$message"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+            )
+            .expect("admit invocation-parameter stylesheet");
+        let snapshot = resources.seal();
+        let program = compile_resource(&snapshot, PARAMETER_STYLESHEET)
+            .expect("compile invocation-parameter stylesheet");
+        let mut builder = TransformSetBuilder::new(snapshot, program, 2, policy(4_096));
+
+        builder
+            .add(request("default", "default-result", SOURCE_ID))
+            .expect("admit defaulted request");
+        let mut overridden = request("overridden", "overridden-result", SOURCE_ID);
+        overridden
+            .parameters
+            .insert("message".to_owned(), AtomicValue::string("host supplied"));
+        builder
+            .add(overridden)
+            .expect("admit parameterized request");
+
+        let results = execute_transform_set(builder.seal()).expect("execute parameterized set");
+        assert_eq!(
+            results.by_request["default"].serialized,
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>default</out>"
+        );
+        assert_eq!(
+            results.by_request["overridden"].serialized,
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>host supplied</out>"
         );
     }
 
@@ -1757,6 +1830,7 @@ mod tests {
                 entry: InvocationEntry::InitialTemplate {
                     name: "missing".to_owned(),
                 },
+                parameters: BTreeMap::new(),
                 cancellation: CancellationToken::new(),
                 cancellation_fault: None,
             })

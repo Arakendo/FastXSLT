@@ -1,6 +1,6 @@
 //! Host-owned workflow tests for the private golden runtime.
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 
 use super::{
     ExecutionPolicy, FailureCategory, InvocationEntry, TransformRequest, TransformSetBuilder,
@@ -21,6 +21,7 @@ fn request(request_id: &str, result_id: &str, source_id: &str) -> TransformReque
         entry: InvocationEntry::PrincipalSource {
             resource: source_id.to_owned(),
         },
+        parameters: BTreeMap::new(),
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     }

@@ -175,6 +175,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   compiler boundaries. A focused host-neutral initial-mode entry now executes
   with an admitted principal source and rejects unknown compiled mode identity;
   none of the parameter-heavy upstream cases is promoted by that seam alone.
+- [x] Add invocation-owned atomic parameter values to the private transform
+  request and use them to override matching global `xsl:param` defaults without
+  mutating reusable compiled state or leaking values between sibling requests.
+  Template-local parameters, expanded QName identity, tunnel propagation, and
+  the mixed node/atomic sequence required by `initial-mode-004` remain open.
 - [ ] Establish explicit URI/resource resolution and execution limits.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
@@ -267,12 +272,16 @@ does not make Saxon behavior normative and does not authorize FastXSLT-specific
 Web3D semantics.
 
 - [ ] Reopen CR-0001 when Tokimu needs to replace or supplement Saxon and has
-  reproduced the authoritative Web3D invocation.
-- [ ] Record the pinned stylesheet revision and redistribution terms, complete
-  logical resource graph, catalog/base-URI behavior, and required parameters.
+  supplied the authoritative Web3D invocation to FastXSLT.
+- [ ] Independently acquire and verify known-good immutable Web3D stylesheet
+  revision `35289`; record its redistribution terms, complete logical resource
+  graph, catalog/base-URI behavior, and required parameters. Revision `40046`
+  is a known reproducible fidelity failure and must not become expected data.
 - [ ] Admit only licensed representative inputs and independently trusted
-  outputs or semantic sentinels; keep the quarantined incomplete output out of
-  expected corpus data.
+  outputs or semantic sentinels. Reuse Tokimu-owned checks for translations,
+  indexed topology/coordinates, texture URLs, material colours, and
+  interpolator keys/values where licensing permits; keep incomplete revision-
+  `40046` output out of expected corpus data.
 - [ ] Inventory required standards features and compile to the first explicit
   unsupported frontier, then feed independently justified features into normal
   standards-driven slices.

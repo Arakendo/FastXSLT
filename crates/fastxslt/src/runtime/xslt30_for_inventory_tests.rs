@@ -1,6 +1,10 @@
 //! Conserved integration tests for the complete XSLT30 `expr/for` denominator.
 
-use std::{collections::HashSet, fs, path::PathBuf};
+use std::{
+    collections::{BTreeMap, HashSet},
+    fs,
+    path::PathBuf,
+};
 
 use super::{
     ExecutionPolicy, FailureCategory, InvocationEntry, TransformRequest, TransformSetBuilder,
@@ -139,6 +143,7 @@ fn executes_source_free_native_xslt30_for_002_initial_template() {
         entry: InvocationEntry::InitialTemplate {
             name: initial_template.to_owned(),
         },
+        parameters: BTreeMap::new(),
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     })
@@ -265,6 +270,7 @@ fn execute_principal_case(case_name: &str) -> (String, String) {
         entry: InvocationEntry::PrincipalSource {
             resource: source_id,
         },
+        parameters: BTreeMap::new(),
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     })
