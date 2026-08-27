@@ -62,6 +62,7 @@ pressure architecture but does not silently create a public guarantee.
 - [Private XPath Boundary Expansion](private-xpath-boundary-expansion-2026-08-25.md)
 - [Private Built-In Rules and XSLT30 Fit Review](private-built-in-rules-and-xslt30-fit-review-2026-08-25.md)
 - [Runtime Composition Cohesion Review](runtime-composition-cohesion-review-2026-08-25.md)
+- [Runtime and Compiler Decomposition Review](runtime-and-compiler-decomposition-review-2026-08-27.md)
 - [Private Prepared-Reuse Timing Probe](private-prepared-reuse-timing-probe-2026-08-25.md)
 - [Private Prepared-Retention Observation](private-prepared-retention-observation-2026-08-25.md)
 - [Private Preparation Concurrency and Retry Baseline](private-preparation-concurrency-and-retry-baseline-2026-08-25.md)
