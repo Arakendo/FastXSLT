@@ -114,7 +114,12 @@ fn parse_integer(expression: &str) -> Option<i128> {
         .and_then(|value| value.strip_suffix("\"))"))
         .and_then(|value| value.parse::<i32>().ok())
         .map(i128::from);
-    int.or_else(|| {
+    let long = expression
+        .strip_prefix("(xs:long(\"")
+        .and_then(|value| value.strip_suffix("\"))"))
+        .and_then(|value| value.parse::<i64>().ok())
+        .map(i128::from);
+    int.or(long).or_else(|| {
         expression
             .strip_prefix("(xs:integer(\"")
             .and_then(|value| value.strip_suffix("\"))"))
@@ -374,5 +379,25 @@ mod tests {
         )
         .expect("parse exact decimal equality");
         assert!(evaluate(&equal, None, &mut control).expect("evaluate exact decimals"));
+    }
+
+    #[test]
+    fn enforces_the_xs_long_value_range() {
+        let in_range = parse(
+            "fn:deep-equal((xs:long(\"9223372036854775807\")),(xs:long(\"9223372036854775807\")))",
+            &location(),
+        )
+        .expect("parse maximum xs:long equality");
+        assert!(
+            evaluate(&in_range, None, &mut InvocationControl::unbounded())
+                .expect("evaluate xs:long equality")
+        );
+        assert!(
+            parse(
+                "fn:deep-equal((xs:long(\"9223372036854775808\")),(xs:long(\"9223372036854775808\")))",
+                &location(),
+            )
+            .is_err()
+        );
     }
 }

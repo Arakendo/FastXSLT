@@ -140,3 +140,38 @@ case_name = "fn-deep-equaldec2args-5"
 selection = "selected"
 execution = "passed"
 rationale = "Compares the xs:decimal lower-bound and upper-bound values in reversed argument order and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equallng2args-1"
+selection = "selected"
+execution = "passed"
+rationale = "Parses equal negative xs:long values through a checked 64-bit constructor and returns true."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equallng2args-2"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the QT3 xs:long mid-range and lower values and returns the native false assertion."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equallng2args-3"
+selection = "selected"
+execution = "passed"
+rationale = "Compares positive and negative QT3 xs:long values and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equallng2args-4"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the QT3 xs:long lower and mid-range values in reversed argument order and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equallng2args-5"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the QT3 xs:long lower and upper values in reversed argument order and returns false."

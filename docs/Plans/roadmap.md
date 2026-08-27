@@ -16,7 +16,9 @@ source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`
 subset of arbitrary-precision `xs:integer`. The complete five-case
 `fn-deep-equaldec2args` group adds exact normalized decimal comparison within a
-checked `i128` coefficient boundary, without using binary floating point.
+checked `i128` coefficient boundary, without using binary floating point. The
+complete five-case `fn-deep-equallng2args` group now also passes through a
+range-checked signed 64-bit `xs:long` constructor.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -125,6 +127,10 @@ implemented behavior belongs to a named standards slice.
   Preserve exact decimal equality without binary floating point and leave
   arbitrary precision, cross-type promotion, floats, doubles, and NaN outside
   this slice.
+- [x] Execute the complete five-case QT3 `fn-deep-equallng2args` group through
+  checked signed 64-bit values, with a focused upper-bound control that rejects
+  an out-of-range constructor value. Do not infer numeric promotion or general
+  constructor support from this group.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.

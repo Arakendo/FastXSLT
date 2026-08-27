@@ -83,3 +83,15 @@ It does not establish arbitrary-precision decimal support, values whose
 coefficient exceeds `i128`, numeric type promotion, cross-type comparison,
 float or double semantics, NaN behavior, or the remainder of the QT3
 `fn-deep-equal` test set.
+
+## QT3 bounded-long extension
+
+The adjacent complete five-case `fn-deep-equallng2args` group also passes.
+Each admitted `xs:long` constructor is range-checked by parsing through Rust's
+signed 64-bit integer representation before comparison. A focused boundary
+test accepts `9223372036854775807` and rejects the next positive integer rather
+than silently widening an invalid `xs:long` lexical value.
+
+This establishes the five native assertions and the constructor boundary used
+by them. It does not add numeric promotion or general constructor-function
+semantics, and it does not broaden the bounded `xs:integer` claim above.
