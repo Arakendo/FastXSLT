@@ -26,11 +26,15 @@ The private semantic slice now includes:
 - `$name` value access;
 - `$name = integer` conditional evaluation;
 - named-template calls and recursion; and
-- a private maximum named-template call depth of 256, in addition to the
+- a private maximum named-template call depth of 128, in addition to the
   existing charged XSLT instruction budget and cooperative cancellation points.
 
 An independent infinite-recursion test reaches the depth boundary and returns
 structured limit failure `FXRT0003` instead of overflowing the Rust stack.
+The guard was reduced from 256 to 128 after a wider instruction dispatcher
+showed that 256 debug-mode frames could exhaust a Windows test-thread stack
+before the engine-owned limit fired; 128 restores deterministic failure at the
+documented engine boundary.
 
 ## Denominator effect
 

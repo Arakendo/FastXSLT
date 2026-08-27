@@ -16,7 +16,7 @@ pub(crate) struct StylesheetProgram {
     pub(crate) declared_version: String,
     pub(crate) output: OutputSettings,
     pub(crate) root_template: Option<Template>,
-    pub(crate) root_template_mode: Option<String>,
+    pub(crate) root_template_modes: Vec<String>,
     pub(crate) matched_templates: Vec<MatchedTemplate>,
     pub(crate) named_templates: Vec<NamedTemplate>,
     pub(crate) global_bindings: Vec<GlobalBinding>,
@@ -41,6 +41,14 @@ pub(crate) enum GlobalBindingDefault {
     Text(String),
     ChildPath(ChildPath),
     Variable(String),
+    TemporaryTree(Vec<ConstructedElement>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ConstructedElement {
+    pub(crate) name: ExpandedName,
+    pub(crate) namespaces: Vec<NamespaceBinding>,
+    pub(crate) children: Vec<ConstructedElement>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,7 +74,7 @@ pub(crate) struct TemplateParameter {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct MatchedTemplate {
     pub(crate) pattern: MatchPattern,
-    pub(crate) mode: Option<String>,
+    pub(crate) modes: Vec<String>,
     pub(crate) template: Template,
 }
 
@@ -85,6 +93,7 @@ pub(crate) enum MatchPattern {
     Comment,
     ProcessingInstruction,
     AnyNode,
+    AnyElement,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -92,6 +101,7 @@ pub(crate) enum ApplySelection {
     ChildPath(ChildPath),
     ChildNodes(NodeTest),
     Attribute(ExpandedName),
+    GlobalTemporaryChildren(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -155,6 +165,9 @@ pub(crate) enum Instruction {
     CallTemplate {
         name: String,
         arguments: Vec<TemplateArgument>,
+        location: SourceLocation,
+    },
+    Copy {
         location: SourceLocation,
     },
 }

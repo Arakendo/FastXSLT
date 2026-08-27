@@ -195,6 +195,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   separator semantics without collapsing the sequence into a preformatted
   string. The denominator is now four native passes and one explicit engine
   gap; general `xsl:for-each` and typed sequence conversion remain open.
+- [x] Complete pinned `initial-mode-005` by preserving multiple explicit mode
+  names, materializing an attribute-free literal global temporary tree per
+  invocation under XDM budgets, selecting `$temp/*` without conflating it with
+  the principal source, and copying the selected element through the unnamed
+  wildcard template. The full five-case initial-mode denominator now passes;
+  general temporary-tree navigation and `xsl:copy` construction remain open.
 - [ ] Establish explicit URI/resource resolution and execution limits.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by

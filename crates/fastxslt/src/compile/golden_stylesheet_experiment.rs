@@ -11,9 +11,9 @@ use crate::xpath::format_number_experiment::parse as parse_format_number;
 use crate::xpath::integer_for_experiment::parse as parse_integer_for;
 use crate::xpath::path_experiment::{PathFailure, parse_child_path};
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, BooleanExpression, ChooseBranch, EqualityTest, GlobalBinding,
-    GlobalBindingDefault, GlobalBindingKind, Instruction, MatchPattern, MatchedTemplate,
-    NamedTemplate, NodeTest, OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME,
+    ApplySelection, BooleanExpression, ChooseBranch, ConstructedElement, EqualityTest,
+    GlobalBinding, GlobalBindingDefault, GlobalBindingKind, Instruction, MatchPattern,
+    MatchedTemplate, NamedTemplate, NodeTest, OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME,
     SequenceItemExpression, StylesheetProgram, Template, TemplateArgument, TemplateParameter,
     ValueExpression,
 };
@@ -42,7 +42,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
 
     let mut output = None;
     let mut root_template = None;
-    let mut root_template_mode = None;
+    let mut root_template_modes = Vec::new();
     let mut matched_templates = Vec::new();
     let mut named_templates = Vec::new();
     let mut global_bindings = Vec::new();
@@ -66,7 +66,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
                     document,
                     child,
                     &mut root_template,
-                    &mut root_template_mode,
+                    &mut root_template_modes,
                     &mut matched_templates,
                     &mut named_templates,
                 )?;
@@ -115,7 +115,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
             indent: None,
         }),
         root_template,
-        root_template_mode,
+        root_template_modes,
         matched_templates,
         named_templates,
         global_bindings,
@@ -128,7 +128,7 @@ fn compile_top_level_template(
     document: &Document,
     element: NodeId,
     root_template: &mut Option<Template>,
-    root_template_mode: &mut Option<String>,
+    root_template_modes: &mut Vec<String>,
     matched_templates: &mut Vec<MatchedTemplate>,
     named_templates: &mut Vec<NamedTemplate>,
 ) -> Result<(), CompileFailure> {
@@ -154,16 +154,17 @@ fn compile_top_level_template(
                 document.location(element),
             ));
         }
-        *root_template_mode = optional_attribute(document, element, None, "mode")
-            .map(|mode| parse_template_mode(mode, document.location(element)))
-            .transpose()?;
+        *root_template_modes = optional_attribute(document, element, None, "mode")
+            .map(|mode| parse_template_modes(mode, document.location(element)))
+            .transpose()?
+            .unwrap_or_default();
         *root_template = Some(compile_template(document, element)?);
         return Ok(());
     }
 
     let matched_template = compile_matched_template(document, element, pattern)?;
     if matched_templates.iter().any(|existing| {
-        existing.pattern == matched_template.pattern && existing.mode == matched_template.mode
+        existing.pattern == matched_template.pattern && existing.modes == matched_template.modes
     }) {
         return Err(unsupported(
             "FXST1008",
@@ -196,17 +197,6 @@ fn compile_global_binding(
         return Err(invalid(
             "FXST0023",
             format!("invalid global binding name: ${name}"),
-            document.location(element),
-        ));
-    }
-    if document
-        .children(element)
-        .iter()
-        .any(|node| document.kind(*node) == NodeKind::Element)
-    {
-        return Err(unsupported(
-            "FXST1015",
-            format!("{label} sequence constructors with elements are outside the private slice"),
             document.location(element),
         ));
     }
@@ -248,6 +238,12 @@ fn compile_global_binding(
                     .map_err(map_path_failure)?,
             )
         }
+    } else if document
+        .children(element)
+        .iter()
+        .any(|node| document.kind(*node) == NodeKind::Element)
+    {
+        GlobalBindingDefault::TemporaryTree(compile_constructed_elements(document, element)?)
     } else {
         GlobalBindingDefault::Text(document.string_value(element))
     };
@@ -257,6 +253,38 @@ fn compile_global_binding(
         required,
         default,
     })
+}
+
+fn compile_constructed_elements(
+    document: &Document,
+    parent: NodeId,
+) -> Result<Vec<ConstructedElement>, CompileFailure> {
+    let mut elements = Vec::new();
+    for child in meaningful_children(document, parent) {
+        if document.kind(child) != NodeKind::Element {
+            return Err(unsupported(
+                "FXST1015",
+                "mixed-content global sequence constructors are outside the private slice",
+                document.location(child),
+            ));
+        }
+        let name = document.name(child).expect("element nodes have names");
+        if name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+            || !document.attributes(child).is_empty()
+        {
+            return Err(unsupported(
+                "FXST1015",
+                "only attribute-free literal elements are admitted in global temporary trees",
+                document.location(child),
+            ));
+        }
+        elements.push(ConstructedElement {
+            name: name.clone(),
+            namespaces: literal_result_namespaces(document, child),
+            children: compile_constructed_elements(document, child)?,
+        });
+    }
+    Ok(elements)
 }
 
 fn compile_output(document: &Document, element: NodeId) -> Result<OutputSettings, CompileFailure> {
@@ -320,6 +348,7 @@ fn compile_matched_template(
                 local: attribute[1..].to_owned(),
             })
         }
+        "*" => MatchPattern::AnyElement,
         name if is_ascii_ncname(name) => {
             MatchPattern::Element(crate::xml::quick_xml_experiment::ExpandedName {
                 namespace: None,
@@ -337,12 +366,12 @@ fn compile_matched_template(
             ));
         }
     };
-    let mode = optional_attribute(document, element, None, "mode")
-        .map(|mode| parse_template_mode(mode, document.location(element)))
+    let modes = optional_attribute(document, element, None, "mode")
+        .map(|mode| parse_template_modes(mode, document.location(element)))
         .transpose()?;
     Ok(MatchedTemplate {
         pattern,
-        mode,
+        modes: modes.unwrap_or_default(),
         template: compile_template(document, element)?,
     })
 }
@@ -589,6 +618,12 @@ fn compile_sequence_excluding(
                         instructions.push(compile_choose(document, child)?);
                     } else if name.local == "call-template" {
                         instructions.push(compile_call_template(document, child)?);
+                    } else if name.local == "copy" {
+                        ensure_only_attributes(document, child, &[], "xsl:copy")?;
+                        ensure_no_meaningful_children(document, child, "xsl:copy")?;
+                        instructions.push(Instruction::Copy {
+                            location: document.location(child).clone(),
+                        });
                     } else {
                         return Err(unsupported(
                             "FXST1006",
@@ -695,6 +730,14 @@ fn parse_apply_selection(
     expression: &str,
     location: SourceLocation,
 ) -> Result<ApplySelection, CompileFailure> {
+    if let Some(variable) = expression
+        .strip_prefix('$')
+        .and_then(|value| value.strip_suffix("/*"))
+    {
+        if is_ascii_ncname(variable) {
+            return Ok(ApplySelection::GlobalTemporaryChildren(variable.to_owned()));
+        }
+    }
     let node_test = match expression {
         "comment()" => Some(NodeTest::Comment),
         "processing-instruction()" => Some(NodeTest::ProcessingInstruction),
@@ -731,12 +774,28 @@ fn parse_mode(mode: &str, location: &SourceLocation) -> Result<String, CompileFa
     }
 }
 
-fn parse_template_mode(mode: &str, location: &SourceLocation) -> Result<String, CompileFailure> {
-    if mode == "#all" {
-        Ok(mode.to_owned())
-    } else {
-        parse_mode(mode, location)
+fn parse_template_modes(
+    mode: &str,
+    location: &SourceLocation,
+) -> Result<Vec<String>, CompileFailure> {
+    let modes = mode
+        .split_whitespace()
+        .map(|name| {
+            if name == "#all" {
+                Ok(name.to_owned())
+            } else {
+                parse_mode(name, location)
+            }
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    if modes.is_empty() {
+        return Err(unsupported(
+            "FXST1012",
+            "template mode list is empty",
+            location,
+        ));
     }
+    Ok(modes)
 }
 
 fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
@@ -1310,7 +1369,8 @@ fn validate_named_calls(
             | Instruction::IntegerRangeVariable { .. }
             | Instruction::SequenceNodes { .. }
             | Instruction::SequenceItems { .. }
-            | Instruction::ApplyTemplates { .. } => {}
+            | Instruction::ApplyTemplates { .. }
+            | Instruction::Copy { .. } => {}
         }
     }
     Ok(())
@@ -1632,7 +1692,7 @@ mod tests {
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:apply-templates select="root/item" mode="detail"/></xsl:template><xsl:template match="item" mode="detail"><out/></xsl:template></xsl:stylesheet>"#,
         );
         let program = compile_stylesheet(&mode).expect("unprefixed modes should compile");
-        assert_eq!(program.matched_templates[0].mode.as_deref(), Some("detail"));
+        assert_eq!(program.matched_templates[0].modes, ["detail"]);
     }
 
     #[test]

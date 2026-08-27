@@ -29,10 +29,10 @@ bounded sealed snapshot.
 | `initial-mode-002` | `inimode` | `XTDE0045` | Native pass: `mode="#all"` does not declare arbitrary initial modes |
 | `initial-mode-003` | `inimode` | `XTDE0050` | Native pass: absent required global parameter reports expected error |
 | `initial-mode-004` | `flobble` | XML | Native pass: local expanded-QName and tunnel parameters plus mixed node/atomic sequence |
-| `initial-mode-005` | `b` | XML | `FXST1015`: element-bearing global sequence constructor |
+| `initial-mode-005` | `b` | XML | Native pass: multi-mode root entry plus invocation-owned temporary tree and wildcard copy |
 
-The denominator is five discovered and selected: four native passes, one
-explicit engine gap, and none excluded, harness-unsupported, failed, or lost.
+The denominator is five discovered and selected: five native passes and none
+excluded, engine-unsupported, harness-unsupported, failed, or lost.
 
 ## Claim boundary
 
@@ -41,9 +41,8 @@ expected-error identity, reproducible first-gap classification, and the narrow
 initial-mode parameter semantics exercised by case 004, plus the required
 global-parameter failure exercised by case 003. It does not establish general
 template-parameter defaults/types, tunnel propagation across template
-application, multi-mode declarations, `#all` semantics, temporary trees,
-general sequence constructors, general typed conversion, or general `#all`
-dispatch behavior.
+application, general temporary-tree expressions, general sequence constructors,
+general typed conversion, or general `#all` dispatch behavior.
 
 The first implementation decision should be the host-neutral invocation shape:
 an initial mode is standards-defined entry state, not a special ASP.NET or CLI
@@ -104,3 +103,21 @@ tenth item is retained.
 This is evidence for one typed range-construction shape. It does not establish
 general `xsl:for-each`, arbitrary sequence constructors, node atomization,
 sequence-type conversion, or a complete XPath range operator.
+
+## Subsequent temporary-tree and multi-mode evidence
+
+Case 005 now preserves all three explicit names in `mode="a b c"` and admits
+each name independently for initial-mode entry. Its literal global variable is
+compiled as a constructor description, then materialized as an
+invocation-owned temporary tree under the XDM-node budget. The expression
+`$temp/*` selects that tree's element children without pretending they are
+nodes from the principal source. An `xsl:apply-templates` with no explicit mode
+uses the unnamed mode, selects the wildcard element rule, and `xsl:copy`
+constructs the asserted result under the result-node budget.
+
+This is a deliberately narrow vertical slice: attribute-free literal global
+elements, child-element selection of one global temporary tree, wildcard or
+exact element matching, and an `xsl:copy`-only temporary-node template body.
+It does not establish general temporary-tree navigation, mixed-content
+constructors, attributes, identity-sensitive XPath operations, deep-copy
+semantics for arbitrary XDM nodes, or general `xsl:copy` content construction.

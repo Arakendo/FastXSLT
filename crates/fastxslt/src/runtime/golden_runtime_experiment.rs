@@ -34,8 +34,9 @@ use crate::xpath::format_number_experiment::{
 use crate::xpath::integer_for_experiment::evaluate as evaluate_integer_for;
 use crate::xpath::path_experiment::evaluate_child_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, BooleanExpression, GlobalBindingDefault, Instruction, MatchPattern, NodeTest,
-    SequenceItemExpression, StylesheetProgram, Template, TemplateArgument, ValueExpression,
+    ApplySelection, BooleanExpression, ConstructedElement, GlobalBindingDefault, Instruction,
+    MatchPattern, NodeTest, SequenceItemExpression, StylesheetProgram, Template, TemplateArgument,
+    ValueExpression,
 };
 
 mod serialization;
@@ -46,7 +47,7 @@ const XML_LIMITS: ParseLimits = ParseLimits {
     max_events: 1_024,
     max_depth: 64,
 };
-const MAX_NAMED_TEMPLATE_CALL_DEPTH: usize = 256;
+const MAX_NAMED_TEMPLATE_CALL_DEPTH: usize = 128;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ResultNode {
@@ -485,7 +486,7 @@ fn execute_program_with_parameters(
     let children = if let Some(root_template) = program
         .root_template
         .as_ref()
-        .filter(|_| program.root_template_mode.is_none())
+        .filter(|_| program.root_template_modes.is_empty())
     {
         let variables = bind_template_parameters(root_template, &BTreeMap::new(), &globals.atomics);
         execute_sequence(
@@ -529,7 +530,7 @@ fn execute_initial_mode(
     }
     let globals =
         materialize_global_defaults(program, Some(source), parameters, request_id, control)?;
-    let children = if program.root_template_mode.as_deref() == Some(name) {
+    let children = if program.root_template_modes.iter().any(|mode| mode == name) {
         let template = program
             .root_template
             .as_ref()
@@ -565,11 +566,11 @@ fn execute_initial_mode(
 
 #[cfg(test)]
 fn program_has_mode(program: &StylesheetProgram, name: &str) -> bool {
-    program.root_template_mode.as_deref() == Some(name)
+    program.root_template_modes.iter().any(|mode| mode == name)
         || program
             .matched_templates
             .iter()
-            .any(|template| template.mode.as_deref() == Some(name))
+            .any(|template| template.modes.iter().any(|mode| mode == name))
 }
 
 #[cfg(test)]
@@ -622,6 +623,20 @@ struct SequenceInputs<'a> {
 struct RuntimeGlobals {
     atomics: BTreeMap<String, AtomicValue>,
     nodes: BTreeMap<String, Vec<NodeId>>,
+    temporary_trees: BTreeMap<String, TemporaryTree>,
+}
+
+#[derive(Debug, Default)]
+struct TemporaryTree {
+    roots: Vec<usize>,
+    nodes: Vec<TemporaryNode>,
+}
+
+#[derive(Debug)]
+struct TemporaryNode {
+    name: ExpandedName,
+    namespaces: Vec<crate::xml::quick_xml_experiment::NamespaceBinding>,
+    children: Vec<usize>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -704,9 +719,48 @@ fn materialize_global_defaults(
                     ));
                 }
             }
+            GlobalBindingDefault::TemporaryTree(elements) => {
+                let tree = materialize_temporary_tree(elements, request_id, control)?;
+                globals.temporary_trees.insert(binding.name.clone(), tree);
+            }
         }
     }
     Ok(globals)
+}
+
+fn materialize_temporary_tree(
+    elements: &[ConstructedElement],
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<TemporaryTree, ExecutionFailure> {
+    let mut tree = TemporaryTree::default();
+    for element in elements {
+        let root = materialize_temporary_element(element, &mut tree, request_id, control)?;
+        tree.roots.push(root);
+    }
+    Ok(tree)
+}
+
+fn materialize_temporary_element(
+    element: &ConstructedElement,
+    tree: &mut TemporaryTree,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<usize, ExecutionFailure> {
+    control
+        .charge(WorkDomain::XdmNode, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    let node = tree.nodes.len();
+    tree.nodes.push(TemporaryNode {
+        name: element.name.clone(),
+        namespaces: element.namespaces.clone(),
+        children: Vec::new(),
+    });
+    for child in &element.children {
+        let child = materialize_temporary_element(child, tree, request_id, control)?;
+        tree.nodes[node].children.push(child);
+    }
+    Ok(node)
 }
 
 fn bind_template_parameters(
@@ -813,19 +867,13 @@ fn execute_sequence(
                 scope.atomic_sequences.insert(name.clone(), values);
             }
             Instruction::ApplyTemplates { select, mode, .. } => {
-                let (source, context) = required_source_context(inputs, context)?;
-                let selected = select_apply_nodes(inputs, select.as_ref(), context, control)?;
-                for selected_node in selected {
-                    result.extend(apply_template(
-                        inputs.program,
-                        source,
-                        selected_node,
-                        mode.as_deref(),
-                        inputs.request_id,
-                        inputs.globals,
-                        control,
-                    )?);
-                }
+                result.extend(execute_apply_templates(
+                    inputs,
+                    select.as_ref(),
+                    mode.as_deref(),
+                    context,
+                    control,
+                )?);
             }
             Instruction::If { test, body, .. } => {
                 result.extend(execute_if(
@@ -848,7 +896,56 @@ fn execute_sequence(
                     inputs, name, arguments, context, call_depth, control,
                 )?);
             }
+            Instruction::Copy { .. } => {
+                return Err(failure(
+                    "FXRT1007",
+                    FailureCategory::Unsupported,
+                    Some(inputs.request_id),
+                    "xsl:copy requires a temporary-tree context in this private slice",
+                ));
+            }
         }
+    }
+    Ok(result)
+}
+
+fn execute_apply_templates(
+    inputs: &SequenceInputs<'_>,
+    select: Option<&ApplySelection>,
+    mode: Option<&str>,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    if let Some(ApplySelection::GlobalTemporaryChildren(name)) = select {
+        let tree = inputs.globals.temporary_trees.get(name).ok_or_else(|| {
+            failure(
+                "FXRT0002",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("unbound temporary tree: ${name}"),
+            )
+        })?;
+        let mut result = Vec::new();
+        for node in &tree.roots {
+            result.extend(apply_temporary_template(
+                inputs, tree, *node, mode, control,
+            )?);
+        }
+        return Ok(result);
+    }
+    let (source, context) = required_source_context(inputs, context)?;
+    let selected = select_apply_nodes(inputs, select, context, control)?;
+    let mut result = Vec::new();
+    for node in selected {
+        result.extend(apply_template(
+            inputs.program,
+            source,
+            node,
+            mode,
+            inputs.request_id,
+            inputs.globals,
+            control,
+        )?);
     }
     Ok(result)
 }
@@ -1359,6 +1456,9 @@ fn select_apply_nodes(
             }
             Ok(selected)
         }
+        ApplySelection::GlobalTemporaryChildren(_) => unreachable!(
+            "global temporary-tree selection is dispatched before principal-source selection"
+        ),
     }
 }
 
@@ -1424,7 +1524,7 @@ fn apply_template(
     let mut selected_template = None;
     let mut selected_priority = 0;
     for template in &program.matched_templates {
-        if template.mode.as_deref() != mode
+        if !template_accepts_mode(&template.modes, mode)
             || !match_pattern(&template.pattern, source, node, request_id, control)?
         {
             continue;
@@ -1432,7 +1532,9 @@ fn apply_template(
         let priority = match template.pattern {
             MatchPattern::Path(_) => 3,
             MatchPattern::Element(_) | MatchPattern::Attribute(_) => 2,
-            MatchPattern::Comment | MatchPattern::ProcessingInstruction => 1,
+            MatchPattern::AnyElement
+            | MatchPattern::Comment
+            | MatchPattern::ProcessingInstruction => 1,
             MatchPattern::AnyNode => 0,
         };
         if selected_template.is_none() || priority >= selected_priority {
@@ -1483,6 +1585,87 @@ fn apply_template(
     }
 }
 
+fn template_accepts_mode(modes: &[String], mode: Option<&str>) -> bool {
+    if modes.is_empty() {
+        return mode.is_none();
+    }
+    modes.iter().any(|candidate| {
+        candidate == "#all" || mode.is_some_and(|requested| candidate == requested)
+    })
+}
+
+fn apply_temporary_template(
+    inputs: &SequenceInputs<'_>,
+    tree: &TemporaryTree,
+    node: usize,
+    mode: Option<&str>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    charge_xslt_instruction(control, inputs.request_id)?;
+    let temporary = &tree.nodes[node];
+    let template = inputs
+        .program
+        .matched_templates
+        .iter()
+        .rev()
+        .find(|template| {
+            template_accepts_mode(&template.modes, mode)
+                && match &template.pattern {
+                    MatchPattern::Element(name) => &temporary.name == name,
+                    MatchPattern::AnyElement | MatchPattern::AnyNode => true,
+                    _ => false,
+                }
+        });
+    if let Some(template) = template {
+        if matches!(
+            template.template.body.as_slice(),
+            [Instruction::Copy { .. }]
+        ) {
+            return Ok(vec![copy_temporary_node(
+                tree,
+                node,
+                inputs.request_id,
+                control,
+            )?]);
+        }
+        return Err(failure(
+            "FXRT1007",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "temporary-tree template bodies other than xsl:copy are outside the private slice",
+        ));
+    }
+    let mut result = Vec::new();
+    for child in &temporary.children {
+        result.extend(apply_temporary_template(
+            inputs, tree, *child, mode, control,
+        )?);
+    }
+    Ok(result)
+}
+
+fn copy_temporary_node(
+    tree: &TemporaryTree,
+    node: usize,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<ResultNode, ExecutionFailure> {
+    control
+        .charge(WorkDomain::ResultNode, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    let node = &tree.nodes[node];
+    let children = node
+        .children
+        .iter()
+        .map(|child| copy_temporary_node(tree, *child, request_id, control))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(ResultNode::Element {
+        name: node.name.clone(),
+        namespaces: node.namespaces.clone(),
+        children,
+    })
+}
+
 fn match_pattern(
     pattern: &MatchPattern,
     source: &Document,
@@ -1507,6 +1690,7 @@ fn match_pattern(
                 | NodeKind::Comment
                 | NodeKind::ProcessingInstruction
         )),
+        MatchPattern::AnyElement => Ok(source.kind(node) == NodeKind::Element),
     }
 }
 

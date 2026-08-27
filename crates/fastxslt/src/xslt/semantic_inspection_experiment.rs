@@ -29,6 +29,7 @@ enum SemanticFeature {
     If,
     Choose,
     CallTemplate,
+    Copy,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,7 +51,7 @@ struct CompiledInspection {
     declared_version: String,
     output: OutputInspection,
     root_template_count: usize,
-    root_template_mode: Option<String>,
+    root_template_modes: Vec<String>,
     exact_element_template_count: usize,
     named_template_count: usize,
     global_variable_count: usize,
@@ -69,7 +70,7 @@ fn inspect_compiled(
         .checked_add(program.declared_version.len())
         .and_then(|bytes| bytes.checked_add(program.output.method.as_ref().map_or(0, String::len)))
         .and_then(|bytes| {
-            bytes.checked_add(program.root_template_mode.as_ref().map_or(0, String::len))
+            bytes.checked_add(program.root_template_modes.iter().map(String::len).sum())
         })
         .ok_or(InspectionFailure::CountOverflow)?;
     if text_bytes > limits.max_text_bytes {
@@ -118,7 +119,7 @@ fn inspect_compiled(
             indent: program.output.indent,
         },
         root_template_count: usize::from(program.root_template.is_some()),
-        root_template_mode: program.root_template_mode.clone(),
+        root_template_modes: program.root_template_modes.clone(),
         exact_element_template_count: program
             .matched_templates
             .iter()
@@ -175,6 +176,7 @@ fn observe_instructions(
             Instruction::If { body, .. } => (SemanticFeature::If, Some(body.as_slice())),
             Instruction::Choose { .. } => (SemanticFeature::Choose, None),
             Instruction::CallTemplate { .. } => (SemanticFeature::CallTemplate, None),
+            Instruction::Copy { .. } => (SemanticFeature::Copy, None),
         };
         let occurrences = feature_counts.entry(feature).or_default();
         *occurrences = occurrences
@@ -252,7 +254,7 @@ mod tests {
                     indent: None,
                 },
                 root_template_count: 1,
-                root_template_mode: None,
+                root_template_modes: Vec::new(),
                 exact_element_template_count: 0,
                 named_template_count: 0,
                 global_variable_count: 0,

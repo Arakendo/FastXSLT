@@ -69,7 +69,7 @@ const CASES: [CaseMetadata; 5] = [
         mode: "b",
         assertion: "assert-xml",
         error: None,
-        compile_code: Some("FXST1015"),
+        compile_code: None,
     },
 ];
 
@@ -228,7 +228,7 @@ fn executes_initial_mode_002_as_the_expected_unavailable_mode_error() {
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, STYLESHEET_ID).expect("compile initial-mode-002");
     assert_eq!(program.output.indent, Some(true));
-    assert_eq!(program.matched_templates[0].mode.as_deref(), Some("#all"));
+    assert_eq!(program.matched_templates[0].modes, ["#all"]);
     let mut builder = TransformSetBuilder::new(
         snapshot,
         program,
@@ -412,6 +412,73 @@ fn executes_initial_mode_004_with_local_qname_and_tunnel_parameters() {
     assert_eq!(
         results.by_request["initial-mode-004-wrong-tunnel"].serialized,
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out><doc></doc>1234 </out>"
+    );
+}
+
+#[test]
+fn executes_initial_mode_005_with_multiple_modes_and_a_temporary_tree() {
+    const CASE_NAME: &str = "initial-mode-005";
+    const SOURCE_ID: &str = "urn:w3c:xslt30:initial-mode-005:source";
+    const STYLESHEET_ID: &str = "urn:w3c:xslt30:initial-mode-005:stylesheet";
+    let (test_set, set_path) = load_test_set();
+    let case = descendants_named(&test_set, test_set.document_node(), "test-case")
+        .into_iter()
+        .find(|node| attribute(&test_set, *node, "name") == Some(CASE_NAME))
+        .expect("pinned initial-mode-005 metadata");
+    let test = child_named(&test_set, case, "test").expect("test metadata");
+    let expected = child_named(&test_set, case, "result")
+        .and_then(|node| child_named(&test_set, node, "assert-xml"))
+        .map(|node| test_set.string_value(node))
+        .expect("XML assertion");
+    let stylesheet_file = child_named(&test_set, test, "stylesheet")
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("stylesheet file");
+    let stylesheet = fs::read(
+        set_path
+            .parent()
+            .expect("test-set directory")
+            .join(stylesheet_file),
+    )
+    .expect("read pinned stylesheet");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 65_536, 131_072));
+    resources
+        .admit(SOURCE_ID, b"<doc/>".to_vec())
+        .expect("admit catalog source");
+    resources
+        .admit(STYLESHEET_ID, stylesheet)
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET_ID).expect("compile initial-mode-005");
+    assert_eq!(program.root_template_modes, ["a", "b", "c"]);
+    let mut builder = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 4_096,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    builder
+        .add(TransformRequest {
+            identity: CASE_NAME.to_owned(),
+            result_identity: format!("result:{CASE_NAME}"),
+            entry: InvocationEntry::InitialMode {
+                resource: SOURCE_ID.to_owned(),
+                name: "b".to_owned(),
+            },
+            parameters: BTreeMap::new(),
+            cancellation: CancellationToken::new(),
+            cancellation_fault: None,
+        })
+        .expect("admit one of the root template's declared modes");
+
+    let results = execute_transform_set(builder.seal()).expect("execute initial-mode-005");
+    assert_eq!(expected.trim(), "<out><vimble/></out>");
+    assert_eq!(
+        results.by_request[CASE_NAME].serialized,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out><vimble></vimble></out>"
     );
 }
 
