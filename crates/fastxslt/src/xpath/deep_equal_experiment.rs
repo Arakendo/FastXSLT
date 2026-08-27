@@ -17,6 +17,16 @@ enum DeepEqualOperands {
         left: i128,
         right: i128,
     },
+    Decimals {
+        left: ExactDecimal,
+        right: ExactDecimal,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ExactDecimal {
+    coefficient: i128,
+    scale: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,18 +65,47 @@ pub(crate) fn parse(
         .ok_or_else(|| unsupported(expression, location))?;
     let left = arguments.0.trim();
     let right = arguments.1.trim();
-    let operands = match (parse_integer(left), parse_integer(right)) {
-        (Some(left), Some(right)) => DeepEqualOperands::Integers { left, right },
-        (None, None) => DeepEqualOperands::Nodes {
+    let operands = if let (Some(left), Some(right)) = (parse_integer(left), parse_integer(right)) {
+        DeepEqualOperands::Integers { left, right }
+    } else if let (Some(left), Some(right)) = (parse_decimal(left), parse_decimal(right)) {
+        DeepEqualOperands::Decimals { left, right }
+    } else {
+        DeepEqualOperands::Nodes {
             left: parse_selection(left, location)?,
             right: parse_selection(right, location)?,
-        },
-        _ => return Err(unsupported(expression, location)),
+        }
     };
     Ok(DeepEqualExpression {
         operands,
         location: location.clone(),
     })
+}
+
+fn parse_decimal(expression: &str) -> Option<ExactDecimal> {
+    let lexical = expression
+        .strip_prefix("(xs:decimal(\"")
+        .and_then(|value| value.strip_suffix("\"))"))?;
+    let (negative, magnitude) = lexical
+        .strip_prefix('-')
+        .map_or((false, lexical), |value| (true, value));
+    let (integer, fraction) = magnitude.split_once('.').unwrap_or((magnitude, ""));
+    if integer.is_empty()
+        || !integer.bytes().all(|byte| byte.is_ascii_digit())
+        || !fraction.bytes().all(|byte| byte.is_ascii_digit())
+    {
+        return None;
+    }
+    let mut scale = u32::try_from(fraction.len()).ok()?;
+    let digits = format!("{integer}{fraction}");
+    let mut coefficient = digits.parse::<i128>().ok()?;
+    while scale > 0 && coefficient % 10 == 0 {
+        coefficient /= 10;
+        scale -= 1;
+    }
+    if negative {
+        coefficient = coefficient.checked_neg()?;
+    }
+    Some(ExactDecimal { coefficient, scale })
 }
 
 fn parse_integer(expression: &str) -> Option<i128> {
@@ -137,6 +176,12 @@ pub(crate) fn evaluate(
 ) -> Result<bool, DeepEqualEvaluationFailure> {
     match &expression.operands {
         DeepEqualOperands::Integers { left, right } => {
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(DeepEqualEvaluationFailure::Control)?;
+            Ok(left == right)
+        }
+        DeepEqualOperands::Decimals { left, right } => {
             control
                 .charge(WorkDomain::XPathOperation, 1)
                 .map_err(DeepEqualEvaluationFailure::Control)?;
@@ -318,5 +363,16 @@ mod tests {
         )
         .expect("parse typed integer equality");
         assert!(evaluate(&equal, None, &mut control).expect("evaluate typed integers"));
+    }
+
+    #[test]
+    fn normalizes_exact_decimal_scale_without_binary_floating_point() {
+        let mut control = InvocationControl::unbounded();
+        let equal = parse(
+            "fn:deep-equal((xs:decimal(\"1.0\")),(xs:decimal(\"1.00\")))",
+            &location(),
+        )
+        .expect("parse exact decimal equality");
+        assert!(evaluate(&equal, None, &mut control).expect("evaluate exact decimals"));
     }
 }

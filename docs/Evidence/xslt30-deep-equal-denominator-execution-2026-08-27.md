@@ -68,3 +68,18 @@ do not fit in `xs:int`; FastXSLT parses them through a checked `i128` path and
 again preserves equal and unequal results in both argument orders. This is an
 admitted implementation subset of XPath's arbitrary-precision `xs:integer`,
 not evidence that values outside `i128` are supported.
+
+## QT3 exact-decimal extension
+
+The complete five-case `fn-deep-equaldec2args` group from the same pinned QT3
+test set also passes. FastXSLT parses each admitted `xs:decimal` lexical value
+into a checked `i128` coefficient and a decimal scale, removes insignificant
+trailing coefficient zeros, and compares the normalized values exactly. No
+binary floating-point conversion participates in these results.
+
+This evidence covers the group's equal negative lower-bound values and its
+unequal lower-, middle-, and upper-bound combinations in both argument orders.
+It does not establish arbitrary-precision decimal support, values whose
+coefficient exceeds `i128`, numeric type promotion, cross-type comparison,
+float or double semantics, NaN behavior, or the remainder of the QT3
+`fn-deep-equal` test set.

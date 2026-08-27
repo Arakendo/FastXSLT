@@ -14,7 +14,9 @@ stylesheet-independent XPath seam and the complete two-case XSLT30
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
 source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`
-subset of arbitrary-precision `xs:integer`.
+subset of arbitrary-precision `xs:integer`. The complete five-case
+`fn-deep-equaldec2args` group adds exact normalized decimal comparison within a
+checked `i128` coefficient boundary, without using binary floating point.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -118,6 +120,11 @@ implemented behavior belongs to a named standards slice.
   checked `i128` values, including its 18-digit lower, middle, and upper
   operands in both orders. Treat this as a bounded `xs:integer` subset rather
   than an arbitrary-precision implementation claim.
+- [x] Execute the complete five-case QT3 `fn-deep-equaldec2args` group through
+  normalized coefficient-and-scale values with checked `i128` coefficients.
+  Preserve exact decimal equality without binary floating point and leave
+  arbitrary precision, cross-type promotion, floats, doubles, and NaN outside
+  this slice.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.

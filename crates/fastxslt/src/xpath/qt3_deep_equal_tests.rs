@@ -22,6 +22,13 @@ const INTEGER_CASES: [(&str, bool); 5] = [
     ("fn-deep-equalintg2args-4", false),
     ("fn-deep-equalintg2args-5", false),
 ];
+const DECIMAL_CASES: [(&str, bool); 5] = [
+    ("fn-deep-equaldec2args-1", true),
+    ("fn-deep-equaldec2args-2", false),
+    ("fn-deep-equaldec2args-3", false),
+    ("fn-deep-equaldec2args-4", false),
+    ("fn-deep-equaldec2args-5", false),
+];
 
 #[test]
 fn executes_complete_qt3_deep_equal_xs_int_group() {
@@ -31,6 +38,11 @@ fn executes_complete_qt3_deep_equal_xs_int_group() {
 #[test]
 fn executes_complete_qt3_deep_equal_xs_integer_group() {
     execute_group("fn-deep-equalintg2args-", &INTEGER_CASES);
+}
+
+#[test]
+fn executes_complete_qt3_deep_equal_xs_decimal_group() {
+    execute_group("fn-deep-equaldec2args-", &DECIMAL_CASES);
 }
 
 fn execute_group(prefix: &str, expected_cases: &[(&str, bool)]) {
