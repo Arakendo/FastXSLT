@@ -6,6 +6,14 @@ standards scope are decided.
 
 ## Current critical path
 
+Completing the 31-case QT3 mixed deep-equal group raised
+`deep_equal_experiment.rs` to 1,054 lines and exposed independent atomic and
+node responsibilities. The mandatory
+[deep-equal source-unit cohesion review](../Evidence/deep-equal-source-unit-cohesion-review-2026-08-27.md)
+requires a private atomic parsing/value/comparison extraction before another
+deep-equal semantic slice. The complete denominator is checkpointed first so
+the structural change remains mechanically attributable.
+
 ADR-0004's first mandatory 2,000-line review has fired. The retained
 [runtime and compiler decomposition review](../Evidence/runtime-and-compiler-decomposition-review-2026-08-27.md)
 moves general runtime contract tests out as a preparatory navigation checkpoint
@@ -51,14 +59,14 @@ verified independently. The adjacent five-case `fn-deep-equalnni2args` group
 adds its checked-`i128` `xs:nonNegativeInteger` mirror, also with an independently
 verified inclusive zero boundary. The complete five-case
 `fn-deep-equalsht2args` group adds an exact checked-`i16` `xs:short` path with
-controls immediately inside and outside both fixed boundaries. The first twenty-seven
-`fn-deep-equal-mix-args-*` cases now add ordered integer/string sequences,
+controls immediately inside and outside both fixed boundaries. The complete
+31-case `fn-deep-equal-mix-args-*` group now adds ordered integer/string sequences,
 singleton parentheses, and empty-sequence forms through a depth-aware argument
 splitter, plus admitted URI/string and exact integer/decimal comparisons; the
 same tranche now covers numeric promotion through float/double, infinities,
-paired NaN, and the four boolean lexical forms plus boolean functions. The
-remaining four mixed cases retain explicit date/time and broader typed-value
-pressure.
+paired NaN, and the four boolean lexical forms plus boolean functions. Its
+final cases retain validated date/time type identity against equal lexical
+strings, while broader calendar lexical forms remain outside the slice.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -226,6 +234,11 @@ implemented behavior belongs to a named standards slice.
   lexical forms and compare them with typed `true()`/`false()` function values,
   while rejecting unrecognized boolean strings. Leave date/time cases 028
   through 031 unselected.
+- [x] Complete `fn-deep-equal-mix-args-028` through `-031` and therefore the
+  entire 31-case mixed group without denominator loss. Validate the admitted
+  whole-second, timezone-free date/time forms and retain their typed identity
+  against equal strings. Keep timezones, fractional seconds, 24:00:00, and
+  negative or expanded years explicitly outside the claim.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.

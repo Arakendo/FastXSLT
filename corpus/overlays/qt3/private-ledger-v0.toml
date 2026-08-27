@@ -609,3 +609,31 @@ case_name = "fn-deep-equal-mix-args-027"
 selection = "selected"
 execution = "passed"
 rationale = "Compares an xs:boolean false constructor with the false function value and returns true."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-028"
+selection = "selected"
+execution = "passed"
+rationale = "Retains xs:date type identity and returns false against an equal lexical string literal."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-029"
+selection = "selected"
+execution = "passed"
+rationale = "Retains xs:date type identity and returns false against an equal xs:string value."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-030"
+selection = "selected"
+execution = "passed"
+rationale = "Validates and retains the admitted xs:dateTime value, returning false against an equal lexical string."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-031"
+selection = "selected"
+execution = "passed"
+rationale = "Validates and retains the admitted xs:time value, returning false against an equal lexical string."

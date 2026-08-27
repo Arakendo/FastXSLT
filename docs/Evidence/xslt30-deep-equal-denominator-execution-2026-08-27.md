@@ -195,10 +195,9 @@ semantics, or general sequence equality.
 
 ## QT3 mixed atomic-sequence tranche
 
-FastXSLT now executes the first twenty-seven contiguous
-`fn-deep-equal-mix-args-*` cases, 001 through 027. This is an explicit tranche
-of the 31-case mixed group,
-not a claim that the complete group passes. The admitted expressions cover:
+FastXSLT now executes the complete 31-case
+`fn-deep-equal-mix-args-*` group, 001 through 031, without denominator loss.
+The admitted expressions cover:
 
 - ordered one- and two-item integer sequences;
 - string constructors, string literals, and parenthesized singleton strings;
@@ -212,7 +211,9 @@ not a claim that the complete group passes. The admitted expressions cover:
 - positive infinity, negative infinity, and the `fn:deep-equal` paired-NaN
   rule; and
 - boolean constructors using `1`, `0`, `true`, or `false`, plus `true()` and
-  `false()` function values.
+  `false()` function values; and
+- distinct typed `xs:date`, `xs:dateTime`, and `xs:time` values compared
+  against equal lexical strings.
 
 The parser finds the function's argument separator at parenthesis depth zero,
 so a comma inside an operand sequence cannot be mistaken for the separator.
@@ -235,8 +236,13 @@ The boolean parser retains a typed boolean value, normalizes only the four XML
 Schema boolean lexical forms, and rejects other strings rather than applying
 host-language truthiness.
 
-Cases 028 through 031 remain unselected. They introduce date/time versus string
-behavior. This tranche also does not
-claim general XPath sequence parsing, escaped string literals, collations,
-broader typed-value promotion, every floating-point lexical form, or general
-`fn:deep-equal` semantics.
+The admitted calendar parser validates four-digit positive years, real month
+and day combinations including leap years, and whole-second clock fields from
+00:00:00 through 23:59:59. It retains date, date-time, and time type identity,
+so lexical equality with a string does not become deep equality.
+
+Completing this group does not claim general XPath sequence parsing, escaped
+string literals, collations, broader typed-value promotion, every
+floating-point lexical form, timezone-bearing or fractional calendar values,
+24:00:00, negative/expanded years, or general `fn:deep-equal` semantics across
+the rest of the 263-case QT3 test set.

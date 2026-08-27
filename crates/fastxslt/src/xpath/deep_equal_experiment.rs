@@ -36,6 +36,23 @@ enum AtomicValue {
     Boolean(bool),
     String(String),
     AnyUri(String),
+    Date(DateValue),
+    DateTime { date: DateValue, time: TimeValue },
+    Time(TimeValue),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DateValue {
+    year: u16,
+    month: u8,
+    day: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct TimeValue {
+    hour: u8,
+    minute: u8,
+    second: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -203,6 +220,18 @@ fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
     if let Some(value) = constructor_lexical(expression, "xs:boolean").and_then(parse_boolean) {
         return Some(AtomicValue::Boolean(value));
     }
+    if let Some(value) = constructor_lexical(expression, "xs:date").and_then(parse_date) {
+        return Some(AtomicValue::Date(value));
+    }
+    if let Some((date, time)) = constructor_lexical(expression, "xs:dateTime")
+        .and_then(|value| value.split_once('T'))
+        .and_then(|(date, time)| Some((parse_date(date)?, parse_time(time)?)))
+    {
+        return Some(AtomicValue::DateTime { date, time });
+    }
+    if let Some(value) = constructor_lexical(expression, "xs:time").and_then(parse_time) {
+        return Some(AtomicValue::Time(value));
+    }
     match expression {
         "true()" => return Some(AtomicValue::Boolean(true)),
         "false()" => return Some(AtomicValue::Boolean(false)),
@@ -249,6 +278,48 @@ fn parse_boolean(lexical: &str) -> Option<bool> {
         "0" | "false" => Some(false),
         _ => None,
     }
+}
+
+fn parse_date(lexical: &str) -> Option<DateValue> {
+    let mut fields = lexical.split('-');
+    let year = parse_fixed_digits(fields.next()?, 4)?;
+    let month = u8::try_from(parse_fixed_digits(fields.next()?, 2)?).ok()?;
+    let day = u8::try_from(parse_fixed_digits(fields.next()?, 2)?).ok()?;
+    if fields.next().is_some() || !(1..=12).contains(&month) {
+        return None;
+    }
+    let maximum_day = match month {
+        4 | 6 | 9 | 11 => 30,
+        2 if is_leap_year(year) => 29,
+        2 => 28,
+        _ => 31,
+    };
+    (day > 0 && day <= maximum_day).then_some(DateValue { year, month, day })
+}
+
+fn parse_time(lexical: &str) -> Option<TimeValue> {
+    let mut fields = lexical.split(':');
+    let hour = u8::try_from(parse_fixed_digits(fields.next()?, 2)?).ok()?;
+    let minute = u8::try_from(parse_fixed_digits(fields.next()?, 2)?).ok()?;
+    let second = u8::try_from(parse_fixed_digits(fields.next()?, 2)?).ok()?;
+    if fields.next().is_some() || hour > 23 || minute > 59 || second > 59 {
+        return None;
+    }
+    Some(TimeValue {
+        hour,
+        minute,
+        second,
+    })
+}
+
+fn parse_fixed_digits(value: &str, width: usize) -> Option<u16> {
+    (value.len() == width && value.bytes().all(|byte| byte.is_ascii_digit()))
+        .then(|| value.parse().ok())
+        .flatten()
+}
+
+fn is_leap_year(year: u16) -> bool {
+    year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
 }
 
 fn parse_decimal(expression: &str) -> Option<ExactDecimal> {
@@ -950,5 +1021,34 @@ mod tests {
             );
         }
         assert!(parse("fn:deep-equal(xs:boolean(\"yes\"), true())", &location(),).is_err());
+    }
+
+    #[test]
+    fn retains_admitted_calendar_types_and_validates_their_fields() {
+        let equal_dates = parse(
+            "fn:deep-equal(xs:date(\"1993-03-31\"), xs:date(\"1993-03-31\"))",
+            &location(),
+        )
+        .expect("parse equal typed dates");
+        assert!(
+            evaluate(&equal_dates, None, &mut InvocationControl::unbounded())
+                .expect("compare typed dates")
+        );
+        let typed_and_string = parse(
+            "fn:deep-equal(xs:time(\"12:30:00\"), \"12:30:00\")",
+            &location(),
+        )
+        .expect("parse typed time and string");
+        assert!(
+            !evaluate(&typed_and_string, None, &mut InvocationControl::unbounded())
+                .expect("compare typed time and string")
+        );
+        for expression in [
+            "fn:deep-equal(xs:date(\"1993-02-29\"), xs:date(\"1993-02-29\"))",
+            "fn:deep-equal(xs:time(\"24:01:00\"), xs:time(\"24:01:00\"))",
+            "fn:deep-equal(xs:dateTime(\"1972-13-01T00:00:00\"), xs:dateTime(\"1972-13-01T00:00:00\"))",
+        ] {
+            assert!(parse(expression, &location()).is_err());
+        }
     }
 }

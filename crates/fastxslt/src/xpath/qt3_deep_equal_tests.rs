@@ -85,7 +85,7 @@ const SHORT_CASES: [(&str, bool); 5] = [
     ("fn-deep-equalsht2args-4", false),
     ("fn-deep-equalsht2args-5", false),
 ];
-const MIXED_ATOMIC_CASES: [(&str, bool, usize); 27] = [
+const MIXED_ATOMIC_CASES: [(&str, bool, usize); 31] = [
     ("fn-deep-equal-mix-args-001", false, 2),
     ("fn-deep-equal-mix-args-002", true, 3),
     ("fn-deep-equal-mix-args-003", true, 2),
@@ -113,6 +113,10 @@ const MIXED_ATOMIC_CASES: [(&str, bool, usize); 27] = [
     ("fn-deep-equal-mix-args-025", true, 2),
     ("fn-deep-equal-mix-args-026", true, 2),
     ("fn-deep-equal-mix-args-027", true, 2),
+    ("fn-deep-equal-mix-args-028", false, 2),
+    ("fn-deep-equal-mix-args-029", false, 2),
+    ("fn-deep-equal-mix-args-030", false, 2),
+    ("fn-deep-equal-mix-args-031", false, 2),
 ];
 
 #[test]
@@ -171,10 +175,26 @@ fn executes_complete_qt3_deep_equal_xs_short_group() {
 }
 
 #[test]
-fn executes_first_qt3_deep_equal_mixed_atomic_tranche() {
+fn executes_complete_qt3_deep_equal_mixed_atomic_group() {
     let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
     let test_set = load_test_set();
     let cases = descendants_named(&test_set, test_set.document_node(), "test-case");
+    assert_eq!(
+        cases
+            .iter()
+            .filter(|node| {
+                attribute(&test_set, **node, "name")
+                    .is_some_and(|name| name.starts_with("fn-deep-equal-mix-args-"))
+            })
+            .count(),
+        MIXED_ATOMIC_CASES.len()
+    );
+    assert_eq!(
+        overlay
+            .matches("case_name = \"fn-deep-equal-mix-args-")
+            .count(),
+        MIXED_ATOMIC_CASES.len()
+    );
 
     for (name, expected, expected_operations) in MIXED_ATOMIC_CASES {
         let record = overlay_case(overlay, name);
