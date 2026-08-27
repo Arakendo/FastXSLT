@@ -574,3 +574,38 @@ case_name = "fn-deep-equal-mix-args-022"
 selection = "selected"
 execution = "passed"
 rationale = "Applies the fn:deep-equal special rule that paired float and double NaN values are deep-equal."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-023"
+selection = "selected"
+execution = "passed"
+rationale = "Normalizes xs:boolean lexical values 1 and true to the same typed true value."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-024"
+selection = "selected"
+execution = "passed"
+rationale = "Compares two xs:boolean true constructor values and returns true."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-025"
+selection = "selected"
+execution = "passed"
+rationale = "Compares an xs:boolean true constructor with the true function value and returns true."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-026"
+selection = "selected"
+execution = "passed"
+rationale = "Normalizes xs:boolean lexical values 0 and false to the same typed false value."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-027"
+selection = "selected"
+execution = "passed"
+rationale = "Compares an xs:boolean false constructor with the false function value and returns true."

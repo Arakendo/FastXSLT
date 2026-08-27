@@ -51,13 +51,14 @@ verified independently. The adjacent five-case `fn-deep-equalnni2args` group
 adds its checked-`i128` `xs:nonNegativeInteger` mirror, also with an independently
 verified inclusive zero boundary. The complete five-case
 `fn-deep-equalsht2args` group adds an exact checked-`i16` `xs:short` path with
-controls immediately inside and outside both fixed boundaries. The first twenty-two
+controls immediately inside and outside both fixed boundaries. The first twenty-seven
 `fn-deep-equal-mix-args-*` cases now add ordered integer/string sequences,
 singleton parentheses, and empty-sequence forms through a depth-aware argument
 splitter, plus admitted URI/string and exact integer/decimal comparisons; the
-same tranche now covers numeric promotion through float/double, infinities, and
-paired NaN. The remaining nine mixed cases retain explicit boolean, date/time,
-and broader typed-value pressure.
+same tranche now covers numeric promotion through float/double, infinities,
+paired NaN, and the four boolean lexical forms plus boolean functions. The
+remaining four mixed cases retain explicit date/time and broader typed-value
+pressure.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -220,6 +221,11 @@ implemented behavior belongs to a named standards slice.
   preserve the rounded float value when promoted to double, and implement the
   paired-NaN deep-equal rule. Leave boolean and date/time cases 023 through 031
   unselected.
+- [x] Extend the explicit mixed tranche through
+  `fn-deep-equal-mix-args-027`. Normalize the four valid XML Schema boolean
+  lexical forms and compare them with typed `true()`/`false()` function values,
+  while rejecting unrecognized boolean strings. Leave date/time cases 028
+  through 031 unselected.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.

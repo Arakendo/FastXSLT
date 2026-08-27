@@ -195,8 +195,8 @@ semantics, or general sequence equality.
 
 ## QT3 mixed atomic-sequence tranche
 
-FastXSLT now executes the first twenty-two contiguous
-`fn-deep-equal-mix-args-*` cases, 001 through 022. This is an explicit tranche
+FastXSLT now executes the first twenty-seven contiguous
+`fn-deep-equal-mix-args-*` cases, 001 through 027. This is an explicit tranche
 of the 31-case mixed group,
 not a claim that the complete group passes. The admitted expressions cover:
 
@@ -210,7 +210,9 @@ not a claim that the complete group passes. The admitted expressions cover:
 - integer and decimal promotion to float or double;
 - float-to-double promotion that preserves the float's rounded value; and
 - positive infinity, negative infinity, and the `fn:deep-equal` paired-NaN
-  rule.
+  rule; and
+- boolean constructors using `1`, `0`, `true`, or `false`, plus `true()` and
+  `false()` function values.
 
 The parser finds the function's argument separator at parenthesis depth zero,
 so a comma inside an operand sequence cannot be mistaken for the separator.
@@ -229,8 +231,12 @@ representation. Comparison reconstructs the typed value, promotes float to
 double without reparsing its original lexical form, and treats two NaN values
 as deep-equal while leaving ordinary numeric equality rules unchanged.
 
-Cases 023 through 031 remain unselected. They introduce boolean lexical
-equivalence and date/time versus string behavior. This tranche also does not
+The boolean parser retains a typed boolean value, normalizes only the four XML
+Schema boolean lexical forms, and rejects other strings rather than applying
+host-language truthiness.
+
+Cases 028 through 031 remain unselected. They introduce date/time versus string
+behavior. This tranche also does not
 claim general XPath sequence parsing, escaped string literals, collations,
 broader typed-value promotion, every floating-point lexical form, or general
 `fn:deep-equal` semantics.

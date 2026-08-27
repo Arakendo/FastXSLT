@@ -33,6 +33,7 @@ enum AtomicValue {
     Decimal(ExactDecimal),
     Float(u32),
     Double(u64),
+    Boolean(bool),
     String(String),
     AnyUri(String),
 }
@@ -199,6 +200,14 @@ fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
     {
         return Some(AtomicValue::Double(value));
     }
+    if let Some(value) = constructor_lexical(expression, "xs:boolean").and_then(parse_boolean) {
+        return Some(AtomicValue::Boolean(value));
+    }
+    match expression {
+        "true()" => return Some(AtomicValue::Boolean(true)),
+        "false()" => return Some(AtomicValue::Boolean(false)),
+        _ => {}
+    }
     expression.parse::<i128>().ok().map(AtomicValue::Integer)
 }
 
@@ -231,6 +240,14 @@ fn parse_double(lexical: &str) -> Option<f64> {
         "-INF" => Some(f64::NEG_INFINITY),
         "NaN" => Some(f64::NAN),
         value => value.parse().ok(),
+    }
+}
+
+fn parse_boolean(lexical: &str) -> Option<bool> {
+    match lexical {
+        "1" | "true" => Some(true),
+        "0" | "false" => Some(false),
+        _ => None,
     }
 }
 
@@ -918,5 +935,20 @@ mod tests {
             !evaluate(&distinct, None, &mut InvocationControl::unbounded())
                 .expect("evaluate promoted float/double comparison")
         );
+    }
+
+    #[test]
+    fn normalizes_only_valid_boolean_lexicals_and_functions() {
+        for expression in [
+            "fn:deep-equal(xs:boolean(\"1\"), true())",
+            "fn:deep-equal(xs:boolean(\"0\"), false())",
+        ] {
+            let parsed = parse(expression, &location()).expect("parse boolean comparison");
+            assert!(
+                evaluate(&parsed, None, &mut InvocationControl::unbounded())
+                    .expect("evaluate boolean comparison")
+            );
+        }
+        assert!(parse("fn:deep-equal(xs:boolean(\"yes\"), true())", &location(),).is_err());
     }
 }
