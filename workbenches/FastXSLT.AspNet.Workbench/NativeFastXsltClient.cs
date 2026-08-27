@@ -50,24 +50,48 @@ public sealed class NativeFastXsltClient : IDisposable
             ObjectDisposedException.ThrowIf(_engine.IsClosed, this);
             var request = Encoding.UTF8.GetBytes(requestIdentity);
             var outcome = NativeMethods.Transform(_engine.Value, request, (nuint)request.Length);
-            var kind = NativeMethods.OutcomeKind(outcome);
-            if (kind == 3)
-            {
-                throw ReadFailureAndRelease(outcome);
-            }
-            if (kind != 2)
-            {
-                NativeMethods.OutcomeRelease(outcome);
-                throw new InvalidDataException("Native transform returned an invalid outcome.");
-            }
-            try
-            {
-                return Encoding.UTF8.GetString(ReadOutcome(outcome));
-            }
-            finally
-            {
-                NativeMethods.OutcomeRelease(outcome);
-            }
+            return ReadTransformOutcome(outcome);
+        }
+    }
+
+    public string TransformWithInvocationPolicy(
+        string requestIdentity,
+        bool cancellationRequested,
+        ulong maximumXsltInstructions)
+    {
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_engine.IsClosed, this);
+            var request = Encoding.UTF8.GetBytes(requestIdentity);
+            var outcome = NativeMethods.TransformControlled(
+                _engine.Value,
+                request,
+                (nuint)request.Length,
+                cancellationRequested ? 1u : 0u,
+                maximumXsltInstructions);
+            return ReadTransformOutcome(outcome);
+        }
+    }
+
+    private static string ReadTransformOutcome(ulong outcome)
+    {
+        var kind = NativeMethods.OutcomeKind(outcome);
+        if (kind == 3)
+        {
+            throw ReadFailureAndRelease(outcome);
+        }
+        if (kind != 2)
+        {
+            NativeMethods.OutcomeRelease(outcome);
+            throw new InvalidDataException("Native transform returned an invalid outcome.");
+        }
+        try
+        {
+            return Encoding.UTF8.GetString(ReadOutcome(outcome));
+        }
+        finally
+        {
+            NativeMethods.OutcomeRelease(outcome);
         }
     }
 
@@ -165,6 +189,14 @@ public sealed class NativeFastXsltClient : IDisposable
             ulong engineHandle,
             byte[] requestIdentity,
             nuint requestIdentityLength);
+
+        [DllImport(Library, EntryPoint = "fastxslt_workbench_v0_transform_controlled")]
+        internal static extern ulong TransformControlled(
+            ulong engineHandle,
+            byte[] requestIdentity,
+            nuint requestIdentityLength,
+            uint cancellationRequested,
+            ulong maximumXsltInstructions);
 
         [DllImport(Library, EntryPoint = "fastxslt_workbench_v0_outcome_kind")]
         internal static extern uint OutcomeKind(ulong outcomeHandle);

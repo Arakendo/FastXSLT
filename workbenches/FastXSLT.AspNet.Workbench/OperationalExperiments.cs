@@ -234,6 +234,35 @@ public static class OperationalExperiments
         }
         var recoveryResult = client.Transform("native-boundary-recovery");
 
+        NativeFastXsltException cancellation;
+        try
+        {
+            _ = client.TransformWithInvocationPolicy(
+                "native-controlled-cancelled",
+                cancellationRequested: true,
+                maximumXsltInstructions: 1_000_000);
+            throw new InvalidOperationException("Pre-signalled native cancellation unexpectedly succeeded.");
+        }
+        catch (NativeFastXsltException failure)
+        {
+            cancellation = failure;
+        }
+
+        NativeFastXsltException instructionBudget;
+        try
+        {
+            _ = client.TransformWithInvocationPolicy(
+                "native-instruction-budget",
+                cancellationRequested: false,
+                maximumXsltInstructions: 0);
+            throw new InvalidOperationException("Zero native instruction budget unexpectedly succeeded.");
+        }
+        catch (NativeFastXsltException failure)
+        {
+            instructionBudget = failure;
+        }
+        var controlledRecoveryResult = client.Transform("native-controlled-recovery");
+
         NativeFastXsltException malformedSource;
         try
         {
@@ -292,9 +321,23 @@ public static class OperationalExperiments
                 malformedSource.Category,
                 malformedSource.RequestId,
                 malformedSource.Detail),
+            cancellation = new DiagnosticEvidence(
+                cancellation.Code,
+                cancellation.Category,
+                cancellation.RequestId,
+                cancellation.Detail),
+            instructionBudget = new DiagnosticEvidence(
+                instructionBudget.Code,
+                instructionBudget.Category,
+                instructionBudget.RequestId,
+                instructionBudget.Detail),
             recoveryResult,
+            controlledRecoveryResult,
             concurrentResults,
             independentHandlesExecutedConcurrently = true,
+            controlsWereScalarAndPreDispatch = true,
+            activeMidExecutionSignalSupported = false,
+            hardTerminationGuaranteed = false,
             doubleDisposeWasIdempotent = true,
             useAfterDisposeRejected
         };

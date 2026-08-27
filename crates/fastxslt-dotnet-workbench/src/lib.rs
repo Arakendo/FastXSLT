@@ -10,7 +10,9 @@ use std::{
     },
 };
 
-use fastxslt::workbench::{ExperimentalEngine, WorkbenchFailure, WorkbenchLimits};
+use fastxslt::workbench::{
+    ExperimentalEngine, WorkbenchCancellation, WorkbenchFailure, WorkbenchLimits,
+};
 
 const ABI_VERSION: u32 = 0;
 const MAX_IDENTITY_BYTES: usize = 4_096;
@@ -322,20 +324,87 @@ pub extern "C" fn fastxslt_workbench_v0_transform(
             };
             engine
         };
-        match engine.transform(&request_identity) {
-            Ok(result) if result.len() <= MAX_OUTCOME_BYTES => {
-                state.insert_outcome(Outcome::Bytes {
-                    kind: OUTCOME_RESULT,
-                    value: result.into_bytes(),
-                })
-            }
-            Ok(result) => state.insert_boundary_failure(&BoundaryFailure::new(
-                "FXFFI0005",
-                format!("result length {} exceeds {MAX_OUTCOME_BYTES}", result.len()),
-            )),
-            Err(failure) => state.insert_outcome(engine_failure(&failure)),
-        }
+        insert_transform_outcome(state, engine.transform(&request_identity))
     })
+}
+
+/// Executes one request with scalar invocation-local controls.
+///
+/// `cancellation_requested` must be zero or one. Cancellation is already
+/// signalled before execution begins; this is not an active callback or a hard
+/// termination mechanism.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn fastxslt_workbench_v0_transform_controlled(
+    engine_handle: u64,
+    request_identity_pointer: *const u8,
+    request_identity_length: usize,
+    cancellation_requested: u32,
+    maximum_xslt_instructions: u64,
+) -> u64 {
+    guarded(0, |state| {
+        let request_identity = match copy_input(
+            request_identity_pointer,
+            request_identity_length,
+            MAX_IDENTITY_BYTES,
+        )
+        .and_then(|value| decode_identity(value, "request identity"))
+        {
+            Ok(value) => value,
+            Err(failure) => return state.insert_boundary_failure(&failure),
+        };
+        if cancellation_requested > 1 {
+            return state.insert_boundary_failure(&BoundaryFailure::new(
+                "FXFFI0009",
+                "cancellation flag must be zero or one",
+            ));
+        }
+        let Ok(maximum_xslt_instructions) = usize::try_from(maximum_xslt_instructions) else {
+            return state.insert_boundary_failure(&BoundaryFailure::new(
+                "FXFFI0010",
+                "XSLT instruction limit does not fit this platform",
+            ));
+        };
+        let engine = {
+            let Ok(engines) = state.engines() else {
+                return 0;
+            };
+            let Some(engine) = engines.get(&engine_handle).cloned() else {
+                drop(engines);
+                return state.insert_boundary_failure(&BoundaryFailure::new(
+                    "FXFFI0004",
+                    "unknown engine handle",
+                ));
+            };
+            engine
+        };
+        let cancellation = WorkbenchCancellation::new();
+        if cancellation_requested == 1 {
+            cancellation.cancel();
+        }
+        insert_transform_outcome(
+            state,
+            engine.transform_with_invocation_policy(
+                &request_identity,
+                cancellation,
+                maximum_xslt_instructions,
+            ),
+        )
+    })
+}
+
+fn insert_transform_outcome(state: &State, result: Result<String, WorkbenchFailure>) -> u64 {
+    match result {
+        Ok(result) if result.len() <= MAX_OUTCOME_BYTES => state.insert_outcome(Outcome::Bytes {
+            kind: OUTCOME_RESULT,
+            value: result.into_bytes(),
+        }),
+        Ok(result) => state.insert_boundary_failure(&BoundaryFailure::new(
+            "FXFFI0005",
+            format!("result length {} exceeds {MAX_OUTCOME_BYTES}", result.len()),
+        )),
+        Err(failure) => state.insert_outcome(engine_failure(&failure)),
+    }
 }
 
 /// Reports an outcome kind, or zero for an invalid handle/quarantined lane.
@@ -444,8 +513,62 @@ mod tests {
         fastxslt_workbench_v0_create, fastxslt_workbench_v0_engine_release,
         fastxslt_workbench_v0_outcome_copy, fastxslt_workbench_v0_outcome_kind,
         fastxslt_workbench_v0_outcome_length, fastxslt_workbench_v0_outcome_release,
-        fastxslt_workbench_v0_outcome_take_engine, fastxslt_workbench_v0_transform, guarded_on,
+        fastxslt_workbench_v0_outcome_take_engine, fastxslt_workbench_v0_transform,
+        fastxslt_workbench_v0_transform_controlled, guarded_on,
     };
+
+    fn outcome_bytes(outcome: u64) -> Vec<u8> {
+        let length = fastxslt_workbench_v0_outcome_length(outcome);
+        let mut value = vec![0_u8; length];
+        assert_eq!(
+            fastxslt_workbench_v0_outcome_copy(outcome, value.as_mut_ptr(), value.len()),
+            0
+        );
+        value
+    }
+
+    fn failure_fields(outcome: u64) -> Vec<String> {
+        let bytes = outcome_bytes(outcome);
+        let mut offset = 0;
+        let mut fields = Vec::new();
+        for _ in 0..4 {
+            let length = u32::from_le_bytes(
+                bytes[offset..offset + 4]
+                    .try_into()
+                    .expect("failure length field"),
+            ) as usize;
+            offset += 4;
+            fields.push(
+                String::from_utf8(bytes[offset..offset + length].to_vec())
+                    .expect("UTF-8 failure field"),
+            );
+            offset += length;
+        }
+        assert_eq!(offset, bytes.len());
+        fields
+    }
+
+    fn create_reference_engine() -> u64 {
+        let source_identity = b"urn:w3c:xslt30:for-004:source";
+        let source = include_bytes!("../../../vendor/xslt30-test/tests/expr/for/for03.xml");
+        let stylesheet_identity = b"urn:w3c:xslt30:for-004:stylesheet";
+        let stylesheet = include_bytes!("../../../vendor/xslt30-test/tests/expr/for/for-004.xsl");
+        let creation = fastxslt_workbench_v0_create(
+            source_identity.as_ptr(),
+            source_identity.len(),
+            source.as_ptr(),
+            source.len(),
+            stylesheet_identity.as_ptr(),
+            stylesheet_identity.len(),
+            stylesheet.as_ptr(),
+            stylesheet.len(),
+        );
+        assert_eq!(fastxslt_workbench_v0_outcome_kind(creation), 1);
+        let engine = fastxslt_workbench_v0_outcome_take_engine(creation);
+        assert_ne!(engine, 0);
+        assert_eq!(fastxslt_workbench_v0_outcome_kind(creation), 0);
+        engine
+    }
 
     #[test]
     fn pointer_copy_helpers_validate_before_their_exact_unsafe_operations() {
@@ -504,24 +627,7 @@ mod tests {
 
     #[test]
     fn native_handles_execute_copy_and_release_the_safe_reference_lifecycle() {
-        let source_identity = b"urn:w3c:xslt30:for-004:source";
-        let source = include_bytes!("../../../vendor/xslt30-test/tests/expr/for/for03.xml");
-        let stylesheet_identity = b"urn:w3c:xslt30:for-004:stylesheet";
-        let stylesheet = include_bytes!("../../../vendor/xslt30-test/tests/expr/for/for-004.xsl");
-        let creation = fastxslt_workbench_v0_create(
-            source_identity.as_ptr(),
-            source_identity.len(),
-            source.as_ptr(),
-            source.len(),
-            stylesheet_identity.as_ptr(),
-            stylesheet_identity.len(),
-            stylesheet.as_ptr(),
-            stylesheet.len(),
-        );
-        assert_eq!(fastxslt_workbench_v0_outcome_kind(creation), 1);
-        let engine = fastxslt_workbench_v0_outcome_take_engine(creation);
-        assert_ne!(engine, 0);
-        assert_eq!(fastxslt_workbench_v0_outcome_kind(creation), 0);
+        let engine = create_reference_engine();
 
         let request = b"native-reference";
         let outcome = fastxslt_workbench_v0_transform(engine, request.as_ptr(), request.len());
@@ -553,5 +659,86 @@ mod tests {
         let unknown = fastxslt_workbench_v0_transform(engine, request.as_ptr(), request.len());
         assert_eq!(fastxslt_workbench_v0_outcome_kind(unknown), OUTCOME_FAILURE);
         assert_eq!(fastxslt_workbench_v0_outcome_release(unknown), 1);
+    }
+
+    #[test]
+    fn scalar_controls_preserve_diagnostics_and_engine_reuse() {
+        let engine = create_reference_engine();
+        let cancellation_request = b"native-controlled-cancelled";
+        let cancellation = fastxslt_workbench_v0_transform_controlled(
+            engine,
+            cancellation_request.as_ptr(),
+            cancellation_request.len(),
+            1,
+            1_000_000,
+        );
+        assert_eq!(
+            fastxslt_workbench_v0_outcome_kind(cancellation),
+            OUTCOME_FAILURE
+        );
+        assert_eq!(
+            failure_fields(cancellation),
+            [
+                "FXCT0001",
+                "cancelled",
+                "native-controlled-cancelled",
+                "host cancellation observed while charging xslt-instruction work",
+            ]
+        );
+        assert_eq!(fastxslt_workbench_v0_outcome_release(cancellation), 1);
+
+        let budget_request = b"native-controlled-budget";
+        let budget = fastxslt_workbench_v0_transform_controlled(
+            engine,
+            budget_request.as_ptr(),
+            budget_request.len(),
+            0,
+            0,
+        );
+        assert_eq!(fastxslt_workbench_v0_outcome_kind(budget), OUTCOME_FAILURE);
+        assert_eq!(
+            failure_fields(budget),
+            [
+                "FXCT0002",
+                "limit",
+                "native-controlled-budget",
+                "xslt-instruction work budget exhausted: limit 0, consumed 0, next charge 1",
+            ]
+        );
+        assert_eq!(fastxslt_workbench_v0_outcome_release(budget), 1);
+
+        let invalid_control = fastxslt_workbench_v0_transform_controlled(
+            engine,
+            budget_request.as_ptr(),
+            budget_request.len(),
+            2,
+            1_000_000,
+        );
+        assert_eq!(
+            failure_fields(invalid_control),
+            [
+                "FXFFI0009",
+                "boundary",
+                "",
+                "cancellation flag must be zero or one",
+            ]
+        );
+        assert_eq!(fastxslt_workbench_v0_outcome_release(invalid_control), 1);
+
+        let recovery_request = b"native-controlled-recovery";
+        let controlled_recovery = fastxslt_workbench_v0_transform(
+            engine,
+            recovery_request.as_ptr(),
+            recovery_request.len(),
+        );
+        assert_eq!(
+            fastxslt_workbench_v0_outcome_kind(controlled_recovery),
+            OUTCOME_RESULT
+        );
+        assert_eq!(
+            fastxslt_workbench_v0_outcome_release(controlled_recovery),
+            1
+        );
+        assert_eq!(fastxslt_workbench_v0_engine_release(engine), 1);
     }
 }

@@ -8,7 +8,7 @@
 | Scope | Non-Rust embedding, deployment, and performance boundary |
 | Trigger | ASP.NET applications are a motivating FastXSLT consumer class |
 | Related ADRs | ADR-0001 |
-| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, `docs/Evidence/aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md`, `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`, `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-natural-cancellation-races-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
+| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, `docs/Evidence/aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md`, `docs/Evidence/aspnet-native-invocation-controls-2026-08-26.md`, `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`, `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-natural-cancellation-races-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
 
 ## Architectural question
 
@@ -154,6 +154,11 @@ security contracts.
   tiny-call boundary cost and its workload-dependent amortization. Managed
   allocation excludes Rust in both paths, and whole-host native working set is
   not an attributable engine-memory measurement.
+- ADR-0009 now admits one controlled native transform carrying only a validated
+  cancellation flag and XSLT-instruction limit. The live managed probe retained
+  exact `FXCT0001 / cancelled` and `FXCT0002 / limit` diagnostics and reused the
+  same engine after both failures. This is pre-dispatch cooperative control,
+  not active signalling, a deadline, or hard termination.
 
 ## Disposition
 
@@ -230,3 +235,7 @@ invalidates the selected mechanism.
   independent native handles. Recorded boundary-cost scaling, latency,
   concurrency, allocation scope, and retained-memory measurement limits without
   selecting a production default.
+- 2026-08-26 -- Accepted ADR-0009 and carried pre-dispatch cancellation plus a
+  deterministic instruction budget through scalar native ABI values. Exact
+  diagnostic fields and same-handle recovery passed without adding an unsafe
+  block; active native signalling remains open.

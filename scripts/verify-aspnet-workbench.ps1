@@ -192,11 +192,23 @@ try {
                 $nativeBoundary.malformedSource.code -ne 'FXXM0002' -or
                 $nativeBoundary.malformedSource.category -ne 'invalid' -or
                 -not $nativeBoundary.malformedSource.detail.Contains('urn:fastxslt:native-boundary:malformed-source') -or
+                $nativeBoundary.cancellation.code -ne 'FXCT0001' -or
+                $nativeBoundary.cancellation.category -ne 'cancelled' -or
+                $nativeBoundary.cancellation.requestId -ne 'native-controlled-cancelled' -or
+                $nativeBoundary.cancellation.detail -cne 'host cancellation observed while charging xslt-instruction work' -or
+                $nativeBoundary.instructionBudget.code -ne 'FXCT0002' -or
+                $nativeBoundary.instructionBudget.category -ne 'limit' -or
+                $nativeBoundary.instructionBudget.requestId -ne 'native-instruction-budget' -or
+                $nativeBoundary.instructionBudget.detail -cne 'xslt-instruction work budget exhausted: limit 0, consumed 0, next charge 1' -or
                 $nativeBoundary.recoveryResult -cne $expected -or
+                $nativeBoundary.controlledRecoveryResult -cne $expected -or
                 $nativeBoundary.concurrentResults.Count -ne 2 -or
                 $nativeBoundary.concurrentResults[0] -cne $expected -or
                 $nativeBoundary.concurrentResults[1] -cne $expected -or
                 -not $nativeBoundary.independentHandlesExecutedConcurrently -or
+                -not $nativeBoundary.controlsWereScalarAndPreDispatch -or
+                $nativeBoundary.activeMidExecutionSignalSupported -or
+                $nativeBoundary.hardTerminationGuaranteed -or
                 -not $nativeBoundary.doubleDisposeWasIdempotent -or
                 -not $nativeBoundary.useAfterDisposeRejected) {
                 throw "Native boundary experiment violated ABI ownership or parity: $($nativeBoundary | ConvertTo-Json -Depth 5)"
@@ -289,6 +301,9 @@ try {
                 Experiment = 'NativeBoundary'
                 InvalidIdentity = $nativeBoundary.invalidIdentity.code
                 MalformedSource = $nativeBoundary.malformedSource.code
+                PreDispatchCancellation = $nativeBoundary.cancellation.code
+                InstructionBudget = $nativeBoundary.instructionBudget.code
+                ControlledRecovery = $nativeBoundary.controlledRecoveryResult -ceq $expected
                 ConcurrentIndependentHandles = $nativeBoundary.independentHandlesExecutedConcurrently
                 DoubleDisposeIdempotent = $nativeBoundary.doubleDisposeWasIdempotent
                 UseAfterDisposeRejected = $nativeBoundary.useAfterDisposeRejected

@@ -208,9 +208,32 @@ impl ExperimentalEngine {
         request_id: &str,
         maximum_xslt_instructions: usize,
     ) -> Result<String, WorkbenchFailure> {
+        self.transform_with_invocation_policy(
+            request_id,
+            WorkbenchCancellation::new(),
+            maximum_xslt_instructions,
+        )
+    }
+
+    /// Executes one request with invocation-local cooperative cancellation and
+    /// an XSLT instruction budget.
+    ///
+    /// This combined seam exists for host-boundary experiments that must carry
+    /// both controls without changing the retained engine configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns the same structured cancellation, limit, or semantic failure as
+    /// the corresponding direct engine controls.
+    pub fn transform_with_invocation_policy(
+        &self,
+        request_id: &str,
+        cancellation: WorkbenchCancellation,
+        maximum_xslt_instructions: usize,
+    ) -> Result<String, WorkbenchFailure> {
         let mut limits = self.limits;
         limits.max_xslt_instructions = maximum_xslt_instructions;
-        self.transform_with_control(request_id, WorkbenchCancellation::new(), limits)
+        self.transform_with_control(request_id, cancellation, limits)
     }
 
     fn transform_with_control(

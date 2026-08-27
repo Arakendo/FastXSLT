@@ -45,3 +45,7 @@ but supersede a materially changed decision instead of rewriting its history.
   -- Accepted; admit a narrowly bounded unsafe buffer-copy surface only in the
   unpublished native .NET workbench, with numeric handles, panic quarantine,
   differential verification, and explicit removal criteria.
+- [ADR-0009: Scalar Native Invocation Controls](ADR-0009-scalar-native-invocation-controls.md)
+  -- Accepted; carry pre-dispatch cooperative cancellation and an invocation
+  XSLT-instruction budget as validated scalar values without callbacks, retained
+  foreign state, or another unsafe pointer operation.

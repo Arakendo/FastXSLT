@@ -20,10 +20,11 @@ current order of work is:
    deterministic active, and unpaused race-sampled cooperative cancellation,
    worker failure/restart, explicit snapshot generation promotion, and
    changed-resource file replacement now have private executable baselines;
-2. close the in-process candidate's lifecycle gaps for cancellation, invocation
-   budgets, generation replacement, and structured diagnostic parity; its
-   comparable 5/50/500-item tiered latency, allocation-scope, and retained-memory
-   limitations are now recorded;
+2. close the in-process candidate's remaining lifecycle gaps for active
+   cancellation, generation replacement, and complete structured diagnostic
+   parity; scalar pre-dispatch cancellation and deterministic instruction
+   budgets now preserve exact engine outcomes and same-handle recovery, and its
+   comparable 5/50/500-item tiered evidence is recorded;
 3. compare lifecycle and guarantee coverage across both modes before
    stabilizing a host boundary or performance claim.
 
@@ -208,6 +209,10 @@ failed, and harness-error cases without an unqualified conformance claim.
     four independent native handles, recording tiered throughput, latency,
     managed-allocation scope, isolated working set, and the limits of whole-host
     native memory observations.
+  - [x] Carry pre-dispatch cooperative cancellation and a deterministic
+    XSLT-instruction budget through ADR-0009 scalar native controls, preserving
+    exact diagnostics and ordinary reuse of the same engine handle without
+    claiming active cancellation or hard termination.
 - [ ] Exercise AR-0010's private invocation controls under adversarial work;
   distinguish deterministic budgets, cooperative cancellation, best-effort
   deadlines, panic handling, and process-level hard termination claims.

@@ -104,8 +104,10 @@ The in-process endpoints load the unpublished ADR-0008 native library. Its
 version-zero ABI copies bounded buffers, retains Rust state behind numeric
 handles, transfers structured failure envelopes, and uses a managed `SafeHandle`
 wrapper. The native operational probe covers diagnostics, independent-handle
-concurrency, double disposal, and use-after-dispose rejection. It currently has
-no cancellation, same-handle concurrency, or hard-termination guarantee.
+concurrency, double disposal, and use-after-dispose rejection. ADR-0009 also
+carries already-signalled cooperative cancellation and an invocation-local
+XSLT-instruction budget as scalar values. It has no active mid-execution signal,
+same-handle concurrency, or hard-termination guarantee.
 
 The host-file variant imports source and stylesheet files into owned bytes,
 closes the handles, renames and removes both originals while the old worker
