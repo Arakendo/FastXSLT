@@ -52,8 +52,9 @@ and add the record to this index. Never reuse a retired number.
   -- Accepted through ADR-0007; modern reference editions guide a staged,
   explicitly incomplete profile without creating a broad conformance claim.
 - [AR-0002: ASP.NET Host Integration Boundary](AR-0002-aspnet-host-integration.md)
-  -- Proposed; determine how managed applications embed and reuse FastXSLT
-  without confusing Rust-core speed with end-to-end host performance.
+  -- Under Review; native and isolated candidates now share an executable
+  lifecycle with measured cost/guarantee differences, while representative
+  consumer requirements still block supported profile selection.
 - [AR-0003: Memory Resource Snapshots and Batch Transforms](AR-0003-memory-resource-snapshots-and-batch-transforms.md)
   -- Accepted through ADR-0002 and ADR-0005; bounded memory-resident snapshots
   and unordered independent transform sets are binding, while cache,

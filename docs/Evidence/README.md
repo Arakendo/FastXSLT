@@ -82,6 +82,7 @@ pressure architecture but does not silently create a public guarantee.
 - [ASP.NET Native Scalar Invocation Controls](aspnet-native-invocation-controls-2026-08-26.md)
 - [ASP.NET Native Generation and Diagnostic Parity](aspnet-native-generation-and-diagnostic-parity-2026-08-26.md)
 - [ASP.NET Native Active Cooperative Cancellation](aspnet-native-active-cancellation-2026-08-26.md)
+- [ASP.NET Host-Mode Guarantee and Cost Matrix](aspnet-host-mode-guarantee-cost-matrix-2026-08-26.md)
 - [Peer Review: Activated Execution Paths and Unsafe Optimization](peer-specialized-execution-review-monday-2026-08-26.md)
 - [Private Host-Owned Two-Stage Workflow](private-host-owned-two-stage-workflow-2026-08-25.md)
 - [Private Compiled Semantic Inspection](private-compiled-semantic-inspection-2026-08-25.md)

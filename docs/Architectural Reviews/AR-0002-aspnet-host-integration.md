@@ -2,13 +2,13 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Proposed |
+| Status | Under Review |
 | Opened | 2026-08-25 |
 | Last reviewed | 2026-08-26 |
 | Scope | Non-Rust embedding, deployment, and performance boundary |
 | Trigger | ASP.NET applications are a motivating FastXSLT consumer class |
 | Related ADRs | ADR-0001, ADR-0008, ADR-0009, ADR-0010 |
-| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, `docs/Evidence/aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md`, `docs/Evidence/aspnet-native-invocation-controls-2026-08-26.md`, `docs/Evidence/aspnet-native-generation-and-diagnostic-parity-2026-08-26.md`, `docs/Evidence/aspnet-native-active-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`, `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-natural-cancellation-races-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
+| Related evidence | `docs/Evidence/aspnet-host-mode-guarantee-cost-matrix-2026-08-26.md` and its linked native/isolated measurements; AR-0003 and AR-0010 |
 
 ## Architectural question
 
@@ -142,7 +142,8 @@ security contracts.
 - The leading in-process design now has accepted ADR-0008: a
   workbench-only native library with copied buffers, numeric handles, no
   callbacks, exact unsafe containment, and permanent panic quarantine. No
-  native implementation remains an unpublished workbench candidate.
+  native ABI is supported; the implementation remains an unpublished workbench
+  candidate.
 - The first native candidate executes byte-exact `for-004`, preserves invalid
   identity and malformed-XML diagnostics, uses managed `SafeHandle` ownership,
   and runs independent handles concurrently. Three 1,000-call warm runs observed
@@ -169,11 +170,21 @@ security contracts.
   fields, ignored an unrelated control, and recovered the same engine. Two
   unpaused 25-trial managed-token samples conserved all outcomes as cancellation
   and naturally observed both XSLT-instruction and XPath-node-visit domains.
+- The synthesized guarantee/cost matrix identifies one shared lifecycle across
+  both candidates: owned resource import, compile/prepare before explicit
+  generation promotion, identified invocation-local control, structured
+  outcomes, bounded independent execution slots, and lease-based draining.
+  Native handles, worker processes, frames, and control handles remain private
+  mode details. Current evidence supports evaluating trusted low-latency and
+  isolated-containment profiles, but consumer requirements cannot yet select or
+  name supported product modes.
 
 ## Disposition
 
-**Proposed.** Keep the Rust engine host-neutral and do not stabilize an interop
-ABI or managed API until a bounded ASP.NET workbench compares viable mechanisms.
+**Under Review.** Both leading mechanisms now execute the same candidate
+lifecycle with measured costs and explicit guarantee differences. Keep the Rust
+engine host-neutral and stabilize neither ABI/protocol nor a default mode until
+representative consumer requirements test the two-profile hypothesis.
 
 ## Required follow-up
 
@@ -191,8 +202,14 @@ ABI or managed API until a bounded ASP.NET workbench compares viable mechanisms.
     failure transfer.
   - [x] Accept ADR-0008 and establish the first in-process native candidate with
     copied buffers, numeric handles, structured outcomes, and managed disposal.
-- [ ] Measure cold start, compile-once/warm execution, marshaling, cancellation,
-  errors, result transfer, and steady-state concurrency end to end.
+- [x] Measure compile-once/warm execution, copied result transfer, cancellation,
+  representative errors, and bounded steady-state concurrency end to end for
+  both candidates.
+- [ ] Measure cold deployment/native loading, compile/prepare attribution,
+  transport stages, native allocation/retention, and sustained representative
+  load.
+- [x] Synthesize an explicit guarantee/cost matrix and the smallest lifecycle
+  shared by both candidates without exposing mode-specific handles.
 - [ ] Accept an ADR defining the selected boundary and its safety invariants.
 
 ## Reopening triggers
@@ -257,3 +274,7 @@ invalidates the selected mechanism.
   cancellation through Rust-owned control handles. Deterministic and natural
   managed-token probes preserved diagnostics and reuse without claiming a
   deadline or in-process hard termination.
+- 2026-08-26 -- Synthesized the executable guarantee/cost matrix, identified the
+  shared host-neutral lifecycle and the candidate low-latency/containment
+  profiles, and moved this review to Under Review. Representative consumer
+  requirements still block a supported-mode ADR.

@@ -14,19 +14,13 @@ bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
 current order of work is:
 
-1. complete the bounded-concurrency isolated ASP.NET experiment's remaining
-   representative workload and operational-policy evidence; managed-token
-   adaptation, four-case direct/isolated diagnostic parity, pre-dispatch,
-   deterministic active, and unpaused race-sampled cooperative cancellation,
-   worker failure/restart, explicit snapshot generation promotion, and
-   changed-resource file replacement now have private executable baselines;
-2. synthesize the now-executable native and isolated lifecycle evidence into a
-   guarantee/cost matrix; ADR-0010 active cooperative cancellation now preserves
-   managed-token outcomes and reuse, while hard termination remains exclusive
-   to isolation;
-3. obtain representative consumer requirements, then decide whether both modes
-   become supported profiles and stabilize only the lifecycle they share or
-   explicitly distinguish.
+1. obtain representative consumer transforms, input/result distributions,
+   concurrency, deployment targets, trust model, and latency/throughput budgets;
+2. execute those workloads through both candidates and add dedicated cold-load,
+   native-retention, transport-attribution, and sustained-load evidence;
+3. decide whether the measured low-latency and containment candidates become
+   supported profiles, then stabilize only their shared lifecycle plus any
+   deliberately distinct guarantee surfaces.
 
 Representative consumer transforms are not a prerequisite for a testable
 standards-driven preview. The pinned W3C suites provide executable stylesheets,
