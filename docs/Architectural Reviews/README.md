@@ -85,3 +85,7 @@ and add the record to this index. Never reuse a retired number.
   -- Accepted through ADR-0006; preserve native identity, explainable
   disposition, separate selection/execution axes, and denominator conservation
   while schema, storage, CI, and publication remain deferred.
+- [AR-0012: Rust Embedding Facade and Lifecycle](AR-0012-rust-embedding-facade-and-lifecycle.md)
+  -- Proposed; CR-0001 supplies the first concrete Rust consumer, but exact
+  public types await an authoritative fixture and consumer-shaped lifecycle
+  evidence.

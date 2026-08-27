@@ -31,6 +31,13 @@ to prioritize optional compatibility, validate useful workload coverage, choose
 host-facing lifecycle details, and make ASP.NET or application-performance
 claims.
 
+CR-0001 now records Tokimu's Web3D X3D-to-VRML workflow as the first concrete
+Rust-native consumer pressure and opens AR-0012 for the supported Rust facade.
+It does not yet close the representative-workload item: the authoritative
+Web3D invocation, pinned/licensed stylesheet and resources, parameters, trusted
+sentinels/output, input distributions, trust model, and performance budgets are
+still missing.
+
 ADR-0006 now makes AR-0011's essential ledger invariants binding. Its remaining
 reporting, storage, CI, and comparison-family work proceeds when executable
 standards slices need it; those deferred choices are not the current release

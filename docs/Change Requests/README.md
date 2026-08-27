@@ -22,6 +22,9 @@ ADR before implementation treats that change as settled.
 
 Use [the template](TEMPLATE.md) for new requests. Group supporting baselines,
 fixtures, and plans beside the request when one consumer generates several
-artifacts. No active CR exists yet; AR-0002 records architectural questions
-about a future ASP.NET consumer, but it is not a substitute for requirements
-from an actual consuming application.
+artifacts.
+
+- [CR-0001: Tokimu Web3D X3D-to-VRML Transformation](CR-0001-tokimu-web3d-x3d-to-vrml-transformation.md)
+  -- Proposed; first concrete Rust-native consumer pressure, pending an
+  authoritative Web3D invocation, legal fixture treatment, feature inventory,
+  and AR-0012 facade evidence.
