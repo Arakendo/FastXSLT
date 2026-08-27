@@ -1,8 +1,9 @@
-# Proposed ADR: Unsafe Native .NET Workbench Boundary
+# ADR-0008: Unsafe Native .NET Workbench Boundary
 
-- Status: Proposed
-- Opened: 2026-08-26
+- Status: Accepted
+- Date: 2026-08-26
 - Related reviews: AR-0002, AR-0004, AR-0010
+- Related evidence: `docs/Evidence/aspnet-in-process-native-workbench-baseline-2026-08-26.md`
 - Supersedes: None
 
 ## Context
@@ -28,7 +29,7 @@ surface rather than remove the FFI invariants.
 
 ## Decision
 
-If accepted, admit first-party unsafe code only in a new, unpublished,
+Admit first-party unsafe code only in a new, unpublished,
 workbench-only `cdylib` crate named `fastxslt-dotnet-workbench`. Keep
 `unsafe_code = "forbid"` in the engine and every other existing crate. The new
 crate may set `unsafe_code = "deny"`; it must not use crate-wide `allow`.
@@ -182,8 +183,8 @@ contracts. The first measurement does not justify that surface.
 
 ## Validation
 
-Acceptance authorizes implementation only when the change includes all of the
-following gates:
+The implementation and every later change must satisfy all of the following
+gates:
 
 - retain the existing safe Rust facade and isolated worker as semantic
   references;

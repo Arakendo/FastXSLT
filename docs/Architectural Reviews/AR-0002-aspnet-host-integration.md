@@ -139,10 +139,14 @@ security contracts.
 - A narrow invocation-local instruction-budget command now returns structured
   limit exhaustion without retrying or replacing the worker, followed by a
   successful ordinary request on the same compiled/prepared process.
-- The leading in-process design now has a proposed ADR-0003 exception: a
+- The leading in-process design now has accepted ADR-0008: a
   workbench-only native library with copied buffers, numeric handles, no
   callbacks, exact unsafe containment, and permanent panic quarantine. No
-  native implementation is authorized while that ADR remains Proposed.
+  native implementation remains an unpublished workbench candidate.
+- The first native candidate executes byte-exact `for-004`, preserves invalid
+  identity and malformed-XML diagnostics, uses managed `SafeHandle` ownership,
+  and runs independent handles concurrently. Three 1,000-call warm runs observed
+  321,926/s native versus 16,809/s isolated by medians on this tiny workload.
 
 ## Disposition
 
@@ -159,12 +163,12 @@ ABI or managed API until a bounded ASP.NET workbench compares viable mechanisms.
   transferring identical resource bytes on every invocation.
 - [x] Verify imported files can be replaced during service operation while old
   in-flight requests continue on their sealed snapshots without held handles.
-- [ ] Prototype at least the leading in-process and isolated alternatives.
+- [x] Prototype at least the leading in-process and isolated alternatives.
   - [x] Establish a persistent isolated-worker baseline with bounded frames,
     compile-once/prepared reuse, stable result correlation, and structured
     failure transfer.
-  - [ ] Decide the proposed unsafe native-workbench exception, then implement
-    the in-process candidate only if accepted.
+  - [x] Accept ADR-0008 and establish the first in-process native candidate with
+    copied buffers, numeric handles, structured outcomes, and managed disposal.
 - [ ] Measure cold start, compile-once/warm execution, marshaling, cancellation,
   errors, result transfer, and steady-state concurrency end to end.
 - [ ] Accept an ADR defining the selected boundary and its safety invariants.
@@ -212,3 +216,6 @@ invalidates the selected mechanism.
 - 2026-08-26 -- Proposed the exact unsafe surface and safety contract for a
   workbench-only native .NET candidate. Retained the implementation gate under
   ADR-0003 pending explicit acceptance.
+- 2026-08-26 -- Accepted ADR-0008 and executed the first native ASP.NET
+  candidate. Exact output, two diagnostic phases, independent handles, disposal,
+  and a three-run warm comparison passed; broader lifecycle parity remains open.

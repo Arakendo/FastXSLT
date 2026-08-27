@@ -82,7 +82,9 @@ contract.
 - Do not split logical layers into crates until dependency direction, independent
   reuse, or release pressure makes the boundary valuable.
 - Follow ADR-0003. Do not add `unsafe` code merely because tests pass. The
-  workspace currently forbids it; a narrow future exception needs its own
+  engine and ordinary workspace crates forbid it. ADR-0008 admits only the
+  native .NET workbench's reviewed export and bounded buffer-copy surface; any
+  other exception needs its own
   accepted ADR covering necessity, rejected safe alternatives, safety contract,
   containment, safe reference behavior where practical, specialized tool
   evidence, measured benefit, exact surface, and removal criteria.
@@ -150,6 +152,9 @@ keep relative links valid.
 ## Current workspace shape
 
 - `crates/fastxslt` -- public facade and initially private engine layers
+- `crates/fastxslt-dotnet-workbench` -- unpublished ADR-0008 native experiment;
+  its exact unsafe surface is enforced by `scripts/verify.ps1`
+- `crates/fastxslt-worker` -- unpublished isolated-process host experiment
 - `corpus/golden` -- small reviewed source/stylesheet/expected triples
 - `vendor/qt3tests` and `vendor/xslt30-test` -- pinned upstream W3C suites
 - `docs/Specifications` -- current intended architecture and contracts

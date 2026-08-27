@@ -22,6 +22,11 @@ var worker = await FastXsltWorkerClient.StartAsync(
     source,
     "urn:w3c:xslt30:for-004:stylesheet",
     stylesheet);
+var native = NativeFastXsltClient.Create(
+    "urn:w3c:xslt30:for-004:source",
+    source,
+    "urn:w3c:xslt30:for-004:stylesheet",
+    stylesheet);
 var dotNetXslt1 = DotNetXslt1Baseline.Create(
     source,
     dotNetStylesheet);
@@ -30,6 +35,7 @@ var saxonCs = SaxonCsBaseline.Create(source, stylesheet);
 #endif
 var exactStylesheetProbe = DotNetXslt1Baseline.ProbeExactStylesheet(source, stylesheet);
 builder.Services.AddSingleton(worker);
+builder.Services.AddSingleton(native);
 builder.Services.AddSingleton(dotNetXslt1);
 #if SAXONCS_LOCAL
 builder.Services.AddSingleton(saxonCs);
@@ -43,6 +49,7 @@ app.MapGet("/health", () => Results.Ok(new
     status = "ready",
     mode = "isolated-persistent-worker",
     maximumInFlight = 1,
+    nativeInProcessAvailable = true,
     semantics = "xslt30-for-004-private-slice",
     dotNetXslt1ExactStylesheetExecuted = exactStylesheetProbe.Executed,
     dotNetXslt1ExactStylesheetDiagnostic = exactStylesheetProbe.Detail,
@@ -70,6 +77,23 @@ app.MapPost("/transform/{requestId}", async (string requestId, FastXsltWorkerCli
         }, statusCode: StatusCodes.Status422UnprocessableEntity);
     }
 });
+app.MapPost("/transform/inprocess/{requestId}", (string requestId, NativeFastXsltClient client) =>
+{
+    try
+    {
+        return Results.Text(client.Transform(requestId), "application/xml");
+    }
+    catch (NativeFastXsltException failure)
+    {
+        return Results.Json(new
+        {
+            failure.Code,
+            failure.Category,
+            failure.RequestId,
+            failure.Detail
+        }, statusCode: StatusCodes.Status422UnprocessableEntity);
+    }
+});
 app.MapPost("/transform/dotnet-xslt1", (DotNetXslt1Baseline baseline) =>
     Results.Text(baseline.Transform(), "application/xml"));
 #if SAXONCS_LOCAL
@@ -83,6 +107,23 @@ app.MapPost("/measure", async (int? requests, FastXsltWorkerClient client) =>
     for (var index = 0; index < count; index++)
     {
         _ = await client.TransformAsync($"measure-{index}");
+    }
+    stopwatch.Stop();
+    return Results.Ok(new
+    {
+        requests = count,
+        elapsedMilliseconds = stopwatch.Elapsed.TotalMilliseconds,
+        transformsPerSecond = count / stopwatch.Elapsed.TotalSeconds,
+        maximumInFlight = 1
+    });
+});
+app.MapPost("/measure/inprocess", (int? requests, NativeFastXsltClient client) =>
+{
+    var count = Math.Clamp(requests ?? 100, 1, 10_000);
+    var stopwatch = Stopwatch.StartNew();
+    for (var index = 0; index < count; index++)
+    {
+        _ = client.Transform($"native-measure-{index}");
     }
     stopwatch.Stop();
     return Results.Ok(new
@@ -229,6 +270,20 @@ app.MapPost("/experiment/instruction-budget", async () =>
         operationalExperimentGate.Release();
     }
 });
+app.MapPost("/experiment/native-boundary", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await OperationalExperiments.ExerciseNativeBoundaryAsync(
+            source,
+            stylesheet));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
 app.MapPost("/experiment/generation-replacement", async () =>
 {
     await operationalExperimentGate.WaitAsync();
@@ -280,6 +335,7 @@ app.MapPost("/measure/saxoncs", (int? requests, SaxonCsBaseline baseline) =>
 #endif
 
 app.Lifetime.ApplicationStopping.Register(worker.Dispose);
+app.Lifetime.ApplicationStopping.Register(native.Dispose);
 await app.RunAsync();
 
 static string FindRepositoryRoot(string start)

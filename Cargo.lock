@@ -17,6 +17,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "fastxslt-dotnet-workbench"
+version = "0.1.0"
+dependencies = [
+ "fastxslt",
+]
+
+[[package]]
 name = "fastxslt-worker"
 version = "0.1.0"
 dependencies = [

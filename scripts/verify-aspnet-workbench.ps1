@@ -26,7 +26,7 @@ New-Item -ItemType Directory -Path $workbenchDirectory -Force | Out-Null
 
 Push-Location $repositoryRoot
 try {
-    cargo build --release -p fastxslt-worker
+    cargo build --release -p fastxslt-worker -p fastxslt-dotnet-workbench
     if ($LASTEXITCODE -ne 0) {
         throw "Rust worker build failed with exit code $LASTEXITCODE"
     }
@@ -38,6 +38,10 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "ASP.NET workbench build failed with exit code $LASTEXITCODE"
     }
+    $nativeLibraryName = if ($IsWindows) { 'fastxslt_dotnet_workbench.dll' } elseif ($IsMacOS) { 'libfastxslt_dotnet_workbench.dylib' } else { 'libfastxslt_dotnet_workbench.so' }
+    $nativeLibrary = Join-Path $repositoryRoot "target/release/$nativeLibraryName"
+    $managedOutput = Join-Path $repositoryRoot 'workbenches/FastXSLT.AspNet.Workbench/bin/Release/net8.0'
+    Copy-Item -LiteralPath $nativeLibrary -Destination $managedOutput -Force
 
     $server = Start-Process -FilePath 'dotnet' `
         -ArgumentList @('run', '--no-build', '--configuration', 'Release', '--project', $project, '--urls', $baseAddress) `
@@ -74,6 +78,13 @@ try {
         }
         if ($health.dotNetXslt1ExactStylesheetExecuted) {
             throw 'XslCompiledTransform unexpectedly executed the exact XSLT 2.0 stylesheet.'
+        }
+        if (-not $health.nativeInProcessAvailable) {
+            throw 'The in-process native FastXSLT workbench was not available.'
+        }
+        $nativeResult = Invoke-WebRequest -Method Post -Uri "$baseAddress/transform/inprocess/native-smoke-001"
+        if ($nativeResult.StatusCode -ne 200 -or $nativeResult.Content -cne $expected) {
+            throw "Unexpected in-process native response: $($nativeResult.StatusCode) $($nativeResult.Content)"
         }
         $dotNetResult = Invoke-WebRequest -Method Post -Uri "$baseAddress/transform/dotnet-xslt1"
         $dotNetExpected = '<?xml version="1.0" encoding="utf-8"?><out>36.02</out>'
@@ -174,6 +185,22 @@ try {
                 $instructionBudget.requestWasRetried) {
                 throw "Instruction budget experiment violated its guarantee class: $($instructionBudget | ConvertTo-Json -Depth 5)"
             }
+            $nativeBoundary = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/native-boundary"
+            if ($nativeBoundary.invalidIdentity.code -ne 'FXWB0003' -or
+                $nativeBoundary.invalidIdentity.category -ne 'invalid' -or
+                $nativeBoundary.invalidIdentity.detail -cne 'request identity must not be empty' -or
+                $nativeBoundary.malformedSource.code -ne 'FXXM0002' -or
+                $nativeBoundary.malformedSource.category -ne 'invalid' -or
+                -not $nativeBoundary.malformedSource.detail.Contains('urn:fastxslt:native-boundary:malformed-source') -or
+                $nativeBoundary.recoveryResult -cne $expected -or
+                $nativeBoundary.concurrentResults.Count -ne 2 -or
+                $nativeBoundary.concurrentResults[0] -cne $expected -or
+                $nativeBoundary.concurrentResults[1] -cne $expected -or
+                -not $nativeBoundary.independentHandlesExecutedConcurrently -or
+                -not $nativeBoundary.doubleDisposeWasIdempotent -or
+                -not $nativeBoundary.useAfterDisposeRejected) {
+                throw "Native boundary experiment violated ABI ownership or parity: $($nativeBoundary | ConvertTo-Json -Depth 5)"
+            }
             $recovery = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/worker-recovery"
             if ($recovery.recovery.failureCode -ne 'FXWB2001' -or
                 $recovery.recovery.failureCategory -ne 'worker-terminated' -or
@@ -259,6 +286,14 @@ try {
                 RecoveryCompleted = $instructionBudget.recoveryResult -ceq $expected
             }
             [pscustomobject]@{
+                Experiment = 'NativeBoundary'
+                InvalidIdentity = $nativeBoundary.invalidIdentity.code
+                MalformedSource = $nativeBoundary.malformedSource.code
+                ConcurrentIndependentHandles = $nativeBoundary.independentHandlesExecutedConcurrently
+                DoubleDisposeIdempotent = $nativeBoundary.doubleDisposeWasIdempotent
+                UseAfterDisposeRejected = $nativeBoundary.useAfterDisposeRejected
+            }
+            [pscustomobject]@{
                 Experiment = 'WorkerRecovery'
                 FailureCode = $recovery.recovery.failureCode
                 FailedRequestRetried = $recovery.failedRequestRetried
@@ -285,6 +320,7 @@ try {
         }
         for ($run = 1; $run -le $MeasurementRuns; $run++) {
             $fastXslt = Invoke-RestMethod -Method Post -Uri "$baseAddress/measure?requests=$MeasurementRequests"
+            $nativeFastXslt = Invoke-RestMethod -Method Post -Uri "$baseAddress/measure/inprocess?requests=$MeasurementRequests"
             $dotNetXslt1 = Invoke-RestMethod -Method Post -Uri "$baseAddress/measure/dotnet-xslt1?requests=$MeasurementRequests"
             $saxonCs = if ($health.saxonCsAvailable) {
                 Invoke-RestMethod -Method Post -Uri "$baseAddress/measure/saxoncs?requests=$MeasurementRequests"
@@ -299,6 +335,9 @@ try {
                 Requests = $fastXslt.requests
                 FastXsltElapsedMilliseconds = $fastXslt.elapsedMilliseconds
                 FastXsltTransformsPerSecond = $fastXslt.transformsPerSecond
+                NativeFastXsltElapsedMilliseconds = $nativeFastXslt.elapsedMilliseconds
+                NativeFastXsltTransformsPerSecond = $nativeFastXslt.transformsPerSecond
+                IsolatedToNativeRatio = $nativeFastXslt.transformsPerSecond / $fastXslt.transformsPerSecond
                 DotNetXslt1ElapsedMilliseconds = $dotNetXslt1.elapsedMilliseconds
                 DotNetXslt1TransformsPerSecond = $dotNetXslt1.transformsPerSecond
                 DotNetToFastXsltRatio = $dotNetXslt1.transformsPerSecond / $fastXslt.transformsPerSecond

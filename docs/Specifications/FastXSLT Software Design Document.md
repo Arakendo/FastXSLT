@@ -414,14 +414,16 @@ The name FastXSLT is an objective, not evidence. Performance claims require a
 named workload, baseline, hardware/software environment, measurement method,
 and correctness gate. Optimize measured costs only after the semantic reference
 path is observable. Unsafe code remains forbidden unless a later ADR supplies
-invariants, evidence, and focused verification.
+invariants, evidence, and focused verification. ADR-0008 admits only the
+workbench-native .NET boundary's export and bounded buffer-copy surface; it does
+not admit unsafe engine semantics or hot-path optimization.
 
 ADR-0003 defines the exception policy: tests are necessary but cannot prove an
 unsafe invariant. Any first-party unsafe implementation requires its own narrow
 ADR, a measured need that safe Rust cannot reasonably meet, a written safety
 contract, minimized and reviewable surface, safe reference behavior whenever
 practical, specialized verification appropriate to the risk, and explicit
-removal criteria. No unsafe implementation is currently admitted.
+removal criteria. ADR-0008 is the only current exception.
 
 For embedded consumers, measurements include parsing or marshaling, interop,
 stylesheet lookup/compilation policy, execution, result transfer, diagnostics,
@@ -439,6 +441,13 @@ hosts must be able to replace or remove imported files without engine-held
 handles or later path probes. This reduces exposure to file locking and
 security-tool contention after admission, while making no claim that the host's
 initial read or explicit output publication escapes operating-system scanning.
+
+As the language surface widens, compilation should discover the semantic
+features a stylesheet requires and select a reusable execution plan that avoids
+per-node runtime feature branching for unrelated facilities. This preserves one
+general semantic owner while allowing safe specialization. Any later unsafe
+hot-path specialization remains a separate ADR-0003 exception with a safe
+reference and differential evidence; ADR-0008 authorizes only native FFI copies.
 
 ## 7. Open decisions
 

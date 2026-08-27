@@ -20,9 +20,11 @@ current order of work is:
    deterministic active, and unpaused race-sampled cooperative cancellation,
    worker failure/restart, explicit snapshot generation promotion, and
    changed-resource file replacement now have private executable baselines;
-2. decide the proposed narrow unsafe exception for a workbench-only native
-   .NET boundary, then prototype it against the same lifecycle if accepted;
-3. compare both modes before stabilizing a host boundary or performance claim.
+2. widen the accepted workbench-only in-process native prototype from its first
+   exact-output, diagnostic, ownership, independent-handle, and warm-throughput
+   baseline to comparable tiered latency and memory evidence;
+3. compare lifecycle and guarantee coverage across both modes before
+   stabilizing a host boundary or performance claim.
 
 Representative consumer transforms are not a prerequisite for a testable
 standards-driven preview. The pinned W3C suites provide executable stylesheets,
@@ -197,7 +199,10 @@ failed, and harness-error cases without an unqualified conformance claim.
     prove the same compiled/prepared worker remains reusable.
   - [x] Design the proposed workbench-only native ABI safety contract, exact
     unsafe surface, panic quarantine, verification matrix, and removal criteria;
-    implementation remains unauthorized until the proposal is accepted.
+    ADR-0008 now accepts that narrow exception.
+  - [x] Execute the first in-process native compile/prepare/reuse path with
+    byte-exact output, structured invalid/XML diagnostics, independent-handle
+    concurrency, `SafeHandle` disposal, and a three-run warm comparison.
 - [ ] Exercise AR-0010's private invocation controls under adversarial work;
   distinguish deterministic budgets, cooperative cancellation, best-effort
   deadlines, panic handling, and process-level hard termination claims.

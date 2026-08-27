@@ -1,5 +1,9 @@
 [workspace]
-members = ["crates/fastxslt", "crates/fastxslt-worker"]
+members = [
+    "crates/fastxslt",
+    "crates/fastxslt-dotnet-workbench",
+    "crates/fastxslt-worker",
+]
 resolver = "3"
 
 [workspace.package]

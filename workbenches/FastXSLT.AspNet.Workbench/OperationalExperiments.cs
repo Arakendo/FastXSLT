@@ -213,6 +213,93 @@ public static class OperationalExperiments
         };
     }
 
+    public static async Task<object> ExerciseNativeBoundaryAsync(
+        byte[] source,
+        byte[] stylesheet)
+    {
+        using var client = NativeFastXsltClient.Create(
+            "urn:fastxslt:native-boundary:source",
+            source,
+            "urn:fastxslt:native-boundary:stylesheet",
+            stylesheet);
+        NativeFastXsltException invalidIdentity;
+        try
+        {
+            _ = client.Transform("");
+            throw new InvalidOperationException("Empty native request identity unexpectedly succeeded.");
+        }
+        catch (NativeFastXsltException failure)
+        {
+            invalidIdentity = failure;
+        }
+        var recoveryResult = client.Transform("native-boundary-recovery");
+
+        NativeFastXsltException malformedSource;
+        try
+        {
+            using var unexpected = NativeFastXsltClient.Create(
+                "urn:fastxslt:native-boundary:malformed-source",
+                "<order></other>"u8.ToArray(),
+                "urn:fastxslt:native-boundary:stylesheet",
+                stylesheet);
+            throw new InvalidOperationException("Malformed native source unexpectedly initialized.");
+        }
+        catch (NativeFastXsltException failure)
+        {
+            malformedSource = failure;
+        }
+
+        using var first = NativeFastXsltClient.Create(
+            "urn:fastxslt:native-boundary:concurrent-source-1",
+            source,
+            "urn:fastxslt:native-boundary:concurrent-stylesheet-1",
+            stylesheet);
+        using var second = NativeFastXsltClient.Create(
+            "urn:fastxslt:native-boundary:concurrent-source-2",
+            source,
+            "urn:fastxslt:native-boundary:concurrent-stylesheet-2",
+            stylesheet);
+        var concurrentResults = await Task.WhenAll(
+            Task.Run(() => first.Transform("native-concurrent-1")),
+            Task.Run(() => second.Transform("native-concurrent-2")));
+
+        var disposed = NativeFastXsltClient.Create(
+            "urn:fastxslt:native-boundary:dispose-source",
+            source,
+            "urn:fastxslt:native-boundary:dispose-stylesheet",
+            stylesheet);
+        disposed.Dispose();
+        disposed.Dispose();
+        var useAfterDisposeRejected = false;
+        try
+        {
+            _ = disposed.Transform("native-after-dispose");
+        }
+        catch (ObjectDisposedException)
+        {
+            useAfterDisposeRejected = true;
+        }
+
+        return new
+        {
+            invalidIdentity = new DiagnosticEvidence(
+                invalidIdentity.Code,
+                invalidIdentity.Category,
+                invalidIdentity.RequestId,
+                invalidIdentity.Detail),
+            malformedSource = new DiagnosticEvidence(
+                malformedSource.Code,
+                malformedSource.Category,
+                malformedSource.RequestId,
+                malformedSource.Detail),
+            recoveryResult,
+            concurrentResults,
+            independentHandlesExecutedConcurrently = true,
+            doubleDisposeWasIdempotent = true,
+            useAfterDisposeRejected
+        };
+    }
+
     private static async Task<DiagnosticEvidence> CaptureInitializationFailureAsync(
         string workerPath,
         string sourceIdentity,

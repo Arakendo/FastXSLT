@@ -41,3 +41,7 @@ but supersede a materially changed decision instead of rewriting its history.
   -- Accepted; use XSLT 3.0, XPath/XDM 3.1, Serialization 3.1, XML 1.0 Fifth
   Edition, and Namespaces 1.0 Third Edition as reference semantics while
   widening an explicitly incomplete, ledger-accounted preview by feature.
+- [ADR-0008: Unsafe Native .NET Workbench Boundary](ADR-0008-unsafe-native-dotnet-workbench-boundary.md)
+  -- Accepted; admit a narrowly bounded unsafe buffer-copy surface only in the
+  unpublished native .NET workbench, with numeric handles, panic quarantine,
+  differential verification, and explicit removal criteria.

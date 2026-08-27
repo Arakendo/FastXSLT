@@ -175,6 +175,10 @@ only mode.
   retried, and left its compiled/prepared worker reusable. The boundary now has
   executable distinctions among deterministic exhaustion, cooperative
   cancellation, and hard process termination.
+- The first ADR-0008 in-process candidate deliberately provides no forced-stop
+  claim. Its native panic policy is whole-lane quarantine, while the isolated
+  candidate retains process termination/replacement. Exported panic injection
+  and managed quarantine recovery policy remain untested.
 
 ## Disposition
 
@@ -285,3 +289,6 @@ is measured, or a stronger sandbox such as WASM becomes a viable host boundary.
 - 2026-08-26 -- Carried a zero XSLT-instruction budget through the isolated
   boundary as deterministic `FXCT0002 / limit`, declined retry/replacement, and
   reused the same compiled/prepared process afterward.
+- 2026-08-26 -- Added the first native in-process ASP.NET candidate under
+  ADR-0008. It strengthens the mechanism comparison but retains no thread-level
+  hard-kill claim; broader supervision and panic evidence remain open.

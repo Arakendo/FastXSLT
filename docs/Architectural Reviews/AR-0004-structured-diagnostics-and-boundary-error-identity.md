@@ -119,6 +119,10 @@ selects a host mechanism risks treating transport as the semantic model.
 - Isolated deterministic instruction exhaustion retains `FXCT0002 / limit`,
   request identity, work-domain detail, no retry, and same-worker reuse. It is
   observably distinct from cancellation and worker termination.
+- The ADR-0008 native candidate transfers the same invalid-identity and
+  malformed-XML fields through a bounded binary envelope. Boundary-owned
+  pointer, UTF-8, capacity, and handle failures use a separate private
+  `FXFFI` family rather than impersonating engine diagnostics.
 
 ## Disposition
 
@@ -173,3 +177,6 @@ a serialized form needs versioning.
 - 2026-08-26 -- Preserved deterministic instruction-budget exhaustion through
   the isolated candidate without converting it into cancellation or worker
   failure.
+- 2026-08-26 -- Preserved two engine diagnostic phases through the first native
+  .NET candidate and kept ABI-validation failures under a separate private
+  boundary family.

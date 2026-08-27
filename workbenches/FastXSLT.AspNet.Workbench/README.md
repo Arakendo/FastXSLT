@@ -17,6 +17,8 @@ offers:
 - `GET /health`
 - `POST /transform/{requestId}`
 - `POST /measure?requests=1000`
+- `POST /transform/inprocess/{requestId}`
+- `POST /measure/inprocess?requests=1000`
 - `POST /transform/dotnet-xslt1`
 - `POST /measure/dotnet-xslt1?requests=1000`
 - `POST /benchmark/tiers?requests=250&concurrency=4`
@@ -27,6 +29,7 @@ offers:
 - `POST /experiment/managed-cancellation`
 - `POST /experiment/diagnostic-parity`
 - `POST /experiment/instruction-budget`
+- `POST /experiment/native-boundary`
 - `POST /experiment/generation-replacement`
 - `POST /experiment/host-file-replacement`
 - `POST /transform/saxoncs`
@@ -96,6 +99,13 @@ The instruction-budget endpoint gives one invocation a zero XSLT-instruction
 budget. It asserts `FXCT0002 / limit`, no retry or process replacement, and a
 successful ordinary transform on the same compiled/prepared worker afterward.
 The command is a narrow workbench probe, not a proposed public policy format.
+
+The in-process endpoints load the unpublished ADR-0008 native library. Its
+version-zero ABI copies bounded buffers, retains Rust state behind numeric
+handles, transfers structured failure envelopes, and uses a managed `SafeHandle`
+wrapper. The native operational probe covers diagnostics, independent-handle
+concurrency, double disposal, and use-after-dispose rejection. It currently has
+no cancellation, same-handle concurrency, or hard-termination guarantee.
 
 The host-file variant imports source and stylesheet files into owned bytes,
 closes the handles, renames and removes both originals while the old worker

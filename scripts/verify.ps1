@@ -19,6 +19,22 @@ function Invoke-Gate {
     }
 }
 
+Write-Host '==> Unsafe surface'
+$nativeBoundary = Join-Path $PSScriptRoot '../crates/fastxslt-dotnet-workbench/src/lib.rs'
+$nativeSource = Get-Content -LiteralPath $nativeBoundary -Raw
+$unsafeBlocks = [regex]::Matches($nativeSource, '\bunsafe\s*\{').Count
+$unsafeExports = [regex]::Matches($nativeSource, '#\[unsafe\(no_mangle\)\]').Count
+$unsafeAllowances = [regex]::Matches($nativeSource, '#\[allow\(unsafe_code').Count
+if ($unsafeBlocks -ne 2 -or $unsafeExports -ne 9 -or $unsafeAllowances -ne 11) {
+    throw "ADR-0008 unsafe surface changed: blocks=$unsafeBlocks exports=$unsafeExports allowances=$unsafeAllowances"
+}
+$otherUnsafe = Get-ChildItem (Join-Path $PSScriptRoot '../crates') -Recurse -Filter '*.rs' |
+    Where-Object FullName -ne (Resolve-Path -LiteralPath $nativeBoundary).Path |
+    Select-String -Pattern '\bunsafe\s*(\{|fn\b|trait\b|impl\b)|#\[unsafe\('
+if ($otherUnsafe) {
+    throw "Unsafe Rust appeared outside the ADR-0008 native boundary: $($otherUnsafe.Path -join ', ')"
+}
+
 Invoke-Gate 'Formatting' { cargo fmt --all --check }
 Invoke-Gate 'Clippy' { cargo clippy --workspace --all-targets --all-features -- -D warnings }
 Invoke-Gate 'Tests' { cargo test --workspace --all-features }
