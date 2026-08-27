@@ -45,6 +45,21 @@ public static class TieredComparison
                 pool.ObserveProcesses().WorkingSetBytes,
                 $"aggregate working set of {maximumInFlight} initialized workers"));
 
+            var nativeStart = Stopwatch.StartNew();
+            using var nativePool = NativeFastXsltPool.Create(
+                $"urn:fastxslt:native-benchmark:{tier.Name}:source",
+                source,
+                $"urn:fastxslt:native-benchmark:{tier.Name}:stylesheet",
+                modernStylesheet,
+                maximumInFlight);
+            nativeStart.Stop();
+            initializations.Add(Initialization(
+                "FastXSLT native in-process",
+                tier,
+                nativeStart.Elapsed,
+                ObserveHostWorkingSet(),
+                $"whole ASP.NET host working set after {maximumInFlight} native engines"));
+
             var dotNetStart = Stopwatch.StartNew();
             var dotNet = DotNetXslt1Baseline.Create(source, dotNetStylesheet);
             dotNetStart.Stop();
@@ -69,6 +84,10 @@ public static class TieredComparison
 
             await RequireResult(
                 () => pool.TransformAsync($"{tier.Name}-warm-fastxslt"), expected, "FastXSLT");
+            await RequireResult(
+                () => nativePool.TransformAsync($"{tier.Name}-warm-native"),
+                expected,
+                "FastXSLT native");
             RequireResult(dotNet.Transform, expected, "Microsoft XslCompiledTransform");
 #if SAXONCS_LOCAL
             RequireResult(saxon.Transform, expected, "SaxonCS");
@@ -88,6 +107,18 @@ public static class TieredComparison
                     concurrency,
                     identity => pool.TransformAsync(identity),
                     pool.ObserveProcesses));
+            }
+            foreach (var concurrency in concurrencies)
+            {
+                measurements.Add(await MeasureAsync(
+                    "FastXSLT native in-process",
+                    tier,
+                    source.Length,
+                    expected,
+                    tierRequests,
+                    concurrency,
+                    identity => nativePool.TransformAsync(identity),
+                    observeWorkers: null));
             }
 #if SAXONCS_LOCAL
             foreach (var concurrency in concurrencies)

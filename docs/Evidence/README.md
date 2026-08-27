@@ -78,6 +78,7 @@ pressure architecture but does not silently create a public guarantee.
 - [ASP.NET Managed Cancellation and Diagnostic Parity](aspnet-managed-cancellation-and-diagnostic-parity-2026-08-26.md)
 - [ASP.NET Deterministic Instruction-Budget Exhaustion](aspnet-deterministic-instruction-budget-2026-08-26.md)
 - [ASP.NET In-Process Native Workbench Baseline](aspnet-in-process-native-workbench-baseline-2026-08-26.md)
+- [ASP.NET Native and Isolated FastXSLT Tier Comparison](aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md)
 - [Peer Review: Activated Execution Paths and Unsafe Optimization](peer-specialized-execution-review-monday-2026-08-26.md)
 - [Private Host-Owned Two-Stage Workflow](private-host-owned-two-stage-workflow-2026-08-25.md)
 - [Private Compiled Semantic Inspection](private-compiled-semantic-inspection-2026-08-25.md)

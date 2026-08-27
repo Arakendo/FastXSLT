@@ -121,8 +121,8 @@ Run those checks with:
 ```
 
 Deadlines, crash-loop policy, production pool lifecycle, public managed error
-mapping, and an in-process FastXSLT comparison remain future work. Hard worker
-termination is intentionally not described as cooperative cancellation.
+mapping, and broader native/isolated lifecycle parity remain future work. Hard
+worker termination is intentionally not described as cooperative cancellation.
 
 The opt-in tiered benchmark generates deterministic 5-, 50-, and 500-item
 sources. It measures sequential and bounded-concurrent warm execution with
@@ -134,6 +134,7 @@ Run it with:
 ./scripts/verify-aspnet-workbench.ps1 -TieredBenchmark -LocalSaxonCs
 ```
 
-The concurrent FastXSLT lane uses a bounded pool of isolated workers, each with
-its own compiled stylesheet and prepared source. Working-set multiplication is
-therefore explicit rather than hidden behind a scheduler abstraction.
+The tiered benchmark includes both a bounded pool of isolated workers and a
+bounded pool of independent native engine handles. Each owns its own compiled
+stylesheet and prepared source. The native pool deliberately does not imply
+same-handle concurrency, which is outside the version-zero ABI contract.

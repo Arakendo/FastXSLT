@@ -8,7 +8,7 @@
 | Scope | Non-Rust embedding, deployment, and performance boundary |
 | Trigger | ASP.NET applications are a motivating FastXSLT consumer class |
 | Related ADRs | ADR-0001 |
-| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`, `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-natural-cancellation-races-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
+| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, `docs/Evidence/aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md`, `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`, `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-natural-cancellation-races-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
 
 ## Architectural question
 
@@ -147,6 +147,13 @@ security contracts.
   identity and malformed-XML diagnostics, uses managed `SafeHandle` ownership,
   and runs independent handles concurrently. Three 1,000-call warm runs observed
   321,926/s native versus 16,809/s isolated by medians on this tiny workload.
+- The native candidate now runs the same deterministic 5-, 50-, and 500-item
+  tiers through four independent handles. Three-run native/isolated throughput
+  ratios narrowed from 21.82x to 1.49x sequentially and from 14.71x to 1.50x
+  concurrently as transform work increased. This demonstrates both a material
+  tiny-call boundary cost and its workload-dependent amortization. Managed
+  allocation excludes Rust in both paths, and whole-host native working set is
+  not an attributable engine-memory measurement.
 
 ## Disposition
 
@@ -219,3 +226,7 @@ invalidates the selected mechanism.
 - 2026-08-26 -- Accepted ADR-0008 and executed the first native ASP.NET
   candidate. Exact output, two diagnostic phases, independent handles, disposal,
   and a three-run warm comparison passed; broader lifecycle parity remains open.
+- 2026-08-26 -- Ran the same 5/50/500-item tiers through isolated workers and
+  independent native handles. Recorded boundary-cost scaling, latency,
+  concurrency, allocation scope, and retained-memory measurement limits without
+  selecting a production default.

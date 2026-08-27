@@ -20,9 +20,10 @@ current order of work is:
    deterministic active, and unpaused race-sampled cooperative cancellation,
    worker failure/restart, explicit snapshot generation promotion, and
    changed-resource file replacement now have private executable baselines;
-2. widen the accepted workbench-only in-process native prototype from its first
-   exact-output, diagnostic, ownership, independent-handle, and warm-throughput
-   baseline to comparable tiered latency and memory evidence;
+2. close the in-process candidate's lifecycle gaps for cancellation, invocation
+   budgets, generation replacement, and structured diagnostic parity; its
+   comparable 5/50/500-item tiered latency, allocation-scope, and retained-memory
+   limitations are now recorded;
 3. compare lifecycle and guarantee coverage across both modes before
    stabilizing a host boundary or performance claim.
 
@@ -203,6 +204,10 @@ failed, and harness-error cases without an unqualified conformance claim.
   - [x] Execute the first in-process native compile/prepare/reuse path with
     byte-exact output, structured invalid/XML diagnostics, independent-handle
     concurrency, `SafeHandle` disposal, and a three-run warm comparison.
+  - [x] Exercise the same deterministic 5-, 50-, and 500-item sources through
+    four independent native handles, recording tiered throughput, latency,
+    managed-allocation scope, isolated working set, and the limits of whole-host
+    native memory observations.
 - [ ] Exercise AR-0010's private invocation controls under adversarial work;
   distinguish deterministic budgets, cooperative cancellation, best-effort
   deadlines, panic handling, and process-level hard termination claims.
