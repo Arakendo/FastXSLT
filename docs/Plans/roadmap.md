@@ -12,7 +12,9 @@ executes the complete four-case QT3 `Axes002` group through a
 stylesheet-independent XPath seam. `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
-current order of work is:
+complete 28-case `expr/data-manipulation` denominator is now admitted, with its
+first six conditional-control-flow cases passing and the remaining 22 retained
+as explicit engine gaps. The current order of work is:
 
 1. obtain representative consumer transforms, input/result distributions,
    concurrency, deployment targets, trust model, and latency/throughput budgets;
@@ -124,6 +126,10 @@ implemented behavior belongs to a named standards slice.
   identity, inventory both compound assertion predicates, and classify all
   three at their actual `xsl:function` engine boundary. The selected denominator
   is four passes, three engine gaps, and no harness gaps.
+- [x] Admit all 28 XSLT30 `expr/data-manipulation` cases with their referenced
+  inline/file-backed environments and XML assertions, then execute `001`
+  through `006` using ordered conditional instructions and checked exact-rational
+  constant predicates. Six pass and 22 remain explicit engine gaps.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,

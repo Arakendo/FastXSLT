@@ -101,8 +101,13 @@ pub(crate) enum Instruction {
         location: SourceLocation,
     },
     If {
-        test: EqualityTest,
+        test: BooleanExpression,
         body: Vec<Instruction>,
+        location: SourceLocation,
+    },
+    Choose {
+        branches: Vec<ChooseBranch>,
+        otherwise: Vec<Instruction>,
         location: SourceLocation,
     },
     CallTemplate {
@@ -126,6 +131,18 @@ pub(crate) enum ValueExpression {
 pub(crate) struct EqualityTest {
     pub(crate) variable: String,
     pub(crate) integer: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum BooleanExpression {
+    VariableEqualsInteger(EqualityTest),
+    Constant(bool),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ChooseBranch {
+    pub(crate) test: BooleanExpression,
+    pub(crate) body: Vec<Instruction>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

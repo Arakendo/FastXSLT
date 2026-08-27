@@ -1,6 +1,7 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xml::quick_xml_experiment::NamespaceBinding;
 use crate::xpath::castable_experiment::{parse as parse_castable, parse_cast};
+use crate::xpath::constant_numeric_experiment::{self, ConstantNumericFailure};
 use crate::xpath::decimal_sum_for_experiment::parse as parse_decimal_sum_for;
 use crate::xpath::focus_sum_for_experiment::parse as parse_focus_sum_for;
 use crate::xpath::for_distinct_values_experiment::{
@@ -9,9 +10,9 @@ use crate::xpath::for_distinct_values_experiment::{
 use crate::xpath::integer_for_experiment::parse as parse_integer_for;
 use crate::xpath::path_experiment::{PathFailure, parse_child_path};
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, EqualityTest, Instruction, MatchPattern, MatchedTemplate, NamedTemplate,
-    NodeTest, OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME, StylesheetProgram, Template,
-    TemplateArgument, ValueExpression,
+    ApplySelection, BooleanExpression, ChooseBranch, EqualityTest, Instruction, MatchPattern,
+    MatchedTemplate, NamedTemplate, NodeTest, OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME,
+    StylesheetProgram, Template, TemplateArgument, ValueExpression,
 };
 
 const XSLT_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
@@ -362,6 +363,8 @@ fn compile_sequence_excluding(
                         instructions.push(compile_apply_templates(document, child)?);
                     } else if name.local == "if" {
                         instructions.push(compile_if(document, child)?);
+                    } else if name.local == "choose" {
+                        instructions.push(compile_choose(document, child)?);
                     } else if name.local == "call-template" {
                         instructions.push(compile_call_template(document, child)?);
                     } else {
@@ -613,36 +616,114 @@ fn compile_if(document: &Document, element: NodeId) -> Result<Instruction, Compi
     ensure_only_attributes(document, element, &["test"], "xsl:if")?;
     let location = document.location(element).clone();
     let expression = required_attribute(document, element, None, "test")?;
-    let (variable, integer) = expression.split_once('=').ok_or_else(|| {
-        unsupported(
-            "FXXP1002",
-            format!("unsupported conditional expression: {expression}"),
-            &location,
-        )
-    })?;
-    let variable = variable.trim().strip_prefix('$').unwrap_or_default();
-    let integer = integer.trim().parse::<i64>().map_err(|_| {
-        unsupported(
-            "FXXP1002",
-            format!("unsupported conditional expression: {expression}"),
-            &location,
-        )
-    })?;
-    if !is_ascii_ncname(variable) {
-        return Err(unsupported(
-            "FXXP1002",
-            format!("unsupported conditional expression: {expression}"),
-            &location,
-        ));
-    }
     Ok(Instruction::If {
-        test: EqualityTest {
-            variable: variable.to_owned(),
-            integer,
-        },
+        test: parse_boolean_expression(expression, &location)?,
         body: compile_sequence(document, element)?,
         location,
     })
+}
+
+fn compile_choose(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
+    ensure_only_attributes(document, element, &[], "xsl:choose")?;
+    let mut branches = Vec::new();
+    let mut otherwise = None;
+    for child in meaningful_children(document, element) {
+        if is_xslt_element(document, child, "when") {
+            if otherwise.is_some() {
+                return Err(invalid(
+                    "FXST0018",
+                    "xsl:when cannot follow xsl:otherwise",
+                    document.location(child),
+                ));
+            }
+            ensure_only_attributes(document, child, &["test"], "xsl:when")?;
+            let expression = required_attribute(document, child, None, "test")?;
+            branches.push(ChooseBranch {
+                test: parse_boolean_expression(expression, document.location(child))?,
+                body: compile_sequence(document, child)?,
+            });
+        } else if is_xslt_element(document, child, "otherwise") {
+            if otherwise.is_some() {
+                return Err(invalid(
+                    "FXST0019",
+                    "xsl:choose permits at most one xsl:otherwise",
+                    document.location(child),
+                ));
+            }
+            ensure_only_attributes(document, child, &[], "xsl:otherwise")?;
+            otherwise = Some(compile_sequence(document, child)?);
+        } else {
+            return Err(invalid(
+                "FXST0020",
+                "xsl:choose permits only xsl:when and xsl:otherwise children",
+                document.location(child),
+            ));
+        }
+    }
+    if branches.is_empty() {
+        return Err(invalid(
+            "FXST0021",
+            "xsl:choose requires at least one xsl:when",
+            document.location(element),
+        ));
+    }
+    Ok(Instruction::Choose {
+        branches,
+        otherwise: otherwise.unwrap_or_default(),
+        location: document.location(element).clone(),
+    })
+}
+
+fn parse_boolean_expression(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<BooleanExpression, CompileFailure> {
+    if let Some((variable, integer)) = expression.split_once('=') {
+        let variable = variable.trim().strip_prefix('$').unwrap_or_default();
+        if is_ascii_ncname(variable) {
+            let integer = integer
+                .trim()
+                .parse::<i64>()
+                .map_err(|_| unsupported_boolean_expression(expression, location))?;
+            return Ok(BooleanExpression::VariableEqualsInteger(EqualityTest {
+                variable: variable.to_owned(),
+                integer,
+            }));
+        }
+    }
+    let (left, right, greater_than) = if let Some((left, right)) = expression.split_once('>') {
+        (left, right, true)
+    } else if let Some((left, right)) = expression.split_once('=') {
+        (left, right, false)
+    } else {
+        return Err(unsupported_boolean_expression(expression, location));
+    };
+    let ordering =
+        constant_numeric_experiment::compare(left.trim(), right.trim()).map_err(|failure| {
+            match failure {
+                ConstantNumericFailure::Invalid => invalid(
+                    "FXXP0004",
+                    format!("invalid conditional expression: {expression}"),
+                    location,
+                ),
+                ConstantNumericFailure::Unsupported => {
+                    unsupported_boolean_expression(expression, location)
+                }
+            }
+        })?;
+    Ok(BooleanExpression::Constant(if greater_than {
+        ordering.is_gt()
+    } else {
+        ordering.is_eq()
+    }))
+}
+
+fn unsupported_boolean_expression(expression: &str, location: &SourceLocation) -> CompileFailure {
+    unsupported(
+        "FXXP1002",
+        format!("unsupported conditional expression: {expression}"),
+        location,
+    )
 }
 
 fn compile_call_template(
@@ -721,6 +802,16 @@ fn validate_named_calls(
         match instruction {
             Instruction::LiteralElement { body, .. } | Instruction::If { body, .. } => {
                 validate_named_calls(program, body)?;
+            }
+            Instruction::Choose {
+                branches,
+                otherwise,
+                ..
+            } => {
+                for branch in branches {
+                    validate_named_calls(program, &branch.body)?;
+                }
+                validate_named_calls(program, otherwise)?;
             }
             Instruction::CallTemplate {
                 name,

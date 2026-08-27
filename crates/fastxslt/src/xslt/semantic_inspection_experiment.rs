@@ -26,6 +26,7 @@ enum SemanticFeature {
     SequenceNodes,
     ApplyTemplates,
     If,
+    Choose,
     CallTemplate,
 }
 
@@ -149,6 +150,7 @@ fn observe_instructions(
             Instruction::SequenceNodes { .. } => (SemanticFeature::SequenceNodes, None),
             Instruction::ApplyTemplates { .. } => (SemanticFeature::ApplyTemplates, None),
             Instruction::If { body, .. } => (SemanticFeature::If, Some(body.as_slice())),
+            Instruction::Choose { .. } => (SemanticFeature::Choose, None),
             Instruction::CallTemplate { .. } => (SemanticFeature::CallTemplate, None),
         };
         let occurrences = feature_counts.entry(feature).or_default();
@@ -157,6 +159,17 @@ fn observe_instructions(
             .ok_or(InspectionFailure::CountOverflow)?;
         if let Some(body) = body {
             observe_instructions(body, instruction_count, feature_counts)?;
+        }
+        if let Instruction::Choose {
+            branches,
+            otherwise,
+            ..
+        } = instruction
+        {
+            for branch in branches {
+                observe_instructions(&branch.body, instruction_count, feature_counts)?;
+            }
+            observe_instructions(otherwise, instruction_count, feature_counts)?;
         }
     }
     Ok(())

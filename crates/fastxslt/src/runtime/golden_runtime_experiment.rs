@@ -25,12 +25,14 @@ use crate::xpath::decimal_sum_for_experiment::{
 use crate::xpath::focus_sum_for_experiment::{
     FocusSumEvaluationFailure, evaluate as evaluate_focus_sum_for,
 };
-use crate::xpath::for_distinct_values_experiment::evaluate as evaluate_for_distinct_values;
+use crate::xpath::for_distinct_values_experiment::{
+    ForDistinctValuesExpression, evaluate as evaluate_for_distinct_values,
+};
 use crate::xpath::integer_for_experiment::evaluate as evaluate_integer_for;
 use crate::xpath::path_experiment::evaluate_child_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, Instruction, MatchPattern, NodeTest, StylesheetProgram, TemplateArgument,
-    ValueExpression,
+    ApplySelection, BooleanExpression, Instruction, MatchPattern, NodeTest, StylesheetProgram,
+    TemplateArgument, ValueExpression,
 };
 
 mod serialization;
@@ -494,9 +496,7 @@ fn execute_sequence(
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let (mut result, mut scoped_variables) = (Vec::new(), variables.clone());
     for instruction in instructions {
-        control
-            .charge(WorkDomain::XsltInstruction, 1)
-            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        charge_xslt_instruction(control, inputs.request_id)?;
         match instruction {
             Instruction::LiteralElement {
                 name,
@@ -537,12 +537,7 @@ fn execute_sequence(
                 )?;
             }
             Instruction::SequenceNodes { select, .. } => {
-                let (source, _) = required_source_context(inputs, context)?;
-                let selected = evaluate_for_distinct_values(select, source, control)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
-                for node in selected {
-                    result.extend(copy_source_node(source, inputs.request_id, node, control)?);
-                }
+                result.extend(execute_sequence_nodes(inputs, select, context, control)?);
             }
             Instruction::Variable { name, select, .. } => {
                 let value = execute_variable_binding(inputs, name, select, context, control)?;
@@ -563,24 +558,30 @@ fn execute_sequence(
                 }
             }
             Instruction::If { test, body, .. } => {
-                let value = scoped_variables.get(&test.variable).ok_or_else(|| {
-                    failure(
-                        "FXRT0002",
-                        FailureCategory::Invalid,
-                        Some(inputs.request_id),
-                        format!("unbound variable: ${}", test.variable),
-                    )
-                })?;
-                if value.lexical().trim().parse::<i64>() == Ok(test.integer) {
-                    result.extend(execute_sequence(
-                        inputs,
-                        body,
-                        context,
-                        &scoped_variables,
-                        call_depth,
-                        control,
-                    )?);
-                }
+                result.extend(execute_if(
+                    inputs,
+                    test,
+                    body,
+                    context,
+                    &scoped_variables,
+                    call_depth,
+                    control,
+                )?);
+            }
+            Instruction::Choose {
+                branches,
+                otherwise,
+                ..
+            } => {
+                result.extend(execute_choose(
+                    inputs,
+                    branches,
+                    otherwise,
+                    context,
+                    &scoped_variables,
+                    call_depth,
+                    control,
+                )?);
             }
             Instruction::CallTemplate {
                 name, arguments, ..
@@ -592,6 +593,92 @@ fn execute_sequence(
         }
     }
     Ok(result)
+}
+
+fn charge_xslt_instruction(
+    control: &mut InvocationControl,
+    request_id: &str,
+) -> Result<(), ExecutionFailure> {
+    control
+        .charge(WorkDomain::XsltInstruction, 1)
+        .map_err(|failure| control_failure(failure, request_id))
+}
+
+fn execute_sequence_nodes(
+    inputs: &SequenceInputs<'_>,
+    select: &ForDistinctValuesExpression,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let (source, _) = required_source_context(inputs, context)?;
+    let selected = evaluate_for_distinct_values(select, source, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let mut result = Vec::new();
+    for node in selected {
+        result.extend(copy_source_node(source, inputs.request_id, node, control)?);
+    }
+    Ok(result)
+}
+
+fn execute_if(
+    inputs: &SequenceInputs<'_>,
+    test: &BooleanExpression,
+    body: &[Instruction],
+    context: Option<NodeId>,
+    variables: &BTreeMap<String, AtomicValue>,
+    call_depth: usize,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    if evaluate_boolean(test, variables, inputs.request_id)? {
+        execute_sequence(inputs, body, context, variables, call_depth, control)
+    } else {
+        Ok(Vec::new())
+    }
+}
+
+fn execute_choose(
+    inputs: &SequenceInputs<'_>,
+    branches: &[crate::xslt::golden_semantics_experiment::ChooseBranch],
+    otherwise: &[Instruction],
+    context: Option<NodeId>,
+    variables: &BTreeMap<String, AtomicValue>,
+    call_depth: usize,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    for branch in branches {
+        if evaluate_boolean(&branch.test, variables, inputs.request_id)? {
+            return execute_sequence(
+                inputs,
+                &branch.body,
+                context,
+                variables,
+                call_depth,
+                control,
+            );
+        }
+    }
+    execute_sequence(inputs, otherwise, context, variables, call_depth, control)
+}
+
+fn evaluate_boolean(
+    expression: &BooleanExpression,
+    variables: &BTreeMap<String, AtomicValue>,
+    request_id: &str,
+) -> Result<bool, ExecutionFailure> {
+    match expression {
+        BooleanExpression::Constant(value) => Ok(*value),
+        BooleanExpression::VariableEqualsInteger(test) => {
+            let value = variables.get(&test.variable).ok_or_else(|| {
+                failure(
+                    "FXRT0002",
+                    FailureCategory::Invalid,
+                    Some(request_id),
+                    format!("unbound variable: ${}", test.variable),
+                )
+            })?;
+            Ok(value.lexical().trim().parse::<i64>() == Ok(test.integer))
+        }
+    }
 }
 
 fn execute_variable_binding(
@@ -1543,3 +1630,6 @@ mod xslt30_for_inventory_tests;
 #[cfg(test)]
 #[path = "xslt30_castable_inventory_tests.rs"]
 mod xslt30_castable_inventory_tests;
+#[cfg(test)]
+#[path = "xslt30_data_manipulation_inventory_tests.rs"]
+mod xslt30_data_manipulation_inventory_tests;

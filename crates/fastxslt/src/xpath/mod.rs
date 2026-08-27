@@ -4,6 +4,7 @@
 pub(crate) mod castable_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod constant_integer_experiment;
+pub(crate) mod constant_numeric_experiment;
 #[cfg(test)]
 pub(crate) mod count_experiment;
 #[cfg(any(test, feature = "workbench"))]

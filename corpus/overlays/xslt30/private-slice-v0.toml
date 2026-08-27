@@ -210,3 +210,199 @@ case_name = "castable-009"
 selection = "selected"
 execution = "engine-unsupported"
 rationale = "The harness resolves absent entry metadata to the namespace-canonical standard initial template and inventories both all-of/assert predicates; compilation then reports the unsupported xsl:function boundary before list-valued ENTITIES castability can execute."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-001"
+selection = "selected"
+execution = "passed"
+rationale = "Native ordered xsl:choose and nested xsl:if execute compile-time-foldable integer comparisons and mod arithmetic."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-002"
+selection = "selected"
+execution = "passed"
+rationale = "Native xsl:choose selects its otherwise branch and executes a nested constant-integer xsl:if."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-003"
+selection = "selected"
+execution = "passed"
+rationale = "Native xsl:if executes a true checked constant-integer arithmetic comparison."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-004"
+selection = "selected"
+execution = "passed"
+rationale = "Native xsl:if suppresses its body for a false checked constant-integer arithmetic comparison."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-005"
+selection = "selected"
+execution = "passed"
+rationale = "Native xsl:choose selects a true checked constant-integer arithmetic branch."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-006"
+selection = "selected"
+execution = "passed"
+rationale = "Native xsl:choose selects otherwise after a false checked constant-integer arithmetic branch."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-007"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Decimal round() predicate semantics remain outside the admitted boolean-expression slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-008"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Decimal round() predicate semantics remain outside the admitted boolean-expression slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-009"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "General format-number and substring-after composition remains outside the admitted value-expression slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-010"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "General format-number and number constructor composition remains outside the admitted value-expression slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-011"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "General formatting with nested constructor and string functions remains outside the admitted value-expression slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-012"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Top-level variable bindings and general formatting remain outside the admitted compiled-state slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-013"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Top-level parameter bindings and general formatting remain outside the admitted compiled/invocation-state slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-014"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Top-level sequence-constructor variables and general formatting remain outside the admitted slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-015"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Top-level sequence-constructor parameters and general formatting remain outside the admitted slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-016"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Multiple top-level parameters and dynamic format pictures remain outside the admitted slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-017"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Multiple top-level variables and dynamic format pictures remain outside the admitted slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-018"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Mixed top-level variable/parameter bindings and formatting remain outside the admitted slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-019"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Mixed top-level parameter/variable bindings and formatting remain outside the admitted slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-020"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Top-level node-valued variables and dependent global bindings remain outside the admitted slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-021"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Top-level node-valued parameters and dependent global bindings remain outside the admitted slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-022"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Mixed top-level node parameter/variable dependencies remain outside the admitted slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-023"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Mixed top-level node variable/parameter dependencies remain outside the admitted slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-024"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Top-level node parameters with positional predicates remain outside the admitted slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-025"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Top-level node parameters with arithmetic predicates remain outside the admitted slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-026"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Top-level node parameters with deeper arithmetic predicates remain outside the admitted slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-027"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Top-level descendant-axis variables with ancestor predicates remain outside the admitted slice."
+
+[[case]]
+set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
+case_name = "data-manipulation-028"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "Top-level descendant-axis parameters with ancestor predicates remain outside the admitted slice."
