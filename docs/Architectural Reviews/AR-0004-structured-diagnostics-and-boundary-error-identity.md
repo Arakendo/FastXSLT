@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Incubating |
 | Opened | 2026-08-25 |
-| Last reviewed | 2026-08-25 |
+| Last reviewed | 2026-08-27 |
 | Scope | Engine diagnostics, operation failures, and host translation |
 | Trigger | M1 needs machine-readable negative results; the peer database review exposed the cost of string-shaped failures |
 | Related ADRs | ADR-0001, ADR-0002 |
@@ -123,6 +123,12 @@ selects a host mechanism risks treating transport as the semantic model.
   malformed-XML fields through a bounded binary envelope. Boundary-owned
   pointer, UTF-8, capacity, and handle failures use a separate private
   `FXFFI` family rather than impersonating engine diagnostics.
+- The first QT3 deep-equal arity-error tranche retains the standards-owned
+  `XPST0017` identity and expression span in its focused XPath error. The
+  stylesheet compiler translates that condition to private
+  `FXXP0005 / invalid` while a valid but unimplemented three-argument collation
+  call remains `FXXP1010 / unsupported`. This is one executable mapping, not a
+  decision on the eventual public diagnostic representation.
 
 ## Disposition
 
@@ -180,3 +186,6 @@ a serialized form needs versioning.
 - 2026-08-26 -- Preserved two engine diagnostic phases through the first native
   .NET candidate and kept ABI-validation failures under a separate private
   boundary family.
+- 2026-08-27 -- Preserved `XPST0017` separately from the private compiler code
+  for three QT3 deep-equal arity errors, with source location conservation and
+  an unsupported-collation control.

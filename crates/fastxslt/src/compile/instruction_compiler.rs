@@ -5,7 +5,7 @@ use crate::xml::quick_xml_experiment::NamespaceBinding;
 use crate::xpath::castable_experiment::{parse as parse_castable, parse_cast};
 use crate::xpath::constant_numeric_experiment::{self, ConstantNumericFailure};
 use crate::xpath::decimal_sum_for_experiment::parse as parse_decimal_sum_for;
-use crate::xpath::deep_equal_experiment::parse as parse_deep_equal;
+use crate::xpath::deep_equal_experiment::{DeepEqualFailureKind, parse as parse_deep_equal};
 use crate::xpath::focus_sum_for_experiment::parse as parse_focus_sum_for;
 use crate::xpath::for_distinct_values_experiment::{
     ForExpressionFailure, parse as parse_for_distinct_values,
@@ -277,11 +277,19 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
     let expression = required_attribute(document, element, None, "select")?;
     let select = if expression.starts_with("deep-equal(") {
         ValueExpression::DeepEqual(Box::new(parse_deep_equal(expression, &location).map_err(
-            |failure| CompileFailure {
-                code: "FXXP1010",
-                category: CompileCategory::Unsupported,
-                detail: failure.detail,
-                location: failure.location,
+            |failure| {
+                let (code, category) = match failure.kind {
+                    DeepEqualFailureKind::InvalidArity { .. } => {
+                        ("FXXP0005", CompileCategory::Invalid)
+                    }
+                    DeepEqualFailureKind::Unsupported => ("FXXP1010", CompileCategory::Unsupported),
+                };
+                CompileFailure {
+                    code,
+                    category,
+                    detail: failure.detail,
+                    location: failure.location,
+                }
             },
         )?))
     } else if expression.contains(" castable as ") {

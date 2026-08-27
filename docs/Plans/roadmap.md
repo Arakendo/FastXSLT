@@ -73,6 +73,10 @@ The adjacent complete five-case `fn-deep-equalflt2args` and five-case
 `fn-deep-equaldbl2args` groups now independently verify equal and unequal finite
 boundary fixtures through retained IEEE `f32`/`f64` values and exact singleton
 sequence work charges.
+The first three `K-SeqDeepEqualFunc` cases now preserve `XPST0017` as an
+XPath-owned static arity identity while stylesheet compilation translates it
+to private `FXXP0005 / invalid`; valid three-argument collation calls remain
+distinctly unsupported.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -257,6 +261,10 @@ implemented behavior belongs to a named standards slice.
 - [x] Execute the complete five-case QT3 `fn-deep-equaldbl2args` group through
   retained IEEE `f64` values under the same denominator and work-accounting
   controls, without inferring general floating arithmetic or lexical coverage.
+- [x] Execute QT3 `K-SeqDeepEqualFunc-1` through `-3` as an explicit static
+  arity-error tranche. Retain `XPST0017` separately from private
+  `FXXP0005 / invalid`, conserve expression/stylesheet locations, and keep a
+  valid but unimplemented three-argument collation call classified unsupported.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.

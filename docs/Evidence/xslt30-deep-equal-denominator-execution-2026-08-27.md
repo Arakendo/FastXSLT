@@ -211,6 +211,21 @@ float/double lexical spaces, whitespace normalization, every rounding edge,
 cross-type promotion beyond the separately admitted mixed group, or general
 floating-point arithmetic.
 
+## QT3 static-arity error tranche
+
+`K-SeqDeepEqualFunc-1` through `-3` now pass as an explicit three-case error
+tranche. They exercise zero-, one-, and four-argument calls and require the
+XPath static error `XPST0017`. The local deep-equal parser owns that standards
+identity and retains the supplied expression resource and span; it does not
+encode the standards code into display text.
+
+At stylesheet compilation, the focused local error translates to the private
+`FXXP0005 / invalid` identity while retaining the stylesheet location. A valid
+three-argument call remains `FXXP1010 / unsupported` because FastXSLT has not
+admitted collation semantics. This is evidence for one standards/private-code
+mapping under AR-0004, not a public diagnostic catalog or a claim that all
+function-signature errors are implemented.
+
 ## QT3 mixed atomic-sequence tranche
 
 FastXSLT now executes the complete 31-case

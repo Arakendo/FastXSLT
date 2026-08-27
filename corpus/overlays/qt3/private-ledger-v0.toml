@@ -493,6 +493,27 @@ rationale = "Compares the finite xs:double lower- and upper-bound fixtures and r
 
 [[case]]
 set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-1"
+selection = "selected"
+execution = "passed"
+rationale = "Rejects a zero-argument deep-equal call with the expected XPath static arity code XPST0017."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-2"
+selection = "selected"
+execution = "passed"
+rationale = "Rejects a one-argument deep-equal call with the expected XPath static arity code XPST0017."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-3"
+selection = "selected"
+execution = "passed"
+rationale = "Rejects a four-argument deep-equal call with the expected XPath static arity code XPST0017."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equal-mix-args-001"
 selection = "selected"
 execution = "passed"

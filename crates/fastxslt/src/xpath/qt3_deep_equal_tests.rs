@@ -2,7 +2,7 @@
 
 use std::{fs, path::PathBuf};
 
-use super::deep_equal_experiment::{evaluate, parse};
+use super::deep_equal_experiment::{DeepEqualFailureKind, evaluate, parse};
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
@@ -98,6 +98,11 @@ const DOUBLE_CASES: [(&str, bool); 5] = [
     ("fn-deep-equaldbl2args-3", false),
     ("fn-deep-equaldbl2args-4", false),
     ("fn-deep-equaldbl2args-5", false),
+];
+const ARITY_ERROR_CASES: [&str; 3] = [
+    "K-SeqDeepEqualFunc-1",
+    "K-SeqDeepEqualFunc-2",
+    "K-SeqDeepEqualFunc-3",
 ];
 const MIXED_ATOMIC_CASES: [(&str, bool, usize); 31] = [
     ("fn-deep-equal-mix-args-001", false, 2),
@@ -196,6 +201,55 @@ fn executes_complete_qt3_deep_equal_xs_float_group() {
 #[test]
 fn executes_complete_qt3_deep_equal_xs_double_group() {
     execute_group("fn-deep-equaldbl2args-", &DOUBLE_CASES, 2);
+}
+
+#[test]
+fn classifies_first_qt3_deep_equal_arity_error_tranche() {
+    let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
+    let test_set = load_test_set();
+    let cases = descendants_named(&test_set, test_set.document_node(), "test-case");
+    assert_eq!(
+        cases
+            .iter()
+            .filter(|node| {
+                attribute(&test_set, **node, "name")
+                    .is_some_and(|name| ARITY_ERROR_CASES.contains(&name))
+            })
+            .count(),
+        ARITY_ERROR_CASES.len()
+    );
+
+    for name in ARITY_ERROR_CASES {
+        let record = overlay_case(overlay, name);
+        assert!(record.contains("selection = \"selected\""));
+        assert!(record.contains("execution = \"passed\""));
+        let case = cases
+            .iter()
+            .copied()
+            .find(|node| attribute(&test_set, *node, "name") == Some(name))
+            .expect("pinned QT3 deep-equal arity case");
+        let expression = child_named(&test_set, case, "test")
+            .map(|node| test_set.string_value(node).trim().to_owned())
+            .expect("QT3 expression");
+        let result = child_named(&test_set, case, "result")
+            .and_then(|node| first_element_child(&test_set, node))
+            .expect("QT3 error assertion");
+        assert_eq!(local_name(&test_set, result), "error");
+        assert_eq!(attribute(&test_set, result, "code"), Some("XPST0017"));
+
+        let location = SourceLocation {
+            resource: format!("urn:w3c:qt3:{name}:expression"),
+            span: 0..expression.len(),
+        };
+        let failure = parse(&expression, &location).expect_err("reject invalid function arity");
+        assert_eq!(failure.location, location);
+        assert_eq!(
+            failure.kind,
+            DeepEqualFailureKind::InvalidArity {
+                standard_code: "XPST0017"
+            }
+        );
+    }
 }
 
 #[test]

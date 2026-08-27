@@ -48,6 +48,13 @@ enum NodeSelection {
 pub(crate) struct DeepEqualFailure {
     pub(crate) detail: String,
     pub(crate) location: SourceLocation,
+    pub(crate) kind: DeepEqualFailureKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DeepEqualFailureKind {
+    InvalidArity { standard_code: &'static str },
+    Unsupported,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,12 +67,19 @@ pub(crate) fn parse(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<DeepEqualExpression, DeepEqualFailure> {
-    let arguments = expression
+    let body = expression
         .strip_prefix("deep-equal(")
         .or_else(|| expression.strip_prefix("fn:deep-equal("))
         .and_then(|value| value.strip_suffix(')'))
-        .and_then(split_top_level_once)
         .ok_or_else(|| unsupported(expression, location))?;
+    let arguments =
+        split_top_level_once(body).ok_or_else(|| invalid_arity(expression, location))?;
+    if let Some((_, remaining)) = split_top_level_once(arguments.1) {
+        if split_top_level_once(remaining).is_some() {
+            return Err(invalid_arity(expression, location));
+        }
+        return Err(unsupported(expression, location));
+    }
     let left = arguments.0.trim();
     let right = arguments.1.trim();
     let operands = if let (Some(left), Some(right)) = (parse_integer(left), parse_integer(right)) {
@@ -128,6 +142,17 @@ fn unsupported(expression: &str, location: &SourceLocation) -> DeepEqualFailure 
     DeepEqualFailure {
         detail: format!("the private deep-equal slice does not support expression: {expression}"),
         location: location.clone(),
+        kind: DeepEqualFailureKind::Unsupported,
+    }
+}
+
+fn invalid_arity(expression: &str, location: &SourceLocation) -> DeepEqualFailure {
+    DeepEqualFailure {
+        detail: format!("deep-equal requires two or three arguments: {expression}"),
+        location: location.clone(),
+        kind: DeepEqualFailureKind::InvalidArity {
+            standard_code: "XPST0017",
+        },
     }
 }
 
