@@ -8,8 +8,10 @@
 | Runtime before review | 2,431 physical lines |
 | Runtime after preparatory test move | 1,862 physical lines |
 | Runtime after first semantic extraction | 1,564 physical lines |
+| Runtime after value-evaluation extraction | 1,310 physical lines |
 | Extracted general test unit | 564 physical lines |
 | Extracted transform-set unit | 304 physical lines |
+| Extracted value-evaluation unit | 267 physical lines |
 | Stylesheet compiler before extraction | 1,771 physical lines |
 | Top-level compiler after extraction | 1,019 physical lines |
 | Extracted instruction compiler | 775 physical lines |
@@ -90,13 +92,31 @@ This is a responsibility-coupling reduction rather than a line-only move. Batch
 admission can change independently of sequence evaluation, while the invocation
 engine remains the single semantic path used by batch execution.
 
+## Second runtime semantic extraction
+
+Dynamic `xsl:value-of` evaluation moved to `value_evaluator.rs`. The unit owns
+dispatch across the admitted value-expression variants, their XPath evaluator
+adapters, variable and source string-value conversion, separators, and the
+translation of value-specific evaluator failures into existing runtime
+diagnostics.
+
+The sequence engine calls one private `execute_value_of` operation. The child
+uses the invocation context, result nodes, text append boundary, and shared
+failure constructors, but it does not call sequence execution, template
+dispatch, serialization, transform-set composition, or host adapters. This
+one-way dependency removes the XPath-family imports from the sequence owner and
+allows value semantics to change without navigating template selection.
+
+The runtime composition owner falls from 1,564 to 1,310 physical lines; the
+value-evaluation owner is 267 lines.
+
 ## Required semantic seams
 
 The first required seam is now extracted. Continue by reviewing these
 independently demonstrated seams:
 
 1. invocation setup, globals, parameters, and temporary-tree materialization;
-2. instruction evaluation and result construction;
+2. remaining instruction control flow and result construction;
 3. template selection, modes, pattern matching, and named-call depth; and
 4. structured failure construction and control-failure translation.
 
@@ -140,14 +160,14 @@ committed.
 
 ## Disposition and reopening
 
-The first runtime semantic extraction and the compiler instruction extraction
-are complete. Reassess the remaining 1,564-line invocation engine before adding
+Two runtime semantic extractions and the compiler instruction extraction are
+complete. Reassess the remaining 1,310-line invocation engine before adding
 another semantic family that touches template dispatch, temporary trees, or
-sequence evaluation. Retain the 1,019-line top-level compiler at this checkpoint;
-reopen it at 1,200 lines or when a new top-level declaration or validation phase
-demonstrates another owner. Reopen the 775-line instruction compiler if
-instruction lowering and expression parsing develop independently pressured
-subsystems or it crosses 1,000 lines.
+sequence control flow. Retain the 1,019-line top-level compiler at this
+checkpoint; reopen it at 1,200 lines or when a new top-level declaration or
+validation phase demonstrates another owner. Reopen the 775-line instruction
+compiler if instruction lowering and expression parsing develop independently
+pressured subsystems or it crosses 1,000 lines.
 
 The campaign is complete only when named modules reduce responsibility
 coupling; line count below a threshold alone does not close this review.

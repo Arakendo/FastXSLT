@@ -10,8 +10,10 @@ ADR-0004's first mandatory 2,000-line review has fired. The retained
 [runtime and compiler decomposition review](../Evidence/runtime-and-compiler-decomposition-review-2026-08-27.md)
 moves general runtime contract tests out as a preparatory navigation checkpoint
 and then separates private transform-set admission/result correlation from the
-invocation engine. The runtime composition owner fell from 2,431 to 1,564 lines;
-its 304-line transform-set child calls, but does not own, invocation semantics.
+invocation engine. A second semantic extraction gives dynamic `xsl:value-of`
+and its XPath adapters a one-way private owner. The runtime composition owner
+fell from 2,431 to 1,310 lines; its 304-line transform-set and 267-line value
+children call, but do not own, the remaining invocation semantics.
 The stylesheet compiler is now divided between a 1,019-line top-level assembly
 and validation owner and a 775-line private instruction compiler. The remaining
 runtime must be reassessed before another semantic family grows template
