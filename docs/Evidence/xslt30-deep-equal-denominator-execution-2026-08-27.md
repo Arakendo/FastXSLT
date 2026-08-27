@@ -136,3 +136,18 @@ cannot silently collapse into the broader admitted `xs:integer` subset. This
 evidence does not establish arbitrary-precision integers, values outside
 `i128`, the other derived-integer families, lexical whitespace normalization,
 cross-type promotion, or general sequence equality.
+
+## QT3 unsigned-long extension
+
+The adjacent complete five-case `fn-deep-equalulng2args` group also passes.
+Each admitted `xs:unsignedLong` constructor is parsed through checked `u64`
+before conversion to the evaluator's `i128` comparison representation. The
+group covers equal zero values and unequal lower-, middle-, and suite-described
+upper-fixture combinations in both argument orders.
+
+The suite's upper fixture is not the actual XML Schema upper boundary, so a
+focused control separately accepts `18446744073709551615` and rejects both
+`-1` and `18446744073709551616`. This establishes the fixed unsigned 64-bit
+value boundary for this private constructor path, but does not establish
+lexical whitespace normalization, cross-type promotion, or general sequence
+equality.

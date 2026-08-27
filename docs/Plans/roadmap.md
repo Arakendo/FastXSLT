@@ -43,7 +43,9 @@ complete five-case `fn-deep-equalnint2args` group adds a checked-`i128`
 `xs:negativeInteger` subset with executable rejection of zero and positive
 values. Its adjacent five-case `fn-deep-equalpint2args` group adds the mirrored
 checked-`i128` `xs:positiveInteger` subset with zero and negative values
-rejected.
+rejected. The next five-case `fn-deep-equalulng2args` group adds an exact
+checked-`u64` `xs:unsignedLong` path with controls at both real value-space
+boundaries.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -170,6 +172,11 @@ implemented behavior belongs to a named standards slice.
   derived type boundary by accepting `1` and rejecting both `0` and `-1`, while
   leaving arbitrary precision and the other derived-integer families
   unclaimed.
+- [x] Execute the complete five-case QT3 `fn-deep-equalulng2args` group through
+  checked unsigned 64-bit values. Supplement its advertised upper fixture by
+  accepting the actual `18446744073709551615` boundary and rejecting both `-1`
+  and `18446744073709551616`, without inferring cross-type promotion or general
+  constructor support.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.

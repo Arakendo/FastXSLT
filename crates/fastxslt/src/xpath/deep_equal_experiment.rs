@@ -124,6 +124,11 @@ fn parse_integer(expression: &str) -> Option<i128> {
         .and_then(|value| value.strip_suffix("\"))"))
         .and_then(|value| value.parse::<u16>().ok())
         .map(i128::from);
+    let unsigned_long = expression
+        .strip_prefix("(xs:unsignedLong(\"")
+        .and_then(|value| value.strip_suffix("\"))"))
+        .and_then(|value| value.parse::<u64>().ok())
+        .map(i128::from);
     let negative_integer = expression
         .strip_prefix("(xs:negativeInteger(\"")
         .and_then(|value| value.strip_suffix("\"))"))
@@ -136,6 +141,7 @@ fn parse_integer(expression: &str) -> Option<i128> {
         .filter(|value| *value > 0);
     int.or(long)
         .or(unsigned_short)
+        .or(unsigned_long)
         .or(negative_integer)
         .or(positive_integer)
         .or_else(|| {
@@ -484,6 +490,30 @@ mod tests {
                 parse(
                     &format!(
                         "fn:deep-equal((xs:positiveInteger(\"{invalid}\")),(xs:positiveInteger(\"{invalid}\")))"
+                    ),
+                    &location(),
+                )
+                .is_err()
+            );
+        }
+    }
+
+    #[test]
+    fn enforces_the_xs_unsigned_long_value_range() {
+        let upper = parse(
+            "fn:deep-equal((xs:unsignedLong(\"18446744073709551615\")),(xs:unsignedLong(\"18446744073709551615\")))",
+            &location(),
+        )
+        .expect("parse upper xs:unsignedLong value");
+        assert!(
+            evaluate(&upper, None, &mut InvocationControl::unbounded())
+                .expect("evaluate xs:unsignedLong equality")
+        );
+        for invalid in ["-1", "18446744073709551616"] {
+            assert!(
+                parse(
+                    &format!(
+                        "fn:deep-equal((xs:unsignedLong(\"{invalid}\")),(xs:unsignedLong(\"{invalid}\")))"
                     ),
                     &location(),
                 )
