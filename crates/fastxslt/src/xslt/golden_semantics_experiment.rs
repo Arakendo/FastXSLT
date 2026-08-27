@@ -123,6 +123,12 @@ pub(crate) enum Instruction {
         select: Box<CastExpression>,
         location: SourceLocation,
     },
+    IntegerRangeVariable {
+        name: String,
+        start: i64,
+        end: i64,
+        location: SourceLocation,
+    },
     SequenceNodes {
         select: Box<ForDistinctValuesExpression>,
         location: SourceLocation,

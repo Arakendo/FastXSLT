@@ -7,7 +7,7 @@ use crate::compile::golden_stylesheet_experiment::compile_stylesheet;
 use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::resources::ResourceSnapshot;
-use crate::xdm::atomic_value_experiment::AtomicValue;
+use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
 #[cfg(test)]
 use crate::xdm::owned_tree_experiment::BuildFailure;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, StringValueVisitFailure};
@@ -604,7 +604,7 @@ fn execute_initial_template(
         &inputs,
         &template.template.body,
         None,
-        &globals.atomics,
+        &RuntimeVariables::from_atomics(&globals.atomics),
         0,
         control,
     )?;
@@ -622,6 +622,21 @@ struct SequenceInputs<'a> {
 struct RuntimeGlobals {
     atomics: BTreeMap<String, AtomicValue>,
     nodes: BTreeMap<String, Vec<NodeId>>,
+}
+
+#[derive(Debug, Clone, Default)]
+struct RuntimeVariables {
+    atomics: BTreeMap<String, AtomicValue>,
+    atomic_sequences: BTreeMap<String, Vec<AtomicValue>>,
+}
+
+impl RuntimeVariables {
+    fn from_atomics(atomics: &BTreeMap<String, AtomicValue>) -> Self {
+        Self {
+            atomics: atomics.clone(),
+            atomic_sequences: BTreeMap::new(),
+        }
+    }
 }
 
 fn materialize_global_defaults(
@@ -698,8 +713,8 @@ fn bind_template_parameters(
     template: &Template,
     supplied: &BTreeMap<String, InvocationParameter>,
     base: &BTreeMap<String, AtomicValue>,
-) -> BTreeMap<String, AtomicValue> {
-    let mut frame = base.clone();
+) -> RuntimeVariables {
+    let mut frame = RuntimeVariables::from_atomics(base);
     for parameter in &template.parameters {
         let value = supplied
             .get(&parameter.name)
@@ -708,7 +723,7 @@ fn bind_template_parameters(
                 || AtomicValue::string(""),
                 |supplied| supplied.value.clone(),
             );
-        frame.insert(parameter.name.clone(), value);
+        frame.atomics.insert(parameter.name.clone(), value);
     }
     frame
 }
@@ -740,7 +755,7 @@ fn execute_sequence(
     inputs: &SequenceInputs<'_>,
     instructions: &[Instruction],
     context: Option<crate::xdm::owned_tree_experiment::NodeId>,
-    variables: &BTreeMap<String, AtomicValue>,
+    variables: &RuntimeVariables,
     call_depth: usize,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
@@ -789,7 +804,13 @@ fn execute_sequence(
             }
             Instruction::Variable { name, select, .. } => {
                 let value = execute_variable_binding(inputs, name, select, context, control)?;
-                scope.insert(name.clone(), value);
+                scope.atomics.insert(name.clone(), value);
+            }
+            Instruction::IntegerRangeVariable {
+                name, start, end, ..
+            } => {
+                let values = materialize_integer_range(*start, *end, inputs.request_id, control)?;
+                scope.atomic_sequences.insert(name.clone(), values);
             }
             Instruction::ApplyTemplates { select, mode, .. } => {
                 let (source, context) = required_source_context(inputs, context)?;
@@ -861,7 +882,7 @@ fn execute_sequence_items(
     inputs: &SequenceInputs<'_>,
     select: &[SequenceItemExpression],
     context: Option<NodeId>,
-    variables: &BTreeMap<String, AtomicValue>,
+    variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let mut result = Vec::new();
@@ -881,19 +902,14 @@ fn execute_sequence_items(
                 previous_was_atomic = false;
             }
             SequenceItemExpression::Variable(name) => {
-                let value = variables.get(name).ok_or_else(|| {
-                    failure(
-                        "FXRT0002",
-                        FailureCategory::Invalid,
-                        Some(inputs.request_id),
-                        format!("unbound variable: ${name}"),
-                    )
-                })?;
-                if previous_was_atomic {
-                    append_text(&mut result, " ", inputs.request_id, control)?;
+                let values = variable_atomic_values(variables, name, inputs.request_id)?;
+                for value in values {
+                    if previous_was_atomic {
+                        append_text(&mut result, " ", inputs.request_id, control)?;
+                    }
+                    append_text(&mut result, value.lexical(), inputs.request_id, control)?;
+                    previous_was_atomic = true;
                 }
-                append_text(&mut result, value.lexical(), inputs.request_id, control)?;
-                previous_was_atomic = true;
             }
         }
     }
@@ -905,7 +921,7 @@ fn execute_if(
     test: &BooleanExpression,
     body: &[Instruction],
     context: Option<NodeId>,
-    variables: &BTreeMap<String, AtomicValue>,
+    variables: &RuntimeVariables,
     call_depth: usize,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
@@ -921,7 +937,7 @@ fn execute_choose(
     branches: &[crate::xslt::golden_semantics_experiment::ChooseBranch],
     otherwise: &[Instruction],
     context: Option<NodeId>,
-    variables: &BTreeMap<String, AtomicValue>,
+    variables: &RuntimeVariables,
     call_depth: usize,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
@@ -942,13 +958,13 @@ fn execute_choose(
 
 fn evaluate_boolean(
     expression: &BooleanExpression,
-    variables: &BTreeMap<String, AtomicValue>,
+    variables: &RuntimeVariables,
     request_id: &str,
 ) -> Result<bool, ExecutionFailure> {
     match expression {
         BooleanExpression::Constant(value) => Ok(*value),
         BooleanExpression::VariableEqualsInteger(test) => {
-            let value = variables.get(&test.variable).ok_or_else(|| {
+            let value = variables.atomics.get(&test.variable).ok_or_else(|| {
                 failure(
                     "FXRT0002",
                     FailureCategory::Invalid,
@@ -980,6 +996,59 @@ fn execute_variable_binding(
             ),
         }
     })
+}
+
+fn materialize_integer_range(
+    start: i64,
+    end: i64,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Vec<AtomicValue>, ExecutionFailure> {
+    let mut values = Vec::new();
+    if start > end {
+        return Ok(values);
+    }
+    let mut value = start;
+    loop {
+        control
+            .charge(WorkDomain::XPathOperation, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        values.push(AtomicValue::from_validated_lexical(
+            BuiltinAtomicType::Integer,
+            value.to_string(),
+        ));
+        if value == end {
+            break;
+        }
+        value = value.checked_add(1).ok_or_else(|| {
+            failure(
+                "FXRT0007",
+                FailureCategory::Invalid,
+                Some(request_id),
+                "integer range overflowed during materialization",
+            )
+        })?;
+    }
+    Ok(values)
+}
+
+fn variable_atomic_values<'a>(
+    variables: &'a RuntimeVariables,
+    name: &str,
+    request_id: &str,
+) -> Result<Vec<&'a AtomicValue>, ExecutionFailure> {
+    if let Some(value) = variables.atomics.get(name) {
+        return Ok(vec![value]);
+    }
+    if let Some(values) = variables.atomic_sequences.get(name) {
+        return Ok(values.iter().collect());
+    }
+    Err(failure(
+        "FXRT0002",
+        FailureCategory::Invalid,
+        Some(request_id),
+        format!("unbound variable: ${name}"),
+    ))
 }
 
 fn copy_source_node(
@@ -1041,7 +1110,7 @@ fn execute_value_of(
     select: &ValueExpression,
     separator: &str,
     context: Option<NodeId>,
-    variables: &BTreeMap<String, AtomicValue>,
+    variables: &RuntimeVariables,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
@@ -1063,23 +1132,7 @@ fn execute_value_of(
             }
         }
         ValueExpression::Variable(name) => {
-            if let Some(value) = variables.get(name) {
-                append_text(result, value.lexical(), inputs.request_id, control)?;
-            } else if let Some(nodes) = inputs.globals.nodes.get(name) {
-                for (index, node) in nodes.iter().enumerate() {
-                    if index > 0 {
-                        append_text(result, separator, inputs.request_id, control)?;
-                    }
-                    append_source_string_value(inputs, *node, result, control)?;
-                }
-            } else {
-                return Err(failure(
-                    "FXRT0002",
-                    FailureCategory::Invalid,
-                    Some(inputs.request_id),
-                    format!("unbound variable: ${name}"),
-                ));
-            }
+            append_variable_value(inputs, name, separator, variables, result, control)?;
         }
         ValueExpression::IntegerFor(expression) => {
             let values = evaluate_integer_for(expression, control)
@@ -1113,8 +1166,8 @@ fn execute_value_of(
             append_text(result, &value, inputs.request_id, control)?;
         }
         ValueExpression::FormatNumber(expression) => {
-            let formatted =
-                evaluate_format_number(expression, variables).map_err(|error| match error {
+            let formatted = evaluate_format_number(expression, &variables.atomics).map_err(
+                |error| match error {
                     FormatNumberEvaluationFailure::UnboundVariable(name) => failure(
                         "FXRT0002",
                         FailureCategory::Invalid,
@@ -1127,7 +1180,8 @@ fn execute_value_of(
                         Some(inputs.request_id),
                         "dynamic value or picture exceeds the admitted format-number slice",
                     ),
-                })?;
+                },
+            )?;
             append_text(result, &formatted, inputs.request_id, control)?;
         }
         ValueExpression::Castable(expression) => {
@@ -1142,6 +1196,43 @@ fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_variable_value(
+    inputs: &SequenceInputs<'_>,
+    name: &str,
+    separator: &str,
+    variables: &RuntimeVariables,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    if let Some(value) = variables.atomics.get(name) {
+        return append_text(result, value.lexical(), inputs.request_id, control);
+    }
+    if let Some(values) = variables.atomic_sequences.get(name) {
+        for (index, value) in values.iter().enumerate() {
+            if index > 0 {
+                append_text(result, separator, inputs.request_id, control)?;
+            }
+            append_text(result, value.lexical(), inputs.request_id, control)?;
+        }
+        return Ok(());
+    }
+    if let Some(nodes) = inputs.globals.nodes.get(name) {
+        for (index, node) in nodes.iter().enumerate() {
+            if index > 0 {
+                append_text(result, separator, inputs.request_id, control)?;
+            }
+            append_source_string_value(inputs, *node, result, control)?;
+        }
+        return Ok(());
+    }
+    Err(failure(
+        "FXRT0002",
+        FailureCategory::Invalid,
+        Some(inputs.request_id),
+        format!("unbound variable: ${name}"),
+    ))
 }
 
 fn append_source_string_value(
@@ -1202,11 +1293,11 @@ fn execute_castable_expression(
     inputs: &SequenceInputs<'_>,
     expression: &CastableExpression,
     context: Option<NodeId>,
-    variables: &BTreeMap<String, AtomicValue>,
+    variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
     if let Some(name) = castable_variable_name(expression) {
-        let value = variables.get(name).ok_or_else(|| {
+        let value = variables.atomics.get(name).ok_or_else(|| {
             failure(
                 "FXRT0002",
                 FailureCategory::Invalid,
@@ -1295,13 +1386,15 @@ fn execute_named_call(
         .iter()
         .find(|template| template.name == name)
         .expect("named-template references were validated during compilation");
-    let mut frame: BTreeMap<_, _> = target
-        .parameters
-        .iter()
-        .map(|parameter| (parameter.clone(), AtomicValue::string("")))
-        .collect();
+    let mut frame = RuntimeVariables::default();
+    frame.atomics.extend(
+        target
+            .parameters
+            .iter()
+            .map(|parameter| (parameter.clone(), AtomicValue::string(""))),
+    );
     for argument in arguments {
-        frame.insert(
+        frame.atomics.insert(
             argument.name.clone(),
             AtomicValue::string(argument.value.clone()),
         );
@@ -1529,7 +1622,7 @@ mod tests {
     use super::{
         ExecutionPolicy, FailureCategory, InvocationEntry, InvocationParameter, ResultNode,
         SemanticResult, TransformRequest, TransformSetBuilder, compile_resource,
-        execute_transform_set, serialize_xml,
+        execute_transform_set, materialize_integer_range, serialize_xml,
     };
 
     const SOURCE_ID: &str = "urn:fastxslt:golden:hello:source";
@@ -1906,6 +1999,20 @@ mod tests {
         assert_eq!(failure.code, "FXSR1003");
         assert_eq!(failure.category, FailureCategory::Unsupported);
         assert_eq!(failure.request_id.as_deref(), Some("indented-result"));
+    }
+
+    #[test]
+    fn integer_range_materialization_charges_each_atomic_item_before_retention() {
+        let mut limits = WorkLimits::unbounded();
+        limits.xpath_operations = 9;
+        let mut control = InvocationControl::new(CancellationToken::new(), limits);
+
+        let failure = materialize_integer_range(1, 10, "range-request", &mut control)
+            .expect_err("the tenth item must exceed the nine-operation budget");
+
+        assert_eq!(failure.category, FailureCategory::Limit);
+        assert_eq!(failure.work_domain, Some(WorkDomain::XPathOperation));
+        assert_eq!(failure.request_id.as_deref(), Some("range-request"));
     }
 
     #[test]

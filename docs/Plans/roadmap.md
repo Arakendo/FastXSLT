@@ -190,6 +190,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   preserving `mode="#all"` declaration metadata without treating it as a
   wildcard that makes every initial mode available. The denominator is now
   three native passes and two explicit engine gaps.
+- [x] Execute pinned `initial-mode-001` through a bounded typed local integer
+  sequence over `1 to 10`, preserving ten invocation-local atomic values and
+  separator semantics without collapsing the sequence into a preformatted
+  string. The denominator is now four native passes and one explicit engine
+  gap; general `xsl:for-each` and typed sequence conversion remain open.
 - [ ] Establish explicit URI/resource resolution and execution limits.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by

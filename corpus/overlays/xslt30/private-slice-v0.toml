@@ -5,8 +5,8 @@ revision = "6f8fd9e966ae74a251a2604abef9d904c7bc5c9b"
 set_file = "tests/misc/initial-mode/_initial-mode-test-set.xml"
 case_name = "initial-mode-001"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Initial-mode metadata is admitted; compilation stops before execution at the stylesheet's typed constructed variable and for-each sequence machinery."
+execution = "native-pass"
+rationale = "Executes the typed local integer sequence constructed from the 1 to 10 range and joins its ten atomic values with the asserted separator."
 
 [[case]]
 set_file = "tests/misc/initial-mode/_initial-mode-test-set.xml"

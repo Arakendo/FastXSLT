@@ -25,14 +25,14 @@ bounded sealed snapshot.
 
 | Case | Initial mode | Expected result | Current disposition |
 | --- | --- | --- | --- |
-| `initial-mode-001` | `inimode` | XML | `FXST1009`: typed constructed variable attributes |
+| `initial-mode-001` | `inimode` | XML | Native pass: typed constructed integer sequence over `1 to 10` |
 | `initial-mode-002` | `inimode` | `XTDE0045` | Native pass: `mode="#all"` does not declare arbitrary initial modes |
 | `initial-mode-003` | `inimode` | `XTDE0050` | Native pass: absent required global parameter reports expected error |
 | `initial-mode-004` | `flobble` | XML | Native pass: local expanded-QName and tunnel parameters plus mixed node/atomic sequence |
 | `initial-mode-005` | `b` | XML | `FXST1015`: element-bearing global sequence constructor |
 
-The denominator is five discovered and selected: three native passes, two
-explicit engine gaps, and none excluded, harness-unsupported, failed, or lost.
+The denominator is five discovered and selected: four native passes, one
+explicit engine gap, and none excluded, harness-unsupported, failed, or lost.
 
 ## Claim boundary
 
@@ -42,7 +42,8 @@ initial-mode parameter semantics exercised by case 004, plus the required
 global-parameter failure exercised by case 003. It does not establish general
 template-parameter defaults/types, tunnel propagation across template
 application, multi-mode declarations, `#all` semantics, temporary trees,
-general sequence constructors, or general `#all` dispatch behavior.
+general sequence constructors, general typed conversion, or general `#all`
+dispatch behavior.
 
 The first implementation decision should be the host-neutral invocation shape:
 an initial mode is standards-defined entry state, not a special ASP.NET or CLI
@@ -90,3 +91,16 @@ Requesting `inimode` therefore returns the expected `XTDE0045` during request
 admission. This does not claim general `#all` dispatch; it proves the narrower
 and crucial negative rule that `#all` is not a wildcard declaration of every
 possible initial-mode name.
+
+## Subsequent typed-sequence evidence
+
+Case 001 now compiles its `xs:integer *` local variable constructor, evaluates
+the bounded integer range `1 to 10`, retains ten typed atomic values in
+invocation-local sequence state, and applies `xsl:value-of/@separator` without
+preformatting the sequence into one string. Each retained range item first
+charges the XPath-operation budget; a nine-operation control fails before the
+tenth item is retained.
+
+This is evidence for one typed range-construction shape. It does not establish
+general `xsl:for-each`, arbitrary sequence constructors, node atomization,
+sequence-type conversion, or a complete XPath range operator.

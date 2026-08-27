@@ -37,7 +37,7 @@ const CASES: [CaseMetadata; 5] = [
         mode: "inimode",
         assertion: "assert-xml",
         error: None,
-        compile_code: Some("FXST1009"),
+        compile_code: None,
     },
     CaseMetadata {
         name: "initial-mode-002",
@@ -129,6 +129,72 @@ fn admits_complete_initial_mode_denominator_and_reaches_engine_boundaries() {
                 .expect("native initial-mode case should compile");
         }
     }
+}
+
+#[test]
+fn executes_initial_mode_001_with_a_typed_constructed_integer_sequence() {
+    const CASE_NAME: &str = "initial-mode-001";
+    const SOURCE_ID: &str = "urn:w3c:xslt30:initial-mode-001:source";
+    const STYLESHEET_ID: &str = "urn:w3c:xslt30:initial-mode-001:stylesheet";
+    let (test_set, set_path) = load_test_set();
+    let case = descendants_named(&test_set, test_set.document_node(), "test-case")
+        .into_iter()
+        .find(|node| attribute(&test_set, *node, "name") == Some(CASE_NAME))
+        .expect("pinned initial-mode-001 metadata");
+    let test = child_named(&test_set, case, "test").expect("test metadata");
+    let expected = child_named(&test_set, case, "result")
+        .and_then(|node| child_named(&test_set, node, "assert-xml"))
+        .map(|node| test_set.string_value(node))
+        .expect("XML assertion");
+    let stylesheet_file = child_named(&test_set, test, "stylesheet")
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("stylesheet file");
+    let stylesheet = fs::read(
+        set_path
+            .parent()
+            .expect("test-set directory")
+            .join(stylesheet_file),
+    )
+    .expect("read pinned stylesheet");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 65_536, 131_072));
+    resources
+        .admit(SOURCE_ID, b"<doc/>".to_vec())
+        .expect("admit catalog source");
+    resources
+        .admit(STYLESHEET_ID, stylesheet)
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET_ID).expect("compile initial-mode-001");
+    let mut builder = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 4_096,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    builder
+        .add(TransformRequest {
+            identity: CASE_NAME.to_owned(),
+            result_identity: format!("result:{CASE_NAME}"),
+            entry: InvocationEntry::InitialMode {
+                resource: SOURCE_ID.to_owned(),
+                name: "inimode".to_owned(),
+            },
+            parameters: BTreeMap::new(),
+            cancellation: CancellationToken::new(),
+            cancellation_fault: None,
+        })
+        .expect("admit initial mode");
+
+    let results = execute_transform_set(builder.seal()).expect("execute initial-mode-001");
+    assert_eq!(expected.trim(), "<zzz>1,2,3,4,5,6,7,8,9,10</zzz>");
+    assert_eq!(
+        results.by_request[CASE_NAME].serialized,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><zzz>1,2,3,4,5,6,7,8,9,10</zzz>"
+    );
 }
 
 #[test]

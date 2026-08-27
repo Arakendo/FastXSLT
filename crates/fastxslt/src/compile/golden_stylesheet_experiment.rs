@@ -19,6 +19,7 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 const XSLT_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
+const XML_SCHEMA_NAMESPACE: &str = "http://www.w3.org/2001/XMLSchema";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CompileCategory {
@@ -564,7 +565,9 @@ fn compile_sequence_excluding(
                         instructions.push(compile_value_of(document, child)?);
                     } else if name.local == "variable" {
                         let variable = compile_variable(document, child)?;
-                        let Instruction::Variable { name, .. } = &variable else {
+                        let (Instruction::Variable { name, .. }
+                        | Instruction::IntegerRangeVariable { name, .. }) = &variable
+                        else {
                             unreachable!("compile_variable returns a variable instruction")
                         };
                         if local_variables.contains(name) {
@@ -813,8 +816,7 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
 }
 
 fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
-    ensure_only_attributes(document, element, &["name", "select"], "xsl:variable")?;
-    ensure_no_meaningful_children(document, element, "xsl:variable")?;
+    ensure_only_attributes(document, element, &["name", "select", "as"], "xsl:variable")?;
     let location = document.location(element).clone();
     let name = required_attribute(document, element, None, "name")?;
     if !is_ascii_ncname(name) {
@@ -824,7 +826,17 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
             &location,
         ));
     }
-    let expression = required_attribute(document, element, None, "select")?;
+    let Some(expression) = optional_attribute(document, element, None, "select") else {
+        return compile_integer_range_variable(document, element, name, &location);
+    };
+    ensure_no_meaningful_children(document, element, "xsl:variable")?;
+    if optional_attribute(document, element, None, "as").is_some() {
+        return Err(unsupported(
+            "FXST1016",
+            "typed select-based local variables are outside the private slice",
+            &location,
+        ));
+    }
     let select = parse_cast(expression, &location).map_err(|failure| CompileFailure {
         code: "FXXP1008",
         category: CompileCategory::Unsupported,
@@ -836,6 +848,146 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
         select: Box::new(select),
         location,
     })
+}
+
+fn compile_integer_range_variable(
+    document: &Document,
+    element: NodeId,
+    name: &str,
+    location: &SourceLocation,
+) -> Result<Instruction, CompileFailure> {
+    let sequence_type = optional_attribute(document, element, None, "as").ok_or_else(|| {
+        unsupported(
+            "FXST1016",
+            "constructed local variables require an admitted sequence type",
+            location,
+        )
+    })?;
+    if sequence_type != "xs:integer *"
+        || namespace_for_prefix(document, element, "xs") != Some(XML_SCHEMA_NAMESPACE)
+    {
+        return Err(unsupported(
+            "FXST1016",
+            format!("unsupported constructed local variable type: {sequence_type}"),
+            location,
+        ));
+    }
+    let children = meaningful_children(document, element);
+    let [for_each] = children.as_slice() else {
+        return Err(unsupported(
+            "FXST1017",
+            "the admitted constructed integer sequence requires one xsl:for-each",
+            location,
+        ));
+    };
+    if !is_xslt_element(document, *for_each, "for-each") {
+        return Err(unsupported(
+            "FXST1017",
+            "the admitted constructed integer sequence requires xsl:for-each",
+            document.location(*for_each),
+        ));
+    }
+    ensure_only_attributes(document, *for_each, &["select"], "xsl:for-each")?;
+    let range = required_attribute(document, *for_each, None, "select")?;
+    let (start, end) = parse_integer_range(range, document.location(*for_each))?;
+    validate_atomized_range_body(document, *for_each)?;
+    Ok(Instruction::IntegerRangeVariable {
+        name: name.to_owned(),
+        start,
+        end,
+        location: location.clone(),
+    })
+}
+
+fn parse_integer_range(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<(i64, i64), CompileFailure> {
+    let Some((start, end)) = expression.split_once(" to ") else {
+        return Err(unsupported(
+            "FXXP1010",
+            format!("unsupported integer range: {expression}"),
+            location,
+        ));
+    };
+    let start = start.trim().parse::<i64>().map_err(|_| {
+        invalid(
+            "FXXP0004",
+            format!("invalid integer range start: {start}"),
+            location,
+        )
+    })?;
+    let end = end.trim().parse::<i64>().map_err(|_| {
+        invalid(
+            "FXXP0004",
+            format!("invalid integer range end: {end}"),
+            location,
+        )
+    })?;
+    Ok((start, end))
+}
+
+fn validate_atomized_range_body(
+    document: &Document,
+    for_each: NodeId,
+) -> Result<(), CompileFailure> {
+    let children = meaningful_children(document, for_each);
+    let [wrapper] = children.as_slice() else {
+        return Err(unsupported(
+            "FXST1017",
+            "the admitted integer range body requires one literal wrapper",
+            document.location(for_each),
+        ));
+    };
+    if document
+        .name(*wrapper)
+        .is_none_or(|name| name.namespace.as_deref() == Some(XSLT_NAMESPACE))
+        || !document.attributes(*wrapper).is_empty()
+    {
+        return Err(unsupported(
+            "FXST1017",
+            "the admitted integer range body requires an attribute-free literal wrapper",
+            document.location(*wrapper),
+        ));
+    }
+    let body = meaningful_children(document, *wrapper);
+    let [value_of] = body.as_slice() else {
+        return Err(unsupported(
+            "FXST1017",
+            "the admitted integer range wrapper requires one xsl:value-of",
+            document.location(*wrapper),
+        ));
+    };
+    if !is_xslt_element(document, *value_of, "value-of")
+        || required_attribute(document, *value_of, None, "select")? != "."
+    {
+        return Err(unsupported(
+            "FXST1017",
+            "the admitted integer range wrapper must atomize the range item",
+            document.location(*value_of),
+        ));
+    }
+    ensure_only_attributes(document, *value_of, &["select"], "xsl:value-of")?;
+    ensure_no_meaningful_children(document, *value_of, "xsl:value-of")
+}
+
+fn namespace_for_prefix<'a>(
+    document: &'a Document,
+    element: NodeId,
+    prefix: &str,
+) -> Option<&'a str> {
+    let mut current = Some(element);
+    while let Some(node) = current {
+        if let Some(binding) = document
+            .namespace_declarations(node)
+            .iter()
+            .find(|binding| binding.prefix.as_deref() == Some(prefix))
+        {
+            return Some(binding.namespace.as_str());
+        }
+        current = document.parent(node);
+    }
+    None
 }
 
 fn compile_sequence_nodes(
@@ -1155,6 +1307,7 @@ fn validate_named_calls(
             Instruction::Text { .. }
             | Instruction::ValueOf { .. }
             | Instruction::Variable { .. }
+            | Instruction::IntegerRangeVariable { .. }
             | Instruction::SequenceNodes { .. }
             | Instruction::SequenceItems { .. }
             | Instruction::ApplyTemplates { .. } => {}
