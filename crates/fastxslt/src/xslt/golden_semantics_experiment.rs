@@ -1,6 +1,7 @@
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::castable_experiment::{CastExpression, CastableExpression};
+use crate::xpath::constant_format_number_experiment::ConstantFormatNumberExpression;
 use crate::xpath::decimal_sum_for_experiment::DecimalSumForExpression;
 use crate::xpath::focus_sum_for_experiment::FocusSumForExpression;
 use crate::xpath::for_distinct_values_experiment::ForDistinctValuesExpression;
@@ -124,6 +125,7 @@ pub(crate) enum ValueExpression {
     IntegerFor(Box<IntegerForExpression>),
     FocusSumFor(Box<FocusSumForExpression>),
     DecimalSumFor(Box<DecimalSumForExpression>),
+    ConstantFormatNumber(Box<ConstantFormatNumberExpression>),
     Castable(Box<CastableExpression>),
 }
 

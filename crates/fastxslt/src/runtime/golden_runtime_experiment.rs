@@ -830,27 +830,11 @@ fn execute_value_of(
             append_text(result, &value.to_string(), inputs.request_id, control)?;
         }
         ValueExpression::DecimalSumFor(expression) => {
-            let (source, context) = required_source_context(inputs, context)?;
-            let value = evaluate_decimal_sum_for(expression, source, context, control).map_err(
-                |evaluation_failure| match evaluation_failure {
-                    DecimalSumEvaluationFailure::Control(control) => {
-                        control_failure(control, inputs.request_id)
-                    }
-                    DecimalSumEvaluationFailure::InvalidValue => failure(
-                        "FXRT0005",
-                        FailureCategory::Invalid,
-                        Some(inputs.request_id),
-                        "an exact-decimal operand has an invalid lexical value",
-                    ),
-                    DecimalSumEvaluationFailure::Unsupported => failure(
-                        "FXRT1006",
-                        FailureCategory::Unsupported,
-                        Some(inputs.request_id),
-                        "decimal overflow or rounding is outside the private exact-decimal sum slice",
-                    ),
-                },
-            )?;
+            let value = execute_decimal_sum(inputs, expression, context, control)?;
             append_text(result, &value, inputs.request_id, control)?;
+        }
+        ValueExpression::ConstantFormatNumber(expression) => {
+            append_text(result, expression.formatted(), inputs.request_id, control)?;
         }
         ValueExpression::Castable(expression) => {
             let value =
@@ -864,6 +848,34 @@ fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn execute_decimal_sum(
+    inputs: &SequenceInputs<'_>,
+    expression: &crate::xpath::decimal_sum_for_experiment::DecimalSumForExpression,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    evaluate_decimal_sum_for(expression, source, context, control).map_err(|evaluation_failure| {
+        match evaluation_failure {
+            DecimalSumEvaluationFailure::Control(control) => {
+                control_failure(control, inputs.request_id)
+            }
+            DecimalSumEvaluationFailure::InvalidValue => failure(
+                "FXRT0005",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                "an exact-decimal operand has an invalid lexical value",
+            ),
+            DecimalSumEvaluationFailure::Unsupported => failure(
+                "FXRT1006",
+                FailureCategory::Unsupported,
+                Some(inputs.request_id),
+                "decimal overflow or rounding is outside the private exact-decimal sum slice",
+            ),
+        }
+    })
 }
 
 fn execute_castable_expression(

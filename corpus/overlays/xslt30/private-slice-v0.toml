@@ -271,22 +271,22 @@ rationale = "Native xsl:choose evaluates round() over an exact nonnegative decim
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-009"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "General format-number and substring-after composition remains outside the admitted value-expression slice."
+execution = "passed"
+rationale = "Constant format-number composes an exact decimal with substring-after over string literals to obtain the admitted grouping picture."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-010"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "General format-number and number constructor composition remains outside the admitted value-expression slice."
+execution = "passed"
+rationale = "Constant format-number composes number() over an admitted exact-decimal string literal with the admitted grouping picture."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"
 case_name = "data-manipulation-011"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "General formatting with nested constructor and string functions remains outside the admitted value-expression slice."
+execution = "passed"
+rationale = "Constant format-number composes number() and substring-after() over string literals without dynamic formatting or binary floating-point conversion."
 
 [[case]]
 set_file = "tests/expr/data-manipulation/_data-manipulation-test-set.xml"

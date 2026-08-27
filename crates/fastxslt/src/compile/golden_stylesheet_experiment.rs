@@ -1,6 +1,7 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xml::quick_xml_experiment::NamespaceBinding;
 use crate::xpath::castable_experiment::{parse as parse_castable, parse_cast};
+use crate::xpath::constant_format_number_experiment::parse as parse_constant_format_number;
 use crate::xpath::constant_numeric_experiment::{self, ConstantNumericFailure};
 use crate::xpath::decimal_sum_for_experiment::parse as parse_decimal_sum_for;
 use crate::xpath::focus_sum_for_experiment::parse as parse_focus_sum_for;
@@ -504,13 +505,26 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
                 location: failure.location,
             },
         )?))
-    } else if expression.trim_start().starts_with("format-number(") {
+    } else if expression.trim_start().starts_with("format-number(")
+        && expression.contains("sum(for $")
+    {
         ValueExpression::DecimalSumFor(Box::new(
             parse_decimal_sum_for(expression, &location).map_err(|failure| CompileFailure {
                 code: "FXXP1006",
                 category: CompileCategory::Unsupported,
                 detail: failure.detail,
                 location: failure.location,
+            })?,
+        ))
+    } else if expression.trim_start().starts_with("format-number(") {
+        ValueExpression::ConstantFormatNumber(Box::new(
+            parse_constant_format_number(expression, &location).map_err(|failure| {
+                CompileFailure {
+                    code: "FXXP1009",
+                    category: CompileCategory::Unsupported,
+                    detail: failure.detail,
+                    location: failure.location,
+                }
             })?,
         ))
     } else if expression.trim_start().starts_with("sum(for $") {

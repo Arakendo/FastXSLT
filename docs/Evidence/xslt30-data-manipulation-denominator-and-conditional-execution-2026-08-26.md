@@ -28,7 +28,7 @@ or file-backed expected result.
 
 ## Executed slice
 
-Cases `data-manipulation-001` through `data-manipulation-008` execute through
+Cases `data-manipulation-001` through `data-manipulation-011` execute through
 the native compiler and runtime against their upstream XML assertions. Together
 they establish:
 
@@ -41,6 +41,9 @@ they establish:
   2.5 without binary floating-point approximation;
 - exact nonnegative decimal literals and XPath `round()` for the two admitted
   constant predicates;
+- constant `format-number` composition with exact decimals, `number()` over a
+  string literal, and `substring-after()` over string literals for the single
+  admitted `#,###.00` picture;
 - instruction work charging only for the chosen sequence constructor; and
 - built-in document/element dispatch into the exact `doc` template.
 
@@ -53,10 +56,11 @@ silently become a valid integer position.
 | Cases | Selection | Execution | Principal pressure |
 | --- | --- | --- | --- |
 | `001`–`008` | selected | passed | conditional instructions, exact constant numeric predicates, and nonnegative decimal `round()` |
-| `009`–`019` | selected | engine unsupported | general formatting plus global variable/parameter state |
+| `009`–`011` | selected | passed | constant exact-decimal formatting and literal string-function composition |
+| `012`–`019` | selected | engine unsupported | dynamic formatting plus global variable/parameter state |
 | `020`–`028` | selected | engine unsupported | node-valued global bindings, dependencies, and broader paths |
 
-The denominator is 28 discovered and selected: eight pass, 20 are explicit
+The denominator is 28 discovered and selected: 11 pass, 17 are explicit
 engine gaps, and none are excluded, harness-unsupported, failed, or lost.
 
 ## Claim boundary
@@ -71,6 +75,8 @@ claim that every predicate is evaluated statically.
 Cases `data-manipulation-007/008` advanced using an exact decimal
 representation and nonnegative XPath `round()` semantics. Negative numeric
 literals, other rounding functions, and general runtime numeric expressions
-remain outside this narrow constant-folding slice. The next pressure begins at
-`data-manipulation-009` with composed string functions and general
-`format-number` behavior.
+remain outside this narrow constant-folding slice. Cases 009 through 011 then
+advanced through checked constant formatting; this does not establish general
+XPath double conversion, arbitrary decimal pictures, rounding during
+formatting, locale-dependent symbols, or dynamic formatting. The next pressure
+begins at `data-manipulation-012` with top-level variable and parameter state.

@@ -13,10 +13,10 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const SET_FILE: &str = "tests/expr/data-manipulation/_data-manipulation-test-set.xml";
 const CASE_COUNT: usize = 28;
-const PASSING_CASE_COUNT: usize = 8;
+const PASSING_CASE_COUNT: usize = 11;
 
 #[test]
-fn executes_first_eight_native_data_manipulation_cases() {
+fn executes_first_eleven_native_data_manipulation_cases() {
     for ordinal in 1..=PASSING_CASE_COUNT {
         let case_name = case_name(ordinal);
         let (actual, expected) = execute_case(&case_name);
