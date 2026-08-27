@@ -284,6 +284,19 @@ app.MapPost("/experiment/native-boundary", async () =>
         operationalExperimentGate.Release();
     }
 });
+app.MapPost("/experiment/native-generation-replacement", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await OperationalExperiments.ExerciseNativeGenerationReplacementAsync(
+            stylesheet));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
 app.MapPost("/experiment/generation-replacement", async () =>
 {
     await operationalExperimentGate.WaitAsync();

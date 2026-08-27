@@ -20,11 +20,10 @@ current order of work is:
    deterministic active, and unpaused race-sampled cooperative cancellation,
    worker failure/restart, explicit snapshot generation promotion, and
    changed-resource file replacement now have private executable baselines;
-2. close the in-process candidate's remaining lifecycle gaps for active
-   cancellation, generation replacement, and complete structured diagnostic
-   parity; scalar pre-dispatch cancellation and deterministic instruction
-   budgets now preserve exact engine outcomes and same-handle recovery, and its
-   comparable 5/50/500-item tiered evidence is recorded;
+2. decide whether active mid-execution native cancellation earns a control-handle
+   ADR or remains an isolated-mode guarantee; native pre-dispatch cancellation,
+   deterministic budgets, explicit generation promotion/draining, and the
+   current representative diagnostic matrix now have executable parity;
 3. compare lifecycle and guarantee coverage across both modes before
    stabilizing a host boundary or performance claim.
 
@@ -213,6 +212,10 @@ failed, and harness-error cases without an unqualified conformance claim.
     XSLT-instruction budget through ADR-0009 scalar native controls, preserving
     exact diagnostics and ordinary reuse of the same engine handle without
     claiming active cancellation or hard termination.
+  - [x] Fully initialize and atomically promote a changed native engine
+    generation, retain old prepared semantics under a lease, drain its retired
+    pool on release, and preserve the unsupported-stylesheet diagnostic fields
+    asserted by direct and isolated execution.
 - [ ] Exercise AR-0010's private invocation controls under adversarial work;
   distinguish deterministic budgets, cooperative cancellation, best-effort
   deadlines, panic handling, and process-level hard termination claims.

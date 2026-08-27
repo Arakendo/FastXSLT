@@ -192,6 +192,9 @@ try {
                 $nativeBoundary.malformedSource.code -ne 'FXXM0002' -or
                 $nativeBoundary.malformedSource.category -ne 'invalid' -or
                 -not $nativeBoundary.malformedSource.detail.Contains('urn:fastxslt:native-boundary:malformed-source') -or
+                $nativeBoundary.unsupportedStylesheet.code -ne 'FXST1006' -or
+                $nativeBoundary.unsupportedStylesheet.category -ne 'unsupported' -or
+                $nativeBoundary.unsupportedStylesheet.detail -cne 'unsupported XSLT instruction: xsl:message at urn:fastxslt:diagnostic:unsupported-stylesheet:103..117' -or
                 $nativeBoundary.cancellation.code -ne 'FXCT0001' -or
                 $nativeBoundary.cancellation.category -ne 'cancelled' -or
                 $nativeBoundary.cancellation.requestId -ne 'native-controlled-cancelled' -or
@@ -212,6 +215,19 @@ try {
                 -not $nativeBoundary.doubleDisposeWasIdempotent -or
                 -not $nativeBoundary.useAfterDisposeRejected) {
                 throw "Native boundary experiment violated ABI ownership or parity: $($nativeBoundary | ConvertTo-Json -Depth 5)"
+            }
+            $nativeReplacement = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/native-generation-replacement"
+            $nativeOldExpected = '<?xml version="1.0" encoding="UTF-8"?><out>1.00</out>'
+            $nativeNewExpected = '<?xml version="1.0" encoding="UTF-8"?><out>2.00</out>'
+            if ($nativeReplacement.retiredGenerationIdentity -ne 'native-generation-001' -or
+                $nativeReplacement.oldLeaseGenerationIdentity -ne 'native-generation-001' -or
+                $nativeReplacement.newGeneration.generationIdentity -ne 'native-generation-002' -or
+                $nativeReplacement.oldResult -cne $nativeOldExpected -or
+                $nativeReplacement.newGeneration.result -cne $nativeNewExpected -or
+                -not $nativeReplacement.replacementInitializedBeforePromotion -or
+                -not $nativeReplacement.promotionWasExplicit -or
+                -not $nativeReplacement.oldGenerationDisposedAfterLeaseRelease) {
+                throw "Native generation replacement violated its expected lifecycle: $($nativeReplacement | ConvertTo-Json -Depth 5)"
             }
             $recovery = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/worker-recovery"
             if ($recovery.recovery.failureCode -ne 'FXWB2001' -or
@@ -301,12 +317,21 @@ try {
                 Experiment = 'NativeBoundary'
                 InvalidIdentity = $nativeBoundary.invalidIdentity.code
                 MalformedSource = $nativeBoundary.malformedSource.code
+                UnsupportedStylesheet = $nativeBoundary.unsupportedStylesheet.code
                 PreDispatchCancellation = $nativeBoundary.cancellation.code
                 InstructionBudget = $nativeBoundary.instructionBudget.code
                 ControlledRecovery = $nativeBoundary.controlledRecoveryResult -ceq $expected
                 ConcurrentIndependentHandles = $nativeBoundary.independentHandlesExecutedConcurrently
                 DoubleDisposeIdempotent = $nativeBoundary.doubleDisposeWasIdempotent
                 UseAfterDisposeRejected = $nativeBoundary.useAfterDisposeRejected
+            }
+            [pscustomobject]@{
+                Experiment = 'NativeGenerationReplacement'
+                RetiredGeneration = $nativeReplacement.retiredGenerationIdentity
+                NewGeneration = $nativeReplacement.newGeneration.generationIdentity
+                OldResultRetained = $nativeReplacement.oldResult -ceq $nativeOldExpected
+                NewResultPromoted = $nativeReplacement.newGeneration.result -ceq $nativeNewExpected
+                OldGenerationDrained = $nativeReplacement.oldGenerationDisposedAfterLeaseRelease
             }
             [pscustomobject]@{
                 Experiment = 'WorkerRecovery'

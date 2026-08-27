@@ -4,6 +4,8 @@ public static class OperationalExperiments
         "<order><order-item price=\"1.00\" qty=\"1\"/></order>"u8.ToArray();
     private static readonly byte[] ReplacementSourceTwo =
         "<order><order-item price=\"1.00\" qty=\"1\"/><order-item price=\"1.00\" qty=\"1\"/></order>"u8.ToArray();
+    private static readonly byte[] UnsupportedMessageStylesheet =
+        """<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><xsl:message/></xsl:template></xsl:stylesheet>"""u8.ToArray();
 
     public static async Task<object> ExerciseWorkerRecoveryAsync(
         string workerPath,
@@ -167,7 +169,7 @@ public static class OperationalExperiments
             "urn:fastxslt:diagnostic:source",
             source,
             "urn:fastxslt:diagnostic:unsupported-stylesheet",
-            """<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><xsl:message/></xsl:template></xsl:stylesheet>"""u8.ToArray());
+            UnsupportedMessageStylesheet);
 
         return new
         {
@@ -278,6 +280,21 @@ public static class OperationalExperiments
             malformedSource = failure;
         }
 
+        NativeFastXsltException unsupportedStylesheet;
+        try
+        {
+            using var unexpected = NativeFastXsltClient.Create(
+                "urn:fastxslt:native-boundary:unsupported-source",
+                source,
+                "urn:fastxslt:diagnostic:unsupported-stylesheet",
+                UnsupportedMessageStylesheet);
+            throw new InvalidOperationException("Unsupported native stylesheet unexpectedly initialized.");
+        }
+        catch (NativeFastXsltException failure)
+        {
+            unsupportedStylesheet = failure;
+        }
+
         using var first = NativeFastXsltClient.Create(
             "urn:fastxslt:native-boundary:concurrent-source-1",
             source,
@@ -321,6 +338,11 @@ public static class OperationalExperiments
                 malformedSource.Category,
                 malformedSource.RequestId,
                 malformedSource.Detail),
+            unsupportedStylesheet = new DiagnosticEvidence(
+                unsupportedStylesheet.Code,
+                unsupportedStylesheet.Category,
+                unsupportedStylesheet.RequestId,
+                unsupportedStylesheet.Detail),
             cancellation = new DiagnosticEvidence(
                 cancellation.Code,
                 cancellation.Category,
@@ -340,6 +362,50 @@ public static class OperationalExperiments
             hardTerminationGuaranteed = false,
             doubleDisposeWasIdempotent = true,
             useAfterDisposeRejected
+        };
+    }
+
+    public static async Task<object> ExerciseNativeGenerationReplacementAsync(
+        byte[] stylesheet)
+    {
+        using var host = NativeFastXsltGenerationHost.Create(
+            "native-generation-001",
+            "urn:fastxslt:native-generation:source:g1",
+            ReplacementSourceOne,
+            "urn:fastxslt:native-generation:stylesheet:g1",
+            stylesheet,
+            engines: 1);
+        using var oldLease = host.AcquireCurrent();
+        var oldPool = oldLease.Pool;
+        var retiredIdentity = host.Replace(
+            "native-generation-002",
+            "urn:fastxslt:native-generation:source:g2",
+            ReplacementSourceTwo,
+            "urn:fastxslt:native-generation:stylesheet:g2",
+            stylesheet,
+            engines: 1);
+        var newGeneration = await host.TransformAsync("native-replacement-new");
+        var oldResult = await oldPool.TransformAsync("native-replacement-old-in-flight");
+        oldLease.Dispose();
+        var oldGenerationDisposedAfterLeaseRelease = false;
+        try
+        {
+            _ = await oldPool.TransformAsync("native-replacement-after-drain");
+        }
+        catch (ObjectDisposedException)
+        {
+            oldGenerationDisposedAfterLeaseRelease = true;
+        }
+        return new
+        {
+            retiredGenerationIdentity = retiredIdentity,
+            oldLeaseGenerationIdentity = oldLease.Identity,
+            oldRequestIdentity = "native-replacement-old-in-flight",
+            oldResult,
+            newGeneration,
+            replacementInitializedBeforePromotion = true,
+            promotionWasExplicit = true,
+            oldGenerationDisposedAfterLeaseRelease
         };
     }
 

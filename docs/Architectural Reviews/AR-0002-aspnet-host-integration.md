@@ -8,7 +8,7 @@
 | Scope | Non-Rust embedding, deployment, and performance boundary |
 | Trigger | ASP.NET applications are a motivating FastXSLT consumer class |
 | Related ADRs | ADR-0001 |
-| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, `docs/Evidence/aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md`, `docs/Evidence/aspnet-native-invocation-controls-2026-08-26.md`, `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`, `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-natural-cancellation-races-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
+| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, `docs/Evidence/aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md`, `docs/Evidence/aspnet-native-invocation-controls-2026-08-26.md`, `docs/Evidence/aspnet-native-generation-and-diagnostic-parity-2026-08-26.md`, `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`, `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-natural-cancellation-races-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
 
 ## Architectural question
 
@@ -159,6 +159,11 @@ security contracts.
   exact `FXCT0001 / cancelled` and `FXCT0002 / limit` diagnostics and reused the
   same engine after both failures. This is pre-dispatch cooperative control,
   not active signalling, a deadline, or hard termination.
+- A host-owned native generation experiment fully initialized a replacement
+  engine pool before atomic promotion, routed new requests to its changed
+  two-item prepared source, retained a leased old one-item result, and disposed
+  the retired pool only after lease release. The native matrix also now retains
+  the direct/isolated unsupported-stylesheet code, category, identity, and span.
 
 ## Disposition
 
@@ -239,3 +244,7 @@ invalidates the selected mechanism.
   deterministic instruction budget through scalar native ABI values. Exact
   diagnostic fields and same-handle recovery passed without adding an unsafe
   block; active native signalling remains open.
+- 2026-08-26 -- Added managed native generation promotion/draining with changed
+  prepared source semantics and completed the current representative native
+  diagnostic matrix through unsupported-stylesheet parity. No ABI or unsafe
+  surface changed.
