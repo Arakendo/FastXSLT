@@ -229,6 +229,38 @@ try {
                 -not $nativeReplacement.oldGenerationDisposedAfterLeaseRelease) {
                 throw "Native generation replacement violated its expected lifecycle: $($nativeReplacement | ConvertTo-Json -Depth 5)"
             }
+            $nativeActiveCancellation = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/native-active-cancellation"
+            if ($nativeActiveCancellation.cancellation.code -ne 'FXCT0001' -or
+                $nativeActiveCancellation.cancellation.category -ne 'cancelled' -or
+                $nativeActiveCancellation.cancellation.requestId -ne 'native-active-cancelled' -or
+                $nativeActiveCancellation.cancellation.detail -cne 'host cancellation observed while charging xslt-instruction work' -or
+                $nativeActiveCancellation.signalToObservationMilliseconds -lt 0 -or
+                -not $nativeActiveCancellation.firstChargeObserved -or
+                -not $nativeActiveCancellation.unrelatedSignalIgnored -or
+                -not $nativeActiveCancellation.controlDoubleDisposeWasIdempotent -or
+                $nativeActiveCancellation.recoveryResult -cne '<?xml version="1.0" encoding="UTF-8"?><out>20000.00</out>' -or
+                -not $nativeActiveCancellation.cancellationWasCooperative -or
+                -not $nativeActiveCancellation.completionWinsIfCommittedBeforeSignal -or
+                $nativeActiveCancellation.hardTerminationGuaranteed -or
+                -not $nativeActiveCancellation.firstChargeBarrierWasExperimental) {
+                throw "Native active cancellation violated its guarantee class: $($nativeActiveCancellation | ConvertTo-Json -Depth 5)"
+            }
+            $nativeNaturalCancellation = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/native-natural-cancellation-races"
+            if ($nativeNaturalCancellation.trials -ne 25 -or
+                ($nativeNaturalCancellation.cancellations + $nativeNaturalCancellation.completions) -ne 25 -or
+                $nativeNaturalCancellation.cancellations -lt 1 -or
+                $nativeNaturalCancellation.minimumCancellationMilliseconds -lt 0 -or
+                $nativeNaturalCancellation.medianCancellationMilliseconds -lt 0 -or
+                $nativeNaturalCancellation.maximumCancellationMilliseconds -lt 0 -or
+                $nativeNaturalCancellation.observedChargeDetails.Count -lt 1 -or
+                $nativeNaturalCancellation.recoveryResult -cne '<?xml version="1.0" encoding="UTF-8"?><out>20000.00</out>' -or
+                $nativeNaturalCancellation.firstChargeBarrierUsed -or
+                -not $nativeNaturalCancellation.managedCancellationTokenAdapted -or
+                -not $nativeNaturalCancellation.diagnosticFieldsValidated -or
+                -not $nativeNaturalCancellation.completionWinsIfCommittedBeforeSignal -or
+                $nativeNaturalCancellation.hardTerminationGuaranteed) {
+                throw "Native natural cancellation races violated conservation or reuse: $($nativeNaturalCancellation | ConvertTo-Json -Depth 5)"
+            }
             $recovery = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/worker-recovery"
             if ($recovery.recovery.failureCode -ne 'FXWB2001' -or
                 $recovery.recovery.failureCategory -ne 'worker-terminated' -or
@@ -332,6 +364,27 @@ try {
                 OldResultRetained = $nativeReplacement.oldResult -ceq $nativeOldExpected
                 NewResultPromoted = $nativeReplacement.newGeneration.result -ceq $nativeNewExpected
                 OldGenerationDrained = $nativeReplacement.oldGenerationDisposedAfterLeaseRelease
+            }
+            [pscustomobject]@{
+                Experiment = 'NativeActiveCancellation'
+                FailureCode = $nativeActiveCancellation.cancellation.code
+                FailureDetail = $nativeActiveCancellation.cancellation.detail
+                SignalToObservationMilliseconds = $nativeActiveCancellation.signalToObservationMilliseconds
+                FirstChargeObserved = $nativeActiveCancellation.firstChargeObserved
+                UnrelatedSignalIgnored = $nativeActiveCancellation.unrelatedSignalIgnored
+                RecoveryCompleted = $nativeActiveCancellation.recoveryResult -ceq '<?xml version="1.0" encoding="UTF-8"?><out>20000.00</out>'
+                HardTerminationGuaranteed = $nativeActiveCancellation.hardTerminationGuaranteed
+            }
+            [pscustomobject]@{
+                Experiment = 'NativeNaturalCancellationRaces'
+                Trials = $nativeNaturalCancellation.trials
+                Cancellations = $nativeNaturalCancellation.cancellations
+                Completions = $nativeNaturalCancellation.completions
+                MinimumCancellationMilliseconds = $nativeNaturalCancellation.minimumCancellationMilliseconds
+                MedianCancellationMilliseconds = $nativeNaturalCancellation.medianCancellationMilliseconds
+                MaximumCancellationMilliseconds = $nativeNaturalCancellation.maximumCancellationMilliseconds
+                ObservedChargeDetails = $nativeNaturalCancellation.observedChargeDetails -join '; '
+                RecoveryCompleted = $nativeNaturalCancellation.recoveryResult -ceq '<?xml version="1.0" encoding="UTF-8"?><out>20000.00</out>'
             }
             [pscustomobject]@{
                 Experiment = 'WorkerRecovery'

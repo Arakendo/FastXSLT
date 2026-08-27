@@ -28,6 +28,7 @@ struct State {
     next_handle: AtomicU64,
     quarantined: AtomicBool,
     engines: Mutex<HashMap<u64, Arc<ExperimentalEngine>>>,
+    controls: Mutex<HashMap<u64, WorkbenchCancellation>>,
     outcomes: Mutex<HashMap<u64, Outcome>>,
 }
 
@@ -42,6 +43,7 @@ impl State {
             next_handle: AtomicU64::new(1),
             quarantined: AtomicBool::new(false),
             engines: Mutex::new(HashMap::new()),
+            controls: Mutex::new(HashMap::new()),
             outcomes: Mutex::new(HashMap::new()),
         }
     }
@@ -71,6 +73,15 @@ impl State {
         self.outcomes.lock().map_err(|_| {
             self.quarantine();
             BoundaryFailure::new("FXFFI0008", "native outcome registry is poisoned")
+        })
+    }
+
+    fn controls(
+        &self,
+    ) -> Result<MutexGuard<'_, HashMap<u64, WorkbenchCancellation>>, BoundaryFailure> {
+        self.controls.lock().map_err(|_| {
+            self.quarantine();
+            BoundaryFailure::new("FXFFI0008", "native control registry is poisoned")
         })
     }
 
@@ -393,6 +404,140 @@ pub extern "C" fn fastxslt_workbench_v0_transform_controlled(
     })
 }
 
+/// Creates a Rust-owned active cancellation control handle.
+///
+/// `first_charge_barrier` must be zero for an ordinary control or one for the
+/// deterministic workbench-only barrier.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn fastxslt_workbench_v0_control_create(first_charge_barrier: u32) -> u64 {
+    guarded(0, |state| {
+        let control = match first_charge_barrier {
+            0 => WorkbenchCancellation::new(),
+            1 => WorkbenchCancellation::with_first_charge_barrier(),
+            _ => return 0,
+        };
+        let Ok(handle) = state.next_handle() else {
+            return 0;
+        };
+        let Ok(mut controls) = state.controls() else {
+            return 0;
+        };
+        controls.insert(handle, control);
+        handle
+    })
+}
+
+/// Executes one request with a retained active control handle.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn fastxslt_workbench_v0_transform_with_control(
+    engine_handle: u64,
+    request_identity_pointer: *const u8,
+    request_identity_length: usize,
+    control_handle: u64,
+    maximum_xslt_instructions: u64,
+) -> u64 {
+    guarded(0, |state| {
+        let request_identity = match copy_input(
+            request_identity_pointer,
+            request_identity_length,
+            MAX_IDENTITY_BYTES,
+        )
+        .and_then(|value| decode_identity(value, "request identity"))
+        {
+            Ok(value) => value,
+            Err(failure) => return state.insert_boundary_failure(&failure),
+        };
+        let Ok(maximum_xslt_instructions) = usize::try_from(maximum_xslt_instructions) else {
+            return state.insert_boundary_failure(&BoundaryFailure::new(
+                "FXFFI0010",
+                "XSLT instruction limit does not fit this platform",
+            ));
+        };
+        let engine = {
+            let Ok(engines) = state.engines() else {
+                return 0;
+            };
+            let Some(engine) = engines.get(&engine_handle).cloned() else {
+                drop(engines);
+                return state.insert_boundary_failure(&BoundaryFailure::new(
+                    "FXFFI0004",
+                    "unknown engine handle",
+                ));
+            };
+            engine
+        };
+        let cancellation = {
+            let Ok(controls) = state.controls() else {
+                return 0;
+            };
+            let Some(control) = controls.get(&control_handle).cloned() else {
+                drop(controls);
+                return state.insert_boundary_failure(&BoundaryFailure::new(
+                    "FXFFI0011",
+                    "unknown control handle",
+                ));
+            };
+            control
+        };
+        insert_transform_outcome(
+            state,
+            engine.transform_with_invocation_policy(
+                &request_identity,
+                cancellation,
+                maximum_xslt_instructions,
+            ),
+        )
+    })
+}
+
+/// Signals an active control. Returns one only for a live handle.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn fastxslt_workbench_v0_control_cancel(control_handle: u64) -> u32 {
+    guarded(0, |state| {
+        let Ok(controls) = state.controls() else {
+            return 0;
+        };
+        let Some(control) = controls.get(&control_handle) else {
+            return 0;
+        };
+        control.cancel();
+        1
+    })
+}
+
+/// Reports whether the workbench-only first charge was observed.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn fastxslt_workbench_v0_control_first_charge_observed(control_handle: u64) -> u32 {
+    guarded(0, |state| {
+        state
+            .controls()
+            .ok()
+            .and_then(|controls| {
+                controls
+                    .get(&control_handle)
+                    .map(WorkbenchCancellation::first_charge_observed)
+            })
+            .map_or(0, u32::from)
+    })
+}
+
+/// Releases an active control handle. Returns one only when removed.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn fastxslt_workbench_v0_control_release(control_handle: u64) -> u32 {
+    guarded(0, |state| {
+        state
+            .controls()
+            .ok()
+            .and_then(|mut controls| controls.remove(&control_handle))
+            .map_or(0, |_| 1)
+    })
+}
+
 fn insert_transform_outcome(state: &State, result: Result<String, WorkbenchFailure>) -> u64 {
     match result {
         Ok(result) if result.len() <= MAX_OUTCOME_BYTES => state.insert_outcome(Outcome::Bytes {
@@ -510,11 +655,14 @@ pub extern "C" fn fastxslt_workbench_v0_engine_release(engine_handle: u64) -> u3
 mod tests {
     use super::{
         BoundaryFailure, OUTCOME_FAILURE, OUTCOME_RESULT, State, copy_input, copy_output,
+        fastxslt_workbench_v0_control_cancel, fastxslt_workbench_v0_control_create,
+        fastxslt_workbench_v0_control_first_charge_observed, fastxslt_workbench_v0_control_release,
         fastxslt_workbench_v0_create, fastxslt_workbench_v0_engine_release,
         fastxslt_workbench_v0_outcome_copy, fastxslt_workbench_v0_outcome_kind,
         fastxslt_workbench_v0_outcome_length, fastxslt_workbench_v0_outcome_release,
         fastxslt_workbench_v0_outcome_take_engine, fastxslt_workbench_v0_transform,
-        fastxslt_workbench_v0_transform_controlled, guarded_on,
+        fastxslt_workbench_v0_transform_controlled, fastxslt_workbench_v0_transform_with_control,
+        guarded_on,
     };
 
     fn outcome_bytes(outcome: u64) -> Vec<u8> {
@@ -739,6 +887,66 @@ mod tests {
             fastxslt_workbench_v0_outcome_release(controlled_recovery),
             1
         );
+        assert_eq!(fastxslt_workbench_v0_engine_release(engine), 1);
+    }
+
+    #[test]
+    fn active_control_cancels_after_a_real_charge_and_linearizes_release() {
+        let engine = create_reference_engine();
+        let target_control = fastxslt_workbench_v0_control_create(1);
+        let unrelated_control = fastxslt_workbench_v0_control_create(0);
+        assert_ne!(target_control, 0);
+        assert_ne!(unrelated_control, 0);
+        assert_eq!(fastxslt_workbench_v0_control_create(2), 0);
+
+        let invocation = std::thread::spawn(move || {
+            let request = b"native-active-cancelled";
+            fastxslt_workbench_v0_transform_with_control(
+                engine,
+                request.as_ptr(),
+                request.len(),
+                target_control,
+                1_000_000,
+            )
+        });
+        let wait_started = std::time::Instant::now();
+        while fastxslt_workbench_v0_control_first_charge_observed(target_control) == 0
+            && wait_started.elapsed() < std::time::Duration::from_secs(5)
+        {
+            std::thread::yield_now();
+        }
+        assert_eq!(
+            fastxslt_workbench_v0_control_first_charge_observed(target_control),
+            1
+        );
+        assert_eq!(fastxslt_workbench_v0_control_cancel(unrelated_control), 1);
+        assert!(!invocation.is_finished());
+        assert_eq!(fastxslt_workbench_v0_control_cancel(target_control), 1);
+
+        let cancellation = invocation.join().expect("native invocation joins");
+        assert_eq!(
+            failure_fields(cancellation),
+            [
+                "FXCT0001",
+                "cancelled",
+                "native-active-cancelled",
+                "host cancellation observed while charging xslt-instruction work",
+            ]
+        );
+        assert_eq!(fastxslt_workbench_v0_outcome_release(cancellation), 1);
+        assert_eq!(fastxslt_workbench_v0_control_release(target_control), 1);
+        assert_eq!(fastxslt_workbench_v0_control_cancel(target_control), 0);
+        assert_eq!(fastxslt_workbench_v0_control_release(target_control), 0);
+        assert_eq!(fastxslt_workbench_v0_control_release(unrelated_control), 1);
+
+        let recovery_request = b"native-active-recovery";
+        let recovery = fastxslt_workbench_v0_transform(
+            engine,
+            recovery_request.as_ptr(),
+            recovery_request.len(),
+        );
+        assert_eq!(fastxslt_workbench_v0_outcome_kind(recovery), OUTCOME_RESULT);
+        assert_eq!(fastxslt_workbench_v0_outcome_release(recovery), 1);
         assert_eq!(fastxslt_workbench_v0_engine_release(engine), 1);
     }
 }

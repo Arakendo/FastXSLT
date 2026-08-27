@@ -7,8 +7,8 @@
 | Last reviewed | 2026-08-26 |
 | Scope | Non-Rust embedding, deployment, and performance boundary |
 | Trigger | ASP.NET applications are a motivating FastXSLT consumer class |
-| Related ADRs | ADR-0001 |
-| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, `docs/Evidence/aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md`, `docs/Evidence/aspnet-native-invocation-controls-2026-08-26.md`, `docs/Evidence/aspnet-native-generation-and-diagnostic-parity-2026-08-26.md`, `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`, `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-natural-cancellation-races-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
+| Related ADRs | ADR-0001, ADR-0008, ADR-0009, ADR-0010 |
+| Related evidence | `docs/Evidence/aspnet-isolated-persistent-worker-baseline-2026-08-26.md`, `docs/Evidence/aspnet-xslt-engine-comparison-2026-08-26.md`, `docs/Evidence/aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md`, `docs/Evidence/aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md`, `docs/Evidence/aspnet-native-invocation-controls-2026-08-26.md`, `docs/Evidence/aspnet-native-generation-and-diagnostic-parity-2026-08-26.md`, `docs/Evidence/aspnet-native-active-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`, `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`, `docs/Evidence/aspnet-natural-cancellation-races-2026-08-26.md`, AR-0003, AR-0010, and future end-to-end comparisons |
 
 ## Architectural question
 
@@ -164,6 +164,11 @@ security contracts.
   two-item prepared source, retained a leased old one-item result, and disposed
   the retired pool only after lease release. The native matrix also now retains
   the direct/isolated unsupported-stylesheet code, category, identity, and span.
+- ADR-0010 adds Rust-owned numeric control handles without callbacks or another
+  unsafe block. A deterministic post-charge signal retained exact `FXCT0001`
+  fields, ignored an unrelated control, and recovered the same engine. Two
+  unpaused 25-trial managed-token samples conserved all outcomes as cancellation
+  and naturally observed both XSLT-instruction and XPath-node-visit domains.
 
 ## Disposition
 
@@ -248,3 +253,7 @@ invalidates the selected mechanism.
   prepared source semantics and completed the current representative native
   diagnostic matrix through unsupported-stylesheet parity. No ABI or unsafe
   surface changed.
+- 2026-08-26 -- Accepted ADR-0010 and exercised active native cooperative
+  cancellation through Rust-owned control handles. Deterministic and natural
+  managed-token probes preserved diagnostics and reuse without claiming a
+  deadline or in-process hard termination.

@@ -20,12 +20,13 @@ current order of work is:
    deterministic active, and unpaused race-sampled cooperative cancellation,
    worker failure/restart, explicit snapshot generation promotion, and
    changed-resource file replacement now have private executable baselines;
-2. decide whether active mid-execution native cancellation earns a control-handle
-   ADR or remains an isolated-mode guarantee; native pre-dispatch cancellation,
-   deterministic budgets, explicit generation promotion/draining, and the
-   current representative diagnostic matrix now have executable parity;
-3. compare lifecycle and guarantee coverage across both modes before
-   stabilizing a host boundary or performance claim.
+2. synthesize the now-executable native and isolated lifecycle evidence into a
+   guarantee/cost matrix; ADR-0010 active cooperative cancellation now preserves
+   managed-token outcomes and reuse, while hard termination remains exclusive
+   to isolation;
+3. obtain representative consumer requirements, then decide whether both modes
+   become supported profiles and stabilize only the lifecycle they share or
+   explicitly distinguish.
 
 Representative consumer transforms are not a prerequisite for a testable
 standards-driven preview. The pinned W3C suites provide executable stylesheets,
@@ -216,6 +217,10 @@ failed, and harness-error cases without an unqualified conformance claim.
     generation, retain old prepared semantics under a lease, drain its retired
     pool on release, and preserve the unsupported-stylesheet diagnostic fields
     asserted by direct and isolated execution.
+  - [x] Signal active native cancellation after a real charge through ADR-0010
+    Rust-owned control handles, ignore an unrelated handle, conserve two
+    unpaused 25-trial managed-token samples, and recover the same engine without
+    describing cooperative control as hard termination.
 - [ ] Exercise AR-0010's private invocation controls under adversarial work;
   distinguish deterministic budgets, cooperative cancellation, best-effort
   deadlines, panic handling, and process-level hard termination claims.

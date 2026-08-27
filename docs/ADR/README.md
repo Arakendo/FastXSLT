@@ -49,3 +49,7 @@ but supersede a materially changed decision instead of rewriting its history.
   -- Accepted; carry pre-dispatch cooperative cancellation and an invocation
   XSLT-instruction budget as validated scalar values without callbacks, retained
   foreign state, or another unsafe pointer operation.
+- [ADR-0010: Native Active Control Handles](ADR-0010-native-active-control-handles.md)
+  -- Accepted; use Rust-owned numeric control handles for active cooperative
+  native cancellation, with explicit cancel/release races and no callback,
+  foreign borrow, or additional unsafe block.

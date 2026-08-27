@@ -106,8 +106,16 @@ handles, transfers structured failure envelopes, and uses a managed `SafeHandle`
 wrapper. The native operational probe covers diagnostics, independent-handle
 concurrency, double disposal, and use-after-dispose rejection. ADR-0009 also
 carries already-signalled cooperative cancellation and an invocation-local
-XSLT-instruction budget as scalar values. It has no active mid-execution signal,
-same-handle concurrency, or hard-termination guarantee.
+XSLT-instruction budget as scalar values. That scalar operation alone has no
+active mid-execution signal.
+
+ADR-0010 adds active cooperative cancellation through Rust-owned numeric
+control handles. The managed adapter retains them with `SafeHandle`, may adapt
+a `CancellationToken`, and runs the blocking controlled P/Invoke on a task. The
+deterministic first-charge barrier is test instrumentation; the unpaused race
+probe is the natural managed-token evidence. Neither path provides a deadline
+or in-process hard stop, and same-engine-handle concurrency remains outside the
+contract.
 
 The native generation probe creates a complete replacement engine pool before
 atomic host promotion. An acquired old-generation lease retains its original

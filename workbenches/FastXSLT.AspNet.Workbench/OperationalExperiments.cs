@@ -409,6 +409,114 @@ public static class OperationalExperiments
         };
     }
 
+    public static async Task<object> ExerciseNativeActiveCancellationAsync(
+        byte[] stylesheet)
+    {
+        using var client = NativeFastXsltClient.Create(
+            "urn:fastxslt:native-active:source",
+            BuildCancellationSource(20_000),
+            "urn:fastxslt:native-active:stylesheet",
+            stylesheet);
+        var observation = await client.ExerciseActiveCancellationAsync(
+            "native-active-cancelled",
+            observationTimeout: TimeSpan.FromSeconds(5));
+        var recoveryResult = client.Transform("native-active-recovery");
+        return new
+        {
+            cancellation = new DiagnosticEvidence(
+                observation.Failure.Code,
+                observation.Failure.Category,
+                observation.Failure.RequestId,
+                observation.Failure.Detail),
+            observation.SignalToObservationMilliseconds,
+            observation.FirstChargeObserved,
+            observation.UnrelatedSignalIgnored,
+            observation.ControlDoubleDisposeWasIdempotent,
+            recoveryResult,
+            sourceItems = 20_000,
+            cancellationWasCooperative = true,
+            completionWinsIfCommittedBeforeSignal = true,
+            hardTerminationGuaranteed = false,
+            firstChargeBarrierWasExperimental = true
+        };
+    }
+
+    public static async Task<object> MeasureNativeNaturalCancellationRacesAsync(
+        byte[] stylesheet)
+    {
+        const int trials = 25;
+        const string expected = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>20000.00</out>";
+        using var client = NativeFastXsltClient.Create(
+            "urn:fastxslt:native-natural:source",
+            BuildCancellationSource(20_000),
+            "urn:fastxslt:native-natural:stylesheet",
+            stylesheet);
+        var cancellations = 0;
+        var completions = 0;
+        var cancellationLatencies = new List<double>();
+        var observedChargeDetails = new HashSet<string>(StringComparer.Ordinal);
+        for (var trial = 0; trial < trials; trial++)
+        {
+            using var cancellation = new CancellationTokenSource();
+            var invocation = client.TransformAsync(
+                $"native-natural-{trial}",
+                cancellation.Token);
+            await Task.Yield();
+            var signal = System.Diagnostics.Stopwatch.StartNew();
+            cancellation.Cancel();
+            try
+            {
+                var result = await invocation;
+                if (!StringComparer.Ordinal.Equals(result, expected))
+                {
+                    throw new InvalidOperationException("Native natural-race completion changed result semantics.");
+                }
+                completions++;
+            }
+            catch (NativeFastXsltException failure)
+            {
+                signal.Stop();
+                if (failure.Code != "FXCT0001" ||
+                    failure.Category != "cancelled" ||
+                    failure.RequestId != $"native-natural-{trial}" ||
+                    !failure.Detail.StartsWith(
+                        "host cancellation observed while charging ",
+                        StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException("Native natural-race cancellation changed diagnostic semantics.");
+                }
+                cancellations++;
+                cancellationLatencies.Add(signal.Elapsed.TotalMilliseconds);
+                observedChargeDetails.Add(failure.Detail);
+            }
+        }
+        cancellationLatencies.Sort();
+        var recoveryResult = client.Transform("native-natural-recovery");
+        return new
+        {
+            trials,
+            cancellations,
+            completions,
+            minimumCancellationMilliseconds = cancellationLatencies.Count == 0
+                ? (double?)null
+                : cancellationLatencies[0],
+            medianCancellationMilliseconds = cancellationLatencies.Count == 0
+                ? (double?)null
+                : cancellationLatencies[cancellationLatencies.Count / 2],
+            maximumCancellationMilliseconds = cancellationLatencies.Count == 0
+                ? (double?)null
+                : cancellationLatencies[^1],
+            observedChargeDetails = observedChargeDetails.Order().ToArray(),
+            recoveryResult,
+            sourceItems = 20_000,
+            firstChargeBarrierUsed = false,
+            managedCancellationTokenAdapted = true,
+            diagnosticFieldsValidated = true,
+            completionWinsIfCommittedBeforeSignal = true,
+            hardTerminationGuaranteed = false
+        };
+    }
+
     private static async Task<DiagnosticEvidence> CaptureInitializationFailureAsync(
         string workerPath,
         string sourceIdentity,

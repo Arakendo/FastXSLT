@@ -73,6 +73,96 @@ public sealed class NativeFastXsltClient : IDisposable
         }
     }
 
+    public async Task<string> TransformAsync(
+        string requestIdentity,
+        CancellationToken cancellationToken,
+        ulong maximumXsltInstructions = 1_000_000)
+    {
+        using var control = NativeControlHandle.Create(firstChargeBarrier: false);
+        using var registration = cancellationToken.Register(
+            static state => ((NativeControlHandle)state!).Cancel(),
+            control);
+        return await Task.Run(() => TransformWithControl(
+            requestIdentity,
+            control,
+            maximumXsltInstructions));
+    }
+
+    public async Task<NativeActiveCancellationObservation> ExerciseActiveCancellationAsync(
+        string requestIdentity,
+        TimeSpan observationTimeout)
+    {
+        var target = NativeControlHandle.Create(firstChargeBarrier: true);
+        using var unrelated = NativeControlHandle.Create(firstChargeBarrier: false);
+        var invocation = Task.Run(() => TransformWithControl(
+            requestIdentity,
+            target,
+            maximumXsltInstructions: 1_000_000));
+        var waiting = System.Diagnostics.Stopwatch.StartNew();
+        while (!target.FirstChargeObserved &&
+               !invocation.IsCompleted &&
+               waiting.Elapsed < observationTimeout)
+        {
+            await Task.Delay(1);
+        }
+        if (!target.FirstChargeObserved)
+        {
+            target.Cancel();
+            try
+            {
+                _ = await invocation;
+            }
+            catch (NativeFastXsltException)
+            {
+            }
+            target.Dispose();
+            throw new TimeoutException("Native invocation did not reach its first charge barrier.");
+        }
+
+        unrelated.Cancel();
+        var unrelatedSignalIgnored = !invocation.IsCompleted;
+        var signal = System.Diagnostics.Stopwatch.StartNew();
+        target.Cancel();
+        NativeFastXsltException cancellation;
+        try
+        {
+            _ = await invocation;
+            throw new InvalidOperationException("Actively cancelled native invocation unexpectedly completed.");
+        }
+        catch (NativeFastXsltException failure)
+        {
+            cancellation = failure;
+        }
+        signal.Stop();
+        target.Dispose();
+        target.Dispose();
+        return new NativeActiveCancellationObservation(
+            cancellation,
+            signal.Elapsed.TotalMilliseconds,
+            FirstChargeObserved: true,
+            UnrelatedSignalIgnored: unrelatedSignalIgnored,
+            ControlDoubleDisposeWasIdempotent: true);
+    }
+
+    private string TransformWithControl(
+        string requestIdentity,
+        NativeControlHandle control,
+        ulong maximumXsltInstructions)
+    {
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_engine.IsClosed, this);
+            var request = Encoding.UTF8.GetBytes(requestIdentity);
+            var outcome = NativeMethods.TransformWithControl(
+                _engine.Value,
+                request,
+                (nuint)request.Length,
+                control.Value,
+                maximumXsltInstructions);
+            return ReadTransformOutcome(outcome);
+        }
+    }
+
     private static string ReadTransformOutcome(ulong outcome)
     {
         var kind = NativeMethods.OutcomeKind(outcome);
@@ -166,6 +256,36 @@ public sealed class NativeFastXsltClient : IDisposable
         protected override bool ReleaseHandle() => NativeMethods.EngineRelease(Value) == 1;
     }
 
+    private sealed class NativeControlHandle : SafeHandleZeroOrMinusOneIsInvalid
+    {
+        private NativeControlHandle(ulong value) : base(ownsHandle: true) =>
+            SetHandle(unchecked((nint)value));
+
+        public ulong Value => unchecked((ulong)handle);
+        public bool FirstChargeObserved =>
+            NativeMethods.ControlFirstChargeObserved(Value) == 1;
+
+        public static NativeControlHandle Create(bool firstChargeBarrier)
+        {
+            var value = NativeMethods.ControlCreate(firstChargeBarrier ? 1u : 0u);
+            if (value == 0)
+            {
+                throw new InvalidOperationException("Native invocation control creation failed.");
+            }
+            return new NativeControlHandle(value);
+        }
+
+        public void Cancel()
+        {
+            if (IsClosed || NativeMethods.ControlCancel(Value) != 1)
+            {
+                throw new ObjectDisposedException(nameof(NativeControlHandle));
+            }
+        }
+
+        protected override bool ReleaseHandle() => NativeMethods.ControlRelease(Value) == 1;
+    }
+
     private static class NativeMethods
     {
         private const string Library = "fastxslt_dotnet_workbench";
@@ -198,6 +318,26 @@ public sealed class NativeFastXsltClient : IDisposable
             uint cancellationRequested,
             ulong maximumXsltInstructions);
 
+        [DllImport(Library, EntryPoint = "fastxslt_workbench_v0_control_create")]
+        internal static extern ulong ControlCreate(uint firstChargeBarrier);
+
+        [DllImport(Library, EntryPoint = "fastxslt_workbench_v0_transform_with_control")]
+        internal static extern ulong TransformWithControl(
+            ulong engineHandle,
+            byte[] requestIdentity,
+            nuint requestIdentityLength,
+            ulong controlHandle,
+            ulong maximumXsltInstructions);
+
+        [DllImport(Library, EntryPoint = "fastxslt_workbench_v0_control_cancel")]
+        internal static extern uint ControlCancel(ulong controlHandle);
+
+        [DllImport(Library, EntryPoint = "fastxslt_workbench_v0_control_first_charge_observed")]
+        internal static extern uint ControlFirstChargeObserved(ulong controlHandle);
+
+        [DllImport(Library, EntryPoint = "fastxslt_workbench_v0_control_release")]
+        internal static extern uint ControlRelease(ulong controlHandle);
+
         [DllImport(Library, EntryPoint = "fastxslt_workbench_v0_outcome_kind")]
         internal static extern uint OutcomeKind(ulong outcomeHandle);
 
@@ -220,6 +360,13 @@ public sealed class NativeFastXsltClient : IDisposable
         internal static extern uint EngineRelease(ulong engineHandle);
     }
 }
+
+public sealed record NativeActiveCancellationObservation(
+    NativeFastXsltException Failure,
+    double SignalToObservationMilliseconds,
+    bool FirstChargeObserved,
+    bool UnrelatedSignalIgnored,
+    bool ControlDoubleDisposeWasIdempotent);
 
 public sealed class NativeFastXsltException(
     string code,

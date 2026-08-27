@@ -297,6 +297,32 @@ app.MapPost("/experiment/native-generation-replacement", async () =>
         operationalExperimentGate.Release();
     }
 });
+app.MapPost("/experiment/native-active-cancellation", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await OperationalExperiments.ExerciseNativeActiveCancellationAsync(
+            stylesheet));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
+app.MapPost("/experiment/native-natural-cancellation-races", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await OperationalExperiments.MeasureNativeNaturalCancellationRacesAsync(
+            stylesheet));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
 app.MapPost("/experiment/generation-replacement", async () =>
 {
     await operationalExperimentGate.WaitAsync();
