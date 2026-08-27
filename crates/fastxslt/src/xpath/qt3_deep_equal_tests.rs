@@ -64,6 +64,13 @@ const UNSIGNED_LONG_CASES: [(&str, bool); 5] = [
     ("fn-deep-equalulng2args-4", false),
     ("fn-deep-equalulng2args-5", false),
 ];
+const NON_POSITIVE_INTEGER_CASES: [(&str, bool); 5] = [
+    ("fn-deep-equalnpi2args-1", true),
+    ("fn-deep-equalnpi2args-2", false),
+    ("fn-deep-equalnpi2args-3", false),
+    ("fn-deep-equalnpi2args-4", false),
+    ("fn-deep-equalnpi2args-5", false),
+];
 
 #[test]
 fn executes_complete_qt3_deep_equal_xs_int_group() {
@@ -103,6 +110,11 @@ fn executes_complete_qt3_deep_equal_xs_positive_integer_group() {
 #[test]
 fn executes_complete_qt3_deep_equal_xs_unsigned_long_group() {
     execute_group("fn-deep-equalulng2args-", &UNSIGNED_LONG_CASES);
+}
+
+#[test]
+fn executes_complete_qt3_deep_equal_xs_non_positive_integer_group() {
+    execute_group("fn-deep-equalnpi2args-", &NON_POSITIVE_INTEGER_CASES);
 }
 
 fn execute_group(prefix: &str, expected_cases: &[(&str, bool)]) {

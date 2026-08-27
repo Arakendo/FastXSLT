@@ -151,3 +151,17 @@ focused control separately accepts `18446744073709551615` and rejects both
 value boundary for this private constructor path, but does not establish
 lexical whitespace normalization, cross-type promotion, or general sequence
 equality.
+
+## QT3 non-positive-integer extension
+
+The adjacent complete five-case `fn-deep-equalnpi2args` group also passes.
+FastXSLT parses each `xs:nonPositiveInteger` constructor through checked `i128`
+and enforces the derived type's less-than-or-equal-to-zero value space. The
+group covers an equal negative pair and unequal negative lower-, middle-, and
+zero-boundary combinations in both argument orders.
+
+Focused controls accept both `-1` and `0` while rejecting `1`, distinguishing
+this inclusive boundary from both `xs:negativeInteger` and unrestricted
+`xs:integer`. This is still a bounded subset of the arbitrary-precision type;
+values outside `i128`, lexical whitespace normalization, cross-type promotion,
+and general sequence equality remain unclaimed.
