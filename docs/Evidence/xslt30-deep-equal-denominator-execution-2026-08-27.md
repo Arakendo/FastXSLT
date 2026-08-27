@@ -61,3 +61,10 @@ not perform node visits. This extends the evidence from node comparison to one
 typed atomic family without claiming arbitrary atomic sequences, numeric type
 promotion, cross-type comparison, float/NaN behavior, or the other 258 cases in
 the QT3 `fn-deep-equal` test set.
+
+The adjacent complete five-case `fn-deep-equalintg2args` group also passes.
+Those `xs:integer` operands include positive and negative 18-digit values that
+do not fit in `xs:int`; FastXSLT parses them through a checked `i128` path and
+again preserves equal and unequal results in both argument orders. This is an
+admitted implementation subset of XPath's arbitrary-precision `xs:integer`,
+not evidence that values outside `i128` are supported.

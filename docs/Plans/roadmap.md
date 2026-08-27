@@ -12,7 +12,9 @@ executes the complete four-case QT3 `Axes002` group through a
 stylesheet-independent XPath seam and the complete two-case XSLT30
 `fn/deep-equal` denominator through attribute/comment node comparison.
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
-source-free checked `xs:int` comparison.
+source-free checked `xs:int` comparison, and the adjacent five-case
+`fn-deep-equalintg2args` group extends that evidence to the checked `i128`
+subset of arbitrary-precision `xs:integer`.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -112,6 +114,10 @@ implemented behavior belongs to a named standards slice.
   including both argument orders and the type's lower and upper bounds. Keep
   cross-type promotion, floating-point/NaN rules, arbitrary sequences, and the
   remainder of the 263-case QT3 function test set explicitly unclaimed.
+- [x] Execute the complete five-case QT3 `fn-deep-equalintg2args` group through
+  checked `i128` values, including its 18-digit lower, middle, and upper
+  operands in both orders. Treat this as a bounded `xs:integer` subset rather
+  than an arbitrary-precision implementation claim.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.

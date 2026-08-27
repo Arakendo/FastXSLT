@@ -8,34 +8,47 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocati
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const SET_FILE: &str = "fn/deep-equal.xml";
-const CASES: [(&str, bool); 5] = [
+const INT_CASES: [(&str, bool); 5] = [
     ("fn-deep-equalint2args-1", true),
     ("fn-deep-equalint2args-2", false),
     ("fn-deep-equalint2args-3", false),
     ("fn-deep-equalint2args-4", false),
     ("fn-deep-equalint2args-5", false),
 ];
+const INTEGER_CASES: [(&str, bool); 5] = [
+    ("fn-deep-equalintg2args-1", true),
+    ("fn-deep-equalintg2args-2", false),
+    ("fn-deep-equalintg2args-3", false),
+    ("fn-deep-equalintg2args-4", false),
+    ("fn-deep-equalintg2args-5", false),
+];
 
 #[test]
 fn executes_complete_qt3_deep_equal_xs_int_group() {
+    execute_group("fn-deep-equalint2args-", &INT_CASES);
+}
+
+#[test]
+fn executes_complete_qt3_deep_equal_xs_integer_group() {
+    execute_group("fn-deep-equalintg2args-", &INTEGER_CASES);
+}
+
+fn execute_group(prefix: &str, expected_cases: &[(&str, bool)]) {
     let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
     assert_eq!(
-        overlay
-            .matches("case_name = \"fn-deep-equalint2args-")
-            .count(),
-        CASES.len()
+        overlay.matches(&format!("case_name = \"{prefix}")).count(),
+        expected_cases.len()
     );
     let test_set = load_test_set();
     let cases = descendants_named(&test_set, test_set.document_node(), "test-case")
         .into_iter()
         .filter(|node| {
-            attribute(&test_set, *node, "name")
-                .is_some_and(|name| name.starts_with("fn-deep-equalint2args-"))
+            attribute(&test_set, *node, "name").is_some_and(|name| name.starts_with(prefix))
         })
         .collect::<Vec<_>>();
-    assert_eq!(cases.len(), CASES.len());
+    assert_eq!(cases.len(), expected_cases.len());
 
-    for (name, expected) in CASES {
+    for (name, expected) in expected_cases.iter().copied() {
         let record = overlay_case(overlay, name);
         assert!(record.contains("selection = \"selected\""));
         assert!(record.contains("execution = \"passed\""));

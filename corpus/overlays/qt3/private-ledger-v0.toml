@@ -70,3 +70,38 @@ case_name = "fn-deep-equalint2args-5"
 selection = "selected"
 execution = "passed"
 rationale = "Compares the QT3 lower-bound and upper-bound xs:int values in reversed argument order and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equalintg2args-1"
+selection = "selected"
+execution = "passed"
+rationale = "Parses equal 18-digit negative xs:integer values into the checked i128 domain and returns the native true assertion."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equalintg2args-2"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the QT3 arbitrary-precision integer mid-range and lower-bound values in the admitted i128 subset and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equalintg2args-3"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the QT3 positive upper-bound and negative lower-bound xs:integer values and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equalintg2args-4"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the xs:integer lower-bound and mid-range values in reversed argument order and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equalintg2args-5"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the xs:integer lower-bound and upper-bound values in reversed argument order and returns false."

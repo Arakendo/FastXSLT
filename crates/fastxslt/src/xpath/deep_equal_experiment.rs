@@ -13,9 +13,9 @@ enum DeepEqualOperands {
         left: NodeSelection,
         right: NodeSelection,
     },
-    Ints {
-        left: i32,
-        right: i32,
+    Integers {
+        left: i128,
+        right: i128,
     },
 }
 
@@ -55,8 +55,8 @@ pub(crate) fn parse(
         .ok_or_else(|| unsupported(expression, location))?;
     let left = arguments.0.trim();
     let right = arguments.1.trim();
-    let operands = match (parse_int(left), parse_int(right)) {
-        (Some(left), Some(right)) => DeepEqualOperands::Ints { left, right },
+    let operands = match (parse_integer(left), parse_integer(right)) {
+        (Some(left), Some(right)) => DeepEqualOperands::Integers { left, right },
         (None, None) => DeepEqualOperands::Nodes {
             left: parse_selection(left, location)?,
             right: parse_selection(right, location)?,
@@ -69,11 +69,18 @@ pub(crate) fn parse(
     })
 }
 
-fn parse_int(expression: &str) -> Option<i32> {
-    expression
+fn parse_integer(expression: &str) -> Option<i128> {
+    let int = expression
         .strip_prefix("(xs:int(\"")
         .and_then(|value| value.strip_suffix("\"))"))
         .and_then(|value| value.parse::<i32>().ok())
+        .map(i128::from);
+    int.or_else(|| {
+        expression
+            .strip_prefix("(xs:integer(\"")
+            .and_then(|value| value.strip_suffix("\"))"))
+            .and_then(|value| value.parse::<i128>().ok())
+    })
 }
 
 fn parse_selection(
@@ -129,7 +136,7 @@ pub(crate) fn evaluate(
     control: &mut InvocationControl,
 ) -> Result<bool, DeepEqualEvaluationFailure> {
     match &expression.operands {
-        DeepEqualOperands::Ints { left, right } => {
+        DeepEqualOperands::Integers { left, right } => {
             control
                 .charge(WorkDomain::XPathOperation, 1)
                 .map_err(DeepEqualEvaluationFailure::Control)?;
