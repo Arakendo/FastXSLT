@@ -28,7 +28,7 @@ bounded sealed snapshot.
 | `initial-mode-001` | `inimode` | XML | `FXST1009`: typed constructed variable attributes |
 | `initial-mode-002` | `inimode` | `XTDE0045` | `FXST1009`: `xsl:output/@indent` |
 | `initial-mode-003` | `inimode` | `XTDE0050` | `FXST1009`: `xsl:output/@indent` |
-| `initial-mode-004` | `flobble` | XML | `FXST1011`: mode on the root match pattern |
+| `initial-mode-004` | `flobble` | XML | `FXST1006`: local `xsl:param` instruction |
 | `initial-mode-005` | `b` | XML | `FXST1015`: element-bearing global sequence constructor |
 
 The denominator is five discovered and selected: zero pass, five are explicit
@@ -47,3 +47,13 @@ an initial mode is standards-defined entry state, not a special ASP.NET or CLI
 execution path. The current cases also show why adding the entry enum alone
 would not create a pass; each case has deeper stylesheet or XPath pressure that
 must remain independently classified.
+
+## Subsequent entry-seam evidence
+
+The private runtime now admits a principal-source plus initial-mode entry,
+rejects an unknown compiled mode with structured `FXRT0005`, and executes a
+focused root template in a named mode through the same parsing, XDM,
+invocation-control, result, and serialization path as principal-source work.
+This advances case 004 beyond `FXST1011` to `FXST1006`; it does not promote any
+corpus case because the upstream template's local and tunnel parameters remain
+unsupported.

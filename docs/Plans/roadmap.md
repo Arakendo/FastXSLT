@@ -163,7 +163,9 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [x] Admit the complete five-case XSLT30 `misc/initial-mode` denominator,
   preserving each mode identity and expected error or XML assertion through
   bounded snapshots. All five are selected engine gaps at their exact current
-  compiler boundaries; no initial-mode execution support is claimed.
+  compiler boundaries. A focused host-neutral initial-mode entry now executes
+  with an admitted principal source and rejects unknown compiled mode identity;
+  none of the parameter-heavy upstream cases is promoted by that seam alone.
 - [ ] Establish explicit URI/resource resolution and execution limits.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by

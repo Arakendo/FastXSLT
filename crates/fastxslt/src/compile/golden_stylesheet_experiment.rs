@@ -40,6 +40,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
 
     let mut output = None;
     let mut root_template = None;
+    let mut root_template_mode = None;
     let mut matched_templates = Vec::new();
     let mut named_templates = Vec::new();
     let mut global_bindings = Vec::new();
@@ -63,6 +64,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
                     document,
                     child,
                     &mut root_template,
+                    &mut root_template_mode,
                     &mut matched_templates,
                     &mut named_templates,
                 )?;
@@ -110,6 +112,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
             omit_xml_declaration: false,
         }),
         root_template,
+        root_template_mode,
         matched_templates,
         named_templates,
         global_bindings,
@@ -122,6 +125,7 @@ fn compile_top_level_template(
     document: &Document,
     element: NodeId,
     root_template: &mut Option<Template>,
+    root_template_mode: &mut Option<String>,
     matched_templates: &mut Vec<MatchedTemplate>,
     named_templates: &mut Vec<NamedTemplate>,
 ) -> Result<(), CompileFailure> {
@@ -140,13 +144,6 @@ fn compile_top_level_template(
 
     let pattern = required_attribute(document, element, None, "match")?;
     if pattern == "/" {
-        if optional_attribute(document, element, None, "mode").is_some() {
-            return Err(unsupported(
-                "FXST1011",
-                "a mode on the root match pattern is outside the private slice",
-                document.location(element),
-            ));
-        }
         if root_template.is_some() {
             return Err(unsupported(
                 "FXST1001",
@@ -154,6 +151,9 @@ fn compile_top_level_template(
                 document.location(element),
             ));
         }
+        *root_template_mode = optional_attribute(document, element, None, "mode")
+            .map(|mode| parse_mode(mode, document.location(element)))
+            .transpose()?;
         *root_template = Some(compile_template(document, element)?);
         return Ok(());
     }

@@ -16,6 +16,7 @@ pub(crate) struct StylesheetProgram {
     pub(crate) declared_version: String,
     pub(crate) output: OutputSettings,
     pub(crate) root_template: Option<Template>,
+    pub(crate) root_template_mode: Option<String>,
     pub(crate) matched_templates: Vec<MatchedTemplate>,
     pub(crate) named_templates: Vec<NamedTemplate>,
     pub(crate) global_bindings: Vec<GlobalBinding>,

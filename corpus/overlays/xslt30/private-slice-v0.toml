@@ -27,7 +27,7 @@ set_file = "tests/misc/initial-mode/_initial-mode-test-set.xml"
 case_name = "initial-mode-004"
 selection = "selected"
 execution = "engine-unsupported"
-rationale = "Initial-mode parameters, tunnel identity, and sequence construction are admitted metadata but remain outside engine execution."
+rationale = "The root initial-mode entry now compiles; the case remains unsupported at its local parameter, tunnel identity, and sequence-construction boundary."
 
 [[case]]
 set_file = "tests/misc/initial-mode/_initial-mode-test-set.xml"

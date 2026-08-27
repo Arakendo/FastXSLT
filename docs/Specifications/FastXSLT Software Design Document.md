@@ -100,7 +100,8 @@ open:
   and invocation that produced them. A compiled stylesheet must not retain node
   identities from one principal source for reuse by another invocation.
 - The invocation explicitly selects its standards-defined entry, such as a
-  principal source or named initial template. A source-free initial-template
+  principal source in the default or a named initial mode, or a named initial
+  template. A source-free initial-template
   invocation must not acquire a fabricated source document or context item;
   the selected entry remains invocation state while template definitions remain
   immutable compiled state.

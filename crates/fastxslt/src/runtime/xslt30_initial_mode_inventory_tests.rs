@@ -49,7 +49,7 @@ const CASES: [CaseMetadata; 5] = [
         mode: "flobble",
         assertion: "assert-xml",
         error: None,
-        compile_code: "FXST1011",
+        compile_code: "FXST1006",
     },
     CaseMetadata {
         name: "initial-mode-005",

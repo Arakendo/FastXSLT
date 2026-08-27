@@ -67,6 +67,7 @@ pub(super) struct SemanticResult {
 #[cfg(test)]
 enum InvocationEntry {
     PrincipalSource { resource: String },
+    InitialMode { resource: String, name: String },
     InitialTemplate { name: String },
 }
 
@@ -210,12 +211,20 @@ impl TransformSetBuilder {
                 "duplicate result identity",
             ));
         }
+        if let Some(failure) = self.entry_failure(&request) {
+            self.request_ids.remove(&request.identity);
+            self.result_ids.remove(&request.result_identity);
+            return Err(failure);
+        }
+        self.requests.push(request);
+        Ok(())
+    }
+
+    fn entry_failure(&self, request: &TransformRequest) -> Option<ExecutionFailure> {
         match &request.entry {
             InvocationEntry::PrincipalSource { resource } => {
                 if self.policy.denied_sources.contains(resource) {
-                    self.request_ids.remove(&request.identity);
-                    self.result_ids.remove(&request.result_identity);
-                    return Err(failure(
+                    return Some(failure(
                         "FXRS0003",
                         FailureCategory::Denied,
                         Some(&request.identity),
@@ -223,13 +232,37 @@ impl TransformSetBuilder {
                     ));
                 }
                 if self.snapshot.get(resource).is_none() {
-                    self.request_ids.remove(&request.identity);
-                    self.result_ids.remove(&request.result_identity);
-                    return Err(failure(
+                    return Some(failure(
                         "FXRS0001",
                         FailureCategory::MissingResource,
                         Some(&request.identity),
                         format!("source is not admitted: {resource}"),
+                    ));
+                }
+            }
+            InvocationEntry::InitialMode { resource, name } => {
+                if self.policy.denied_sources.contains(resource) {
+                    return Some(failure(
+                        "FXRS0003",
+                        FailureCategory::Denied,
+                        Some(&request.identity),
+                        format!("source authority is denied: {resource}"),
+                    ));
+                }
+                if self.snapshot.get(resource).is_none() {
+                    return Some(failure(
+                        "FXRS0001",
+                        FailureCategory::MissingResource,
+                        Some(&request.identity),
+                        format!("source is not admitted: {resource}"),
+                    ));
+                }
+                if self.stylesheet.root_template_mode.as_deref() != Some(name) {
+                    return Some(failure(
+                        "FXRT0005",
+                        FailureCategory::Invalid,
+                        Some(&request.identity),
+                        format!("unknown initial mode: {name}"),
                     ));
                 }
             }
@@ -240,9 +273,7 @@ impl TransformSetBuilder {
                     .iter()
                     .any(|template| template.name == *name)
                 {
-                    self.request_ids.remove(&request.identity);
-                    self.result_ids.remove(&request.result_identity);
-                    return Err(failure(
+                    return Some(failure(
                         "FXRT0004",
                         FailureCategory::Invalid,
                         Some(&request.identity),
@@ -251,8 +282,7 @@ impl TransformSetBuilder {
                 }
             }
         }
-        self.requests.push(request);
-        Ok(())
+        None
     }
 
     fn seal(self) -> TransformSet {
@@ -329,39 +359,28 @@ fn execute_transform_set(set: TransformSet) -> Result<ResultSet, ExecutionFailur
         }
         let semantic = match &request.entry {
             InvocationEntry::PrincipalSource { resource } => {
-                let bytes = set
-                    .snapshot
-                    .get(resource)
-                    .expect("sealed transform sets contain admitted sources");
-                let parsed = parse_document_controlled(resource, bytes, XML_LIMITS, &mut control)
-                    .map_err(|error| {
-                    error.control_failure().map_or_else(
-                        || {
-                            failure(
-                                "FXXM0002",
-                                FailureCategory::Invalid,
-                                Some(&request.identity),
-                                format!("source XML is invalid: {error:?}"),
-                            )
-                        },
-                        |failure| control_failure(*failure, &request.identity),
-                    )
-                })?;
-                let source =
-                    Document::from_parsed_controlled(parsed, &mut control).map_err(|error| {
-                        match error {
-                            BuildFailure::Control(failure) => {
-                                control_failure(failure, &request.identity)
-                            }
-                            _ => failure(
-                                "FXXD0002",
-                                FailureCategory::Invalid,
-                                Some(&request.identity),
-                                format!("source XDM construction failed: {error:?}"),
-                            ),
-                        }
-                    })?;
+                let source = prepare_request_source(
+                    &set.snapshot,
+                    resource,
+                    &request.identity,
+                    &mut control,
+                )?;
                 execute_program(&set.stylesheet, &source, &request.identity, &mut control)?
+            }
+            InvocationEntry::InitialMode { resource, name } => {
+                let source = prepare_request_source(
+                    &set.snapshot,
+                    resource,
+                    &request.identity,
+                    &mut control,
+                )?;
+                execute_initial_mode(
+                    &set.stylesheet,
+                    &source,
+                    name,
+                    &request.identity,
+                    &mut control,
+                )?
             }
             InvocationEntry::InitialTemplate { name } => {
                 execute_initial_template(&set.stylesheet, name, &request.identity, &mut control)?
@@ -390,6 +409,41 @@ fn execute_transform_set(set: TransformSet) -> Result<ResultSet, ExecutionFailur
     })
 }
 
+#[cfg(test)]
+fn prepare_request_source(
+    snapshot: &ResourceSnapshot,
+    resource: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Document, ExecutionFailure> {
+    let bytes = snapshot
+        .get(resource)
+        .expect("sealed transform sets contain admitted sources");
+    let parsed =
+        parse_document_controlled(resource, bytes, XML_LIMITS, control).map_err(|error| {
+            error.control_failure().map_or_else(
+                || {
+                    failure(
+                        "FXXM0002",
+                        FailureCategory::Invalid,
+                        Some(request_id),
+                        format!("source XML is invalid: {error:?}"),
+                    )
+                },
+                |failure| control_failure(*failure, request_id),
+            )
+        })?;
+    Document::from_parsed_controlled(parsed, control).map_err(|error| match error {
+        BuildFailure::Control(failure) => control_failure(failure, request_id),
+        _ => failure(
+            "FXXD0002",
+            FailureCategory::Invalid,
+            Some(request_id),
+            format!("source XDM construction failed: {error:?}"),
+        ),
+    })
+}
+
 pub(super) fn execute_program(
     program: &StylesheetProgram,
     source: &Document,
@@ -403,7 +457,11 @@ pub(super) fn execute_program(
         request_id,
         globals: &globals,
     };
-    let children = if let Some(root_template) = &program.root_template {
+    let children = if let Some(root_template) = program
+        .root_template
+        .as_ref()
+        .filter(|_| program.root_template_mode.is_none())
+    {
         execute_sequence(
             &inputs,
             &root_template.body,
@@ -423,6 +481,44 @@ pub(super) fn execute_program(
             control,
         )?
     };
+    Ok(SemanticResult { children })
+}
+
+#[cfg(test)]
+fn execute_initial_mode(
+    program: &StylesheetProgram,
+    source: &Document,
+    name: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<SemanticResult, ExecutionFailure> {
+    if program.root_template_mode.as_deref() != Some(name) {
+        return Err(failure(
+            "FXRT0005",
+            FailureCategory::Invalid,
+            Some(request_id),
+            format!("unknown initial mode: {name}"),
+        ));
+    }
+    let template = program
+        .root_template
+        .as_ref()
+        .expect("an admitted initial mode has a root template");
+    let globals = materialize_global_defaults(program, Some(source), request_id, control)?;
+    let inputs = SequenceInputs {
+        program,
+        source: Some(source),
+        request_id,
+        globals: &globals,
+    };
+    let children = execute_sequence(
+        &inputs,
+        &template.body,
+        Some(source.document_node()),
+        &globals.atomics,
+        0,
+        control,
+    )?;
     Ok(SemanticResult { children })
 }
 
@@ -1532,6 +1628,57 @@ mod tests {
         assert_eq!(
             results.by_request["only"].serialized,
             "<message>Hello, FastXSLT!</message>"
+        );
+    }
+
+    #[test]
+    fn initial_mode_uses_a_source_and_rejects_unknown_compiled_identity() {
+        const MODE_STYLESHEET: &str = "urn:fastxslt:initial-mode:stylesheet";
+        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+        resources
+            .admit(SOURCE_ID, br"<doc/>".to_vec())
+            .expect("admit initial-mode source");
+        resources
+            .admit(
+                MODE_STYLESHEET,
+                br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/" mode="audit"><out>mode</out></xsl:template></xsl:stylesheet>"#.to_vec(),
+            )
+            .expect("admit initial-mode stylesheet");
+        let snapshot = resources.seal();
+        let program = compile_resource(&snapshot, MODE_STYLESHEET).expect("compile initial mode");
+        let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+
+        let failure = builder
+            .add(TransformRequest {
+                identity: "unknown-mode".to_owned(),
+                result_identity: "unknown-mode-result".to_owned(),
+                entry: InvocationEntry::InitialMode {
+                    resource: SOURCE_ID.to_owned(),
+                    name: "missing".to_owned(),
+                },
+                cancellation: CancellationToken::new(),
+                cancellation_fault: None,
+            })
+            .expect_err("unknown initial mode should fail request admission");
+        assert_eq!(failure.code, "FXRT0005");
+        assert_eq!(failure.category, FailureCategory::Invalid);
+
+        builder
+            .add(TransformRequest {
+                identity: "known-mode".to_owned(),
+                result_identity: "known-mode-result".to_owned(),
+                entry: InvocationEntry::InitialMode {
+                    resource: SOURCE_ID.to_owned(),
+                    name: "audit".to_owned(),
+                },
+                cancellation: CancellationToken::new(),
+                cancellation_fault: None,
+            })
+            .expect("failed admission must not poison the builder");
+        let results = execute_transform_set(builder.seal()).expect("execute initial mode");
+        assert_eq!(
+            results.by_request["known-mode"].serialized,
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>mode</out>"
         );
     }
 

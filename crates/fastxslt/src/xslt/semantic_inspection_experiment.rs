@@ -48,6 +48,7 @@ struct CompiledInspection {
     declared_version: String,
     output: OutputInspection,
     root_template_count: usize,
+    root_template_mode: Option<String>,
     exact_element_template_count: usize,
     named_template_count: usize,
     global_variable_count: usize,
@@ -65,6 +66,9 @@ fn inspect_compiled(
         .len()
         .checked_add(program.declared_version.len())
         .and_then(|bytes| bytes.checked_add(program.output.method.as_ref().map_or(0, String::len)))
+        .and_then(|bytes| {
+            bytes.checked_add(program.root_template_mode.as_ref().map_or(0, String::len))
+        })
         .ok_or(InspectionFailure::CountOverflow)?;
     if text_bytes > limits.max_text_bytes {
         return Err(InspectionFailure::TextLimit {
@@ -111,6 +115,7 @@ fn inspect_compiled(
             omit_xml_declaration: program.output.omit_xml_declaration,
         },
         root_template_count: usize::from(program.root_template.is_some()),
+        root_template_mode: program.root_template_mode.clone(),
         exact_element_template_count: program
             .matched_templates
             .iter()
@@ -240,6 +245,7 @@ mod tests {
                     omit_xml_declaration: true,
                 },
                 root_template_count: 1,
+                root_template_mode: None,
                 exact_element_template_count: 0,
                 named_template_count: 0,
                 global_variable_count: 0,
