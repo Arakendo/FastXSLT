@@ -51,7 +51,11 @@ verified independently. The adjacent five-case `fn-deep-equalnni2args` group
 adds its checked-`i128` `xs:nonNegativeInteger` mirror, also with an independently
 verified inclusive zero boundary. The complete five-case
 `fn-deep-equalsht2args` group adds an exact checked-`i16` `xs:short` path with
-controls immediately inside and outside both fixed boundaries.
+controls immediately inside and outside both fixed boundaries. The first ten
+`fn-deep-equal-mix-args-*` cases now add ordered integer/string sequences,
+singleton parentheses, and empty-sequence forms through a depth-aware argument
+splitter; the remaining 21 mixed cases retain explicit promotion and typed-value
+pressure.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -195,6 +199,13 @@ implemented behavior belongs to a named standards slice.
   checked signed 16-bit values. Accept `-32768` and `32767` while rejecting
   `-32769` and `32768`, without inferring cross-type promotion or general
   constructor support.
+- [x] Execute QT3 `fn-deep-equal-mix-args-001` through `-010` as an explicit
+  first tranche. Preserve integer-sequence order, string value and case,
+  singleton parentheses, the distinction between an empty string and an empty
+  sequence, and nested/whitespace empty-sequence forms. Charge length and
+  reached item comparisons locally, and leave cases 011 through 031 unselected
+  until their URI, promotion, floating-point, boolean, and date/time semantics
+  are deliberately admitted.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.

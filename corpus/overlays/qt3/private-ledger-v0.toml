@@ -420,3 +420,73 @@ case_name = "fn-deep-equalsht2args-5"
 selection = "selected"
 execution = "passed"
 rationale = "Compares the xs:short lower and upper boundaries in reversed argument order and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-001"
+selection = "selected"
+execution = "passed"
+rationale = "Compares two integer sequences item-by-item and preserves order, returning false at the first unequal position."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-002"
+selection = "selected"
+execution = "passed"
+rationale = "Compares two equal ordered integer sequences and returns true."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-003"
+selection = "selected"
+execution = "passed"
+rationale = "Compares an xs:string constructor with an equal string literal and returns true."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-004"
+selection = "selected"
+execution = "passed"
+rationale = "Preserves case-sensitive string value comparison and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-005"
+selection = "selected"
+execution = "passed"
+rationale = "Treats a parenthesized singleton string as the same one-item sequence and returns true."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-006"
+selection = "selected"
+execution = "passed"
+rationale = "Preserves an empty string as one atomic item rather than confusing it with the empty sequence."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-007"
+selection = "selected"
+execution = "passed"
+rationale = "Compares two empty sequences and returns true."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-008"
+selection = "selected"
+execution = "passed"
+rationale = "Flattens nested parentheses around an empty sequence and returns true."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-009"
+selection = "selected"
+execution = "passed"
+rationale = "Treats whitespace inside empty sequence parentheses as semantically empty and returns true."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-010"
+selection = "selected"
+execution = "passed"
+rationale = "Compares unequal xs:string values case-sensitively and returns false."

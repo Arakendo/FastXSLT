@@ -21,6 +21,16 @@ enum DeepEqualOperands {
         left: ExactDecimal,
         right: ExactDecimal,
     },
+    AtomicSequences {
+        left: Vec<AtomicValue>,
+        right: Vec<AtomicValue>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum AtomicValue {
+    Integer(i128),
+    String(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,7 +71,7 @@ pub(crate) fn parse(
         .strip_prefix("deep-equal(")
         .or_else(|| expression.strip_prefix("fn:deep-equal("))
         .and_then(|value| value.strip_suffix(')'))
-        .and_then(|value| value.split_once(','))
+        .and_then(split_top_level_once)
         .ok_or_else(|| unsupported(expression, location))?;
     let left = arguments.0.trim();
     let right = arguments.1.trim();
@@ -69,6 +79,10 @@ pub(crate) fn parse(
         DeepEqualOperands::Integers { left, right }
     } else if let (Some(left), Some(right)) = (parse_decimal(left), parse_decimal(right)) {
         DeepEqualOperands::Decimals { left, right }
+    } else if let (Some(left), Some(right)) =
+        (parse_atomic_sequence(left), parse_atomic_sequence(right))
+    {
+        DeepEqualOperands::AtomicSequences { left, right }
     } else {
         DeepEqualOperands::Nodes {
             left: parse_selection(left, location)?,
@@ -79,6 +93,77 @@ pub(crate) fn parse(
         operands,
         location: location.clone(),
     })
+}
+
+fn split_top_level_once(value: &str) -> Option<(&str, &str)> {
+    let mut depth = 0_u32;
+    let mut in_string = false;
+    for (index, character) in value.char_indices() {
+        match character {
+            '"' => in_string = !in_string,
+            '(' if !in_string => depth = depth.checked_add(1)?,
+            ')' if !in_string => depth = depth.checked_sub(1)?,
+            ',' if !in_string && depth == 0 => return Some((&value[..index], &value[index + 1..])),
+            _ => {}
+        }
+    }
+    None
+}
+
+fn parse_atomic_sequence(expression: &str) -> Option<Vec<AtomicValue>> {
+    let expression = expression.trim();
+    if let Some(inner) = strip_outer_parentheses(expression) {
+        let inner = inner.trim();
+        if inner.is_empty() {
+            return Some(Vec::new());
+        }
+        if let Some((left, right)) = split_top_level_once(inner) {
+            let mut values = parse_atomic_sequence(left)?;
+            values.extend(parse_atomic_sequence(right)?);
+            return Some(values);
+        }
+        return parse_atomic_sequence(inner);
+    }
+    parse_atomic_value(expression).map(|value| vec![value])
+}
+
+fn strip_outer_parentheses(expression: &str) -> Option<&str> {
+    if !expression.starts_with('(') || !expression.ends_with(')') {
+        return None;
+    }
+    let mut depth = 0_u32;
+    let mut in_string = false;
+    let last = expression.len() - 1;
+    for (index, character) in expression.char_indices() {
+        match character {
+            '"' => in_string = !in_string,
+            '(' if !in_string => depth = depth.checked_add(1)?,
+            ')' if !in_string => {
+                depth = depth.checked_sub(1)?;
+                if depth == 0 && index != last {
+                    return None;
+                }
+            }
+            _ => {}
+        }
+    }
+    (!in_string && depth == 0).then_some(&expression[1..last])
+}
+
+fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
+    if let Some(value) = expression
+        .strip_prefix("xs:string(\"")
+        .and_then(|value| value.strip_suffix("\")"))
+    {
+        return (!value.contains('"')).then(|| AtomicValue::String(value.to_owned()));
+    }
+    if let Some(value) = expression
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+    {
+        return (!value.contains('"')).then(|| AtomicValue::String(value.to_owned()));
+    }
+    expression.parse::<i128>().ok().map(AtomicValue::Integer)
 }
 
 fn parse_decimal(expression: &str) -> Option<ExactDecimal> {
@@ -210,9 +295,7 @@ fn parse_position(value: &str) -> Option<usize> {
 
 fn unsupported(expression: &str, location: &SourceLocation) -> DeepEqualFailure {
     DeepEqualFailure {
-        detail: format!(
-            "the private deep-equal slice requires positioned descendant attributes or comments: {expression}"
-        ),
+        detail: format!("the private deep-equal slice does not support expression: {expression}"),
         location: location.clone(),
     }
 }
@@ -234,6 +317,23 @@ pub(crate) fn evaluate(
                 .charge(WorkDomain::XPathOperation, 1)
                 .map_err(DeepEqualEvaluationFailure::Control)?;
             Ok(left == right)
+        }
+        DeepEqualOperands::AtomicSequences { left, right } => {
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(DeepEqualEvaluationFailure::Control)?;
+            if left.len() != right.len() {
+                return Ok(false);
+            }
+            for (left, right) in left.iter().zip(right) {
+                control
+                    .charge(WorkDomain::XPathOperation, 1)
+                    .map_err(DeepEqualEvaluationFailure::Control)?;
+                if left != right {
+                    return Ok(false);
+                }
+            }
+            Ok(true)
         }
         DeepEqualOperands::Nodes { left, right } => {
             let document = document.ok_or(DeepEqualEvaluationFailure::MissingNodeContext)?;
@@ -610,5 +710,29 @@ mod tests {
                 .is_err()
             );
         }
+    }
+
+    #[test]
+    fn compares_atomic_sequences_in_order_and_flattens_empty_parentheses() {
+        let unequal = parse("fn:deep-equal((1, 2), (2, 1))", &location())
+            .expect("parse ordered integer sequences");
+        let mut control = InvocationControl::unbounded();
+        assert!(!evaluate(&unequal, None, &mut control).expect("compare ordered sequences"));
+        assert_eq!(
+            control.consumed(crate::execution_control_experiment::WorkDomain::XPathOperation),
+            2
+        );
+
+        let empty =
+            parse("fn:deep-equal((()), ())", &location()).expect("parse nested empty sequences");
+        assert!(
+            evaluate(&empty, None, &mut InvocationControl::unbounded())
+                .expect("compare empty sequences")
+        );
+        let string = parse("fn:deep-equal(xs:string(\"A\"), (\"A\"))", &location())
+            .expect("parse equivalent string forms");
+        assert!(
+            evaluate(&string, None, &mut InvocationControl::unbounded()).expect("compare strings")
+        );
     }
 }

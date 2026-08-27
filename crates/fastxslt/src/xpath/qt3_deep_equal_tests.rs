@@ -85,6 +85,18 @@ const SHORT_CASES: [(&str, bool); 5] = [
     ("fn-deep-equalsht2args-4", false),
     ("fn-deep-equalsht2args-5", false),
 ];
+const MIXED_SEQUENCE_CASES: [(&str, bool, usize); 10] = [
+    ("fn-deep-equal-mix-args-001", false, 2),
+    ("fn-deep-equal-mix-args-002", true, 3),
+    ("fn-deep-equal-mix-args-003", true, 2),
+    ("fn-deep-equal-mix-args-004", false, 2),
+    ("fn-deep-equal-mix-args-005", true, 2),
+    ("fn-deep-equal-mix-args-006", true, 2),
+    ("fn-deep-equal-mix-args-007", true, 1),
+    ("fn-deep-equal-mix-args-008", true, 1),
+    ("fn-deep-equal-mix-args-009", true, 1),
+    ("fn-deep-equal-mix-args-010", false, 2),
+];
 
 #[test]
 fn executes_complete_qt3_deep_equal_xs_int_group() {
@@ -139,6 +151,55 @@ fn executes_complete_qt3_deep_equal_xs_non_negative_integer_group() {
 #[test]
 fn executes_complete_qt3_deep_equal_xs_short_group() {
     execute_group("fn-deep-equalsht2args-", &SHORT_CASES);
+}
+
+#[test]
+fn executes_first_qt3_deep_equal_mixed_sequence_tranche() {
+    let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
+    let test_set = load_test_set();
+    let cases = descendants_named(&test_set, test_set.document_node(), "test-case");
+
+    for (name, expected, expected_operations) in MIXED_SEQUENCE_CASES {
+        let record = overlay_case(overlay, name);
+        assert!(record.contains("selection = \"selected\""));
+        assert!(record.contains("execution = \"passed\""));
+        let case = cases
+            .iter()
+            .copied()
+            .find(|node| attribute(&test_set, *node, "name") == Some(name))
+            .expect("pinned QT3 mixed deep-equal case");
+        let expression = child_named(&test_set, case, "test")
+            .map(|node| test_set.string_value(node).trim().to_owned())
+            .expect("QT3 expression");
+        let result = child_named(&test_set, case, "result")
+            .and_then(|node| first_element_child(&test_set, node))
+            .expect("QT3 boolean assertion");
+        assert_eq!(
+            local_name(&test_set, result),
+            if expected {
+                "assert-true"
+            } else {
+                "assert-false"
+            }
+        );
+
+        let parsed = parse(
+            &expression,
+            &SourceLocation {
+                resource: format!("urn:w3c:qt3:{name}:expression"),
+                span: 0..expression.len(),
+            },
+        )
+        .expect("parse admitted mixed deep-equal expression");
+        let mut control = InvocationControl::unbounded();
+        let actual = evaluate(&parsed, None, &mut control).expect("evaluate mixed deep-equal");
+        assert_eq!(actual, expected, "native QT3 assertion for {name}");
+        assert_eq!(
+            control.consumed(WorkDomain::XPathOperation),
+            expected_operations
+        );
+        assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 0);
+    }
 }
 
 fn execute_group(prefix: &str, expected_cases: &[(&str, bool)]) {

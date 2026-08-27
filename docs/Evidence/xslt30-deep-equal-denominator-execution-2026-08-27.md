@@ -192,3 +192,28 @@ Focused controls accept both `-32768` and `32767` while rejecting `-32769` and
 `32768`, making both fixed boundaries executable. This evidence does not add
 numeric promotion, lexical whitespace normalization, general constructor
 semantics, or general sequence equality.
+
+## QT3 mixed atomic-sequence tranche
+
+FastXSLT now executes the first ten contiguous `fn-deep-equal-mix-args-*`
+cases, 001 through 010. This is an explicit tranche of the 31-case mixed group,
+not a claim that the complete group passes. The admitted expressions cover:
+
+- ordered one- and two-item integer sequences;
+- string constructors, string literals, and parenthesized singleton strings;
+- case-sensitive string value comparison;
+- empty strings as one-item sequences; and
+- empty sequences under ordinary, nested, and whitespace-bearing parentheses.
+
+The parser finds the function's argument separator at parenthesis depth zero,
+so a comma inside an operand sequence cannot be mistaken for the separator.
+The private representation flattens the admitted parenthesized sequences and
+compares equal-length items in order. Evaluation charges one XPath operation
+for the length decision and one for every item comparison reached; it performs
+no node visits.
+
+Cases 011 through 031 remain unselected. They introduce URI/string promotion,
+cross-type numeric equality, float/double infinity and NaN, boolean lexical
+equivalence, and date/time versus string behavior. This tranche also does not
+claim general XPath sequence parsing, escaped string literals, collations,
+typed-value promotion, or general `fn:deep-equal` semantics.
