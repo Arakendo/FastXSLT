@@ -10,7 +10,8 @@ use crate::xpath::integer_for_experiment::parse as parse_integer_for;
 use crate::xpath::path_experiment::{PathFailure, parse_child_path};
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, EqualityTest, Instruction, MatchPattern, MatchedTemplate, NamedTemplate,
-    NodeTest, OutputSettings, StylesheetProgram, Template, TemplateArgument, ValueExpression,
+    NodeTest, OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME, StylesheetProgram, Template,
+    TemplateArgument, ValueExpression,
 };
 
 const XSLT_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
@@ -55,6 +56,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
             }
             (Some(XSLT_NAMESPACE), "template") => {
                 if let Some(name) = optional_attribute(document, child, None, "name") {
+                    let name = normalize_named_template_name(document, child, name)?;
                     if named_templates
                         .iter()
                         .any(|template: &NamedTemplate| template.name == name)
@@ -65,7 +67,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
                             document.location(child),
                         ));
                     }
-                    named_templates.push(compile_named_template(document, child, name)?);
+                    named_templates.push(compile_named_template(document, child, &name)?);
                     continue;
                 }
                 let pattern = required_attribute(document, child, None, "match")?;
@@ -223,13 +225,6 @@ fn compile_named_template(
     name: &str,
 ) -> Result<NamedTemplate, CompileFailure> {
     ensure_only_attributes(document, element, &["name"], "xsl:template")?;
-    if !is_ascii_ncname(name) {
-        return Err(unsupported(
-            "FXST1013",
-            format!("unsupported named-template name: {name}"),
-            document.location(element),
-        ));
-    }
     let mut parameters = Vec::new();
     let mut parameter_nodes = Vec::new();
     let mut body_started = false;
@@ -266,6 +261,49 @@ fn compile_named_template(
             location: document.location(element).clone(),
         },
     })
+}
+
+fn normalize_named_template_name(
+    document: &Document,
+    element: NodeId,
+    name: &str,
+) -> Result<String, CompileFailure> {
+    if is_ascii_ncname(name) {
+        return Ok(name.to_owned());
+    }
+    let Some((prefix, local)) = name.split_once(':') else {
+        return Err(unsupported(
+            "FXST1013",
+            format!("unsupported named-template name: {name}"),
+            document.location(element),
+        ));
+    };
+    if !is_ascii_ncname(prefix) || !is_ascii_ncname(local) {
+        return Err(unsupported(
+            "FXST1013",
+            format!("unsupported named-template name: {name}"),
+            document.location(element),
+        ));
+    }
+    let mut current = Some(element);
+    while let Some(node) = current {
+        if let Some(binding) = document
+            .namespace_declarations(node)
+            .iter()
+            .find(|binding| binding.prefix.as_deref() == Some(prefix))
+        {
+            if binding.namespace == XSLT_NAMESPACE && local == "initial-template" {
+                return Ok(STANDARD_INITIAL_TEMPLATE_NAME.to_owned());
+            }
+            break;
+        }
+        current = document.parent(node);
+    }
+    Err(unsupported(
+        "FXST1013",
+        format!("unsupported named-template name: {name}"),
+        document.location(element),
+    ))
 }
 
 fn compile_sequence(
@@ -921,7 +959,9 @@ fn unsupported(
 mod tests {
     use crate::xdm::owned_tree_experiment::Document;
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
-    use crate::xslt::golden_semantics_experiment::{Instruction, ValueExpression};
+    use crate::xslt::golden_semantics_experiment::{
+        Instruction, STANDARD_INITIAL_TEMPLATE_NAME, ValueExpression,
+    };
 
     use super::{CompileCategory, compile_stylesheet};
 
@@ -1069,6 +1109,17 @@ mod tests {
         let program = compile_stylesheet(&named_template).expect("named template should compile");
         assert_eq!(program.named_templates.len(), 1);
         assert_eq!(program.named_templates[0].name, "worker");
+
+        let standard_initial_template = parse_stylesheet(
+            "memory:standard-initial-template.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template name="xsl:initial-template"><out>ok</out></xsl:template></xsl:stylesheet>"#,
+        );
+        let program = compile_stylesheet(&standard_initial_template)
+            .expect("the reserved standard initial-template name should compile");
+        assert_eq!(
+            program.named_templates[0].name,
+            STANDARD_INITIAL_TEMPLATE_NAME
+        );
 
         let unknown_call = parse_stylesheet(
             "memory:unknown-template.xsl",

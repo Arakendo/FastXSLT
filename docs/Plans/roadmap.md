@@ -119,6 +119,11 @@ implemented behavior belongs to a named standards slice.
 - [x] Execute native `castable-004` through explicit duration-family
   castability and its inline XML assertion. The selected denominator is four
   passes, no engine-classified gaps, and three harness gaps.
+- [x] Resolve the source-free standard initial-template entry for
+  `castable-007` through `castable-009` to a namespace-canonical compiled
+  identity, inventory both compound assertion predicates, and classify all
+  three at their actual `xsl:function` engine boundary. The selected denominator
+  is four passes, three engine gaps, and no harness gaps.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,

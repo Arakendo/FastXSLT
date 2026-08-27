@@ -194,19 +194,19 @@ rationale = "The native schema-aware list-type and higher-order-function depende
 set_file = "tests/expr/castable/_castable-test-set.xml"
 case_name = "castable-007"
 selection = "selected"
-execution = "harness-unsupported"
-rationale = "The XSLT30+ stylesheet is admitted, but source-free standard initial-template dispatch and compound all-of/assert XPath comparison exceed the private harness."
+execution = "engine-unsupported"
+rationale = "The harness resolves absent entry metadata to the namespace-canonical standard initial template and inventories both all-of/assert predicates; compilation then reports the unsupported xsl:function boundary before list-valued NMTOKENS castability can execute."
 
 [[case]]
 set_file = "tests/expr/castable/_castable-test-set.xml"
 case_name = "castable-008"
 selection = "selected"
-execution = "harness-unsupported"
-rationale = "The XSLT30+ stylesheet is admitted, but source-free standard initial-template dispatch and compound all-of/assert XPath comparison exceed the private harness."
+execution = "engine-unsupported"
+rationale = "The harness resolves absent entry metadata to the namespace-canonical standard initial template and inventories both all-of/assert predicates; compilation then reports the unsupported xsl:function boundary before list-valued IDREFS castability can execute."
 
 [[case]]
 set_file = "tests/expr/castable/_castable-test-set.xml"
 case_name = "castable-009"
 selection = "selected"
-execution = "harness-unsupported"
-rationale = "The XSLT30+ stylesheet is admitted, but source-free standard initial-template dispatch and compound all-of/assert XPath comparison exceed the private harness."
+execution = "engine-unsupported"
+rationale = "The harness resolves absent entry metadata to the namespace-canonical standard initial template and inventories both all-of/assert predicates; compilation then reports the unsupported xsl:function boundary before list-valued ENTITIES castability can execute."

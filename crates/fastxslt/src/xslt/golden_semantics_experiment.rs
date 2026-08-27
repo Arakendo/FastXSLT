@@ -7,6 +7,9 @@ use crate::xpath::for_distinct_values_experiment::ForDistinctValuesExpression;
 use crate::xpath::integer_for_experiment::IntegerForExpression;
 use crate::xpath::path_experiment::ChildPath;
 
+pub(crate) const STANDARD_INITIAL_TEMPLATE_NAME: &str =
+    "Q{http://www.w3.org/1999/XSL/Transform}initial-template";
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StylesheetProgram {
     pub(crate) declared_version: String,

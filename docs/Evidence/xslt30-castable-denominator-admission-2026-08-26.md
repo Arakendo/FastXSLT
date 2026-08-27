@@ -69,3 +69,13 @@ boolean, integer, decimal, float, double, duration, date, and time families.
 Implementation should first name an owned atomic-value and lexical-validation
 boundary rather than embed unrelated validators directly in stylesheet
 execution.
+
+## Subsequent disposition
+
+Cases `castable-001` through `castable-004` now pass. Cases `castable-007`
+through `castable-009` have also advanced from harness-unsupported to
+engine-unsupported through
+[standard initial-template classification evidence](xslt30-standard-initial-template-classification-2026-08-26.md).
+The selected denominator is therefore four passes and three explicit engine
+gaps, with no harness gaps; the two schema-aware cases remain visible profile
+exclusions.

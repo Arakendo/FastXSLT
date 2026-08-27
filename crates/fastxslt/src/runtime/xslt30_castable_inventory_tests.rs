@@ -10,6 +10,7 @@ use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xslt::golden_semantics_experiment::STANDARD_INITIAL_TEMPLATE_NAME;
 
 const SET_FILE: &str = "tests/expr/castable/_castable-test-set.xml";
 
@@ -79,9 +80,9 @@ const CASES: [CasePressure; 9] = [
         selection: "excluded-by-profile",
         execution: "not-run",
     },
-    selected_harness_case("castable-007"),
-    selected_harness_case("castable-008"),
-    selected_harness_case("castable-009"),
+    selected_engine_case("castable-007"),
+    selected_engine_case("castable-008"),
+    selected_engine_case("castable-009"),
 ];
 
 #[test]
@@ -208,7 +209,7 @@ fn execute_principal_case(case_name: &str) -> (String, String) {
     (results.by_request[case_name].serialized.clone(), expected)
 }
 
-const fn selected_harness_case(name: &'static str) -> CasePressure {
+const fn selected_engine_case(name: &'static str) -> CasePressure {
     CasePressure {
         name,
         environment: None,
@@ -216,7 +217,7 @@ const fn selected_harness_case(name: &'static str) -> CasePressure {
         features: &[],
         assertion: "all-of",
         selection: "selected",
-        execution: "harness-unsupported",
+        execution: "engine-unsupported",
     }
 }
 
@@ -263,6 +264,7 @@ fn admits_complete_xslt30_castable_test_set_without_denominator_loss() {
         assert_eq!(local_name(&test_set, assertion), pressure.assertion);
 
         let test = child_named(&test_set, test_case, "test").expect("case test");
+        verify_source_free_case_metadata(&test_set, pressure.name, test, assertion);
         let stylesheet = child_named(&test_set, test, "stylesheet").expect("case stylesheet");
         let stylesheet_file = attribute(&test_set, stylesheet, "file")
             .expect("castable case should name a stylesheet");
@@ -313,7 +315,49 @@ fn admits_complete_xslt30_castable_test_set_without_denominator_loss() {
             "{} should remain valid-but-unsupported: {failure:?}",
             pressure.name
         );
+        if matches!(
+            pressure.name,
+            "castable-007" | "castable-008" | "castable-009"
+        ) {
+            assert_eq!(failure.code, "FXST1002");
+            assert!(failure.detail.contains("xsl:function"));
+        }
     }
+}
+
+fn verify_source_free_case_metadata(
+    document: &Document,
+    case_name: &str,
+    test: NodeId,
+    assertion: NodeId,
+) {
+    if !matches!(case_name, "castable-007" | "castable-008" | "castable-009") {
+        return;
+    }
+    assert!(
+        child_named(document, test, "initial-template").is_none(),
+        "an absent entry declaration selects the standard initial template"
+    );
+    assert_eq!(
+        STANDARD_INITIAL_TEMPLATE_NAME,
+        "Q{http://www.w3.org/1999/XSL/Transform}initial-template"
+    );
+    let assertions = document_element_children(document, assertion);
+    assert_eq!(assertions.len(), 2);
+    assert!(
+        assertions
+            .iter()
+            .all(|node| local_name(document, *node) == "assert")
+    );
+}
+
+fn document_element_children(document: &Document, parent: NodeId) -> Vec<NodeId> {
+    document
+        .children(parent)
+        .iter()
+        .copied()
+        .filter(|node| document.kind(*node) == NodeKind::Element)
+        .collect()
 }
 
 fn stylesheet_id(case_name: &str) -> String {
