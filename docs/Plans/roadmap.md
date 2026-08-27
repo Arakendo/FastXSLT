@@ -18,7 +18,9 @@ subset of arbitrary-precision `xs:integer`. The complete five-case
 `fn-deep-equaldec2args` group adds exact normalized decimal comparison within a
 checked `i128` coefficient boundary, without using binary floating point. The
 complete five-case `fn-deep-equallng2args` group now also passes through a
-range-checked signed 64-bit `xs:long` constructor.
+range-checked signed 64-bit `xs:long` constructor. The adjacent five-case
+`fn-deep-equalusht2args` group adds a range-checked `xs:unsignedShort`
+constructor with explicit lower- and upper-bound rejection controls.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -131,6 +133,10 @@ implemented behavior belongs to a named standards slice.
   checked signed 64-bit values, with a focused upper-bound control that rejects
   an out-of-range constructor value. Do not infer numeric promotion or general
   constructor support from this group.
+- [x] Execute the complete five-case QT3 `fn-deep-equalusht2args` group through
+  checked unsigned 16-bit values. Prove the derived type boundary by accepting
+  `65535` and rejecting both `-1` and `65536`, without claiming the other
+  derived-integer families.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.

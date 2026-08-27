@@ -95,3 +95,16 @@ than silently widening an invalid `xs:long` lexical value.
 This establishes the five native assertions and the constructor boundary used
 by them. It does not add numeric promotion or general constructor-function
 semantics, and it does not broaden the bounded `xs:integer` claim above.
+
+## QT3 unsigned-short extension
+
+The complete five-case `fn-deep-equalusht2args` group also passes through an
+`xs:unsignedShort` constructor backed by a checked `u16` parse. The group covers
+equal lower-bound values plus unequal lower-, middle-, and upper-bound
+combinations in both argument orders. Focused controls accept `65535` while
+rejecting `-1` and `65536`, so the derived type's value boundary is executable
+rather than inferred from the selected fixtures.
+
+This evidence is limited to this constructor and these scalar comparisons. It
+does not establish the remaining XML Schema derived-integer families, lexical
+whitespace normalization, cross-type promotion, or general sequence equality.

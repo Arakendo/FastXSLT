@@ -119,7 +119,12 @@ fn parse_integer(expression: &str) -> Option<i128> {
         .and_then(|value| value.strip_suffix("\"))"))
         .and_then(|value| value.parse::<i64>().ok())
         .map(i128::from);
-    int.or(long).or_else(|| {
+    let unsigned_short = expression
+        .strip_prefix("(xs:unsignedShort(\"")
+        .and_then(|value| value.strip_suffix("\"))"))
+        .and_then(|value| value.parse::<u16>().ok())
+        .map(i128::from);
+    int.or(long).or(unsigned_short).or_else(|| {
         expression
             .strip_prefix("(xs:integer(\"")
             .and_then(|value| value.strip_suffix("\"))"))
@@ -399,5 +404,29 @@ mod tests {
             )
             .is_err()
         );
+    }
+
+    #[test]
+    fn enforces_the_xs_unsigned_short_value_range() {
+        let in_range = parse(
+            "fn:deep-equal((xs:unsignedShort(\"65535\")),(xs:unsignedShort(\"65535\")))",
+            &location(),
+        )
+        .expect("parse maximum xs:unsignedShort equality");
+        assert!(
+            evaluate(&in_range, None, &mut InvocationControl::unbounded())
+                .expect("evaluate xs:unsignedShort equality")
+        );
+        for invalid in ["-1", "65536"] {
+            assert!(
+                parse(
+                    &format!(
+                        "fn:deep-equal((xs:unsignedShort(\"{invalid}\")),(xs:unsignedShort(\"{invalid}\")))"
+                    ),
+                    &location(),
+                )
+                .is_err()
+            );
+        }
     }
 }
