@@ -12,9 +12,11 @@ moves general runtime contract tests out as a preparatory navigation checkpoint
 and then separates private transform-set admission/result correlation from the
 invocation engine. The runtime composition owner fell from 2,431 to 1,564 lines;
 its 304-line transform-set child calls, but does not own, invocation semantics.
-The remaining runtime and the 1,771-line stylesheet compiler must be reassessed
-before another semantic family grows the relevant responsibility, with 2,000
-lines remaining a mandatory compiler-review boundary.
+The stylesheet compiler is now divided between a 1,019-line top-level assembly
+and validation owner and a 775-line private instruction compiler. The remaining
+runtime must be reassessed before another semantic family grows template
+dispatch, temporary-tree, or sequence-evaluation responsibilities; the compiler
+units retain the reopening triggers recorded by the review.
 
 FastXSLT has accepted its staged-modern semantic direction and passes the
 complete XSLT30 `template`, `path`, and `expr/for` test-set denominators. It also

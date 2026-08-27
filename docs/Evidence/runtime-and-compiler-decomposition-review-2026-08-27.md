@@ -10,7 +10,9 @@
 | Runtime after first semantic extraction | 1,564 physical lines |
 | Extracted general test unit | 564 physical lines |
 | Extracted transform-set unit | 304 physical lines |
-| Stylesheet compiler | 1,771 physical lines |
+| Stylesheet compiler before extraction | 1,771 physical lines |
+| Top-level compiler after extraction | 1,019 physical lines |
+| Extracted instruction compiler | 775 physical lines |
 | Disposition | Active checkpointed decomposition required |
 
 ## Trigger and correction
@@ -98,10 +100,25 @@ independently demonstrated seams:
 3. template selection, modes, pattern matching, and named-call depth; and
 4. structured failure construction and control-failure translation.
 
-For the compiler, the leading candidate is a private instruction compiler that
-consumes stylesheet XDM plus static context and returns existing semantic
-instructions. Top-level assembly and cross-template validation remain in the
-composition owner. The extraction must not expose the private semantic IR.
+## Compiler extraction
+
+The private `instruction_compiler.rs` now owns sequence-constructor traversal,
+instruction lowering, literal-result namespace collection, instruction-local
+attribute and content validation, and the expression-specific parsing needed
+by the admitted instructions. It consumes stylesheet XDM and returns existing
+private semantic instructions.
+
+The parent retains stylesheet-root and top-level declaration assembly,
+templates and globals, cross-template reference validation, shared structural
+checks, and structured compilation failures. It calls three explicit child
+operations: sequence compilation, template-mode parsing, and literal-result
+namespace collection. Neither module exposes the semantic IR publicly, imports
+runtime/host policy, or creates an alternate compilation path.
+
+This reduces the compiler composition owner from 1,771 to 1,019 physical lines;
+the instruction owner is 775 lines. Expansion of an admitted instruction or
+its expression parser no longer requires navigating top-level assembly and
+cross-template validation.
 
 ## Dependency and conservation requirements
 
@@ -123,11 +140,14 @@ committed.
 
 ## Disposition and reopening
 
-The first runtime semantic extraction is complete. Reassess the remaining
-1,564-line invocation engine before adding another semantic family that touches
-template dispatch, temporary trees, or sequence evaluation. Reassess the
-compiler before its next semantic family or at 2,000 physical lines, whichever
-comes first.
+The first runtime semantic extraction and the compiler instruction extraction
+are complete. Reassess the remaining 1,564-line invocation engine before adding
+another semantic family that touches template dispatch, temporary trees, or
+sequence evaluation. Retain the 1,019-line top-level compiler at this checkpoint;
+reopen it at 1,200 lines or when a new top-level declaration or validation phase
+demonstrates another owner. Reopen the 775-line instruction compiler if
+instruction lowering and expression parsing develop independently pressured
+subsystems or it crosses 1,000 lines.
 
 The campaign is complete only when named modules reduce responsibility
 coupling; line count below a threshold alone does not close this review.
