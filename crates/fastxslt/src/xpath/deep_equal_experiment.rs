@@ -30,7 +30,9 @@ enum DeepEqualOperands {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum AtomicValue {
     Integer(i128),
+    Decimal(ExactDecimal),
     String(String),
+    AnyUri(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -152,6 +154,12 @@ fn strip_outer_parentheses(expression: &str) -> Option<&str> {
 
 fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
     if let Some(value) = expression
+        .strip_prefix("xs:anyURI(\"")
+        .and_then(|value| value.strip_suffix("\")"))
+    {
+        return (!value.contains('"')).then(|| AtomicValue::AnyUri(value.to_owned()));
+    }
+    if let Some(value) = expression
         .strip_prefix("xs:string(\"")
         .and_then(|value| value.strip_suffix("\")"))
     {
@@ -163,6 +171,20 @@ fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
     {
         return (!value.contains('"')).then(|| AtomicValue::String(value.to_owned()));
     }
+    if let Some(value) = expression
+        .strip_prefix("xs:integer(")
+        .and_then(|value| value.strip_suffix(')'))
+        .and_then(|value| value.parse::<i128>().ok())
+    {
+        return Some(AtomicValue::Integer(value));
+    }
+    if let Some(value) = expression
+        .strip_prefix("xs:decimal(")
+        .and_then(|value| value.strip_suffix(')'))
+        .and_then(parse_decimal_lexical)
+    {
+        return Some(AtomicValue::Decimal(value));
+    }
     expression.parse::<i128>().ok().map(AtomicValue::Integer)
 }
 
@@ -170,6 +192,10 @@ fn parse_decimal(expression: &str) -> Option<ExactDecimal> {
     let lexical = expression
         .strip_prefix("(xs:decimal(\"")
         .and_then(|value| value.strip_suffix("\"))"))?;
+    parse_decimal_lexical(lexical)
+}
+
+fn parse_decimal_lexical(lexical: &str) -> Option<ExactDecimal> {
     let (negative, magnitude) = lexical
         .strip_prefix('-')
         .map_or((false, lexical), |value| (true, value));
@@ -329,7 +355,7 @@ pub(crate) fn evaluate(
                 control
                     .charge(WorkDomain::XPathOperation, 1)
                     .map_err(DeepEqualEvaluationFailure::Control)?;
-                if left != right {
+                if !atomic_values_equal(left, right) {
                     return Ok(false);
                 }
             }
@@ -339,6 +365,18 @@ pub(crate) fn evaluate(
             let document = document.ok_or(DeepEqualEvaluationFailure::MissingNodeContext)?;
             evaluate_nodes(left, right, document, control)
         }
+    }
+}
+
+fn atomic_values_equal(left: &AtomicValue, right: &AtomicValue) -> bool {
+    match (left, right) {
+        (AtomicValue::Integer(left), AtomicValue::Decimal(right))
+        | (AtomicValue::Decimal(right), AtomicValue::Integer(left)) => {
+            right.scale == 0 && right.coefficient == *left
+        }
+        (AtomicValue::String(left), AtomicValue::AnyUri(right))
+        | (AtomicValue::AnyUri(right), AtomicValue::String(left)) => left == right,
+        _ => left == right,
     }
 }
 
@@ -733,6 +771,29 @@ mod tests {
             .expect("parse equivalent string forms");
         assert!(
             evaluate(&string, None, &mut InvocationControl::unbounded()).expect("compare strings")
+        );
+    }
+
+    #[test]
+    fn applies_only_the_admitted_atomic_type_comparisons() {
+        for expression in [
+            "fn:deep-equal(xs:anyURI(\"urn:example\"), xs:string(\"urn:example\"))",
+            "fn:deep-equal(xs:integer(1), xs:decimal(1.0))",
+        ] {
+            let parsed = parse(expression, &location()).expect("parse admitted atomic comparison");
+            assert!(
+                evaluate(&parsed, None, &mut InvocationControl::unbounded())
+                    .expect("evaluate admitted atomic comparison")
+            );
+        }
+        let fractional = parse(
+            "fn:deep-equal(xs:integer(1), xs:decimal(1.01))",
+            &location(),
+        )
+        .expect("parse unequal exact numeric comparison");
+        assert!(
+            !evaluate(&fractional, None, &mut InvocationControl::unbounded())
+                .expect("evaluate exact numeric comparison")
         );
     }
 }

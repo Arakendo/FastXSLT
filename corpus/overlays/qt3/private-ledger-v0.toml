@@ -490,3 +490,31 @@ case_name = "fn-deep-equal-mix-args-010"
 selection = "selected"
 execution = "passed"
 rationale = "Compares unequal xs:string values case-sensitively and returns false."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-011"
+selection = "selected"
+execution = "passed"
+rationale = "Preserves xs:anyURI type identity while applying its admitted value comparison against an equal string literal."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-012"
+selection = "selected"
+execution = "passed"
+rationale = "Compares xs:anyURI against an equal xs:string value through the admitted string-like comparison rule."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-013"
+selection = "selected"
+execution = "passed"
+rationale = "Compares xs:integer one with exact xs:decimal 1.0 without binary floating point and returns true."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-mix-args-014"
+selection = "selected"
+execution = "passed"
+rationale = "Compares unequal xs:integer values through the mixed atomic sequence path and returns false."
