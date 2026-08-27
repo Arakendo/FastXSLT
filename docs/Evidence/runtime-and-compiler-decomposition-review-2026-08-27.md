@@ -10,14 +10,17 @@
 | Runtime after first semantic extraction | 1,564 physical lines |
 | Runtime after value-evaluation extraction | 1,310 physical lines |
 | Runtime after invocation-context extraction | 1,123 physical lines |
+| Runtime after support-boundary extraction | 990 physical lines |
 | Extracted general test unit | 564 physical lines |
 | Extracted transform-set unit | 304 physical lines |
 | Extracted value-evaluation unit | 267 physical lines |
 | Extracted invocation-context unit | 207 physical lines |
+| Extracted runtime-failure unit | 92 physical lines |
+| Extracted resource-compiler unit | 60 physical lines |
 | Stylesheet compiler before extraction | 1,771 physical lines |
 | Top-level compiler after extraction | 1,019 physical lines |
 | Extracted instruction compiler | 775 physical lines |
-| Disposition | Active checkpointed decomposition required |
+| Disposition | Checkpoint satisfied; named reopening triggers retained |
 
 ## Trigger and correction
 
@@ -130,14 +133,36 @@ The runtime composition owner falls from 1,310 to 1,123 physical lines; the
 invocation-context owner is 207 lines. Its state remains invocation-local and
 does not migrate into compiled or prepared artifacts.
 
+## Runtime support-boundary extractions
+
+Structured runtime failure identity, categories, owned details, work-domain
+attribution, workbench projection, and control-failure translation moved to the
+92-line `runtime_failure.rs`. The unit imports only invocation-control failure
+types. Evaluators, serializers, context preparation, and transform-set
+composition construct the same failures through this one owner.
+
+Admitted stylesheet-resource lookup, XML parsing, XDM construction, compilation,
+and their phase-specific failure mapping moved to the 60-line
+`resource_compiler.rs`. It adapts one sealed resource into the existing compiled
+program and owns no execution, resolver, filesystem, cache, or host authority.
+
+These one-way boundaries reduce the runtime composition owner from 1,123 to 990
+physical lines. The immediate numeric pressure is cleared without creating a
+crate, public API, alternate semantic path, or broad shared context.
+
 ## Required semantic seams
 
-The first required seam is now extracted. Continue by reviewing these
-independently demonstrated seams:
+The remaining demonstrated seams are:
 
 1. remaining instruction control flow and result construction;
-2. template selection, modes, pattern matching, and named-call depth; and
-3. structured failure construction and control-failure translation.
+2. template selection, modes, pattern matching, and named-call depth.
+
+Those responsibilities are presently mutually recursive: sequence execution
+invokes template dispatch and selected template bodies re-enter sequence
+execution. Extracting either behind callbacks or a broad mutable context at
+this checkpoint would increase coupling. Retain them together until template
+priority/indexing, another execution strategy, or repeated independent changes
+demonstrate a narrower dependency contract.
 
 ## Compiler extraction
 
@@ -179,14 +204,17 @@ committed.
 
 ## Disposition and reopening
 
-Three runtime semantic extractions and the compiler instruction extraction are
-complete. Reassess the remaining 1,123-line invocation engine before adding
-another semantic family that touches template dispatch or sequence control
-flow. Retain the 1,019-line top-level compiler at this checkpoint; reopen it at
-1,200 lines or when a new top-level declaration or validation phase demonstrates
-another owner. Reopen the 775-line instruction compiler if instruction lowering
-and expression parsing develop independently pressured subsystems or it crosses
-1,000 lines.
+Three runtime semantic extractions, two runtime support-boundary extractions,
+and the compiler instruction extraction are complete. Retain the remaining
+990-line mutually recursive sequence/template core at this checkpoint. Reopen
+it at 1,200 lines, before adding template priority or indexing, when another
+execution strategy appears, or when ordinary changes repeatedly touch distant
+sequence and dispatch regions. Retain the 1,019-line top-level compiler at this
+checkpoint; reopen it at 1,200 lines or when a new top-level declaration or
+validation phase demonstrates another owner. Reopen the 775-line instruction
+compiler if instruction lowering and expression parsing develop independently
+pressured subsystems or it crosses 1,000 lines.
 
-The campaign is complete only when named modules reduce responsibility
-coupling; line count below a threshold alone does not close this review.
+This checkpoint closes the mandatory campaign because each retained extraction
+has a named owner and reduces responsibility coupling. The lower line count is
+a consequence, not the closing evidence.

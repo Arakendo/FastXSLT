@@ -1,11 +1,9 @@
 use std::collections::BTreeMap;
 
-use crate::compile::golden_stylesheet_experiment::compile_stylesheet;
-use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
-use crate::resources::ResourceSnapshot;
+use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
-use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
+use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits};
 use crate::xpath::castable_experiment::{CastEvaluationFailure, CastExpression, evaluate_cast};
 use crate::xpath::for_distinct_values_experiment::{
     ForDistinctValuesExpression, evaluate as evaluate_for_distinct_values,
@@ -16,8 +14,12 @@ use crate::xslt::golden_semantics_experiment::{
     StylesheetProgram, TemplateArgument,
 };
 
+#[path = "resource_compiler.rs"]
+mod resource_compiler;
 #[path = "runtime_context.rs"]
 mod runtime_context;
+#[path = "runtime_failure.rs"]
+mod runtime_failure;
 mod serialization;
 #[cfg(test)]
 #[path = "transform_set_experiment.rs"]
@@ -25,10 +27,13 @@ mod transform_set_experiment;
 #[path = "value_evaluator.rs"]
 mod value_evaluator;
 
+pub(super) use resource_compiler::compile_resource;
 use runtime_context::{
     RuntimeGlobals, RuntimeVariables, SequenceInputs, TemporaryTree, bind_template_parameters,
     materialize_global_defaults, required_source_context,
 };
+pub(super) use runtime_failure::ExecutionFailure;
+use runtime_failure::{FailureCategory, control_failure, failure};
 pub(super) use serialization::serialize_xml;
 #[cfg(test)]
 use transform_set_experiment::{
@@ -61,98 +66,6 @@ pub(super) struct SemanticResult {
 struct InvocationParameter {
     value: AtomicValue,
     tunnel: bool,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum FailureCategory {
-    Invalid,
-    Unsupported,
-    MissingResource,
-    #[cfg(test)]
-    Denied,
-    Limit,
-    Cancelled,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct ExecutionFailure {
-    code: &'static str,
-    category: FailureCategory,
-    request_id: Option<String>,
-    work_domain: Option<WorkDomain>,
-    detail: String,
-}
-
-#[cfg(feature = "workbench")]
-impl ExecutionFailure {
-    pub(super) fn workbench_parts(&self) -> (&'static str, &'static str, Option<&str>, &str) {
-        let category = match self.category {
-            FailureCategory::Invalid => "invalid",
-            FailureCategory::Unsupported => "unsupported",
-            FailureCategory::MissingResource => "missing-resource",
-            #[cfg(test)]
-            FailureCategory::Denied => "denied",
-            FailureCategory::Limit => "limit",
-            FailureCategory::Cancelled => "cancelled",
-        };
-        (
-            self.code,
-            category,
-            self.request_id.as_deref(),
-            &self.detail,
-        )
-    }
-}
-
-pub(super) fn compile_resource(
-    snapshot: &ResourceSnapshot,
-    stylesheet_id: &str,
-) -> Result<StylesheetProgram, ExecutionFailure> {
-    let bytes = snapshot.get(stylesheet_id).ok_or_else(|| {
-        failure(
-            "FXRS0002",
-            FailureCategory::MissingResource,
-            None,
-            format!("stylesheet is not admitted: {stylesheet_id}"),
-        )
-    })?;
-    let parsed = parse_document(stylesheet_id, bytes, XML_LIMITS).map_err(|error| {
-        failure(
-            "FXXM0001",
-            FailureCategory::Invalid,
-            None,
-            format!("stylesheet XML is invalid: {error:?}"),
-        )
-    })?;
-    let document = Document::from_parsed(parsed).map_err(|error| {
-        failure(
-            "FXXD0001",
-            FailureCategory::Invalid,
-            None,
-            format!("stylesheet XDM construction failed: {error:?}"),
-        )
-    })?;
-    compile_stylesheet(&document).map_err(|error| {
-        failure(
-            error.code,
-            match error.category {
-                crate::compile::golden_stylesheet_experiment::CompileCategory::Invalid => {
-                    FailureCategory::Invalid
-                }
-                crate::compile::golden_stylesheet_experiment::CompileCategory::Unsupported => {
-                    FailureCategory::Unsupported
-                }
-            },
-            None,
-            format!(
-                "{} at {}:{}..{}",
-                error.detail,
-                error.location.resource,
-                error.location.span.start,
-                error.location.span.end
-            ),
-        )
-    })
 }
 
 pub(super) fn execute_program(
@@ -1040,52 +953,6 @@ fn append_text(
         nodes.push(ResultNode::Text(value.to_owned()));
     }
     Ok(())
-}
-
-fn failure(
-    code: &'static str,
-    category: FailureCategory,
-    request_id: Option<&str>,
-    detail: impl Into<String>,
-) -> ExecutionFailure {
-    ExecutionFailure {
-        code,
-        category,
-        request_id: request_id.map(str::to_owned),
-        work_domain: None,
-        detail: detail.into(),
-    }
-}
-
-fn control_failure(failure: ControlFailure, request_id: &str) -> ExecutionFailure {
-    let work_domain = failure.domain();
-    match failure {
-        ControlFailure::Cancelled { .. } => ExecutionFailure {
-            code: "FXCT0001",
-            category: FailureCategory::Cancelled,
-            request_id: Some(request_id.to_owned()),
-            work_domain: Some(work_domain),
-            detail: format!(
-                "host cancellation observed while charging {} work",
-                work_domain.name()
-            ),
-        },
-        ControlFailure::BudgetExhausted {
-            limit,
-            consumed,
-            attempted,
-            ..
-        } => ExecutionFailure {
-            code: "FXCT0002",
-            category: FailureCategory::Limit,
-            request_id: Some(request_id.to_owned()),
-            work_domain: Some(work_domain),
-            detail: format!(
-                "{} work budget exhausted: limit {limit}, consumed {consumed}, next charge {attempted}",
-                work_domain.name()
-            ),
-        },
-    }
 }
 
 #[cfg(test)]

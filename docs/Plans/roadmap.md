@@ -14,14 +14,15 @@ invocation engine. A second semantic extraction gives dynamic `xsl:value-of`
 and its XPath adapters a one-way private owner. The runtime composition owner
 also delegates invocation-local globals, variable frames, parameter binding,
 source-context requirements, and temporary-tree preparation to a 207-line
-context owner. It fell from 2,431 to 1,123 lines; its 304-line transform-set and
-267-line value children call, but do not own, the remaining invocation
-semantics.
+context owner. Structured runtime failures and admitted-resource compilation
+now have 92-line and 60-line one-way owners. The runtime core fell from 2,431 to
+990 lines; its 304-line transform-set and 267-line value children call, but do
+not own, the remaining invocation semantics.
 The stylesheet compiler is now divided between a 1,019-line top-level assembly
 and validation owner and a 775-line private instruction compiler. The remaining
-runtime must be reassessed before another semantic family grows template
-dispatch, temporary-tree, or sequence-evaluation responsibilities; the compiler
-units retain the reopening triggers recorded by the review.
+mutually recursive sequence/template core is retained rather than split behind
+callbacks or a broad context. The compiler and runtime units retain the
+reopening triggers recorded by the review.
 
 FastXSLT has accepted its staged-modern semantic direction and passes the
 complete XSLT30 `template`, `path`, and `expr/for` test-set denominators. It also
