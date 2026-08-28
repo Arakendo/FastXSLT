@@ -282,8 +282,9 @@ length decision and do not compare unreachable items. No XDM node visits occur.
 
 This tranche adds no new public behavior and does not widen the expression
 grammar beyond forms already admitted by the preceding checkpoint. QName cases
-17 and 21, binary cases 22 through 24, and `index-of` cases 32 through 35 remain
-unselected pending their own semantic work.
+17 and 21, binary cases 22 through 24, and `index-of` cases 32 through 35 were
+left for separate semantic checkpoints; the QName and binary checkpoints are
+recorded below.
 
 ## QT3 QName tranche
 
@@ -300,6 +301,22 @@ items. Focused controls independently verify equal expanded names with distinct
 prefixes and unequal namespace URIs. This does not claim namespace-context
 resolution, Unicode NCNames, general QName constructors, or QName handling
 outside the private atomic deep-equal slice.
+
+## QT3 binary tranche
+
+`K-SeqDeepEqualFunc-22` through `-24` now pass through retained binary atomic
+values. The private constructor path decodes even-length hexadecimal lexicals
+case-insensitively and decodes four-character base64 groups with placement and
+unused-padding-bit validation. Comparisons therefore operate on bytes rather
+than lexical spelling.
+
+Cases 22 and 23 preserve second- and first-position type-mismatch early exits;
+case 24 reaches and compares equal decoded base64 values in the third position.
+Focused controls cover case-insensitive hex equality, equal decoded base64
+bytes, odd hex rejection, and malformed base64 padding rejection. This tranche
+does not claim whitespace normalization, the complete XML Schema binary lexical
+spaces, cross-binary-type equality, or binary semantics outside private
+deep-equal. The four `index-of` composition cases remain unselected.
 
 ## QT3 mixed atomic-sequence tranche
 

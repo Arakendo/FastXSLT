@@ -125,6 +125,11 @@ const BOOLEAN_COMPOSITION_CASES: [(&str, usize); 9] = [
 ];
 const QNAME_CASES: [(&str, usize); 2] =
     [("K-SeqDeepEqualFunc-17", 2), ("K-SeqDeepEqualFunc-21", 4)];
+const BINARY_CASES: [(&str, usize); 3] = [
+    ("K-SeqDeepEqualFunc-22", 3),
+    ("K-SeqDeepEqualFunc-23", 2),
+    ("K-SeqDeepEqualFunc-24", 4),
+];
 const ORDERED_AND_EMPTY_SEQUENCE_CASES: [(&str, usize); 18] = [
     ("K-SeqDeepEqualFunc-25", 4),
     ("K-SeqDeepEqualFunc-26", 4),
@@ -306,6 +311,11 @@ fn executes_qt3_boolean_composition_tranche() {
 #[test]
 fn executes_qt3_qname_tranche() {
     execute_named_true_cases(&QNAME_CASES);
+}
+
+#[test]
+fn executes_qt3_binary_tranche() {
+    execute_named_true_cases(&BINARY_CASES);
 }
 
 #[test]

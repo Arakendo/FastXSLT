@@ -626,6 +626,27 @@ rationale = "Negates a third-position integer/QName mismatch after two equal ord
 
 [[case]]
 set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-22"
+selection = "selected"
+execution = "passed"
+rationale = "Negates a second-position integer/hex-binary mismatch after one equal ordered item."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-23"
+selection = "selected"
+execution = "passed"
+rationale = "Negates a first-position integer/base64-binary mismatch without comparing later items."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-24"
+selection = "selected"
+execution = "passed"
+rationale = "Compares equal decoded base64-binary values at the third position of ordered sequences."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
 case_name = "K-SeqDeepEqualFunc-25"
 selection = "selected"
 execution = "passed"

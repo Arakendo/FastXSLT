@@ -27,6 +27,8 @@ enum AtomicValue {
         namespace_uri: String,
         local_name: String,
     },
+    HexBinary(Vec<u8>),
+    Base64Binary(Vec<u8>),
     Date(DateValue),
     DateTime {
         date: DateValue,
@@ -125,6 +127,15 @@ fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
             namespace_uri,
             local_name,
         });
+    }
+    if let Some(value) = constructor_lexical(expression, "xs:hexBinary").and_then(parse_hex_binary)
+    {
+        return Some(AtomicValue::HexBinary(value));
+    }
+    if let Some(value) =
+        constructor_lexical(expression, "xs:base64Binary").and_then(parse_base64_binary)
+    {
+        return Some(AtomicValue::Base64Binary(value));
     }
     if let Some(value) = expression
         .strip_prefix("xs:anyURI(\"")
@@ -229,6 +240,70 @@ fn is_ascii_ncname(value: &str) -> bool {
         && characters.all(|character| {
             character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.')
         })
+}
+
+fn parse_hex_binary(lexical: &str) -> Option<Vec<u8>> {
+    let bytes = lexical.as_bytes();
+    if bytes.len() % 2 != 0 {
+        return None;
+    }
+    bytes
+        .chunks_exact(2)
+        .map(|pair| Some((hex_digit(pair[0])? << 4) | hex_digit(pair[1])?))
+        .collect()
+}
+
+fn hex_digit(byte: u8) -> Option<u8> {
+    match byte {
+        b'0'..=b'9' => Some(byte - b'0'),
+        b'a'..=b'f' => Some(byte - b'a' + 10),
+        b'A'..=b'F' => Some(byte - b'A' + 10),
+        _ => None,
+    }
+}
+
+fn parse_base64_binary(lexical: &str) -> Option<Vec<u8>> {
+    let bytes = lexical.as_bytes();
+    if bytes.len() % 4 != 0 {
+        return None;
+    }
+    let chunk_count = bytes.len() / 4;
+    let mut decoded = Vec::with_capacity(chunk_count.checked_mul(3)?);
+    for (index, chunk) in bytes.chunks_exact(4).enumerate() {
+        let last = index + 1 == chunk_count;
+        let first = base64_digit(chunk[0])?;
+        let second = base64_digit(chunk[1])?;
+        let third = (chunk[2] != b'=').then(|| base64_digit(chunk[2])).flatten();
+        let fourth = (chunk[3] != b'=').then(|| base64_digit(chunk[3])).flatten();
+        if (!last && (third.is_none() || fourth.is_none()))
+            || (third.is_none() && fourth.is_some())
+            || (third.is_none() && second & 0x0f != 0)
+            || (third.is_some() && fourth.is_none() && third? & 0x03 != 0)
+        {
+            return None;
+        }
+        let third = third.unwrap_or(0);
+        let fourth = fourth.unwrap_or(0);
+        decoded.push((first << 2) | (second >> 4));
+        if chunk[2] != b'=' {
+            decoded.push((second << 4) | (third >> 2));
+        }
+        if chunk[3] != b'=' {
+            decoded.push((third << 6) | fourth);
+        }
+    }
+    Some(decoded)
+}
+
+fn base64_digit(byte: u8) -> Option<u8> {
+    match byte {
+        b'A'..=b'Z' => Some(byte - b'A'),
+        b'a'..=b'z' => Some(byte - b'a' + 26),
+        b'0'..=b'9' => Some(byte - b'0' + 52),
+        b'+' => Some(62),
+        b'/' => Some(63),
+        _ => None,
+    }
 }
 
 fn constructor_lexical<'a>(expression: &'a str, name: &str) -> Option<&'a str> {
@@ -591,5 +666,22 @@ mod tests {
         );
         assert!(parse_sequence("QName(\"\", \"prefix:name\")").is_none());
         assert!(parse_sequence("QName(\"urn:example\", \"1name\")").is_none());
+    }
+
+    #[test]
+    fn decodes_binary_values_before_comparison() {
+        assert_eq!(
+            sequences_equal("xs:hexBinary(\"ff00\")", "xs:hexBinary(\"FF00\")"),
+            Some(true)
+        );
+        assert_eq!(
+            sequences_equal(
+                "xs:base64Binary(\"ZmFzdA==\")",
+                "xs:base64Binary(\"ZmFzdA==\")"
+            ),
+            Some(true)
+        );
+        assert!(parse_sequence("xs:hexBinary(\"0\")").is_none());
+        assert!(parse_sequence("xs:base64Binary(\"A===\")").is_none());
     }
 }
