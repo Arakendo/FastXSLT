@@ -612,6 +612,132 @@ rationale = "Negates a three-item sequence comparison that reaches a boolean/int
 
 [[case]]
 set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-25"
+selection = "selected"
+execution = "passed"
+rationale = "Compares equal ordered three-integer sequences through all three items."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-26"
+selection = "selected"
+execution = "passed"
+rationale = "Negates a three-integer sequence mismatch reached at the third item."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-27"
+selection = "selected"
+execution = "passed"
+rationale = "Negates a three-integer sequence mismatch reached at the second item."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-28"
+selection = "selected"
+execution = "passed"
+rationale = "Negates a three-integer sequence mismatch reached at the first item."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-29"
+selection = "selected"
+execution = "passed"
+rationale = "Negates a reversed first-item integer mismatch without comparing later items."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-30"
+selection = "selected"
+execution = "passed"
+rationale = "Negates a reversed second-item integer mismatch after one equal item."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-31"
+selection = "selected"
+execution = "passed"
+rationale = "Negates a reversed third-item integer mismatch after two equal items."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-36"
+selection = "selected"
+execution = "passed"
+rationale = "Compares equal ordered sequences with a string in the third position."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-37"
+selection = "selected"
+execution = "passed"
+rationale = "Compares equal ordered sequences with a string in the second position."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-38"
+selection = "selected"
+execution = "passed"
+rationale = "Compares equal ordered sequences with a string in the first position."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-39"
+selection = "selected"
+execution = "passed"
+rationale = "Flattens an empty item at the third position and compares the remaining equal sequence."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-40"
+selection = "selected"
+execution = "passed"
+rationale = "Flattens an empty item at the second position and compares the remaining equal sequence."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-41"
+selection = "selected"
+execution = "passed"
+rationale = "Flattens an empty item at the first position and compares the remaining equal sequence."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-42"
+selection = "selected"
+execution = "passed"
+rationale = "Rejects unequal sequence lengths after flattening a third-position empty item."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-43"
+selection = "selected"
+execution = "passed"
+rationale = "Rejects unequal sequence lengths after flattening a second-position empty item."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-44"
+selection = "selected"
+execution = "passed"
+rationale = "Rejects unequal sequence lengths after flattening a first-position empty item."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-45"
+selection = "selected"
+execution = "passed"
+rationale = "Rejects the reversed unequal length after flattening a third-position empty item."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-46"
+selection = "selected"
+execution = "passed"
+rationale = "Rejects the reversed unequal length after flattening a second-position empty item."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equal-mix-args-001"
 selection = "selected"
 execution = "passed"

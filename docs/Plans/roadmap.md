@@ -88,6 +88,10 @@ The following nine-case tranche executes case 7, cases 12 through 16, and cases
 owner. Corpus pressure also corrected quoted integer/decimal constructors and
 three-item parenthesized sequence parsing without moving those responsibilities
 out of the atomic child.
+The next 18-case K-family tranche executes cases 25 through 31 and 36 through
+46 through those same owners. It verifies ordered equality, first/second/third
+early mismatch, string placement, empty-item flattening, and unequal-length
+short-circuit work without admitting QName, binary, or `index-of` semantics.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -285,6 +289,11 @@ implemented behavior belongs to a named standards slice.
   XPath and stylesheet execution. Preserve exact inner work charges and early
   mismatch, admit quoted integer/decimal constructor lexicals and recursive
   three-item sequence tails, and leave QName/binary/index-of cases unselected.
+- [x] Execute QT3 `K-SeqDeepEqualFunc-25` through `-31` and `-36` through
+  `-46` as an exact 18-case ordered/empty-sequence tranche. Preserve item order,
+  first/second/third early mismatch, empty-item flattening, and length-only
+  short-circuit charges while leaving QName, binary, and `index-of` cases
+  unselected.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.

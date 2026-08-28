@@ -123,6 +123,26 @@ const BOOLEAN_COMPOSITION_CASES: [(&str, usize); 9] = [
     ("K-SeqDeepEqualFunc-19", 3),
     ("K-SeqDeepEqualFunc-20", 2),
 ];
+const ORDERED_AND_EMPTY_SEQUENCE_CASES: [(&str, usize); 18] = [
+    ("K-SeqDeepEqualFunc-25", 4),
+    ("K-SeqDeepEqualFunc-26", 4),
+    ("K-SeqDeepEqualFunc-27", 3),
+    ("K-SeqDeepEqualFunc-28", 2),
+    ("K-SeqDeepEqualFunc-29", 2),
+    ("K-SeqDeepEqualFunc-30", 3),
+    ("K-SeqDeepEqualFunc-31", 4),
+    ("K-SeqDeepEqualFunc-36", 4),
+    ("K-SeqDeepEqualFunc-37", 4),
+    ("K-SeqDeepEqualFunc-38", 4),
+    ("K-SeqDeepEqualFunc-39", 3),
+    ("K-SeqDeepEqualFunc-40", 3),
+    ("K-SeqDeepEqualFunc-41", 3),
+    ("K-SeqDeepEqualFunc-42", 1),
+    ("K-SeqDeepEqualFunc-43", 1),
+    ("K-SeqDeepEqualFunc-44", 1),
+    ("K-SeqDeepEqualFunc-45", 1),
+    ("K-SeqDeepEqualFunc-46", 1),
+];
 const MIXED_ATOMIC_CASES: [(&str, bool, usize); 31] = [
     ("fn-deep-equal-mix-args-001", false, 2),
     ("fn-deep-equal-mix-args-002", true, 3),
@@ -279,6 +299,11 @@ fn executes_qt3_codepoint_collation_and_paired_nan_tranche() {
 #[test]
 fn executes_qt3_boolean_composition_tranche() {
     execute_named_true_cases(&BOOLEAN_COMPOSITION_CASES);
+}
+
+#[test]
+fn executes_qt3_ordered_and_empty_sequence_tranche() {
+    execute_named_true_cases(&ORDERED_AND_EMPTY_SEQUENCE_CASES);
 }
 
 fn execute_named_true_cases(expected_cases: &[(&str, usize)]) {

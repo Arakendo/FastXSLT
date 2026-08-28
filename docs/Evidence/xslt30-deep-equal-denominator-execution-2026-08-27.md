@@ -266,6 +266,25 @@ Comma-separated items outside sequence parentheses remain rejected. QName,
 binary, `index-of`, and broader boolean-expression composition remain outside
 this tranche.
 
+## QT3 ordered and empty-sequence tranche
+
+The next explicit K-family tranche selects `K-SeqDeepEqualFunc-25` through
+`-31` and `K-SeqDeepEqualFunc-36` through `-46`. These 18 cases reuse the same
+boolean-composition and atomic-sequence owners to cover equal ordered
+three-item sequences, mismatches reached at the first, second, or third item,
+strings in each sequence position, and empty items flattened out of
+parenthesized sequence construction.
+
+Each case asserts its exact local work count. Equal three-item sequences charge
+one length decision and all three item comparisons. Mismatches stop after the
+first unequal item. Unequal lengths after empty-item flattening charge only the
+length decision and do not compare unreachable items. No XDM node visits occur.
+
+This tranche adds no new public behavior and does not widen the expression
+grammar beyond forms already admitted by the preceding checkpoint. QName cases
+17 and 21, binary cases 22 through 24, and `index-of` cases 32 through 35 remain
+unselected pending their own semantic work.
+
 ## QT3 mixed atomic-sequence tranche
 
 FastXSLT now executes the complete 31-case
