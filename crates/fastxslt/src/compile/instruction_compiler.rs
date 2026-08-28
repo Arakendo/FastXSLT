@@ -156,17 +156,21 @@ pub(super) fn literal_result_namespaces(
     let mut current = Some(element);
     while let Some(node) = current {
         for binding in document.namespace_declarations(node) {
-            let Some(prefix) = binding.prefix.as_deref() else {
-                continue;
+            let prefix = binding.prefix.as_deref();
+            let required_for_element = document
+                .name(element)
+                .is_some_and(|name| name.namespace.as_deref() == Some(binding.namespace.as_str()));
+            let excluded = match prefix {
+                Some(prefix) => excluded_prefixes.contains(&prefix),
+                None => excluded_prefixes.contains(&"#default"),
             };
-            if prefix != "xml"
+            if prefix != Some("xml")
                 && binding.namespace != XSLT_NAMESPACE
                 && !binding.namespace.is_empty()
-                && !exclude_all
-                && !excluded_prefixes.contains(&prefix)
+                && (required_for_element || (!exclude_all && !excluded))
                 && !namespaces
                     .iter()
-                    .any(|existing: &NamespaceBinding| existing.prefix.as_deref() == Some(prefix))
+                    .any(|existing: &NamespaceBinding| existing.prefix.as_deref() == prefix)
             {
                 namespaces.push(binding.clone());
             }

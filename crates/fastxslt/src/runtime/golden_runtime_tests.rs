@@ -345,6 +345,7 @@ fn absent_output_declaration_does_not_silently_apply_html_serialization() {
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: None,
         media_type: None,
+        include_content_type: None,
         omit_xml_declaration: false,
         indent: None,
     };
@@ -373,6 +374,7 @@ fn requested_indentation_is_preserved_as_an_explicit_serialization_boundary() {
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: Some("xml".to_owned()),
         media_type: None,
+        include_content_type: None,
         omit_xml_declaration: false,
         indent: Some(true),
     };
@@ -384,6 +386,52 @@ fn requested_indentation_is_preserved_as_an_explicit_serialization_boundary() {
     assert_eq!(failure.code, "FXSR1003");
     assert_eq!(failure.category, FailureCategory::Unsupported);
     assert_eq!(failure.request_id.as_deref(), Some("indented-result"));
+}
+
+#[test]
+fn namespaced_element_names_use_retained_bindings_and_undeclare_defaults() {
+    let result = SemanticResult {
+        children: vec![ResultNode::Element {
+            name: crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: Some("urn:prefixed".to_owned()),
+                local: "root".to_owned(),
+            },
+            namespaces: vec![
+                crate::xml::quick_xml_experiment::NamespaceBinding {
+                    prefix: Some("p".to_owned()),
+                    namespace: "urn:prefixed".to_owned(),
+                },
+                crate::xml::quick_xml_experiment::NamespaceBinding {
+                    prefix: None,
+                    namespace: "urn:default".to_owned(),
+                },
+            ],
+            children: vec![ResultNode::Element {
+                name: crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: None,
+                    local: "child".to_owned(),
+                },
+                namespaces: Vec::new(),
+                children: Vec::new(),
+            }],
+        }],
+    };
+    let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
+        method: Some("xml".to_owned()),
+        media_type: None,
+        include_content_type: None,
+        omit_xml_declaration: true,
+        indent: None,
+    };
+
+    let mut control = InvocationControl::unbounded();
+    let serialized = serialize_xml(&result, &settings, "namespaced", 4_096, &mut control)
+        .expect("serialize retained namespace bindings");
+
+    assert_eq!(
+        serialized,
+        "<p:root xmlns:p=\"urn:prefixed\" xmlns=\"urn:default\"><child xmlns=\"\"></child></p:root>"
+    );
 }
 
 #[test]

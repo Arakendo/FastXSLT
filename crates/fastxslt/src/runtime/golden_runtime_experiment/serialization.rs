@@ -66,44 +66,89 @@ fn serialize_node(
             namespaces,
             children,
         } => {
-            if name.namespace.is_some() {
-                return Err(failure(
-                    "FXSR1002",
-                    FailureCategory::Unsupported,
-                    Some(&output.request_id),
-                    "namespaced result serialization is outside the private slice",
-                ));
-            }
-            output.push('<')?;
-            output.push_str(&name.local)?;
             let mut in_scope = inherited_namespaces.to_vec();
+            let mut declarations = Vec::new();
             for binding in namespaces {
                 let inherited = in_scope.iter().position(|candidate| {
                     candidate.prefix == binding.prefix && candidate.namespace == binding.namespace
                 });
                 if inherited.is_none() {
-                    output.push_str(" xmlns")?;
-                    if let Some(prefix) = &binding.prefix {
-                        output.push(':')?;
-                        output.push_str(prefix)?;
-                    }
-                    output.push_str("=\"")?;
-                    escape_attribute(&binding.namespace, output)?;
-                    output.push('"')?;
+                    declarations.push(binding.clone());
                 }
                 in_scope.retain(|candidate| candidate.prefix != binding.prefix);
                 in_scope.push(binding.clone());
+            }
+            if name.namespace.is_none()
+                && in_scope
+                    .iter()
+                    .any(|binding| binding.prefix.is_none() && !binding.namespace.is_empty())
+            {
+                let undeclaration = crate::xml::quick_xml_experiment::NamespaceBinding {
+                    prefix: None,
+                    namespace: String::new(),
+                };
+                declarations.push(undeclaration.clone());
+                in_scope.retain(|binding| binding.prefix.is_some());
+                in_scope.push(undeclaration);
+            }
+            let prefix = element_prefix(name.namespace.as_deref(), &in_scope, output)?;
+            output.push('<')?;
+            write_name(prefix, &name.local, output)?;
+            for binding in &declarations {
+                output.push_str(" xmlns")?;
+                if let Some(prefix) = &binding.prefix {
+                    output.push(':')?;
+                    output.push_str(prefix)?;
+                }
+                output.push_str("=\"")?;
+                escape_attribute(&binding.namespace, output)?;
+                output.push('"')?;
             }
             output.push('>')?;
             for child in children {
                 serialize_node(child, &in_scope, output)?;
             }
             output.push_str("</")?;
-            output.push_str(&name.local)?;
+            write_name(prefix, &name.local, output)?;
             output.push('>')?;
         }
     }
     Ok(())
+}
+
+fn element_prefix<'a>(
+    namespace: Option<&str>,
+    in_scope: &'a [crate::xml::quick_xml_experiment::NamespaceBinding],
+    output: &BudgetedString,
+) -> Result<Option<&'a str>, ExecutionFailure> {
+    let Some(namespace) = namespace else {
+        return Ok(None);
+    };
+    in_scope
+        .iter()
+        .filter(|binding| binding.namespace == namespace)
+        .min_by_key(|binding| usize::from(binding.prefix.is_some()))
+        .map(|binding| binding.prefix.as_deref())
+        .ok_or_else(|| {
+            failure(
+                "FXSR1002",
+                FailureCategory::Unsupported,
+                Some(&output.request_id),
+                format!("result namespace has no retained prefix binding: {namespace}"),
+            )
+        })
+}
+
+fn write_name(
+    prefix: Option<&str>,
+    local: &str,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    if let Some(prefix) = prefix {
+        output.push_str(prefix)?;
+        output.push(':')?;
+    }
+    output.push_str(local)
 }
 
 fn escape_attribute(value: &str, output: &mut BudgetedString) -> Result<(), ExecutionFailure> {

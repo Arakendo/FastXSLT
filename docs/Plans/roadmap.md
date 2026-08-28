@@ -408,8 +408,14 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [x] Admit the complete 232-case XSLT30 `decl/output` denominator under a
   first-party set-level overlay, conserve seven serialization assertion
   families and all environment/resource references, and seal each case's
-  engine inputs into an independently bounded memory snapshot. Keep every case
-  harness-unsupported and unexecuted until comparator ownership exists.
+  engine inputs into an independently bounded memory snapshot. Default cases
+  to harness-unsupported and unexecuted until an explicit comparator-backed
+  override earns another disposition.
+- [x] Execute XSLT30 `output-0128` through the standard `xsl:transform` synonym,
+  retained `include-content-type` metadata, namespace-qualified XML element
+  serialization, and a case-specific canonical-LF `assert-serialization`
+  comparator. Preserve 231 visible harness gaps and make no broad serialization
+  claim.
 - [x] Execute XSLT30 `template-001` through built-in document dispatch,
   comment-node selection, and an isolated named mode while retaining the other
   four unsupported cases in the six-case denominator.

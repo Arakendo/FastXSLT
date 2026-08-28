@@ -56,6 +56,7 @@ pub(crate) struct ConstructedElement {
 pub(crate) struct OutputSettings {
     pub(crate) method: Option<String>,
     pub(crate) media_type: Option<String>,
+    pub(crate) include_content_type: Option<bool>,
     pub(crate) omit_xml_declaration: bool,
     pub(crate) indent: Option<bool>,
 }

@@ -32,7 +32,7 @@ pub(crate) struct CompileFailure {
 
 pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgram, CompileFailure> {
     let root = document_element(document)?;
-    require_name(document, root, Some(XSLT_NAMESPACE), "stylesheet")?;
+    require_stylesheet_root(document, root)?;
     let declared_version = required_attribute(document, root, None, "version")?.to_owned();
 
     let mut output = None;
@@ -107,6 +107,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
         output: output.unwrap_or(OutputSettings {
             method: None,
             media_type: None,
+            include_content_type: None,
             omit_xml_declaration: false,
             indent: None,
         }),
@@ -118,6 +119,21 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
     };
     validate_named_template_references(&program)?;
     Ok(program)
+}
+
+fn require_stylesheet_root(document: &Document, root: NodeId) -> Result<(), CompileFailure> {
+    if document.name(root).is_some_and(|name| {
+        name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+            && matches!(name.local.as_str(), "stylesheet" | "transform")
+    }) {
+        Ok(())
+    } else {
+        Err(invalid(
+            "FXST0009",
+            "expected xsl:stylesheet or its xsl:transform synonym",
+            document.location(root),
+        ))
+    }
 }
 
 fn compile_top_level_template(
@@ -287,7 +303,13 @@ fn compile_output(document: &Document, element: NodeId) -> Result<OutputSettings
     ensure_only_attributes(
         document,
         element,
-        &["method", "media-type", "omit-xml-declaration", "indent"],
+        &[
+            "method",
+            "media-type",
+            "include-content-type",
+            "omit-xml-declaration",
+            "indent",
+        ],
         "xsl:output",
     )?;
     ensure_no_meaningful_children(document, element, "xsl:output")?;
@@ -306,9 +328,13 @@ fn compile_output(document: &Document, element: NodeId) -> Result<OutputSettings
     let indent = optional_attribute(document, element, None, "indent")
         .map(|value| parse_yes_no(value, "indent", document.location(element)))
         .transpose()?;
+    let include_content_type = optional_attribute(document, element, None, "include-content-type")
+        .map(|value| parse_yes_no(value, "include-content-type", document.location(element)))
+        .transpose()?;
     Ok(OutputSettings {
         method: method.map(str::to_owned),
         media_type: optional_attribute(document, element, None, "media-type").map(str::to_owned),
+        include_content_type,
         omit_xml_declaration,
         indent,
     })
@@ -766,26 +792,6 @@ fn is_ascii_ncname(value: &str) -> bool {
         })
 }
 
-fn require_name(
-    document: &Document,
-    node: NodeId,
-    namespace: Option<&str>,
-    local: &str,
-) -> Result<(), CompileFailure> {
-    if document
-        .name(node)
-        .is_some_and(|name| name.namespace.as_deref() == namespace && name.local == local)
-    {
-        Ok(())
-    } else {
-        Err(invalid(
-            "FXST0009",
-            format!("expected element: {{{}}}{local}", namespace.unwrap_or("")),
-            document.location(node),
-        ))
-    }
-}
-
 fn map_path_failure(failure: PathFailure) -> CompileFailure {
     match failure {
         PathFailure::Invalid { detail, location } => CompileFailure {
@@ -906,6 +912,7 @@ mod tests {
 
         assert_eq!(program.output.method, None);
         assert_eq!(program.output.media_type, None);
+        assert_eq!(program.output.include_content_type, None);
         assert!(!program.output.omit_xml_declaration);
     }
 

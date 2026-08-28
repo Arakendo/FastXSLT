@@ -42,6 +42,7 @@ struct FeatureObservation {
 struct OutputInspection {
     method: Option<String>,
     media_type: Option<String>,
+    include_content_type: Option<bool>,
     omit_xml_declaration: bool,
     indent: Option<bool>,
 }
@@ -120,6 +121,7 @@ fn inspect_compiled(
         output: OutputInspection {
             method: program.output.method.clone(),
             media_type: program.output.media_type.clone(),
+            include_content_type: program.output.include_content_type,
             omit_xml_declaration: program.output.omit_xml_declaration,
             indent: program.output.indent,
         },
@@ -256,6 +258,7 @@ mod tests {
                 output: OutputInspection {
                     method: Some("xml".to_owned()),
                     media_type: Some("application/xml".to_owned()),
+                    include_content_type: None,
                     omit_xml_declaration: true,
                     indent: None,
                 },

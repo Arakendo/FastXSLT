@@ -6,7 +6,13 @@ case_count = 232
 [default_disposition]
 selection = "harness-unsupported"
 execution = "not-run"
-rationale = "The complete set requires serialization assertion ownership that the private harness has not implemented; no case is silently omitted or treated as an engine pass/failure."
+rationale = "Unless overridden below, the case requires serialization assertion or execution-adapter ownership that the private harness has not implemented; no case is silently omitted or treated as an engine pass/failure."
+
+[[case_override]]
+case_name = "output-0128"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the XML-method rule that include-content-type does not inject an HTML meta element. The comparator restores canonical LF from Windows CRLF checkout materialization before exact text comparison; no other whitespace is changed."
 
 [[assertion_family]]
 name = "all-of"

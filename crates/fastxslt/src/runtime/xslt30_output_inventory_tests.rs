@@ -1,11 +1,16 @@
 //! Conserved admission for the complete XSLT30 `decl/output` denominator.
 
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, HashSet},
     fs,
     path::{Path, PathBuf},
 };
 
+use super::{
+    ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, compile_resource,
+    execute_transform_set,
+};
+use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
@@ -26,6 +31,84 @@ struct InventoryObservation {
     source_files: usize,
     inline_sources: usize,
     expected_file_references: usize,
+}
+
+#[test]
+fn executes_output_0128_without_injecting_html_content_type_metadata() {
+    const CASE_NAME: &str = "output-0128";
+    assert!(OVERLAY.contains(&format!("case_name = \"{CASE_NAME}\"")));
+    assert!(OVERLAY.contains("execution = \"passed\""));
+
+    let (test_set, set_path) = load_test_set();
+    let directory = set_path.parent().expect("output test-set directory");
+    let root = document_element(&test_set);
+    let case = element_children(&test_set, root)
+        .into_iter()
+        .find(|node| {
+            local_name(&test_set, *node) == "test-case"
+                && attribute(&test_set, *node, "name") == Some(CASE_NAME)
+        })
+        .expect("pinned output-0128 case");
+    let test = child_named(&test_set, case, "test").expect("output-0128 test");
+    let stylesheet_file = child_named(&test_set, test, "stylesheet")
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("output-0128 stylesheet file");
+    let environment = resolve_environment(&test_set, root, case).expect("output-0128 environment");
+    let source = child_named(&test_set, environment, "source").expect("output-0128 source");
+    let source_content = child_named(&test_set, source, "content").expect("inline source content");
+    let result = child_named(&test_set, case, "result").expect("output-0128 result");
+    let assertion = first_element_child(&test_set, result).expect("output-0128 assertion");
+    assert_eq!(local_name(&test_set, assertion), "assert-serialization");
+    assert_eq!(attribute(&test_set, assertion, "method"), Some("xml"));
+    let expected_file = attribute(&test_set, assertion, "file").expect("expected file");
+
+    let source_id = format!("urn:w3c:xslt30:{CASE_NAME}:source");
+    let stylesheet_id = format!("urn:w3c:xslt30:{CASE_NAME}:stylesheet");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 65_536, 131_072));
+    resources
+        .admit(
+            source_id.clone(),
+            test_set.string_value(source_content).into_bytes(),
+        )
+        .expect("admit output-0128 source");
+    resources
+        .admit(
+            stylesheet_id.clone(),
+            fs::read(directory.join(stylesheet_file)).expect("read stylesheet and close handle"),
+        )
+        .expect("admit output-0128 stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, &stylesheet_id).expect("compile output-0128");
+    assert_eq!(program.output.method.as_deref(), Some("xml"));
+    assert_eq!(program.output.include_content_type, Some(true));
+
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 8_192,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    set.add(TransformRequest {
+        identity: CASE_NAME.to_owned(),
+        result_identity: format!("result:{CASE_NAME}"),
+        entry: InvocationEntry::PrincipalSource {
+            resource: source_id,
+        },
+        parameters: BTreeMap::new(),
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    })
+    .expect("admit output-0128 request");
+    let results = execute_transform_set(set.seal()).expect("execute output-0128");
+    let actual = &results.by_request[CASE_NAME].serialized;
+    let expected = fs::read_to_string(directory.join(expected_file))
+        .expect("read expected serialization and close handle");
+    let canonical_expected = expected.replace("\r\n", "\n");
+    assert_eq!(actual, &canonical_expected);
 }
 
 #[test]

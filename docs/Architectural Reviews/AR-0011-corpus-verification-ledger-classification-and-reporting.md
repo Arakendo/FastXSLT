@@ -219,6 +219,11 @@ the profile closes; generalized execution remains deferred.
   case's resolved stylesheets and sources can nevertheless be copied into an
   independently bounded sealed snapshot without ambient engine I/O. This is
   environment-mapping evidence, not execution or serialization conformance.
+- The first output override now executes `output-0128` and compares its
+  serialized XML with the file-backed upstream expectation after an explicit
+  case-specific Windows CRLF-to-canonical-LF correction. The remaining 231
+  cases retain their harness-unsupported default; comparator ownership for one
+  case does not silently reclassify adjacent assertions.
 
 ## Disposition
 
@@ -286,3 +291,6 @@ reporting becomes a release requirement.
 - 2026-08-27 -- Conserved all 232 XSLT30 `decl/output` cases and seven
   assertion families under a visible harness-unsupported disposition, while
   mapping every resolved case environment into bounded memory-owned resources.
+- 2026-08-27 -- Executed `output-0128` as the first serialization assertion,
+  recording its exact overlay exception and checkout-EOL correction while
+  retaining the other 231 cases as visible harness gaps.
