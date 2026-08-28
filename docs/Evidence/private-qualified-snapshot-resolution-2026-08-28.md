@@ -33,6 +33,12 @@ Focused tests establish that:
 - the production compiler rejects valid stylesheet bytes admitted under the
   unqualified identity `stylesheet.xsl` as `FXRS1001 / unsupported`.
 
+The compiler seam is also exercised with an explicitly supplied private
+resolver. It returns the same `FXRS0003 / denied` category for an admitted and
+an unadmitted denied identity. After one missing lookup consumes a one-attempt
+budget, a second lookup for admitted bytes returns `FXRS0006 / limit` before
+snapshot access.
+
 The private runtime mapping also preserves separate structured categories for
 missing resource, denied authority, invalid identity, unsupported resolution
 shape, and exhausted limit. Hosts do not need to parse the display detail to
