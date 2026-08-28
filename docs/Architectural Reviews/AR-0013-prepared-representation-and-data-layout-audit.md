@@ -1,0 +1,190 @@
+# AR-0013: Prepared Representation and Data-Layout Audit
+
+| Field | Value |
+| --- | --- |
+| Status | Incubating |
+| Opened | 2026-08-27 |
+| Last reviewed | 2026-08-27 |
+| Scope | XDM, compiled stylesheet, execution plan, prepared input, and invocation-local storage |
+| Trigger | Explore whether deliberately prepared representations can improve repeated execution rather than inheriting conventional engine layouts without evidence |
+| Related ADRs | ADR-0002, ADR-0003, ADR-0004, ADR-0007 |
+| Related reviews | AR-0007, AR-0009, AR-0012 |
+| Related evidence | `../Evidence/private-prepared-input-reuse-2026-08-25.md`; `../Evidence/private-prepared-retention-observation-2026-08-25.md`; `../Evidence/allocation-counter-review-and-preparation-probe-2026-08-25.md`; `../Evidence/aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md` |
+
+## Architectural question
+
+Which private data representations, indexes, execution-plan specializations,
+and reusable scratch layouts—if any—materially improve correct repeated
+transformation under FastXSLT's bounded memory and host-neutral lifecycle,
+without stabilizing implementation details or making preparation more expensive
+than the execution it is intended to accelerate?
+
+## Trigger and evidence
+
+FastXSLT already benefits from compiling stylesheets once and reusing immutable
+prepared XDM state. Existing probes also show the cost: preparation retains more
+memory, and the relative value depends on source shape, transform work, reuse
+count, concurrency, and the host boundary. The current implementation was built
+to establish semantics and lifecycle evidence. Its Rust containers and layouts
+must not become permanent merely because they were convenient for the reference
+path.
+
+There is no current profile showing that a particular arena, index, interner,
+sequence representation, or cache is the next bottleneck. There is also no
+evidence that a novel representation will outperform straightforward safe Rust
+after preparation cost, retained memory, diagnostics, cancellation, and result
+transfer are included. This review preserves the investigation without
+presuming that novelty is valuable.
+
+## Ownership and constraints
+
+- XDM owns node identity, document order, names, values, and navigation
+  semantics. A physical representation may optimize them but may not redefine
+  them.
+- Stylesheet compilation owns stylesheet-derived static knowledge and may use
+  it to select or specialize an execution plan. Source documents, parameters,
+  resolver state, clocks, messages, and budgets remain invocation or prepared-
+  input concerns under their existing contracts.
+- Prepared state remains immutable and source-derived under AR-0009. Content
+  equality must not collapse document identity, and no global or cross-snapshot
+  cache is admitted by this review.
+- Resource snapshots retain bounded memory ownership and no ambient filesystem
+  or network authority under ADR-0002.
+- Representation-specific access remains inside its owner. The audit must not
+  manufacture a generalized provider API or defeat AR-0007's future strategy
+  seam.
+- Diagnostics, source locations, work accounting, cancellation charge points,
+  deterministic results, and host-mode parity are conservation requirements.
+- The supported Rust facade must not expose arena indexes, tags, interner keys,
+  plan opcodes, cache keys, or scratch-buffer ownership merely to enable an
+  optimization.
+- Safe Rust remains the reference. Self-validation at construction or admission
+  can establish optimized-path preconditions, but it does not by itself admit
+  `unsafe`; any unsafe representation still requires a separate accepted ADR
+  satisfying ADR-0003.
+
+## Candidate audit areas
+
+The audit may examine, without committing to any of them:
+
+- compact node identifiers and arena organization, including array-of-structs
+  versus struct-of-arrays layouts;
+- interned expanded names, prefixes, namespace URIs, and repeated string values;
+- stylesheet-activated indexes for names, axes, keys, and template dispatch;
+- pre-resolved name tests, static contexts, constants, and specialized plan
+  operations selected during compilation rather than hot-loop feature checks;
+- sequence/value representations for empty, singleton, small, homogeneous, and
+  general sequences;
+- document-order and subtree metadata that can make admitted navigation cheaper;
+- reusable worker-local scratch buffers whose lifetime and clearing rules cannot
+  leak invocation state;
+- result construction and serialization buffers, including the future
+  distinction between Unicode text and encoded bytes; and
+- compact or compressed prepared forms where decode cost, random access, and
+  retained memory are measured together.
+
+This list is an inventory of questions, not an implementation plan.
+
+## Alternatives
+
+### Retain straightforward reference representations
+
+Keep the current safe structures unless profiles identify a material problem.
+This minimizes preparation, complexity, and correctness risk and is the default
+outcome if experiments do not demonstrate consumer-visible value.
+
+### Add safe specialized representations behind private owners
+
+Construct validated immutable forms during compile or prepare, then select a
+lean execution path that does not repeatedly branch on unused features. Retain
+the safe reference behavior for differential verification. Specialization may
+be workload- or feature-shaped but must have explicit preparation and retention
+budgets.
+
+### Add optional indexes or caches
+
+Build only indexes activated by compiled semantic knowledge or measured reuse.
+This may trade preparation and memory for execution speed. Admission policy,
+eviction, identity, concurrency, and cache ownership require evidence and may
+reopen AR-0009.
+
+### Admit an unsafe optimized representation
+
+Consider only after a safe specialized prototype leaves a measured requirement
+unmet. This alternative is unavailable through this review alone and requires a
+separate ADR-0003 exception with exact invariants, tools, benefit, and removal
+criteria.
+
+## Experiment method
+
+1. Inventory the current logical data flow and ownership from resource bytes
+   through XML, XDM, compilation, preparation, execution, and serialization.
+2. Profile representative cold, prepared, warm, batch, and concurrent workloads
+   before choosing a container. Attribute CPU, allocation, retained bytes,
+   locality where observable, and result-transfer cost to their owning phase.
+3. State one representation hypothesis and its expected tradeoff. Change one
+   material variable at a time behind a private boundary.
+4. Compare against the safe reference using semantic results, structured
+   diagnostics, budgets, cancellation, and adversarial boundaries—not throughput
+   alone.
+5. Measure preparation latency, break-even reuse count, retained and peak memory,
+   warm throughput, p50/p95/p99 latency, concurrency scaling, and host-visible
+   behavior.
+6. Remove or retain the experiment according to evidence. A dead end is a valid
+   result when its workload, measurements, and rejected hypothesis are recorded.
+
+Microbenchmarks may locate pressure but cannot establish an engine or consumer
+benefit by themselves.
+
+## Findings and uncertainties
+
+Compile-once and prepared-input reuse demonstrate that representation work can
+matter. They do not identify the next representation or prove that a custom data
+structure is beneficial. The strongest current direction is compile/prepare-
+time specialization that activates only required machinery, because that fits
+the existing lifecycle without adding repeated hot-path feature checks.
+
+Unknowns include representative consumer distributions, reuse counts, source
+shapes, namespace/name repetition, axis and template-selection pressure,
+allocation ownership inside Rust, cache behavior, and the memory budget an
+embedded ASP.NET consumer will tolerate per generation or worker.
+
+## Disposition
+
+**Incubating.** Preserve the audit and candidate inventory, but select no data
+structure, index, cache, representation, unsafe exception, or public type. Normal
+standards-driven implementation continues until profiles or consumer workloads
+provide a concrete hypothesis to test.
+
+## Required follow-up
+
+- [ ] Capture at least one representative consumer workload with semantic
+  fidelity sentinels, reuse count, concurrency, and memory/latency budgets.
+- [ ] Add Rust-side allocation and retained-memory attribution for compile,
+  prepare, execute, and serialize phases.
+- [ ] Produce a current representation and lifetime inventory without exposing
+  it through the public facade.
+- [ ] Profile the reference path and nominate one measured representation
+  hypothesis, or record that no material representation pressure was found.
+- [ ] Prototype the nominated hypothesis in safe Rust and differentially verify
+  it before considering any optimized or unsafe successor.
+- [ ] Record negative experiments so later work does not repeat attractive dead
+  ends without new evidence.
+
+## Reopening triggers
+
+- A representative workload attributes material time, allocation, or retained
+  memory to a named representation or navigation operation.
+- Prepared-state memory prevents the required worker count, generation overlap,
+  or source distribution from meeting a consumer budget.
+- The same compiled feature subset repeatedly pays for inactive machinery in a
+  measured hot path.
+- AR-0012 facade work needs an ownership or result type that private
+  representation choices could accidentally constrain.
+- A safe prototype demonstrates a valuable result or leaves a named requirement
+  unmet in a way that may justify a separate unsafe exception review.
+
+## Review history
+
+- 2026-08-27 -- Opened as Incubating to preserve a future evidence-driven audit
+  of prepared representations and data layout without selecting an optimization.

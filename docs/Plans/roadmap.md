@@ -559,6 +559,27 @@ functions, packages, alternate execution backends, transformation graphs, and
 specific parallel executor strategies require their own product evidence and
 architectural review. Their presence in this list is not a commitment.
 
+### Prepared representation and data-layout audit
+
+AR-0013 preserves a future investigation into whether FastXSLT can prepare XDM,
+compiled plans, indexes, values, sequences, and scratch state more effectively
+than straightforward reference structures. It deliberately selects no novel
+container or unsafe path before profiles establish a concrete pressure.
+
+- [ ] Capture representative workload shapes, semantic sentinels, reuse,
+  concurrency, and memory/latency budgets before judging a representation.
+- [ ] Inventory current representation ownership and lifetimes, then measure
+  compile, prepare, execute, serialization, allocation, retained memory, and
+  locality where observable.
+- [ ] Prototype one measured hypothesis at a time behind private safe-Rust
+  owners; preserve reference semantics and diagnostics through differential
+  verification.
+- [ ] Record both successful and negative experiments, including preparation
+  cost, break-even reuse, retained memory, throughput, tail latency, and host-
+  visible behavior.
+- [ ] Require a separate ADR-0003 exception if evidence eventually points to an
+  unsafe implementation; construction-time validation alone is not admission.
+
 ### Deferred Tokimu/Web3D consumer workload
 
 CR-0001 remains a future real-world compiler, resource, parameter, fidelity,

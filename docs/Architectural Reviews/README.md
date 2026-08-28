@@ -89,3 +89,6 @@ and add the record to this index. Never reuse a retired number.
   -- Proposed; CR-0001 supplies the first concrete Rust consumer, but exact
   public types await an authoritative fixture and consumer-shaped lifecycle
   evidence.
+- [AR-0013: Prepared Representation and Data-Layout Audit](AR-0013-prepared-representation-and-data-layout-audit.md)
+  -- Incubating; profile current ownership and layouts before testing private,
+  safe specializations, and treat a well-measured dead end as useful evidence.
