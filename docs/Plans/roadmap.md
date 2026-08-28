@@ -571,6 +571,10 @@ container or unsafe path before profiles establish a concrete pressure.
 - [ ] Inventory current representation ownership and lifetimes, then measure
   compile, prepare, execute, serialization, allocation, retained memory, and
   locality where observable.
+- [ ] Audit Rust-level opportunities such as ownership shape, clone/reference-
+  count removal, boxed slices, enum/tag layout, safe arenas, worker-local reuse,
+  static dispatch, synchronization traffic, and generated hot paths when a
+  profile makes one relevant.
 - [ ] Prototype one measured hypothesis at a time behind private safe-Rust
   owners; preserve reference semantics and diagnostics through differential
   verification.

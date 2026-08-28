@@ -14,7 +14,7 @@
 ## Architectural question
 
 Which private data representations, indexes, execution-plan specializations,
-and reusable scratch layouts—if any—materially improve correct repeated
+reusable scratch layouts, and Rust-level implementation techniques—if any—materially improve correct repeated
 transformation under FastXSLT's bounded memory and host-neutral lifecycle,
 without stabilizing implementation details or making preparation more expensive
 than the execution it is intended to accelerate?
@@ -85,6 +85,44 @@ The audit may examine, without committing to any of them:
 
 This list is an inventory of questions, not an implementation plan.
 
+## Rust-level opportunities
+
+The audit is not limited to choosing a familiar container. Rust is low-level
+enough that the same logical representation can have materially different
+physical and execution behavior. The investigation may therefore examine:
+
+- ownership and lifetime arrangements that remove cloning, reference counting,
+  or synchronization from an admitted hot path while preserving immutable
+  shared state;
+- exact-capacity construction followed by slices or boxed slices where growth
+  is no longer required;
+- enum, option, newtype-index, and tagged-value layouts, including whether
+  compiler niche optimization helps in the actual target builds;
+- array organization, alignment, cache-line use, prefetch behavior, and false
+  sharing between concurrent workers;
+- safe arena, bump-allocation, small-inline, bit-set, and compact-string
+  implementations, including the unsafe surface and maintenance quality of any
+  dependency that provides them;
+- static dispatch, monomorphized operations, generated specialized evaluators,
+  function tables, or compact opcodes selected at compile/prepare time;
+- bounds-check elimination that the optimizer can already prove from safe code,
+  before considering unchecked indexing;
+- worker-local reuse of capacities and buffers with explicit clearing,
+  poisoning, and maximum-retention rules;
+- atomics, locks, channels, and reference-count traffic that may be avoidable by
+  assigning stronger ownership to a generation or worker; and
+- compiler output, target features, and portable SIMD opportunities after a
+  profile identifies a sufficiently important loop.
+
+Layout intuition is not evidence. `size_of`, generated assembly, hardware
+counters, and microbenchmarks can explain a mechanism, but admission still
+requires end-to-end semantic, memory, latency, and throughput evidence on
+supported targets. Compiler-specific layout accidents must not become persisted
+formats, ABI promises, or soundness assumptions. `repr(packed)`, unchecked
+indexing, raw pointers, custom allocation, intrinsics, or similar techniques do
+not bypass ADR-0003 merely because the surrounding representation validates
+itself.
+
 ## Alternatives
 
 ### Retain straightforward reference representations
@@ -122,8 +160,8 @@ criteria.
 2. Profile representative cold, prepared, warm, batch, and concurrent workloads
    before choosing a container. Attribute CPU, allocation, retained bytes,
    locality where observable, and result-transfer cost to their owning phase.
-3. State one representation hypothesis and its expected tradeoff. Change one
-   material variable at a time behind a private boundary.
+3. State one representation or Rust-level mechanism hypothesis and its expected
+   tradeoff. Change one material variable at a time behind a private boundary.
 4. Compare against the safe reference using semantic results, structured
    diagnostics, budgets, cancellation, and adversarial boundaries—not throughput
    alone.
@@ -164,6 +202,9 @@ provide a concrete hypothesis to test.
   prepare, execute, and serialize phases.
 - [ ] Produce a current representation and lifetime inventory without exposing
   it through the public facade.
+- [ ] Include ownership, cloning/reference-count traffic, allocation shape,
+  synchronization, layout, and generated-code observations in the inventory
+  where profiles nominate them.
 - [ ] Profile the reference path and nominate one measured representation
   hypothesis, or record that no material representation pressure was found.
 - [ ] Prototype the nominated hypothesis in safe Rust and differentially verify
