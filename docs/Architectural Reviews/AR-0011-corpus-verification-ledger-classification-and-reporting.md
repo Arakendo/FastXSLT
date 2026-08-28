@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Accepted |
 | Opened | 2026-08-25 |
-| Last reviewed | 2026-08-25 |
+| Last reviewed | 2026-08-27 |
 | Scope | External and first-party test-data inventory, selection, execution, comparison, and evidence reporting |
 | Trigger | FastXSLT has 46,421 admitted QT3/XSLT30 cases and 2,586 locally inventoried XML candidates, but only one upstream case executes through a first-party overlay |
 | Related ADRs | ADR-0002, ADR-0005, ADR-0006 |
@@ -213,6 +213,12 @@ the profile closes; generalized execution remains deferred.
   same-attempt outcomes, mixed run/shard identity, duplicate inventory cases,
   and execution observations outside the selected set fail visibly. Attempt
   ordinals remain experimental mechanics rather than an adopted schema.
+- The complete 232-case XSLT30 `decl/output` set now has a rule-based
+  first-party overlay and a conserved suite-specific inventory. Every case is
+  visibly harness-unsupported pending serialization comparator ownership; each
+  case's resolved stylesheets and sources can nevertheless be copied into an
+  independently bounded sealed snapshot without ambient engine I/O. This is
+  environment-mapping evidence, not execution or serialization conformance.
 
 ## Disposition
 
@@ -277,3 +283,6 @@ reporting becomes a release requirement.
 - 2026-08-26 -- ADR-0007 supplied the staged-modern applicability profile. The
   complete six-case XSLT30 `template` set is its first conserved preview
   denominator; broader harness and publication choices remain deferred.
+- 2026-08-27 -- Conserved all 232 XSLT30 `decl/output` cases and seven
+  assertion families under a visible harness-unsupported disposition, while
+  mapping every resolved case environment into bounded memory-owned resources.

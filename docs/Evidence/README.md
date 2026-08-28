@@ -50,6 +50,7 @@ pressure architecture but does not silently create a public guarantee.
 - [Private Golden Transform Slice](private-golden-transform-slice-2026-08-25.md)
 - [Host-Neutral Structured Diagnostic Location](host-neutral-structured-diagnostic-location-2026-08-27.md)
 - [Private Output Media-Type Retention](private-output-media-type-retention-2026-08-27.md)
+- [XSLT30 Output Denominator Admission](xslt30-output-denominator-admission-2026-08-27.md)
 - [XSLT30 `template-006` Private Execution](xslt30-template-006-private-execution-2026-08-25.md)
 - [Peer AR-0010 Review: Monday](peer-ar-0010-review-monday-2026-08-25.md)
 - [Private Invocation-Control Charge Points](private-invocation-control-charge-points-2026-08-25.md)

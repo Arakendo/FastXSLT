@@ -405,6 +405,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   serialization metadata, include it in bounded semantic inspection, and prove
   the existing golden XML bytes remain unchanged. Keep stable host-visible
   result metadata and broader serialization conformance open.
+- [x] Admit the complete 232-case XSLT30 `decl/output` denominator under a
+  first-party set-level overlay, conserve seven serialization assertion
+  families and all environment/resource references, and seal each case's
+  engine inputs into an independently bounded memory snapshot. Keep every case
+  harness-unsupported and unexecuted until comparator ownership exists.
 - [x] Execute XSLT30 `template-001` through built-in document dispatch,
   comment-node selection, and an isolated named mode while retaining the other
   four unsupported cases in the six-case denominator.
