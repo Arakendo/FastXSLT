@@ -92,3 +92,6 @@ and add the record to this index. Never reuse a retired number.
 - [AR-0013: Prepared Representation and Data-Layout Audit](AR-0013-prepared-representation-and-data-layout-audit.md)
   -- Incubating; profile current ownership and layouts before testing private,
   safe specializations, and treat a well-measured dead end as useful evidence.
+- [AR-0014: Resource Reference Resolution and Authority Composition](AR-0014-resource-reference-resolution-and-authority-composition.md)
+  -- Incubating; preserve exact sealed-snapshot lookup while corpus and consumer
+  evidence determine base identity, catalogs, live authority, and bounded policy.

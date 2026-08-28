@@ -483,6 +483,15 @@ failed, and harness-error cases without an unqualified conformance claim.
     logical identities never create ambient filesystem or network authority.
     Relative/base-URI resolution, catalogs, live resolvers, dependency loading,
     and complete execution-limit composition remain open.
+  - [x] Open AR-0014 to keep reference/base semantics, host acquisition
+    authority, catalog mapping, dependency closure, live resolution, disclosure,
+    and bounded policy separate while executable cases are gathered.
+  - [x] Inventory the complete pinned XSLT30 `decl/include` denominator: 16
+    cases, 16 principal stylesheet references, 34 repeated secondary references,
+    and explicit harness-unsupported dispositions without denominator loss.
+  - [ ] Execute `include-0401` as the first sealed-memory module case, preserving
+    its relative base identity, one secondary simplified stylesheet, global
+    variable visibility, bounded acquisition, and exact `assert-xml` result.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.

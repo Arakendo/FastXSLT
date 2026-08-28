@@ -1,0 +1,9 @@
+suite = "W3C XSLT 3.0 test suite"
+revision = "6f8fd9e966ae74a251a2604abef9d904c7bc5c9b"
+set_file = "tests/decl/include/_include-test-set.xml"
+case_count = 16
+
+[default_disposition]
+selection = "harness-unsupported"
+execution = "not-run"
+rationale = "The private compiler does not yet assemble included/imported stylesheet modules or implement their base-identity and precedence semantics. No case is silently omitted or treated as an engine failure."

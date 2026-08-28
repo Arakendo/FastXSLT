@@ -466,6 +466,9 @@ reference and differential evidence; ADR-0008 authorizes only native FFI copies.
 - Sync/async execution, input/output ownership, and initial public boundary.
 - Transformation result model, serialization ownership, and comparison rules.
 - Resource capability, cancellation, and deterministic/best-effort limit model.
+  Resource reference/base semantics, catalogs, dependency closure, live
+  authority composition, and resolution-budget ownership are tracked by
+  AR-0014; the private exact snapshot resolver does not settle them.
 - Thread-safety, reentrancy, and concurrent execution semantics for compiled
   artifacts and host capabilities.
 - Initial observability events, cost constraints, and host boundary.
