@@ -647,6 +647,34 @@ rationale = "Compares equal decoded base64-binary values at the third position o
 
 [[case]]
 set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-32"
+selection = "selected"
+execution = "passed"
+rationale = "Compares a compile-time-folded singleton literal index-of result with position one."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-33"
+selection = "selected"
+execution = "passed"
+rationale = "Folds a two-item literal search to its singleton first position before deep equality."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-34"
+selection = "selected"
+execution = "passed"
+rationale = "Folds repeated equal literal items to ordered positions one and two before comparison."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-35"
+selection = "selected"
+execution = "passed"
+rationale = "Folds a three-item literal search to ordered positions one and three before comparison."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
 case_name = "K-SeqDeepEqualFunc-25"
 selection = "selected"
 execution = "passed"

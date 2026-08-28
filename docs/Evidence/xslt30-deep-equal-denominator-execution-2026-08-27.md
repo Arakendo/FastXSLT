@@ -316,7 +316,22 @@ Focused controls cover case-insensitive hex equality, equal decoded base64
 bytes, odd hex rejection, and malformed base64 padding rejection. This tranche
 does not claim whitespace normalization, the complete XML Schema binary lexical
 spaces, cross-binary-type equality, or binary semantics outside private
-deep-equal. The four `index-of` composition cases remain unselected.
+deep-equal. The four `index-of` composition cases were left to the distinct
+compile-time-folding checkpoint below.
+
+## QT3 literal `index-of` tranche
+
+`K-SeqDeepEqualFunc-32` through `-35` now pass by folding their source-free
+literal `index-of` calls during expression compilation. The bounded fold uses
+the atomic owner's existing value-comparison rules and retains matching
+one-based positions in input order. The resulting one- or two-item integer
+sequences then execute through ordinary deep-equal length and item accounting.
+
+This evidence deliberately does not charge invocation work for a search that
+no longer exists in the compiled expression. Focused controls cover ordered
+repeated matches, no matches, and rejection of a non-singleton search argument.
+It does not admit dynamic or context-dependent `index-of`, collation arguments,
+general function composition, or a runtime sequence-search budget contract.
 
 ## QT3 mixed atomic-sequence tranche
 

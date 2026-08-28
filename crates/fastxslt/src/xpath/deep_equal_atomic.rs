@@ -78,6 +78,9 @@ pub(super) fn parse_sequence(expression: &str) -> Option<AtomicSequence> {
 
 fn parse_atomic_sequence(expression: &str) -> Option<Vec<AtomicValue>> {
     let expression = expression.trim();
+    if let Some(indexes) = parse_literal_index_of(expression) {
+        return Some(indexes);
+    }
     if let Some(inner) = strip_outer_parentheses(expression) {
         let inner = inner.trim();
         if inner.is_empty() {
@@ -86,6 +89,24 @@ fn parse_atomic_sequence(expression: &str) -> Option<Vec<AtomicValue>> {
         return parse_atomic_sequence_items(inner);
     }
     parse_atomic_value(expression).map(|value| vec![value])
+}
+
+fn parse_literal_index_of(expression: &str) -> Option<Vec<AtomicValue>> {
+    let inner = expression.strip_prefix("index-of(")?.strip_suffix(')')?;
+    let (input, sought) = split_top_level_once(inner)?;
+    let input = parse_atomic_sequence(input.trim())?;
+    let sought = parse_atomic_sequence(sought.trim())?;
+    let sought = (sought.len() == 1).then(|| sought.first())??;
+    input
+        .iter()
+        .enumerate()
+        .filter(|(_, item)| atomic_values_equal(item, sought))
+        .map(|(index, _)| {
+            i128::try_from(index.checked_add(1)?)
+                .ok()
+                .map(AtomicValue::Integer)
+        })
+        .collect()
 }
 
 fn parse_atomic_sequence_items(expression: &str) -> Option<Vec<AtomicValue>> {
@@ -683,5 +704,15 @@ mod tests {
         );
         assert!(parse_sequence("xs:hexBinary(\"0\")").is_none());
         assert!(parse_sequence("xs:base64Binary(\"A===\")").is_none());
+    }
+
+    #[test]
+    fn folds_literal_index_of_results_in_position_order() {
+        assert_eq!(
+            sequences_equal("index-of((20, 40, 20), 20)", "(1, 3)"),
+            Some(true)
+        );
+        assert_eq!(sequences_equal("index-of((20), 40)", "()"), Some(true));
+        assert!(parse_sequence("index-of((20), ())").is_none());
     }
 }

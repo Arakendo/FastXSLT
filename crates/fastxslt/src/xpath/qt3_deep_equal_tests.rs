@@ -130,6 +130,12 @@ const BINARY_CASES: [(&str, usize); 3] = [
     ("K-SeqDeepEqualFunc-23", 2),
     ("K-SeqDeepEqualFunc-24", 4),
 ];
+const LITERAL_INDEX_OF_CASES: [(&str, usize); 4] = [
+    ("K-SeqDeepEqualFunc-32", 2),
+    ("K-SeqDeepEqualFunc-33", 2),
+    ("K-SeqDeepEqualFunc-34", 3),
+    ("K-SeqDeepEqualFunc-35", 3),
+];
 const ORDERED_AND_EMPTY_SEQUENCE_CASES: [(&str, usize); 18] = [
     ("K-SeqDeepEqualFunc-25", 4),
     ("K-SeqDeepEqualFunc-26", 4),
@@ -316,6 +322,11 @@ fn executes_qt3_qname_tranche() {
 #[test]
 fn executes_qt3_binary_tranche() {
     execute_named_true_cases(&BINARY_CASES);
+}
+
+#[test]
+fn executes_qt3_literal_index_of_tranche() {
+    execute_named_true_cases(&LITERAL_INDEX_OF_CASES);
 }
 
 #[test]
