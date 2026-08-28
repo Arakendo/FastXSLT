@@ -344,8 +344,10 @@ fn absent_output_declaration_does_not_silently_apply_html_serialization() {
     };
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: None,
+        encoding: None,
         media_type: None,
         include_content_type: None,
+        byte_order_mark: None,
         omit_xml_declaration: false,
         indent: None,
     };
@@ -373,8 +375,10 @@ fn requested_indentation_is_preserved_as_an_explicit_serialization_boundary() {
     };
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: Some("xml".to_owned()),
+        encoding: None,
         media_type: None,
         include_content_type: None,
+        byte_order_mark: None,
         omit_xml_declaration: false,
         indent: Some(true),
     };
@@ -418,8 +422,10 @@ fn namespaced_element_names_use_retained_bindings_and_undeclare_defaults() {
     };
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: Some("xml".to_owned()),
+        encoding: None,
         media_type: None,
         include_content_type: None,
+        byte_order_mark: None,
         omit_xml_declaration: true,
         indent: None,
     };
@@ -458,8 +464,10 @@ fn text_output_concatenates_descendant_text_without_markup_or_escaping() {
     };
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: Some("text".to_owned()),
+        encoding: None,
         media_type: None,
         include_content_type: Some(true),
+        byte_order_mark: None,
         omit_xml_declaration: false,
         indent: None,
     };
@@ -488,8 +496,10 @@ fn xml_compatible_xhtml_output_honors_explicit_declaration_omission() {
     };
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: Some("xhtml".to_owned()),
+        encoding: None,
         media_type: None,
         include_content_type: None,
+        byte_order_mark: None,
         omit_xml_declaration: true,
         indent: Some(false),
     };
@@ -502,6 +512,43 @@ fn xml_compatible_xhtml_output_honors_explicit_declaration_omission() {
         serialized,
         "<out xmlns=\"http://www.w3.org/1999/xhtml\"></out>"
     );
+}
+
+#[test]
+fn string_serialization_accepts_utf8_without_bom_and_rejects_bom_emission() {
+    let result = SemanticResult {
+        children: vec![ResultNode::Text("result".to_owned())],
+    };
+    let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
+        method: Some("xml".to_owned()),
+        encoding: Some("UTF-8".to_owned()),
+        media_type: None,
+        include_content_type: None,
+        byte_order_mark: Some(false),
+        omit_xml_declaration: false,
+        indent: Some(false),
+    };
+    let mut control = InvocationControl::unbounded();
+    let serialized = serialize_xml(&result, &settings, "utf8", 4_096, &mut control)
+        .expect("serialize UTF-8 without a byte-order mark");
+
+    let mut bom_settings = settings;
+    bom_settings.byte_order_mark = Some(true);
+    let failure = serialize_xml(
+        &result,
+        &bom_settings,
+        "utf8-bom",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect_err("the string lane must not pretend to emit byte metadata");
+
+    assert_eq!(
+        serialized,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>result"
+    );
+    assert_eq!(failure.code, "FXSR1005");
+    assert_eq!(failure.category, FailureCategory::Unsupported);
 }
 
 #[test]

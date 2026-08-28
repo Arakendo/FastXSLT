@@ -85,9 +85,21 @@ fn executes_output_0129_as_descendant_text_without_injected_markup() {
     assert_eq!(execution.actual, execution.expected);
 }
 
+#[test]
+fn executes_output_0166_as_utf8_without_a_byte_order_mark() {
+    let execution = execute_assert_serialization_case("output-0166", "text");
+    assert_eq!(execution.method.as_deref(), Some("xml"));
+    assert_eq!(execution.encoding.as_deref(), Some("UTF-8"));
+    assert_eq!(execution.byte_order_mark, Some(false));
+    assert!(!execution.actual.starts_with('\u{feff}'));
+    assert_eq!(execution.actual, execution.expected);
+}
+
 struct SerializationExecution {
     method: Option<String>,
+    encoding: Option<String>,
     include_content_type: Option<bool>,
+    byte_order_mark: Option<bool>,
     omit_xml_declaration: bool,
     actual: String,
     expected: String,
@@ -144,7 +156,9 @@ fn execute_assert_serialization_case(
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, &stylesheet_id).expect("compile output case");
     let method = program.output.method.clone();
+    let encoding = program.output.encoding.clone();
     let include_content_type = program.output.include_content_type;
+    let byte_order_mark = program.output.byte_order_mark;
     let omit_xml_declaration = program.output.omit_xml_declaration;
 
     let mut set = TransformSetBuilder::new(
@@ -174,7 +188,9 @@ fn execute_assert_serialization_case(
         .expect("read expected serialization and close handle");
     SerializationExecution {
         method,
+        encoding,
         include_content_type,
+        byte_order_mark,
         omit_xml_declaration,
         actual,
         expected: expected.replace("\r\n", "\n"),

@@ -423,8 +423,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   retention with namespace-preserving exact comparisons.
 - [x] Extend that declaration lane through `output-0110a`, `output-0110b`, and
   `output-0148` through `output-0148b`, accepting whitespace-normalized XSLT
-  3.0 boolean lexicals without widening XSLT 2.0 beyond `yes`/`no`. Preserve 223
-  visible harness gaps and make no broad claim from the nine passed cases.
+  3.0 boolean lexicals without widening XSLT 2.0 beyond `yes`/`no`.
+- [x] Execute `output-0166` with retained UTF-8 and no-BOM metadata, rejecting
+  non-UTF-8 encodings and BOM emission until a byte result lane owns those
+  semantics. Preserve 222 visible harness gaps and make no broad claim from the
+  ten passed cases.
 - [x] Execute XSLT30 `template-001` through built-in document dispatch,
   comment-node selection, and an isolated named mode while retaining the other
   four unsupported cases in the six-case denominator.

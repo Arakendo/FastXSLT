@@ -62,6 +62,12 @@ selection = "selected"
 execution = "passed"
 rationale = "Executes text-method descendant-text concatenation and proves include-content-type does not inject markup. The comparator restores canonical LF from Windows CRLF checkout materialization before exact text comparison; no other whitespace is changed."
 
+[[case_override]]
+case_name = "output-0166"
+selection = "selected"
+execution = "passed"
+rationale = "Executes UTF-8 XML serialization with byte-order-mark=no, verifies the string result has no leading BOM, and compares exactly after the case-specific checkout-EOL correction."
+
 [[assertion_family]]
 name = "all-of"
 count = 89

@@ -13,6 +13,26 @@ pub(in crate::runtime) fn serialize_xml(
     byte_limit: usize,
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
+    if settings
+        .encoding
+        .as_deref()
+        .is_some_and(|encoding| !encoding.eq_ignore_ascii_case("UTF-8"))
+    {
+        return Err(failure(
+            "FXSR1004",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "the private string serialization lane supports only UTF-8",
+        ));
+    }
+    if settings.byte_order_mark == Some(true) {
+        return Err(failure(
+            "FXSR1005",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "byte-order-mark=yes requires a future byte serialization result lane",
+        ));
+    }
     let first_significant = result.children.iter().find(|node| match node {
         ResultNode::Text(value) => !value.chars().all(char::is_whitespace),
         ResultNode::Element { .. } => true,

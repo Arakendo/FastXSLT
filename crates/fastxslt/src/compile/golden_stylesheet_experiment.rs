@@ -106,8 +106,10 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
         declared_version,
         output: output.unwrap_or(OutputSettings {
             method: None,
+            encoding: None,
             media_type: None,
             include_content_type: None,
+            byte_order_mark: None,
             omit_xml_declaration: false,
             indent: None,
         }),
@@ -309,8 +311,10 @@ fn compile_output(
         element,
         &[
             "method",
+            "encoding",
             "media-type",
             "include-content-type",
+            "byte-order-mark",
             "omit-xml-declaration",
             "indent",
         ],
@@ -322,6 +326,17 @@ fn compile_output(
         return Err(unsupported(
             "FXST1004",
             format!("unsupported output method: {}", method.unwrap_or_default()),
+            document.location(element),
+        ));
+    }
+    let encoding = optional_attribute(document, element, None, "encoding");
+    if encoding.is_some_and(|value| !value.eq_ignore_ascii_case("UTF-8")) {
+        return Err(unsupported(
+            "FXST1016",
+            format!(
+                "unsupported output encoding: {}",
+                encoding.unwrap_or_default()
+            ),
             document.location(element),
         ));
     }
@@ -356,10 +371,22 @@ fn compile_output(
             )
         })
         .transpose()?;
+    let byte_order_mark = optional_attribute(document, element, None, "byte-order-mark")
+        .map(|value| {
+            parse_output_boolean(
+                value,
+                "byte-order-mark",
+                declared_version,
+                document.location(element),
+            )
+        })
+        .transpose()?;
     Ok(OutputSettings {
         method: method.map(str::to_owned),
+        encoding: encoding.map(str::to_owned),
         media_type: optional_attribute(document, element, None, "media-type").map(str::to_owned),
         include_content_type,
+        byte_order_mark,
         omit_xml_declaration,
         indent,
     })
@@ -946,9 +973,24 @@ mod tests {
         let program = compile_stylesheet(&stylesheet).expect("stylesheet should compile");
 
         assert_eq!(program.output.method, None);
+        assert_eq!(program.output.encoding, None);
         assert_eq!(program.output.media_type, None);
         assert_eq!(program.output.include_content_type, None);
+        assert_eq!(program.output.byte_order_mark, None);
         assert!(!program.output.omit_xml_declaration);
+    }
+
+    #[test]
+    fn rejects_non_utf8_encoding_in_the_private_string_result_lane() {
+        let stylesheet = parse_stylesheet(
+            "memory:unsupported-encoding.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" encoding="UTF-16"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
+        );
+
+        let failure = compile_stylesheet(&stylesheet).expect_err("UTF-16 needs a byte result lane");
+
+        assert_eq!(failure.code, "FXST1016");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
     }
 
     #[test]

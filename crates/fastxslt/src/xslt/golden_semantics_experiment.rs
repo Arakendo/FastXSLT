@@ -55,8 +55,10 @@ pub(crate) struct ConstructedElement {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct OutputSettings {
     pub(crate) method: Option<String>,
+    pub(crate) encoding: Option<String>,
     pub(crate) media_type: Option<String>,
     pub(crate) include_content_type: Option<bool>,
+    pub(crate) byte_order_mark: Option<bool>,
     pub(crate) omit_xml_declaration: bool,
     pub(crate) indent: Option<bool>,
 }

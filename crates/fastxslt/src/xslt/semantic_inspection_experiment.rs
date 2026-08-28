@@ -41,8 +41,10 @@ struct FeatureObservation {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct OutputInspection {
     method: Option<String>,
+    encoding: Option<String>,
     media_type: Option<String>,
     include_content_type: Option<bool>,
+    byte_order_mark: Option<bool>,
     omit_xml_declaration: bool,
     indent: Option<bool>,
 }
@@ -71,6 +73,9 @@ fn inspect_compiled(
         .len()
         .checked_add(program.declared_version.len())
         .and_then(|bytes| bytes.checked_add(program.output.method.as_ref().map_or(0, String::len)))
+        .and_then(|bytes| {
+            bytes.checked_add(program.output.encoding.as_ref().map_or(0, String::len))
+        })
         .and_then(|bytes| {
             bytes.checked_add(program.output.media_type.as_ref().map_or(0, String::len))
         })
@@ -120,8 +125,10 @@ fn inspect_compiled(
         declared_version: program.declared_version.clone(),
         output: OutputInspection {
             method: program.output.method.clone(),
+            encoding: program.output.encoding.clone(),
             media_type: program.output.media_type.clone(),
             include_content_type: program.output.include_content_type,
+            byte_order_mark: program.output.byte_order_mark,
             omit_xml_declaration: program.output.omit_xml_declaration,
             indent: program.output.indent,
         },
@@ -257,8 +264,10 @@ mod tests {
                 declared_version: "1.0".to_owned(),
                 output: OutputInspection {
                     method: Some("xml".to_owned()),
+                    encoding: None,
                     media_type: Some("application/xml".to_owned()),
                     include_content_type: None,
+                    byte_order_mark: None,
                     omit_xml_declaration: true,
                     indent: None,
                 },
