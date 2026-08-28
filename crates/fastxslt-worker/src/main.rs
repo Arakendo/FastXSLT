@@ -432,6 +432,29 @@ fn write_failure(output: &mut impl Write, failure: &WorkbenchFailure) -> io::Res
     write_string(output, &failure.code)?;
     write_string(output, &failure.category)?;
     write_string(output, failure.request_id.as_deref().unwrap_or_default())?;
+    write_string(
+        output,
+        failure
+            .location
+            .as_ref()
+            .map_or("", |location| &location.resource),
+    )?;
+    write_string(
+        output,
+        &failure
+            .location
+            .as_ref()
+            .map(|location| location.start.to_string())
+            .unwrap_or_default(),
+    )?;
+    write_string(
+        output,
+        &failure
+            .location
+            .as_ref()
+            .map(|location| location.end.to_string())
+            .unwrap_or_default(),
+    )?;
     write_string(output, &failure.detail)?;
     output.flush()
 }

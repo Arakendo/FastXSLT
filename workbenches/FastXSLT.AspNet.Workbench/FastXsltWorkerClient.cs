@@ -338,11 +338,27 @@ public sealed class FastXsltWorkerClient : IDisposable
         }
     }
 
-    private async Task<FastXsltWorkerException> ReadFailureAsync() => new(
-        await ReadStringAsync(),
-        await ReadStringAsync(),
-        NullIfEmpty(await ReadStringAsync()),
-        await ReadStringAsync());
+    private async Task<FastXsltWorkerException> ReadFailureAsync()
+    {
+        var code = await ReadStringAsync();
+        var category = await ReadStringAsync();
+        var requestId = NullIfEmpty(await ReadStringAsync());
+        var resource = NullIfEmpty(await ReadStringAsync());
+        var start = NullIfEmpty(await ReadStringAsync());
+        var end = NullIfEmpty(await ReadStringAsync());
+        var location = resource is null
+            ? null
+            : new FastXsltDiagnosticLocation(
+                resource,
+                ulong.Parse(start ?? throw new InvalidDataException("Missing location start.")),
+                ulong.Parse(end ?? throw new InvalidDataException("Missing location end.")));
+        return new FastXsltWorkerException(
+            code,
+            category,
+            requestId,
+            location,
+            await ReadStringAsync());
+    }
 
     private async Task<string> ReadControlledCompletionAsync(string requestIdentity)
     {
@@ -450,10 +466,14 @@ public sealed class FastXsltWorkerException(
     string code,
     string category,
     string? requestId,
+    FastXsltDiagnosticLocation? location,
     string detail) : Exception(detail)
 {
     public string Code { get; } = code;
     public string Category { get; } = category;
     public string? RequestId { get; } = requestId;
+    public FastXsltDiagnosticLocation? Location { get; } = location;
     public string Detail { get; } = detail;
 }
+
+public sealed record FastXsltDiagnosticLocation(string Resource, ulong Start, ulong End);

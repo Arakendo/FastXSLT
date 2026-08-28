@@ -131,8 +131,10 @@ selects a host mechanism risks treating transport as the semantic model.
   decision on the eventual public diagnostic representation.
 - The private host-neutral workbench facade now projects an owned compiler/XPath
   resource identity and byte span separately from display detail. A focused
-  caller asserts those fields directly. XML preparation and worker/native
-  serialization do not yet have location parity.
+  caller asserts those fields directly. The worker and native envelopes now
+  carry the same optional fields, the native ABI advances to version 1, and a
+  native unit proves exact serialization. XML preparation and an end-to-end
+  isolated managed probe do not yet have location parity evidence.
 
 ## Disposition
 
@@ -196,3 +198,6 @@ a serialized form needs versioning.
 - 2026-08-27 -- Projected one compiler-owned resource/span through the private
   host-neutral workbench facade as structured fields, without a shared error
   crate or public stability claim.
+- 2026-08-27 -- Extended the private worker/native envelopes and managed
+  decoders with optional location fields, advanced the explicitly unstable
+  native ABI to version 1, and proved exact native serialization.

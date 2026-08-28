@@ -377,6 +377,10 @@ implemented behavior belongs to a named standards slice.
 - [x] Preserve one compiler/XPath resource and byte span through the private
   host-neutral workbench facade as owned structured fields, proving the caller
   need not parse display detail. Keep XML-span and worker/native parity open.
+- [x] Carry that optional location through the isolated-worker and native
+  workbench envelope shapes and managed decoders, bumping the explicitly
+  unstable native ABI to version 1. Prove native serialization exactly; retain
+  the isolated end-to-end probe and XML preparation spans as open work.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,
   providing evidence for AR-0005.

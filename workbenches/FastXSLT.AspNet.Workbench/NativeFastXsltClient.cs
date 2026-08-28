@@ -16,7 +16,7 @@ public sealed class NativeFastXsltClient : IDisposable
         string stylesheetIdentity,
         byte[] stylesheet)
     {
-        if (NativeMethods.AbiVersion() != 0)
+        if (NativeMethods.AbiVersion() != 1)
         {
             throw new InvalidOperationException("Unexpected native FastXSLT workbench ABI version.");
         }
@@ -196,6 +196,9 @@ public sealed class NativeFastXsltClient : IDisposable
             var code = ReadField(bytes, ref offset);
             var category = ReadField(bytes, ref offset);
             var requestId = ReadField(bytes, ref offset);
+            var resource = ReadField(bytes, ref offset);
+            var start = ReadField(bytes, ref offset);
+            var end = ReadField(bytes, ref offset);
             var detail = ReadField(bytes, ref offset);
             if (offset != bytes.Length)
             {
@@ -205,6 +208,12 @@ public sealed class NativeFastXsltClient : IDisposable
                 code,
                 category,
                 requestId.Length == 0 ? null : requestId,
+                resource.Length == 0
+                    ? null
+                    : new FastXsltDiagnosticLocation(
+                        resource,
+                        ulong.Parse(start),
+                        ulong.Parse(end)),
                 detail);
         }
         finally
@@ -372,10 +381,12 @@ public sealed class NativeFastXsltException(
     string code,
     string category,
     string? requestId,
+    FastXsltDiagnosticLocation? location,
     string detail) : Exception(detail)
 {
     public string Code { get; } = code;
     public string Category { get; } = category;
     public string? RequestId { get; } = requestId;
+    public FastXsltDiagnosticLocation? Location { get; } = location;
     public string Detail { get; } = detail;
 }

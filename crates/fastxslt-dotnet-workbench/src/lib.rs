@@ -11,10 +11,10 @@ use std::{
 };
 
 use fastxslt::workbench::{
-    ExperimentalEngine, WorkbenchCancellation, WorkbenchFailure, WorkbenchLimits,
+    ExperimentalEngine, WorkbenchCancellation, WorkbenchFailure, WorkbenchLimits, WorkbenchLocation,
 };
 
-const ABI_VERSION: u32 = 0;
+const ABI_VERSION: u32 = 1;
 const MAX_IDENTITY_BYTES: usize = 4_096;
 const MAX_RESOURCE_BYTES: usize = 1_048_576;
 const MAX_OUTCOME_BYTES: usize = 1_048_576;
@@ -99,7 +99,7 @@ impl State {
     fn insert_boundary_failure(&self, failure: &BoundaryFailure) -> u64 {
         self.insert_outcome(Outcome::Bytes {
             kind: OUTCOME_FAILURE,
-            value: encode_failure(failure.code, "boundary", None, &failure.detail),
+            value: encode_failure(failure.code, "boundary", None, None, &failure.detail),
         })
     }
 
@@ -203,9 +203,29 @@ fn decode_identity(value: Vec<u8>, field: &str) -> Result<String, BoundaryFailur
         .map_err(|_| BoundaryFailure::new("FXFFI0003", format!("{field} is not valid UTF-8")))
 }
 
-fn encode_failure(code: &str, category: &str, request_id: Option<&str>, detail: &str) -> Vec<u8> {
+fn encode_failure(
+    code: &str,
+    category: &str,
+    request_id: Option<&str>,
+    location: Option<&WorkbenchLocation>,
+    detail: &str,
+) -> Vec<u8> {
     let mut encoded = Vec::new();
-    for field in [code, category, request_id.unwrap_or_default(), detail] {
+    let start = location
+        .map(|value| value.start.to_string())
+        .unwrap_or_default();
+    let end = location
+        .map(|value| value.end.to_string())
+        .unwrap_or_default();
+    for field in [
+        code,
+        category,
+        request_id.unwrap_or_default(),
+        location.map_or("", |value| &value.resource),
+        &start,
+        &end,
+        detail,
+    ] {
         let length = u32::try_from(field.len()).expect("bounded failure field fits u32");
         encoded.extend_from_slice(&length.to_le_bytes());
         encoded.extend_from_slice(field.as_bytes());
@@ -220,6 +240,7 @@ fn engine_failure(failure: &WorkbenchFailure) -> Outcome {
             &failure.code,
             &failure.category,
             failure.request_id.as_deref(),
+            failure.location.as_deref(),
             &failure.detail,
         ),
     }
@@ -679,7 +700,7 @@ mod tests {
         let bytes = outcome_bytes(outcome);
         let mut offset = 0;
         let mut fields = Vec::new();
-        for _ in 0..4 {
+        for _ in 0..7 {
             let length = u32::from_le_bytes(
                 bytes[offset..offset + 4]
                     .try_into()
@@ -774,6 +795,38 @@ mod tests {
     }
 
     #[test]
+    fn native_failure_envelope_preserves_structured_location() {
+        let source_identity = b"urn:fastxslt:diagnostic:source";
+        let source = b"<order/>";
+        let stylesheet_identity = b"urn:fastxslt:diagnostic:unsupported-stylesheet";
+        let stylesheet = br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><xsl:message/></xsl:template></xsl:stylesheet>"#;
+        let outcome = fastxslt_workbench_v0_create(
+            source_identity.as_ptr(),
+            source_identity.len(),
+            source.as_ptr(),
+            source.len(),
+            stylesheet_identity.as_ptr(),
+            stylesheet_identity.len(),
+            stylesheet.as_ptr(),
+            stylesheet.len(),
+        );
+        assert_eq!(fastxslt_workbench_v0_outcome_kind(outcome), OUTCOME_FAILURE);
+        assert_eq!(
+            failure_fields(outcome),
+            [
+                "FXST1006",
+                "unsupported",
+                "",
+                "urn:fastxslt:diagnostic:unsupported-stylesheet",
+                "103",
+                "117",
+                "unsupported XSLT instruction: xsl:message at urn:fastxslt:diagnostic:unsupported-stylesheet:103..117",
+            ]
+        );
+        assert_eq!(fastxslt_workbench_v0_outcome_release(outcome), 1);
+    }
+
+    #[test]
     fn native_handles_execute_copy_and_release_the_safe_reference_lifecycle() {
         let engine = create_reference_engine();
 
@@ -830,6 +883,9 @@ mod tests {
                 "FXCT0001",
                 "cancelled",
                 "native-controlled-cancelled",
+                "",
+                "",
+                "",
                 "host cancellation observed while charging xslt-instruction work",
             ]
         );
@@ -850,6 +906,9 @@ mod tests {
                 "FXCT0002",
                 "limit",
                 "native-controlled-budget",
+                "",
+                "",
+                "",
                 "xslt-instruction work budget exhausted: limit 0, consumed 0, next charge 1",
             ]
         );
@@ -867,6 +926,9 @@ mod tests {
             [
                 "FXFFI0009",
                 "boundary",
+                "",
+                "",
+                "",
                 "",
                 "cancellation flag must be zero or one",
             ]
@@ -930,6 +992,9 @@ mod tests {
                 "FXCT0001",
                 "cancelled",
                 "native-active-cancelled",
+                "",
+                "",
+                "",
                 "host cancellation observed while charging xslt-instruction work",
             ]
         );
