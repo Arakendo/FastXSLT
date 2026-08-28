@@ -93,8 +93,9 @@ The next 18-case K-family tranche executes cases 25 through 31 and 36 through
 early mismatch, string placement, empty-item flattening, and unequal-length
 short-circuit work without admitting QName, binary, or `index-of` semantics.
 Cases 47 through 51 now complete the adjacent direct unequal-length forms with
-one length-decision charge apiece; range and `reverse` expressions remain a
-separate compile-time semantics checkpoint.
+one length-decision charge apiece. Cases 52 through 55 discharge the separate
+range/`reverse` checkpoint through bounded literal folding with a 1,024-item
+retained-result ceiling; dynamic range execution remains unclaimed.
 The two remaining QName-shaped K-family cases, 17 and 21, now retain and compare
 expanded-name identity through the atomic owner, including prefix-insensitive
 equality controls. Cases 22 through 24 then add decoded hex/base64 binary values
@@ -307,6 +308,10 @@ implemented behavior belongs to a named standards slice.
 - [x] Execute QT3 `K-SeqDeepEqualFunc-47` through `-51` as the adjacent direct
   unequal-length tail. Prove each case stops after its single length-decision
   charge and leave range/`reverse` compilation to a separate checkpoint.
+- [x] Execute QT3 `K-SeqDeepEqualFunc-52` through `-55` by compile-time folding
+  source-free literal integer ranges and `reverse`. Bound retained folded
+  ranges to 1,024 items, preserve empty descending-range semantics, and leave
+  dynamic ranges and runtime range accounting unclaimed.
 - [x] Execute QT3 `K-SeqDeepEqualFunc-17` and `-21` through an expanded-name
   QName atomic value with lexical validation and prefix-insensitive equality.
   Admit the required `3e2` double literal, preserve exact early-exit work, and

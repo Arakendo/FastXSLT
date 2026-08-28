@@ -291,7 +291,15 @@ unequal-length permutations. They cover a first-position empty item, two versus
 three items in both argument orders, and empty versus three items in both
 orders. Every case charges exactly one XPath operation for the length decision
 and performs no unreachable item comparison. Range and `reverse` expressions
-in cases 52 through 55 remain a separate compilation question.
+in cases 52 through 55 are handled by the following compilation checkpoint.
+
+`K-SeqDeepEqualFunc-52` through `-55` fold their source-free literal integer
+ranges and `reverse` calls during expression compilation. Descending `0 to -5`
+ranges become empty in both argument orders, so execution charges only the
+deep-equal length decision. A focused ascending control proves reversal retains
+integer positions in reverse order, while a private 1,024-item ceiling rejects
+larger retained folded ranges. This does not claim dynamic ranges, runtime
+range work accounting, or general function composition.
 
 ## QT3 QName tranche
 

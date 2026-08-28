@@ -836,6 +836,34 @@ rationale = "Rejects three items compared with an empty sequence using only the 
 
 [[case]]
 set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-52"
+selection = "selected"
+execution = "passed"
+rationale = "Folds a reversed descending literal integer range to empty before comparison."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-53"
+selection = "selected"
+execution = "passed"
+rationale = "Folds a descending literal integer range to empty before comparison."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-54"
+selection = "selected"
+execution = "passed"
+rationale = "Compares a reversed descending literal range with empty in the opposite argument order."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-55"
+selection = "selected"
+execution = "passed"
+rationale = "Compares a descending literal range with empty in the opposite argument order."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equal-mix-args-001"
 selection = "selected"
 execution = "passed"

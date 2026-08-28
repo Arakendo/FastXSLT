@@ -4,6 +4,8 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct AtomicSequence(Vec<AtomicValue>);
 
+const MAX_FOLDED_LITERAL_RANGE_ITEMS: usize = 1_024;
+
 impl AtomicSequence {
     pub(super) fn len(&self) -> usize {
         self.0.len()
@@ -81,6 +83,12 @@ fn parse_atomic_sequence(expression: &str) -> Option<Vec<AtomicValue>> {
     if let Some(indexes) = parse_literal_index_of(expression) {
         return Some(indexes);
     }
+    if let Some(values) = parse_literal_reverse(expression) {
+        return Some(values);
+    }
+    if let Some(values) = parse_literal_integer_range(expression) {
+        return Some(values);
+    }
     if let Some(inner) = strip_outer_parentheses(expression) {
         let inner = inner.trim();
         if inner.is_empty() {
@@ -89,6 +97,38 @@ fn parse_atomic_sequence(expression: &str) -> Option<Vec<AtomicValue>> {
         return parse_atomic_sequence_items(inner);
     }
     parse_atomic_value(expression).map(|value| vec![value])
+}
+
+fn parse_literal_reverse(expression: &str) -> Option<Vec<AtomicValue>> {
+    let inner = expression.strip_prefix("reverse(")?.strip_suffix(')')?;
+    let mut values = parse_atomic_sequence(inner.trim())?;
+    values.reverse();
+    Some(values)
+}
+
+fn parse_literal_integer_range(expression: &str) -> Option<Vec<AtomicValue>> {
+    let (start, end) = expression.split_once(" to ")?;
+    if end.contains(" to ") {
+        return None;
+    }
+    let start = start.trim().parse::<i128>().ok()?;
+    let end = end.trim().parse::<i128>().ok()?;
+    if start > end {
+        return Some(Vec::new());
+    }
+    let item_count = end.checked_sub(start)?.checked_add(1)?;
+    let item_count = usize::try_from(item_count).ok()?;
+    if item_count > MAX_FOLDED_LITERAL_RANGE_ITEMS {
+        return None;
+    }
+    (0..item_count)
+        .map(|offset| {
+            i128::try_from(offset)
+                .ok()
+                .and_then(|offset| start.checked_add(offset))
+                .map(AtomicValue::Integer)
+        })
+        .collect()
 }
 
 fn parse_literal_index_of(expression: &str) -> Option<Vec<AtomicValue>> {
@@ -714,5 +754,12 @@ mod tests {
         );
         assert_eq!(sequences_equal("index-of((20), 40)", "()"), Some(true));
         assert!(parse_sequence("index-of((20), ())").is_none());
+    }
+
+    #[test]
+    fn bounds_literal_range_and_reverse_folding() {
+        assert_eq!(sequences_equal("0 to -5", "()"), Some(true));
+        assert_eq!(sequences_equal("reverse(1 to 3)", "(3, 2, 1)"), Some(true));
+        assert!(parse_sequence("1 to 1025").is_none());
     }
 }

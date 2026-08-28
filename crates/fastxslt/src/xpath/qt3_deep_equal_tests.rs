@@ -163,6 +163,12 @@ const UNEQUAL_LENGTH_TAIL_CASES: [(&str, usize); 5] = [
     ("K-SeqDeepEqualFunc-50", 1),
     ("K-SeqDeepEqualFunc-51", 1),
 ];
+const LITERAL_RANGE_CASES: [(&str, usize); 4] = [
+    ("K-SeqDeepEqualFunc-52", 1),
+    ("K-SeqDeepEqualFunc-53", 1),
+    ("K-SeqDeepEqualFunc-54", 1),
+    ("K-SeqDeepEqualFunc-55", 1),
+];
 const MIXED_ATOMIC_CASES: [(&str, bool, usize); 31] = [
     ("fn-deep-equal-mix-args-001", false, 2),
     ("fn-deep-equal-mix-args-002", true, 3),
@@ -344,6 +350,11 @@ fn executes_qt3_ordered_and_empty_sequence_tranche() {
 #[test]
 fn executes_qt3_unequal_length_tail_tranche() {
     execute_named_true_cases(&UNEQUAL_LENGTH_TAIL_CASES);
+}
+
+#[test]
+fn executes_qt3_literal_range_tranche() {
+    execute_named_true_cases(&LITERAL_RANGE_CASES);
 }
 
 fn execute_named_true_cases(expected_cases: &[(&str, usize)]) {
