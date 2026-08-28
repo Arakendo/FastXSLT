@@ -38,7 +38,10 @@ fn executes_output_0128_without_injecting_html_content_type_metadata() {
     let execution = execute_assert_serialization_case("output-0128", "xml");
     assert_eq!(execution.method.as_deref(), Some("xml"));
     assert_eq!(execution.include_content_type, Some(true));
-    assert_eq!(execution.actual, execution.expected);
+    assert_eq!(
+        execution.expected.as_deref(),
+        Some(execution.actual.as_str())
+    );
 }
 
 #[test]
@@ -46,7 +49,10 @@ fn executes_output_0110_with_explicit_xhtml_declaration_omission() {
     let execution = execute_assert_serialization_case("output-0110", "xhtml");
     assert_eq!(execution.method.as_deref(), Some("xhtml"));
     assert!(execution.omit_xml_declaration);
-    assert_eq!(execution.actual, execution.expected);
+    assert_eq!(
+        execution.expected.as_deref(),
+        Some(execution.actual.as_str())
+    );
 }
 
 #[test]
@@ -55,7 +61,11 @@ fn executes_xslt30_true_lexicals_for_xhtml_declaration_omission() {
         let execution = execute_assert_serialization_case(case_name, "xhtml");
         assert_eq!(execution.method.as_deref(), Some("xhtml"));
         assert!(execution.omit_xml_declaration, "{case_name}");
-        assert_eq!(execution.actual, execution.expected, "{case_name}");
+        assert_eq!(
+            execution.expected.as_deref(),
+            Some(execution.actual.as_str()),
+            "{case_name}"
+        );
     }
 }
 
@@ -64,7 +74,70 @@ fn executes_output_0121_with_the_default_xhtml_declaration() {
     let execution = execute_assert_serialization_case("output-0121", "xhtml");
     assert_eq!(execution.method.as_deref(), Some("xhtml"));
     assert!(!execution.omit_xml_declaration);
-    assert_eq!(execution.actual, execution.expected);
+    assert_eq!(
+        execution.expected.as_deref(),
+        Some(execution.actual.as_str())
+    );
+}
+
+#[test]
+fn executes_output_0127_through_bounded_all_of_serialization_matches() {
+    const CASE_NAME: &str = "output-0127";
+    let execution = execute_output_case(CASE_NAME, None);
+    assert_eq!(execution.method.as_deref(), Some("xhtml"));
+    assert_eq!(execution.include_content_type, Some(false));
+    assert!(execution.expected.is_none());
+
+    let (test_set, _) = load_test_set();
+    let root = document_element(&test_set);
+    let case = element_children(&test_set, root)
+        .into_iter()
+        .find(|node| {
+            local_name(&test_set, *node) == "test-case"
+                && attribute(&test_set, *node, "name") == Some(CASE_NAME)
+        })
+        .expect("pinned output-0127 case");
+    let result = child_named(&test_set, case, "result").expect("output-0127 result");
+    let all_of = first_element_child(&test_set, result).expect("output-0127 assertion");
+    assert_eq!(local_name(&test_set, all_of), "all-of");
+    let patterns = element_children(&test_set, all_of)
+        .into_iter()
+        .map(|assertion| {
+            assert_eq!(local_name(&test_set, assertion), "serialization-matches");
+            test_set.string_value(assertion)
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(patterns.len(), 2);
+    for pattern in patterns {
+        assert!(
+            matches_literal_whitespace_pattern(&execution.actual, &pattern)
+                .expect("output-0127 pattern belongs to the admitted comparator subset"),
+            "pattern did not match: {pattern}"
+        );
+    }
+}
+
+#[test]
+fn bounded_serialization_matcher_requires_whitespace_and_rejects_other_operators() {
+    assert_eq!(
+        matches_literal_whitespace_pattern(
+            "<html xmlns=\"urn.test\">",
+            "<html\\s+xmlns=\"urn.test\">"
+        ),
+        Some(true)
+    );
+    assert_eq!(
+        matches_literal_whitespace_pattern(
+            "<htmlxmlns=\"urn.test\">",
+            "<html\\s+xmlns=\"urn.test\">"
+        ),
+        Some(false)
+    );
+    assert_eq!(
+        matches_literal_whitespace_pattern("alpha", "alpha|beta"),
+        None
+    );
+    assert_eq!(matches_literal_whitespace_pattern("42", "\\d+"), None);
 }
 
 #[test]
@@ -73,7 +146,11 @@ fn executes_explicit_false_lexicals_for_retained_xhtml_declaration() {
         let execution = execute_assert_serialization_case(case_name, "xhtml");
         assert_eq!(execution.method.as_deref(), Some("xhtml"));
         assert!(!execution.omit_xml_declaration, "{case_name}");
-        assert_eq!(execution.actual, execution.expected, "{case_name}");
+        assert_eq!(
+            execution.expected.as_deref(),
+            Some(execution.actual.as_str()),
+            "{case_name}"
+        );
     }
 }
 
@@ -82,7 +159,10 @@ fn executes_output_0129_as_descendant_text_without_injected_markup() {
     let execution = execute_assert_serialization_case("output-0129", "html");
     assert_eq!(execution.method.as_deref(), Some("text"));
     assert_eq!(execution.include_content_type, Some(true));
-    assert_eq!(execution.actual, execution.expected);
+    assert_eq!(
+        execution.expected.as_deref(),
+        Some(execution.actual.as_str())
+    );
 }
 
 #[test]
@@ -92,7 +172,10 @@ fn executes_output_0166_as_utf8_without_a_byte_order_mark() {
     assert_eq!(execution.encoding.as_deref(), Some("UTF-8"));
     assert_eq!(execution.byte_order_mark, Some(false));
     assert!(!execution.actual.starts_with('\u{feff}'));
-    assert_eq!(execution.actual, execution.expected);
+    assert_eq!(
+        execution.expected.as_deref(),
+        Some(execution.actual.as_str())
+    );
 }
 
 struct SerializationExecution {
@@ -102,13 +185,17 @@ struct SerializationExecution {
     byte_order_mark: Option<bool>,
     omit_xml_declaration: bool,
     actual: String,
-    expected: String,
+    expected: Option<String>,
 }
 
 fn execute_assert_serialization_case(
     case_name: &str,
     assertion_method: &str,
 ) -> SerializationExecution {
+    execute_output_case(case_name, Some(assertion_method))
+}
+
+fn execute_output_case(case_name: &str, assertion_method: Option<&str>) -> SerializationExecution {
     assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     assert!(OVERLAY.contains("execution = \"passed\""));
 
@@ -129,14 +216,15 @@ fn execute_assert_serialization_case(
     let environment = resolve_environment(&test_set, root, case).expect("output environment");
     let source = child_named(&test_set, environment, "source").expect("output source");
     let source_content = child_named(&test_set, source, "content").expect("inline source content");
-    let result = child_named(&test_set, case, "result").expect("output result");
-    let assertion = first_element_child(&test_set, result).expect("output assertion");
-    assert_eq!(local_name(&test_set, assertion), "assert-serialization");
-    assert_eq!(
-        attribute(&test_set, assertion, "method"),
-        Some(assertion_method)
-    );
-    let expected_file = attribute(&test_set, assertion, "file").expect("expected file");
+    let expected_file = assertion_method.map(|method| {
+        let result = child_named(&test_set, case, "result").expect("output result");
+        let assertion = first_element_child(&test_set, result).expect("output assertion");
+        assert_eq!(local_name(&test_set, assertion), "assert-serialization");
+        assert_eq!(attribute(&test_set, assertion, "method"), Some(method));
+        attribute(&test_set, assertion, "file")
+            .expect("expected file")
+            .to_owned()
+    });
 
     let source_id = format!("urn:w3c:xslt30:{case_name}:source");
     let stylesheet_id = format!("urn:w3c:xslt30:{case_name}:stylesheet");
@@ -184,8 +272,11 @@ fn execute_assert_serialization_case(
     .expect("admit output request");
     let results = execute_transform_set(set.seal()).expect("execute output case");
     let actual = results.by_request[case_name].serialized.clone();
-    let expected = fs::read_to_string(directory.join(expected_file))
-        .expect("read expected serialization and close handle");
+    let expected = expected_file.map(|expected_file| {
+        fs::read_to_string(directory.join(expected_file))
+            .expect("read expected serialization and close handle")
+            .replace("\r\n", "\n")
+    });
     SerializationExecution {
         method,
         encoding,
@@ -193,8 +284,28 @@ fn execute_assert_serialization_case(
         byte_order_mark,
         omit_xml_declaration,
         actual,
-        expected: expected.replace("\r\n", "\n"),
+        expected,
     }
+}
+
+fn matches_literal_whitespace_pattern(actual: &str, pattern: &str) -> Option<bool> {
+    if pattern.contains(['[', ']', '(', ')', '|', '*', '?', '^', '$', '{', '}'])
+        || pattern.replace("\\s+", "").contains('\\')
+    {
+        return None;
+    }
+    let mut remainder = actual;
+    for (index, literal) in pattern.split("\\s+").enumerate() {
+        let Some(position) = remainder.find(literal) else {
+            return Some(false);
+        };
+        let skipped = &remainder[..position];
+        if index > 0 && (skipped.is_empty() || !skipped.chars().all(char::is_whitespace)) {
+            return Some(false);
+        }
+        remainder = &remainder[position + literal.len()..];
+    }
+    Some(true)
 }
 
 #[test]

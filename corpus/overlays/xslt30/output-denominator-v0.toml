@@ -33,6 +33,12 @@ execution = "passed"
 rationale = "Executes XML-compatible XHTML serialization with the default retained XML declaration and exact file comparison after the case-specific checkout-EOL correction."
 
 [[case_override]]
+case_name = "output-0127"
+selection = "selected"
+execution = "passed"
+rationale = "Executes XHTML include-content-type=no and both members of the upstream all-of through the harness's admitted literal-plus-required-whitespace serialization-matches subset."
+
+[[case_override]]
 case_name = "output-0148"
 selection = "selected"
 execution = "passed"

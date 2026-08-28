@@ -426,8 +426,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   3.0 boolean lexicals without widening XSLT 2.0 beyond `yes`/`no`.
 - [x] Execute `output-0166` with retained UTF-8 and no-BOM metadata, rejecting
   non-UTF-8 encodings and BOM emission until a byte result lane owns those
-  semantics. Preserve 222 visible harness gaps and make no broad claim from the
-  ten passed cases.
+  semantics.
+- [x] Execute `output-0127` through its upstream `all-of` using a harness-owned
+  literal-plus-required-whitespace serialization matcher that rejects every
+  unadmitted regex operator. Preserve 221 visible harness gaps and make no broad
+  claim from the eleven passed cases.
 - [x] Execute XSLT30 `template-001` through built-in document dispatch,
   comment-node selection, and an isolated named mode while retaining the other
   four unsupported cases in the six-case denominator.

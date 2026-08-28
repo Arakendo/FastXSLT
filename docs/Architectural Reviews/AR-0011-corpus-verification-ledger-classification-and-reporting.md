@@ -219,11 +219,13 @@ the profile closes; generalized execution remains deferred.
   case's resolved stylesheets and sources can nevertheless be copied into an
   independently bounded sealed snapshot without ambient engine I/O. This is
   environment-mapping evidence, not execution or serialization conformance.
-- The first ten output overrides now execute a seven-case XML-compatible XHTML
+- The first eleven output overrides now execute a seven-case XML-compatible XHTML
   declaration tranche plus `output-0128`, `output-0129`, and `output-0166`, comparing their
   bounded XHTML, XML, and text serializations with file-backed
   upstream expectations after an explicit
-  case-specific Windows CRLF-to-canonical-LF correction. The remaining 222
+  case-specific Windows CRLF-to-canonical-LF correction. `output-0127` also
+  executes both children of its `all-of` through an explicitly limited
+  literal-plus-required-whitespace matcher. The remaining 221
   cases retain their harness-unsupported default; comparator ownership for one
   assertion shape does not silently reclassify adjacent assertions.
 
@@ -308,3 +310,6 @@ reporting becomes a release requirement.
 - 2026-08-27 -- Executed UTF-8/no-BOM `output-0166` while leaving non-UTF-8 and
   BOM emission for a future byte-result lane; the other 222 cases remain under
   the visible default disposition.
+- 2026-08-27 -- Executed composite-assertion `output-0127` through a bounded
+  serialization-matches subset with rejection controls for other regex
+  operators, leaving the other 221 cases under the default disposition.
