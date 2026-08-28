@@ -15,10 +15,40 @@ execution = "passed"
 rationale = "Executes XML-compatible XHTML serialization with explicit omit-xml-declaration=yes and exact file comparison after the case-specific checkout-EOL correction."
 
 [[case_override]]
+case_name = "output-0110a"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the XSLT 3.0 true lexical form for XHTML declaration omission and exact file comparison after the case-specific checkout-EOL correction."
+
+[[case_override]]
+case_name = "output-0110b"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the XSLT 3.0 numeric-one lexical form for XHTML declaration omission and exact file comparison after the case-specific checkout-EOL correction."
+
+[[case_override]]
 case_name = "output-0121"
 selection = "selected"
 execution = "passed"
 rationale = "Executes XML-compatible XHTML serialization with the default retained XML declaration and exact file comparison after the case-specific checkout-EOL correction."
+
+[[case_override]]
+case_name = "output-0148"
+selection = "selected"
+execution = "passed"
+rationale = "Executes XML-compatible XHTML serialization with explicit omit-xml-declaration=no and exact file comparison after the case-specific checkout-EOL correction."
+
+[[case_override]]
+case_name = "output-0148a"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the XSLT 3.0 false lexical form for retaining the XHTML declaration and exact file comparison after the case-specific checkout-EOL correction."
+
+[[case_override]]
+case_name = "output-0148b"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the whitespace-normalized XSLT 3.0 numeric-zero lexical form for retaining the XHTML declaration and exact file comparison after the case-specific checkout-EOL correction."
 
 [[case_override]]
 case_name = "output-0128"

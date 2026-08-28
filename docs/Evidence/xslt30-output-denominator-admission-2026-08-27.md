@@ -6,16 +6,16 @@
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/decl/output/_output-test-set.xml` |
 | Discovered cases | 232 |
-| Current disposition | 4 passed; 228 harness-unsupported |
+| Current disposition | 9 passed; 223 harness-unsupported |
 
 ## Conserved inventory
 
 The private XSLT30 adapter now parses the complete pinned `decl/output` test
 set and requires all 232 distinct native case identities. A first-party
 set-level overlay applies an explicit default disposition to the immutable
-complete denominator: `harness-unsupported / not-run`. Four named overrides now
-select `output-0110`, `output-0121`, `output-0128`, and `output-0129` as passed.
-The other 228 cases remain harness-unsupported,
+complete denominator: `harness-unsupported / not-run`. Nine named overrides now
+select a bounded XML-compatible XHTML declaration tranche plus `output-0128`
+and `output-0129` as passed. The other 223 cases remain harness-unsupported,
 not engine-unsupported, because their serialization assertions or execution
 adapter paths have not yet been exercised far enough to distinguish engine
 behavior from harness behavior.
@@ -93,13 +93,20 @@ lane reuses XML-compatible element/name/namespace serialization; it does not
 yet claim XHTML empty-element conventions, content-type insertion, escaping,
 DOCTYPE rules, or HTML-version behavior.
 
+The declaration tranche also executes `output-0110a`, `output-0110b`,
+`output-0148`, `output-0148a`, and `output-0148b`. XSLT 3.0 stylesheets accept
+the whitespace-normalized boolean lexicals `true`, `false`, `1`, and `0` in
+addition to `yes` and `no`. A focused negative control keeps `true` invalid for
+the same property on an XSLT 2.0 stylesheet, so corpus admission does not
+silently widen the older version's lexical contract.
+
 ## Claim boundary
 
 This checkpoint proves denominator discovery, metadata classification, file
 resolution by the harness, bounded memory admission, and one exact canonical
 XML comparison, one exact canonical text comparison, and two exact
-XML-compatible XHTML comparisons. It does not establish the first unsupported
-frontier for the other 228 cases or claim general
+XML-compatible XHTML declaration behaviors across seven upstream cases. It does
+not establish the first unsupported frontier for the other 223 cases or claim general
 XML/HTML/XHTML/text serialization
 conformance.
 

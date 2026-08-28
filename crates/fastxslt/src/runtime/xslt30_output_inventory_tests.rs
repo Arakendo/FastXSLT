@@ -50,11 +50,31 @@ fn executes_output_0110_with_explicit_xhtml_declaration_omission() {
 }
 
 #[test]
+fn executes_xslt30_true_lexicals_for_xhtml_declaration_omission() {
+    for case_name in ["output-0110a", "output-0110b"] {
+        let execution = execute_assert_serialization_case(case_name, "xhtml");
+        assert_eq!(execution.method.as_deref(), Some("xhtml"));
+        assert!(execution.omit_xml_declaration, "{case_name}");
+        assert_eq!(execution.actual, execution.expected, "{case_name}");
+    }
+}
+
+#[test]
 fn executes_output_0121_with_the_default_xhtml_declaration() {
     let execution = execute_assert_serialization_case("output-0121", "xhtml");
     assert_eq!(execution.method.as_deref(), Some("xhtml"));
     assert!(!execution.omit_xml_declaration);
     assert_eq!(execution.actual, execution.expected);
+}
+
+#[test]
+fn executes_explicit_false_lexicals_for_retained_xhtml_declaration() {
+    for case_name in ["output-0148", "output-0148a", "output-0148b"] {
+        let execution = execute_assert_serialization_case(case_name, "xhtml");
+        assert_eq!(execution.method.as_deref(), Some("xhtml"));
+        assert!(!execution.omit_xml_declaration, "{case_name}");
+        assert_eq!(execution.actual, execution.expected, "{case_name}");
+    }
 }
 
 #[test]

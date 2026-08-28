@@ -420,8 +420,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   content-type metadata.
 - [x] Execute XSLT30 `output-0110` and `output-0121` through the bounded
   XML-compatible XHTML lane, proving explicit declaration omission and default
-  retention with namespace-preserving exact comparisons. Preserve 228 visible
-  harness gaps and make no broad serialization claim from the four passed cases.
+  retention with namespace-preserving exact comparisons.
+- [x] Extend that declaration lane through `output-0110a`, `output-0110b`, and
+  `output-0148` through `output-0148b`, accepting whitespace-normalized XSLT
+  3.0 boolean lexicals without widening XSLT 2.0 beyond `yes`/`no`. Preserve 223
+  visible harness gaps and make no broad claim from the nine passed cases.
 - [x] Execute XSLT30 `template-001` through built-in document dispatch,
   comment-node selection, and an isolated named mode while retaining the other
   four unsupported cases in the six-case denominator.

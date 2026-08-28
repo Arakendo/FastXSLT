@@ -54,7 +54,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
                         document.location(child),
                     ));
                 }
-                output = Some(compile_output(document, child)?);
+                output = Some(compile_output(document, child, &declared_version)?);
             }
             (Some(XSLT_NAMESPACE), "template") => {
                 compile_top_level_template(
@@ -299,7 +299,11 @@ fn compile_constructed_elements(
     Ok(elements)
 }
 
-fn compile_output(document: &Document, element: NodeId) -> Result<OutputSettings, CompileFailure> {
+fn compile_output(
+    document: &Document,
+    element: NodeId,
+    declared_version: &str,
+) -> Result<OutputSettings, CompileFailure> {
     ensure_only_attributes(
         document,
         element,
@@ -322,14 +326,35 @@ fn compile_output(document: &Document, element: NodeId) -> Result<OutputSettings
         ));
     }
     let omit_xml_declaration = optional_attribute(document, element, None, "omit-xml-declaration")
-        .map(|value| parse_yes_no(value, "omit-xml-declaration", document.location(element)))
+        .map(|value| {
+            parse_output_boolean(
+                value,
+                "omit-xml-declaration",
+                declared_version,
+                document.location(element),
+            )
+        })
         .transpose()?
         .unwrap_or(false);
     let indent = optional_attribute(document, element, None, "indent")
-        .map(|value| parse_yes_no(value, "indent", document.location(element)))
+        .map(|value| {
+            parse_output_boolean(
+                value,
+                "indent",
+                declared_version,
+                document.location(element),
+            )
+        })
         .transpose()?;
     let include_content_type = optional_attribute(document, element, None, "include-content-type")
-        .map(|value| parse_yes_no(value, "include-content-type", document.location(element)))
+        .map(|value| {
+            parse_output_boolean(
+                value,
+                "include-content-type",
+                declared_version,
+                document.location(element),
+            )
+        })
         .transpose()?;
     Ok(OutputSettings {
         method: method.map(str::to_owned),
@@ -340,14 +365,24 @@ fn compile_output(document: &Document, element: NodeId) -> Result<OutputSettings
     })
 }
 
-fn parse_yes_no(
+fn parse_output_boolean(
     value: &str,
     attribute: &str,
+    declared_version: &str,
     location: &SourceLocation,
 ) -> Result<bool, CompileFailure> {
     match value {
         "yes" => Ok(true),
         "no" => Ok(false),
+        _ if declared_version == "3.0" => match value.trim() {
+            "true" | "1" => Ok(true),
+            "false" | "0" => Ok(false),
+            _ => Err(invalid(
+                "FXST0005",
+                format!("{attribute} has an invalid XSLT 3.0 boolean value"),
+                location,
+            )),
+        },
         _ => Err(invalid(
             "FXST0005",
             format!("{attribute} must be 'yes' or 'no'"),
@@ -914,6 +949,25 @@ mod tests {
         assert_eq!(program.output.media_type, None);
         assert_eq!(program.output.include_content_type, None);
         assert!(!program.output.omit_xml_declaration);
+    }
+
+    #[test]
+    fn xslt30_boolean_output_lexicals_do_not_widen_xslt20_yes_no_values() {
+        let xslt30 = parse_stylesheet(
+            "memory:xslt30-output-boolean.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration=" 1 "/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
+        );
+        let xslt20 = parse_stylesheet(
+            "memory:xslt20-output-boolean.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="true"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
+        );
+
+        let program = compile_stylesheet(&xslt30).expect("XSLT 3.0 boolean should compile");
+        let failure = compile_stylesheet(&xslt20).expect_err("XSLT 2.0 requires yes or no");
+
+        assert!(program.output.omit_xml_declaration);
+        assert_eq!(failure.code, "FXST0005");
+        assert_eq!(failure.category, CompileCategory::Invalid);
     }
 
     #[test]
