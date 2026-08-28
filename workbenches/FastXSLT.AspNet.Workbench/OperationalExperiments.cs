@@ -164,6 +164,14 @@ public static class OperationalExperiments
             "<order></other>"u8.ToArray(),
             "urn:fastxslt:diagnostic:stylesheet",
             stylesheet);
+        if (malformedSource.Location != new FastXsltDiagnosticLocation(
+            "urn:fastxslt:diagnostic:malformed-source",
+            7,
+            7))
+        {
+            throw new InvalidOperationException(
+                "Isolated worker did not preserve the structured XML location.");
+        }
         var unsupportedStylesheet = await CaptureInitializationFailureAsync(
             workerPath,
             "urn:fastxslt:diagnostic:source",

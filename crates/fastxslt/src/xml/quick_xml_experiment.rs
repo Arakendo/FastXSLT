@@ -174,6 +174,21 @@ impl LocatedFailure {
             _ => None,
         }
     }
+
+    pub(crate) fn source_span(&self) -> Option<Range<usize>> {
+        match &self.failure {
+            ParseFailure::Malformed { offset, .. }
+            | ParseFailure::UnknownNamespacePrefix { offset, .. }
+            | ParseFailure::UnknownEntity { offset, .. }
+            | ParseFailure::EventLimit { offset, .. } => Some(*offset..*offset),
+            ParseFailure::DtdForbidden { span }
+            | ParseFailure::MultipleRoots { span }
+            | ParseFailure::ContentOutsideRoot { span }
+            | ParseFailure::DepthLimit { span, .. } => Some(span.clone()),
+            ParseFailure::MissingRoot => Some(0..0),
+            ParseFailure::Control(_) => None,
+        }
+    }
 }
 
 pub(crate) fn parse_document(

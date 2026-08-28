@@ -4,8 +4,8 @@
 | --- | --- |
 | Date | 2026-08-27 |
 | Boundary | Private host-neutral workbench facade |
-| Case | Unsupported `xsl:message` during stylesheet compilation |
-| Code/category | `FXST1006` / `unsupported` |
+| Cases | Malformed source XML; unsupported `xsl:message` during stylesheet compilation |
+| Code/categories | `FXXM0002` / `invalid`; `FXST1006` / `unsupported` |
 | Outcome | Owned logical resource and byte span survive facade, native, and isolated ASP.NET translation |
 
 ## Executed boundary
@@ -23,6 +23,15 @@ verifies `urn:fastxslt:diagnostic:unsupported-stylesheet:103..117`. It does not
 parse the human-readable detail to recover provenance. The location is inert
 owned data and cannot reopen the original resource.
 
+The XML parser now exposes its owned failure span separately from its private
+failure representation. Preparation retains that span with the logical source
+identity, and the facade projects malformed `<order></other>` at
+`urn:fastxslt:diagnostic:malformed-source:7..7`. The point span records the
+parser's exact known offset without inventing a token width. Span-bearing XML
+failures retain their full parser-owned range; missing-root failures use the
+document start `0..0`. Cooperative-control failures remain invocation failures
+without a source location.
+
 ## Claim boundary
 
 The isolated-worker protocol and native binary envelope now carry optional
@@ -33,14 +42,12 @@ ABI version advances from 0 to 1, and a native unit verifies the exact
 
 An end-to-end release-mode probe launched the ASP.NET 8 workbench and called
 `POST /experiment/diagnostic-parity`. The isolated worker returned HTTP 200 with
-`FXST1006 / unsupported`, null request identity, and the exact structured
-location above. The worker PID remained unchanged and a following transform
-returned the expected `for-004` result, so transferring the diagnostic did not
-poison reusable state.
+the exact structured locations for both `FXXM0002 / invalid` and
+`FXST1006 / unsupported`, with null request identities. The worker PID remained
+unchanged and a following transform returned the expected `for-004` result, so
+transferring the diagnostics did not poison reusable state.
 
 This remains a private workbench translation, not a stable public diagnostic
-schema or catalog. XML preparation failures still retain only identity plus
-debug detail at this boundary.
-Related locations, bounded diagnostic collections, disclosure policy, causes,
-unknown-code handling, and reportable semantic outcomes also remain unresolved
-under AR-0004.
+schema or catalog. Related locations, bounded diagnostic collections,
+disclosure policy, causes, unknown-code handling, and reportable semantic
+outcomes remain unresolved under AR-0004.

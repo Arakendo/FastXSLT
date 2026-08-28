@@ -373,15 +373,20 @@ implemented behavior belongs to a named standards slice.
   defaults and source-derived node sequences. The complete denominator passes;
   host parameter overrides, arbitrary global expressions, forward references,
   and general dependency ordering are not claimed.
-- [ ] Establish diagnostic codes and source spans across XML and XPath phases.
+- [x] Establish representative diagnostic codes and source spans across XML
+  and compiler/XPath phases without claiming a complete public catalog.
 - [x] Preserve one compiler/XPath resource and byte span through the private
   host-neutral workbench facade as owned structured fields, proving the caller
-  need not parse display detail. Keep XML-span and worker/native parity open.
+  need not parse display detail.
 - [x] Carry that optional location through the isolated-worker and native
   workbench envelope shapes and managed decoders, bumping the explicitly
   unstable native ABI to version 1. Prove native serialization exactly and run
   the real ASP.NET diagnostic-parity endpoint with exact location and worker
-  reuse assertions. Retain XML preparation spans as open work.
+  reuse assertions.
+- [x] Retain parser-owned XML offsets and ranges through prepared-input
+  construction and the host-neutral facade. Prove the malformed-source `7..7`
+  point location through the real isolated ASP.NET diagnostic endpoint without
+  parsing display detail.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,
   providing evidence for AR-0005.

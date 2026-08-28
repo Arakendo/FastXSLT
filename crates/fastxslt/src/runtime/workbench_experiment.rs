@@ -321,7 +321,15 @@ fn project_preparation(failure: &PreparationFailure) -> WorkbenchFailure {
             ("FXCT0002", "limit")
         }
     };
-    workbench_failure(code, category, format!("{failure:?}"))
+    let mut projected = workbench_failure(code, category, format!("{failure:?}"));
+    if let PreparationFailure::InvalidXml { location, .. } = failure {
+        projected.location = Some(Box::new(WorkbenchLocation {
+            resource: location.resource.clone(),
+            start: location.span.start,
+            end: location.span.end,
+        }));
+    }
+    projected
 }
 
 fn workbench_failure(
@@ -449,7 +457,16 @@ mod tests {
         assert_eq!(malformed.code, "FXXM0002");
         assert_eq!(malformed.category, "invalid");
         assert_eq!(malformed.request_id, None);
-        assert_eq!(malformed.location, None);
+        let location = malformed
+            .location
+            .as_ref()
+            .expect("XML failure must retain structured source provenance");
+        assert_eq!(
+            location.resource,
+            "urn:fastxslt:diagnostic:malformed-source"
+        );
+        assert_eq!(location.start, 7);
+        assert_eq!(location.end, 7);
         assert!(
             malformed
                 .detail

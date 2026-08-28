@@ -4,7 +4,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl};
 use crate::resources::ResourceSnapshot;
-use crate::xdm::owned_tree_experiment::{BuildFailure, Document};
+use crate::xdm::owned_tree_experiment::{BuildFailure, Document, SourceLocation};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document_controlled};
 
 #[cfg(test)]
@@ -15,10 +15,21 @@ const PREPARATION_XML_LIMITS: ParseLimits = ParseLimits {
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum PreparationFailure {
-    MissingResource { identity: String },
-    DuplicateResource { identity: String },
-    InvalidXml { identity: String, detail: String },
-    InvalidXdm { identity: String, detail: String },
+    MissingResource {
+        identity: String,
+    },
+    DuplicateResource {
+        identity: String,
+    },
+    InvalidXml {
+        identity: String,
+        location: SourceLocation,
+        detail: String,
+    },
+    InvalidXdm {
+        identity: String,
+        detail: String,
+    },
     Control(ControlFailure),
 }
 
@@ -67,14 +78,18 @@ impl PreparedInputBuilder {
                     identity: identity.to_owned(),
                 })?;
         let parsed = parse_document_controlled(identity, bytes, self.parse_limits, control)
-            .map_err(|failure| {
-                failure.control_failure().map_or_else(
-                    || PreparationFailure::InvalidXml {
-                        identity: identity.to_owned(),
-                        detail: format!("{failure:?}"),
+            .map_err(|failure| match failure.control_failure() {
+                Some(failure) => PreparationFailure::Control(*failure),
+                None => PreparationFailure::InvalidXml {
+                    identity: identity.to_owned(),
+                    location: SourceLocation {
+                        resource: identity.to_owned(),
+                        span: failure
+                            .source_span()
+                            .expect("non-control XML failures must own a source span"),
                     },
-                    |failure| PreparationFailure::Control(*failure),
-                )
+                    detail: format!("{failure:?}"),
+                },
             })?;
         let parsed_phase_capacity_bytes = parsed.owned_capacity_bytes();
         let document =

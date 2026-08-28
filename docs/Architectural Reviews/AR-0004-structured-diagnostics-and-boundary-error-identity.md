@@ -135,8 +135,13 @@ selects a host mechanism risks treating transport as the semantic model.
   carry the same optional fields, the native ABI advances to version 1, and a
   native unit proves exact serialization. A release-mode ASP.NET endpoint probe
   now proves the isolated managed path returns the same exact structured
-  location and preserves worker reuse. XML preparation still lacks structured
-  location parity.
+  location and preserves worker reuse.
+- Parser-owned XML offsets and spans now survive prepared-input construction as
+  structured source provenance. The private facade and isolated managed probe
+  assert malformed XML at its logical source and exact `7..7` parser offset,
+  without scraping debug detail. This establishes representative XML and
+  compiler/XPath phase location conservation, not a complete public diagnostic
+  catalog.
 
 ## Disposition
 
@@ -206,3 +211,6 @@ a serialized form needs versioning.
 - 2026-08-27 -- Executed the ASP.NET diagnostic-parity endpoint against the
   release worker, preserving exact `FXST1006` resource/span fields, worker PID,
   and successful post-failure reuse.
+- 2026-08-27 -- Retained parser-owned XML spans through preparation and the
+  host-neutral facade, then proved the exact malformed-source `7..7` point
+  location through the release isolated ASP.NET path.
