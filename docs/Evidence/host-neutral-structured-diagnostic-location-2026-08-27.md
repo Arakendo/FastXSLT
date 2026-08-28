@@ -6,7 +6,7 @@
 | Boundary | Private host-neutral workbench facade |
 | Case | Unsupported `xsl:message` during stylesheet compilation |
 | Code/category | `FXST1006` / `unsupported` |
-| Outcome | Owned logical resource and byte span survive facade and native-envelope translation |
+| Outcome | Owned logical resource and byte span survive facade, native, and isolated ASP.NET translation |
 
 ## Executed boundary
 
@@ -31,10 +31,16 @@ one shared `FastXsltDiagnosticLocation` shape. The explicitly unstable native
 ABI version advances from 0 to 1, and a native unit verifies the exact
 `FXST1006` envelope fields. The managed project builds against both decoders.
 
+An end-to-end release-mode probe launched the ASP.NET 8 workbench and called
+`POST /experiment/diagnostic-parity`. The isolated worker returned HTTP 200 with
+`FXST1006 / unsupported`, null request identity, and the exact structured
+location above. The worker PID remained unchanged and a following transform
+returned the expected `for-004` result, so transferring the diagnostic did not
+poison reusable state.
+
 This remains a private workbench translation, not a stable public diagnostic
 schema or catalog. XML preparation failures still retain only identity plus
-debug detail at this boundary. The isolated path still needs an end-to-end
-managed execution probe for location parity.
+debug detail at this boundary.
 Related locations, bounded diagnostic collections, disclosure policy, causes,
 unknown-code handling, and reportable semantic outcomes also remain unresolved
 under AR-0004.

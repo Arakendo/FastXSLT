@@ -133,8 +133,10 @@ selects a host mechanism risks treating transport as the semantic model.
   resource identity and byte span separately from display detail. A focused
   caller asserts those fields directly. The worker and native envelopes now
   carry the same optional fields, the native ABI advances to version 1, and a
-  native unit proves exact serialization. XML preparation and an end-to-end
-  isolated managed probe do not yet have location parity evidence.
+  native unit proves exact serialization. A release-mode ASP.NET endpoint probe
+  now proves the isolated managed path returns the same exact structured
+  location and preserves worker reuse. XML preparation still lacks structured
+  location parity.
 
 ## Disposition
 
@@ -201,3 +203,6 @@ a serialized form needs versioning.
 - 2026-08-27 -- Extended the private worker/native envelopes and managed
   decoders with optional location fields, advanced the explicitly unstable
   native ABI to version 1, and proved exact native serialization.
+- 2026-08-27 -- Executed the ASP.NET diagnostic-parity endpoint against the
+  release worker, preserving exact `FXST1006` resource/span fields, worker PID,
+  and successful post-failure reuse.

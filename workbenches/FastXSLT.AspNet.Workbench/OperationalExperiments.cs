@@ -170,6 +170,14 @@ public static class OperationalExperiments
             source,
             "urn:fastxslt:diagnostic:unsupported-stylesheet",
             UnsupportedMessageStylesheet);
+        if (unsupportedStylesheet.Location != new FastXsltDiagnosticLocation(
+            "urn:fastxslt:diagnostic:unsupported-stylesheet",
+            103,
+            117))
+        {
+            throw new InvalidOperationException(
+                "Isolated worker did not preserve the structured stylesheet location.");
+        }
 
         return new
         {
@@ -332,26 +340,31 @@ public static class OperationalExperiments
                 invalidIdentity.Code,
                 invalidIdentity.Category,
                 invalidIdentity.RequestId,
+                invalidIdentity.Location,
                 invalidIdentity.Detail),
             malformedSource = new DiagnosticEvidence(
                 malformedSource.Code,
                 malformedSource.Category,
                 malformedSource.RequestId,
+                malformedSource.Location,
                 malformedSource.Detail),
             unsupportedStylesheet = new DiagnosticEvidence(
                 unsupportedStylesheet.Code,
                 unsupportedStylesheet.Category,
                 unsupportedStylesheet.RequestId,
+                unsupportedStylesheet.Location,
                 unsupportedStylesheet.Detail),
             cancellation = new DiagnosticEvidence(
                 cancellation.Code,
                 cancellation.Category,
                 cancellation.RequestId,
+                cancellation.Location,
                 cancellation.Detail),
             instructionBudget = new DiagnosticEvidence(
                 instructionBudget.Code,
                 instructionBudget.Category,
                 instructionBudget.RequestId,
+                instructionBudget.Location,
                 instructionBudget.Detail),
             recoveryResult,
             controlledRecoveryResult,
@@ -427,6 +440,7 @@ public static class OperationalExperiments
                 observation.Failure.Code,
                 observation.Failure.Category,
                 observation.Failure.RequestId,
+                observation.Failure.Location,
                 observation.Failure.Detail),
             observation.SignalToObservationMilliseconds,
             observation.FirstChargeObserved,
@@ -547,6 +561,7 @@ public static class OperationalExperiments
                 failure.Code,
                 failure.Category,
                 failure.RequestId,
+                failure.Location,
                 failure.Detail);
         }
     }
@@ -683,4 +698,5 @@ public sealed record DiagnosticEvidence(
     string Code,
     string Category,
     string? RequestId,
+    FastXsltDiagnosticLocation? Location,
     string Detail);
