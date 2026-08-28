@@ -130,6 +130,57 @@ indexing, raw pointers, custom allocation, intrinsics, or similar techniques do
 not bypass ADR-0003 merely because the surrounding representation validates
 itself.
 
+## Initial profiling hypotheses
+
+The following are high-probability places to measure, not findings about the
+current implementation and not permission to optimize them before measurement:
+
+1. **Prepared-XDM byte anatomy.** Attribute retained bytes to node records,
+   text/string storage, expanded names and namespaces, parent/child relations,
+   indexes, vector capacity slack, and ownership/reference-count overhead.
+   Report source bytes, node count, retained bytes per node, peak construction
+   bytes, and final prepared bytes rather than one unexplained expansion ratio.
+2. **Warm execution allocation churn.** Count allocation operations and bytes
+   during execution separately from resource import, XML/XDM construction,
+   compilation, preparation, and result transfer. Tiny warm transforms make
+   short-lived `Vec`, `String`, clone, and result-building costs plausible, but
+   only phase-separated measurement can establish that they matter.
+3. **XPath sequence shapes.** Record bounded histograms for sequence length and
+   item kind, distinguishing empty, singleton, small, homogeneous node, and
+   general sequences. A specialized representation is justified only if the
+   observed distribution and affected operations support it.
+4. **Name and namespace duplication.** Compare occurrence count, unique count,
+   and retained bytes for local names, prefixes, namespace URIs, expanded names,
+   and repeated string values. Interning must earn its lookup, ownership, and
+   generation-lifetime costs.
+5. **Reference-count and synchronization traffic.** Attribute `Arc` clones and
+   drops, atomic operations, locks, and channels to compile, prepare, generation,
+   worker, invocation, and result paths. Stronger ownership is preferable only
+   when it preserves host lifecycle and independent generation retirement.
+6. **Selection and navigation fan-out.** For template dispatch, observe
+   candidates considered per selection. For path steps, observe nodes scanned
+   versus nodes returned, classified by semantic operation. These ratios can
+   justify stylesheet-activated indexes or pre-resolved tests without assuming
+   that every document needs them.
+7. **Scratch-capacity behavior.** Record requested size, reallocations,
+   high-water mark, average use, retained capacity, and post-failure state per
+   worker-local buffer. One unusually large invocation must not silently make
+   its peak capacity permanent across the worker pool; trimming and maximum-
+   retention policy require workload evidence.
+
+The first recommended probes are phase-attributed Rust allocation/retention,
+sequence length/item-kind histograms, and prepared-XDM byte anatomy. Together
+they discriminate whether the earliest pressure is primarily temporary work,
+value representation, retained document layout, or none of those. Allocation
+and ownership improvements should be explored before unsafe code or SIMD unless
+a profile points elsewhere.
+
+Instrumentation must be explicitly supplied, bounded, and semantically inert.
+It must not make ambient global telemetry part of execution semantics, leak
+private values, alter case selection, or contaminate ordinary performance
+measurements. Instrumented and uninstrumented paths need parity checks, and
+measurement overhead must be reported when observations are used as evidence.
+
 ## Alternatives
 
 ### Retain straightforward reference representations
@@ -209,6 +260,12 @@ provide a concrete hypothesis to test.
   fidelity sentinels, reuse count, concurrency, and memory/latency budgets.
 - [ ] Add Rust-side allocation and retained-memory attribution for compile,
   prepare, execute, and serialize phases.
+- [ ] Add bounded sequence length/item-kind histograms and prepared-XDM byte
+  anatomy sufficient to distinguish node, name/namespace, text, relationship,
+  index, capacity-slack, and ownership overhead.
+- [ ] Add focused fan-out, duplication, reference-count/synchronization, and
+  scratch-capacity probes only where the first profiles or representative
+  workloads nominate them.
 - [ ] Verify each experiment preserves deterministic retained/peak attribution
   and independent old/new generation retirement; do not use content equality to
   justify hidden cross-generation ownership.
@@ -243,3 +300,6 @@ provide a concrete hypothesis to test.
   of prepared representations and data layout without selecting an optimization.
 - 2026-08-27 -- Peer review made cross-generation sharing explicitly unadmitted
   and deterministic memory attribution a conservation requirement.
+- 2026-08-27 -- Peer review added seven initial profiling hypotheses and
+  prioritized phase-attributed allocation/retention, sequence-shape histograms,
+  and prepared-XDM byte anatomy as the first discriminating probes.

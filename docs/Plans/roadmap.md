@@ -575,6 +575,11 @@ container or unsafe path before profiles establish a concrete pressure.
   count removal, boxed slices, enum/tag layout, safe arenas, worker-local reuse,
   static dispatch, synchronization traffic, and generated hot paths when a
   profile makes one relevant.
+- [ ] Start with three bounded, explicitly supplied probes: phase-attributed
+  Rust allocation/retention, XPath sequence length/item-kind histograms, and
+  prepared-XDM byte anatomy. Treat name duplication, refcount/synchronization,
+  dispatch/navigation fan-out, and scratch-capacity behavior as follow-ups
+  nominated by evidence rather than simultaneous instrumentation projects.
 - [ ] Prototype one measured hypothesis at a time behind private safe-Rust
   owners; preserve reference semantics and diagnostics through differential
   verification.
