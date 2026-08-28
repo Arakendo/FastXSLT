@@ -8,7 +8,6 @@ pub(super) enum FailureCategory {
     Invalid,
     Unsupported,
     MissingResource,
-    #[cfg(test)]
     Denied,
     Limit,
     Cancelled,
@@ -39,7 +38,6 @@ impl ExecutionFailure {
             FailureCategory::Invalid => "invalid",
             FailureCategory::Unsupported => "unsupported",
             FailureCategory::MissingResource => "missing-resource",
-            #[cfg(test)]
             FailureCategory::Denied => "denied",
             FailureCategory::Limit => "limit",
             FailureCategory::Cancelled => "cancelled",

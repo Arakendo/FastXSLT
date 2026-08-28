@@ -476,6 +476,13 @@ failed, and harness-error cases without an unqualified conformance claim.
   wildcard template. The full five-case initial-mode denominator now passes;
   general temporary-tree navigation and `xsl:copy` construction remain open.
 - [ ] Establish explicit URI/resource resolution and execution limits.
+  - [x] Route private principal-stylesheet acquisition through an exact,
+    qualified-identity resolver over one sealed snapshot. Charge a fixed attempt
+    limit, distinguish denied/missing/invalid/unsupported/limit outcomes, and
+    prove that relative references, fragments, Windows paths, and URL-shaped
+    logical identities never create ambient filesystem or network authority.
+    Relative/base-URI resolution, catalogs, live resolvers, dependency loading,
+    and complete execution-limit composition remain open.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.

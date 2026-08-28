@@ -5,6 +5,10 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
+mod resolution_experiment;
+
+pub(crate) use resolution_experiment::{ResolutionFailure, ResolutionLimits, SnapshotResolver};
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ResourceLimits {
     entries: usize,
