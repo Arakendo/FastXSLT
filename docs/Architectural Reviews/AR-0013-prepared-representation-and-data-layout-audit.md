@@ -47,7 +47,10 @@ presuming that novelty is valuable.
   input concerns under their existing contracts.
 - Prepared state remains immutable and source-derived under AR-0009. Content
   equality must not collapse document identity, and no global or cross-snapshot
-  cache is admitted by this review.
+  cache is admitted by this review. Identical names, strings, plans, or other
+  values do not admit cross-generation sharing; generation overlap must retain
+  independent lifetime and replacement behavior unless later evidence reopens
+  that ownership boundary explicitly.
 - Resource snapshots retain bounded memory ownership and no ambient filesystem
   or network authority under ADR-0002.
 - Representation-specific access remains inside its owner. The audit must not
@@ -55,6 +58,10 @@ presuming that novelty is valuable.
   seam.
 - Diagnostics, source locations, work accounting, cancellation charge points,
   deterministic results, and host-mode parity are conservation requirements.
+- Optimized prepared forms must preserve or improve deterministic attribution of
+  retained and peak memory to the owning generation, prepared input, worker, or
+  invocation. Faster execution does not justify memory that the host can no
+  longer bound, observe, or retire predictably.
 - The supported Rust facade must not expose arena indexes, tags, interner keys,
   plan opcodes, cache keys, or scratch-buffer ownership merely to enable an
   optimization.
@@ -144,7 +151,8 @@ budgets.
 Build only indexes activated by compiled semantic knowledge or measured reuse.
 This may trade preparation and memory for execution speed. Admission policy,
 eviction, identity, concurrency, and cache ownership require evidence and may
-reopen AR-0009.
+reopen AR-0009. This review does not admit cross-generation sharing even when
+content or interned values compare equal.
 
 ### Admit an unsafe optimized representation
 
@@ -167,7 +175,8 @@ criteria.
    alone.
 5. Measure preparation latency, break-even reuse count, retained and peak memory,
    warm throughput, p50/p95/p99 latency, concurrency scaling, and host-visible
-   behavior.
+   behavior. Verify that memory remains attributable to the generation,
+   prepared input, worker, or invocation that owns its lifetime.
 6. Remove or retain the experiment according to evidence. A dead end is a valid
    result when its workload, measurements, and rejected hypothesis are recorded.
 
@@ -200,6 +209,9 @@ provide a concrete hypothesis to test.
   fidelity sentinels, reuse count, concurrency, and memory/latency budgets.
 - [ ] Add Rust-side allocation and retained-memory attribution for compile,
   prepare, execute, and serialize phases.
+- [ ] Verify each experiment preserves deterministic retained/peak attribution
+  and independent old/new generation retirement; do not use content equality to
+  justify hidden cross-generation ownership.
 - [ ] Produce a current representation and lifetime inventory without exposing
   it through the public facade.
 - [ ] Include ownership, cloning/reference-count traffic, allocation shape,
@@ -229,3 +241,5 @@ provide a concrete hypothesis to test.
 
 - 2026-08-27 -- Opened as Incubating to preserve a future evidence-driven audit
   of prepared representations and data layout without selecting an optimization.
+- 2026-08-27 -- Peer review made cross-generation sharing explicitly unadmitted
+  and deterministic memory attribution a conservation requirement.

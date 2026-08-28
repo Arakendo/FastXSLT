@@ -581,6 +581,9 @@ container or unsafe path before profiles establish a concrete pressure.
 - [ ] Record both successful and negative experiments, including preparation
   cost, break-even reuse, retained memory, throughput, tail latency, and host-
   visible behavior.
+- [ ] Preserve deterministic retained/peak memory attribution and independent
+  generation retirement; identical content does not admit hidden cross-
+  generation sharing.
 - [ ] Require a separate ADR-0003 exception if evidence eventually points to an
   unsafe implementation; construction-time validation alone is not admission.
 
