@@ -129,6 +129,10 @@ selects a host mechanism risks treating transport as the semantic model.
   `FXXP0005 / invalid` while a valid but unimplemented three-argument collation
   call remains `FXXP1010 / unsupported`. This is one executable mapping, not a
   decision on the eventual public diagnostic representation.
+- The private host-neutral workbench facade now projects an owned compiler/XPath
+  resource identity and byte span separately from display detail. A focused
+  caller asserts those fields directly. XML preparation and worker/native
+  serialization do not yet have location parity.
 
 ## Disposition
 
@@ -149,7 +153,7 @@ fixtures, and consumer-shaped handling evidence.
 - [ ] Record which conditions are reportable outcomes and which prevent a
   trustworthy result.
 - [ ] Map standards-defined errors separately from FastXSLT operational errors.
-- [ ] Prototype focused local errors and one facade translation without adding
+- [x] Prototype focused local errors and one facade translation without adding
   a shared error crate.
 - [ ] Prove callers never parse display strings and unknown future identities
   have a safe handling path.
@@ -189,3 +193,6 @@ a serialized form needs versioning.
 - 2026-08-27 -- Preserved `XPST0017` separately from the private compiler code
   for three QT3 deep-equal arity errors, with source location conservation and
   an unsupported-collation control.
+- 2026-08-27 -- Projected one compiler-owned resource/span through the private
+  host-neutral workbench facade as structured fields, without a shared error
+  crate or public stability claim.

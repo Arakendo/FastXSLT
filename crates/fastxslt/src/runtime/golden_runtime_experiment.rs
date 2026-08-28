@@ -33,7 +33,7 @@ use runtime_context::{
     materialize_global_defaults, required_source_context,
 };
 pub(super) use runtime_failure::ExecutionFailure;
-use runtime_failure::{FailureCategory, control_failure, failure};
+use runtime_failure::{FailureCategory, control_failure, failure, failure_at};
 pub(super) use serialization::serialize_xml;
 #[cfg(test)]
 use transform_set_experiment::{

@@ -57,8 +57,21 @@ pub struct WorkbenchFailure {
     pub category: String,
     /// Optional logical request identity.
     pub request_id: Option<String>,
+    /// Optional owned logical resource and byte span.
+    pub location: Option<Box<WorkbenchLocation>>,
     /// Human-readable diagnostic detail.
     pub detail: String,
+}
+
+/// Source provenance projected without exposing the private XDM location type.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkbenchLocation {
+    /// Logical resource identity; never authority to reopen a file.
+    pub resource: String,
+    /// Inclusive byte offset where the relevant source span starts.
+    pub start: usize,
+    /// Exclusive byte offset where the relevant source span ends.
+    pub end: usize,
 }
 
 /// Cooperative cancellation state supplied to one experimental invocation.
@@ -281,11 +294,18 @@ fn work_limits(limits: WorkbenchLimits) -> WorkLimits {
 }
 
 fn project_execution(failure: &ExecutionFailure) -> WorkbenchFailure {
-    let (code, category, request_id, detail) = failure.workbench_parts();
+    let (code, category, request_id, location, detail) = failure.workbench_parts();
     WorkbenchFailure {
         code: code.to_owned(),
         category: category.to_owned(),
         request_id: request_id.map(str::to_owned),
+        location: location.map(|location| {
+            Box::new(WorkbenchLocation {
+                resource: location.resource.clone(),
+                start: location.span.start,
+                end: location.span.end,
+            })
+        }),
         detail: detail.to_owned(),
     }
 }
@@ -313,6 +333,7 @@ fn workbench_failure(
         code: code.into(),
         category: category.into(),
         request_id: None,
+        location: None,
         detail: detail.into(),
     }
 }
@@ -410,6 +431,7 @@ mod tests {
         assert_eq!(invalid_identity.code, "FXWB0003");
         assert_eq!(invalid_identity.category, "invalid");
         assert_eq!(invalid_identity.request_id, None);
+        assert_eq!(invalid_identity.location, None);
         assert_eq!(
             invalid_identity.detail,
             "request identity must not be empty"
@@ -427,6 +449,7 @@ mod tests {
         assert_eq!(malformed.code, "FXXM0002");
         assert_eq!(malformed.category, "invalid");
         assert_eq!(malformed.request_id, None);
+        assert_eq!(malformed.location, None);
         assert!(
             malformed
                 .detail
@@ -445,6 +468,16 @@ mod tests {
         assert_eq!(unsupported.code, "FXST1006");
         assert_eq!(unsupported.category, "unsupported");
         assert_eq!(unsupported.request_id, None);
+        let location = unsupported
+            .location
+            .as_ref()
+            .expect("compiler failure must retain structured source provenance");
+        assert_eq!(
+            location.resource,
+            "urn:fastxslt:diagnostic:unsupported-stylesheet"
+        );
+        assert_eq!(location.start, 103);
+        assert_eq!(location.end, 117);
         assert_eq!(
             unsupported.detail,
             "unsupported XSLT instruction: xsl:message at urn:fastxslt:diagnostic:unsupported-stylesheet:103..117"

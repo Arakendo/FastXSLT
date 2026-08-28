@@ -374,6 +374,9 @@ implemented behavior belongs to a named standards slice.
   host parameter overrides, arbitrary global expressions, forward references,
   and general dependency ordering are not claimed.
 - [ ] Establish diagnostic codes and source spans across XML and XPath phases.
+- [x] Preserve one compiler/XPath resource and byte span through the private
+  host-neutral workbench facade as owned structured fields, proving the caller
+  need not parse display detail. Keep XML-span and worker/native parity open.
 - [x] Provide a read-only semantic inspection snapshot for the implemented
   compilation slice without exposing private parser, arena, or IR types,
   providing evidence for AR-0005.

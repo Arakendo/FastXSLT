@@ -340,6 +340,7 @@ fn worker_failure(code: &str, request_id: Option<String>, detail: &str) -> Workb
         code: code.to_owned(),
         category: "invalid".to_owned(),
         request_id,
+        location: None,
         detail: detail.to_owned(),
     }
 }
