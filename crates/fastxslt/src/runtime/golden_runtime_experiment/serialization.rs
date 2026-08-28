@@ -41,13 +41,13 @@ pub(in crate::runtime) fn serialize_xml(
     if settings
         .method
         .as_deref()
-        .is_some_and(|method| method != "xml")
+        .is_some_and(|method| !matches!(method, "xml" | "xhtml"))
     {
         return Err(failure(
             "FXSR1001",
             FailureCategory::Unsupported,
             Some(request_id),
-            "the selected output method is outside the private serialization slice",
+            "the selected output method is outside the private XML-compatible serialization slice",
         ));
     }
     if settings.indent == Some(true) {

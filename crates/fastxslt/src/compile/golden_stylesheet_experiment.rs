@@ -314,7 +314,7 @@ fn compile_output(document: &Document, element: NodeId) -> Result<OutputSettings
     )?;
     ensure_no_meaningful_children(document, element, "xsl:output")?;
     let method = optional_attribute(document, element, None, "method");
-    if method.is_some_and(|method| !matches!(method, "xml" | "text")) {
+    if method.is_some_and(|method| !matches!(method, "xml" | "text" | "xhtml")) {
         return Err(unsupported(
             "FXST1004",
             format!("unsupported output method: {}", method.unwrap_or_default()),

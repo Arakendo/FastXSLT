@@ -42,6 +42,22 @@ fn executes_output_0128_without_injecting_html_content_type_metadata() {
 }
 
 #[test]
+fn executes_output_0110_with_explicit_xhtml_declaration_omission() {
+    let execution = execute_assert_serialization_case("output-0110", "xhtml");
+    assert_eq!(execution.method.as_deref(), Some("xhtml"));
+    assert!(execution.omit_xml_declaration);
+    assert_eq!(execution.actual, execution.expected);
+}
+
+#[test]
+fn executes_output_0121_with_the_default_xhtml_declaration() {
+    let execution = execute_assert_serialization_case("output-0121", "xhtml");
+    assert_eq!(execution.method.as_deref(), Some("xhtml"));
+    assert!(!execution.omit_xml_declaration);
+    assert_eq!(execution.actual, execution.expected);
+}
+
+#[test]
 fn executes_output_0129_as_descendant_text_without_injected_markup() {
     let execution = execute_assert_serialization_case("output-0129", "html");
     assert_eq!(execution.method.as_deref(), Some("text"));
@@ -52,6 +68,7 @@ fn executes_output_0129_as_descendant_text_without_injected_markup() {
 struct SerializationExecution {
     method: Option<String>,
     include_content_type: Option<bool>,
+    omit_xml_declaration: bool,
     actual: String,
     expected: String,
 }
@@ -108,6 +125,7 @@ fn execute_assert_serialization_case(
     let program = compile_resource(&snapshot, &stylesheet_id).expect("compile output case");
     let method = program.output.method.clone();
     let include_content_type = program.output.include_content_type;
+    let omit_xml_declaration = program.output.omit_xml_declaration;
 
     let mut set = TransformSetBuilder::new(
         snapshot,
@@ -137,6 +155,7 @@ fn execute_assert_serialization_case(
     SerializationExecution {
         method,
         include_content_type,
+        omit_xml_declaration,
         actual,
         expected: expected.replace("\r\n", "\n"),
     }

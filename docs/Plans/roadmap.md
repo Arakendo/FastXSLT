@@ -417,8 +417,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   comparator.
 - [x] Execute adjacent XSLT30 `output-0129` through text-method descendant-text
   concatenation without markup, escaping, an XML declaration, or injected
-  content-type metadata. Preserve 230 visible harness gaps and make no broad
-  serialization claim from the two exact comparisons.
+  content-type metadata.
+- [x] Execute XSLT30 `output-0110` and `output-0121` through the bounded
+  XML-compatible XHTML lane, proving explicit declaration omission and default
+  retention with namespace-preserving exact comparisons. Preserve 228 visible
+  harness gaps and make no broad serialization claim from the four passed cases.
 - [x] Execute XSLT30 `template-001` through built-in document dispatch,
   comment-node selection, and an isolated named mode while retaining the other
   four unsupported cases in the six-case denominator.

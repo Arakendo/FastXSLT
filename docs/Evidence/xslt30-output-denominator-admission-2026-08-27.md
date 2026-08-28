@@ -6,15 +6,16 @@
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/decl/output/_output-test-set.xml` |
 | Discovered cases | 232 |
-| Current disposition | 2 passed; 230 harness-unsupported |
+| Current disposition | 4 passed; 228 harness-unsupported |
 
 ## Conserved inventory
 
 The private XSLT30 adapter now parses the complete pinned `decl/output` test
 set and requires all 232 distinct native case identities. A first-party
 set-level overlay applies an explicit default disposition to the immutable
-complete denominator: `harness-unsupported / not-run`. Two named overrides now
-select `output-0128` and `output-0129` as passed. The other 230 cases remain harness-unsupported,
+complete denominator: `harness-unsupported / not-run`. Four named overrides now
+select `output-0110`, `output-0121`, `output-0128`, and `output-0129` as passed.
+The other 228 cases remain harness-unsupported,
 not engine-unsupported, because their serialization assertions or execution
 adapter paths have not yet been exercised far enough to distinguish engine
 behavior from harness behavior.
@@ -83,12 +84,22 @@ injects content-type metadata. Its file-backed expectation uses the same sole
 checkout-EOL correction before exact comparison. A focused nested-result test
 independently proves raw descendant-text concatenation.
 
+Two earlier cases establish a deliberately bounded XML-compatible XHTML lane.
+`output-0110` verifies that `omit-xml-declaration="yes"` suppresses the
+declaration, while `output-0121` verifies the XHTML default of retaining it.
+Both preserve the XHTML default namespace and compare exactly with their
+file-backed expectations after the same explicit checkout-EOL correction. This
+lane reuses XML-compatible element/name/namespace serialization; it does not
+yet claim XHTML empty-element conventions, content-type insertion, escaping,
+DOCTYPE rules, or HTML-version behavior.
+
 ## Claim boundary
 
 This checkpoint proves denominator discovery, metadata classification, file
 resolution by the harness, bounded memory admission, and one exact canonical
-XML comparison plus one exact canonical text comparison. It does not establish
-the first unsupported frontier for the other 230 cases or claim general
+XML comparison, one exact canonical text comparison, and two exact
+XML-compatible XHTML comparisons. It does not establish the first unsupported
+frontier for the other 228 cases or claim general
 XML/HTML/XHTML/text serialization
 conformance.
 

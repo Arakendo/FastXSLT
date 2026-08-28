@@ -9,6 +9,18 @@ execution = "not-run"
 rationale = "Unless overridden below, the case requires serialization assertion or execution-adapter ownership that the private harness has not implemented; no case is silently omitted or treated as an engine pass/failure."
 
 [[case_override]]
+case_name = "output-0110"
+selection = "selected"
+execution = "passed"
+rationale = "Executes XML-compatible XHTML serialization with explicit omit-xml-declaration=yes and exact file comparison after the case-specific checkout-EOL correction."
+
+[[case_override]]
+case_name = "output-0121"
+selection = "selected"
+execution = "passed"
+rationale = "Executes XML-compatible XHTML serialization with the default retained XML declaration and exact file comparison after the case-specific checkout-EOL correction."
+
+[[case_override]]
 case_name = "output-0128"
 selection = "selected"
 execution = "passed"

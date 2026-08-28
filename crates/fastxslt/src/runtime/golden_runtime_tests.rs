@@ -472,6 +472,39 @@ fn text_output_concatenates_descendant_text_without_markup_or_escaping() {
 }
 
 #[test]
+fn xml_compatible_xhtml_output_honors_explicit_declaration_omission() {
+    let result = SemanticResult {
+        children: vec![ResultNode::Element {
+            name: crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: Some("http://www.w3.org/1999/xhtml".to_owned()),
+                local: "out".to_owned(),
+            },
+            namespaces: vec![crate::xml::quick_xml_experiment::NamespaceBinding {
+                prefix: None,
+                namespace: "http://www.w3.org/1999/xhtml".to_owned(),
+            }],
+            children: Vec::new(),
+        }],
+    };
+    let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
+        method: Some("xhtml".to_owned()),
+        media_type: None,
+        include_content_type: None,
+        omit_xml_declaration: true,
+        indent: Some(false),
+    };
+    let mut control = InvocationControl::unbounded();
+
+    let serialized = serialize_xml(&result, &settings, "xhtml", 4_096, &mut control)
+        .expect("serialize XML-compatible XHTML result");
+
+    assert_eq!(
+        serialized,
+        "<out xmlns=\"http://www.w3.org/1999/xhtml\"></out>"
+    );
+}
+
+#[test]
 fn integer_range_materialization_charges_each_atomic_item_before_retention() {
     let mut limits = WorkLimits::unbounded();
     limits.xpath_operations = 9;

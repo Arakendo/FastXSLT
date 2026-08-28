@@ -219,10 +219,11 @@ the profile closes; generalized execution remains deferred.
   case's resolved stylesheets and sources can nevertheless be copied into an
   independently bounded sealed snapshot without ambient engine I/O. This is
   environment-mapping evidence, not execution or serialization conformance.
-- The first output overrides now execute `output-0128` and `output-0129`,
-  comparing their respective XML and text serializations with file-backed
+- The first output overrides now execute `output-0110`, `output-0121`,
+  `output-0128`, and `output-0129`, comparing their bounded XML-compatible
+  XHTML, XML, and text serializations with file-backed
   upstream expectations after an explicit
-  case-specific Windows CRLF-to-canonical-LF correction. The remaining 230
+  case-specific Windows CRLF-to-canonical-LF correction. The remaining 228
   cases retain their harness-unsupported default; comparator ownership for one
   assertion shape does not silently reclassify adjacent assertions.
 
@@ -298,3 +299,6 @@ reporting becomes a release requirement.
 - 2026-08-27 -- Executed adjacent `output-0129` through the text method and the
   same explicit checkout-EOL correction, leaving the other 230 cases under the
   visible default disposition.
+- 2026-08-27 -- Executed `output-0110` and `output-0121` through a bounded
+  XML-compatible XHTML lane, covering explicit declaration omission and its
+  default retention while leaving the other 228 cases visibly unexecuted.
