@@ -219,6 +219,12 @@ XPath static error `XPST0017`. The local deep-equal parser owns that standards
 identity and retains the supplied expression resource and span; it does not
 encode the standards code into display text.
 
+The independently named `K2-SeqDeepEqualFunc-8` and `-9` cases now extend this
+to a five-case selected arity tranche. Their zero- and one-argument expressions
+produce the same structured standards identity while retaining their own native
+case and source identities. This does not admit the surrounding K2 invocation
+clock, XQuery node-constructor, or schema-aware semantics.
+
 At stylesheet compilation, the focused local error translates to the private
 `FXXP0005 / invalid` identity while retaining the stylesheet location. A valid
 three-argument call remains `FXXP1010 / unsupported` because FastXSLT has not

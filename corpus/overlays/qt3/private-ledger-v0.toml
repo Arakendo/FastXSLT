@@ -514,6 +514,20 @@ rationale = "Rejects a four-argument deep-equal call with the expected XPath sta
 
 [[case]]
 set_file = "fn/deep-equal.xml"
+case_name = "K2-SeqDeepEqualFunc-8"
+selection = "selected"
+execution = "passed"
+rationale = "Independently rejects the K2 zero-argument deep-equal call with XPath static code XPST0017."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K2-SeqDeepEqualFunc-9"
+selection = "selected"
+execution = "passed"
+rationale = "Independently rejects the K2 one-argument sequence call with XPath static code XPST0017."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
 case_name = "K-SeqDeepEqualFunc-6"
 selection = "selected"
 execution = "passed"

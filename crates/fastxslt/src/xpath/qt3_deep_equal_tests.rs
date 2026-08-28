@@ -100,10 +100,12 @@ const DOUBLE_CASES: [(&str, bool); 5] = [
     ("fn-deep-equaldbl2args-4", false),
     ("fn-deep-equaldbl2args-5", false),
 ];
-const ARITY_ERROR_CASES: [&str; 3] = [
+const ARITY_ERROR_CASES: [&str; 5] = [
     "K-SeqDeepEqualFunc-1",
     "K-SeqDeepEqualFunc-2",
     "K-SeqDeepEqualFunc-3",
+    "K2-SeqDeepEqualFunc-8",
+    "K2-SeqDeepEqualFunc-9",
 ];
 const CODEPOINT_AND_NAN_CASES: [(&str, usize); 5] = [
     ("K-SeqDeepEqualFunc-6", 2),
@@ -269,7 +271,7 @@ fn executes_complete_qt3_deep_equal_xs_double_group() {
 }
 
 #[test]
-fn classifies_first_qt3_deep_equal_arity_error_tranche() {
+fn classifies_selected_qt3_deep_equal_arity_errors() {
     let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
     let test_set = load_test_set();
     let cases = descendants_named(&test_set, test_set.document_node(), "test-case");
