@@ -9,7 +9,7 @@
 | Trigger | The first private qualified-snapshot resolver makes unresolved reference semantics and policy ownership implementation-adjacent |
 | Related ADRs | ADR-0002, ADR-0005, ADR-0006 |
 | Related reviews | AR-0002, AR-0004, AR-0009, AR-0010, AR-0012 |
-| Related evidence | `../Evidence/private-qualified-snapshot-resolution-2026-08-28.md`; `../Evidence/private-host-owned-two-stage-workflow-2026-08-25.md`; `../Evidence/peer-ar-0014-review-monday-2026-08-28.md` |
+| Related evidence | `../Evidence/private-qualified-snapshot-resolution-2026-08-28.md`; `../Evidence/private-host-owned-two-stage-workflow-2026-08-25.md`; `../Evidence/peer-ar-0014-review-monday-2026-08-28.md`; `../Evidence/rfc3986-relative-reference-mechanics-2026-08-28.md` |
 
 ## Architectural question
 
@@ -175,11 +175,12 @@ resolver trait, URI type, catalog representation, live authority, or cache.
 - [ ] Record CR-0001's complete immutable Web3D dependency graph, base-URI and
   catalog expectations, parameters, and host authority before using it to shape
   a supported resolver boundary.
-- [ ] Test relative-reference and base-identity semantics independently from
-  host acquisition, using sealed in-memory resources only.
-- [ ] Exercise fragment-bearing references by separating resource acquisition
-  identity from language-owned fragment selection; do not fetch or admit a
-  second blob merely because the lexical reference contains a fragment.
+- [x] Test initial sibling and parent relative-reference mechanics against a
+  supplied absolute IRI base using sealed in-memory resources only. Element
+  base derivation, `xml:base`, XSLT escaping, and full conformance remain open.
+- [x] Exercise a fragment-bearing same-document reference by acquiring the
+  fragment-free resource identity and returning the fragment separately for
+  future language-owned selection. Fragment interpretation remains open.
 - [ ] Establish dependency count/depth/byte/cycle accounting and prove failed
   resolution cannot partially mutate compiled or snapshot generations.
 - [ ] Exercise denied versus missing disclosure through the eventual Rust and
@@ -207,3 +208,6 @@ resolver trait, URI type, catalog representation, live authority, or cache.
   implementation-adjacent.
 - 2026-08-28 -- Peer review distinguished resolution identity from any future
   cache identity and resource acquisition identity from fragment semantics.
+- 2026-08-28 -- A private exact-pinned `iri-string` experiment resolved sibling
+  and parent IRI references inside a sealed snapshot and separated fragments
+  from acquisition identity; no module semantics or live authority were added.

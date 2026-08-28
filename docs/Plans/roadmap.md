@@ -492,6 +492,10 @@ failed, and harness-error cases without an unqualified conformance claim.
   - [ ] Execute `include-0401` as the first sealed-memory module case, preserving
     its relative base identity, one secondary simplified stylesheet, global
     variable visibility, bounded acquisition, and exact `assert-xml` result.
+    - [x] Establish the private RFC 3986/3987 mechanics prerequisite with an
+      exact-pinned, license-reviewed `iri-string` adapter: resolve sibling and
+      parent references only into the sealed snapshot, reject WHATWG-only
+      serialization fallback, and separate fragment selection from acquisition.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.

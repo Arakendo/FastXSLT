@@ -2,6 +2,11 @@
 
 use std::collections::BTreeSet;
 
+use iri_string::{
+    format::ToDedicatedString,
+    types::{IriAbsoluteStr, IriReferenceStr},
+};
+
 use super::ResourceSnapshot;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -20,12 +25,18 @@ impl ResolutionLimits {
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum ResolutionFailure {
     AttemptLimit { maximum: usize },
-    EmptyReference,
+    InvalidBase { base: String },
     InvalidReference { reference: String },
-    RelativeReferenceUnsupported { reference: String },
-    FragmentUnsupported { reference: String },
+    ResolutionFailed { base: String, reference: String },
     Denied { identity: String },
     Missing { identity: String },
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct ResolvedResource<'a> {
+    pub(crate) identity: String,
+    pub(crate) fragment: Option<String>,
+    pub(crate) bytes: &'a [u8],
 }
 
 pub(crate) struct SnapshotResolver<'a> {
@@ -49,59 +60,59 @@ impl<'a> SnapshotResolver<'a> {
         }
     }
 
-    pub(crate) fn resolve(&mut self, reference: &str) -> Result<&'a [u8], ResolutionFailure> {
+    pub(crate) fn resolve_from(
+        &mut self,
+        base: &str,
+        reference: &str,
+    ) -> Result<ResolvedResource<'a>, ResolutionFailure> {
+        self.charge_attempt()?;
+
+        let base_iri = IriAbsoluteStr::new(base).map_err(|_| ResolutionFailure::InvalidBase {
+            base: base.to_owned(),
+        })?;
+        let reference_iri =
+            IriReferenceStr::new(reference).map_err(|_| ResolutionFailure::InvalidReference {
+                reference: reference.to_owned(),
+            })?;
+        let resolved = reference_iri.resolve_against(base_iri);
+        resolved.ensure_rfc3986_normalizable().map_err(|_| {
+            ResolutionFailure::ResolutionFailed {
+                base: base.to_owned(),
+                reference: reference.to_owned(),
+            }
+        })?;
+        let resolved = resolved.to_dedicated_string();
+        let (identity, fragment) = match resolved.as_str().split_once('#') {
+            Some((identity, fragment)) => (identity, Some(fragment.to_owned())),
+            None => (resolved.as_str(), None),
+        };
+        if self.denied.contains(identity) {
+            return Err(ResolutionFailure::Denied {
+                identity: identity.to_owned(),
+            });
+        }
+        let bytes = self
+            .snapshot
+            .get(identity)
+            .ok_or_else(|| ResolutionFailure::Missing {
+                identity: identity.to_owned(),
+            })?;
+        Ok(ResolvedResource {
+            identity: identity.to_owned(),
+            fragment,
+            bytes,
+        })
+    }
+
+    fn charge_attempt(&mut self) -> Result<(), ResolutionFailure> {
         if self.attempts >= self.limits.attempts {
             return Err(ResolutionFailure::AttemptLimit {
                 maximum: self.limits.attempts,
             });
         }
         self.attempts += 1;
-
-        if reference.is_empty() {
-            return Err(ResolutionFailure::EmptyReference);
-        }
-        if reference.chars().any(char::is_whitespace) {
-            return Err(ResolutionFailure::InvalidReference {
-                reference: reference.to_owned(),
-            });
-        }
-        if reference.contains('#') {
-            return Err(ResolutionFailure::FragmentUnsupported {
-                reference: reference.to_owned(),
-            });
-        }
-        if !has_absolute_uri_scheme(reference) {
-            return Err(ResolutionFailure::RelativeReferenceUnsupported {
-                reference: reference.to_owned(),
-            });
-        }
-        if self.denied.contains(reference) {
-            return Err(ResolutionFailure::Denied {
-                identity: reference.to_owned(),
-            });
-        }
-        self.snapshot
-            .get(reference)
-            .ok_or_else(|| ResolutionFailure::Missing {
-                identity: reference.to_owned(),
-            })
+        Ok(())
     }
-}
-
-fn has_absolute_uri_scheme(reference: &str) -> bool {
-    let Some((scheme, remainder)) = reference.split_once(':') else {
-        return false;
-    };
-    if scheme.len() == 1 && remainder.starts_with(['/', '\\']) {
-        return false;
-    }
-    let mut characters = scheme.chars();
-    characters
-        .next()
-        .is_some_and(|first| first.is_ascii_alphabetic())
-        && characters.all(|character| {
-            character.is_ascii_alphanumeric() || matches!(character, '+' | '-' | '.')
-        })
 }
 
 #[cfg(test)]
@@ -110,7 +121,7 @@ mod tests {
     use crate::resources::{ResourceLimits, ResourceSetBuilder};
 
     fn snapshot() -> crate::resources::ResourceSnapshot {
-        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 64, 128));
+        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(6, 128, 512));
         resources
             .admit("urn:fastxslt:resource:document", b"<document/>".to_vec())
             .expect("admit URN resource");
@@ -120,6 +131,24 @@ mod tests {
                 b"<admitted/>".to_vec(),
             )
             .expect("admit URL-shaped logical resource");
+        resources
+            .admit(
+                "https://example.invalid/styles/include-0401a.xsl",
+                b"<included/>".to_vec(),
+            )
+            .expect("admit sibling module");
+        resources
+            .admit(
+                "https://example.invalid/shared/module.xsl",
+                b"<shared/>".to_vec(),
+            )
+            .expect("admit parent-relative module");
+        resources
+            .admit(
+                "https://example.invalid/styles/embedded.xml",
+                b"<resource/>".to_vec(),
+            )
+            .expect("admit fragment-bearing reference resource");
         resources.seal()
     }
 
@@ -129,12 +158,16 @@ mod tests {
         let mut resolver = SnapshotResolver::new(&snapshot, Vec::new(), ResolutionLimits::new(2));
 
         assert_eq!(
-            resolver.resolve("urn:fastxslt:resource:document"),
-            Ok(&b"<document/>"[..])
+            resolver
+                .resolve_from("urn:fastxslt:resource:document", "")
+                .map(|resource| resource.bytes),
+            Ok(&b"<document/>"[..]),
         );
         assert_eq!(
-            resolver.resolve("https://example.invalid/admitted.xml"),
-            Ok(&b"<admitted/>"[..])
+            resolver
+                .resolve_from("https://example.invalid/admitted.xml", "")
+                .map(|resource| resource.bytes),
+            Ok(&b"<admitted/>"[..]),
         );
     }
 
@@ -152,50 +185,18 @@ mod tests {
             "urn:fastxslt:resource:not-admitted",
         ] {
             assert_eq!(
-                resolver.resolve(identity),
+                resolver.resolve_from(identity, ""),
                 Err(ResolutionFailure::Denied {
                     identity: identity.to_owned()
                 })
             );
         }
         assert_eq!(
-            resolver.resolve("urn:fastxslt:resource:missing"),
+            resolver.resolve_from("urn:fastxslt:resource:missing", ""),
             Err(ResolutionFailure::Missing {
                 identity: "urn:fastxslt:resource:missing".to_owned()
             })
         );
-    }
-
-    #[test]
-    fn rejects_relative_paths_fragments_and_invalid_references_without_fallback() {
-        let snapshot = snapshot();
-        let mut resolver = SnapshotResolver::new(&snapshot, Vec::new(), ResolutionLimits::new(5));
-
-        assert_eq!(
-            resolver.resolve("relative/document.xml"),
-            Err(ResolutionFailure::RelativeReferenceUnsupported {
-                reference: "relative/document.xml".to_owned()
-            })
-        );
-        assert_eq!(
-            resolver.resolve(r"C:\host\document.xml"),
-            Err(ResolutionFailure::RelativeReferenceUnsupported {
-                reference: r"C:\host\document.xml".to_owned()
-            })
-        );
-        assert_eq!(
-            resolver.resolve("urn:fastxslt:resource:document#fragment"),
-            Err(ResolutionFailure::FragmentUnsupported {
-                reference: "urn:fastxslt:resource:document#fragment".to_owned()
-            })
-        );
-        assert_eq!(
-            resolver.resolve("urn:fastxslt:bad reference"),
-            Err(ResolutionFailure::InvalidReference {
-                reference: "urn:fastxslt:bad reference".to_owned()
-            })
-        );
-        assert_eq!(resolver.resolve(""), Err(ResolutionFailure::EmptyReference));
     }
 
     #[test]
@@ -204,12 +205,101 @@ mod tests {
         let mut resolver = SnapshotResolver::new(&snapshot, Vec::new(), ResolutionLimits::new(1));
 
         assert!(matches!(
-            resolver.resolve("urn:fastxslt:resource:missing"),
+            resolver.resolve_from("urn:fastxslt:resource:missing", ""),
             Err(ResolutionFailure::Missing { .. })
         ));
         assert_eq!(
-            resolver.resolve("urn:fastxslt:resource:document"),
+            resolver.resolve_from("urn:fastxslt:resource:document", ""),
             Err(ResolutionFailure::AttemptLimit { maximum: 1 })
+        );
+    }
+
+    #[test]
+    fn resolves_sibling_and_parent_relative_iris_against_the_supplied_base() {
+        let snapshot = snapshot();
+        let mut resolver = SnapshotResolver::new(&snapshot, Vec::new(), ResolutionLimits::new(2));
+
+        let sibling = resolver
+            .resolve_from(
+                "https://example.invalid/styles/include-0401.xsl",
+                "include-0401a.xsl",
+            )
+            .expect("resolve sibling module");
+        assert_eq!(
+            sibling.identity,
+            "https://example.invalid/styles/include-0401a.xsl"
+        );
+        assert_eq!(sibling.fragment, None);
+        assert_eq!(sibling.bytes, b"<included/>");
+
+        let parent = resolver
+            .resolve_from(
+                "https://example.invalid/styles/include-0401.xsl",
+                "../shared/module.xsl",
+            )
+            .expect("resolve parent-relative module");
+        assert_eq!(parent.identity, "https://example.invalid/shared/module.xsl");
+        assert_eq!(parent.bytes, b"<shared/>");
+    }
+
+    #[test]
+    fn separates_fragment_semantics_from_the_acquired_resource_identity() {
+        let snapshot = snapshot();
+        let mut resolver = SnapshotResolver::new(&snapshot, Vec::new(), ResolutionLimits::new(1));
+
+        let resource = resolver
+            .resolve_from("https://example.invalid/styles/embedded.xml", "#embedded")
+            .expect("resolve same-document fragment reference");
+
+        assert_eq!(
+            resource.identity,
+            "https://example.invalid/styles/embedded.xml"
+        );
+        assert_eq!(resource.fragment.as_deref(), Some("embedded"));
+        assert_eq!(resource.bytes, b"<resource/>");
+    }
+
+    #[test]
+    fn rejects_invalid_bases_references_and_unserializable_rfc3986_results() {
+        let snapshot = snapshot();
+        let mut resolver = SnapshotResolver::new(&snapshot, Vec::new(), ResolutionLimits::new(5));
+
+        assert_eq!(
+            resolver.resolve_from("relative/base.xsl", "module.xsl"),
+            Err(ResolutionFailure::InvalidBase {
+                base: "relative/base.xsl".to_owned()
+            })
+        );
+        assert_eq!(
+            resolver.resolve_from(r"C:\host\base.xsl", "module.xsl"),
+            Err(ResolutionFailure::InvalidBase {
+                base: r"C:\host\base.xsl".to_owned()
+            })
+        );
+        assert_eq!(
+            resolver.resolve_from(
+                "https://example.invalid/styles/base.xsl#fragment",
+                "module.xsl"
+            ),
+            Err(ResolutionFailure::InvalidBase {
+                base: "https://example.invalid/styles/base.xsl#fragment".to_owned()
+            })
+        );
+        assert_eq!(
+            resolver.resolve_from(
+                "https://example.invalid/styles/base.xsl",
+                "bad reference.xsl"
+            ),
+            Err(ResolutionFailure::InvalidReference {
+                reference: "bad reference.xsl".to_owned()
+            })
+        );
+        assert_eq!(
+            resolver.resolve_from("scheme:", ".///not-an-authority"),
+            Err(ResolutionFailure::ResolutionFailed {
+                base: "scheme:".to_owned(),
+                reference: ".///not-an-authority".to_owned()
+            })
         );
     }
 }

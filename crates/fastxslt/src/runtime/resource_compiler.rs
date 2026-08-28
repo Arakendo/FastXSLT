@@ -21,17 +21,19 @@ fn compile_resource_with_resolver(
     resolver: &mut SnapshotResolver<'_>,
     stylesheet_id: &str,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
-    let bytes = resolver
-        .resolve(stylesheet_id)
+    let resource = resolver
+        .resolve_from(stylesheet_id, "")
         .map_err(resolution_failure)?;
-    let parsed = parse_document(stylesheet_id, bytes, XML_LIMITS).map_err(|error| {
-        failure(
-            "FXXM0001",
-            FailureCategory::Invalid,
-            None,
-            format!("stylesheet XML is invalid: {error:?}"),
-        )
-    })?;
+    debug_assert!(resource.fragment.is_none());
+    let parsed =
+        parse_document(&resource.identity, resource.bytes, XML_LIMITS).map_err(|error| {
+            failure(
+                "FXXM0001",
+                FailureCategory::Invalid,
+                None,
+                format!("stylesheet XML is invalid: {error:?}"),
+            )
+        })?;
     let document = Document::from_parsed(parsed).map_err(|error| {
         failure(
             "FXXD0001",
@@ -84,25 +86,24 @@ fn resolution_failure(error: ResolutionFailure) -> ExecutionFailure {
             None,
             format!("stylesheet resolution attempt limit is {maximum}"),
         ),
-        ResolutionFailure::EmptyReference => failure(
-            "FXRS0004",
-            FailureCategory::Invalid,
-            None,
-            "stylesheet identity is empty",
-        ),
         ResolutionFailure::InvalidReference { reference } => failure(
             "FXRS0004",
             FailureCategory::Invalid,
             None,
             format!("stylesheet identity is not a valid absolute resource URI: {reference}"),
         ),
-        ResolutionFailure::RelativeReferenceUnsupported { reference }
-        | ResolutionFailure::FragmentUnsupported { reference } => failure(
+        ResolutionFailure::InvalidBase { base } => failure(
             "FXRS1001",
             FailureCategory::Unsupported,
             None,
+            format!("stylesheet base identity is not a supported absolute IRI: {base}"),
+        ),
+        ResolutionFailure::ResolutionFailed { base, reference } => failure(
+            "FXRS0004",
+            FailureCategory::Invalid,
+            None,
             format!(
-                "relative or fragment stylesheet resolution is outside the private snapshot slice: {reference}"
+                "stylesheet reference cannot be resolved using RFC 3986: {reference} against {base}"
             ),
         ),
     }
