@@ -93,3 +93,4 @@ pressure architecture but does not silently create a public guarantee.
 - [Private Compiled Semantic Inspection](private-compiled-semantic-inspection-2026-08-25.md)
 - [Private Qualified Snapshot Resolution](private-qualified-snapshot-resolution-2026-08-28.md)
 - [XSLT30 Include Denominator Inventory](xslt30-include-denominator-inventory-2026-08-28.md)
+- [Peer AR-0014 Review: Monday](peer-ar-0014-review-monday-2026-08-28.md)

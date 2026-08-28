@@ -9,7 +9,7 @@
 | Trigger | The first private qualified-snapshot resolver makes unresolved reference semantics and policy ownership implementation-adjacent |
 | Related ADRs | ADR-0002, ADR-0005, ADR-0006 |
 | Related reviews | AR-0002, AR-0004, AR-0009, AR-0010, AR-0012 |
-| Related evidence | `../Evidence/private-qualified-snapshot-resolution-2026-08-28.md`; `../Evidence/private-host-owned-two-stage-workflow-2026-08-25.md` |
+| Related evidence | `../Evidence/private-qualified-snapshot-resolution-2026-08-28.md`; `../Evidence/private-host-owned-two-stage-workflow-2026-08-25.md`; `../Evidence/peer-ar-0014-review-monday-2026-08-28.md` |
 
 ## Architectural question
 
@@ -73,16 +73,28 @@ often conflate:
 - lexical reference supplied by a stylesheet or expression;
 - base logical identity and the standards rule that selects it;
 - resolved logical identity used for engine identity and diagnostics;
+- resource identity used to acquire bytes, distinguished from any fragment or
+  other reference semantics applied to those bytes;
 - catalog or host mapping from one logical identity to another;
 - host acquisition locator, which may contain a path, URL, database key, or
   application-specific token; and
 - immutable admitted bytes and provenance retained by a snapshot.
 
 A content hash may aid integrity or storage lookup, but cannot replace document
-identity, base identity, authority, or generation ownership. URI normalization,
-case handling, percent encoding, fragments, Unicode/IRI treatment, and catalog
-rewrites must not be inherited accidentally from whichever helper crate is
-first convenient.
+identity, base identity, authority, or generation ownership. Likewise, a
+resolved logical identity is not automatically a sufficient cache identity.
+Any future reusable entry may also depend on snapshot generation, selected
+standards/profile configuration, policy or capability context, and prepared
+representation identity. Equal URI strings do not admit cross-generation or
+cross-authority sharing.
+
+Fragments remain reference semantics rather than automatic acquisition-key
+suffixes. A reference such as `foo.xml#bar` must not cause an acquisition layer
+to assume that it names bytes distinct from `foo.xml`; the applicable language
+facility determines what the fragment means after resource acquisition. URI
+normalization, case handling, percent encoding, fragments, Unicode/IRI
+treatment, and catalog rewrites must not be inherited accidentally from
+whichever helper crate is first convenient.
 
 ## Alternatives
 
@@ -144,6 +156,9 @@ or default precedence.
   representative consumers must supply that pressure.
 - No evidence currently selects a URI library, catalog format, callback ABI,
   resolver cache, live-result admission rule, or cross-generation sharing.
+- Resolution identity alone cannot safely select a reusable cache entry, and a
+  fragment-bearing reference cannot automatically select a distinct acquired
+  blob. Exact cache-key and fragment semantics remain unselected.
 
 ## Disposition
 
@@ -162,6 +177,9 @@ resolver trait, URI type, catalog representation, live authority, or cache.
   a supported resolver boundary.
 - [ ] Test relative-reference and base-identity semantics independently from
   host acquisition, using sealed in-memory resources only.
+- [ ] Exercise fragment-bearing references by separating resource acquisition
+  identity from language-owned fragment selection; do not fetch or admit a
+  second blob merely because the lexical reference contains a fragment.
 - [ ] Establish dependency count/depth/byte/cycle accounting and prove failed
   resolution cannot partially mutate compiled or snapshot generations.
 - [ ] Exercise denied versus missing disclosure through the eventual Rust and
@@ -187,3 +205,5 @@ resolver trait, URI type, catalog representation, live authority, or cache.
 - 2026-08-28 -- Opened as Incubating after the private exact qualified-snapshot
   resolver made the remaining authority and reference-semantics choices
   implementation-adjacent.
+- 2026-08-28 -- Peer review distinguished resolution identity from any future
+  cache identity and resource acquisition identity from fragment semantics.
