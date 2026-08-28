@@ -106,6 +106,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
         declared_version,
         output: output.unwrap_or(OutputSettings {
             method: None,
+            media_type: None,
             omit_xml_declaration: false,
             indent: None,
         }),
@@ -286,7 +287,7 @@ fn compile_output(document: &Document, element: NodeId) -> Result<OutputSettings
     ensure_only_attributes(
         document,
         element,
-        &["method", "omit-xml-declaration", "indent"],
+        &["method", "media-type", "omit-xml-declaration", "indent"],
         "xsl:output",
     )?;
     ensure_no_meaningful_children(document, element, "xsl:output")?;
@@ -307,6 +308,7 @@ fn compile_output(document: &Document, element: NodeId) -> Result<OutputSettings
         .transpose()?;
     Ok(OutputSettings {
         method: method.map(str::to_owned),
+        media_type: optional_attribute(document, element, None, "media-type").map(str::to_owned),
         omit_xml_declaration,
         indent,
     })
@@ -903,7 +905,24 @@ mod tests {
         let program = compile_stylesheet(&stylesheet).expect("stylesheet should compile");
 
         assert_eq!(program.output.method, None);
+        assert_eq!(program.output.media_type, None);
         assert!(!program.output.omit_xml_declaration);
+    }
+
+    #[test]
+    fn preserves_output_media_type_as_owned_serialization_metadata() {
+        let stylesheet = parse_stylesheet(
+            "memory:media-type.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" media-type="application/x-fastxslt-test+xml"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+        );
+
+        let program = compile_stylesheet(&stylesheet).expect("media type should compile");
+
+        assert_eq!(program.output.method.as_deref(), Some("xml"));
+        assert_eq!(
+            program.output.media_type.as_deref(),
+            Some("application/x-fastxslt-test+xml")
+        );
     }
 
     #[test]

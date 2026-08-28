@@ -344,6 +344,7 @@ fn absent_output_declaration_does_not_silently_apply_html_serialization() {
     };
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: None,
+        media_type: None,
         omit_xml_declaration: false,
         indent: None,
     };
@@ -371,6 +372,7 @@ fn requested_indentation_is_preserved_as_an_explicit_serialization_boundary() {
     };
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: Some("xml".to_owned()),
+        media_type: None,
         omit_xml_declaration: false,
         indent: Some(true),
     };

@@ -169,6 +169,12 @@ Required capabilities should then enter ordinary standards-driven vertical
 slices. Periodic compilation may move the unsupported frontier, but only
 sentinel and complete-result evidence may establish consumer fidelity.
 
+FastXSLT now retains literal `xsl:output/@media-type` in private compiled state
+as one ordinary standards-driven slice. This does not establish the Web3D
+stylesheet's first unsupported frontier or change this request's deferred
+disposition because revision `35289` has not been independently acquired and
+executed here.
+
 ## Completion condition
 
 Mark this request Implemented only when Tokimu can use a supported Rust-native,
@@ -189,3 +195,5 @@ semantic sentinels and complete expected output pass repeatably.
   loses authored fields while immutable revision `35289` preserves its selected
   values under Saxon-HE 10.9; five consumer-owned fidelity sentinel categories
   now define the future correctness target without reopening the request.
+- 2026-08-27 -- Recorded private `xsl:output/@media-type` retention as ordinary
+  standards progress without claiming Web3D execution or semantic fidelity.

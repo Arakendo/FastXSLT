@@ -401,6 +401,10 @@ failed, and harness-error cases without an unqualified conformance claim.
   in the private reference path; its public representation remains unstabilized.
 - [ ] Add template selection, built-in rules, parameters, variables, and output
   behavior required by the accepted profile.
+- [x] Retain literal `xsl:output/@media-type` as immutable stylesheet-derived
+  serialization metadata, include it in bounded semantic inspection, and prove
+  the existing golden XML bytes remain unchanged. Keep stable host-visible
+  result metadata and broader serialization conformance open.
 - [x] Execute XSLT30 `template-001` through built-in document dispatch,
   comment-node selection, and an isolated named mode while retaining the other
   four unsupported cases in the six-case denominator.
