@@ -286,6 +286,13 @@ grammar beyond forms already admitted by the preceding checkpoint. QName cases
 left for separate semantic checkpoints; the QName and binary checkpoints are
 recorded below.
 
+`K-SeqDeepEqualFunc-47` through `-51` complete the adjacent direct
+unequal-length permutations. They cover a first-position empty item, two versus
+three items in both argument orders, and empty versus three items in both
+orders. Every case charges exactly one XPath operation for the length decision
+and performs no unreachable item comparison. Range and `reverse` expressions
+in cases 52 through 55 remain a separate compilation question.
+
 ## QT3 QName tranche
 
 `K-SeqDeepEqualFunc-17` and `K-SeqDeepEqualFunc-21` now pass through a private

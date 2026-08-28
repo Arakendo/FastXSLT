@@ -801,6 +801,41 @@ rationale = "Rejects the reversed unequal length after flattening a second-posit
 
 [[case]]
 set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-47"
+selection = "selected"
+execution = "passed"
+rationale = "Rejects unequal lengths after flattening a first-position empty item from the shorter sequence."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-48"
+selection = "selected"
+execution = "passed"
+rationale = "Rejects a two-item sequence compared with a three-item sequence before item comparison."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-49"
+selection = "selected"
+execution = "passed"
+rationale = "Rejects a three-item sequence compared with a two-item sequence before item comparison."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-50"
+selection = "selected"
+execution = "passed"
+rationale = "Rejects an empty sequence compared with three items using only the length decision."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-51"
+selection = "selected"
+execution = "passed"
+rationale = "Rejects three items compared with an empty sequence using only the length decision."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equal-mix-args-001"
 selection = "selected"
 execution = "passed"
