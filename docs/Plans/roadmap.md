@@ -92,6 +92,9 @@ The next 18-case K-family tranche executes cases 25 through 31 and 36 through
 46 through those same owners. It verifies ordered equality, first/second/third
 early mismatch, string placement, empty-item flattening, and unequal-length
 short-circuit work without admitting QName, binary, or `index-of` semantics.
+The two remaining QName-shaped K-family cases, 17 and 21, now retain and compare
+expanded-name identity through the atomic owner, including prefix-insensitive
+equality controls. Binary constructors and `index-of` remain unselected.
 `for-004` closes its family through
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
@@ -294,6 +297,10 @@ implemented behavior belongs to a named standards slice.
   first/second/third early mismatch, empty-item flattening, and length-only
   short-circuit charges while leaving QName, binary, and `index-of` cases
   unselected.
+- [x] Execute QT3 `K-SeqDeepEqualFunc-17` and `-21` through an expanded-name
+  QName atomic value with lexical validation and prefix-insensitive equality.
+  Admit the required `3e2` double literal, preserve exact early-exit work, and
+  leave binary constructors and `index-of` unselected.
 - [x] Admit all four XSLT30 `expr/for` cases with their native environments,
   stylesheets, entry metadata, XML assertions, and explicit unsupported
   dispositions before implementing sequence semantics.

@@ -285,6 +285,22 @@ grammar beyond forms already admitted by the preceding checkpoint. QName cases
 17 and 21, binary cases 22 through 24, and `index-of` cases 32 through 35 remain
 unselected pending their own semantic work.
 
+## QT3 QName tranche
+
+`K-SeqDeepEqualFunc-17` and `K-SeqDeepEqualFunc-21` now pass through a private
+QName atomic representation. The constructor retains namespace URI and local
+name as expanded-name identity, validates the admitted ASCII lexical QName,
+and ignores lexical prefix when comparing two QNames. A prefixed QName with an
+empty namespace URI is rejected rather than approximated.
+
+Case 17 also admits the XPath scientific-notation double literal `3e2`; it
+compares unequal to the QName after the sequence-length decision and first item
+charge. Case 21 reaches its QName/integer mismatch only after two equal ordered
+items. Focused controls independently verify equal expanded names with distinct
+prefixes and unequal namespace URIs. This does not claim namespace-context
+resolution, Unicode NCNames, general QName constructors, or QName handling
+outside the private atomic deep-equal slice.
+
 ## QT3 mixed atomic-sequence tranche
 
 FastXSLT now executes the complete 31-case

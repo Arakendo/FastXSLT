@@ -612,6 +612,20 @@ rationale = "Negates a three-item sequence comparison that reaches a boolean/int
 
 [[case]]
 set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-17"
+selection = "selected"
+execution = "passed"
+rationale = "Negates a QName/double mismatch while retaining QName expanded-name type identity."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-21"
+selection = "selected"
+execution = "passed"
+rationale = "Negates a third-position integer/QName mismatch after two equal ordered items."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
 case_name = "K-SeqDeepEqualFunc-25"
 selection = "selected"
 execution = "passed"

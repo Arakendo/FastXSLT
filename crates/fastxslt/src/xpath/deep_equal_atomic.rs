@@ -23,8 +23,15 @@ enum AtomicValue {
     Boolean(bool),
     String(String),
     AnyUri(String),
+    QName {
+        namespace_uri: String,
+        local_name: String,
+    },
     Date(DateValue),
-    DateTime { date: DateValue, time: TimeValue },
+    DateTime {
+        date: DateValue,
+        time: TimeValue,
+    },
     Time(TimeValue),
 }
 
@@ -113,6 +120,12 @@ fn strip_outer_parentheses(expression: &str) -> Option<&str> {
 }
 
 fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
+    if let Some((namespace_uri, local_name)) = parse_qname_constructor(expression) {
+        return Some(AtomicValue::QName {
+            namespace_uri,
+            local_name,
+        });
+    }
     if let Some(value) = expression
         .strip_prefix("xs:anyURI(\"")
         .and_then(|value| value.strip_suffix("\")"))
@@ -173,7 +186,49 @@ fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
         "false()" => return Some(AtomicValue::Boolean(false)),
         _ => {}
     }
+    if expression.contains(['e', 'E']) {
+        return expression
+            .parse::<f64>()
+            .ok()
+            .map(f64::to_bits)
+            .map(AtomicValue::Double);
+    }
     expression.parse::<i128>().ok().map(AtomicValue::Integer)
+}
+
+fn parse_qname_constructor(expression: &str) -> Option<(String, String)> {
+    let inner = expression.strip_prefix("QName(")?.strip_suffix(')')?;
+    let (namespace_uri, lexical_qname) = split_top_level_once(inner)?;
+    let namespace_uri = parse_quoted_string(namespace_uri.trim())?;
+    let lexical_qname = parse_quoted_string(lexical_qname.trim())?;
+    let (prefix, local_name) = lexical_qname
+        .split_once(':')
+        .map_or((None, lexical_qname), |(prefix, local_name)| {
+            (Some(prefix), local_name)
+        });
+    if !is_ascii_ncname(local_name)
+        || prefix.is_some_and(|value| !is_ascii_ncname(value))
+        || (namespace_uri.is_empty() && prefix.is_some())
+        || local_name.contains(':')
+    {
+        return None;
+    }
+    Some((namespace_uri.to_owned(), local_name.to_owned()))
+}
+
+fn parse_quoted_string(value: &str) -> Option<&str> {
+    let value = value.strip_prefix('"')?.strip_suffix('"')?;
+    (!value.contains('"')).then_some(value)
+}
+
+fn is_ascii_ncname(value: &str) -> bool {
+    let mut characters = value.chars();
+    characters
+        .next()
+        .is_some_and(|first| first.is_ascii_alphabetic() || first == '_')
+        && characters.all(|character| {
+            character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.')
+        })
 }
 
 fn constructor_lexical<'a>(expression: &'a str, name: &str) -> Option<&'a str> {
@@ -512,5 +567,29 @@ mod tests {
         assert!(parse_sequence("xs:date(\"1993-02-29\")").is_none());
         assert!(parse_sequence("xs:time(\"24:01:00\")").is_none());
         assert!(parse_sequence("xs:dateTime(\"1972-13-01T00:00:00\")").is_none());
+    }
+
+    #[test]
+    fn retains_qname_expanded_names_without_prefix_identity() {
+        assert_eq!(
+            sequences_equal(
+                "QName(\"urn:example\", \"first:name\")",
+                "QName(\"urn:example\", \"second:name\")"
+            ),
+            Some(true)
+        );
+        assert_eq!(
+            sequences_equal(
+                "QName(\"urn:example\", \"name\")",
+                "QName(\"urn:other\", \"name\")"
+            ),
+            Some(false)
+        );
+        assert_eq!(
+            sequences_equal("QName(\"urn:example\", \"name\")", "3e2"),
+            Some(false)
+        );
+        assert!(parse_sequence("QName(\"\", \"prefix:name\")").is_none());
+        assert!(parse_sequence("QName(\"urn:example\", \"1name\")").is_none());
     }
 }
