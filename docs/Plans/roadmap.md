@@ -414,8 +414,11 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [x] Execute XSLT30 `output-0128` through the standard `xsl:transform` synonym,
   retained `include-content-type` metadata, namespace-qualified XML element
   serialization, and a case-specific canonical-LF `assert-serialization`
-  comparator. Preserve 231 visible harness gaps and make no broad serialization
-  claim.
+  comparator.
+- [x] Execute adjacent XSLT30 `output-0129` through text-method descendant-text
+  concatenation without markup, escaping, an XML declaration, or injected
+  content-type metadata. Preserve 230 visible harness gaps and make no broad
+  serialization claim from the two exact comparisons.
 - [x] Execute XSLT30 `template-001` through built-in document dispatch,
   comment-node selection, and an isolated named mode while retaining the other
   four unsupported cases in the six-case denominator.

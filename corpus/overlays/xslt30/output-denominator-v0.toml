@@ -14,6 +14,12 @@ selection = "selected"
 execution = "passed"
 rationale = "Executes the XML-method rule that include-content-type does not inject an HTML meta element. The comparator restores canonical LF from Windows CRLF checkout materialization before exact text comparison; no other whitespace is changed."
 
+[[case_override]]
+case_name = "output-0129"
+selection = "selected"
+execution = "passed"
+rationale = "Executes text-method descendant-text concatenation and proves include-content-type does not inject markup. The comparator restores canonical LF from Windows CRLF checkout materialization before exact text comparison; no other whitespace is changed."
+
 [[assertion_family]]
 name = "all-of"
 count = 89

@@ -435,6 +435,43 @@ fn namespaced_element_names_use_retained_bindings_and_undeclare_defaults() {
 }
 
 #[test]
+fn text_output_concatenates_descendant_text_without_markup_or_escaping() {
+    let result = SemanticResult {
+        children: vec![ResultNode::Element {
+            name: crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: None,
+                local: "root".to_owned(),
+            },
+            namespaces: Vec::new(),
+            children: vec![
+                ResultNode::Text("A < B & C".to_owned()),
+                ResultNode::Element {
+                    name: crate::xml::quick_xml_experiment::ExpandedName {
+                        namespace: None,
+                        local: "nested".to_owned(),
+                    },
+                    namespaces: Vec::new(),
+                    children: vec![ResultNode::Text(" + nested".to_owned())],
+                },
+            ],
+        }],
+    };
+    let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
+        method: Some("text".to_owned()),
+        media_type: None,
+        include_content_type: Some(true),
+        omit_xml_declaration: false,
+        indent: None,
+    };
+    let mut control = InvocationControl::unbounded();
+
+    let serialized = serialize_xml(&result, &settings, "text", 4_096, &mut control)
+        .expect("serialize text result");
+
+    assert_eq!(serialized, "A < B & C + nested");
+}
+
+#[test]
 fn integer_range_materialization_charges_each_atomic_item_before_retention() {
     let mut limits = WorkLimits::unbounded();
     limits.xpath_operations = 9;

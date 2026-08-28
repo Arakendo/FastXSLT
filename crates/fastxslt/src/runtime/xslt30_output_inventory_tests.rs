@@ -35,8 +35,32 @@ struct InventoryObservation {
 
 #[test]
 fn executes_output_0128_without_injecting_html_content_type_metadata() {
-    const CASE_NAME: &str = "output-0128";
-    assert!(OVERLAY.contains(&format!("case_name = \"{CASE_NAME}\"")));
+    let execution = execute_assert_serialization_case("output-0128", "xml");
+    assert_eq!(execution.method.as_deref(), Some("xml"));
+    assert_eq!(execution.include_content_type, Some(true));
+    assert_eq!(execution.actual, execution.expected);
+}
+
+#[test]
+fn executes_output_0129_as_descendant_text_without_injected_markup() {
+    let execution = execute_assert_serialization_case("output-0129", "html");
+    assert_eq!(execution.method.as_deref(), Some("text"));
+    assert_eq!(execution.include_content_type, Some(true));
+    assert_eq!(execution.actual, execution.expected);
+}
+
+struct SerializationExecution {
+    method: Option<String>,
+    include_content_type: Option<bool>,
+    actual: String,
+    expected: String,
+}
+
+fn execute_assert_serialization_case(
+    case_name: &str,
+    assertion_method: &str,
+) -> SerializationExecution {
+    assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     assert!(OVERLAY.contains("execution = \"passed\""));
 
     let (test_set, set_path) = load_test_set();
@@ -46,41 +70,44 @@ fn executes_output_0128_without_injecting_html_content_type_metadata() {
         .into_iter()
         .find(|node| {
             local_name(&test_set, *node) == "test-case"
-                && attribute(&test_set, *node, "name") == Some(CASE_NAME)
+                && attribute(&test_set, *node, "name") == Some(case_name)
         })
-        .expect("pinned output-0128 case");
-    let test = child_named(&test_set, case, "test").expect("output-0128 test");
+        .expect("pinned output case");
+    let test = child_named(&test_set, case, "test").expect("output test");
     let stylesheet_file = child_named(&test_set, test, "stylesheet")
         .and_then(|node| attribute(&test_set, node, "file"))
-        .expect("output-0128 stylesheet file");
-    let environment = resolve_environment(&test_set, root, case).expect("output-0128 environment");
-    let source = child_named(&test_set, environment, "source").expect("output-0128 source");
+        .expect("output stylesheet file");
+    let environment = resolve_environment(&test_set, root, case).expect("output environment");
+    let source = child_named(&test_set, environment, "source").expect("output source");
     let source_content = child_named(&test_set, source, "content").expect("inline source content");
-    let result = child_named(&test_set, case, "result").expect("output-0128 result");
-    let assertion = first_element_child(&test_set, result).expect("output-0128 assertion");
+    let result = child_named(&test_set, case, "result").expect("output result");
+    let assertion = first_element_child(&test_set, result).expect("output assertion");
     assert_eq!(local_name(&test_set, assertion), "assert-serialization");
-    assert_eq!(attribute(&test_set, assertion, "method"), Some("xml"));
+    assert_eq!(
+        attribute(&test_set, assertion, "method"),
+        Some(assertion_method)
+    );
     let expected_file = attribute(&test_set, assertion, "file").expect("expected file");
 
-    let source_id = format!("urn:w3c:xslt30:{CASE_NAME}:source");
-    let stylesheet_id = format!("urn:w3c:xslt30:{CASE_NAME}:stylesheet");
+    let source_id = format!("urn:w3c:xslt30:{case_name}:source");
+    let stylesheet_id = format!("urn:w3c:xslt30:{case_name}:stylesheet");
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 65_536, 131_072));
     resources
         .admit(
             source_id.clone(),
             test_set.string_value(source_content).into_bytes(),
         )
-        .expect("admit output-0128 source");
+        .expect("admit output source");
     resources
         .admit(
             stylesheet_id.clone(),
             fs::read(directory.join(stylesheet_file)).expect("read stylesheet and close handle"),
         )
-        .expect("admit output-0128 stylesheet");
+        .expect("admit output stylesheet");
     let snapshot = resources.seal();
-    let program = compile_resource(&snapshot, &stylesheet_id).expect("compile output-0128");
-    assert_eq!(program.output.method.as_deref(), Some("xml"));
-    assert_eq!(program.output.include_content_type, Some(true));
+    let program = compile_resource(&snapshot, &stylesheet_id).expect("compile output case");
+    let method = program.output.method.clone();
+    let include_content_type = program.output.include_content_type;
 
     let mut set = TransformSetBuilder::new(
         snapshot,
@@ -93,8 +120,8 @@ fn executes_output_0128_without_injecting_html_content_type_metadata() {
         },
     );
     set.add(TransformRequest {
-        identity: CASE_NAME.to_owned(),
-        result_identity: format!("result:{CASE_NAME}"),
+        identity: case_name.to_owned(),
+        result_identity: format!("result:{case_name}"),
         entry: InvocationEntry::PrincipalSource {
             resource: source_id,
         },
@@ -102,13 +129,17 @@ fn executes_output_0128_without_injecting_html_content_type_metadata() {
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     })
-    .expect("admit output-0128 request");
-    let results = execute_transform_set(set.seal()).expect("execute output-0128");
-    let actual = &results.by_request[CASE_NAME].serialized;
+    .expect("admit output request");
+    let results = execute_transform_set(set.seal()).expect("execute output case");
+    let actual = results.by_request[case_name].serialized.clone();
     let expected = fs::read_to_string(directory.join(expected_file))
         .expect("read expected serialization and close handle");
-    let canonical_expected = expected.replace("\r\n", "\n");
-    assert_eq!(actual, &canonical_expected);
+    SerializationExecution {
+        method,
+        include_content_type,
+        actual,
+        expected: expected.replace("\r\n", "\n"),
+    }
 }
 
 #[test]

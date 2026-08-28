@@ -6,15 +6,15 @@
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/decl/output/_output-test-set.xml` |
 | Discovered cases | 232 |
-| Current disposition | 1 passed; 231 harness-unsupported |
+| Current disposition | 2 passed; 230 harness-unsupported |
 
 ## Conserved inventory
 
 The private XSLT30 adapter now parses the complete pinned `decl/output` test
 set and requires all 232 distinct native case identities. A first-party
 set-level overlay applies an explicit default disposition to the immutable
-complete denominator: `harness-unsupported / not-run`. One named override now
-selects `output-0128` as passed. The other 231 cases remain harness-unsupported,
+complete denominator: `harness-unsupported / not-run`. Two named overrides now
+select `output-0128` and `output-0129` as passed. The other 230 cases remain harness-unsupported,
 not engine-unsupported, because their serialization assertions or execution
 adapter paths have not yet been exercised far enough to distinguish engine
 behavior from harness behavior.
@@ -54,7 +54,7 @@ Expected-result files remain harness-owned comparison inputs and are verified
 for existence without being admitted as engine resources. The engine receives
 no ambient filesystem, network, entity, or result-publication authority.
 
-## First executable serialization case
+## First executable serialization cases
 
 Pinned case `output-0128` now executes through its native inline source,
 stylesheet, XML-method output declaration, and file-backed
@@ -75,12 +75,21 @@ before exact text comparison. It does not trim or otherwise normalize
 whitespace. A focused serializer test separately proves prefixed element-name
 emission and default-namespace undeclaration for an unnamespaced child.
 
+Adjacent case `output-0129` exercises the same retained
+`include-content-type="yes"` metadata under the text output method. Text
+serialization walks the semantic result in document order, emits only text-node
+values without XML escaping, emits no element or namespace markup, and never
+injects content-type metadata. Its file-backed expectation uses the same sole
+checkout-EOL correction before exact comparison. A focused nested-result test
+independently proves raw descendant-text concatenation.
+
 ## Claim boundary
 
 This checkpoint proves denominator discovery, metadata classification, file
 resolution by the harness, bounded memory admission, and one exact canonical
-serialization comparison. It does not establish the first unsupported frontier
-for the other 231 cases or claim general XML/HTML/XHTML/text serialization
+XML comparison plus one exact canonical text comparison. It does not establish
+the first unsupported frontier for the other 230 cases or claim general
+XML/HTML/XHTML/text serialization
 conformance.
 
 The next useful slice is widening the explicit comparator/execution adapter to

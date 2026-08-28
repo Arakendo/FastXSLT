@@ -23,17 +23,31 @@ pub(in crate::runtime) fn serialize_xml(
             Some(ResultNode::Element { name, .. })
                 if name.namespace.is_none() && name.local.eq_ignore_ascii_case("html")
         );
-    if inferred_html
-        || settings
-            .method
-            .as_deref()
-            .is_some_and(|method| method != "xml")
-    {
+    if inferred_html {
         return Err(failure(
             "FXSR1001",
             FailureCategory::Unsupported,
             Some(request_id),
             "the selected output method is outside the private XML serialization slice",
+        ));
+    }
+    if settings.method.as_deref() == Some("text") {
+        let mut output = BudgetedString::new(byte_limit, request_id, control);
+        for node in &result.children {
+            serialize_text_node(node, &mut output)?;
+        }
+        return Ok(output.finish());
+    }
+    if settings
+        .method
+        .as_deref()
+        .is_some_and(|method| method != "xml")
+    {
+        return Err(failure(
+            "FXSR1001",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "the selected output method is outside the private serialization slice",
         ));
     }
     if settings.indent == Some(true) {
@@ -52,6 +66,21 @@ pub(in crate::runtime) fn serialize_xml(
         serialize_node(node, &[], &mut output)?;
     }
     Ok(output.finish())
+}
+
+fn serialize_text_node(
+    node: &ResultNode,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    match node {
+        ResultNode::Text(value) => output.push_str(value),
+        ResultNode::Element { children, .. } => {
+            for child in children {
+                serialize_text_node(child, output)?;
+            }
+            Ok(())
+        }
+    }
 }
 
 fn serialize_node(
