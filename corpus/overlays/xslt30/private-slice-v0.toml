@@ -560,3 +560,10 @@ case_name = "conflict-resolution-0801"
 selection = "selected"
 execution = "passed"
 rationale = "A named-template call preserves the invoking matched template's current mode, allowing mode #current to redispatch the document node independently through modes a and b."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0802"
+selection = "selected"
+execution = "passed"
+rationale = "One template participates in named modes a and b plus #default; explicit #default and inherited #current dispatch select the corresponding bar rules through a typed default-namespaced descendant selection."

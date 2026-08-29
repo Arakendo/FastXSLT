@@ -133,6 +133,7 @@ pub(crate) enum MatchPattern {
 pub(crate) enum ApplySelection {
     LocationPath(LocationPath),
     ChildElement(ExpandedName),
+    DescendantElement(ExpandedName),
     ChildNodes(NodeTest),
     Attribute(ExpandedName),
     GlobalTemporaryChildren(String),

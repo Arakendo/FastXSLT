@@ -34,6 +34,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `conflict-resolution-0702` Literal Static Context](xslt30-conflict-resolution-0702-literal-static-context-2026-08-29.md)
 - [XSLT30 `conflict-resolution-0703` Stylesheet Default Namespace](xslt30-conflict-resolution-0703-stylesheet-default-namespace-2026-08-29.md)
 - [XSLT30 `conflict-resolution-0801` Current Mode](xslt30-conflict-resolution-0801-current-mode-2026-08-29.md)
+- [XSLT30 `conflict-resolution-0802` Multi-Mode Default Dispatch](xslt30-conflict-resolution-0802-multi-mode-default-dispatch-2026-08-29.md)
 - [XSLT30 Path Denominator and Child-Axis Predicate](xslt30-path-denominator-and-child-axis-predicate-2026-08-26.md)
 - [XSLT30 `path-002` Descendant and Ancestor Execution](xslt30-path-002-descendant-ancestor-execution-2026-08-26.md)
 - [XSLT30 `path-003` Ancestor-or-Self Execution](xslt30-path-003-ancestor-or-self-execution-2026-08-26.md)

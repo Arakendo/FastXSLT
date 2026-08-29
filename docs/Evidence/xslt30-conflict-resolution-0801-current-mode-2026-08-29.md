@@ -45,5 +45,6 @@ requested mode.
 
 This evidence admits `#current` only on `xsl:apply-templates` and preserves it
 through nested instructions and named-template calls. It does not admit
-`#current` as a template-declaration mode, `#default` in a multi-mode template,
-mode QNames, mode declarations, mode properties, or the adjacent `0802` case.
+`#current` as a template-declaration mode, mode QNames, mode declarations, or
+mode properties. Multi-mode `#default` behavior is evidenced separately by
+`conflict-resolution-0802`.

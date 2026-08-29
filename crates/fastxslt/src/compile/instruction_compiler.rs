@@ -277,6 +277,18 @@ fn parse_apply_selection(
             ));
         }
     }
+    if let Some(local) = expression.strip_prefix("//") {
+        if is_ascii_ncname(local) {
+            if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+                return Ok(ApplySelection::DescendantElement(
+                    crate::xml::quick_xml_experiment::ExpandedName {
+                        namespace: Some(namespace.to_owned()),
+                        local: local.to_owned(),
+                    },
+                ));
+            }
+        }
+    }
     if let Some(attribute) = expression.strip_prefix('@') {
         if is_ascii_ncname(attribute) {
             return Ok(ApplySelection::Attribute(
@@ -305,7 +317,7 @@ fn parse_apply_selection(
 }
 
 fn parse_apply_mode(mode: &str, location: &SourceLocation) -> Result<String, CompileFailure> {
-    if mode == "#current" {
+    if matches!(mode, "#current" | "#default") {
         Ok(mode.to_owned())
     } else {
         parse_mode(mode, location)
@@ -331,7 +343,7 @@ pub(super) fn parse_template_modes(
     let modes = mode
         .split_whitespace()
         .map(|name| {
-            if name == "#all" {
+            if matches!(name, "#all" | "#default") {
                 Ok(name.to_owned())
             } else {
                 parse_mode(name, location)

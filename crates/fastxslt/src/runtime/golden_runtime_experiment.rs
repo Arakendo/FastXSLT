@@ -410,6 +410,7 @@ fn execute_apply_instruction(
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let requested_mode = match mode {
         Some("#current") => execution.current_mode,
+        Some("#default") => None,
         mode => mode,
     };
     execute_apply_templates(inputs, select, requested_mode, execution.node, control)
@@ -726,6 +727,18 @@ fn select_apply_nodes(
             }
             Ok(selected)
         }
+        ApplySelection::DescendantElement(name) => {
+            let mut selected = Vec::new();
+            select_descendant_elements(
+                source,
+                context,
+                name,
+                inputs.request_id,
+                control,
+                &mut selected,
+            )?;
+            Ok(selected)
+        }
         ApplySelection::ChildNodes(node_test) => {
             let mut selected = Vec::new();
             for child in source.children(context).iter().copied() {
@@ -761,6 +774,26 @@ fn select_apply_nodes(
             "global temporary-tree selection is dispatched before principal-source selection"
         ),
     }
+}
+
+fn select_descendant_elements(
+    source: &Document,
+    parent: NodeId,
+    name: &ExpandedName,
+    request_id: &str,
+    control: &mut InvocationControl,
+    selected: &mut Vec<NodeId>,
+) -> Result<(), ExecutionFailure> {
+    for child in source.children(parent).iter().copied() {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if source.kind(child) == NodeKind::Element && source.name(child) == Some(name) {
+            selected.push(child);
+        }
+        select_descendant_elements(source, child, name, request_id, control, selected)?;
+    }
+    Ok(())
 }
 
 fn execute_named_call(
