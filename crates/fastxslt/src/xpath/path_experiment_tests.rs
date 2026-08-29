@@ -71,6 +71,55 @@ fn root_path_selects_the_document_node_from_an_element_context() {
 }
 
 #[test]
+fn absolute_and_parent_steps_preserve_document_node_distinctions() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root><child/></root>",
+        ParseLimits {
+            max_events: 8,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let document_node = document.document_node();
+    let root = document.children(document_node)[0];
+    let child = document.children(root)[0];
+
+    let absolute = parse_location_path("/root", location()).expect("absolute path should parse");
+    assert_eq!(absolute.origin, PathOrigin::DocumentNode);
+    assert_eq!(evaluate_location_path(&document, child, &absolute), [root]);
+
+    let explicit = parse_location_path("parent::node()", location())
+        .expect("explicit parent node test should parse");
+    let abbreviated = parse_location_path("..", location()).expect("parent abbreviation parses");
+    assert_eq!(explicit.steps, abbreviated.steps);
+    assert_eq!(
+        evaluate_location_path(&document, root, &explicit),
+        [document_node]
+    );
+    assert!(
+        evaluate_location_path(
+            &document,
+            root,
+            &parse_location_path("parent::*", location()).expect("wildcard should parse"),
+        )
+        .is_empty()
+    );
+
+    let mut control = InvocationControl::unbounded();
+    let named = evaluate_location_path_controlled(
+        &document,
+        child,
+        &parse_location_path("parent::root", location()).expect("named parent should parse"),
+        &mut control,
+    )
+    .expect("named parent should execute");
+    assert_eq!(named, [root]);
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 1);
+}
+
+#[test]
 fn distinguishes_invalid_from_unsupported_path_syntax() {
     assert!(matches!(
         parse_location_path("", location()),
@@ -102,7 +151,7 @@ fn accepts_supported_ncname_punctuation_without_claiming_unicode_names() {
         Err(PathFailure::Unsupported { .. })
     ));
     assert!(matches!(
-        parse_location_path("catalog/..", location()),
+        parse_location_path("catalog/self::node()", location()),
         Err(PathFailure::Unsupported { .. })
     ));
 }

@@ -268,6 +268,55 @@ execution = "passed"
 rationale = "The native TreeCompass environment executes the whitespace-surrounded root-only path, selects the document node, and matches assert-eq value 1."
 
 [[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes013-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment executes parent::* from center, applies the element principal node kind, and matches assert-eq value 1."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes014-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass absolute path reaches far-north and confirms parent::* excludes its document-node parent."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes015-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment selects the unnamespaced near-north parent of center and matches assert-eq value 1."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes016-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment evaluates a missing named parent without widening the name test and matches assert-eq value 0."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes017-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment executes parent::node() from center and matches assert-eq value 1."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes018-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass absolute path reaches far-north and parent::node() retains its document-node parent."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes019-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment lowers the .. abbreviation to parent::node() and matches assert-eq value 1."
+
+[[case]]
 set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equalint2args-1"
 selection = "selected"

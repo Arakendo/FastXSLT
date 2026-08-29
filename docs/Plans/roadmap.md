@@ -71,6 +71,10 @@ QT3 `Axes012` now adds the root-only path `/` through a typed document-node
 origin, including insignificant operand whitespace and an exact one-visit
 charge from a non-document context. The direct location-path seam now has 38
 passes without claiming general absolute paths.
+Complete `Axes013` through `Axes019` add typed parent name tests, the parent
+axis's element principal node kind, document-node-capable `parent::node()`, and
+the equivalent `..` abbreviation. Their two absolute child paths extend the
+document origin deliberately; the direct seam now has 45 passes.
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
 source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`
@@ -249,6 +253,11 @@ implemented behavior belongs to a named standards slice.
   Accept insignificant whitespace around the root-only operand, select the
   document node independently of the current element context, and charge that
   selection once without admitting general absolute paths.
+- [x] Execute complete QT3 `Axes013` through `Axes019` with typed parent steps
+  and the `..` abbreviation. Distinguish the element principal node kind from
+  `node()` when the parent is the document, charge each examined singleton
+  parent, and admit only the exact unprefixed absolute child-path semantics
+  exercised by the group.
 - [x] Admit and execute the complete two-case XSLT30 `fn/deep-equal` denominator
   through positioned descendant attribute/comment selection and charged,
   pairwise node comparison. Preserve distinct XDM identity while comparing

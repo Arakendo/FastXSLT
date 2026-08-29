@@ -36,7 +36,10 @@ verifies exactly one invocation-local XPath node-visit charge.
 | `Axes012-1` | 1 | 1 | passed |
 
 Complete `Axes001` through `Axes012` now contribute 38 passing location-path
-cases through the same metadata-driven direct XPath seam.
+cases through the same metadata-driven direct XPath seam. Subsequent
+[`Axes013`–`Axes019` evidence](qt3-axes013-019-parent-axis-execution-2026-08-28.md)
+extends the document origin to exact absolute child paths and typed parent
+steps.
 
 ## Claim boundary
 
