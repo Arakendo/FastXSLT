@@ -1,4 +1,4 @@
-//! Executable metadata-driven `QT3` child- and attribute-axis slice.
+//! Executable metadata-driven `QT3` location-axis slice.
 
 use std::{fs, path::PathBuf};
 
@@ -10,7 +10,7 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use super::count_experiment;
 
 const QT3_NAMESPACE: &str = "http://www.w3.org/2010/09/qt-fots-catalog";
-const CASES: [(&str, &str, usize); 45] = [
+const CASES: [(&str, &str, usize); 51] = [
     ("Axes001-1", "fn:count(//center/child::*)", 0),
     ("Axes001-2", "fn:count(//center/child::*)", 1),
     ("Axes001-3", "fn:count(//center/child::*)", 6),
@@ -56,6 +56,16 @@ const CASES: [(&str, &str, usize); 45] = [
     ("Axes017-1", "fn:count(//center/parent::node())", 1),
     ("Axes018-1", "fn:count(/far-north/parent::node())", 1),
     ("Axes019-1", "fn:count(//center/..)", 1),
+    ("Axes020-1", "fn:count(//center/self::*)", 1),
+    ("Axes021-1", "fn:count(//center/self::center)", 1),
+    ("Axes023-1", "fn:count(//center/self::node())", 1),
+    (
+        "Axes027-1",
+        "fn:count(//center/@center-attr-3/self::node())",
+        1,
+    ),
+    ("Axes030-1", "fn:count(//center/text()/self::node())", 0),
+    ("Axes030-2", "fn:count(//center/text()/self::node())", 1),
 ];
 
 fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'a str> {
@@ -112,7 +122,7 @@ fn load_axis_test_set() -> (Document, PathBuf) {
 }
 
 #[test]
-fn executes_complete_qt3_axes001_through_axes019_location_path_groups() {
+fn executes_qt3_axes001_through_axes030_admitted_location_path_groups() {
     let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
     let selected_records: Vec<_> = overlay
         .split("[[case]]")

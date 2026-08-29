@@ -49,6 +49,10 @@ exact parent-visit charge.
 Complete `Axes001` through `Axes019` now contribute 45 passing location-path
 cases through the same metadata-driven direct XPath seam.
 
+Subsequent [`Axes020`–`Axes030` evidence](qt3-axes020-030-self-axis-execution-2026-08-28.md)
+adds the six admitted self-axis cases, including attribute and text-node
+contexts.
+
 ## Claim boundary
 
 This evidence admits only the listed parent steps, their unprefixed name tests,

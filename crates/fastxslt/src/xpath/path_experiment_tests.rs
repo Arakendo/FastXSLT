@@ -71,6 +71,60 @@ fn root_path_selects_the_document_node_from_an_element_context() {
 }
 
 #[test]
+fn self_steps_preserve_typed_element_attribute_and_text_contexts() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root a=\"1\">text<child/></root>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let attribute_path =
+        parse_location_path("attribute::a", location()).expect("named attribute step should parse");
+    let text_path = parse_location_path("text()", location()).expect("text kind test should parse");
+    let attribute = evaluate_location_path(&document, root, &attribute_path)[0];
+    let text = evaluate_location_path(&document, root, &text_path)[0];
+    let self_element =
+        parse_location_path("self::*", location()).expect("self element wildcard should parse");
+    let self_named =
+        parse_location_path("self::root", location()).expect("named self step should parse");
+    let self_node =
+        parse_location_path("self::node()", location()).expect("self node test should parse");
+    let mut control = InvocationControl::unbounded();
+
+    assert_eq!(
+        evaluate_location_path(&document, root, &self_element),
+        [root]
+    );
+    assert_eq!(evaluate_location_path(&document, root, &self_named), [root]);
+    assert!(evaluate_location_path(&document, attribute, &self_element).is_empty());
+    assert_eq!(
+        evaluate_location_path(&document, attribute, &self_node),
+        [attribute]
+    );
+    assert_eq!(evaluate_location_path(&document, text, &self_node), [text]);
+    assert_eq!(document.kind(text), NodeKind::Text);
+    assert_eq!(document.string_value(text), "text");
+    assert_eq!(
+        evaluate_location_path_controlled(&document, text, &self_node, &mut control)
+            .expect("controlled self selection should succeed"),
+        [text]
+    );
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 1);
+
+    for expression in ["attribute::text()", "parent::text()", "self::text()"] {
+        assert!(matches!(
+            parse_location_path(expression, location()),
+            Err(PathFailure::Unsupported { .. })
+        ));
+    }
+}
+
+#[test]
 fn absolute_and_parent_steps_preserve_document_node_distinctions() {
     let parsed = parse_document(
         "memory:source.xml",
@@ -151,9 +205,12 @@ fn accepts_supported_ncname_punctuation_without_claiming_unicode_names() {
         Err(PathFailure::Unsupported { .. })
     ));
     assert!(matches!(
-        parse_location_path("catalog/self::node()", location()),
+        parse_location_path("catalog/ancestor::node()", location()),
         Err(PathFailure::Unsupported { .. })
     ));
+    let self_node = parse_location_path("catalog/self::node()", location())
+        .expect("the admitted self node test should parse");
+    assert_eq!(self_node.steps[1], "node()");
 }
 
 #[test]

@@ -75,6 +75,12 @@ Complete `Axes013` through `Axes019` add typed parent name tests, the parent
 axis's element principal node kind, document-node-capable `parent::node()`, and
 the equivalent `..` abbreviation. Their two absolute child paths extend the
 document origin deliberately; the direct seam now has 45 passes.
+The selected early self-axis tranche adds `Axes020`, `Axes021`, `Axes023`,
+`Axes027`, and both `Axes030` cases. Typed self steps preserve element,
+attribute, and text-node context identity; a typed child `text()` kind test
+reaches the latter without widening other axes. The direct seam now has 51
+passes. Numbering gaps remain unselected rather than being counted as
+unsupported or passed.
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
 source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`
@@ -258,6 +264,12 @@ implemented behavior belongs to a named standards slice.
   `node()` when the parent is the document, charge each examined singleton
   parent, and admit only the exact unprefixed absolute child-path semantics
   exercised by the group.
+- [x] Execute the six selected QT3 self-axis cases in `Axes020` through
+  `Axes030`. Preserve element, attribute, and text-node context identity,
+  enforce the self axis's element principal node kind, charge the examined
+  context once, and reject unimplemented kind tests on other axes rather than
+  returning plausible empty results. Keep the numbering gaps outside the
+  admitted denominator.
 - [x] Admit and execute the complete two-case XSLT30 `fn/deep-equal` denominator
   through positioned descendant attribute/comment selection and charged,
   pairwise node comparison. Preserve distinct XDM identity while comparing

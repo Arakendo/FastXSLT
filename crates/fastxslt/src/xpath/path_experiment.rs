@@ -25,40 +25,55 @@ pub(crate) enum PathStep {
     ChildNamed(String),
     ChildAnyElement,
     ChildAnyNode,
+    ChildText,
     AttributeNamed(String),
     AttributeAny,
     ParentNamed(String),
     ParentAnyElement,
     ParentAnyNode,
+    SelfNamed(String),
+    SelfAnyElement,
+    SelfAnyNode,
 }
 
 impl PathStep {
-    fn from_validated(value: &str) -> Self {
+    fn from_validated(value: &str) -> Option<Self> {
         if value == ".." {
-            return Self::ParentAnyNode;
+            return Some(Self::ParentAnyNode);
         }
         if let Some(name_test) = value
             .strip_prefix("attribute::")
             .or_else(|| value.strip_prefix('@'))
         {
             return match name_test {
-                "*" | "node()" => Self::AttributeAny,
-                _ => Self::AttributeNamed(name_test.to_owned()),
+                "*" | "node()" => Some(Self::AttributeAny),
+                "text()" => None,
+                _ => Some(Self::AttributeNamed(name_test.to_owned())),
             };
         }
         if let Some(name_test) = value.strip_prefix("parent::") {
             return match name_test {
-                "*" => Self::ParentAnyElement,
-                "node()" => Self::ParentAnyNode,
-                _ => Self::ParentNamed(name_test.to_owned()),
+                "*" => Some(Self::ParentAnyElement),
+                "node()" => Some(Self::ParentAnyNode),
+                "text()" => None,
+                _ => Some(Self::ParentNamed(name_test.to_owned())),
+            };
+        }
+        if let Some(name_test) = value.strip_prefix("self::") {
+            return match name_test {
+                "*" => Some(Self::SelfAnyElement),
+                "node()" => Some(Self::SelfAnyNode),
+                "text()" => None,
+                _ => Some(Self::SelfNamed(name_test.to_owned())),
             };
         }
         let name_test = value.strip_prefix("child::").unwrap_or(value);
-        match name_test {
+        Some(match name_test {
             "*" => Self::ChildAnyElement,
             "node()" => Self::ChildAnyNode,
+            "text()" => Self::ChildText,
             _ => Self::ChildNamed(name_test.to_owned()),
-        }
+        })
     }
 
     fn uses_attribute_axis(&self) -> bool {
@@ -71,16 +86,25 @@ impl PathStep {
             Self::ParentNamed(_) | Self::ParentAnyElement | Self::ParentAnyNode
         )
     }
+
+    fn uses_self_axis(&self) -> bool {
+        matches!(
+            self,
+            Self::SelfNamed(_) | Self::SelfAnyElement | Self::SelfAnyNode
+        )
+    }
 }
 
 impl PartialEq<&str> for PathStep {
     fn eq(&self, other: &&str) -> bool {
         match self {
-            Self::ChildNamed(value) | Self::AttributeNamed(value) | Self::ParentNamed(value) => {
-                value == *other
-            }
-            Self::ChildAnyElement | Self::ParentAnyElement => *other == "*",
-            Self::ChildAnyNode | Self::ParentAnyNode => *other == "node()",
+            Self::ChildNamed(value)
+            | Self::AttributeNamed(value)
+            | Self::ParentNamed(value)
+            | Self::SelfNamed(value) => value == *other,
+            Self::ChildAnyElement | Self::ParentAnyElement | Self::SelfAnyElement => *other == "*",
+            Self::ChildAnyNode | Self::ParentAnyNode | Self::SelfAnyNode => *other == "node()",
+            Self::ChildText => *other == "text()",
             Self::AttributeAny => matches!(*other, "*" | "node()"),
         }
     }
@@ -195,9 +219,10 @@ pub(crate) fn parse_location_path(
             .strip_prefix("child::")
             .or_else(|| step.strip_prefix("attribute::"))
             .or_else(|| step.strip_prefix("parent::"))
+            .or_else(|| step.strip_prefix("self::"))
             .or_else(|| step.strip_prefix('@'))
             .unwrap_or(if step == ".." { "node()" } else { step });
-        !matches!(name_test, "*" | "node()") && !is_ascii_ncname(name_test)
+        !matches!(name_test, "*" | "node()" | "text()") && !is_ascii_ncname(name_test)
     }) {
         if steps.iter().any(|step| {
             step.chars().any(|character| {
@@ -241,10 +266,17 @@ fn lower_validated_steps(
     starts_with_descendant_search: bool,
     location: &SourceLocation,
 ) -> Result<Vec<PathStep>, PathFailure> {
-    let steps: Vec<_> = steps
+    let steps: Option<Vec<_>> = steps
         .iter()
         .map(|step| PathStep::from_validated(step))
         .collect();
+    let Some(steps) = steps else {
+        return Err(PathFailure::Unsupported {
+            detail: "the private slice does not support that kind test on the requested axis"
+                .to_owned(),
+            location: location.clone(),
+        });
+    };
     if starts_with_descendant_search && steps.first().is_some_and(PathStep::uses_attribute_axis) {
         return Err(PathFailure::Unsupported {
             detail: "the private slice does not yet expand leading // before an attribute step"
@@ -398,6 +430,8 @@ pub(crate) fn evaluate_location_path_controlled(
                 document.attributes(node).to_vec()
             } else if step.uses_parent_axis() {
                 document.parent(node).into_iter().collect()
+            } else if step.uses_self_axis() {
+                vec![node]
             } else {
                 document.children(node).to_vec()
             };
@@ -406,7 +440,7 @@ pub(crate) fn evaluate_location_path_controlled(
                 if step_index != 0 || path.origin != PathOrigin::Descendant {
                     control.charge(WorkDomain::XPathNodeVisit, 1)?;
                 }
-                if child_matches_name_test(document, child, step) {
+                if step_matches_candidate(document, child, step) {
                     named_candidates.push(child);
                 }
             }
@@ -454,7 +488,7 @@ pub(crate) fn evaluate_location_path_controlled(
     Ok(current)
 }
 
-fn child_matches_name_test(document: &Document, child: NodeId, name_test: &PathStep) -> bool {
+fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathStep) -> bool {
     match name_test {
         PathStep::ChildNamed(required) => {
             document.kind(child) == NodeKind::Element
@@ -462,10 +496,11 @@ fn child_matches_name_test(document: &Document, child: NodeId, name_test: &PathS
                     .name(child)
                     .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
         }
-        PathStep::ChildAnyElement | PathStep::ParentAnyElement => {
+        PathStep::ChildAnyElement | PathStep::ParentAnyElement | PathStep::SelfAnyElement => {
             document.kind(child) == NodeKind::Element
         }
-        PathStep::ChildAnyNode | PathStep::ParentAnyNode => true,
+        PathStep::ChildAnyNode | PathStep::ParentAnyNode | PathStep::SelfAnyNode => true,
+        PathStep::ChildText => document.kind(child) == NodeKind::Text,
         PathStep::AttributeNamed(required) => {
             document.kind(child) == NodeKind::Attribute
                 && document
@@ -474,6 +509,12 @@ fn child_matches_name_test(document: &Document, child: NodeId, name_test: &PathS
         }
         PathStep::AttributeAny => document.kind(child) == NodeKind::Attribute,
         PathStep::ParentNamed(required) => {
+            document.kind(child) == NodeKind::Element
+                && document
+                    .name(child)
+                    .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
+        }
+        PathStep::SelfNamed(required) => {
             document.kind(child) == NodeKind::Element
                 && document
                     .name(child)

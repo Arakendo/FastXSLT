@@ -317,6 +317,48 @@ execution = "passed"
 rationale = "The native TreeCompass environment lowers the .. abbreviation to parent::node() and matches assert-eq value 1."
 
 [[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes020-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment applies the self-axis element principal node kind and matches center once."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes021-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment executes the unprefixed named self test and matches center once."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes023-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment executes self::node() against the center element and matches assert-eq value 1."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes027-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment retains an attribute context through self::node() and matches assert-eq value 1."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes030-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment selects no text child from the empty center fixture before applying self::node()."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes030-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment selects the center text child and retains that text context through self::node()."
+
+[[case]]
 set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equalint2args-1"
 selection = "selected"
