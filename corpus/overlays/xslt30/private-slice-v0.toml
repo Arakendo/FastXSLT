@@ -574,3 +574,10 @@ case_name = "conflict-resolution-1701"
 selection = "selected"
 execution = "passed"
 rationale = "The *:b local-name wildcard carries exact implicit -0.25 priority and competes with expanded-name rules carrying bounded explicit decimal priorities without binary floating point."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-1801"
+selection = "selected"
+execution = "passed"
+rationale = "The element() kind-test pattern shares exact -0.5 priority with the admitted element wildcard, while bounded explicit priorities select the expected exact-name or kind-test rule; name(.) is evaluated only for unnamespaced context nodes."

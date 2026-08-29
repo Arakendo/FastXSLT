@@ -218,6 +218,7 @@ pub(crate) enum Instruction {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ValueExpression {
     LocationPath(LocationPath),
+    ContextNodeName,
     Variable(String),
     IntegerFor(Box<IntegerForExpression>),
     FocusSumFor(Box<FocusSumForExpression>),

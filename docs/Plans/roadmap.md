@@ -258,6 +258,10 @@ local-name wildcards now retain their implicit quarter-step priority without
 floating-point comparison, while bounded explicit priorities retain up to six
 decimal places. More precise values and the XSLT 2.0 recover/error variants
 remain outside these tranches.
+`conflict-resolution-1801` maps the exact `element()` kind test to the same
+typed any-element applicability and `-0.5` priority already used by `*`.
+Its exact `name(.)` value operation is admitted only for unnamespaced context
+nodes; namespaced lexical-QName reconstruction remains explicitly unsupported.
 `conflict-resolution-0901` then conserves the existing typed path machinery
 across template selection: `//b` supplies six candidates in document order,
 while retained `doc/a/b` and `doc/z/b` patterns distinguish their parent chains
@@ -292,8 +296,8 @@ each inspected node and preserves document order. It does not widen general
 default-namespaced path support.
 The complete pinned apply-templates test set is now conserved as an ordered
 50-case denominator with 50 principal stylesheets, one secondary stylesheet,
-41 XML assertions, eight error assertions, and one compound assertion. Seventeen
-cases have explicit passing overrides; the other 33 remain visibly not run and
+41 XML assertions, eight error assertions, and one compound assertion. Eighteen
+cases have explicit passing overrides; the other 32 remain visibly not run and
 are not mislabeled as engine failures. This corrects the earlier provisional
 52-case count without turning inventory into a conformance percentage.
 
@@ -754,6 +758,10 @@ failed, and harness-error cases without an unqualified conformance claim.
   priority plus the `*:NCName` local-name wildcard, matching multiple source
   namespaces and selecting rules by priority and declaration order. Keep more
   than six fractional places and broader pattern grammar explicitly unsupported.
+- [x] Execute `conflict-resolution-1801` by lowering the exact `element()` kind
+  test to typed any-element applicability with its `-0.5` default priority.
+  Admit `name(.)` only for unnamespaced context nodes until lexical QName prefix
+  identity is represented faithfully.
 - [x] Execute `conflict-resolution-0901` as a conservation case for typed
   leading-descendant selection, document-order candidate delivery, and retained
   multi-step parent/child match paths. Keep `current()` patterns,
@@ -761,7 +769,7 @@ failed, and harness-error cases without an unqualified conformance claim.
   propagation, and general pattern grammar outside this slice.
 - [x] Conserve the complete ordered 50-case XSLT30 apply-templates denominator,
   its 50 principal plus one secondary stylesheet, and its assertion-shape
-  counts. Record 17 explicit passes and 33 default not-run dispositions without
+  counts. Record 18 explicit passes and 32 default not-run dispositions without
   converting unexecuted cases into engine failures or an aggregate conformance
   claim.
 - [x] Execute `conflict-resolution-0701` through inherited

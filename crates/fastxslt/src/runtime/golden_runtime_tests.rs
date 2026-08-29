@@ -149,6 +149,36 @@ fn exact_element_templates_dispatch_repeated_nodes_in_document_order() {
 }
 
 #[test]
+fn context_node_name_refuses_to_fabricate_a_namespaced_lexical_qname() {
+    const SOURCE: &str = "urn:fastxslt:name-context:source";
+    const STYLESHEET: &str = "urn:fastxslt:name-context:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc xmlns:p="urn:example"><p:item/></doc>"#.to_vec(),
+        )
+        .expect("admit namespaced source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:example"><xsl:template match="/"><xsl:apply-templates/></xsl:template><xsl:template match="doc"><xsl:apply-templates select="*"/></xsl:template><xsl:template match="p:item"><out><xsl:value-of select="name(.)"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile exact name operation");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("namespaced-name", "result", SOURCE))
+        .expect("admit request");
+
+    let failure = execute_transform_set(builder.seal())
+        .expect_err("prefix-free expanded-name storage cannot preserve fn:name lexical identity");
+    assert_eq!(failure.code, "FXRT1008");
+    assert_eq!(failure.category, FailureCategory::Unsupported);
+}
+
+#[test]
 fn default_selection_uses_built_in_element_and_text_rules() {
     const BUILT_IN_SOURCE: &str = "urn:fastxslt:golden:built-in-rules:source";
     const BUILT_IN_STYLESHEET: &str = "urn:fastxslt:golden:built-in-rules:stylesheet";

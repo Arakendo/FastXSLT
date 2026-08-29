@@ -1,6 +1,6 @@
 //! Private dynamic value evaluation for admitted `xsl:value-of` expressions.
 
-use crate::execution_control_experiment::InvocationControl;
+use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{NodeId, StringValueVisitFailure};
 use crate::xpath::castable_experiment::{
     CastableExpression, evaluate as evaluate_castable, evaluate_value as evaluate_castable_value,
@@ -51,6 +51,9 @@ pub(super) fn execute_value_of(
             if let Some(node) = selected.first() {
                 append_source_string_value(inputs, *node, result, control)?;
             }
+        }
+        ValueExpression::ContextNodeName => {
+            append_context_node_name(inputs, context, result, control)?;
         }
         ValueExpression::Variable(name) => {
             append_variable_value(inputs, name, separator, variables, result, control)?;
@@ -126,6 +129,30 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_context_node_name(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let Some(name) = source.name(context) else {
+        return Ok(());
+    };
+    if name.namespace.is_some() {
+        return Err(failure(
+            "FXRT1008",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "name(.) for namespaced nodes is outside the prefix-preserving private slice",
+        ));
+    }
+    append_text(result, &name.local, inputs.request_id, control)
 }
 
 fn execute_deep_equal(
