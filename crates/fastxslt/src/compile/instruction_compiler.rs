@@ -107,6 +107,8 @@ pub(super) fn compile_sequence_excluding(
                         });
                     } else if name.local == "apply-imports" {
                         instructions.push(compile_apply_imports(document, child)?);
+                    } else if name.local == "for-each" {
+                        instructions.push(compile_for_each(document, child)?);
                     } else if name.local == "if" {
                         instructions.push(compile_if(document, child)?);
                     } else if name.local == "choose" {
@@ -153,6 +155,35 @@ fn compile_apply_imports(
     Ok(Instruction::ApplyImports {
         arguments: compile_with_params(document, element, "xsl:apply-imports", false)?,
         location: document.location(element).clone(),
+    })
+}
+
+fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
+    let select = required_attribute(document, element, None, "select")?;
+    if is_static_integer_range(select) {
+        for child in meaningful_children(document, element) {
+            if is_xslt_element(document, child, "apply-templates") {
+                let apply_select = optional_attribute(document, child, None, "select");
+                if apply_select.is_none_or(|value| value.trim() == ".") {
+                    return Err(invalid(
+                        "XTTE0510",
+                        "xsl:apply-templates requires nodes, but the statically known focus is an integer",
+                        document.location(child),
+                    ));
+                }
+            }
+        }
+    }
+    Err(unsupported(
+        "FXST1006",
+        "xsl:for-each is outside the private instruction slice",
+        document.location(element),
+    ))
+}
+
+fn is_static_integer_range(expression: &str) -> bool {
+    expression.split_once(" to ").is_some_and(|(start, end)| {
+        start.trim().parse::<i64>().is_ok() && end.trim().parse::<i64>().is_ok()
     })
 }
 

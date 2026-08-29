@@ -7,8 +7,8 @@ use std::{
 };
 
 use super::{
-    ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, compile_resource,
-    execute_transform_set,
+    ExecutionFailure, ExecutionPolicy, FailureCategory, InvocationEntry, TransformRequest,
+    TransformSetBuilder, compile_resource, execute_transform_set,
 };
 use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
@@ -347,6 +347,41 @@ fn execute_apply_templates_case(case_name: &str) -> (String, String, usize) {
         expected,
         matched_template_count,
     )
+}
+
+fn compile_apply_templates_error_case(case_name: &str) -> (ExecutionFailure, String) {
+    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
+    assert!(overlay.contains(&format!("case_name = \"{case_name}\"")));
+    let (test_set, set_path) = apply_templates_test_set();
+    let test_case = find_element(
+        &test_set,
+        test_set.document_node(),
+        "test-case",
+        Some(("name", case_name)),
+    )
+    .expect("overlay error case should exist in pinned suite");
+    let stylesheet_file = find_element(&test_set, test_case, "stylesheet", None)
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("error case should name a stylesheet");
+    let expected_code = find_element(&test_set, test_case, "error", None)
+        .and_then(|node| attribute(&test_set, node, "code"))
+        .expect("error case should provide an error code")
+        .to_owned();
+    let stylesheet = fs::read(
+        set_path
+            .parent()
+            .expect("test set should have a directory")
+            .join(stylesheet_file),
+    )
+    .expect("read upstream error stylesheet and close handle");
+    let stylesheet_id = format!("urn:w3c:xslt30:{case_name}:stylesheet");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, 8_192, 8_192));
+    resources
+        .admit(stylesheet_id.clone(), stylesheet)
+        .expect("admit upstream error stylesheet");
+    let failure = compile_resource(&resources.seal(), &stylesheet_id)
+        .expect_err("statically atomic apply-templates focus should fail compilation");
+    (failure, expected_code)
 }
 
 fn expected_apply_templates_all_of(case_name: &str) -> Option<String> {
@@ -738,6 +773,16 @@ fn executes_xslt30_apply_imports_builtin_parameter_propagation() {
         execute_apply_templates_case("conflict-resolution-1102");
     assert_eq!(matched_template_count, 3);
     assert_same_result_element_string(&actual, &expected, "z");
+}
+
+#[test]
+fn reports_xslt30_statically_atomic_apply_templates_focus() {
+    for case_name in ["apply-templates-001", "apply-templates-002"] {
+        let (failure, expected_code) = compile_apply_templates_error_case(case_name);
+        assert_eq!(failure.code, expected_code);
+        assert_eq!(failure.category, FailureCategory::Invalid);
+        assert!(failure.location.is_some());
+    }
 }
 
 #[test]

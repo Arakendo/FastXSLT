@@ -671,4 +671,17 @@ set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
 case_name = "conflict-resolution-1102"
 selection = "selected"
 execution = "passed"
-rationale = "A mode-specific temporary document rule invokes xsl:apply-imports in a stylesheet with no imported packages; the built-in document rule retains the current mode and supplied non-tunnel parameter while descending to the temporary element rule."
+rationale = "A mode-specific temporary document rule invokes xsl:apply-imports in a stylesheet with no imported modules; the built-in document rule retains the current mode and supplied non-tunnel parameter while descending to the temporary element rule."
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "apply-templates-001"
+selection = "selected"
+execution = "passed"
+rationale = "Static analysis proves that xsl:for-each establishes an integer-range focus and that default xsl:apply-templates selection therefore violates the required node sequence type; compilation reports structured XTTE0510."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "apply-templates-002"
+selection = "selected"
+execution = "passed"
+rationale = "Static analysis proves that xsl:for-each establishes an integer-range focus and that xsl:apply-templates select='.' therefore supplies an atomic item rather than nodes; compilation reports structured XTTE0510."

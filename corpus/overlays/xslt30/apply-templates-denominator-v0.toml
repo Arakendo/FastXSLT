@@ -9,6 +9,16 @@ execution = "not-run"
 rationale = "Unless overridden below, the case has not yet been admitted through the metadata-driven execution helper and may require additional engine semantics, profile handling, or assertion support. No case is silently omitted or classified as an engine failure without execution evidence."
 
 [[case_override]]
+case_name = "apply-templates-001"
+selection = "selected"
+execution = "passed"
+
+[[case_override]]
+case_name = "apply-templates-002"
+selection = "selected"
+execution = "passed"
+
+[[case_override]]
 case_name = "conflict-resolution-0101"
 selection = "selected"
 execution = "passed"
