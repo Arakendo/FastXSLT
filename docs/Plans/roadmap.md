@@ -52,6 +52,10 @@ excluding other child node kinds and retaining exact node-visit charging.
 The complete four-case `Axes003` group adds typed `child::node()` selection of
 text, element, comment, and processing-instruction children in document order;
 the three adjacent groups now contribute eleven direct XPath passes.
+The adjacent complete `Axes004` through `Axes006` groups add all eleven
+abbreviated child-axis equivalents without a second evaluator path; explicit
+and abbreviated syntax now contribute 22 direct XPath passes over the same
+typed child steps.
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
 source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`
@@ -213,6 +217,10 @@ implemented behavior belongs to a named standards slice.
   typed name-test representation. Preserve text, element, comment, and
   processing-instruction children in document order, keep attributes outside
   the child sequence, and charge each examined child exactly once.
+- [x] Execute complete QT3 `Axes004` through `Axes006` as the abbreviated
+  named-element, any-element, and any-child-node equivalents. Prove each pair
+  lowers to the same private typed child steps, retaining one evaluator and one
+  work-accounting path rather than creating abbreviation-specific semantics.
 - [x] Admit and execute the complete two-case XSLT30 `fn/deep-equal` denominator
   through positioned descendant attribute/comment selection and charged,
   pairwise node comparison. Preserve distinct XDM identity while comparing

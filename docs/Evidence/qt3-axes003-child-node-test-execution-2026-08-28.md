@@ -39,7 +39,9 @@ children in order and verifies four corresponding node-visit charges.
 
 The group is four selected, four passed, zero failed, zero unsupported, and
 zero harness errors. Together, complete `Axes001` through `Axes003` contribute
-eleven passing child-axis cases without an XSLT wrapper.
+eleven passing child-axis cases without an XSLT wrapper. Subsequent
+[`Axes004`–`Axes006` evidence](qt3-axes004-006-abbreviated-child-axis-execution-2026-08-28.md)
+executes all eleven abbreviated equivalents through the same typed steps.
 
 ## Claim boundary
 

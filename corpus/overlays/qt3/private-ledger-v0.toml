@@ -79,6 +79,83 @@ execution = "passed"
 rationale = "The native TreeRepeat environment executes child::node() in document order across mixed child kinds and matches assert-eq value 19."
 
 [[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes004-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc environment executes the abbreviated wildcard child step and matches assert-eq value 0."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes004-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Child environment executes the abbreviated wildcard child step and matches assert-eq value 1."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes004-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeRepeat environment executes the abbreviated wildcard child step and matches assert-eq value 6."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes005-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc environment executes the abbreviated named child step and matches assert-eq value 0."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes005-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Child environment executes the abbreviated named child step and matches assert-eq value 0."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes005-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment executes the abbreviated named child step and matches assert-eq value 1."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes005-4"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeRepeat environment executes the abbreviated named child step and matches assert-eq value 2."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes006-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc environment executes abbreviated node() as a child node test and matches assert-eq value 0."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes006-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Text environment executes abbreviated node(), retains its text child, and matches assert-eq value 1."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes006-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Child environment executes abbreviated node(), retains its element child, and matches assert-eq value 1."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes006-4"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeRepeat environment executes abbreviated node() across mixed child kinds and matches assert-eq value 19."
+
+[[case]]
 set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equalint2args-1"
 selection = "selected"

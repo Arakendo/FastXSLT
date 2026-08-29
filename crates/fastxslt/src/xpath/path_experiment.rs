@@ -562,7 +562,7 @@ mod tests {
     }
 
     #[test]
-    fn explicit_named_child_axis_uses_the_same_child_navigation_semantics() {
+    fn explicit_and_abbreviated_child_axes_share_navigation_semantics() {
         let implicit = parse_child_path("//center/south-east", location())
             .expect("implicit child steps should parse");
         let explicit = parse_child_path("//center/child::south-east", location())
@@ -570,6 +570,22 @@ mod tests {
 
         assert_eq!(explicit.steps, implicit.steps);
         assert!(explicit.starts_with_descendant_search);
+        assert_eq!(
+            parse_child_path("//center/*", location())
+                .expect("abbreviated wildcard should parse")
+                .steps,
+            parse_child_path("//center/child::*", location())
+                .expect("explicit wildcard should parse")
+                .steps
+        );
+        assert_eq!(
+            parse_child_path("//center/node()", location())
+                .expect("abbreviated node test should parse")
+                .steps,
+            parse_child_path("//center/child::node()", location())
+                .expect("explicit node test should parse")
+                .steps
+        );
     }
 
     #[test]

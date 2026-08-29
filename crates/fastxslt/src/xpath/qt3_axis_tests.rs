@@ -10,7 +10,7 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use super::count_experiment;
 
 const QT3_NAMESPACE: &str = "http://www.w3.org/2010/09/qt-fots-catalog";
-const CASES: [(&str, &str, usize); 11] = [
+const CASES: [(&str, &str, usize); 22] = [
     ("Axes001-1", "fn:count(//center/child::*)", 0),
     ("Axes001-2", "fn:count(//center/child::*)", 1),
     ("Axes001-3", "fn:count(//center/child::*)", 6),
@@ -22,6 +22,17 @@ const CASES: [(&str, &str, usize); 11] = [
     ("Axes003-2", "fn:count(//center/child::node())", 1),
     ("Axes003-3", "fn:count(//center/child::node())", 1),
     ("Axes003-4", "fn:count(//center/child::node())", 19),
+    ("Axes004-1", "fn:count(//center/*)", 0),
+    ("Axes004-2", "fn:count(//center/*)", 1),
+    ("Axes004-3", "fn:count(//center/*)", 6),
+    ("Axes005-1", "fn:count(//center/south-east)", 0),
+    ("Axes005-2", "fn:count(//center/south-east)", 0),
+    ("Axes005-3", "fn:count(//center/south-east)", 1),
+    ("Axes005-4", "fn:count(//center/south-east)", 2),
+    ("Axes006-1", "fn:count(//center/node())", 0),
+    ("Axes006-2", "fn:count(//center/node())", 1),
+    ("Axes006-3", "fn:count(//center/node())", 1),
+    ("Axes006-4", "fn:count(//center/node())", 19),
 ];
 
 fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'a str> {
@@ -78,12 +89,15 @@ fn load_axis_test_set() -> (Document, PathBuf) {
 }
 
 #[test]
-fn executes_complete_qt3_axes001_through_axes003_child_groups() {
+fn executes_complete_qt3_axes001_through_axes006_child_groups() {
     let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
     assert_eq!(
         overlay.matches("case_name = \"Axes001-").count()
             + overlay.matches("case_name = \"Axes002-").count()
-            + overlay.matches("case_name = \"Axes003-").count(),
+            + overlay.matches("case_name = \"Axes003-").count()
+            + overlay.matches("case_name = \"Axes004-").count()
+            + overlay.matches("case_name = \"Axes005-").count()
+            + overlay.matches("case_name = \"Axes006-").count(),
         CASES.len()
     );
     assert_eq!(
@@ -93,6 +107,9 @@ fn executes_complete_qt3_axes001_through_axes003_child_groups() {
                 record.contains("case_name = \"Axes001-")
                     || record.contains("case_name = \"Axes002-")
                     || record.contains("case_name = \"Axes003-")
+                    || record.contains("case_name = \"Axes004-")
+                    || record.contains("case_name = \"Axes005-")
+                    || record.contains("case_name = \"Axes006-")
             })
             .filter(|record| record.contains("execution = \"passed\""))
             .count(),

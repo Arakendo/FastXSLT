@@ -33,6 +33,7 @@ pressure architecture but does not silently create a public guarantee.
 - [QT3 `Axes002` Native Execution](qt3-axes002-native-execution-2026-08-26.md)
 - [QT3 `Axes001` Element-Wildcard Execution](qt3-axes001-element-wildcard-execution-2026-08-28.md)
 - [QT3 `Axes003` Child-Node-Test Execution](qt3-axes003-child-node-test-execution-2026-08-28.md)
+- [QT3 `Axes004`–`Axes006` Abbreviated Child-Axis Execution](qt3-axes004-006-abbreviated-child-axis-execution-2026-08-28.md)
 - [XSLT30 `expr/for` Denominator Admission](xslt30-for-denominator-admission-2026-08-26.md)
 - [XSLT30 `for-001` Ordered Sequence Execution](xslt30-for-001-ordered-sequence-execution-2026-08-26.md)
 - [XSLT30 `for-002` Source-Free Initial-Template Execution](xslt30-for-002-source-free-initial-template-execution-2026-08-26.md)
