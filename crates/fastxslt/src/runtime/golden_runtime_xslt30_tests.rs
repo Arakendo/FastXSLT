@@ -295,7 +295,8 @@ fn execute_apply_templates_case(case_name: &str) -> (String, String, usize) {
         .expect("case should name a stylesheet");
     let expected = find_element(&test_set, test_case, "assert-xml", None)
         .map(|node| test_set.string_value(node))
-        .expect("case should provide an XML assertion");
+        .or_else(|| expected_apply_templates_all_of(case_name))
+        .expect("case should provide an admitted result assertion");
     let case_directory = set_path.parent().expect("test set should have a directory");
     let source = if let Some(content) = find_element(&test_set, source_element, "content", None) {
         test_set.string_value(content).into_bytes()
@@ -346,6 +347,11 @@ fn execute_apply_templates_case(case_name: &str) -> (String, String, usize) {
         expected,
         matched_template_count,
     )
+}
+
+fn expected_apply_templates_all_of(case_name: &str) -> Option<String> {
+    (case_name == "conflict-resolution-1501")
+        .then(|| "<doc><a><a/></a><a><a parent-recursive=\"yes\"/></a><a><b/></a></doc>".to_owned())
 }
 
 #[test]
@@ -676,6 +682,44 @@ fn executes_xslt30_equivalent_same_named_child_patterns() {
 fn executes_xslt30_same_named_parent_current_pattern() {
     let (actual, expected, matched_template_count) =
         execute_apply_templates_case("conflict-resolution-0503");
+    assert_eq!(matched_template_count, 2);
+    assert_same_result_element_string(&actual, &expected, "doc");
+}
+
+#[test]
+fn executes_xslt30_filtered_parent_position_current_pattern() {
+    let (test_set, _) = apply_templates_test_set();
+    let test_case = find_element(
+        &test_set,
+        test_set.document_node(),
+        "test-case",
+        Some(("name", "conflict-resolution-1501")),
+    )
+    .expect("case should exist");
+    let all_of = find_element(&test_set, test_case, "all-of", None).expect("all-of assertion");
+    let assertions = test_set
+        .children(all_of)
+        .iter()
+        .copied()
+        .filter(|node| {
+            test_set.kind(*node) == NodeKind::Element
+                && test_set
+                    .name(*node)
+                    .is_some_and(|name| name.local == "assert")
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(assertions.len(), 2);
+    assert_eq!(
+        test_set.string_value(assertions[0]),
+        "/doc/a[2]/a[1][@parent-recursive=\"yes\"]"
+    );
+    assert_eq!(
+        test_set.string_value(assertions[1]),
+        "count(//@parent-recursive) = 1"
+    );
+
+    let (actual, expected, matched_template_count) =
+        execute_apply_templates_case("conflict-resolution-1501");
     assert_eq!(matched_template_count, 2);
     assert_same_result_element_string(&actual, &expected, "doc");
 }

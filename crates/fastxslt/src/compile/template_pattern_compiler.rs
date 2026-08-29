@@ -34,6 +34,7 @@ pub(super) fn compile_match_pattern(
             MatchPattern::ElementWithSameNamedChild
         }
         "*[name()=name(current())]/*" => MatchPattern::ElementWithSameNamedParent,
+        "*[name()=name(current())][2]/*" => MatchPattern::ElementWithSameNamedParentAtPosition(2),
         predicate if parse_element_attribute_predicate(predicate).is_some() => {
             let (element, attribute) =
                 parse_element_attribute_predicate(predicate).expect("predicate shape was checked");
@@ -226,7 +227,10 @@ fn compile_template_priority(
             | MatchPattern::ElementWithAttributeValue { .. }
             | MatchPattern::AnyElementWithAttributeVariable { .. }
             | MatchPattern::ElementWithSameNamedChild
-            | MatchPattern::ElementWithSameNamedParent => TemplatePriority::PATH_DEFAULT,
+            | MatchPattern::ElementWithSameNamedParent
+            | MatchPattern::ElementWithSameNamedParentAtPosition(_) => {
+                TemplatePriority::PATH_DEFAULT
+            }
             MatchPattern::Document | MatchPattern::DocumentElement(None) => {
                 TemplatePriority::ROOT_DEFAULT
             }

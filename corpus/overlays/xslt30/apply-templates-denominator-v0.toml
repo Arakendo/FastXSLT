@@ -147,3 +147,8 @@ execution = "passed"
 case_name = "conflict-resolution-0503"
 selection = "selected"
 execution = "passed"
+
+[[case_override]]
+case_name = "conflict-resolution-1501"
+selection = "selected"
+execution = "passed"

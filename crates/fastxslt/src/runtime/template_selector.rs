@@ -160,7 +160,9 @@ fn matches_pattern(
             }
             Ok(false)
         }
-        MatchPattern::ElementWithSameNamedChild | MatchPattern::ElementWithSameNamedParent => {
+        MatchPattern::ElementWithSameNamedChild
+        | MatchPattern::ElementWithSameNamedParent
+        | MatchPattern::ElementWithSameNamedParentAtPosition(_) => {
             matches_name_relation(pattern, source, node, request_id, control)
         }
         MatchPattern::Path(path) => match_path_pattern(source, node, path, request_id, control),
@@ -172,14 +174,15 @@ fn matches_pattern(
         MatchPattern::ProcessingInstruction => {
             Ok(source.kind(node) == NodeKind::ProcessingInstruction)
         }
-        MatchPattern::AnyNode => Ok(matches!(
-            source.kind(node),
-            NodeKind::Element
-                | NodeKind::Text
-                | NodeKind::Comment
-                | NodeKind::ProcessingInstruction
-        )),
+        MatchPattern::AnyNode => Ok(matches_any_node(source.kind(node))),
     }
+}
+
+fn matches_any_node(kind: NodeKind) -> bool {
+    matches!(
+        kind,
+        NodeKind::Element | NodeKind::Text | NodeKind::Comment | NodeKind::ProcessingInstruction
+    )
 }
 
 fn matches_name_relation(
@@ -195,6 +198,9 @@ fn matches_name_relation(
         }
         MatchPattern::ElementWithSameNamedParent => {
             matches_same_named_parent(source, node, request_id, control)
+        }
+        MatchPattern::ElementWithSameNamedParentAtPosition(position) => {
+            matches_same_named_parent_at_position(source, node, *position, request_id, control)
         }
         _ => unreachable!("matches_name_relation receives a name relation"),
     }
@@ -257,6 +263,45 @@ fn matches_same_named_parent(
         return Err(unsupported_name_comparison(request_id));
     }
     Ok(node_name.local == parent_name.local)
+}
+
+fn matches_same_named_parent_at_position(
+    source: &Document,
+    node: NodeId,
+    required_position: usize,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if !matches_same_named_parent(source, node, request_id, control)? {
+        return Ok(false);
+    }
+    let parent = source
+        .parent(node)
+        .expect("same-named candidate has a parent");
+    let Some(grandparent) = source.parent(parent) else {
+        return Ok(false);
+    };
+    let candidate_name = source.name(node).expect("element candidate has a name");
+    let mut filtered_position = 0;
+    for sibling in source.children(grandparent) {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if source.kind(*sibling) != NodeKind::Element {
+            continue;
+        }
+        let sibling_name = source.name(*sibling).expect("element sibling has a name");
+        if sibling_name.namespace.is_some() {
+            return Err(unsupported_name_comparison(request_id));
+        }
+        if sibling_name.local == candidate_name.local {
+            filtered_position += 1;
+        }
+        if *sibling == parent {
+            return Ok(filtered_position == required_position);
+        }
+    }
+    Ok(false)
 }
 
 fn unsupported_name_comparison(request_id: &str) -> ExecutionFailure {

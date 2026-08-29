@@ -302,6 +302,11 @@ multi-step current pattern in a separate typed same-named-parent relation. The
 final candidate supplies `current()` while its parent supplies the predicate
 context; parent inspection is charged and remains in the same explicit
 unnamespaced lexical-name domain.
+`conflict-resolution-1501` adds a filtered position to that relation: the
+same-named parent must be second among element siblings sharing the final
+candidate's lexical name. The runtime charges parent and sibling inspection.
+Its two upstream XPath assertions are conserved verbatim and interpreted by a
+bounded case-specific XML oracle, without claiming general assertion XPath.
 `conflict-resolution-0901` then conserves the existing typed path machinery
 across template selection: `//b` supplies six candidates in document order,
 while retained `doc/a/b` and `doc/z/b` patterns distinguish their parent chains
@@ -840,7 +845,12 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [x] Execute `conflict-resolution-0503` through a separate typed, charged
   same-named-parent relation that preserves the final candidate as `current()`
   while the predicate context is its parent. Keep general multi-step current
-  patterns, namespaced lexical QName comparison, and positional variants out.
+  patterns and namespaced lexical QName comparison out.
+- [x] Execute `conflict-resolution-1501` through a typed filtered-parent
+  position relation, distinguishing second among matching-name siblings from
+  second element child. Conserve both upstream `all-of` XPath assertions and
+  interpret them through a bounded case oracle; keep general positional
+  patterns and assertion XPath evaluation out.
 - [x] Execute `conflict-resolution-0901` as a conservation case for typed
   leading-descendant selection, document-order candidate delivery, and retained
   multi-step parent/child match paths. Keep general `current()` patterns,
@@ -848,7 +858,7 @@ failed, and harness-error cases without an unqualified conformance claim.
   propagation, and general pattern grammar outside that conservation slice.
 - [x] Conserve the complete ordered 50-case XSLT30 apply-templates denominator,
   its 50 principal plus one secondary stylesheet, and its assertion-shape
-  counts. Record 28 explicit passes and 22 default not-run dispositions without
+  counts. Record 29 explicit passes and 21 default not-run dispositions without
   converting unexecuted cases into engine failures or an aggregate conformance
   claim.
 - [x] Execute `conflict-resolution-0701` through inherited

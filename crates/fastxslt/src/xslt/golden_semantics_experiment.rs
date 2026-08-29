@@ -138,6 +138,7 @@ pub(crate) enum MatchPattern {
     },
     ElementWithSameNamedChild,
     ElementWithSameNamedParent,
+    ElementWithSameNamedParentAtPosition(usize),
     Path(LocationPath),
     Attribute(ExpandedName),
     Comment,
