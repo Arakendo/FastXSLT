@@ -21,6 +21,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `template-002/003` Node-Kind Execution](xslt30-template-002-003-node-kind-execution-2026-08-26.md)
 - [XSLT30 `template-004` Attribute Execution](xslt30-template-004-attribute-execution-2026-08-26.md)
 - [XSLT30 `template-005` Named-Template Execution](xslt30-template-005-named-template-execution-2026-08-26.md)
+- [XSLT30 `conflict-resolution-0101` Template Priority and `xsl:text`](xslt30-conflict-resolution-0101-template-priority-and-xsl-text-2026-08-28.md)
 - [XSLT30 Path Denominator and Child-Axis Predicate](xslt30-path-denominator-and-child-axis-predicate-2026-08-26.md)
 - [XSLT30 `path-002` Descendant and Ancestor Execution](xslt30-path-002-descendant-ancestor-execution-2026-08-26.md)
 - [XSLT30 `path-003` Ancestor-or-Self Execution](xslt30-path-003-ancestor-or-self-execution-2026-08-26.md)

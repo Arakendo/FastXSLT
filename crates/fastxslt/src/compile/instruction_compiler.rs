@@ -62,7 +62,9 @@ pub(super) fn compile_sequence_excluding(
             NodeKind::Element => {
                 let name = document.name(child).expect("element nodes have names");
                 if name.namespace.as_deref() == Some(XSLT_NAMESPACE) {
-                    if name.local == "value-of" {
+                    if name.local == "text" {
+                        instructions.push(compile_text(document, child)?);
+                    } else if name.local == "value-of" {
                         instructions.push(compile_value_of(document, child)?);
                     } else if name.local == "variable" {
                         let variable = compile_variable(document, child)?;
@@ -129,6 +131,28 @@ pub(super) fn compile_sequence_excluding(
         }
     }
     Ok(instructions)
+}
+
+fn compile_text(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
+    ensure_only_attributes(document, element, &[], "xsl:text")?;
+    let mut value = String::new();
+    for child in document.children(element).iter().copied() {
+        match document.kind(child) {
+            NodeKind::Text => value.push_str(document.value(child).unwrap_or_default()),
+            NodeKind::Comment | NodeKind::ProcessingInstruction => {}
+            NodeKind::Element | NodeKind::Document | NodeKind::Attribute => {
+                return Err(invalid(
+                    "FXST0026",
+                    "the private xsl:text slice permits character content only",
+                    document.location(child),
+                ));
+            }
+        }
+    }
+    Ok(Instruction::Text {
+        value,
+        location: document.location(element).clone(),
+    })
 }
 
 pub(super) fn literal_result_namespaces(

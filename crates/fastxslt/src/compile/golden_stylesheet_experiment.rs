@@ -1092,6 +1092,28 @@ mod tests {
     }
 
     #[test]
+    fn xsl_text_preserves_explicit_whitespace_and_rejects_element_content() {
+        let stylesheet = parse_stylesheet(
+            "memory:text.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:text>  kept  </xsl:text></xsl:template></xsl:stylesheet>"#,
+        );
+        let program = compile_stylesheet(&stylesheet).expect("xsl:text should compile");
+        let root_template = program.root_template.expect("root template");
+        let [Instruction::Text { value, .. }] = root_template.body.as_slice() else {
+            panic!("xsl:text should lower to one owned text instruction");
+        };
+        assert_eq!(value, "  kept  ");
+
+        let invalid_text = parse_stylesheet(
+            "memory:invalid-text.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:text><bad/></xsl:text></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&invalid_text).expect_err("element content must fail");
+        assert_eq!(failure.code, "FXST0026");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+    }
+
+    #[test]
     fn separates_invalid_deep_equal_arity_from_unsupported_collation_semantics() {
         let invalid = parse_stylesheet(
             "memory:deep-equal-arity.xsl",

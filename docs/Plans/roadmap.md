@@ -199,7 +199,16 @@ dynamic runtime function.
 bound-variable attribute paths, checked exact-decimal multiplication and
 aggregation, and the single required two-decimal formatting picture. The
 complete 28-case `expr/data-manipulation` denominator now passes through native
-execution. The current order of work is:
+execution.
+
+Pinned XSLT30 `conflict-resolution-0101` now starts standards-driven
+`insn/apply-templates` evidence. Built-in document dispatch reaches the exact
+`doc` rule, then the exact `foo` pattern beats element-wildcard and any-node
+fallbacks. Its previously exposed `xsl:text` gap now lowers explicit character
+content to the existing owned text instruction with whitespace-preservation and
+invalid-element controls. This is one selected case, not a denominator claim.
+
+The current order of work is:
 
 1. obtain representative consumer transforms, input/result distributions,
    concurrency, deployment targets, trust model, and latency/throughput budgets;
@@ -617,6 +626,11 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [x] Execute XSLT30 `template-005` through statically resolved named templates,
   invocation-local parameters, conditional equality, calls, and bounded
   recursion. The complete six-case denominator now passes.
+- [x] Execute selected XSLT30 `conflict-resolution-0101` through built-in
+  document dispatch and competing exact-name, element-wildcard, and any-node
+  template rules. Add only the required attribute-free `xsl:text` character
+  content, preserving explicit whitespace and rejecting element content; do
+  not infer complete apply-templates conflict-resolution conformance.
 - [x] Admit the complete five-case XSLT30 `misc/initial-mode` denominator,
   preserving each mode identity and expected error or XML assertion through
   bounded snapshots. A focused host-neutral initial-mode entry executes with an

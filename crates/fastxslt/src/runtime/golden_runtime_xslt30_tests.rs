@@ -67,6 +67,25 @@ fn path_test_set() -> (Document, PathBuf) {
     )
 }
 
+fn apply_templates_test_set() -> (Document, PathBuf) {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../vendor/xslt30-test/tests/insn/apply-templates/_apply-templates-test-set.xml");
+    let bytes = fs::read(&path).expect("read pinned XSLT30 apply-templates test set");
+    let parsed = parse_document(
+        "urn:w3c:xslt30:insn:apply-templates:test-set",
+        &bytes,
+        ParseLimits {
+            max_events: 16_384,
+            max_depth: 64,
+        },
+    )
+    .expect("parse pinned XSLT30 apply-templates test set");
+    (
+        Document::from_parsed(parsed).expect("build apply-templates test-set document"),
+        path,
+    )
+}
+
 fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'a str> {
     document
         .attributes(node)
@@ -379,6 +398,84 @@ fn executes_pinned_xslt30_template_001_through_005() {
         let actual = &results.by_request[case_name].serialized;
         assert_same_result_element_string(actual, &expected, "out");
     }
+}
+
+#[test]
+fn executes_pinned_xslt30_conflict_resolution_0101() {
+    const CASE_NAME: &str = "conflict-resolution-0101";
+
+    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
+    assert!(overlay.contains(&format!("case_name = \"{CASE_NAME}\"")));
+    let (test_set, set_path) = apply_templates_test_set();
+    let test_case = find_element(
+        &test_set,
+        test_set.document_node(),
+        "test-case",
+        Some(("name", CASE_NAME)),
+    )
+    .expect("overlay case should exist in pinned suite");
+    let environment_ref = find_element(&test_set, test_case, "environment", None)
+        .and_then(|node| attribute(&test_set, node, "ref"))
+        .expect("case should reference an environment");
+    let environment = find_element(
+        &test_set,
+        test_set.document_node(),
+        "environment",
+        Some(("name", environment_ref)),
+    )
+    .expect("referenced environment should exist");
+    let source = find_element(&test_set, environment, "content", None)
+        .map(|node| test_set.string_value(node))
+        .expect("environment should contain the principal source");
+    let stylesheet_file = find_element(&test_set, test_case, "stylesheet", None)
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("case should name a stylesheet");
+    let expected = find_element(&test_set, test_case, "assert-xml", None)
+        .map(|node| test_set.string_value(node))
+        .expect("case should provide an XML assertion");
+    let stylesheet = fs::read(
+        set_path
+            .parent()
+            .expect("test set should have a directory")
+            .join(stylesheet_file),
+    )
+    .expect("read upstream stylesheet and close handle");
+    let source_id = format!("urn:w3c:xslt30:{CASE_NAME}:source");
+    let stylesheet_id = format!("urn:w3c:xslt30:{CASE_NAME}:stylesheet");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(source_id.clone(), source.into_bytes())
+        .expect("admit upstream source");
+    resources
+        .admit(stylesheet_id.clone(), stylesheet)
+        .expect("admit upstream stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, &stylesheet_id).expect("compile suite case");
+    assert_eq!(program.matched_templates.len(), 4);
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 4_096,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    set.add(TransformRequest {
+        identity: CASE_NAME.to_owned(),
+        result_identity: format!("result:{CASE_NAME}"),
+        entry: InvocationEntry::PrincipalSource {
+            resource: source_id,
+        },
+        parameters: BTreeMap::new(),
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    })
+    .expect("admit suite request");
+    let results = execute_transform_set(set.seal()).expect("execute suite case");
+    let actual = &results.by_request[CASE_NAME].serialized;
+    assert_same_result_element_string(actual, &expected, "out");
 }
 
 #[test]

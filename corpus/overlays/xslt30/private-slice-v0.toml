@@ -455,3 +455,10 @@ case_name = "data-manipulation-028"
 selection = "selected"
 execution = "passed"
 rationale = "A source-derived parameter default uses the same charged descendant and ancestor navigation semantics."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0101"
+selection = "selected"
+execution = "passed"
+rationale = "Built-in document dispatch reaches competing exact-name, element-wildcard, and any-node template rules; the exact qualified-name rule wins by default priority."
