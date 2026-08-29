@@ -754,4 +754,8 @@ fn node_has_unnamespaced_name(document: &Document, node: NodeId, required: &str)
 
 #[cfg(test)]
 #[path = "path_experiment_tests.rs"]
-mod tests;
+mod evaluation_tests;
+
+#[cfg(test)]
+#[path = "path_syntax_tests.rs"]
+mod syntax_tests;

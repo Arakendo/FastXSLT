@@ -49,6 +49,7 @@ pressure architecture but does not silently create a public guarantee.
 - [QT3 `Axes080`–`Axes084` Internal-Descendant Attribute Composition](qt3-axes080-084-internal-descendant-attribute-composition-2026-08-28.md)
 - [Path Location-Step Cohesion Review](path-location-step-cohesion-review-2026-08-28.md)
 - [Path Location Owner Decomposition Checkpoint](path-location-owner-decomposition-checkpoint-2026-08-28.md)
+- [Path Test-Owner Cohesion Checkpoint](path-test-owner-cohesion-checkpoint-2026-08-28.md)
 - [XSLT30 `expr/for` Denominator Admission](xslt30-for-denominator-admission-2026-08-26.md)
 - [XSLT30 `for-001` Ordered Sequence Execution](xslt30-for-001-ordered-sequence-execution-2026-08-26.md)
 - [XSLT30 `for-002` Source-Free Initial-Template Execution](xslt30-for-002-source-free-initial-template-execution-2026-08-26.md)

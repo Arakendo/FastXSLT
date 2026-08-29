@@ -122,6 +122,10 @@ compose the same internal expansion with explicit and abbreviated attribute
 steps. No production widening was required; the direct seam now has 181 passes.
 `Axes084-5` remains visibly outside selection because it introduces
 `normalize-space()` predicate semantics rather than another axis form.
+Before that next semantic addition, the 992-line path invariant-test owner was
+split at its demonstrated syntax-versus-evaluation seam under ADR-0004. The
+result is a 112-line syntax/diagnostic owner and an 891-line
+navigation/predicate/work-accounting owner; production semantics are unchanged.
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
 source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`

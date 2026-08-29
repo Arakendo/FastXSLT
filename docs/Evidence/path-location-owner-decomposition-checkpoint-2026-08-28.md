@@ -54,3 +54,8 @@ indirection or allocation was added.
 The named checkpoint is complete. Later reverse-axis or kind-test work may now
 proceed incrementally. A parser/evaluator production split remains unselected;
 it still requires evidence of independent responsibility or coupling pressure.
+
+The later [path test-owner cohesion checkpoint](path-test-owner-cohesion-checkpoint-2026-08-28.md)
+separates syntax/diagnostic invariants from evaluation invariants after the
+test owner approached the next ADR-0004 size threshold. Production parsing and
+evaluation remain together.
