@@ -160,8 +160,8 @@ fn matches_pattern(
             }
             Ok(false)
         }
-        MatchPattern::ElementWithSameNamedChild => {
-            matches_same_named_child(source, node, request_id, control)
+        MatchPattern::ElementWithSameNamedChild | MatchPattern::ElementWithSameNamedParent => {
+            matches_name_relation(pattern, source, node, request_id, control)
         }
         MatchPattern::Path(path) => match_path_pattern(source, node, path, request_id, control),
         MatchPattern::Attribute(name) => {
@@ -179,6 +179,24 @@ fn matches_pattern(
                 | NodeKind::Comment
                 | NodeKind::ProcessingInstruction
         )),
+    }
+}
+
+fn matches_name_relation(
+    pattern: &MatchPattern,
+    source: &Document,
+    node: NodeId,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    match pattern {
+        MatchPattern::ElementWithSameNamedChild => {
+            matches_same_named_child(source, node, request_id, control)
+        }
+        MatchPattern::ElementWithSameNamedParent => {
+            matches_same_named_parent(source, node, request_id, control)
+        }
+        _ => unreachable!("matches_name_relation receives a name relation"),
     }
 }
 
@@ -213,6 +231,32 @@ fn matches_same_named_child(
         }
     }
     Ok(false)
+}
+
+fn matches_same_named_parent(
+    source: &Document,
+    node: NodeId,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if source.kind(node) != NodeKind::Element {
+        return Ok(false);
+    }
+    let Some(parent) = source.parent(node) else {
+        return Ok(false);
+    };
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    if source.kind(parent) != NodeKind::Element {
+        return Ok(false);
+    }
+    let node_name = source.name(node).expect("element candidate has a name");
+    let parent_name = source.name(parent).expect("element parent has a name");
+    if node_name.namespace.is_some() || parent_name.namespace.is_some() {
+        return Err(unsupported_name_comparison(request_id));
+    }
+    Ok(node_name.local == parent_name.local)
 }
 
 fn unsupported_name_comparison(request_id: &str) -> ExecutionFailure {

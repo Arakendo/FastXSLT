@@ -644,3 +644,10 @@ case_name = "conflict-resolution-0502"
 selection = "selected"
 execution = "passed"
 rationale = "The exact quantified range-variable predicate lowers to the same typed same-name child operation as conflict-resolution-0501, conserving equivalent selection and source-copy results."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0503"
+selection = "selected"
+execution = "passed"
+rationale = "The exact multi-step current() pattern lowers to a typed same-named-parent relation, preserving the distinction between the final candidate focus and the predicate's parent-step focus."

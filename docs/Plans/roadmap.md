@@ -297,12 +297,15 @@ surface forms—one using `current()`, one a quantified range variable—into on
 typed same-named-child pattern operation. Charged runtime inspection stays in
 the admitted unnamespaced lexical-name domain; namespaced candidates fail
 explicitly rather than being approximated through expanded-name equality.
+`conflict-resolution-0503` preserves the different focus semantics of a
+multi-step current pattern in a separate typed same-named-parent relation. The
+final candidate supplies `current()` while its parent supplies the predicate
+context; parent inspection is charged and remains in the same explicit
+unnamespaced lexical-name domain.
 `conflict-resolution-0901` then conserves the existing typed path machinery
 across template selection: `//b` supplies six candidates in document order,
 while retained `doc/a/b` and `doc/z/b` patterns distinguish their parent chains
-and produce `111222`. No lexical pattern parsing enters the dispatch loop. The
-adjacent `0503` parent-sensitive current case remains a deliberate language
-slice rather than a target for a stylesheet-shaped shortcut.
+and produce `111222`. No lexical pattern parsing enters the dispatch loop.
 `conflict-resolution-0701` now resolves an inherited template-local
 `xpath-default-namespace` into expanded names for simple unprefixed element
 patterns and child selections. The prefixed child rule proves equivalent
@@ -833,7 +836,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   `current()` and quantified surface forms into one typed, charged,
   unnamespaced same-named-child pattern operation. Keep general `current()`,
   quantified expressions, namespace-sensitive lexical QName comparison, and
-  the parent/positional variants out.
+  the positional variants out.
+- [x] Execute `conflict-resolution-0503` through a separate typed, charged
+  same-named-parent relation that preserves the final candidate as `current()`
+  while the predicate context is its parent. Keep general multi-step current
+  patterns, namespaced lexical QName comparison, and positional variants out.
 - [x] Execute `conflict-resolution-0901` as a conservation case for typed
   leading-descendant selection, document-order candidate delivery, and retained
   multi-step parent/child match paths. Keep general `current()` patterns,
@@ -841,7 +848,7 @@ failed, and harness-error cases without an unqualified conformance claim.
   propagation, and general pattern grammar outside that conservation slice.
 - [x] Conserve the complete ordered 50-case XSLT30 apply-templates denominator,
   its 50 principal plus one secondary stylesheet, and its assertion-shape
-  counts. Record 27 explicit passes and 23 default not-run dispositions without
+  counts. Record 28 explicit passes and 22 default not-run dispositions without
   converting unexecuted cases into engine failures or an aggregate conformance
   claim.
 - [x] Execute `conflict-resolution-0701` through inherited

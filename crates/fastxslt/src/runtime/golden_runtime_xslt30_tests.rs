@@ -673,6 +673,14 @@ fn executes_xslt30_equivalent_same_named_child_patterns() {
 }
 
 #[test]
+fn executes_xslt30_same_named_parent_current_pattern() {
+    let (actual, expected, matched_template_count) =
+        execute_apply_templates_case("conflict-resolution-0503");
+    assert_eq!(matched_template_count, 2);
+    assert_same_result_element_string(&actual, &expected, "doc");
+}
+
+#[test]
 fn executes_xslt30_next_match_parameter_chain() {
     let (actual, expected, matched_template_count) =
         execute_apply_templates_case("conflict-resolution-1205");
