@@ -489,7 +489,10 @@ reference and differential evidence; ADR-0008 authorizes only native FFI copies.
 
 ### Deferred capability decisions
 
-- `no_std`, WASM, and CLI requirements.
+- `no_std` and CLI requirements.
+- A presealed, memory-resident WASM embedding profile, target/runtime choice,
+  host boundary, operational guarantees, and parity evidence, tracked by
+  AR-0015.
 - Streaming and incremental execution, including any XSLT streaming-conformance
   claim, tracked as architectural optionality by AR-0007.
 - Schema awareness and typed values beyond the initial profile.

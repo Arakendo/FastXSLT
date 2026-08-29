@@ -604,10 +604,32 @@ measured end-to-end behavior to at least one non-Rust consumer.
 
 ## Later candidates
 
-CLI, WASM, streaming implementation or conformance, schema awareness, extension
+CLI, streaming implementation or conformance, schema awareness, extension
 functions, packages, alternate execution backends, transformation graphs, and
 specific parallel executor strategies require their own product evidence and
-architectural review. Their presence in this list is not a commitment.
+architectural review. Their presence in this list is not a commitment. WASM now
+has stated future consumer pressure and is tracked separately by AR-0015, but it
+does not enter the current critical path without a named runtime and workload.
+
+### Deferred WASM embedding profile
+
+AR-0015 preserves a future presealed, memory-resident WASM experiment using the
+same semantic engine. It selects no browser, WASI, component, binding, or public
+API profile yet.
+
+- [ ] Obtain the consumer's exact WASM runtime, target, deployment/trust model,
+  resource graph, workload, memory ceiling, concurrency, and performance needs.
+- [ ] Inventory dependency, feature, 32-bit accounting, atomics/threading,
+  panic, clock, and platform assumptions for the candidate target.
+- [ ] Compile the safe core and execute one bounded no-I/O smoke transform,
+  then exercise sealed `include-0401` without ambient acquisition.
+- [ ] Prove retained compile/prepared reuse and deterministic generation release
+  across calls within one instance; make no same-instance concurrency promise.
+- [ ] Differentially verify results and structured diagnostics against direct
+  Rust before measuring load, transfer, compile, prepare, warm execution, and
+  retained/peak linear memory.
+- [ ] Require a later ADR before selecting a supported target, binding surface,
+  resolver profile, or target-specific interruption guarantee.
 
 ### Prepared representation and data-layout audit
 

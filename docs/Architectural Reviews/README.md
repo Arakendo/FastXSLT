@@ -95,3 +95,6 @@ and add the record to this index. Never reuse a retired number.
 - [AR-0014: Resource Reference Resolution and Authority Composition](AR-0014-resource-reference-resolution-and-authority-composition.md)
   -- Incubating; preserve exact sealed-snapshot lookup while corpus and consumer
   evidence determine base identity, catalogs, live authority, and bounded policy.
+- [AR-0015: WASM Embedding Profile and Host Boundary](AR-0015-wasm-embedding-profile-and-host-boundary.md)
+  -- Incubating; preserve a presealed memory-resident parity experiment while a
+  real consumer identifies the target runtime, boundary, limits, and workload.
