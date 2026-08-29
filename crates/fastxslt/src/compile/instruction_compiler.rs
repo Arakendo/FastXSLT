@@ -23,9 +23,9 @@ use crate::xslt::golden_semantics_experiment::{
 
 use super::{
     CompileCategory, CompileFailure, XML_SCHEMA_NAMESPACE, XSLT_NAMESPACE,
-    ensure_no_meaningful_children, ensure_only_attributes, invalid, is_ascii_ncname,
-    is_xslt_element, map_path_failure, meaningful_children, normalize_variable_qname,
-    optional_attribute, required_attribute, unsupported,
+    effective_xpath_default_namespace, ensure_no_meaningful_children, ensure_only_attributes,
+    invalid, is_ascii_ncname, is_xslt_element, map_path_failure, meaningful_children,
+    normalize_variable_qname, optional_attribute, required_attribute, unsupported,
 };
 
 fn compile_sequence(
@@ -217,7 +217,7 @@ fn compile_apply_templates(
     ensure_no_meaningful_children(document, element, "xsl:apply-templates")?;
     let location = document.location(element).clone();
     let select = optional_attribute(document, element, None, "select")
-        .map(|expression| parse_apply_selection(expression, location.clone()))
+        .map(|expression| parse_apply_selection(document, element, expression, location.clone()))
         .transpose()?;
     let mode = optional_attribute(document, element, None, "mode")
         .map(|mode| parse_mode(mode, document.location(element)))
@@ -230,6 +230,8 @@ fn compile_apply_templates(
 }
 
 fn parse_apply_selection(
+    document: &Document,
+    element: NodeId,
     expression: &str,
     location: SourceLocation,
 ) -> Result<ApplySelection, CompileFailure> {
@@ -250,6 +252,16 @@ fn parse_apply_selection(
     if let Some(node_test) = node_test {
         return Ok(ApplySelection::ChildNodes(node_test));
     }
+    if is_ascii_ncname(expression) {
+        if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+            return Ok(ApplySelection::ChildElement(
+                crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: Some(namespace.to_owned()),
+                    local: expression.to_owned(),
+                },
+            ));
+        }
+    }
     if let Some(attribute) = expression.strip_prefix('@') {
         if is_ascii_ncname(attribute) {
             return Ok(ApplySelection::Attribute(
@@ -259,6 +271,13 @@ fn parse_apply_selection(
                 },
             ));
         }
+    }
+    if effective_xpath_default_namespace(document, element).is_some() {
+        return Err(unsupported(
+            "FXST1027",
+            "xpath-default-namespace on non-simple apply-templates paths is outside the private expanded-name path slice",
+            &location,
+        ));
     }
     parse_location_path(expression, location)
         .map(ApplySelection::LocationPath)

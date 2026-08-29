@@ -640,6 +640,18 @@ fn select_apply_nodes(
             evaluate_location_path_controlled(source, context, path, control)
                 .map_err(|failure| control_failure(failure, inputs.request_id))
         }
+        ApplySelection::ChildElement(name) => {
+            let mut selected = Vec::new();
+            for child in source.children(context).iter().copied() {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                if source.kind(child) == NodeKind::Element && source.name(child) == Some(name) {
+                    selected.push(child);
+                }
+            }
+            Ok(selected)
+        }
         ApplySelection::ChildNodes(node_test) => {
             let mut selected = Vec::new();
             for child in source.children(context).iter().copied() {

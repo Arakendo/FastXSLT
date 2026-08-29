@@ -475,7 +475,7 @@ fn compile_template(document: &Document, element: NodeId) -> Result<Template, Co
     ensure_only_attributes(
         document,
         element,
-        &["match", "mode", "priority"],
+        &["match", "mode", "priority", "xpath-default-namespace"],
         "xsl:template",
     )?;
     let mut parameters = Vec::new();
@@ -662,6 +662,29 @@ pub(super) fn is_xslt_element(document: &Document, node: NodeId, local: &str) ->
             && name.namespace.as_deref() == Some(XSLT_NAMESPACE)
             && name.local == local
     })
+}
+
+pub(super) fn effective_xpath_default_namespace(
+    document: &Document,
+    element: NodeId,
+) -> Option<&str> {
+    let mut current = Some(element);
+    while let Some(node) = current {
+        if let Some(namespace) = optional_attribute(document, node, None, "xpath-default-namespace")
+            .or_else(|| {
+                optional_attribute(
+                    document,
+                    node,
+                    Some(XSLT_NAMESPACE),
+                    "xpath-default-namespace",
+                )
+            })
+        {
+            return (!namespace.is_empty()).then_some(namespace);
+        }
+        current = document.parent(node);
+    }
+    None
 }
 
 pub(super) fn ensure_only_attributes(
@@ -1160,6 +1183,47 @@ mod tests {
         let failure = compile_stylesheet(&unbound).expect_err("unbound prefix should be invalid");
         assert_eq!(failure.code, "FXST0031");
         assert_eq!(failure.category, CompileCategory::Invalid);
+    }
+
+    #[test]
+    fn compiles_xpath_default_namespace_for_simple_pattern_and_selection() {
+        let stylesheet = parse_stylesheet(
+            "memory:xpath-default-namespace.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="doc" xpath-default-namespace="http://example.test/"><out><xsl:apply-templates select="item"/></out></xsl:template></xsl:stylesheet>"#,
+        );
+        let program = compile_stylesheet(&stylesheet)
+            .expect("simple default-namespace pattern and selection should compile");
+        assert!(matches!(
+            &program.matched_templates[0].pattern,
+            crate::xslt::golden_semantics_experiment::MatchPattern::Element(name)
+                if name.namespace.as_deref() == Some("http://example.test/") && name.local == "doc"
+        ));
+        assert!(matches!(
+            program.matched_templates[0].template.body.as_slice(),
+            [Instruction::LiteralElement { body, .. }]
+                if matches!(body.as_slice(), [Instruction::ApplyTemplates {
+                    select: Some(crate::xslt::golden_semantics_experiment::ApplySelection::ChildElement(name)),
+                    ..
+                }] if name.namespace.as_deref() == Some("http://example.test/") && name.local == "item")
+        ));
+
+        let path_pattern = parse_stylesheet(
+            "memory:xpath-default-namespace-pattern-path.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="doc/item" xpath-default-namespace="http://example.test/"><out/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&path_pattern)
+            .expect_err("multi-step default-namespace pattern must not lose expanded names");
+        assert_eq!(failure.code, "FXST1027");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+
+        let selection_path = parse_stylesheet(
+            "memory:xpath-default-namespace-selection-path.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="doc" xpath-default-namespace="http://example.test/"><xsl:apply-templates select="item/child"/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&selection_path)
+            .expect_err("multi-step default-namespace selection must not lose expanded names");
+        assert_eq!(failure.code, "FXST1027");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
     }
 
     #[test]

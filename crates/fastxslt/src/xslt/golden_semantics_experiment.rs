@@ -131,6 +131,7 @@ pub(crate) enum MatchPattern {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ApplySelection {
     LocationPath(LocationPath),
+    ChildElement(ExpandedName),
     ChildNodes(NodeTest),
     Attribute(ExpandedName),
     GlobalTemporaryChildren(String),

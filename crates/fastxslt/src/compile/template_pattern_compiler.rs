@@ -5,7 +5,8 @@ use crate::xpath::path_experiment::parse_location_path;
 use crate::xslt::golden_semantics_experiment::{MatchPattern, TemplatePriority};
 
 use super::{
-    CompileFailure, invalid, is_ascii_ncname, map_path_failure, optional_attribute, unsupported,
+    CompileFailure, effective_xpath_default_namespace, invalid, is_ascii_ncname, map_path_failure,
+    optional_attribute, unsupported,
 };
 
 pub(super) fn compile_match_pattern(
@@ -56,7 +57,7 @@ pub(super) fn compile_match_pattern(
         "*" => MatchPattern::AnyElement,
         name if is_ascii_ncname(name) => {
             MatchPattern::Element(crate::xml::quick_xml_experiment::ExpandedName {
-                namespace: None,
+                namespace: effective_xpath_default_namespace(document, element).map(str::to_owned),
                 local: name.to_owned(),
             })
         }
@@ -78,6 +79,16 @@ pub(super) fn compile_match_pattern(
                     local: local.to_owned(),
                 })
             }
+        }
+        path if path.contains('/')
+            && !path.starts_with('/')
+            && effective_xpath_default_namespace(document, element).is_some() =>
+        {
+            return Err(unsupported(
+                "FXST1027",
+                "xpath-default-namespace on multi-step match paths is outside the private expanded-name path slice",
+                document.location(element),
+            ));
         }
         path if path.contains('/') && !path.starts_with('/') => MatchPattern::Path(
             parse_location_path(path, document.location(element).clone())

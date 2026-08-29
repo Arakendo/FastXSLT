@@ -532,3 +532,10 @@ case_name = "conflict-resolution-0901"
 selection = "selected"
 execution = "passed"
 rationale = "The typed leading-descendant selector reaches all b descendants in document order, while retained doc/a/b and doc/z/b match paths distinguish their parent chains without runtime pattern parsing."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0701"
+selection = "selected"
+execution = "passed"
+rationale = "A template-local xpath-default-namespace resolves its unprefixed exact element pattern and simple child selection into expanded names; the separately prefixed child rule matches the same source namespace."
