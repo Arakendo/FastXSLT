@@ -496,6 +496,14 @@ fn executes_xslt30_equal_priority_conflicts_by_last_source_order() {
 }
 
 #[test]
+fn executes_xslt30_explicit_priority_without_widening_node_test_axis() {
+    let (actual, expected, matched_template_count) =
+        execute_apply_templates_case("conflict-resolution-0106");
+    assert_eq!(matched_template_count, 4);
+    assert_same_result_element_string(&actual, &expected, "out");
+}
+
+#[test]
 fn executes_pinned_xslt30_template_006_from_its_upstream_test_set() {
     let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
     assert!(overlay.contains("case_name = \"template-006\""));

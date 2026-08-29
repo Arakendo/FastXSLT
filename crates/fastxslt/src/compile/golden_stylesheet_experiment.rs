@@ -3,7 +3,7 @@ use crate::xpath::path_experiment::{PathFailure, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
     ConstructedElement, GlobalBinding, GlobalBindingDefault, GlobalBindingKind, MatchPattern,
     MatchedTemplate, NamedTemplate, OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME,
-    StylesheetProgram, Template, TemplateParameter,
+    StylesheetProgram, Template, TemplateParameter, TemplatePriority,
 };
 
 #[path = "instruction_compiler.rs"]
@@ -187,6 +187,13 @@ fn compile_top_level_template(
 
     let pattern = required_attribute(document, element, None, "match")?;
     if pattern == "/" {
+        if optional_attribute(document, element, None, "priority").is_some() {
+            return Err(unsupported(
+                "FXST1024",
+                "explicit priority on the private root-template path is not yet admitted",
+                document.location(element),
+            ));
+        }
         if root_template.is_some() {
             return Err(unsupported(
                 "FXST1001",
@@ -478,18 +485,73 @@ fn compile_matched_template(
             ));
         }
     };
+    let priority = compile_template_priority(document, element, &pattern)?;
     let modes = optional_attribute(document, element, None, "mode")
         .map(|mode| parse_template_modes(mode, document.location(element)))
         .transpose()?;
     Ok(MatchedTemplate {
         pattern,
+        priority,
         modes: modes.unwrap_or_default(),
         template: compile_template(document, element)?,
     })
 }
 
+fn compile_template_priority(
+    document: &Document,
+    element: NodeId,
+    pattern: &MatchPattern,
+) -> Result<TemplatePriority, CompileFailure> {
+    let Some(lexical) = optional_attribute(document, element, None, "priority") else {
+        return Ok(match pattern {
+            MatchPattern::Path(_) => TemplatePriority::PATH_DEFAULT,
+            MatchPattern::Element(_) | MatchPattern::Attribute(_) => {
+                TemplatePriority::EXACT_NAME_DEFAULT
+            }
+            MatchPattern::Comment
+            | MatchPattern::ProcessingInstruction
+            | MatchPattern::AnyNode
+            | MatchPattern::AnyElement => TemplatePriority::NODE_TEST_DEFAULT,
+        });
+    };
+    let lexical = lexical.trim();
+    if let Ok(value) = lexical.parse::<i32>() {
+        return Ok(TemplatePriority::explicit_integer(value));
+    }
+    if is_decimal_lexical(lexical) {
+        return Err(unsupported(
+            "FXST1025",
+            "the private explicit template-priority slice permits bounded signed integers only",
+            document.location(element),
+        ));
+    }
+    Err(invalid(
+        "FXST0030",
+        format!("invalid template priority: {lexical}"),
+        document.location(element),
+    ))
+}
+
+fn is_decimal_lexical(value: &str) -> bool {
+    let unsigned = value
+        .strip_prefix('+')
+        .or_else(|| value.strip_prefix('-'))
+        .unwrap_or(value);
+    let Some((whole, fractional)) = unsigned.split_once('.') else {
+        return !unsigned.is_empty() && unsigned.bytes().all(|byte| byte.is_ascii_digit());
+    };
+    (!whole.is_empty() || !fractional.is_empty())
+        && whole.bytes().all(|byte| byte.is_ascii_digit())
+        && fractional.bytes().all(|byte| byte.is_ascii_digit())
+}
+
 fn compile_template(document: &Document, element: NodeId) -> Result<Template, CompileFailure> {
-    ensure_only_attributes(document, element, &["match", "mode"], "xsl:template")?;
+    ensure_only_attributes(
+        document,
+        element,
+        &["match", "mode", "priority"],
+        "xsl:template",
+    )?;
     let mut parameters = Vec::new();
     let mut parameter_nodes = Vec::new();
     let mut body_started = false;
@@ -981,7 +1043,7 @@ mod tests {
     }
 
     #[test]
-    fn compiles_exact_element_template_dispatch_without_priority_semantics() {
+    fn compiles_exact_element_template_dispatch_and_modes() {
         let bytes = include_bytes!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../corpus/golden/template-dispatch/stylesheet.xsl"
@@ -1025,6 +1087,43 @@ mod tests {
         );
         let program = compile_stylesheet(&mode).expect("unprefixed modes should compile");
         assert_eq!(program.matched_templates[0].modes, ["detail"]);
+    }
+
+    #[test]
+    fn retains_bounded_integer_template_priority_and_classifies_other_lexicals() {
+        let stylesheet = parse_stylesheet(
+            "memory:priority.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="doc" priority="10"><out/></xsl:template><xsl:template match="node()" priority="1"><fallback/></xsl:template><xsl:template match="*"><wildcard/></xsl:template></xsl:stylesheet>"#,
+        );
+        let program = compile_stylesheet(&stylesheet).expect("integer priorities should compile");
+        assert!(program.matched_templates[0].priority > program.matched_templates[1].priority);
+        assert!(program.matched_templates[1].priority > program.matched_templates[2].priority);
+
+        let fractional = parse_stylesheet(
+            "memory:fractional-priority.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="item" priority=".5"><out/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&fractional)
+            .expect_err("fractional priority should remain explicitly unsupported");
+        assert_eq!(failure.code, "FXST1025");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+
+        let invalid = parse_stylesheet(
+            "memory:invalid-priority.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="item" priority="high"><out/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&invalid).expect_err("invalid priority should fail");
+        assert_eq!(failure.code, "FXST0030");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+
+        let root = parse_stylesheet(
+            "memory:root-priority.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/" priority="1"><out/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&root)
+            .expect_err("root priority must not be ignored by the private shortcut");
+        assert_eq!(failure.code, "FXST1024");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
     }
 
     #[test]

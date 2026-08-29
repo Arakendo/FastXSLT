@@ -476,3 +476,10 @@ case_name = "conflict-resolution-0104c"
 selection = "selected"
 execution = "passed"
 rationale = "Reversing the equal-priority element-wildcard and any-node declarations makes the later any-node rule win under the XSLT 3.0 default policy."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0106"
+selection = "selected"
+execution = "passed"
+rationale = "Bounded explicit integer priorities retain the exact doc rule while a high-priority child-axis node test remains inapplicable to the selected attribute, whose built-in rule emits its value."

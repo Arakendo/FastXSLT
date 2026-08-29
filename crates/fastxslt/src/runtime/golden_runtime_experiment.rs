@@ -734,24 +734,16 @@ fn apply_template(
         .charge(WorkDomain::XsltInstruction, 1)
         .map_err(|failure| control_failure(failure, request_id))?;
     let mut selected_template = None;
-    let mut selected_priority = i8::MIN;
+    let mut selected_priority = None;
     for template in &program.matched_templates {
         if !template_accepts_mode(&template.modes, mode)
             || !match_pattern(&template.pattern, source, node, request_id, control)?
         {
             continue;
         }
-        let priority = match template.pattern {
-            MatchPattern::Path(_) => 1,
-            MatchPattern::Element(_) | MatchPattern::Attribute(_) => 0,
-            MatchPattern::AnyElement
-            | MatchPattern::Comment
-            | MatchPattern::ProcessingInstruction
-            | MatchPattern::AnyNode => -1,
-        };
-        if selected_template.is_none() || priority >= selected_priority {
+        if selected_priority.is_none_or(|priority| template.priority >= priority) {
             selected_template = Some(template);
-            selected_priority = priority;
+            selected_priority = Some(template.priority);
         }
     }
     if let Some(template) = selected_template {
@@ -783,7 +775,7 @@ fn apply_template(
             }
             Ok(result)
         }
-        NodeKind::Text => {
+        NodeKind::Text | NodeKind::Attribute => {
             let mut result = Vec::new();
             append_text(
                 &mut result,
@@ -793,7 +785,7 @@ fn apply_template(
             )?;
             Ok(result)
         }
-        NodeKind::Attribute | NodeKind::Comment | NodeKind::ProcessingInstruction => Ok(Vec::new()),
+        NodeKind::Comment | NodeKind::ProcessingInstruction => Ok(Vec::new()),
     }
 }
 

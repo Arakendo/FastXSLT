@@ -212,6 +212,11 @@ selector boundary: element-wildcard and any-node patterns tie at the same
 default priority, so reversing their stylesheet order reverses the selected
 last-declared rule. Exact-name and path priority bands remain distinct. These
 three selected cases still do not establish the complete 52-case denominator.
+`conflict-resolution-0106` then retains bounded signed-integer explicit
+priorities in compiled template state: priority `10` selects the `doc` rule over
+the otherwise matching priority-`1` node test. Its selected attribute remains
+outside the child-axis `node()` pattern and reaches the corrected built-in
+attribute string-value rule. Fractional/general priority remains unclaimed.
 
 The current order of work is:
 
@@ -641,6 +646,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   default priority and select the last declaration, while preserving the higher
   exact-name and path bands. Do not claim explicit priority, recovery policy,
   warnings, or older-edition ambiguity behavior.
+- [x] Execute `conflict-resolution-0106` through compiled bounded signed-integer
+  priority and the built-in attribute string-value rule. Preserve the child-axis
+  boundary that keeps `node()` from matching attributes; keep fractional and
+  arbitrary-precision priority, duplicate-pattern resolution, and root-pattern
+  priority outside the admitted slice.
 - [x] Admit the complete five-case XSLT30 `misc/initial-mode` denominator,
   preserving each mode identity and expected error or XML assertion through
   bounded snapshots. A focused host-neutral initial-mode entry executes with an

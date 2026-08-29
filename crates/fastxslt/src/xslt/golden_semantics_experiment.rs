@@ -79,8 +79,24 @@ pub(crate) struct TemplateParameter {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct MatchedTemplate {
     pub(crate) pattern: MatchPattern,
+    pub(crate) priority: TemplatePriority,
     pub(crate) modes: Vec<String>,
     pub(crate) template: Template,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct TemplatePriority(i64);
+
+impl TemplatePriority {
+    // The private comparison domain stores twice the semantic priority so the
+    // admitted integer values and half-step defaults remain exact.
+    pub(crate) const PATH_DEFAULT: Self = Self(1);
+    pub(crate) const EXACT_NAME_DEFAULT: Self = Self(0);
+    pub(crate) const NODE_TEST_DEFAULT: Self = Self(-1);
+
+    pub(crate) fn explicit_integer(value: i32) -> Self {
+        Self(i64::from(value) * 2)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -187,6 +187,34 @@ fn default_selection_uses_built_in_element_and_text_rules() {
 }
 
 #[test]
+fn unmatched_attributes_use_the_built_in_string_value_rule() {
+    const SOURCE: &str = "urn:fastxslt:built-in-attribute:source";
+    const STYLESHEET: &str = "urn:fastxslt:built-in-attribute:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br#"<root value="kept"/>"#.to_vec())
+        .expect("admit attribute source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="root/@value"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit attribute stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile attribute stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("attribute-request", "attribute-result", SOURCE))
+        .expect("add attribute request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute attribute request");
+    assert_eq!(
+        results.by_request["attribute-request"].serialized,
+        "<out>kept</out>"
+    );
+}
+
+#[test]
 fn named_template_recursion_stops_at_the_private_depth_limit() {
     const SOURCE: &str = "urn:fastxslt:recursion:source";
     const STYLESHEET: &str = "urn:fastxslt:recursion:stylesheet";
