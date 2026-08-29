@@ -34,6 +34,9 @@ pub(crate) enum PathStep {
     SelfNamed(String),
     SelfAnyElement,
     SelfAnyNode,
+    DescendantNamed(String),
+    DescendantAnyElement,
+    DescendantAnyNode,
 }
 
 impl PathStep {
@@ -67,6 +70,14 @@ impl PathStep {
                 _ => Some(Self::SelfNamed(name_test.to_owned())),
             };
         }
+        if let Some(name_test) = value.strip_prefix("descendant::") {
+            return match name_test {
+                "*" => Some(Self::DescendantAnyElement),
+                "node()" => Some(Self::DescendantAnyNode),
+                "text()" => None,
+                _ => Some(Self::DescendantNamed(name_test.to_owned())),
+            };
+        }
         let name_test = value.strip_prefix("child::").unwrap_or(value);
         Some(match name_test {
             "*" => Self::ChildAnyElement,
@@ -93,6 +104,13 @@ impl PathStep {
             Self::SelfNamed(_) | Self::SelfAnyElement | Self::SelfAnyNode
         )
     }
+
+    fn uses_descendant_axis(&self) -> bool {
+        matches!(
+            self,
+            Self::DescendantNamed(_) | Self::DescendantAnyElement | Self::DescendantAnyNode
+        )
+    }
 }
 
 impl PartialEq<&str> for PathStep {
@@ -101,9 +119,16 @@ impl PartialEq<&str> for PathStep {
             Self::ChildNamed(value)
             | Self::AttributeNamed(value)
             | Self::ParentNamed(value)
-            | Self::SelfNamed(value) => value == *other,
-            Self::ChildAnyElement | Self::ParentAnyElement | Self::SelfAnyElement => *other == "*",
-            Self::ChildAnyNode | Self::ParentAnyNode | Self::SelfAnyNode => *other == "node()",
+            | Self::SelfNamed(value)
+            | Self::DescendantNamed(value) => value == *other,
+            Self::ChildAnyElement
+            | Self::ParentAnyElement
+            | Self::SelfAnyElement
+            | Self::DescendantAnyElement => *other == "*",
+            Self::ChildAnyNode
+            | Self::ParentAnyNode
+            | Self::SelfAnyNode
+            | Self::DescendantAnyNode => *other == "node()",
             Self::ChildText => *other == "text()",
             Self::AttributeAny => matches!(*other, "*" | "node()"),
         }
@@ -220,6 +245,7 @@ pub(crate) fn parse_location_path(
             .or_else(|| step.strip_prefix("attribute::"))
             .or_else(|| step.strip_prefix("parent::"))
             .or_else(|| step.strip_prefix("self::"))
+            .or_else(|| step.strip_prefix("descendant::"))
             .or_else(|| step.strip_prefix('@'))
             .unwrap_or(if step == ".." { "node()" } else { step });
         !matches!(name_test, "*" | "node()" | "text()") && !is_ascii_ncname(name_test)
@@ -432,12 +458,16 @@ pub(crate) fn evaluate_location_path_controlled(
                 document.parent(node).into_iter().collect()
             } else if step.uses_self_axis() {
                 vec![node]
+            } else if step.uses_descendant_axis() {
+                descendant_nodes(document, node, control)?
             } else {
                 document.children(node).to_vec()
             };
             let mut named_candidates = Vec::new();
             for child in candidates {
-                if step_index != 0 || path.origin != PathOrigin::Descendant {
+                if (step_index != 0 || path.origin != PathOrigin::Descendant)
+                    && !step.uses_descendant_axis()
+                {
                     control.charge(WorkDomain::XPathNodeVisit, 1)?;
                 }
                 if step_matches_candidate(document, child, step) {
@@ -496,10 +526,14 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
                     .name(child)
                     .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
         }
-        PathStep::ChildAnyElement | PathStep::ParentAnyElement | PathStep::SelfAnyElement => {
-            document.kind(child) == NodeKind::Element
-        }
-        PathStep::ChildAnyNode | PathStep::ParentAnyNode | PathStep::SelfAnyNode => true,
+        PathStep::ChildAnyElement
+        | PathStep::ParentAnyElement
+        | PathStep::SelfAnyElement
+        | PathStep::DescendantAnyElement => document.kind(child) == NodeKind::Element,
+        PathStep::ChildAnyNode
+        | PathStep::ParentAnyNode
+        | PathStep::SelfAnyNode
+        | PathStep::DescendantAnyNode => true,
         PathStep::ChildText => document.kind(child) == NodeKind::Text,
         PathStep::AttributeNamed(required) => {
             document.kind(child) == NodeKind::Attribute
@@ -515,6 +549,12 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
                     .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
         }
         PathStep::SelfNamed(required) => {
+            document.kind(child) == NodeKind::Element
+                && document
+                    .name(child)
+                    .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
+        }
+        PathStep::DescendantNamed(required) => {
             document.kind(child) == NodeKind::Element
                 && document
                     .name(child)

@@ -51,6 +51,9 @@ lowering rather than silently returning an empty sequence.
 The admitted `Axes001` through `Axes030` selections now contribute 51 passing
 location-path cases through the same metadata-driven direct XPath seam.
 
+Subsequent [`Axes031`–`Axes033` evidence](qt3-axes031-033-descendant-axis-execution-2026-08-28.md)
+adds the complete explicit descendant-axis tranche.
+
 ## Claim boundary
 
 This evidence admits only the six listed cases, unprefixed named and wildcard

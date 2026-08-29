@@ -10,7 +10,7 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use super::count_experiment;
 
 const QT3_NAMESPACE: &str = "http://www.w3.org/2010/09/qt-fots-catalog";
-const CASES: [(&str, &str, usize); 51] = [
+const CASES: [(&str, &str, usize); 63] = [
     ("Axes001-1", "fn:count(//center/child::*)", 0),
     ("Axes001-2", "fn:count(//center/child::*)", 1),
     ("Axes001-3", "fn:count(//center/child::*)", 6),
@@ -66,6 +66,18 @@ const CASES: [(&str, &str, usize); 51] = [
     ),
     ("Axes030-1", "fn:count(//center/text()/self::node())", 0),
     ("Axes030-2", "fn:count(//center/text()/self::node())", 1),
+    ("Axes031-1", "fn:count(//center/descendant::*)", 0),
+    ("Axes031-2", "fn:count(//center/descendant::*)", 0),
+    ("Axes031-3", "fn:count(//center/descendant::*)", 1),
+    ("Axes031-4", "fn:count(//center/descendant::*)", 5),
+    ("Axes032-1", "fn:count(//center/descendant::south)", 0),
+    ("Axes032-2", "fn:count(//center/descendant::south)", 0),
+    ("Axes032-3", "fn:count(//center/descendant::south)", 1),
+    ("Axes032-4", "fn:count(//center/descendant::south)", 8),
+    ("Axes033-1", "fn:count(//center/descendant::node())", 0),
+    ("Axes033-2", "fn:count(//center/descendant::node())", 1),
+    ("Axes033-3", "fn:count(//center/descendant::node())", 1),
+    ("Axes033-4", "fn:count(//center/descendant::node())", 21),
 ];
 
 fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'a str> {
@@ -122,7 +134,7 @@ fn load_axis_test_set() -> (Document, PathBuf) {
 }
 
 #[test]
-fn executes_qt3_axes001_through_axes030_admitted_location_path_groups() {
+fn executes_qt3_axes001_through_axes033_admitted_location_path_groups() {
     let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
     let selected_records: Vec<_> = overlay
         .split("[[case]]")

@@ -359,6 +359,90 @@ execution = "passed"
 rationale = "The native TreeCompass environment selects the center text child and retains that text context through self::node()."
 
 [[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes031-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc environment executes descendant::* from an empty center and matches assert-eq value 0."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes031-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Text environment applies the descendant axis principal element kind and excludes its text descendant."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes031-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Child environment selects its single element descendant through descendant::*."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes031-4"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment selects five element descendants in document order through descendant::*."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes032-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc environment executes a named descendant test from an empty center and matches zero."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes032-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Child environment keeps its differently named descendant outside the south result."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes032-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment selects its one unnamespaced south descendant."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes032-4"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeStack environment selects all eight nested and sibling south descendants in document order."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes033-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc environment executes descendant::node() from an empty center and matches zero."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes033-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Text environment retains its single text descendant through descendant::node()."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes033-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Child environment retains its single element descendant through descendant::node()."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes033-4"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment retains all 21 descendant node kinds in document order."
+
+[[case]]
 set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equalint2args-1"
 selection = "selected"

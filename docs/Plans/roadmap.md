@@ -81,6 +81,10 @@ attribute, and text-node context identity; a typed child `text()` kind test
 reaches the latter without widening other axes. The direct seam now has 51
 passes. Numbering gaps remain unselected rather than being counted as
 unsupported or passed.
+Complete `Axes031` through `Axes033` add explicit descendant any-element,
+unnamespaced named-element, and any-node tests. The typed step reuses the
+existing charged document-order traversal without double charging during
+filtering, and the direct seam now has 63 passes.
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
 source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`
@@ -270,6 +274,11 @@ implemented behavior belongs to a named standards slice.
   context once, and reject unimplemented kind tests on other axes rather than
   returning plausible empty results. Keep the numbering gaps outside the
   admitted denominator.
+- [x] Execute complete QT3 `Axes031` through `Axes033` through typed descendant
+  steps. Preserve depth-first document order across element, text, comment,
+  and processing-instruction nodes, apply the axis's element principal node
+  kind, and charge each traversed descendant once rather than charging again
+  while filtering.
 - [x] Admit and execute the complete two-case XSLT30 `fn/deep-equal` denominator
   through positioned descendant attribute/comment selection and charged,
   pairwise node comparison. Preserve distinct XDM identity while comparing

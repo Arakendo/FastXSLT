@@ -125,6 +125,54 @@ fn self_steps_preserve_typed_element_attribute_and_text_contexts() {
 }
 
 #[test]
+fn descendant_steps_filter_one_charged_document_order_traversal() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root>lead<a><b/>tail</a><!--c--><?p x?></root>",
+        ParseLimits {
+            max_events: 20,
+            max_depth: 5,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let elements = parse_location_path("descendant::*", location())
+        .expect("descendant element wildcard should parse");
+    let named = parse_location_path("descendant::b", location())
+        .expect("named descendant step should parse");
+    let nodes = parse_location_path("descendant::node()", location())
+        .expect("descendant node test should parse");
+    let mut control = InvocationControl::unbounded();
+
+    let selected_elements = evaluate_location_path(&document, root, &elements);
+    let selected_nodes = evaluate_location_path_controlled(&document, root, &nodes, &mut control)
+        .expect("controlled descendant traversal should succeed");
+
+    assert_eq!(selected_elements.len(), 2);
+    assert_eq!(document.name(selected_elements[0]).unwrap().local, "a");
+    assert_eq!(document.name(selected_elements[1]).unwrap().local, "b");
+    assert_eq!(
+        evaluate_location_path(&document, root, &named),
+        [selected_elements[1]]
+    );
+    assert_eq!(selected_nodes.len(), 6);
+    assert_eq!(document.kind(selected_nodes[0]), NodeKind::Text);
+    assert_eq!(document.kind(selected_nodes[1]), NodeKind::Element);
+    assert_eq!(document.kind(selected_nodes[2]), NodeKind::Element);
+    assert_eq!(document.kind(selected_nodes[4]), NodeKind::Comment);
+    assert_eq!(
+        document.kind(selected_nodes[5]),
+        NodeKind::ProcessingInstruction
+    );
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 6);
+    assert!(matches!(
+        parse_location_path("descendant::text()", location()),
+        Err(PathFailure::Unsupported { .. })
+    ));
+}
+
+#[test]
 fn absolute_and_parent_steps_preserve_document_node_distinctions() {
     let parsed = parse_document(
         "memory:source.xml",
