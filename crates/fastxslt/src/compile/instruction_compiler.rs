@@ -15,7 +15,7 @@ use crate::xpath::for_distinct_values_experiment::{
 };
 use crate::xpath::format_number_experiment::parse as parse_format_number;
 use crate::xpath::integer_for_experiment::parse as parse_integer_for;
-use crate::xpath::path_experiment::parse_child_path;
+use crate::xpath::path_experiment::parse_location_path;
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, BooleanExpression, ChooseBranch, EqualityTest, Instruction, NodeTest,
     SequenceItemExpression, TemplateArgument, ValueExpression,
@@ -236,8 +236,8 @@ fn parse_apply_selection(
             ));
         }
     }
-    parse_child_path(expression, location)
-        .map(ApplySelection::ChildPath)
+    parse_location_path(expression, location)
+        .map(ApplySelection::LocationPath)
         .map_err(map_path_failure)
 }
 
@@ -356,8 +356,8 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
         }
         ValueExpression::Variable(variable.to_owned())
     } else {
-        ValueExpression::ChildPath(
-            parse_child_path(expression, location.clone()).map_err(map_path_failure)?,
+        ValueExpression::LocationPath(
+            parse_location_path(expression, location.clone()).map_err(map_path_failure)?,
         )
     };
     let separator = optional_attribute(document, element, None, "separator")

@@ -61,8 +61,12 @@ steps while preserving attributes outside the child sequence and namespace
 declarations outside the attribute sequence. The direct axis seam now has 37
 passes. Its [cohesion review](../Evidence/path-location-step-cohesion-review-2026-08-28.md)
 retains one production location-path owner for this tranche, then requires a
-private invariant-test extraction and child-only terminology correction before
-another axis family is added.
+  private invariant-test extraction and child-only terminology correction before
+  another axis family is added. That
+  [checkpoint](../Evidence/path-location-owner-decomposition-checkpoint-2026-08-28.md)
+  is complete: the production owner is 527 lines, its 561-line private test
+  child preserves the invariant suite, and all callers use location-path
+  terminology.
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
 source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`
@@ -233,7 +237,7 @@ implemented behavior belongs to a named standards slice.
   exclude namespace declarations, apply the attribute principal node kind,
   charge examined attributes, and reject unimplemented leading `//@*` rather
   than returning a plausible empty result.
-- [ ] Before another axis family, execute the path-owner checkpoint: move the
+- [x] Before another axis family, execute the path-owner checkpoint: move the
   invariant regression body to a private path-owned test module and rename
   child-only private path terminology without changing semantics, diagnostics,
   charging, or downstream compiler/runtime behavior.

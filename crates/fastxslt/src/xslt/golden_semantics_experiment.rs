@@ -7,7 +7,7 @@ use crate::xpath::focus_sum_for_experiment::FocusSumForExpression;
 use crate::xpath::for_distinct_values_experiment::ForDistinctValuesExpression;
 use crate::xpath::format_number_experiment::FormatNumberExpression;
 use crate::xpath::integer_for_experiment::IntegerForExpression;
-use crate::xpath::path_experiment::ChildPath;
+use crate::xpath::path_experiment::LocationPath;
 
 pub(crate) const STANDARD_INITIAL_TEMPLATE_NAME: &str =
     "Q{http://www.w3.org/1999/XSL/Transform}initial-template";
@@ -40,7 +40,7 @@ pub(crate) struct GlobalBinding {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum GlobalBindingDefault {
     Text(String),
-    ChildPath(ChildPath),
+    LocationPath(LocationPath),
     Variable(String),
     TemporaryTree(Vec<ConstructedElement>),
 }
@@ -93,7 +93,7 @@ pub(crate) struct NamedTemplate {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum MatchPattern {
     Element(ExpandedName),
-    Path(ChildPath),
+    Path(LocationPath),
     Attribute(ExpandedName),
     Comment,
     ProcessingInstruction,
@@ -103,7 +103,7 @@ pub(crate) enum MatchPattern {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ApplySelection {
-    ChildPath(ChildPath),
+    LocationPath(LocationPath),
     ChildNodes(NodeTest),
     Attribute(ExpandedName),
     GlobalTemporaryChildren(String),
@@ -179,7 +179,7 @@ pub(crate) enum Instruction {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ValueExpression {
-    ChildPath(ChildPath),
+    LocationPath(LocationPath),
     Variable(String),
     IntegerFor(Box<IntegerForExpression>),
     FocusSumFor(Box<FocusSumForExpression>),

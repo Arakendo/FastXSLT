@@ -79,3 +79,10 @@ another axis family:
 
 No public API, additional axis, alternative backend, unsafe path, cache, or
 representation guarantee is admitted by this review.
+
+## Follow-up result
+
+The required extraction and terminology correction are complete in the
+[path location owner decomposition checkpoint](path-location-owner-decomposition-checkpoint-2026-08-28.md).
+The production owner is 527 lines and its private invariant-test child is 561
+lines, with focused and workspace conservation gates retained.

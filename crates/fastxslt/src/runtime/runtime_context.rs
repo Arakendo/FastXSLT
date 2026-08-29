@@ -6,7 +6,7 @@ use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
-use crate::xpath::path_experiment::evaluate_child_path_controlled;
+use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
     ConstructedElement, GlobalBindingDefault, StylesheetProgram, Template,
 };
@@ -92,7 +92,7 @@ pub(super) fn materialize_global_defaults(
                     .atomics
                     .insert(binding.name.clone(), AtomicValue::untyped(value.clone()));
             }
-            GlobalBindingDefault::ChildPath(path) => {
+            GlobalBindingDefault::LocationPath(path) => {
                 let source = source.ok_or_else(|| {
                     failure(
                         "FXRT1004",
@@ -101,9 +101,13 @@ pub(super) fn materialize_global_defaults(
                         "a source-dependent global binding requires a principal source",
                     )
                 })?;
-                let nodes =
-                    evaluate_child_path_controlled(source, source.document_node(), path, control)
-                        .map_err(|failure| control_failure(failure, request_id))?;
+                let nodes = evaluate_location_path_controlled(
+                    source,
+                    source.document_node(),
+                    path,
+                    control,
+                )
+                .map_err(|failure| control_failure(failure, request_id))?;
                 globals.nodes.insert(binding.name.clone(), nodes);
             }
             GlobalBindingDefault::Variable(name) => {

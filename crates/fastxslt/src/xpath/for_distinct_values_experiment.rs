@@ -4,15 +4,15 @@ use crate::execution_control_experiment::{ControlFailure, InvocationControl, Wor
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 
 use super::path_experiment::{
-    ChildPath, PathFailure, evaluate_child_path_controlled, parse_child_path,
+    LocationPath, PathFailure, evaluate_location_path_controlled, parse_location_path,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ForDistinctValuesExpression {
     variable: String,
-    binding_path: ChildPath,
-    first_equal_path: ChildPath,
-    related_parent_path: ChildPath,
+    binding_path: LocationPath,
+    first_equal_path: LocationPath,
+    related_parent_path: LocationPath,
     related_test_child: String,
     related_result_child: String,
     location: SourceLocation,
@@ -104,7 +104,7 @@ pub(crate) fn evaluate(
     document: &Document,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ControlFailure> {
-    let binding_nodes = evaluate_child_path_controlled(
+    let binding_nodes = evaluate_location_path_controlled(
         document,
         document.document_node(),
         &expression.binding_path,
@@ -120,7 +120,7 @@ pub(crate) fn evaluate(
 
     let mut result = Vec::new();
     for value in distinct_values {
-        let first_candidates = evaluate_child_path_controlled(
+        let first_candidates = evaluate_location_path_controlled(
             document,
             document.document_node(),
             &expression.first_equal_path,
@@ -133,7 +133,7 @@ pub(crate) fn evaluate(
             }
         }
 
-        let parents = evaluate_child_path_controlled(
+        let parents = evaluate_location_path_controlled(
             document,
             document.document_node(),
             &expression.related_parent_path,
@@ -167,11 +167,11 @@ pub(crate) fn evaluate(
 fn parse_absolute_path(
     expression: &str,
     location: SourceLocation,
-) -> Result<ChildPath, ForExpressionFailure> {
+) -> Result<LocationPath, ForExpressionFailure> {
     let relative = expression
         .strip_prefix('/')
         .ok_or_else(|| unsupported(expression, &location))?;
-    parse_child_path(relative, location).map_err(|failure| match failure {
+    parse_location_path(relative, location).map_err(|failure| match failure {
         PathFailure::Invalid { detail, location } => {
             ForExpressionFailure::Invalid { detail, location }
         }

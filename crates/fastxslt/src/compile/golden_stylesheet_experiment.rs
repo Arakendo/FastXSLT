@@ -1,5 +1,5 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
-use crate::xpath::path_experiment::{PathFailure, parse_child_path};
+use crate::xpath::path_experiment::{PathFailure, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
     ConstructedElement, GlobalBinding, GlobalBindingDefault, GlobalBindingKind, MatchPattern,
     MatchedTemplate, NamedTemplate, OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME,
@@ -273,8 +273,8 @@ fn compile_global_binding(
             }
             GlobalBindingDefault::Variable(variable.to_owned())
         } else {
-            GlobalBindingDefault::ChildPath(
-                parse_child_path(select, document.location(element).clone())
+            GlobalBindingDefault::LocationPath(
+                parse_location_path(select, document.location(element).clone())
                     .map_err(map_path_failure)?,
             )
         }
@@ -467,7 +467,8 @@ fn compile_matched_template(
             })
         }
         path if path.contains('/') && !path.starts_with('/') => MatchPattern::Path(
-            parse_child_path(path, document.location(element).clone()).map_err(map_path_failure)?,
+            parse_location_path(path, document.location(element).clone())
+                .map_err(map_path_failure)?,
         ),
         _ => {
             return Err(unsupported(
@@ -899,7 +900,7 @@ mod tests {
                 Instruction::ValueOf { select, .. },
                 Instruction::Text { value: last, .. }
             ] if first == "Hello, "
-                && matches!(select, ValueExpression::ChildPath(path)
+                && matches!(select, ValueExpression::LocationPath(path)
                     if path.steps == ["greeting", "name"])
                 && last == "!"
         ));
@@ -1005,7 +1006,7 @@ mod tests {
             [Instruction::LiteralElement { body, .. }]
                 if matches!(body.as_slice(), [Instruction::ApplyTemplates { select: Some(select), .. }]
                     if matches!(select,
-                        crate::xslt::golden_semantics_experiment::ApplySelection::ChildPath(path)
+                        crate::xslt::golden_semantics_experiment::ApplySelection::LocationPath(path)
                             if path.steps == ["catalog", "item"]))
         ));
 
@@ -1077,7 +1078,7 @@ mod tests {
     }
 
     #[test]
-    fn classifies_xpath_outside_the_private_child_path_slice_as_unsupported() {
+    fn classifies_xpath_outside_the_private_location_path_slice_as_unsupported() {
         let stylesheet = parse_stylesheet(
             "memory:path.xsl",
             br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><value><xsl:value-of select="greeting//name"/></value></xsl:template></xsl:stylesheet>"#,

@@ -5,7 +5,7 @@ use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
 
 use super::path_experiment::{
-    ChildPath, PathFailure, evaluate_child_path_controlled, parse_child_path,
+    LocationPath, PathFailure, evaluate_location_path_controlled, parse_location_path,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,13 +16,13 @@ pub(crate) struct CastableExpression {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum AtomicOperand {
-    Path(ChildPath),
+    Path(LocationPath),
     Variable(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CastExpression {
-    operand: ChildPath,
+    operand: LocationPath,
     target: BuiltinAtomicType,
 }
 
@@ -87,7 +87,7 @@ pub(crate) fn evaluate(
     let AtomicOperand::Path(path) = &expression.operand else {
         unreachable!("variable castability is evaluated from the runtime variable frame")
     };
-    let selected = evaluate_child_path_controlled(document, context, path, control)?;
+    let selected = evaluate_location_path_controlled(document, context, path, control)?;
     control.charge(WorkDomain::XPathOperation, 1)?;
     let [node] = selected.as_slice() else {
         return Ok(false);
@@ -121,8 +121,9 @@ pub(crate) fn evaluate_cast(
     context: NodeId,
     control: &mut InvocationControl,
 ) -> Result<AtomicValue, CastEvaluationFailure> {
-    let selected = evaluate_child_path_controlled(document, context, &expression.operand, control)
-        .map_err(CastEvaluationFailure::Control)?;
+    let selected =
+        evaluate_location_path_controlled(document, context, &expression.operand, control)
+            .map_err(CastEvaluationFailure::Control)?;
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(CastEvaluationFailure::Control)?;
@@ -233,8 +234,8 @@ impl BuiltinAtomicType {
 fn parse_path_operand(
     operand: &str,
     location: &SourceLocation,
-) -> Result<ChildPath, CastableFailure> {
-    parse_child_path(operand, location.clone()).map_err(|failure| {
+) -> Result<LocationPath, CastableFailure> {
+    parse_location_path(operand, location.clone()).map_err(|failure| {
         let detail = match failure {
             PathFailure::Invalid { detail, .. } | PathFailure::Unsupported { detail, .. } => detail,
         };

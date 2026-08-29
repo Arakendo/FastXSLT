@@ -3,7 +3,7 @@
 use crate::execution_control_experiment::{ControlFailure, InvocationControl};
 use crate::xdm::owned_tree_experiment::{Document, SourceLocation};
 
-use super::path_experiment::{PathFailure, evaluate_child_path_controlled, parse_child_path};
+use super::path_experiment::{PathFailure, evaluate_location_path_controlled, parse_location_path};
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum CountFailure {
@@ -22,8 +22,8 @@ pub(crate) fn evaluate(
         .strip_prefix("fn:count(")
         .and_then(|expression| expression.strip_suffix(')'))
         .ok_or(CountFailure::Unsupported)?;
-    let path = parse_child_path(inner, location).map_err(CountFailure::Path)?;
-    evaluate_child_path_controlled(document, document.document_node(), &path, control)
+    let path = parse_location_path(inner, location).map_err(CountFailure::Path)?;
+    evaluate_location_path_controlled(document, document.document_node(), &path, control)
         .map(|selected| selected.len())
         .map_err(CountFailure::Control)
 }

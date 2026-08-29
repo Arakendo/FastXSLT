@@ -18,7 +18,7 @@ use crate::xpath::format_number_experiment::{
     FormatNumberEvaluationFailure, evaluate as evaluate_format_number,
 };
 use crate::xpath::integer_for_experiment::evaluate as evaluate_integer_for;
-use crate::xpath::path_experiment::evaluate_child_path_controlled;
+use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::ValueExpression;
 
 use super::{
@@ -36,9 +36,9 @@ pub(super) fn execute_value_of(
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     match select {
-        ValueExpression::ChildPath(path) => {
+        ValueExpression::LocationPath(path) => {
             let (source, context) = required_source_context(inputs, context)?;
-            let selected = evaluate_child_path_controlled(source, context, path, control)
+            let selected = evaluate_location_path_controlled(source, context, path, control)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
             if selected.len() > 1 {
                 return Err(failure(

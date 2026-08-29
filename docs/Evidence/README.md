@@ -36,6 +36,7 @@ pressure architecture but does not silently create a public guarantee.
 - [QT3 `Axes004`–`Axes006` Abbreviated Child-Axis Execution](qt3-axes004-006-abbreviated-child-axis-execution-2026-08-28.md)
 - [QT3 `Axes007`–`Axes011` Attribute-Axis Execution](qt3-axes007-011-attribute-axis-execution-2026-08-28.md)
 - [Path Location-Step Cohesion Review](path-location-step-cohesion-review-2026-08-28.md)
+- [Path Location Owner Decomposition Checkpoint](path-location-owner-decomposition-checkpoint-2026-08-28.md)
 - [XSLT30 `expr/for` Denominator Admission](xslt30-for-denominator-admission-2026-08-26.md)
 - [XSLT30 `for-001` Ordered Sequence Execution](xslt30-for-001-ordered-sequence-execution-2026-08-26.md)
 - [XSLT30 `for-002` Source-Free Initial-Template Execution](xslt30-for-002-source-free-initial-template-execution-2026-08-26.md)

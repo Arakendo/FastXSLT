@@ -8,7 +8,7 @@ use crate::xpath::castable_experiment::{CastEvaluationFailure, CastExpression, e
 use crate::xpath::for_distinct_values_experiment::{
     ForDistinctValuesExpression, evaluate as evaluate_for_distinct_values,
 };
-use crate::xpath::path_experiment::evaluate_child_path_controlled;
+use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, BooleanExpression, Instruction, MatchPattern, NodeTest, SequenceItemExpression,
     StylesheetProgram, TemplateArgument,
@@ -633,8 +633,8 @@ fn select_apply_nodes(
         return Ok(source.children(context).to_vec());
     };
     match select {
-        ApplySelection::ChildPath(path) => {
-            evaluate_child_path_controlled(source, context, path, control)
+        ApplySelection::LocationPath(path) => {
+            evaluate_location_path_controlled(source, context, path, control)
                 .map_err(|failure| control_failure(failure, inputs.request_id))
         }
         ApplySelection::ChildNodes(node_test) => {
@@ -909,7 +909,7 @@ fn match_pattern(
 fn match_path_pattern(
     source: &Document,
     node: NodeId,
-    path: &crate::xpath::path_experiment::ChildPath,
+    path: &crate::xpath::path_experiment::LocationPath,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
@@ -929,7 +929,7 @@ fn match_path_pattern(
     control
         .charge(WorkDomain::XPathNodeVisit, 1)
         .map_err(|failure| control_failure(failure, request_id))?;
-    evaluate_child_path_controlled(source, context, path, control)
+    evaluate_location_path_controlled(source, context, path, control)
         .map(|selected| selected.contains(&node))
         .map_err(|failure| control_failure(failure, request_id))
 }

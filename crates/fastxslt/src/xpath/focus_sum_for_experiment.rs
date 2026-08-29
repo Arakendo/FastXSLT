@@ -4,12 +4,12 @@ use crate::execution_control_experiment::{ControlFailure, InvocationControl, Wor
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
 
 use super::path_experiment::{
-    ChildPath, PathFailure, evaluate_child_path_controlled, parse_child_path,
+    LocationPath, PathFailure, evaluate_location_path_controlled, parse_location_path,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct FocusSumForExpression {
-    binding_path: ChildPath,
+    binding_path: LocationPath,
     left_attribute: String,
     right_attribute: String,
 }
@@ -55,7 +55,7 @@ pub(crate) fn parse(
         .strip_prefix('@')
         .filter(|name| is_ascii_ncname(name))
         .ok_or_else(|| unsupported(&normalized, location))?;
-    let binding_path = parse_child_path(binding_path, location.clone()).map_err(|failure| {
+    let binding_path = parse_location_path(binding_path, location.clone()).map_err(|failure| {
         let detail = match failure {
             PathFailure::Invalid { detail, .. } | PathFailure::Unsupported { detail, .. } => detail,
         };
@@ -79,7 +79,7 @@ pub(crate) fn evaluate(
     control: &mut InvocationControl,
 ) -> Result<i64, FocusSumEvaluationFailure> {
     let tuples =
-        evaluate_child_path_controlled(document, context, &expression.binding_path, control)
+        evaluate_location_path_controlled(document, context, &expression.binding_path, control)
             .map_err(FocusSumEvaluationFailure::Control)?;
     let mut produced_value = false;
     for _bound_item in tuples {
