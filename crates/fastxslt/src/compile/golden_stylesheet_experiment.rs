@@ -3,7 +3,7 @@ use crate::xpath::path_experiment::{PathFailure, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
     ConstructedElement, GlobalBinding, GlobalBindingDefault, GlobalBindingKind, MatchPattern,
     MatchedTemplate, NamedTemplate, STANDARD_INITIAL_TEMPLATE_NAME, StylesheetProgram, Template,
-    TemplateParameter, TemplatePriority,
+    TemplateParameter, TemplateParameterDefault, TemplatePriority,
 };
 
 #[path = "instruction_compiler.rs"]
@@ -377,7 +377,7 @@ fn compile_template(document: &Document, element: NodeId) -> Result<Template, Co
                     document.location(child),
                 ));
             }
-            ensure_only_attributes(document, child, &["name", "tunnel"], "xsl:param")?;
+            ensure_only_attributes(document, child, &["name", "tunnel", "select"], "xsl:param")?;
             ensure_no_meaningful_children(document, child, "xsl:param")?;
             let lexical_name = required_attribute(document, child, None, "name")?;
             let name = normalize_variable_qname(document, child, lexical_name)?;
@@ -402,7 +402,26 @@ fn compile_template(document: &Document, element: NodeId) -> Result<Template, Co
                     ));
                 }
             };
-            parameters.push(TemplateParameter { name, tunnel });
+            let default = optional_attribute(document, child, None, "select").map_or_else(
+                || Ok(TemplateParameterDefault::Text(String::new())),
+                |select| {
+                    select
+                        .parse::<i64>()
+                        .map(TemplateParameterDefault::Integer)
+                        .map_err(|_| {
+                            unsupported(
+                                "FXST1032",
+                                format!("unsupported template parameter default: {select}"),
+                                document.location(child),
+                            )
+                        })
+                },
+            )?;
+            parameters.push(TemplateParameter {
+                name,
+                tunnel,
+                default,
+            });
             parameter_nodes.push(child);
         } else {
             body_started = true;

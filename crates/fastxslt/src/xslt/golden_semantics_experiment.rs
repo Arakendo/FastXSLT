@@ -75,6 +75,13 @@ pub(crate) struct Template {
 pub(crate) struct TemplateParameter {
     pub(crate) name: String,
     pub(crate) tunnel: bool,
+    pub(crate) default: TemplateParameterDefault,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum TemplateParameterDefault {
+    Text(String),
+    Integer(i64),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -156,6 +163,7 @@ pub(crate) enum ApplySelection {
     ChildNodes(NodeTest),
     Attribute(ExpandedName),
     GlobalTemporaryChildren(String),
+    LocalTemporaryRoot(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -192,6 +200,11 @@ pub(crate) enum Instruction {
         name: String,
         start: i64,
         end: i64,
+        location: SourceLocation,
+    },
+    TemporaryTreeVariable {
+        name: String,
+        elements: Vec<ConstructedElement>,
         location: SourceLocation,
     },
     SequenceNodes {

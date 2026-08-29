@@ -9,7 +9,7 @@ use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
     ConstructedElement, GlobalBindingDefault, StylesheetProgram, Template, TemplateArgument,
-    TemplateArgumentValue,
+    TemplateArgumentValue, TemplateParameterDefault,
 };
 
 use super::{ExecutionFailure, FailureCategory, control_failure, failure, failure_at};
@@ -28,13 +28,13 @@ pub(super) struct RuntimeGlobals {
     pub(super) temporary_trees: BTreeMap<String, TemporaryTree>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub(super) struct TemporaryTree {
     pub(super) roots: Vec<usize>,
     pub(super) nodes: Vec<TemporaryNode>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(super) struct TemporaryNode {
     pub(super) name: ExpandedName,
     pub(super) namespaces: Vec<NamespaceBinding>,
@@ -45,6 +45,7 @@ pub(super) struct TemporaryNode {
 pub(super) struct RuntimeVariables {
     pub(super) atomics: BTreeMap<String, AtomicValue>,
     pub(super) atomic_sequences: BTreeMap<String, Vec<AtomicValue>>,
+    pub(super) temporary_trees: BTreeMap<String, TemporaryTree>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -95,6 +96,7 @@ impl RuntimeVariables {
         Self {
             atomics: atomics.clone(),
             atomic_sequences: BTreeMap::new(),
+            temporary_trees: BTreeMap::new(),
         }
     }
 }
@@ -186,7 +188,7 @@ pub(super) fn materialize_global_defaults(
     Ok(globals)
 }
 
-fn materialize_temporary_tree(
+pub(super) fn materialize_temporary_tree(
     elements: &[ConstructedElement],
     request_id: &str,
     control: &mut InvocationControl,
@@ -232,7 +234,15 @@ pub(super) fn bind_template_parameters(
             .get(&parameter.name)
             .filter(|supplied| supplied.tunnel == parameter.tunnel)
             .map_or_else(
-                || AtomicValue::string(""),
+                || match &parameter.default {
+                    TemplateParameterDefault::Text(value) => AtomicValue::string(value.clone()),
+                    TemplateParameterDefault::Integer(value) => {
+                        AtomicValue::from_validated_lexical(
+                            BuiltinAtomicType::Integer,
+                            value.to_string(),
+                        )
+                    }
+                },
                 |supplied| supplied.value.clone(),
             );
         frame.atomics.insert(parameter.name.clone(), value);

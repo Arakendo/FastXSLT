@@ -182,9 +182,9 @@ fn observe_instructions(
             }
             Instruction::Text { .. } => (SemanticFeature::Text, None),
             Instruction::ValueOf { .. } => (SemanticFeature::ValueOf, None),
-            Instruction::Variable { .. } | Instruction::IntegerRangeVariable { .. } => {
-                (SemanticFeature::LocalVariable, None)
-            }
+            Instruction::Variable { .. }
+            | Instruction::IntegerRangeVariable { .. }
+            | Instruction::TemporaryTreeVariable { .. } => (SemanticFeature::LocalVariable, None),
             Instruction::SequenceNodes { .. } => (SemanticFeature::SequenceNodes, None),
             Instruction::SequenceItems { .. } => (SemanticFeature::SequenceItems, None),
             Instruction::ApplyTemplates { .. } => (SemanticFeature::ApplyTemplates, None),

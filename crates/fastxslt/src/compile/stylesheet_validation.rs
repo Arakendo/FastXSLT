@@ -70,6 +70,7 @@ fn validate_named_calls(
             | Instruction::ValueOf { .. }
             | Instruction::Variable { .. }
             | Instruction::IntegerRangeVariable { .. }
+            | Instruction::TemporaryTreeVariable { .. }
             | Instruction::SequenceNodes { .. }
             | Instruction::SequenceItems { .. }
             | Instruction::ApplyTemplates { .. }

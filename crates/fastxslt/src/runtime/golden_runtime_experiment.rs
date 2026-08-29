@@ -10,7 +10,7 @@ use crate::xpath::for_distinct_values_experiment::{
 };
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, BooleanExpression, Instruction, MatchPattern, NodeTest, SequenceItemExpression,
+    ApplySelection, BooleanExpression, Instruction, NodeTest, SequenceItemExpression,
     StylesheetProgram, TemplateArgument,
 };
 
@@ -27,6 +27,8 @@ mod serialization;
 mod stylesheet_dependency_loader;
 #[path = "template_selector.rs"]
 mod template_selector;
+#[path = "temporary_tree_executor.rs"]
+mod temporary_tree_executor;
 #[cfg(test)]
 #[path = "transform_set_experiment.rs"]
 mod transform_set_experiment;
@@ -38,16 +40,17 @@ pub(super) use resource_compiler::compile_resource;
 pub(super) use resource_compiler::compile_resource_with_denied;
 use result_tree::{ResultNode, materialize_literal_attributes};
 use runtime_context::{
-    InvocationParameter, RuntimeVariables, SequenceInputs, TemporaryTree, bind_template_parameters,
-    evaluate_template_arguments, materialize_global_defaults, required_source_context,
+    InvocationParameter, RuntimeVariables, SequenceInputs, bind_template_parameters,
+    evaluate_template_arguments, materialize_global_defaults, materialize_temporary_tree,
+    required_source_context,
 };
 pub(super) use runtime_failure::ExecutionFailure;
 use runtime_failure::{FailureCategory, control_failure, failure, failure_at};
 pub(super) use serialization::serialize_xml;
 use template_selector::{
-    TemplateSelectionContext, accepts_mode as template_accepts_mode, select_next_template,
-    select_template_with_index,
+    TemplateSelectionContext, select_next_template, select_template_with_index,
 };
+use temporary_tree_executor::{apply_temporary_roots, apply_temporary_template};
 #[cfg(test)]
 use transform_set_experiment::{
     ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, execute_transform_set,
@@ -198,7 +201,7 @@ fn apply_initial_mode_template(
             control,
         );
     }
-    apply_builtin_template(&inputs, node, Some(mode), control)
+    apply_builtin_template(&inputs, node, Some(mode), parameters, control)
 }
 
 #[cfg(test)]
@@ -347,7 +350,9 @@ fn execute_instruction(
                 control,
             )?);
         }
-        Instruction::Variable { .. } | Instruction::IntegerRangeVariable { .. } => {
+        Instruction::Variable { .. }
+        | Instruction::IntegerRangeVariable { .. }
+        | Instruction::TemporaryTreeVariable { .. } => {
             execute_binding(inputs, instruction, execution.node, scope, control)?;
         }
         Instruction::ApplyTemplates {
@@ -418,6 +423,10 @@ fn execute_binding(
         } => {
             let values = materialize_integer_range(*start, *end, inputs.request_id, control)?;
             scope.atomic_sequences.insert(name.clone(), values);
+        }
+        Instruction::TemporaryTreeVariable { name, elements, .. } => {
+            let tree = materialize_temporary_tree(elements, inputs.request_id, control)?;
+            scope.temporary_trees.insert(name.clone(), tree);
         }
         _ => unreachable!("execute_binding receives a variable instruction"),
     }
@@ -543,6 +552,7 @@ fn execute_apply_instruction(
         requested_mode,
         execution.node,
         &parameters,
+        variables,
         control,
     )
 }
@@ -553,8 +563,20 @@ fn execute_apply_templates(
     mode: Option<&str>,
     context: Option<NodeId>,
     parameters: &BTreeMap<String, InvocationParameter>,
+    variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    if let Some(ApplySelection::LocalTemporaryRoot(name)) = select {
+        let tree = variables.temporary_trees.get(name).ok_or_else(|| {
+            failure(
+                "FXRT0002",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("unbound local temporary tree: ${name}"),
+            )
+        })?;
+        return apply_temporary_roots(inputs, tree, mode, parameters, control);
+    }
     if let Some(ApplySelection::GlobalTemporaryChildren(name)) = select {
         let tree = inputs.globals.temporary_trees.get(name).ok_or_else(|| {
             failure(
@@ -567,7 +589,7 @@ fn execute_apply_templates(
         let mut result = Vec::new();
         for node in &tree.roots {
             result.extend(apply_temporary_template(
-                inputs, tree, *node, mode, control,
+                inputs, tree, *node, mode, parameters, control,
             )?);
         }
         return Ok(result);
@@ -620,7 +642,8 @@ fn execute_next_match(
             control,
         );
     }
-    apply_builtin_template(inputs, node, execution.current_mode, control)
+    let parameters = evaluate_template_arguments(arguments, variables, inputs.request_id)?;
+    apply_builtin_template(inputs, node, execution.current_mode, &parameters, control)
 }
 
 fn charge_xslt_instruction(
@@ -937,9 +960,9 @@ fn select_apply_nodes(
             }
             Ok(selected)
         }
-        ApplySelection::GlobalTemporaryChildren(_) => unreachable!(
-            "global temporary-tree selection is dispatched before principal-source selection"
-        ),
+        ApplySelection::GlobalTemporaryChildren(_) | ApplySelection::LocalTemporaryRoot(_) => {
+            unreachable!("temporary-tree selection is dispatched before source selection")
+        }
     }
 }
 
@@ -1044,13 +1067,14 @@ fn apply_template(
         );
     }
 
-    apply_builtin_template(inputs, node, mode, control)
+    apply_builtin_template(inputs, node, mode, parameters, control)
 }
 
 fn apply_builtin_template(
     inputs: &SequenceInputs<'_>,
     node: NodeId,
     mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let source = inputs
@@ -1060,13 +1084,7 @@ fn apply_builtin_template(
         NodeKind::Document | NodeKind::Element => {
             let mut result = Vec::new();
             for child in source.children(node) {
-                result.extend(apply_template(
-                    inputs,
-                    *child,
-                    mode,
-                    &BTreeMap::new(),
-                    control,
-                )?);
+                result.extend(apply_template(inputs, *child, mode, parameters, control)?);
             }
             Ok(result)
         }
@@ -1082,80 +1100,6 @@ fn apply_builtin_template(
         }
         NodeKind::Comment | NodeKind::ProcessingInstruction => Ok(Vec::new()),
     }
-}
-
-fn apply_temporary_template(
-    inputs: &SequenceInputs<'_>,
-    tree: &TemporaryTree,
-    node: usize,
-    mode: Option<&str>,
-    control: &mut InvocationControl,
-) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    charge_xslt_instruction(control, inputs.request_id)?;
-    let temporary = &tree.nodes[node];
-    let template = inputs
-        .program
-        .matched_templates
-        .iter()
-        .rev()
-        .find(|template| {
-            template_accepts_mode(&template.modes, mode)
-                && match &template.pattern {
-                    MatchPattern::Element(name) => &temporary.name == name,
-                    MatchPattern::ElementLocal(local) => temporary.name.local == *local,
-                    MatchPattern::AnyElement | MatchPattern::AnyNode => true,
-                    _ => false,
-                }
-        });
-    if let Some(template) = template {
-        if matches!(
-            template.template.body.as_slice(),
-            [Instruction::Copy { .. }]
-        ) {
-            return Ok(vec![copy_temporary_node(
-                tree,
-                node,
-                inputs.request_id,
-                control,
-            )?]);
-        }
-        return Err(failure(
-            "FXRT1007",
-            FailureCategory::Unsupported,
-            Some(inputs.request_id),
-            "temporary-tree template bodies other than xsl:copy are outside the private slice",
-        ));
-    }
-    let mut result = Vec::new();
-    for child in &temporary.children {
-        result.extend(apply_temporary_template(
-            inputs, tree, *child, mode, control,
-        )?);
-    }
-    Ok(result)
-}
-
-fn copy_temporary_node(
-    tree: &TemporaryTree,
-    node: usize,
-    request_id: &str,
-    control: &mut InvocationControl,
-) -> Result<ResultNode, ExecutionFailure> {
-    control
-        .charge(WorkDomain::ResultNode, 1)
-        .map_err(|failure| control_failure(failure, request_id))?;
-    let node = &tree.nodes[node];
-    let children = node
-        .children
-        .iter()
-        .map(|child| copy_temporary_node(tree, *child, request_id, control))
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(ResultNode::Element {
-        name: node.name.clone(),
-        namespaces: node.namespaces.clone(),
-        attributes: Vec::new(),
-        children,
-    })
 }
 
 fn append_text(

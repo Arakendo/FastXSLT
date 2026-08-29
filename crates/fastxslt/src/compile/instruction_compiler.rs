@@ -76,7 +76,8 @@ pub(super) fn compile_sequence_excluding(
                     } else if name.local == "variable" {
                         let variable = compile_variable(document, child)?;
                         let (Instruction::Variable { name, .. }
-                        | Instruction::IntegerRangeVariable { name, .. }) = &variable
+                        | Instruction::IntegerRangeVariable { name, .. }
+                        | Instruction::TemporaryTreeVariable { name, .. }) = &variable
                         else {
                             unreachable!("compile_variable returns a variable instruction")
                         };
@@ -327,6 +328,11 @@ fn parse_apply_selection(
     expression: &str,
     location: SourceLocation,
 ) -> Result<ApplySelection, CompileFailure> {
+    if let Some(variable) = expression.strip_prefix('$') {
+        if is_ascii_ncname(variable) {
+            return Ok(ApplySelection::LocalTemporaryRoot(variable.to_owned()));
+        }
+    }
     if let Some(variable) = expression
         .strip_prefix('$')
         .and_then(|value| value.strip_suffix("/*"))
@@ -544,6 +550,17 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
         ));
     }
     let Some(expression) = optional_attribute(document, element, None, "select") else {
+        if optional_attribute(document, element, None, "as").is_none()
+            && meaningful_children(document, element)
+                .iter()
+                .all(|child| document.kind(*child) == NodeKind::Element)
+        {
+            return Ok(Instruction::TemporaryTreeVariable {
+                name: name.to_owned(),
+                elements: super::compile_constructed_elements(document, element)?,
+                location,
+            });
+        }
         return compile_integer_range_variable(document, element, name, &location);
     };
     ensure_no_meaningful_children(document, element, "xsl:variable")?;

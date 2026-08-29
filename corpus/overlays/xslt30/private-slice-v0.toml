@@ -658,3 +658,10 @@ case_name = "conflict-resolution-1501"
 selection = "selected"
 execution = "passed"
 rationale = "The positional current() pattern retains a typed filtered-parent-position relation; the candidate and parent share a lexical name and that parent is second among same-named element siblings. The two upstream XPath assertions are interpreted by a bounded case-specific oracle."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-1101"
+selection = "selected"
+execution = "passed"
+rationale = "A local constructed temporary tree remains invocation-local; applying templates to its root uses built-in descent that preserves the supplied non-tunnel parameter before the inner element template emits the value."
