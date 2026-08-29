@@ -49,5 +49,4 @@ This evidence admits only the XSLT 3.0 default last-declared behavior for these
 two equal-priority element matches. It does not admit explicit `priority`,
 `xsl:mode/@on-multiple-match`, warning delivery, XSLT 1.0/2.0 recovery modes,
 import precedence, package precedence, union patterns, namespace wildcards,
-predicate ambiguity, or the complete 52-case apply-templates denominator.
-
+predicate ambiguity, or the complete 50-case apply-templates denominator.

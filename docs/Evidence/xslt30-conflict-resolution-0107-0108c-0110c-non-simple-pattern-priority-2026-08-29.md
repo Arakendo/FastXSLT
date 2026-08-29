@@ -51,5 +51,4 @@ ASCII, unnamespaced `element[@attribute]` presence form used here. It does not
 admit general pattern predicates, attribute value comparisons, boolean
 expressions, namespaces, wildcard predicates, union patterns, explicit
 fractional priority, ambiguity warnings, XSLT 1.0/2.0 recovery policy, or the
-complete 52-case apply-templates denominator.
-
+complete 50-case apply-templates denominator.

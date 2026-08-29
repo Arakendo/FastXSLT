@@ -43,7 +43,7 @@ rejects nested element content with structured invalid code `FXST0026`.
 
 This evidence admits only this exact qualified-name-versus-wildcard conflict
 and the bounded `xsl:text` form needed to execute it. It does not establish the
-complete 52-case apply-templates denominator, explicit priorities, import
+complete 50-case apply-templates denominator, explicit priorities, import
 precedence, ambiguity recovery/failure policies, namespace wildcard patterns,
 mode conflict resolution, `disable-output-escaping`, general sequence
 construction, or broad template-selection conformance. Execution work limits

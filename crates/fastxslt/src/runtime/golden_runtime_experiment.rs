@@ -893,6 +893,10 @@ mod workflow_tests;
 mod xslt30_tests;
 
 #[cfg(test)]
+#[path = "xslt30_apply_templates_inventory_tests.rs"]
+mod xslt30_apply_templates_inventory_tests;
+
+#[cfg(test)]
 #[path = "xslt30_for_inventory_tests.rs"]
 mod xslt30_for_inventory_tests;
 

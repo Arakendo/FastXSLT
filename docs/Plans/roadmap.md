@@ -220,7 +220,7 @@ Paired XSLT 3.0 cases `conflict-resolution-0102c` and `0104c` correct the next
 selector boundary: element-wildcard and any-node patterns tie at the same
 default priority, so reversing their stylesheet order reverses the selected
 last-declared rule. Exact-name and path priority bands remain distinct. These
-three selected cases still do not establish the complete 52-case denominator.
+three selected cases still do not establish the complete 50-case denominator.
 `conflict-resolution-0106` then retains bounded signed-integer explicit
 priorities in compiled template state: priority `10` selects the `doc` rule over
 the otherwise matching priority-`1` node test. Its selected attribute remains
@@ -255,6 +255,12 @@ and produce `111222`. No lexical pattern parsing enters the dispatch loop. The
 adjacent `0501–0503` current/range-variable cases and `0701–0802` static-default-
 namespace/current-mode cases remain deliberate language slices rather than
 targets for stylesheet-shaped shortcuts.
+The complete pinned apply-templates test set is now conserved as an ordered
+50-case denominator with 50 principal stylesheets, one secondary stylesheet,
+41 XML assertions, eight error assertions, and one compound assertion. Eleven
+cases have explicit passing overrides; the other 39 remain visibly not run and
+are not mislabeled as engine failures. This corrects the earlier provisional
+52-case count without turning inventory into a conformance percentage.
 
 The current order of work is:
 
@@ -713,6 +719,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   multi-step parent/child match paths. Keep `current()` patterns,
   range-variable predicates, static default namespaces, current-mode
   propagation, and general pattern grammar outside this slice.
+- [x] Conserve the complete ordered 50-case XSLT30 apply-templates denominator,
+  its 50 principal plus one secondary stylesheet, and its assertion-shape
+  counts. Record 11 explicit passes and 39 default not-run dispositions without
+  converting unexecuted cases into engine failures or an aggregate conformance
+  claim.
 - [x] Admit the complete five-case XSLT30 `misc/initial-mode` denominator,
   preserving each mode identity and expected error or XML assertion through
   bounded snapshots. A focused host-neutral initial-mode entry executes with an

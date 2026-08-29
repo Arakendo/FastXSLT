@@ -52,5 +52,4 @@ supported non-root match patterns and the built-in string-value rule for
 attributes. It does not admit arbitrary-precision or fractional priorities,
 explicit priority on the private root-template shortcut, duplicate-pattern
 resolution, import/package precedence, `xsl:mode/@on-multiple-match`, warnings,
-namespace nodes, or the complete 52-case apply-templates denominator.
-
+namespace nodes, or the complete 50-case apply-templates denominator.

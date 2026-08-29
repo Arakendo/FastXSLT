@@ -46,4 +46,4 @@ wildcards only when the prefix is statically bound. Namespace wildcards still
 require explicit bounded integer priority. This does not admit their implicit
 quarter-step priority, local-name wildcards, wildcard attributes, EQNames,
 general QName grammar, XSLT 2.0 recover/error behavior, ambiguity warnings, or
-the complete 52-case apply-templates denominator.
+the complete 50-case apply-templates denominator.

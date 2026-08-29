@@ -40,7 +40,7 @@ The first three descendants match `doc/a/b` and emit `1`; the final three match
 This evidence covers the exact unnamespaced child-step patterns and
 leading-descendant selection used by the case. It does not admit general XSLT
 pattern grammar, arbitrary descendant patterns, namespaces, predicates in the
-match paths, union patterns, ambiguity behavior, or the complete 52-case
+match paths, union patterns, ambiguity behavior, or the complete 50-case
 apply-templates denominator.
 
 The adjacent `0501–0503` cases remain larger work because they require

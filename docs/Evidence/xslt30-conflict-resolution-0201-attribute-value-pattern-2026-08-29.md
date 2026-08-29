@@ -44,4 +44,4 @@ This evidence admits only ASCII unnamespaced element and attribute names with
 one exact single-quoted string literal. It does not admit namespaces, variables,
 double-quoted or escaped XPath literals, numeric comparison, `!=`, general
 comparison semantics, boolean expressions, arbitrary predicates, ambiguity
-warnings, or the complete 52-case apply-templates denominator.
+warnings, or the complete 50-case apply-templates denominator.

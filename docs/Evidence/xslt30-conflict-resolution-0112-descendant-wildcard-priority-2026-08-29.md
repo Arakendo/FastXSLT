@@ -43,4 +43,4 @@ directly produces the asserted `text` result.
 This evidence admits only exact `//*` as a specialized match pattern. It does
 not admit `//QName`, arbitrary absolute or descendant patterns, union patterns,
 general pattern grammar, ambiguity warnings, XSLT 1.0/2.0 recovery behavior, or
-the complete 52-case apply-templates denominator.
+the complete 50-case apply-templates denominator.
