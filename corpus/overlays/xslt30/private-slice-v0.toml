@@ -525,3 +525,10 @@ case_name = "conflict-resolution-0401c"
 selection = "selected"
 execution = "passed"
 rationale = "A prefixed exact-name rule and namespace-wildcard rule resolve their static prefix to the same namespace and explicit priority; XSLT 3.0 source-order selection chooses the later wildcard rule."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0901"
+selection = "selected"
+execution = "passed"
+rationale = "The typed leading-descendant selector reaches all b descendants in document order, while retained doc/a/b and doc/z/b match paths distinguish their parent chains without runtime pattern parsing."

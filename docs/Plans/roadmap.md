@@ -248,6 +248,13 @@ priority `5`, and XSLT 3.0 source-order selection chooses the later wildcard.
 An implicit namespace-wildcard priority remains explicitly unsupported because
 its quarter-step value does not fit the current exact doubled-priority domain;
 the XSLT 2.0 recover/error variants remain outside this tranche.
+`conflict-resolution-0901` then conserves the existing typed path machinery
+across template selection: `//b` supplies six candidates in document order,
+while retained `doc/a/b` and `doc/z/b` patterns distinguish their parent chains
+and produce `111222`. No lexical pattern parsing enters the dispatch loop. The
+adjacent `0501–0503` current/range-variable cases and `0701–0802` static-default-
+namespace/current-mode cases remain deliberate language slices rather than
+targets for stylesheet-shaped shortcuts.
 
 The current order of work is:
 
@@ -701,6 +708,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   integer priority and last-declared selection. Reject unbound prefixes and
   implicit namespace-wildcard priority; do not infer XSLT 2.0 recovery/error
   behavior or complete namespace-wildcard priority support.
+- [x] Execute `conflict-resolution-0901` as a conservation case for typed
+  leading-descendant selection, document-order candidate delivery, and retained
+  multi-step parent/child match paths. Keep `current()` patterns,
+  range-variable predicates, static default namespaces, current-mode
+  propagation, and general pattern grammar outside this slice.
 - [x] Admit the complete five-case XSLT30 `misc/initial-mode` denominator,
   preserving each mode identity and expected error or XML assertion through
   bounded snapshots. A focused host-neutral initial-mode entry executes with an
