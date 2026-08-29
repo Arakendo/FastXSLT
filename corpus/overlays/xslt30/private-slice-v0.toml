@@ -692,3 +692,10 @@ case_name = "conflict-resolution-1001"
 selection = "selected"
 execution = "passed"
 rationale = "An empty global string parameter participates in two typed multi-step wildcard attribute-equality selections; neither selects a source element, so the root rule emits the two expected empty section wrappers. The compiled matching rules retain the same typed path predicate and bounded current-node copy instruction."
+
+[[case]]
+set_file = "tests/decl/include/_include-test-set.xml"
+case_name = "include-0201"
+selection = "selected"
+execution = "passed"
+rationale = "A source element rule invokes xsl:apply-imports with no imported modules or lower-precedence user rule; the built-in element and text rules preserve the current focus and emit the expected text inside the literal wrapper."

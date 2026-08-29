@@ -147,6 +147,7 @@ pressure architecture but does not silently create a public guarantee.
 - [Peer AR-0014 Review: Monday](peer-ar-0014-review-monday-2026-08-28.md)
 - [RFC 3986 Relative-Reference Mechanics](rfc3986-relative-reference-mechanics-2026-08-28.md)
 - [XSLT30 include-0401 Sealed Module Execution](xslt30-include-0401-sealed-module-execution-2026-08-28.md)
+- [XSLT30 `include-0201` Source Apply-Imports Fallback](xslt30-include-0201-source-apply-imports-fallback-2026-08-29.md)
 - [Stylesheet-Module Assembly Decomposition Review](stylesheet-module-assembly-decomposition-review-2026-08-28.md)
 - [Sealed Stylesheet-Dependency Accounting](sealed-stylesheet-dependency-accounting-2026-08-28.md)
 - [Workbench Resource-Authority Diagnostic Parity](workbench-resource-authority-diagnostic-parity-2026-08-28.md)

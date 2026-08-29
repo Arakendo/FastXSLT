@@ -13,3 +13,9 @@ case_name = "include-0401"
 selection = "selected"
 execution = "passed"
 rationale = "Executes one relative xsl:include from a sealed snapshot, compiles the secondary simplified stylesheet as an implicit root template, preserves the principal global variable, and compares the exact assert-xml result after XML-declaration removal."
+
+[[case_override]]
+case_name = "include-0201"
+selection = "selected"
+execution = "passed"
+rationale = "Executes xsl:apply-imports from a source element template in a stylesheet with no imported modules; the built-in element rule preserves focus and emits the source text into the asserted wrapper."

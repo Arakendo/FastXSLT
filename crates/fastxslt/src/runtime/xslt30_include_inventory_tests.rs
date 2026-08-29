@@ -33,6 +33,7 @@ const CASE_NAMES: [&str; 16] = [
     "include-0702c",
     "include-0801",
 ];
+const PASSED_CASES: [&str; 2] = ["include-0201", "include-0401"];
 const OVERLAY: &str =
     include_str!("../../../../corpus/overlays/xslt30/include-denominator-v0.toml");
 const PRINCIPAL_ID: &str = "https://example.invalid/xslt30/decl/include/include-0401.xsl";
@@ -130,6 +131,86 @@ fn executes_include_0401_through_one_sealed_relative_module() {
 }
 
 #[test]
+fn executes_include_0201_apply_imports_builtin_fallback() {
+    let (actual, expected) = execute_inline_case_without_dependencies("include-0201");
+    assert_eq!(
+        without_xml_declaration(actual.trim()),
+        without_xml_declaration(expected.trim())
+    );
+}
+
+fn execute_inline_case_without_dependencies(case_name: &str) -> (String, String) {
+    let document = load_test_set();
+    let case = element_children(&document, document_element(&document))
+        .into_iter()
+        .find(|node| attribute(&document, *node, "name") == Some(case_name))
+        .expect("pinned include case");
+    let environment_ref = child_named(&document, case, "environment")
+        .and_then(|node| attribute(&document, node, "ref"))
+        .expect("case environment reference");
+    let environment = element_children(&document, document_element(&document))
+        .into_iter()
+        .find(|node| {
+            local_name(&document, *node) == "environment"
+                && attribute(&document, *node, "name") == Some(environment_ref)
+        })
+        .expect("referenced environment");
+    let source = child_named(&document, environment, "source").expect("principal source");
+    let content = child_named(&document, source, "content").expect("inline source content");
+    let test = child_named(&document, case, "test").expect("test metadata");
+    let stylesheet_file = child_named(&document, test, "stylesheet")
+        .and_then(|node| attribute(&document, node, "file"))
+        .expect("principal stylesheet file");
+    let result = child_named(&document, case, "result").expect("result metadata");
+    let assertion = child_named(&document, result, "assert-xml").expect("XML assertion");
+    let expected = document.string_value(assertion);
+
+    let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../vendor/xslt30-test/tests/decl/include");
+    let stylesheet_id = format!("https://example.invalid/xslt30/decl/include/{stylesheet_file}");
+    let source_id = format!("urn:w3c:xslt30:decl:include:{case_name}:source");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            source_id.clone(),
+            document.string_value(content).into_bytes(),
+        )
+        .expect("admit inline source");
+    resources
+        .admit(
+            stylesheet_id.clone(),
+            fs::read(directory.join(stylesheet_file))
+                .expect("read principal stylesheet and close handle"),
+        )
+        .expect("admit principal stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, &stylesheet_id).expect("compile include case");
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 8_192,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    set.add(TransformRequest {
+        identity: case_name.to_owned(),
+        result_identity: format!("urn:w3c:xslt30:decl:include:{case_name}:result"),
+        entry: InvocationEntry::PrincipalSource {
+            resource: source_id,
+        },
+        parameters: BTreeMap::new(),
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    })
+    .expect("admit include request");
+    let results = execute_transform_set(set.seal()).expect("execute include case");
+    (results.by_request[case_name].serialized.clone(), expected)
+}
+
+#[test]
 fn inventories_complete_include_denominator_with_explicit_dispositions() {
     let document = load_test_set();
     let cases = element_children(&document, document_element(&document))
@@ -180,12 +261,14 @@ fn inventories_complete_include_denominator_with_explicit_dispositions() {
     assert!(OVERLAY.contains("case_count = 16"));
     assert!(OVERLAY.contains("selection = \"harness-unsupported\""));
     assert!(OVERLAY.contains("execution = \"not-run\""));
-    let include_0401_override = OVERLAY
-        .split("[[case_override]]")
-        .find(|section| section.contains("case_name = \"include-0401\""))
-        .expect("include-0401 overlay override");
-    assert!(include_0401_override.contains("selection = \"selected\""));
-    assert!(include_0401_override.contains("execution = \"passed\""));
+    for case_name in PASSED_CASES {
+        let case_override = OVERLAY
+            .split("[[case_override]]")
+            .find(|section| section.contains(&format!("case_name = \"{case_name}\"")))
+            .expect("passed case overlay override");
+        assert!(case_override.contains("selection = \"selected\""));
+        assert!(case_override.contains("execution = \"passed\""));
+    }
     for case_name in CASE_NAMES {
         assert!(names.contains(&case_name));
     }

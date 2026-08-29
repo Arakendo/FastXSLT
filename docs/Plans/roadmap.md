@@ -997,6 +997,11 @@ failed, and harness-error cases without an unqualified conformance claim.
       Execute an included module, preserve missing/denied diagnostics, reject
       malformed framing, and advance the native workbench ABI to version 2.
       General dependency collections and resolver profiles remain under AR-0014.
+  - [x] Execute `include-0201` as an independent no-module conservation case:
+    `xsl:apply-imports` from a matched source element falls through to the
+    built-in element/text rules and produces the exact asserted wrapper. Keep
+    import precedence and lower-precedence user-rule selection out. The include
+    denominator now records 2 passes and 14 visible not-run dispositions.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.
