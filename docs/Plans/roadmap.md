@@ -89,6 +89,11 @@ Complete `Axes034` through `Axes037` add typed descendant-or-self element,
 named, and node tests. Nested input contexts retain one result per XDM identity
 in document order while every repeated traversal remains charged; the direct
 seam now has 73 passes.
+Selected `Axes041` and `Axes043` close descendant-or-self evidence over
+attribute and text contexts. Complete `Axes044` through `Axes049` verify
+explicit and abbreviated absolute child element/name/node forms against the
+same typed document origin, including seven mixed top-level nodes. No new
+engine path was required; the direct seam now has 88 passes.
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
 source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`
@@ -288,6 +293,11 @@ implemented behavior belongs to a named standards slice.
   mixed node kinds for `node()`, eliminate repeated XDM identities produced by
   overlapping nested contexts, preserve document order, and keep every actual
   traversal visit attributable to the invocation budget.
+- [x] Execute selected QT3 `Axes041` and `Axes043` to retain attribute and text
+  contexts through `descendant-or-self::node()`, then execute complete
+  `Axes044` through `Axes049` through the existing document-node origin. Prove
+  explicit and abbreviated absolute child forms share typed steps and retain
+  top-level non-element nodes only for `node()`.
 - [x] Admit and execute the complete two-case XSLT30 `fn/deep-equal` denominator
   through positioned descendant attribute/comment selection and charged,
   pairwise node comparison. Preserve distinct XDM identity while comparing

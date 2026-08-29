@@ -94,6 +94,8 @@ fn self_steps_preserve_typed_element_attribute_and_text_contexts() {
         parse_location_path("self::root", location()).expect("named self step should parse");
     let self_node =
         parse_location_path("self::node()", location()).expect("self node test should parse");
+    let descendant_or_self_node = parse_location_path("descendant-or-self::node()", location())
+        .expect("descendant-or-self node test should parse");
     let mut control = InvocationControl::unbounded();
 
     assert_eq!(
@@ -107,6 +109,14 @@ fn self_steps_preserve_typed_element_attribute_and_text_contexts() {
         [attribute]
     );
     assert_eq!(evaluate_location_path(&document, text, &self_node), [text]);
+    assert_eq!(
+        evaluate_location_path(&document, attribute, &descendant_or_self_node),
+        [attribute]
+    );
+    assert_eq!(
+        evaluate_location_path(&document, text, &descendant_or_self_node),
+        [text]
+    );
     assert_eq!(document.kind(text), NodeKind::Text);
     assert_eq!(document.string_value(text), "text");
     assert_eq!(
@@ -239,6 +249,24 @@ fn absolute_and_parent_steps_preserve_document_node_distinctions() {
     let absolute = parse_location_path("/root", location()).expect("absolute path should parse");
     assert_eq!(absolute.origin, PathOrigin::DocumentNode);
     assert_eq!(evaluate_location_path(&document, child, &absolute), [root]);
+    let explicit_any_element =
+        parse_location_path("/child::*", location()).expect("explicit absolute child parses");
+    let abbreviated_any_element =
+        parse_location_path("/*", location()).expect("abbreviated absolute child parses");
+    let explicit_any_node = parse_location_path("/child::node()", location())
+        .expect("explicit absolute child node test parses");
+    let abbreviated_any_node =
+        parse_location_path("/node()", location()).expect("abbreviated child node test parses");
+    assert_eq!(explicit_any_element.steps, abbreviated_any_element.steps);
+    assert_eq!(explicit_any_node.steps, abbreviated_any_node.steps);
+    assert_eq!(
+        evaluate_location_path(&document, child, &explicit_any_element),
+        [root]
+    );
+    assert_eq!(
+        evaluate_location_path(&document, child, &abbreviated_any_node),
+        [root]
+    );
 
     let explicit = parse_location_path("parent::node()", location())
         .expect("explicit parent node test should parse");

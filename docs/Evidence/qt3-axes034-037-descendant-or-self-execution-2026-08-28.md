@@ -60,6 +60,10 @@ descendant-or-self traversals. It also rejects the unimplemented
 The admitted `Axes001` through `Axes037` selections now contribute 73 passing
 location-path cases through the same metadata-driven direct XPath seam.
 
+Subsequent [selected `Axes041`–`Axes049` evidence](qt3-axes041-049-context-and-absolute-child-execution-2026-08-28.md)
+closes attribute/text descendant-or-self context pressure and verifies explicit
+and abbreviated absolute child forms.
+
 ## Claim boundary
 
 This evidence admits only the listed descendant-or-self step forms and their

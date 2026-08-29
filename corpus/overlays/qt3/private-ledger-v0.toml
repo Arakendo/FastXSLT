@@ -513,6 +513,111 @@ execution = "passed"
 rationale = "The native TreeCompass environment retains center plus all 21 descendant node kinds in document order."
 
 [[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes041-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment retains the selected attribute itself as its only descendant-or-self node."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes043-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc environment has no center text context to admit to descendant-or-self::node()."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes043-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Text environment retains the selected text node itself as its only descendant-or-self node."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes044-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass document origin applies explicit /child::* and selects its one document element."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes044-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TopMany document origin excludes top-level non-element children from explicit /child::* and matches one."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes045-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeEmpty document origin applies the unprefixed far-north child name without widening and matches zero."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes045-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass document origin selects its far-north document element by explicit child name."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes046-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass document origin retains its one document child through explicit child::node()."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes046-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TopMany document origin retains all seven top-level document children through explicit child::node()."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes047-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass document origin lowers /* to the same any-element child step and matches one."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes047-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TopMany document origin keeps top-level non-element nodes outside the abbreviated /* result."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes048-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeEmpty document origin lowers the abbreviated named child path and matches no far-north element."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes048-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass document origin lowers /far-north to the same named child step and matches one."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes049-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass document origin lowers /node() to the any-node child step and matches one."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes049-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TopMany document origin retains all seven document children through abbreviated /node()."
+
+[[case]]
 set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equalint2args-1"
 selection = "selected"
