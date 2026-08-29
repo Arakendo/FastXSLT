@@ -49,6 +49,9 @@ fn matches_pattern(
 ) -> Result<bool, ExecutionFailure> {
     match pattern {
         MatchPattern::Element(name) => Ok(source.name(node) == Some(name)),
+        MatchPattern::ElementNamespace(namespace) => Ok(source
+            .name(node)
+            .is_some_and(|name| name.namespace.as_deref() == Some(namespace.as_str()))),
         MatchPattern::DescendantAnyElement | MatchPattern::AnyElement => {
             Ok(source.kind(node) == NodeKind::Element)
         }

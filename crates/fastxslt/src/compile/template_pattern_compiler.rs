@@ -60,6 +60,25 @@ pub(super) fn compile_match_pattern(
                 local: name.to_owned(),
             })
         }
+        qualified if parse_qualified_element_test(qualified).is_some() => {
+            let (prefix, local) =
+                parse_qualified_element_test(qualified).expect("qualified shape was checked");
+            let namespace = namespace_for_prefix(document, element, prefix).ok_or_else(|| {
+                invalid(
+                    "FXST0031",
+                    format!("unbound prefix in template match pattern: {prefix}"),
+                    document.location(element),
+                )
+            })?;
+            if local == "*" {
+                MatchPattern::ElementNamespace(namespace.to_owned())
+            } else {
+                MatchPattern::Element(crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: Some(namespace.to_owned()),
+                    local: local.to_owned(),
+                })
+            }
+        }
         path if path.contains('/') && !path.starts_with('/') => MatchPattern::Path(
             parse_location_path(path, document.location(element).clone())
                 .map_err(map_path_failure)?,
@@ -74,6 +93,30 @@ pub(super) fn compile_match_pattern(
     };
     let priority = compile_template_priority(document, element, &pattern)?;
     Ok((pattern, priority))
+}
+
+fn parse_qualified_element_test(pattern: &str) -> Option<(&str, &str)> {
+    let (prefix, local) = pattern.split_once(':')?;
+    (is_ascii_ncname(prefix) && (local == "*" || is_ascii_ncname(local))).then_some((prefix, local))
+}
+
+fn namespace_for_prefix<'a>(
+    document: &'a Document,
+    element: NodeId,
+    prefix: &str,
+) -> Option<&'a str> {
+    let mut current = Some(element);
+    while let Some(node) = current {
+        if let Some(binding) = document
+            .namespace_declarations(node)
+            .iter()
+            .find(|binding| binding.prefix.as_deref() == Some(prefix))
+        {
+            return Some(binding.namespace.as_str());
+        }
+        current = document.parent(node);
+    }
+    None
 }
 
 fn parse_element_attribute_predicate(pattern: &str) -> Option<(&str, &str)> {
@@ -97,6 +140,13 @@ fn compile_template_priority(
     pattern: &MatchPattern,
 ) -> Result<TemplatePriority, CompileFailure> {
     let Some(lexical) = optional_attribute(document, element, None, "priority") else {
+        if matches!(pattern, MatchPattern::ElementNamespace(_)) {
+            return Err(unsupported(
+                "FXST1026",
+                "implicit namespace-wildcard priority is outside the exact private priority domain",
+                document.location(element),
+            ));
+        }
         return Ok(match pattern {
             MatchPattern::Path(_)
             | MatchPattern::DescendantAnyElement
@@ -109,6 +159,7 @@ fn compile_template_priority(
             | MatchPattern::ProcessingInstruction
             | MatchPattern::AnyNode
             | MatchPattern::AnyElement => TemplatePriority::NODE_TEST_DEFAULT,
+            MatchPattern::ElementNamespace(_) => unreachable!("handled before default priority"),
         });
     };
     let lexical = lexical.trim();

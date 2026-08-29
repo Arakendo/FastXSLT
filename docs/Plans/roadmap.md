@@ -242,6 +242,12 @@ sibling elements by attribute string value. Other comparisons and general
 predicate expressions remain unsupported. Its case-local environment also
 proves the harness does not require every upstream source to use a shared named
 environment.
+`conflict-resolution-0401c` resolves prefixed exact-name and namespace-wildcard
+patterns against retained stylesheet bindings. Both rules carry explicit
+priority `5`, and XSLT 3.0 source-order selection chooses the later wildcard.
+An implicit namespace-wildcard priority remains explicitly unsupported because
+its quarter-step value does not fit the current exact doubled-priority domain;
+the XSLT 2.0 recover/error variants remain outside this tranche.
 
 The current order of work is:
 
@@ -690,6 +696,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   priority in compiled state and charging inspected attributes. Support both
   shared and case-local suite environments; keep `!=`, namespaces, general
   comparisons, and arbitrary predicates unsupported.
+- [x] Execute XSLT 3.0 `conflict-resolution-0401c` through statically resolved
+  prefixed exact-name and namespace-wildcard patterns with equal explicit
+  integer priority and last-declared selection. Reject unbound prefixes and
+  implicit namespace-wildcard priority; do not infer XSLT 2.0 recovery/error
+  behavior or complete namespace-wildcard priority support.
 - [x] Admit the complete five-case XSLT30 `misc/initial-mode` denominator,
   preserving each mode identity and expected error or XML assertion through
   bounded snapshots. A focused host-neutral initial-mode entry executes with an

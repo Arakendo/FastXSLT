@@ -1122,6 +1122,47 @@ mod tests {
     }
 
     #[test]
+    fn compiles_prefixed_element_and_explicit_namespace_wildcard_patterns() {
+        let stylesheet = parse_stylesheet(
+            "memory:namespace-wildcard-pattern.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:bar="http://bar.example/"><xsl:template match="bar:foo" priority="5"><exact/></xsl:template><xsl:template match="bar:*" priority="5"><wildcard/></xsl:template></xsl:stylesheet>"#,
+        );
+        let program = compile_stylesheet(&stylesheet)
+            .expect("prefixed element and explicit namespace wildcard should compile");
+        assert!(matches!(
+            &program.matched_templates[0].pattern,
+            crate::xslt::golden_semantics_experiment::MatchPattern::Element(name)
+                if name.namespace.as_deref() == Some("http://bar.example/") && name.local == "foo"
+        ));
+        assert!(matches!(
+            &program.matched_templates[1].pattern,
+            crate::xslt::golden_semantics_experiment::MatchPattern::ElementNamespace(namespace)
+                if namespace == "http://bar.example/"
+        ));
+        assert_eq!(
+            program.matched_templates[0].priority,
+            program.matched_templates[1].priority
+        );
+
+        let implicit = parse_stylesheet(
+            "memory:implicit-namespace-wildcard.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:bar="http://bar.example/"><xsl:template match="bar:*"><out/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&implicit)
+            .expect_err("implicit quarter-step wildcard priority must remain unsupported");
+        assert_eq!(failure.code, "FXST1026");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+
+        let unbound = parse_stylesheet(
+            "memory:unbound-match-prefix.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="bar:foo"><out/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&unbound).expect_err("unbound prefix should be invalid");
+        assert_eq!(failure.code, "FXST0031");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+    }
+
+    #[test]
     fn distinguishes_invalid_stylesheet_from_unsupported_instruction() {
         let invalid = parse_stylesheet(
             "memory:invalid.xsl",
