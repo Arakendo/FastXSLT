@@ -16,6 +16,8 @@ mod stylesheet_module_compiler;
 mod stylesheet_validation;
 #[path = "template_pattern_compiler.rs"]
 mod template_pattern_compiler;
+#[path = "variable_filtered_path_compiler.rs"]
+mod variable_filtered_path_compiler;
 
 pub(crate) use stylesheet_module_compiler::{
     compile_stylesheet_with_single_include, discovered_include_references, single_include_reference,

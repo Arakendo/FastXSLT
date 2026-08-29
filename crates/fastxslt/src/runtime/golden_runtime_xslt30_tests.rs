@@ -7,11 +7,12 @@ use std::{
 };
 
 use super::{
-    ExecutionFailure, ExecutionPolicy, FailureCategory, InvocationEntry, TransformRequest,
-    TransformSetBuilder, compile_resource, execute_transform_set,
+    ExecutionFailure, ExecutionPolicy, FailureCategory, InvocationEntry, InvocationParameter,
+    TransformRequest, TransformSetBuilder, compile_resource, execute_transform_set,
 };
 use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
+use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
@@ -265,6 +266,13 @@ fn execute_path_case(case_name: &str) -> (String, String) {
 }
 
 fn execute_apply_templates_case(case_name: &str) -> (String, String, usize) {
+    execute_apply_templates_case_with_parameters(case_name, BTreeMap::new())
+}
+
+fn execute_apply_templates_case_with_parameters(
+    case_name: &str,
+    parameters: BTreeMap<String, InvocationParameter>,
+) -> (String, String, usize) {
     let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
     assert!(overlay.contains(&format!("case_name = \"{case_name}\"")));
     let (test_set, set_path) = apply_templates_test_set();
@@ -336,7 +344,7 @@ fn execute_apply_templates_case(case_name: &str) -> (String, String, usize) {
         entry: InvocationEntry::PrincipalSource {
             resource: source_id,
         },
-        parameters: BTreeMap::new(),
+        parameters,
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     })
@@ -783,6 +791,48 @@ fn reports_xslt30_statically_atomic_apply_templates_focus() {
         assert_eq!(failure.category, FailureCategory::Invalid);
         assert!(failure.location.is_some());
     }
+}
+
+#[test]
+fn executes_xslt30_empty_global_parameter_filtered_paths() {
+    let (actual, expected, matched_template_count) =
+        execute_apply_templates_case("conflict-resolution-1001");
+    assert_eq!(matched_template_count, 2);
+    assert_same_result_element_string(&actual, &expected, "planche");
+
+    let limits = ParseLimits {
+        max_events: 32,
+        max_depth: 8,
+    };
+    let actual = Document::from_parsed(
+        parse_document("urn:fastxslt:actual:1001", actual.as_bytes(), limits)
+            .expect("actual result should parse"),
+    )
+    .expect("actual result should build");
+    let planche = find_element(&actual, actual.document_node(), "planche", None)
+        .expect("actual planche element");
+    let children = actual
+        .children(planche)
+        .iter()
+        .filter_map(|node| actual.name(*node).map(|name| name.local.as_str()))
+        .collect::<Vec<_>>();
+    assert_eq!(children, ["images", "dialogues"]);
+
+    let mut parameters = BTreeMap::new();
+    parameters.insert(
+        "type".to_owned(),
+        InvocationParameter {
+            value: AtomicValue::string("enfant"),
+            tunnel: false,
+        },
+    );
+    let (filtered, _, matched_template_count) =
+        execute_apply_templates_case_with_parameters("conflict-resolution-1001", parameters);
+    assert_eq!(matched_template_count, 2);
+    assert!(filtered.contains("<bart type=\"enfant\">bart2.jpg</bart>"));
+    assert!(filtered.contains("<lisa type=\"enfant\">lisa.gif</lisa>"));
+    assert!(!filtered.contains("homer1.jpg"));
+    assert!(!filtered.contains("marge.gif"));
 }
 
 #[test]

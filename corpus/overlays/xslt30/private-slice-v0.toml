@@ -685,3 +685,10 @@ case_name = "apply-templates-002"
 selection = "selected"
 execution = "passed"
 rationale = "Static analysis proves that xsl:for-each establishes an integer-range focus and that xsl:apply-templates select='.' therefore supplies an atomic item rather than nodes; compilation reports structured XTTE0510."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-1001"
+selection = "selected"
+execution = "passed"
+rationale = "An empty global string parameter participates in two typed multi-step wildcard attribute-equality selections; neither selects a source element, so the root rule emits the two expected empty section wrappers. The compiled matching rules retain the same typed path predicate and bounded current-node copy instruction."

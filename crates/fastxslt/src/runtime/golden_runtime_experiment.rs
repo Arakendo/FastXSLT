@@ -34,11 +34,13 @@ mod temporary_tree_executor;
 mod transform_set_experiment;
 #[path = "value_evaluator.rs"]
 mod value_evaluator;
+#[path = "variable_filtered_path.rs"]
+mod variable_filtered_path;
 
 #[cfg(test)]
 pub(super) use resource_compiler::compile_resource;
 pub(super) use resource_compiler::compile_resource_with_denied;
-use result_tree::{ResultNode, materialize_literal_attributes};
+use result_tree::{ResultAttribute, ResultNode, materialize_literal_attributes};
 use runtime_context::{
     InvocationParameter, RuntimeVariables, SequenceInputs, TemporaryTree, bind_template_parameters,
     evaluate_template_arguments, materialize_global_defaults, materialize_temporary_tree,
@@ -420,6 +422,10 @@ fn execute_instruction(
             scope,
             control,
         )?),
+        Instruction::CopyOfCurrent { .. } => {
+            let (source, node) = required_source_context(inputs, execution.node)?;
+            result.extend(copy_source_node(source, inputs.request_id, node, control)?);
+        }
     }
     Ok(())
 }
@@ -631,7 +637,7 @@ fn execute_apply_templates(
         return Ok(result);
     }
     let (_, context) = required_source_context(inputs, context)?;
-    let selected = select_apply_nodes(inputs, select, context, control)?;
+    let selected = select_apply_nodes(inputs, select, context, &variables.atomics, control)?;
     let mut result = Vec::new();
     for node in selected {
         result.extend(apply_template(inputs, node, mode, parameters, control)?);
@@ -908,14 +914,6 @@ fn copy_source_node(
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     match source.kind(node) {
         NodeKind::Element => {
-            if !source.attributes(node).is_empty() {
-                return Err(failure(
-                    "FXRT1002",
-                    FailureCategory::Unsupported,
-                    Some(request_id),
-                    "copying selected source attributes is outside the private xsl:sequence slice",
-                ));
-            }
             control
                 .charge(WorkDomain::ResultNode, 1)
                 .map_err(|failure| control_failure(failure, request_id))?;
@@ -923,13 +921,29 @@ fn copy_source_node(
             for child in source.children(node).iter().copied() {
                 children.extend(copy_source_node(source, request_id, child, control)?);
             }
+            let attributes = source
+                .attributes(node)
+                .iter()
+                .map(|attribute| {
+                    control
+                        .charge(WorkDomain::ResultNode, 1)
+                        .map_err(|failure| control_failure(failure, request_id))?;
+                    Ok(ResultAttribute {
+                        name: source
+                            .name(*attribute)
+                            .expect("source attribute has a name")
+                            .clone(),
+                        value: source.string_value(*attribute),
+                    })
+                })
+                .collect::<Result<Vec<_>, ExecutionFailure>>()?;
             Ok(vec![ResultNode::Element {
                 name: source
                     .name(node)
                     .expect("source element nodes have names")
                     .clone(),
-                namespaces: Vec::new(),
-                attributes: Vec::new(),
+                namespaces: source.namespace_declarations(node).to_vec(),
+                attributes,
                 children,
             }])
         }
@@ -959,6 +973,7 @@ fn select_apply_nodes(
     inputs: &SequenceInputs<'_>,
     select: Option<&ApplySelection>,
     context: NodeId,
+    variables: &BTreeMap<String, AtomicValue>,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ExecutionFailure> {
     let source = inputs.source.expect("apply selection requires a source");
@@ -1025,6 +1040,14 @@ fn select_apply_nodes(
             }
             Ok(selected)
         }
+        ApplySelection::VariableFilteredElementPath(path) => variable_filtered_path::select(
+            source,
+            context,
+            path,
+            variables,
+            inputs.request_id,
+            control,
+        ),
         ApplySelection::GlobalTemporaryChildren(_) | ApplySelection::LocalTemporaryRoot(_) => {
             unreachable!("temporary-tree selection is dispatched before source selection")
         }

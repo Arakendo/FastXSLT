@@ -76,6 +76,7 @@ fn validate_named_calls(
             | Instruction::ApplyTemplates { .. }
             | Instruction::NextMatch { .. }
             | Instruction::ApplyImports { .. }
+            | Instruction::CopyOfCurrent { .. }
             | Instruction::Copy { .. } => {}
         }
     }

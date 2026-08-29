@@ -4,6 +4,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xpath::path_experiment::parse_location_path;
 use crate::xslt::golden_semantics_experiment::{MatchPattern, TemplatePriority};
 
+use super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
 use super::{
     CompileFailure, effective_xpath_default_namespace, invalid, is_ascii_ncname, map_path_failure,
     optional_attribute, unsupported,
@@ -29,6 +30,12 @@ pub(super) fn compile_match_pattern(
         }
         predicate if parse_any_element_attribute_variable_predicate(predicate).is_some() => {
             compile_any_element_attribute_variable_pattern(predicate)
+        }
+        path if parse_variable_filtered_path(path).is_some() => {
+            MatchPattern::VariableFilteredElementPath(
+                parse_variable_filtered_path(path)
+                    .expect("variable-filtered path shape was checked"),
+            )
         }
         "*[*[name()=name(current())]]" | "*[some $x in child::* satisfies name($x) = name(.)]" => {
             MatchPattern::ElementWithSameNamedChild
@@ -226,6 +233,7 @@ fn compile_template_priority(
             | MatchPattern::ElementWithAttribute { .. }
             | MatchPattern::ElementWithAttributeValue { .. }
             | MatchPattern::AnyElementWithAttributeVariable { .. }
+            | MatchPattern::VariableFilteredElementPath(_)
             | MatchPattern::ElementWithSameNamedChild
             | MatchPattern::ElementWithSameNamedParent
             | MatchPattern::ElementWithSameNamedParentAtPosition(_) => {

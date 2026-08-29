@@ -28,6 +28,7 @@ use literal_attribute_compiler::compile_literal_result_attributes;
 mod source_copy_compiler;
 use source_copy_compiler::compile_copy;
 
+use super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
 use super::{
     CompileCategory, CompileFailure, XML_SCHEMA_NAMESPACE, XSLT_NAMESPACE,
     effective_xpath_default_namespace, ensure_no_meaningful_children, ensure_only_attributes,
@@ -117,6 +118,8 @@ pub(super) fn compile_sequence_excluding(
                         instructions.push(compile_call_template(document, child)?);
                     } else if name.local == "copy" {
                         instructions.push(compile_copy(document, child)?);
+                    } else if name.local == "copy-of" {
+                        instructions.push(compile_copy_of(document, child)?);
                     } else {
                         return Err(unsupported(
                             "FXST1006",
@@ -154,6 +157,22 @@ fn compile_apply_imports(
     ensure_only_attributes(document, element, &[], "xsl:apply-imports")?;
     Ok(Instruction::ApplyImports {
         arguments: compile_with_params(document, element, "xsl:apply-imports", false)?,
+        location: document.location(element).clone(),
+    })
+}
+
+fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
+    ensure_only_attributes(document, element, &["select"], "xsl:copy-of")?;
+    ensure_no_meaningful_children(document, element, "xsl:copy-of")?;
+    let select = required_attribute(document, element, None, "select")?;
+    if select.trim() != "." {
+        return Err(unsupported(
+            "FXXP1003",
+            format!("unsupported xsl:copy-of selection: {select}"),
+            document.location(element),
+        ));
+    }
+    Ok(Instruction::CopyOfCurrent {
         location: document.location(element).clone(),
     })
 }
@@ -372,6 +391,9 @@ fn parse_apply_selection(
     expression: &str,
     location: SourceLocation,
 ) -> Result<ApplySelection, CompileFailure> {
+    if let Some(path) = parse_variable_filtered_path(expression) {
+        return Ok(ApplySelection::VariableFilteredElementPath(path));
+    }
     if let Some(variable) = expression.strip_prefix('$') {
         if is_ascii_ncname(variable) {
             return Ok(ApplySelection::LocalTemporaryRoot(variable.to_owned()));

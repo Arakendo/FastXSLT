@@ -324,6 +324,13 @@ default apply-templates selection and explicit `select="."` violate the
 required node-sequence type. Compilation reports located, structured
 `XTTE0510` failures without claiming general `xsl:for-each` execution or broad
 static type inference.
+`conflict-resolution-1001` specializes the two relative
+`planche/{section}/*[@type=$type]` expressions into typed parent steps plus a
+wildcard attribute-equality filter. The empty global string default produces
+the upstream empty-section result. A supplemental `type="enfant"` invocation
+forces both matching rules and bounded current-element `xsl:copy-of` execution,
+retaining selected attributes, descendants, and text without runtime XPath
+reparsing.
 `conflict-resolution-0901` then conserves the existing typed path machinery
 across template selection: `//b` supplies six candidates in document order,
 while retained `doc/a/b` and `doc/z/b` patterns distinguish their parent chains
@@ -882,6 +889,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   by proving their literal integer-range focus cannot supply the required node
   sequence. Keep general `xsl:for-each`, arbitrary static typing, atomic-item
   transformation, and dynamic focus execution out.
+- [x] Execute `conflict-resolution-1001` through typed relative parent steps
+  ending in a wildcard attribute-equality variable filter. Verify the upstream
+  empty global default and a supplemental non-empty invocation that exercises
+  filtered matching and bounded current-element copy. Keep arbitrary
+  predicates, namespaced specialized steps, and general `xsl:copy-of` out.
 - [x] Execute `conflict-resolution-0901` as a conservation case for typed
   leading-descendant selection, document-order candidate delivery, and retained
   multi-step parent/child match paths. Keep general `current()` patterns,
@@ -889,7 +901,7 @@ failed, and harness-error cases without an unqualified conformance claim.
   propagation, and general pattern grammar outside that conservation slice.
 - [x] Conserve the complete ordered 50-case XSLT30 apply-templates denominator,
   its 50 principal plus one secondary stylesheet, and its assertion-shape
-  counts. Record 33 explicit passes and 17 default not-run dispositions without
+  counts. Record 34 explicit passes and 16 default not-run dispositions without
   converting unexecuted cases into engine failures or an aggregate conformance
   claim.
 - [x] Execute `conflict-resolution-0701` through inherited

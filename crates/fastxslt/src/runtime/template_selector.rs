@@ -3,12 +3,13 @@
 use std::collections::BTreeMap;
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
-use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
+use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{MatchPattern, MatchedTemplate, StylesheetProgram};
 
 use super::runtime_failure::{ExecutionFailure, FailureCategory, control_failure, failure};
+use super::variable_filtered_path::{attribute_equals_atomic, matches as matches_variable_path};
 
 pub(super) struct TemplateSelectionContext<'a> {
     pub(super) source: &'a Document,
@@ -159,6 +160,9 @@ fn matches_pattern(
                 }
             }
             Ok(false)
+        }
+        MatchPattern::VariableFilteredElementPath(path) => {
+            matches_variable_path(source, node, path, variables, request_id, control)
         }
         MatchPattern::ElementWithSameNamedChild
         | MatchPattern::ElementWithSameNamedParent
@@ -311,17 +315,6 @@ fn unsupported_name_comparison(request_id: &str) -> ExecutionFailure {
         Some(request_id),
         "name() pattern comparison requires unnamespaced elements in the private slice",
     )
-}
-
-fn attribute_equals_atomic(attribute: &str, value: &AtomicValue) -> bool {
-    if value.atomic_type() == BuiltinAtomicType::Integer {
-        return attribute
-            .parse::<i64>()
-            .ok()
-            .zip(value.lexical().parse::<i64>().ok())
-            .is_some_and(|(left, right)| left == right);
-    }
-    attribute == value.lexical()
 }
 
 fn matches_document_element(

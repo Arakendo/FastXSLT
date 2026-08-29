@@ -143,6 +143,7 @@ pub(crate) enum MatchPattern {
         attribute: ExpandedName,
         variable: String,
     },
+    VariableFilteredElementPath(VariableFilteredElementPath),
     ElementWithSameNamedChild,
     ElementWithSameNamedParent,
     ElementWithSameNamedParentAtPosition(usize),
@@ -164,6 +165,14 @@ pub(crate) enum ApplySelection {
     Attribute(ExpandedName),
     GlobalTemporaryChildren(String),
     LocalTemporaryRoot(String),
+    VariableFilteredElementPath(VariableFilteredElementPath),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct VariableFilteredElementPath {
+    pub(crate) parent_steps: Vec<ExpandedName>,
+    pub(crate) attribute: ExpandedName,
+    pub(crate) variable: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -227,6 +236,9 @@ pub(crate) enum Instruction {
     },
     ApplyImports {
         arguments: Vec<TemplateArgument>,
+        location: SourceLocation,
+    },
+    CopyOfCurrent {
         location: SourceLocation,
     },
     If {

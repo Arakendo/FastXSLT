@@ -49,6 +49,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `conflict-resolution-1101` Built-In Parameter Propagation](xslt30-conflict-resolution-1101-builtin-parameter-propagation-2026-08-29.md)
 - [XSLT30 `conflict-resolution-1102` Apply-Imports Built-In Fallback](xslt30-conflict-resolution-1102-apply-imports-builtin-fallback-2026-08-29.md)
 - [XSLT30 `apply-templates-001`–`002` Atomic-Focus Errors](xslt30-apply-templates-001-002-atomic-focus-errors-2026-08-29.md)
+- [XSLT30 `conflict-resolution-1001` Variable-Filtered Paths](xslt30-conflict-resolution-1001-variable-filtered-paths-2026-08-29.md)
 - [XSLT30 Path Denominator and Child-Axis Predicate](xslt30-path-denominator-and-child-axis-predicate-2026-08-26.md)
 - [XSLT30 `path-002` Descendant and Ancestor Execution](xslt30-path-002-descendant-ancestor-execution-2026-08-26.md)
 - [XSLT30 `path-003` Ancestor-or-Self Execution](xslt30-path-003-ancestor-or-self-execution-2026-08-26.md)
