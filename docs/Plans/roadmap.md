@@ -94,6 +94,10 @@ attribute and text contexts. Complete `Axes044` through `Axes049` verify
 explicit and abbreviated absolute child element/name/node forms against the
 same typed document origin, including seven mixed top-level nodes. No new
 engine path was required; the direct seam now has 88 passes.
+Complete `Axes055` through `Axes061` compose the typed document origin with
+self, descendant, and descendant-or-self steps. The 19 cases required no
+absolute-only engine implementation and distinguish 58 `TopMany` descendants
+from 59 descendant-or-self nodes; the direct seam now has 107 passes.
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
 source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`
@@ -298,6 +302,11 @@ implemented behavior belongs to a named standards slice.
   `Axes044` through `Axes049` through the existing document-node origin. Prove
   explicit and abbreviated absolute child forms share typed steps and retain
   top-level non-element nodes only for `node()`.
+- [x] Execute complete QT3 `Axes055` through `Axes061` by composing the existing
+  document-node origin with typed self, descendant, and descendant-or-self
+  steps. Preserve the document node for self and any-node
+  descendant-or-self, exclude it for descendant and element-principal tests,
+  and avoid a separate absolute-axis evaluator.
 - [x] Admit and execute the complete two-case XSLT30 `fn/deep-equal` denominator
   through positioned descendant attribute/comment selection and charged,
   pairwise node comparison. Preserve distinct XDM identity while comparing

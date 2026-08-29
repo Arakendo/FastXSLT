@@ -10,7 +10,7 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use super::count_experiment;
 
 const QT3_NAMESPACE: &str = "http://www.w3.org/2010/09/qt-fots-catalog";
-const CASES: [(&str, &str, usize); 88] = [
+const CASES: [(&str, &str, usize); 107] = [
     ("Axes001-1", "fn:count(//center/child::*)", 0),
     ("Axes001-2", "fn:count(//center/child::*)", 1),
     ("Axes001-3", "fn:count(//center/child::*)", 6),
@@ -147,6 +147,25 @@ const CASES: [(&str, &str, usize); 88] = [
     ("Axes048-2", "fn:count(/far-north)", 1),
     ("Axes049-1", "fn:count(/node())", 1),
     ("Axes049-2", "fn:count(/node())", 7),
+    ("Axes055-1", "fn:count(/self::node())", 1),
+    ("Axes056-1", "fn:count(/descendant::*)", 1),
+    ("Axes056-2", "fn:count(/descendant::*)", 15),
+    ("Axes056-3", "fn:count(/descendant::*)", 16),
+    ("Axes057-1", "fn:count(/descendant::south)", 0),
+    ("Axes057-2", "fn:count(/descendant::south)", 1),
+    ("Axes057-3", "fn:count(/descendant::south)", 1),
+    ("Axes057-4", "fn:count(/descendant::south)", 8),
+    ("Axes058-1", "fn:count(/descendant::node())", 1),
+    ("Axes058-2", "fn:count(/descendant::node())", 56),
+    ("Axes058-3", "fn:count(/descendant::node())", 58),
+    ("Axes059-1", "fn:count(/descendant-or-self::*)", 1),
+    ("Axes059-2", "fn:count(/descendant-or-self::*)", 15),
+    ("Axes060-1", "fn:count(/descendant-or-self::south)", 0),
+    ("Axes060-2", "fn:count(/descendant-or-self::south)", 1),
+    ("Axes060-3", "fn:count(/descendant-or-self::south)", 1),
+    ("Axes060-4", "fn:count(/descendant-or-self::south)", 8),
+    ("Axes061-1", "fn:count(/descendant-or-self::node())", 57),
+    ("Axes061-2", "fn:count(/descendant-or-self::node())", 59),
 ];
 
 fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'a str> {
@@ -203,7 +222,7 @@ fn load_axis_test_set() -> (Document, PathBuf) {
 }
 
 #[test]
-fn executes_qt3_axes001_through_axes049_admitted_location_path_groups() {
+fn executes_qt3_axes001_through_axes061_admitted_location_path_groups() {
     let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
     let selected_records: Vec<_> = overlay
         .split("[[case]]")

@@ -59,6 +59,10 @@ one typed document-origin evaluation path.
 The admitted `Axes001` through `Axes049` selections now contribute 88 passing
 location-path cases through the same metadata-driven direct XPath seam.
 
+Subsequent [`Axes055`–`Axes061` evidence](qt3-axes055-061-absolute-axis-composition-2026-08-28.md)
+composes the document origin with self, descendant, and descendant-or-self
+steps without a separate absolute evaluator.
+
 ## Claim boundary
 
 This evidence admits only the listed context and absolute child forms. It does

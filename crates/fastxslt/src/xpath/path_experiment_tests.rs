@@ -267,6 +267,30 @@ fn absolute_and_parent_steps_preserve_document_node_distinctions() {
         evaluate_location_path(&document, child, &abbreviated_any_node),
         [root]
     );
+    let document_self = parse_location_path("/self::node()", location())
+        .expect("absolute document self test parses");
+    let all_elements = parse_location_path("/descendant::*", location())
+        .expect("absolute descendant wildcard parses");
+    let all_elements_with_self = parse_location_path("/descendant-or-self::*", location())
+        .expect("absolute descendant-or-self wildcard parses");
+    let all_nodes_with_self = parse_location_path("/descendant-or-self::node()", location())
+        .expect("absolute descendant-or-self node test parses");
+    assert_eq!(
+        evaluate_location_path(&document, child, &document_self),
+        [document_node]
+    );
+    assert_eq!(
+        evaluate_location_path(&document, child, &all_elements),
+        [root, child]
+    );
+    assert_eq!(
+        evaluate_location_path(&document, child, &all_elements_with_self),
+        [root, child]
+    );
+    assert_eq!(
+        evaluate_location_path(&document, child, &all_nodes_with_self),
+        [document_node, root, child]
+    );
 
     let explicit = parse_location_path("parent::node()", location())
         .expect("explicit parent node test should parse");

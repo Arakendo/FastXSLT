@@ -618,6 +618,139 @@ execution = "passed"
 rationale = "The native TopMany document origin retains all seven document children through abbreviated /node()."
 
 [[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes055-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TopMany document origin retains the document node itself through /self::node()."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes056-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeEmpty document origin selects its one element descendant through /descendant::*."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes056-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass document origin selects all 15 element descendants in document order."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes056-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TopMany document origin selects all 16 element descendants while excluding document-level non-elements."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes057-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc document origin finds no unnamespaced south descendant."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes057-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeEmpty document origin selects its one south descendant by name."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes057-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass document origin selects its one south descendant by name."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes057-4"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeStack document origin selects eight nested and sibling south descendants in document order."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes058-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeEmpty document origin retains its sole element descendant through descendant::node()."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes058-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass document origin retains all 56 descendant nodes in document order."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes058-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TopMany document origin retains 58 descendants while excluding the document node itself."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes059-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeEmpty document origin applies the element principal kind and excludes document self from descendant-or-self::*."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes059-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass document origin selects the same 15 elements through descendant-or-self::* because document self is not an element."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes060-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc document origin finds no named south across document self and descendants."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes060-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeEmpty document origin selects its one south descendant through descendant-or-self."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes060-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass document origin selects its one south descendant through descendant-or-self."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes060-4"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeStack document origin selects all eight south descendants through descendant-or-self."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes061-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass document origin retains document self plus all 56 descendants through node()."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes061-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TopMany document origin retains document self plus all 58 descendants through node()."
+
+[[case]]
 set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equalint2args-1"
 selection = "selected"
