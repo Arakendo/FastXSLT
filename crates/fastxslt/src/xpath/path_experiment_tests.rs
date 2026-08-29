@@ -253,6 +253,44 @@ fn leading_descendant_origin_unifies_explicit_and_abbreviated_child_steps() {
 }
 
 #[test]
+fn internal_descendant_abbreviation_lowers_to_a_typed_step_and_deduplicates() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root><center><a/><center><b/></center></center></root>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 6,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let explicit = parse_location_path("//center//child::*", location())
+        .expect("explicit child step after internal descendant separator should parse");
+    let abbreviated = parse_location_path("//center//*", location())
+        .expect("abbreviated child step after internal descendant separator should parse");
+    let mut control = InvocationControl::unbounded();
+
+    assert_eq!(explicit.steps, abbreviated.steps);
+    assert_eq!(explicit.steps[1], "node()");
+    let selected = evaluate_location_path_controlled(
+        &document,
+        document.children(document.document_node())[0],
+        &abbreviated,
+        &mut control,
+    )
+    .expect("internal descendant abbreviation should execute");
+
+    assert_eq!(selected.len(), 3);
+    assert_eq!(document.name(selected[0]).expect("a name").local, "a");
+    assert_eq!(
+        document.name(selected[1]).expect("center name").local,
+        "center"
+    );
+    assert_eq!(document.name(selected[2]).expect("b name").local, "b");
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 14);
+}
+
+#[test]
 fn descendant_or_self_steps_include_self_and_deduplicate_overlapping_contexts() {
     let parsed = parse_document(
         "memory:source.xml",
@@ -399,8 +437,8 @@ fn distinguishes_invalid_from_unsupported_path_syntax() {
     ));
     let invalid = parse_location_path("1greeting/name", location())
         .expect_err("an invalid child-name path must fail");
-    let unsupported = parse_location_path("greeting//name", location())
-        .expect_err("a descendant path is outside the private slice");
+    let unsupported = parse_location_path("greeting///name", location())
+        .expect_err("repeated descendant separators are outside the private slice");
 
     assert!(matches!(invalid, PathFailure::Invalid { .. }));
     assert!(matches!(unsupported, PathFailure::Unsupported { .. }));

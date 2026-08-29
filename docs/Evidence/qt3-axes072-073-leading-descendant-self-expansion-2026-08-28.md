@@ -49,3 +49,6 @@ This evidence admits only the listed leading descendant self forms. It does
 not establish arbitrary `//` composition after an element, reverse-axis
 expansion, namespace-sensitive name tests, predicates, other omitted axis
 groups, or a general XPath parser.
+
+Subsequent [`Axes074`–`Axes079` evidence](qt3-axes074-079-internal-descendant-child-expansion-2026-08-28.md)
+admits the bounded internal-descendant child forms left outside this claim.

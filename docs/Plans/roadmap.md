@@ -112,6 +112,11 @@ Complete `Axes072` and `Axes073` make that leading expansion axis-aware for
 self steps. `//self::node()` retains the document node while `//self::*`
 applies the element-principal node kind after the same charged expansion; the
 direct seam now has 141 passes.
+Complete `Axes074` through `Axes079` lower one isolated internal `//` to the
+existing typed descendant-or-self node step before explicit or abbreviated
+child steps. Overlapping nested contexts retain unique document-ordered
+results without erasing attributable repeated traversal work; the direct seam
+now has 164 passes.
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
 source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`
@@ -335,6 +340,11 @@ implemented behavior belongs to a named standards slice.
   descendant self expansion. Retain the document node for `self::node()`,
   exclude it through the element-principal wildcard, preserve document order,
   and charge each expanded context exactly once.
+- [x] Execute complete QT3 `Axes074` through `Axes079` by lowering an isolated
+  internal `//` separator to the typed descendant-or-self node step before the
+  written child step. Unify explicit and abbreviated child forms, deduplicate
+  overlapping result identities in document order, and retain every actual
+  traversal visit in work accounting.
 - [x] Admit and execute the complete two-case XSLT30 `fn/deep-equal` denominator
   through positioned descendant attribute/comment selection and charged,
   pairwise node comparison. Preserve distinct XDM identity while comparing

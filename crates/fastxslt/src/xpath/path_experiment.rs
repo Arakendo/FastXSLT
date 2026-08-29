@@ -235,7 +235,7 @@ pub(crate) fn parse_location_path(
     };
     if expression.starts_with('/')
         || expression.ends_with('/')
-        || expression.contains("//")
+        || (final_predicate.is_some() && expression.contains("//"))
         || parsed_steps.is_none()
     {
         return Err(PathFailure::Unsupported {
@@ -369,7 +369,19 @@ fn parse_position_steps(expression: &str) -> Option<(Vec<String>, Vec<Option<Pos
     let raw_steps = split_path_steps(expression)?;
     let mut steps = Vec::with_capacity(raw_steps.len());
     let mut predicates = Vec::with_capacity(raw_steps.len());
-    for raw_step in raw_steps {
+    for (index, raw_step) in raw_steps.iter().copied().enumerate() {
+        if raw_step.is_empty() {
+            let is_isolated_internal_separator = index > 0
+                && index + 1 < raw_steps.len()
+                && !raw_steps[index - 1].is_empty()
+                && !raw_steps[index + 1].is_empty();
+            if !is_isolated_internal_separator {
+                return None;
+            }
+            steps.push("descendant-or-self::node()".to_owned());
+            predicates.push(None);
+            continue;
+        }
         let (name, predicate) = if let Some((name, predicate)) = raw_step.split_once('[') {
             let predicate = predicate.strip_suffix(']')?;
             if name.is_empty() || predicate.contains(['[', ']']) {
@@ -388,9 +400,6 @@ fn parse_position_steps(expression: &str) -> Option<(Vec<String>, Vec<Option<Pos
         } else {
             (raw_step, None)
         };
-        if name.is_empty() {
-            return None;
-        }
         steps.push(name.to_owned());
         predicates.push(predicate);
     }

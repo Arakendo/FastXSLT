@@ -45,6 +45,7 @@ pressure architecture but does not silently create a public guarantee.
 - [QT3 `Axes062`–`Axes067` Leading-Descendant Child Forms](qt3-axes062-067-leading-descendant-child-forms-2026-08-28.md)
 - [QT3 `Axes068`–`Axes071` Leading-Descendant Attribute Expansion](qt3-axes068-071-leading-descendant-attribute-expansion-2026-08-28.md)
 - [QT3 `Axes072`–`Axes073` Leading-Descendant Self Expansion](qt3-axes072-073-leading-descendant-self-expansion-2026-08-28.md)
+- [QT3 `Axes074`–`Axes079` Internal-Descendant Child Expansion](qt3-axes074-079-internal-descendant-child-expansion-2026-08-28.md)
 - [Path Location-Step Cohesion Review](path-location-step-cohesion-review-2026-08-28.md)
 - [Path Location Owner Decomposition Checkpoint](path-location-owner-decomposition-checkpoint-2026-08-28.md)
 - [XSLT30 `expr/for` Denominator Admission](xslt30-for-denominator-admission-2026-08-26.md)
