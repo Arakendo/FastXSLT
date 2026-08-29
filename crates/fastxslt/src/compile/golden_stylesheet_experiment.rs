@@ -1076,8 +1076,23 @@ mod tests {
             "memory:attribute-comparison-pattern.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="foo[@test='true']"><out/></xsl:template></xsl:stylesheet>"#,
         );
-        let failure = compile_stylesheet(&comparison)
-            .expect_err("attribute value predicates must remain unsupported");
+        let comparison_program = compile_stylesheet(&comparison)
+            .expect("exact single-quoted attribute value predicate should compile");
+        assert!(matches!(
+            &comparison_program.matched_templates[0].pattern,
+            crate::xslt::golden_semantics_experiment::MatchPattern::ElementWithAttributeValue {
+                element,
+                attribute,
+                value
+            } if element.local == "foo" && attribute.local == "test" && value == "true"
+        ));
+
+        let general_comparison = parse_stylesheet(
+            "memory:general-attribute-comparison-pattern.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="foo[@test!='true']"><out/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&general_comparison)
+            .expect_err("general attribute comparisons must remain unsupported");
         assert_eq!(failure.code, "FXST1005");
         assert_eq!(failure.category, CompileCategory::Unsupported);
     }

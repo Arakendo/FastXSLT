@@ -275,16 +275,19 @@ fn execute_apply_templates_case(case_name: &str) -> (String, String, usize) {
         Some(("name", case_name)),
     )
     .expect("overlay case should exist in pinned suite");
-    let environment_ref = find_element(&test_set, test_case, "environment", None)
-        .and_then(|node| attribute(&test_set, node, "ref"))
-        .expect("case should reference an environment");
-    let environment = find_element(
-        &test_set,
-        test_set.document_node(),
-        "environment",
-        Some(("name", environment_ref)),
-    )
-    .expect("referenced environment should exist");
+    let case_environment = find_element(&test_set, test_case, "environment", None)
+        .expect("case should provide an environment");
+    let environment = if let Some(environment_ref) = attribute(&test_set, case_environment, "ref") {
+        find_element(
+            &test_set,
+            test_set.document_node(),
+            "environment",
+            Some(("name", environment_ref)),
+        )
+        .expect("referenced environment should exist")
+    } else {
+        case_environment
+    };
     let source = find_element(&test_set, environment, "content", None)
         .map(|node| test_set.string_value(node))
         .expect("environment should contain the principal source");
@@ -526,6 +529,14 @@ fn executes_xslt30_descendant_wildcard_non_simple_priority() {
         execute_apply_templates_case("conflict-resolution-0112");
     assert_eq!(matched_template_count, 4);
     assert_same_result_element_string(&actual, &expected, "text");
+}
+
+#[test]
+fn executes_xslt30_exact_attribute_value_pattern() {
+    let (actual, expected, matched_template_count) =
+        execute_apply_templates_case("conflict-resolution-0201");
+    assert_eq!(matched_template_count, 5);
+    assert_same_result_element_string(&actual, &expected, "out");
 }
 
 #[test]

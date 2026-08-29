@@ -18,6 +18,21 @@ pub(super) fn compile_match_pattern(
         "processing-instruction()" => MatchPattern::ProcessingInstruction,
         "node()" => MatchPattern::AnyNode,
         "//*" => MatchPattern::DescendantAnyElement,
+        predicate if parse_element_attribute_value_predicate(predicate).is_some() => {
+            let (element, attribute, value) = parse_element_attribute_value_predicate(predicate)
+                .expect("attribute-value predicate shape was checked");
+            MatchPattern::ElementWithAttributeValue {
+                element: crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: None,
+                    local: element.to_owned(),
+                },
+                attribute: crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: None,
+                    local: attribute.to_owned(),
+                },
+                value: value.to_owned(),
+            }
+        }
         predicate if parse_element_attribute_predicate(predicate).is_some() => {
             let (element, attribute) =
                 parse_element_attribute_predicate(predicate).expect("predicate shape was checked");
@@ -67,6 +82,15 @@ fn parse_element_attribute_predicate(pattern: &str) -> Option<(&str, &str)> {
     (is_ascii_ncname(element) && is_ascii_ncname(attribute)).then_some((element, attribute))
 }
 
+fn parse_element_attribute_value_predicate(pattern: &str) -> Option<(&str, &str, &str)> {
+    let (element, predicate) = pattern.split_once("[@")?;
+    let predicate = predicate.strip_suffix(']')?;
+    let (attribute, literal) = predicate.split_once('=')?;
+    let value = literal.strip_prefix('\'')?.strip_suffix('\'')?;
+    (is_ascii_ncname(element) && is_ascii_ncname(attribute) && !value.contains('\''))
+        .then_some((element, attribute, value))
+}
+
 fn compile_template_priority(
     document: &Document,
     element: NodeId,
@@ -76,7 +100,8 @@ fn compile_template_priority(
         return Ok(match pattern {
             MatchPattern::Path(_)
             | MatchPattern::DescendantAnyElement
-            | MatchPattern::ElementWithAttribute { .. } => TemplatePriority::PATH_DEFAULT,
+            | MatchPattern::ElementWithAttribute { .. }
+            | MatchPattern::ElementWithAttributeValue { .. } => TemplatePriority::PATH_DEFAULT,
             MatchPattern::Element(_) | MatchPattern::Attribute(_) => {
                 TemplatePriority::EXACT_NAME_DEFAULT
             }

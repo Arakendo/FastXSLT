@@ -235,6 +235,13 @@ attribute is charged; general predicate expressions remain unsupported.
 element applicability with retained non-simple priority, so it beats exact-name
 and node-test rules without general descendant navigation in the dispatch hot
 path. Named and arbitrary descendant patterns remain unsupported.
+`conflict-resolution-0201` adds the exact unnamespaced
+`element[@attribute='literal']` form. It retains the literal and non-simple
+priority in compiled state, charges inspected attributes, and distinguishes two
+sibling elements by attribute string value. Other comparisons and general
+predicate expressions remain unsupported. Its case-local environment also
+proves the harness does not require every upstream source to use a shared named
+environment.
 
 The current order of work is:
 
@@ -678,6 +685,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   specialization whose element applicability retains non-simple default
   priority. Keep `//QName`, arbitrary descendant patterns, union patterns, and
   the general pattern grammar unsupported.
+- [x] Execute `conflict-resolution-0201` through the exact unnamespaced
+  `element[@attribute='literal']` pattern, retaining its literal and non-simple
+  priority in compiled state and charging inspected attributes. Support both
+  shared and case-local suite environments; keep `!=`, namespaces, general
+  comparisons, and arbitrary predicates unsupported.
 - [x] Admit the complete five-case XSLT30 `misc/initial-mode` denominator,
   preserving each mode identity and expected error or XML assertion through
   bounded snapshots. A focused host-neutral initial-mode entry executes with an

@@ -511,3 +511,10 @@ case_name = "conflict-resolution-0112"
 selection = "selected"
 execution = "passed"
 rationale = "The exact descendant wildcard pattern matches elements but retains non-simple default priority, so it beats the exact-name and node-test rules without runtime priority reconstruction."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0201"
+selection = "selected"
+execution = "passed"
+rationale = "An exact unnamespaced single-quoted attribute string-value predicate selects only the second file element and retains non-simple default priority over its exact-name fallback."

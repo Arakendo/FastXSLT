@@ -66,6 +66,26 @@ fn matches_pattern(
             }
             Ok(false)
         }
+        MatchPattern::ElementWithAttributeValue {
+            element,
+            attribute,
+            value,
+        } => {
+            if source.name(node) != Some(element) {
+                return Ok(false);
+            }
+            for candidate in source.attributes(node) {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                if source.name(*candidate) == Some(attribute)
+                    && source.string_value(*candidate) == value.as_str()
+                {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
         MatchPattern::Path(path) => match_path_pattern(source, node, path, request_id, control),
         MatchPattern::Attribute(name) => {
             Ok(source.kind(node) == NodeKind::Attribute && source.name(node) == Some(name))

@@ -114,6 +114,11 @@ pub(crate) enum MatchPattern {
         element: ExpandedName,
         attribute: ExpandedName,
     },
+    ElementWithAttributeValue {
+        element: ExpandedName,
+        attribute: ExpandedName,
+        value: String,
+    },
     Path(LocationPath),
     Attribute(ExpandedName),
     Comment,
