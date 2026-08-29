@@ -40,6 +40,6 @@ unnamespaced `out` element retaining `xmlns:u="http://some.uri/"` and no
 
 This evidence admits only `xsl:xpath-default-namespace` as a control attribute
 on literal result elements. Ordinary literal result attributes, other XSLT
-control attributes, attribute value templates, namespace aliases, broader
-default-namespaced paths, and the stylesheet-wide `0703` case remain outside
-this slice.
+control attributes, attribute value templates, namespace aliases, and broader
+default-namespaced paths remain outside this slice. Stylesheet-wide inheritance
+is evidenced separately by `conflict-resolution-0703`.

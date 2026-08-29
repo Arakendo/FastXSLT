@@ -252,9 +252,9 @@ the XSLT 2.0 recover/error variants remain outside this tranche.
 across template selection: `//b` supplies six candidates in document order,
 while retained `doc/a/b` and `doc/z/b` patterns distinguish their parent chains
 and produce `111222`. No lexical pattern parsing enters the dispatch loop. The
-adjacent `0501–0503` current/range-variable cases and `0703–0802` broader
-static-default-namespace/current-mode cases remain deliberate language slices
-rather than targets for stylesheet-shaped shortcuts.
+adjacent `0501–0503` current/range-variable cases and `0801–0802` current-mode
+cases remain deliberate language slices rather than targets for
+stylesheet-shaped shortcuts.
 `conflict-resolution-0701` now resolves an inherited template-local
 `xpath-default-namespace` into expanded names for simple unprefixed element
 patterns and child selections. The prefixed child rule proves equivalent
@@ -265,10 +265,15 @@ result element using the XSLT namespace. Compilation applies it to the
 descendant selection without manufacturing a result attribute, while the
 stylesheet's retained `u` binding remains serialized on `out`. Other literal
 attributes and XSLT control attributes remain unsupported.
+`conflict-resolution-0703` propagates a stylesheet-wide
+`xpath-default-namespace` into simple element patterns and child selection,
+while preserving the XSLT rule that unprefixed attribute names remain in no
+namespace. The qualified element path and unqualified `@test` dispatch produce
+the pinned `foo"true"` result without broadening general path support.
 The complete pinned apply-templates test set is now conserved as an ordered
 50-case denominator with 50 principal stylesheets, one secondary stylesheet,
-41 XML assertions, eight error assertions, and one compound assertion. Thirteen
-cases have explicit passing overrides; the other 37 remain visibly not run and
+41 XML assertions, eight error assertions, and one compound assertion. Fourteen
+cases have explicit passing overrides; the other 36 remain visibly not run and
 are not mislabeled as engine failures. This corrects the earlier provisional
 52-case count without turning inventory into a conformance percentage.
 
@@ -727,11 +732,11 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [x] Execute `conflict-resolution-0901` as a conservation case for typed
   leading-descendant selection, document-order candidate delivery, and retained
   multi-step parent/child match paths. Keep `current()` patterns,
-  range-variable predicates, static default namespaces, current-mode
+  range-variable predicates, default-namespaced multi-step paths, current-mode
   propagation, and general pattern grammar outside this slice.
 - [x] Conserve the complete ordered 50-case XSLT30 apply-templates denominator,
   its 50 principal plus one secondary stylesheet, and its assertion-shape
-  counts. Record 11 explicit passes and 39 default not-run dispositions without
+  counts. Record 14 explicit passes and 36 default not-run dispositions without
   converting unexecuted cases into engine failures or an aggregate conformance
   claim.
 - [x] Execute `conflict-resolution-0701` through inherited
@@ -744,6 +749,10 @@ failed, and harness-error cases without an unqualified conformance claim.
   static context only. Preserve required namespace declarations while proving
   the XSLT control attribute never becomes a result attribute; keep ordinary
   literal attributes and other control attributes unsupported.
+- [x] Execute `conflict-resolution-0703` with stylesheet-wide
+  `xpath-default-namespace` inheritance for simple element patterns and child
+  selection while keeping unprefixed attribute selection and matching in no
+  namespace. Do not infer general default-namespaced path support.
 - [x] Admit the complete five-case XSLT30 `misc/initial-mode` denominator,
   preserving each mode identity and expected error or XML assertion through
   bounded snapshots. A focused host-neutral initial-mode entry executes with an

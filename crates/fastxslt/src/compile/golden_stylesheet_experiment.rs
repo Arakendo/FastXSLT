@@ -1239,6 +1239,30 @@ mod tests {
                     ..
                 }] if name.namespace.as_deref() == Some("http://example.test/") && name.local == "item")
         ));
+
+        let stylesheet_context = parse_stylesheet(
+            "memory:stylesheet-xpath-default-namespace.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xpath-default-namespace="http://example.test/"><xsl:template match="doc"><xsl:apply-templates select="item"/></xsl:template><xsl:template match="@code"><xsl:value-of select="."/></xsl:template></xsl:stylesheet>"#,
+        );
+        let program = compile_stylesheet(&stylesheet_context)
+            .expect("stylesheet-wide default element namespace should compile");
+        assert!(matches!(
+            &program.matched_templates[0].pattern,
+            crate::xslt::golden_semantics_experiment::MatchPattern::Element(name)
+                if name.namespace.as_deref() == Some("http://example.test/") && name.local == "doc"
+        ));
+        assert!(matches!(
+            program.matched_templates[0].template.body.as_slice(),
+            [Instruction::ApplyTemplates {
+                select: Some(crate::xslt::golden_semantics_experiment::ApplySelection::ChildElement(name)),
+                ..
+            }] if name.namespace.as_deref() == Some("http://example.test/") && name.local == "item"
+        ));
+        assert!(matches!(
+            &program.matched_templates[1].pattern,
+            crate::xslt::golden_semantics_experiment::MatchPattern::Attribute(name)
+                if name.namespace.is_none() && name.local == "code"
+        ));
     }
 
     #[test]

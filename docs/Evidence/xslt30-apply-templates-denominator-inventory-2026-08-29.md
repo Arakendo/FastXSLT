@@ -32,10 +32,10 @@ evidence exists.
 | `assert-xml` results | 41 |
 | `error` results | 8 |
 | `all-of` results | 1 |
-| Selected/passed overrides | 13 |
-| Default not-run dispositions | 37 |
+| Selected/passed overrides | 14 |
+| Default not-run dispositions | 36 |
 
-The one secondary stylesheet belongs to `conflict-resolution-1204`. The 13
+The one secondary stylesheet belongs to `conflict-resolution-1204`. The 14
 passing overrides are the previously evidenced conflict-resolution cases from
 `0101` through `0901`.
 
@@ -46,7 +46,7 @@ executable ordered-name assertion will fail if that denominator changes.
 ## Claim boundary
 
 Inventory is not conformance. The result establishes complete denominator
-visibility and 13 case-specific passes only. The remaining 37 cases are not
+visibility and 14 case-specific passes only. The remaining 36 cases are not
 engine failures, and no aggregate apply-templates conformance percentage is
 claimed. A submodule revision change requires renewed inventory and provenance
 review.
