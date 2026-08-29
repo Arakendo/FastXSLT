@@ -46,6 +46,9 @@ complete XSLT30 `template`, `path`, and `expr/for` test-set denominators. It als
 executes the complete four-case QT3 `Axes002` group through a
 stylesheet-independent XPath seam and the complete two-case XSLT30
 `fn/deep-equal` denominator through attribute/comment node comparison.
+The adjacent complete three-case QT3 `Axes001` group now executes through the
+same seam with `child::*` selecting element children across namespaces while
+excluding other child node kinds and retaining exact node-visit charging.
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
 source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`
@@ -199,6 +202,10 @@ implemented behavior belongs to a named standards slice.
 - [x] Execute the complete QT3 `Axes002` named-child-axis group through native
   environments, direct XPath, `fn:count`, charged navigation, and `assert-eq`
   comparison without an XSLT wrapper.
+- [x] Execute the complete QT3 `Axes001` element-wildcard group through the same
+  native environments and direct XPath seam. Make `child::*` select every
+  element child across namespaces, exclude non-element children, and charge
+  every examined node without claiming `node()` or namespace wildcards.
 - [x] Admit and execute the complete two-case XSLT30 `fn/deep-equal` denominator
   through positioned descendant attribute/comment selection and charged,
   pairwise node comparison. Preserve distinct XDM identity while comparing

@@ -1,4 +1,4 @@
-//! Executable metadata-driven `QT3` named-child-axis slice.
+//! Executable metadata-driven `QT3` element-child-axis slice.
 
 use std::{fs, path::PathBuf};
 
@@ -10,11 +10,14 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use super::count_experiment;
 
 const QT3_NAMESPACE: &str = "http://www.w3.org/2010/09/qt-fots-catalog";
-const CASES: [(&str, usize); 4] = [
-    ("Axes002-1", 0),
-    ("Axes002-2", 0),
-    ("Axes002-3", 1),
-    ("Axes002-4", 2),
+const CASES: [(&str, &str, usize); 7] = [
+    ("Axes001-1", "fn:count(//center/child::*)", 0),
+    ("Axes001-2", "fn:count(//center/child::*)", 1),
+    ("Axes001-3", "fn:count(//center/child::*)", 6),
+    ("Axes002-1", "fn:count(//center/child::south-east)", 0),
+    ("Axes002-2", "fn:count(//center/child::south-east)", 0),
+    ("Axes002-3", "fn:count(//center/child::south-east)", 1),
+    ("Axes002-4", "fn:count(//center/child::south-east)", 2),
 ];
 
 fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'a str> {
@@ -71,16 +74,20 @@ fn load_axis_test_set() -> (Document, PathBuf) {
 }
 
 #[test]
-fn executes_complete_qt3_axes002_named_child_axis_group() {
+fn executes_complete_qt3_axes001_and_axes002_element_child_groups() {
     let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
     assert_eq!(
-        overlay.matches("case_name = \"Axes002-").count(),
+        overlay.matches("case_name = \"Axes001-").count()
+            + overlay.matches("case_name = \"Axes002-").count(),
         CASES.len()
     );
     assert_eq!(
         overlay
             .split("[[case]]")
-            .filter(|record| record.contains("case_name = \"Axes002-"))
+            .filter(|record| {
+                record.contains("case_name = \"Axes001-")
+                    || record.contains("case_name = \"Axes002-")
+            })
             .filter(|record| record.contains("execution = \"passed\""))
             .count(),
         CASES.len()
@@ -90,7 +97,7 @@ fn executes_complete_qt3_axes002_named_child_axis_group() {
         .parent()
         .expect("QT3 test set should have a directory");
 
-    for (case_name, expected_count) in CASES {
+    for (case_name, expected_expression, expected_count) in CASES {
         assert!(overlay.contains(&format!("case_name = \"{case_name}\"")));
         let test_case = find_element(
             &test_set,
@@ -119,9 +126,9 @@ fn executes_complete_qt3_axes002_named_child_axis_group() {
             .map(|node| test_set.string_value(node).trim().to_owned())
             .expect("QT3 case should contain assert-eq")
             .parse::<usize>()
-            .expect("Axes002 assertion should be an unsigned integer");
+            .expect("axis assertion should be an unsigned integer");
         assert_eq!(asserted, expected_count);
-        assert_eq!(expression, "fn:count(//center/child::south-east)");
+        assert_eq!(expression, expected_expression);
 
         let bytes = fs::read(set_directory.join(source_file))
             .expect("read QT3 source and close import handle");

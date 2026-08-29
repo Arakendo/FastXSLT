@@ -5,8 +5,22 @@ revision = "83993587711dbd5c18ed846385ec37d079d6e492"
 set_file = "prod/AxisStep.xml"
 case_name = "Axes001-1"
 selection = "selected"
-execution = "engine-unsupported"
-rationale = "Referenced source environment plus assert-eq exercise QT3-native metadata; the expression exceeds the current private XPath slice."
+execution = "passed"
+rationale = "The native TreeTrunc environment executes fn:count over descendant center plus child::* and confirms that the element wildcard returns zero children."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes001-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Child environment executes child::* as an element name test and matches the native assert-eq value 1."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes001-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeRepeat environment executes child::* in document order and matches the native assert-eq value 6."
 
 [[case]]
 set_file = "prod/AxisStep.xml"

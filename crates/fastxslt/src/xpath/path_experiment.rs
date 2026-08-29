@@ -111,7 +111,10 @@ pub(crate) fn parse_child_path(
             location,
         });
     }
-    if steps.iter().any(|step| !is_ascii_ncname(step)) {
+    if steps
+        .iter()
+        .any(|step| step != "*" && !is_ascii_ncname(step))
+    {
         if steps.iter().any(|step| {
             step.chars().any(|character| {
                 !character.is_ascii_alphanumeric() && !matches!(character, '_' | '-' | '.')
@@ -276,11 +279,7 @@ pub(crate) fn evaluate_child_path_controlled(
                 if step_index != 0 || !path.starts_with_descendant_search {
                     control.charge(WorkDomain::XPathNodeVisit, 1)?;
                 }
-                if document.kind(child) == NodeKind::Element
-                    && document
-                        .name(child)
-                        .is_some_and(|name| name.namespace.is_none() && name.local == *step)
-                {
+                if child_matches_name_test(document, child, step) {
                     named_candidates.push(child);
                 }
             }
@@ -326,6 +325,14 @@ pub(crate) fn evaluate_child_path_controlled(
         current = next;
     }
     Ok(current)
+}
+
+fn child_matches_name_test(document: &Document, child: NodeId, name_test: &str) -> bool {
+    document.kind(child) == NodeKind::Element
+        && (name_test == "*"
+            || document
+                .name(child)
+                .is_some_and(|name| name.namespace.is_none() && name.local == name_test))
 }
 
 fn descendant_nodes(
@@ -505,10 +512,6 @@ mod tests {
             parse_child_path("sum(for $i in item return $i)", location()),
             Err(PathFailure::Unsupported { .. })
         ));
-        assert!(matches!(
-            parse_child_path("child::*", location()),
-            Err(PathFailure::Unsupported { .. })
-        ));
     }
 
     #[test]
@@ -536,6 +539,31 @@ mod tests {
 
         assert_eq!(explicit.steps, implicit.steps);
         assert!(explicit.starts_with_descendant_search);
+    }
+
+    #[test]
+    fn explicit_child_wildcard_selects_elements_across_namespaces() {
+        let parsed = parse_document(
+            "memory:source.xml",
+            br#"<root>text<a/><n:b xmlns:n="urn:test"/><!-- comment --></root>"#,
+            ParseLimits {
+                max_events: 16,
+                max_depth: 4,
+            },
+        )
+        .expect("source should parse");
+        let document = Document::from_parsed(parsed).expect("source XDM should build");
+        let root = document.children(document.document_node())[0];
+        let path = parse_child_path("child::*", location()).expect("child wildcard should parse");
+        let mut control = InvocationControl::unbounded();
+
+        let selected = evaluate_child_path_controlled(&document, root, &path, &mut control)
+            .expect("unbounded evaluation should succeed");
+
+        assert_eq!(selected.len(), 2);
+        assert_eq!(document.name(selected[0]).expect("a name").local, "a");
+        assert_eq!(document.name(selected[1]).expect("b name").local, "b");
+        assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 4);
     }
 
     #[test]

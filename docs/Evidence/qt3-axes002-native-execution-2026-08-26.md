@@ -36,15 +36,17 @@ No XSLT stylesheet wrapper is involved.
 | `Axes002-3` | `TreeCompass` | 1 | 1 | passed |
 | `Axes002-4` | `TreeRepeat` | 2 | 2 | passed |
 
-The conserved denominator is four selected, four passed, zero failed, zero
-unsupported, and zero harness errors. The adjacent selected `Axes001-1` case
-remains explicitly engine-unsupported because its `child::*` wildcard exceeds
-the implemented path grammar.
+The conserved denominator at this checkpoint was four selected, four passed,
+zero failed, zero unsupported, and zero harness errors. Subsequent
+[`Axes001` evidence](qt3-axes001-element-wildcard-execution-2026-08-28.md)
+admits the adjacent `child::*` group; this historical result is otherwise
+unchanged.
 
 ## Claim boundary
 
 This evidence establishes native execution only for the exact selected
 named-child-axis group and its metadata shapes. The implementation recognizes a
-narrow `fn:count(...)` wrapper around the existing child-path grammar; it is not
-a general function library. Wildcards, other axis steps, general sequences,
-broader QT3 assertion families, and XPath conformance remain outside the claim.
+narrow `fn:count(...)` wrapper around the child-path grammar; it is not a
+general function library. At this checkpoint wildcards, other axis steps,
+general sequences, broader QT3 assertion families, and XPath conformance were
+outside the claim.
