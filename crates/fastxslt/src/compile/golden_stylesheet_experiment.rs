@@ -1,9 +1,9 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xpath::path_experiment::{PathFailure, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
-    ConstructedElement, GlobalBinding, GlobalBindingDefault, GlobalBindingKind, MatchPattern,
-    MatchedTemplate, NamedTemplate, OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME,
-    StylesheetProgram, Template, TemplateParameter, TemplatePriority,
+    ConstructedElement, GlobalBinding, GlobalBindingDefault, GlobalBindingKind, MatchedTemplate,
+    NamedTemplate, OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME, StylesheetProgram, Template,
+    TemplateParameter,
 };
 
 #[path = "instruction_compiler.rs"]
@@ -12,11 +12,14 @@ mod instruction_compiler;
 mod stylesheet_module_compiler;
 #[path = "stylesheet_validation.rs"]
 mod stylesheet_validation;
+#[path = "template_pattern_compiler.rs"]
+mod template_pattern_compiler;
 
 pub(crate) use stylesheet_module_compiler::{
     compile_stylesheet_with_single_include, discovered_include_references, single_include_reference,
 };
 use stylesheet_validation::validate_named_template_references;
+use template_pattern_compiler::compile_match_pattern;
 
 use instruction_compiler::{
     compile_sequence_excluding, literal_result_namespaces, parse_template_modes,
@@ -456,50 +459,7 @@ fn compile_matched_template(
     element: NodeId,
     pattern: &str,
 ) -> Result<MatchedTemplate, CompileFailure> {
-    let pattern = match pattern {
-        "comment()" => MatchPattern::Comment,
-        "processing-instruction()" => MatchPattern::ProcessingInstruction,
-        "node()" => MatchPattern::AnyNode,
-        predicate if parse_element_attribute_predicate(predicate).is_some() => {
-            let (element, attribute) =
-                parse_element_attribute_predicate(predicate).expect("predicate shape was checked");
-            MatchPattern::ElementWithAttribute {
-                element: crate::xml::quick_xml_experiment::ExpandedName {
-                    namespace: None,
-                    local: element.to_owned(),
-                },
-                attribute: crate::xml::quick_xml_experiment::ExpandedName {
-                    namespace: None,
-                    local: attribute.to_owned(),
-                },
-            }
-        }
-        attribute if attribute.starts_with('@') && is_ascii_ncname(&attribute[1..]) => {
-            MatchPattern::Attribute(crate::xml::quick_xml_experiment::ExpandedName {
-                namespace: None,
-                local: attribute[1..].to_owned(),
-            })
-        }
-        "*" => MatchPattern::AnyElement,
-        name if is_ascii_ncname(name) => {
-            MatchPattern::Element(crate::xml::quick_xml_experiment::ExpandedName {
-                namespace: None,
-                local: name.to_owned(),
-            })
-        }
-        path if path.contains('/') && !path.starts_with('/') => MatchPattern::Path(
-            parse_location_path(path, document.location(element).clone())
-                .map_err(map_path_failure)?,
-        ),
-        _ => {
-            return Err(unsupported(
-                "FXST1005",
-                format!("unsupported template match pattern: {pattern}"),
-                document.location(element),
-            ));
-        }
-    };
-    let priority = compile_template_priority(document, element, &pattern)?;
+    let (pattern, priority) = compile_match_pattern(document, element, pattern)?;
     let modes = optional_attribute(document, element, None, "mode")
         .map(|mode| parse_template_modes(mode, document.location(element)))
         .transpose()?;
@@ -509,62 +469,6 @@ fn compile_matched_template(
         modes: modes.unwrap_or_default(),
         template: compile_template(document, element)?,
     })
-}
-
-fn parse_element_attribute_predicate(pattern: &str) -> Option<(&str, &str)> {
-    let (element, attribute) = pattern.split_once("[@")?;
-    let attribute = attribute.strip_suffix(']')?;
-    (is_ascii_ncname(element) && is_ascii_ncname(attribute)).then_some((element, attribute))
-}
-
-fn compile_template_priority(
-    document: &Document,
-    element: NodeId,
-    pattern: &MatchPattern,
-) -> Result<TemplatePriority, CompileFailure> {
-    let Some(lexical) = optional_attribute(document, element, None, "priority") else {
-        return Ok(match pattern {
-            MatchPattern::Path(_) | MatchPattern::ElementWithAttribute { .. } => {
-                TemplatePriority::PATH_DEFAULT
-            }
-            MatchPattern::Element(_) | MatchPattern::Attribute(_) => {
-                TemplatePriority::EXACT_NAME_DEFAULT
-            }
-            MatchPattern::Comment
-            | MatchPattern::ProcessingInstruction
-            | MatchPattern::AnyNode
-            | MatchPattern::AnyElement => TemplatePriority::NODE_TEST_DEFAULT,
-        });
-    };
-    let lexical = lexical.trim();
-    if let Ok(value) = lexical.parse::<i32>() {
-        return Ok(TemplatePriority::explicit_integer(value));
-    }
-    if is_decimal_lexical(lexical) {
-        return Err(unsupported(
-            "FXST1025",
-            "the private explicit template-priority slice permits bounded signed integers only",
-            document.location(element),
-        ));
-    }
-    Err(invalid(
-        "FXST0030",
-        format!("invalid template priority: {lexical}"),
-        document.location(element),
-    ))
-}
-
-fn is_decimal_lexical(value: &str) -> bool {
-    let unsigned = value
-        .strip_prefix('+')
-        .or_else(|| value.strip_prefix('-'))
-        .unwrap_or(value);
-    let Some((whole, fractional)) = unsigned.split_once('.') else {
-        return !unsigned.is_empty() && unsigned.bytes().all(|byte| byte.is_ascii_digit());
-    };
-    (!whole.is_empty() || !fractional.is_empty())
-        && whole.bytes().all(|byte| byte.is_ascii_digit())
-        && fractional.bytes().all(|byte| byte.is_ascii_digit())
 }
 
 fn compile_template(document: &Document, element: NodeId) -> Result<Template, CompileFailure> {

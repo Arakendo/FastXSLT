@@ -23,6 +23,8 @@ mod runtime_failure;
 mod serialization;
 #[path = "stylesheet_dependency_loader.rs"]
 mod stylesheet_dependency_loader;
+#[path = "template_selector.rs"]
+mod template_selector;
 #[cfg(test)]
 #[path = "transform_set_experiment.rs"]
 mod transform_set_experiment;
@@ -39,6 +41,7 @@ use runtime_context::{
 pub(super) use runtime_failure::ExecutionFailure;
 use runtime_failure::{FailureCategory, control_failure, failure, failure_at};
 pub(super) use serialization::serialize_xml;
+use template_selector::{accepts_mode as template_accepts_mode, select_template};
 #[cfg(test)]
 use transform_set_experiment::{
     ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, execute_transform_set,
@@ -733,20 +736,7 @@ fn apply_template(
     control
         .charge(WorkDomain::XsltInstruction, 1)
         .map_err(|failure| control_failure(failure, request_id))?;
-    let mut selected_template = None;
-    let mut selected_priority = None;
-    for template in &program.matched_templates {
-        if !template_accepts_mode(&template.modes, mode)
-            || !match_pattern(&template.pattern, source, node, request_id, control)?
-        {
-            continue;
-        }
-        if selected_priority.is_none_or(|priority| template.priority >= priority) {
-            selected_template = Some(template);
-            selected_priority = Some(template.priority);
-        }
-    }
-    if let Some(template) = selected_template {
+    if let Some(template) = select_template(program, source, node, mode, request_id, control)? {
         let inputs = SequenceInputs {
             program,
             source: Some(source),
@@ -787,15 +777,6 @@ fn apply_template(
         }
         NodeKind::Comment | NodeKind::ProcessingInstruction => Ok(Vec::new()),
     }
-}
-
-fn template_accepts_mode(modes: &[String], mode: Option<&str>) -> bool {
-    if modes.is_empty() {
-        return mode.is_none();
-    }
-    modes.iter().any(|candidate| {
-        candidate == "#all" || mode.is_some_and(|requested| candidate == requested)
-    })
 }
 
 fn apply_temporary_template(
@@ -868,76 +849,6 @@ fn copy_temporary_node(
         namespaces: node.namespaces.clone(),
         children,
     })
-}
-
-fn match_pattern(
-    pattern: &MatchPattern,
-    source: &Document,
-    node: NodeId,
-    request_id: &str,
-    control: &mut InvocationControl,
-) -> Result<bool, ExecutionFailure> {
-    match pattern {
-        MatchPattern::Element(name) => Ok(source.name(node) == Some(name)),
-        MatchPattern::ElementWithAttribute { element, attribute } => {
-            if source.name(node) != Some(element) {
-                return Ok(false);
-            }
-            for candidate in source.attributes(node) {
-                control
-                    .charge(WorkDomain::XPathNodeVisit, 1)
-                    .map_err(|failure| control_failure(failure, request_id))?;
-                if source.name(*candidate) == Some(attribute) {
-                    return Ok(true);
-                }
-            }
-            Ok(false)
-        }
-        MatchPattern::Path(path) => match_path_pattern(source, node, path, request_id, control),
-        MatchPattern::Attribute(name) => {
-            Ok(source.kind(node) == NodeKind::Attribute && source.name(node) == Some(name))
-        }
-        MatchPattern::Comment => Ok(source.kind(node) == NodeKind::Comment),
-        MatchPattern::ProcessingInstruction => {
-            Ok(source.kind(node) == NodeKind::ProcessingInstruction)
-        }
-        MatchPattern::AnyNode => Ok(matches!(
-            source.kind(node),
-            NodeKind::Element
-                | NodeKind::Text
-                | NodeKind::Comment
-                | NodeKind::ProcessingInstruction
-        )),
-        MatchPattern::AnyElement => Ok(source.kind(node) == NodeKind::Element),
-    }
-}
-
-fn match_path_pattern(
-    source: &Document,
-    node: NodeId,
-    path: &crate::xpath::path_experiment::LocationPath,
-    request_id: &str,
-    control: &mut InvocationControl,
-) -> Result<bool, ExecutionFailure> {
-    let mut first_step = node;
-    for _ in 1..path.steps.len() {
-        let Some(parent) = source.parent(first_step) else {
-            return Ok(false);
-        };
-        control
-            .charge(WorkDomain::XPathNodeVisit, 1)
-            .map_err(|failure| control_failure(failure, request_id))?;
-        first_step = parent;
-    }
-    let Some(context) = source.parent(first_step) else {
-        return Ok(false);
-    };
-    control
-        .charge(WorkDomain::XPathNodeVisit, 1)
-        .map_err(|failure| control_failure(failure, request_id))?;
-    evaluate_location_path_controlled(source, context, path, control)
-        .map(|selected| selected.contains(&node))
-        .map_err(|failure| control_failure(failure, request_id))
 }
 
 fn append_text(

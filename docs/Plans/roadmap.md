@@ -40,6 +40,15 @@ one-way children without creating a public compiler graph or importing host
 authority into compiler semantics. The remaining mutually recursive
 sequence/template core is retained rather than split behind callbacks or a
 broad context.
+Template priority then fired the runtime/compiler review's named reopening
+trigger. The resulting
+[template selection and pattern decomposition review](../Evidence/template-priority-selection-and-pattern-decomposition-review-2026-08-29.md)
+extracts a 111-line source-XDM selector for modes, pattern applicability,
+retained-priority comparison, and source-order ties. The runtime core falls from
+1,009 to 919 lines. A separate 117-line compiler child owns pattern
+normalization and priority parsing; the 1,213-line parent retains cohesive
+single-document/template assembly and integration tests. Both boundaries are
+private and one-way; temporary-tree selection remains representation-local.
 
 FastXSLT has accepted its staged-modern semantic direction and passes the
 complete XSLT30 `template`, `path`, and `expr/for` test-set denominators. It also
