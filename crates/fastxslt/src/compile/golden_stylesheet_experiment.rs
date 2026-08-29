@@ -761,7 +761,7 @@ mod tests {
     use crate::xdm::owned_tree_experiment::Document;
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
     use crate::xslt::golden_semantics_experiment::{
-        Instruction, STANDARD_INITIAL_TEMPLATE_NAME, ValueExpression,
+        Instruction, STANDARD_INITIAL_TEMPLATE_NAME, TemplatePriority, ValueExpression,
     };
 
     use super::{CompileCategory, compile_stylesheet};
@@ -968,7 +968,7 @@ mod tests {
     }
 
     #[test]
-    fn retains_bounded_integer_template_priority_and_classifies_other_lexicals() {
+    fn retains_bounded_exact_template_priority_and_classifies_other_lexicals() {
         let stylesheet = parse_stylesheet(
             "memory:priority.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="doc" priority="10"><out/></xsl:template><xsl:template match="node()" priority="1"><fallback/></xsl:template><xsl:template match="*"><wildcard/></xsl:template></xsl:stylesheet>"#,
@@ -981,8 +981,19 @@ mod tests {
             "memory:fractional-priority.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="item" priority=".5"><out/></xsl:template></xsl:stylesheet>"#,
         );
-        let failure = compile_stylesheet(&fractional)
-            .expect_err("fractional priority should remain explicitly unsupported");
+        let fractional_program =
+            compile_stylesheet(&fractional).expect("bounded fractional priority should compile");
+        assert_eq!(
+            fractional_program.matched_templates[0].priority,
+            TemplatePriority::PATH_DEFAULT
+        );
+
+        let overprecision = parse_stylesheet(
+            "memory:overprecision-priority.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="item" priority=".1234567"><out/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&overprecision)
+            .expect_err("priority beyond the fixed-point domain should remain unsupported");
         assert_eq!(failure.code, "FXST1025");
         assert_eq!(failure.category, CompileCategory::Unsupported);
 
@@ -1098,12 +1109,19 @@ mod tests {
 
         let implicit = parse_stylesheet(
             "memory:implicit-namespace-wildcard.xsl",
-            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:bar="http://bar.example/"><xsl:template match="bar:*"><out/></xsl:template></xsl:stylesheet>"#,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:bar="http://bar.example/"><xsl:template match="bar:*"><namespace/></xsl:template><xsl:template match="*:foo"><local/></xsl:template></xsl:stylesheet>"#,
         );
-        let failure = compile_stylesheet(&implicit)
-            .expect_err("implicit quarter-step wildcard priority must remain unsupported");
-        assert_eq!(failure.code, "FXST1026");
-        assert_eq!(failure.category, CompileCategory::Unsupported);
+        let implicit_program = compile_stylesheet(&implicit)
+            .expect("namespace and local-name wildcards should retain exact quarter priority");
+        assert!(matches!(
+            &implicit_program.matched_templates[1].pattern,
+            crate::xslt::golden_semantics_experiment::MatchPattern::ElementLocal(local)
+                if local == "foo"
+        ));
+        assert_eq!(
+            implicit_program.matched_templates[0].priority,
+            implicit_program.matched_templates[1].priority
+        );
 
         let unbound = parse_stylesheet(
             "memory:unbound-match-prefix.xsl",

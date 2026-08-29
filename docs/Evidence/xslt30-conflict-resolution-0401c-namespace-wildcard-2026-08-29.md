@@ -24,11 +24,10 @@ the wildcard lowers to namespace-only element applicability. Both rules retain
 their explicit integer priority of `5`, so the XSLT 3.0 selector chooses the
 later declaration when both apply to the source element.
 
-Focused controls prove that an unbound match-pattern prefix is invalid. They
-also reject `bar:*` without explicit priority: its standard default priority
-requires a quarter step, while the current private exact comparison domain
-stores doubled priorities and therefore cannot represent that value without a
-deliberate widening.
+Focused controls prove that an unbound match-pattern prefix is invalid. The
+exact fixed-point domain added with `conflict-resolution-1701` now also retains
+the implicit quarter-step priority shared by namespace and local-name
+wildcards.
 
 ## Result
 
@@ -42,8 +41,7 @@ later namespace-wildcard rule produces the asserted `b` result.
 ## Claim boundary
 
 This evidence admits ASCII prefixed element QName patterns and namespace
-wildcards only when the prefix is statically bound. Namespace wildcards still
-require explicit bounded integer priority. This does not admit their implicit
-quarter-step priority, local-name wildcards, wildcard attributes, EQNames,
-general QName grammar, XSLT 2.0 recover/error behavior, ambiguity warnings, or
-the complete 50-case apply-templates denominator.
+wildcards when the prefix is statically bound. Implicit quarter-step and
+local-name wildcard behavior are evidenced separately by `1701`. Wildcard
+attributes, EQNames, general QName grammar, XSLT 2.0 recover/error behavior,
+ambiguity warnings, and the complete denominator remain outside this record.

@@ -19,12 +19,13 @@ stylesheet, and expected XML from the pinned test set. Source and stylesheet
 bytes are admitted to one bounded sealed snapshot and execute as an identified
 batch of one without ambient filesystem access after admission.
 
-The compiler now accepts a bounded signed-integer subset of
-`xsl:template/@priority`. It converts explicit integers and default pattern
-priorities into one exact private comparison domain retained with each compiled
-matched template. Decimal priority lexicals outside that bounded subset remain
-structured unsupported outcomes; invalid lexicals remain structured invalid
-input. The private root-template shortcut rejects explicit priority rather than
+The compiler accepts bounded signed priorities and converts explicit values and
+default pattern priorities into one exact private comparison domain retained
+with each compiled matched template. The initial case admitted integers; the
+domain now also accepts up to six fractional digits as separately evidenced by
+`conflict-resolution-1701`. Values outside that bound remain structured
+unsupported outcomes, and invalid lexicals remain structured invalid input.
+The private root-template shortcut rejects explicit priority rather than
 silently ignoring it.
 
 The case needs two independent rules to remain correct. Explicit priority `10`
@@ -41,15 +42,15 @@ without a competing matched template.
 | --- | --- | --- | --- |
 | `conflict-resolution-0106` | `<out>true</out>` | semantically equal XML | passed |
 
-Focused compiler controls also prove retained integer ordering and distinguish
-fractional-but-valid unsupported priority (`FXST1025`) from invalid lexical
-priority (`FXST0030`).
+Focused compiler controls prove retained exact ordering and distinguish a
+valid decimal beyond the bounded fixed-point domain (`FXST1025`) from an
+invalid lexical priority (`FXST0030`).
 
 ## Claim boundary
 
-This evidence admits signed 32-bit integer explicit priorities on the currently
-supported non-root match patterns and the built-in string-value rule for
-attributes. It does not admit arbitrary-precision or fractional priorities,
-explicit priority on the private root-template shortcut, duplicate-pattern
-resolution, import/package precedence, `xsl:mode/@on-multiple-match`, warnings,
-namespace nodes, or the complete 50-case apply-templates denominator.
+This evidence establishes signed-integer priority for `0106` and the built-in
+string-value rule for attributes. Bounded fractional priority is evidenced
+separately by `1701`. Arbitrary precision, explicit priority on the private
+root-template shortcut, duplicate-pattern resolution, import/package
+precedence, `xsl:mode/@on-multiple-match`, warnings, namespace nodes, and the
+complete 50-case denominator remain outside this record.

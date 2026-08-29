@@ -61,6 +61,13 @@ pub(super) fn compile_match_pattern(
                 local: name.to_owned(),
             })
         }
+        local_wildcard if parse_local_name_wildcard(local_wildcard).is_some() => {
+            MatchPattern::ElementLocal(
+                parse_local_name_wildcard(local_wildcard)
+                    .expect("local-name wildcard shape was checked")
+                    .to_owned(),
+            )
+        }
         qualified if parse_qualified_element_test(qualified).is_some() => {
             let (prefix, local) =
                 parse_qualified_element_test(qualified).expect("qualified shape was checked");
@@ -104,6 +111,11 @@ pub(super) fn compile_match_pattern(
     };
     let priority = compile_template_priority(document, element, &pattern)?;
     Ok((pattern, priority))
+}
+
+fn parse_local_name_wildcard(pattern: &str) -> Option<&str> {
+    let local = pattern.strip_prefix("*:")?;
+    is_ascii_ncname(local).then_some(local)
 }
 
 fn parse_qualified_element_test(pattern: &str) -> Option<(&str, &str)> {
@@ -151,13 +163,6 @@ fn compile_template_priority(
     pattern: &MatchPattern,
 ) -> Result<TemplatePriority, CompileFailure> {
     let Some(lexical) = optional_attribute(document, element, None, "priority") else {
-        if matches!(pattern, MatchPattern::ElementNamespace(_)) {
-            return Err(unsupported(
-                "FXST1026",
-                "implicit namespace-wildcard priority is outside the exact private priority domain",
-                document.location(element),
-            ));
-        }
         return Ok(match pattern {
             MatchPattern::Document
             | MatchPattern::Path(_)
@@ -167,11 +172,13 @@ fn compile_template_priority(
             MatchPattern::Element(_) | MatchPattern::Attribute(_) => {
                 TemplatePriority::EXACT_NAME_DEFAULT
             }
+            MatchPattern::ElementLocal(_) | MatchPattern::ElementNamespace(_) => {
+                TemplatePriority::NAMESPACE_WILDCARD_DEFAULT
+            }
             MatchPattern::Comment
             | MatchPattern::ProcessingInstruction
             | MatchPattern::AnyNode
             | MatchPattern::AnyElement => TemplatePriority::NODE_TEST_DEFAULT,
-            MatchPattern::ElementNamespace(_) => unreachable!("handled before default priority"),
         });
     };
     let lexical = lexical.trim();
@@ -179,17 +186,52 @@ fn compile_template_priority(
         return Ok(TemplatePriority::explicit_integer(value));
     }
     if is_decimal_lexical(lexical) {
-        return Err(unsupported(
-            "FXST1025",
-            "the private explicit template-priority slice permits bounded signed integers only",
-            document.location(element),
-        ));
+        return parse_bounded_decimal_millionths(lexical)
+            .map(TemplatePriority::explicit_millionths)
+            .ok_or_else(|| {
+                unsupported(
+                    "FXST1025",
+                    "explicit template priority exceeds the private six-place fixed-point domain",
+                    document.location(element),
+                )
+            });
     }
     Err(invalid(
         "FXST0030",
         format!("invalid template priority: {lexical}"),
         document.location(element),
     ))
+}
+
+fn parse_bounded_decimal_millionths(value: &str) -> Option<i64> {
+    let (negative, unsigned) = if let Some(unsigned) = value.strip_prefix('-') {
+        (true, unsigned)
+    } else {
+        (false, value.strip_prefix('+').unwrap_or(value))
+    };
+    let (whole, fractional) = unsigned.split_once('.')?;
+    if fractional.len() > 6 {
+        return None;
+    }
+    let whole = if whole.is_empty() {
+        0
+    } else {
+        whole.parse::<i64>().ok()?
+    };
+    let mut fraction = if fractional.is_empty() {
+        0
+    } else {
+        fractional.parse::<i64>().ok()?
+    };
+    for _ in fractional.len()..6 {
+        fraction = fraction.checked_mul(10)?;
+    }
+    let magnitude = whole.checked_mul(1_000_000)?.checked_add(fraction)?;
+    if negative {
+        magnitude.checked_neg()
+    } else {
+        Some(magnitude)
+    }
 }
 
 fn is_decimal_lexical(value: &str) -> bool {

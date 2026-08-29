@@ -252,9 +252,12 @@ environment.
 `conflict-resolution-0401c` resolves prefixed exact-name and namespace-wildcard
 patterns against retained stylesheet bindings. Both rules carry explicit
 priority `5`, and XSLT 3.0 source-order selection chooses the later wildcard.
-An implicit namespace-wildcard priority remains explicitly unsupported because
-its quarter-step value does not fit the current exact doubled-priority domain;
-the XSLT 2.0 recover/error variants remain outside this tranche.
+`conflict-resolution-1701` subsequently widens the retained priority domain to
+exact millionths and adds the complementary `*:NCName` pattern. Namespace and
+local-name wildcards now retain their implicit quarter-step priority without
+floating-point comparison, while bounded explicit priorities retain up to six
+decimal places. More precise values and the XSLT 2.0 recover/error variants
+remain outside these tranches.
 `conflict-resolution-0901` then conserves the existing typed path machinery
 across template selection: `//b` supplies six candidates in document order,
 while retained `doc/a/b` and `doc/z/b` patterns distinguish their parent chains
@@ -289,8 +292,8 @@ each inspected node and preserves document order. It does not widen general
 default-namespaced path support.
 The complete pinned apply-templates test set is now conserved as an ordered
 50-case denominator with 50 principal stylesheets, one secondary stylesheet,
-41 XML assertions, eight error assertions, and one compound assertion. Sixteen
-cases have explicit passing overrides; the other 34 remain visibly not run and
+41 XML assertions, eight error assertions, and one compound assertion. Seventeen
+cases have explicit passing overrides; the other 33 remain visibly not run and
 are not mislabeled as engine failures. This corrects the earlier provisional
 52-case count without turning inventory into a conformance percentage.
 
@@ -724,9 +727,10 @@ failed, and harness-error cases without an unqualified conformance claim.
   warnings, or older-edition ambiguity behavior.
 - [x] Execute `conflict-resolution-0106` through compiled bounded signed-integer
   priority and the built-in attribute string-value rule. Preserve the child-axis
-  boundary that keeps `node()` from matching attributes; keep fractional and
-  arbitrary-precision priority, duplicate-pattern resolution, and root-pattern
-  priority outside the admitted slice.
+  boundary that keeps `node()` from matching attributes. Bounded fractional
+  priority is admitted separately by `1701`; keep arbitrary-precision priority,
+  duplicate-pattern resolution, and root-pattern priority outside the admitted
+  slice.
 - [x] Execute `conflict-resolution-0107`, `0108c`, and `0110c` through retained
   non-simple default priority. Add only the exact unnamespaced
   `element[@attribute]` presence pattern, charge inspected attributes, and prove
@@ -743,9 +747,13 @@ failed, and harness-error cases without an unqualified conformance claim.
   comparisons, and arbitrary predicates unsupported.
 - [x] Execute XSLT 3.0 `conflict-resolution-0401c` through statically resolved
   prefixed exact-name and namespace-wildcard patterns with equal explicit
-  integer priority and last-declared selection. Reject unbound prefixes and
-  implicit namespace-wildcard priority; do not infer XSLT 2.0 recovery/error
-  behavior or complete namespace-wildcard priority support.
+  integer priority and last-declared selection. Reject unbound prefixes;
+  implicit quarter-step wildcard priority is admitted separately by `1701`.
+  Do not infer XSLT 2.0 recovery/error behavior from either case.
+- [x] Execute `conflict-resolution-1701` through exact fixed-point fractional
+  priority plus the `*:NCName` local-name wildcard, matching multiple source
+  namespaces and selecting rules by priority and declaration order. Keep more
+  than six fractional places and broader pattern grammar explicitly unsupported.
 - [x] Execute `conflict-resolution-0901` as a conservation case for typed
   leading-descendant selection, document-order candidate delivery, and retained
   multi-step parent/child match paths. Keep `current()` patterns,
@@ -753,7 +761,7 @@ failed, and harness-error cases without an unqualified conformance claim.
   propagation, and general pattern grammar outside this slice.
 - [x] Conserve the complete ordered 50-case XSLT30 apply-templates denominator,
   its 50 principal plus one secondary stylesheet, and its assertion-shape
-  counts. Record 16 explicit passes and 34 default not-run dispositions without
+  counts. Record 17 explicit passes and 33 default not-run dispositions without
   converting unexecuted cases into engine failures or an aggregate conformance
   claim.
 - [x] Execute `conflict-resolution-0701` through inherited

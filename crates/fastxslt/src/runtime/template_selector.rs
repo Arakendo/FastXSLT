@@ -52,6 +52,9 @@ fn matches_pattern(
     match pattern {
         MatchPattern::Document => Ok(source.kind(node) == NodeKind::Document),
         MatchPattern::Element(name) => Ok(source.name(node) == Some(name)),
+        MatchPattern::ElementLocal(local) => Ok(source
+            .name(node)
+            .is_some_and(|name| name.local == local.as_str())),
         MatchPattern::ElementNamespace(namespace) => Ok(source
             .name(node)
             .is_some_and(|name| name.namespace.as_deref() == Some(namespace.as_str()))),

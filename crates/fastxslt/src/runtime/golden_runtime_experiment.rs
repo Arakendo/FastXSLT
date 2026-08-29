@@ -928,6 +928,7 @@ fn apply_temporary_template(
             template_accepts_mode(&template.modes, mode)
                 && match &template.pattern {
                     MatchPattern::Element(name) => &temporary.name == name,
+                    MatchPattern::ElementLocal(local) => temporary.name.local == *local,
                     MatchPattern::AnyElement | MatchPattern::AnyNode => true,
                     _ => false,
                 }

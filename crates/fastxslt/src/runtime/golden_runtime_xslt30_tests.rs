@@ -288,8 +288,7 @@ fn execute_apply_templates_case(case_name: &str) -> (String, String, usize) {
     } else {
         case_environment
     };
-    let source = find_element(&test_set, environment, "content", None)
-        .map(|node| test_set.string_value(node))
+    let source_element = find_element(&test_set, environment, "source", None)
         .expect("environment should contain the principal source");
     let stylesheet_file = find_element(&test_set, test_case, "stylesheet", None)
         .and_then(|node| attribute(&test_set, node, "file"))
@@ -297,18 +296,22 @@ fn execute_apply_templates_case(case_name: &str) -> (String, String, usize) {
     let expected = find_element(&test_set, test_case, "assert-xml", None)
         .map(|node| test_set.string_value(node))
         .expect("case should provide an XML assertion");
-    let stylesheet = fs::read(
-        set_path
-            .parent()
-            .expect("test set should have a directory")
-            .join(stylesheet_file),
-    )
-    .expect("read upstream stylesheet and close handle");
+    let case_directory = set_path.parent().expect("test set should have a directory");
+    let source = if let Some(content) = find_element(&test_set, source_element, "content", None) {
+        test_set.string_value(content).into_bytes()
+    } else {
+        let source_file = attribute(&test_set, source_element, "file")
+            .expect("principal source should be inline or name a file");
+        fs::read(case_directory.join(source_file))
+            .expect("read upstream apply-templates source and close handle")
+    };
+    let stylesheet = fs::read(case_directory.join(stylesheet_file))
+        .expect("read upstream stylesheet and close handle");
     let source_id = format!("urn:w3c:xslt30:{case_name}:source");
     let stylesheet_id = format!("urn:w3c:xslt30:{case_name}:stylesheet");
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
     resources
-        .admit(source_id.clone(), source.into_bytes())
+        .admit(source_id.clone(), source)
         .expect("admit upstream source");
     resources
         .admit(stylesheet_id.clone(), stylesheet)
@@ -608,6 +611,14 @@ fn executes_xslt30_multi_mode_default_and_current_dispatch() {
     let (actual, expected, matched_template_count) =
         execute_apply_templates_case("conflict-resolution-0802");
     assert_eq!(matched_template_count, 5);
+    assert_same_result_element_string(&actual, &expected, "out");
+}
+
+#[test]
+fn executes_xslt30_local_name_wildcard_fractional_priority() {
+    let (actual, expected, matched_template_count) =
+        execute_apply_templates_case("conflict-resolution-1701");
+    assert_eq!(matched_template_count, 4);
     assert_same_result_element_string(&actual, &expected, "out");
 }
 

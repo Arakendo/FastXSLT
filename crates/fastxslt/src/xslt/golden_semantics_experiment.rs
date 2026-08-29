@@ -88,14 +88,21 @@ pub(crate) struct MatchedTemplate {
 pub(crate) struct TemplatePriority(i64);
 
 impl TemplatePriority {
-    // The private comparison domain stores twice the semantic priority so the
-    // admitted integer values and half-step defaults remain exact.
-    pub(crate) const PATH_DEFAULT: Self = Self(1);
+    // The private comparison domain stores exact millionths. This retains the
+    // standard half- and quarter-step defaults plus bounded explicit decimals
+    // without binary floating-point ordering.
+    const SCALE: i64 = 1_000_000;
+    pub(crate) const PATH_DEFAULT: Self = Self(500_000);
     pub(crate) const EXACT_NAME_DEFAULT: Self = Self(0);
-    pub(crate) const NODE_TEST_DEFAULT: Self = Self(-1);
+    pub(crate) const NAMESPACE_WILDCARD_DEFAULT: Self = Self(-250_000);
+    pub(crate) const NODE_TEST_DEFAULT: Self = Self(-500_000);
 
     pub(crate) fn explicit_integer(value: i32) -> Self {
-        Self(i64::from(value) * 2)
+        Self(i64::from(value) * Self::SCALE)
+    }
+
+    pub(crate) fn explicit_millionths(value: i64) -> Self {
+        Self(value)
     }
 }
 
@@ -110,6 +117,7 @@ pub(crate) struct NamedTemplate {
 pub(crate) enum MatchPattern {
     Document,
     Element(ExpandedName),
+    ElementLocal(String),
     ElementNamespace(String),
     DescendantAnyElement,
     ElementWithAttribute {

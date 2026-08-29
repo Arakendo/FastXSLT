@@ -49,6 +49,6 @@ equal compiled priority, while an attribute value comparison such as
 This evidence admits only the existing relative path-pattern form and the exact
 ASCII, unnamespaced `element[@attribute]` presence form used here. It does not
 admit general pattern predicates, attribute value comparisons, boolean
-expressions, namespaces, wildcard predicates, union patterns, explicit
-fractional priority, ambiguity warnings, XSLT 1.0/2.0 recovery policy, or the
-complete 50-case apply-templates denominator.
+expressions, namespaces, wildcard predicates, union patterns, ambiguity
+warnings, XSLT 1.0/2.0 recovery policy, or the complete denominator. Bounded
+fractional priority is evidenced separately by `conflict-resolution-1701`.
