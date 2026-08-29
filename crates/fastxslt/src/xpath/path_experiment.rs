@@ -10,6 +10,7 @@ pub(crate) struct LocationPath {
     pub(crate) steps: Vec<PathStep>,
     origin: PathOrigin,
     final_predicate: Option<ExistencePredicate>,
+    final_context_predicate: Option<FinalContextPredicate>,
     step_position_predicates: Vec<Option<PositionPredicate>>,
     pub(crate) location: SourceLocation,
 }
@@ -20,6 +21,11 @@ enum PathOrigin {
     DocumentNode,
     Relative,
     Descendant,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FinalContextPredicate {
+    TextHasNonWhitespace,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -206,23 +212,12 @@ pub(crate) fn parse_location_path(
         });
     }
     if expression == "." {
-        return Ok(LocationPath {
-            steps: Vec::new(),
-            origin: PathOrigin::ContextItem,
-            final_predicate: None,
-            step_position_predicates: Vec::new(),
-            location,
-        });
+        return Ok(origin_only_path(PathOrigin::ContextItem, location));
     }
     if expression == "/" {
-        return Ok(LocationPath {
-            steps: Vec::new(),
-            origin: PathOrigin::DocumentNode,
-            final_predicate: None,
-            step_position_predicates: Vec::new(),
-            location,
-        });
+        return Ok(origin_only_path(PathOrigin::DocumentNode, location));
     }
+    let (expression, final_context_predicate) = parse_final_context_predicate(expression);
     let (expression, final_predicate) = parse_final_axis_predicate(expression);
     let (expression, origin) = parse_path_origin(expression);
     let parsed_steps = if final_predicate.is_none() {
@@ -298,9 +293,35 @@ pub(crate) fn parse_location_path(
         steps,
         origin,
         final_predicate,
+        final_context_predicate,
         step_position_predicates,
         location,
     })
+}
+
+fn origin_only_path(origin: PathOrigin, location: SourceLocation) -> LocationPath {
+    LocationPath {
+        steps: Vec::new(),
+        origin,
+        final_predicate: None,
+        final_context_predicate: None,
+        step_position_predicates: Vec::new(),
+        location,
+    }
+}
+
+fn parse_final_context_predicate(expression: &str) -> (&str, Option<FinalContextPredicate>) {
+    let Some(path) = expression.strip_suffix("[normalize-space()]") else {
+        return (expression, None);
+    };
+    let final_step = path.rsplit('/').next().unwrap_or(path);
+    if path.is_empty()
+        || path.contains(['[', ']'])
+        || !matches!(final_step, "text()" | "child::text()")
+    {
+        return (expression, None);
+    }
+    (path, Some(FinalContextPredicate::TextHasNonWhitespace))
 }
 
 fn parse_path_origin(expression: &str) -> (&str, PathOrigin) {
@@ -529,8 +550,21 @@ pub(crate) fn evaluate_location_path_controlled(
                 } else {
                     true
                 };
+                let context_predicate_matches = match path.final_context_predicate {
+                    Some(FinalContextPredicate::TextHasNonWhitespace)
+                        if step_index + 1 == path.steps.len() =>
+                    {
+                        document.value(child).is_some_and(|value| {
+                            value.chars().any(|character| {
+                                !matches!(character, '\u{9}' | '\u{A}' | '\u{D}' | ' ')
+                            })
+                        })
+                    }
+                    _ => true,
+                };
                 if position_matches
                     && existence_matches
+                    && context_predicate_matches
                     && (!step.uses_descendant_or_self_axis()
                         || seen_descendant_or_self.insert(child))
                 {

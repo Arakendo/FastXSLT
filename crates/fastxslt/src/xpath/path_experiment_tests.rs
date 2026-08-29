@@ -1,8 +1,8 @@
 use std::ops::Range;
 
 use super::{
-    ExistencePredicate, PathFailure, PathOrigin, PositionPredicate, PredicateAxis,
-    evaluate_location_path, evaluate_location_path_controlled, parse_location_path,
+    ExistencePredicate, FinalContextPredicate, PathFailure, PathOrigin, PositionPredicate,
+    PredicateAxis, evaluate_location_path, evaluate_location_path_controlled, parse_location_path,
 };
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeKind, SourceLocation};
@@ -314,6 +314,37 @@ fn internal_descendant_abbreviation_composes_with_attribute_steps() {
             .iter()
             .all(|node| document.kind(*node) == NodeKind::Attribute)
     );
+}
+
+#[test]
+fn normalize_space_text_predicate_uses_xml_whitespace_effective_boolean_value() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root>  <a> value </a><b>\n\t</b>tail</root>",
+        ParseLimits {
+            max_events: 20,
+            max_depth: 5,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let path = parse_location_path("//text()[normalize-space()]", location())
+        .expect("bounded text predicate should parse");
+    let mut control = InvocationControl::unbounded();
+
+    assert_eq!(
+        path.final_context_predicate,
+        Some(FinalContextPredicate::TextHasNonWhitespace)
+    );
+
+    let selected =
+        evaluate_location_path_controlled(&document, document.document_node(), &path, &mut control)
+            .expect("bounded text predicate should execute");
+
+    assert_eq!(selected.len(), 2);
+    assert_eq!(document.value(selected[0]), Some(" value "));
+    assert_eq!(document.value(selected[1]), Some("tail"));
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 7);
 }
 
 #[test]

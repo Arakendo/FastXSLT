@@ -126,6 +126,11 @@ Before that next semantic addition, the 992-line path invariant-test owner was
 split at its demonstrated syntax-versus-evaluation seam under ADR-0004. The
 result is a 112-line syntax/diagnostic owner and an 891-line
 navigation/predicate/work-accounting owner; production semantics are unchanged.
+`Axes084-5` now executes as the deliberately narrow next slice: a final text
+step can carry a typed zero-argument `normalize-space()` effective-boolean-value
+predicate. The pinned 37,212-byte Northwind source is admitted under explicit
+64 KiB and 16,384-event limits, returns the expected 827 nodes, and brings the
+direct seam to 182 passes.
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
 source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`
@@ -359,6 +364,10 @@ implemented behavior belongs to a named standards slice.
   attribute steps. Preserve attribute identity and order, exclude namespace
   declarations, unify explicit and abbreviated forms, and keep `Axes084-5`
   outside the passing denominator pending its distinct predicate semantics.
+- [x] Execute QT3 `Axes084-5` as a separate text-predicate slice. Admit only a
+  final zero-argument `normalize-space()` predicate over text nodes, use XML
+  whitespace and effective-boolean-value semantics, retain exact candidate
+  work charging, and import the larger pinned source under explicit limits.
 - [x] Admit and execute the complete two-case XSLT30 `fn/deep-equal` denominator
   through positioned descendant attribute/comment selection and charged,
   pairwise node comparison. Preserve distinct XDM identity while comparing

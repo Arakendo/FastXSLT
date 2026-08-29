@@ -10,7 +10,7 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use super::count_experiment;
 
 const QT3_NAMESPACE: &str = "http://www.w3.org/2010/09/qt-fots-catalog";
-const CASES: [(&str, &str, usize); 181] = [
+const CASES: [(&str, &str, usize); 182] = [
     ("Axes001-1", "fn:count(//center/child::*)", 0),
     ("Axes001-2", "fn:count(//center/child::*)", 1),
     ("Axes001-3", "fn:count(//center/child::*)", 6),
@@ -256,6 +256,7 @@ const CASES: [(&str, &str, usize); 181] = [
     ("Axes084-2", "fn:count(//center//@center-attr-2)", 0),
     ("Axes084-3", "fn:count(//center//@center-attr-2)", 1),
     ("Axes084-4", "fn:count(//center//@center-attr-2)", 4),
+    ("Axes084-5", "fn:count(//text()[normalize-space()])", 827),
 ];
 
 fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'a str> {
@@ -312,7 +313,7 @@ fn load_axis_test_set() -> (Document, PathBuf) {
 }
 
 #[test]
-fn executes_qt3_axes001_through_selected_axes084_admitted_location_path_groups() {
+fn executes_qt3_axes001_through_axes084_admitted_location_path_groups() {
     let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
     let selected_records: Vec<_> = overlay
         .split("[[case]]")
@@ -371,7 +372,13 @@ fn executes_qt3_axes001_through_selected_axes084_admitted_location_path_groups()
         let bytes = fs::read(set_directory.join(source_file))
             .expect("read QT3 source and close import handle");
         let resource_id = format!("urn:w3c:qt3:{case_name}:source");
-        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, 4_096, 4_096));
+        let source_byte_limit = if case_name == "Axes084-5" {
+            65_536
+        } else {
+            4_096
+        };
+        let mut resources =
+            ResourceSetBuilder::new(ResourceLimits::new(1, source_byte_limit, source_byte_limit));
         resources
             .admit(resource_id.clone(), bytes)
             .expect("admit QT3 source into bounded memory");
@@ -379,11 +386,16 @@ fn executes_qt3_axes001_through_selected_axes084_admitted_location_path_groups()
         let source_bytes = snapshot
             .get(&resource_id)
             .expect("sealed QT3 source should remain available");
+        let max_events = if case_name == "Axes084-5" {
+            16_384
+        } else {
+            2_048
+        };
         let parsed = parse_document(
             &resource_id,
             source_bytes,
             ParseLimits {
-                max_events: 2_048,
+                max_events,
                 max_depth: 64,
             },
         )

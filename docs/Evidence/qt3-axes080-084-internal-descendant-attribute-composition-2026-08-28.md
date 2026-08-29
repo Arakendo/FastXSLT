@@ -58,3 +58,7 @@ descendant abbreviation. It does not establish `Axes084-5`, general predicate
 effective-boolean-value semantics, `normalize-space`, namespace-sensitive name
 tests, generalized attribute ordering from arbitrary input sequences, other
 following axes, or a general XPath parser.
+
+Subsequent [`Axes084-5` evidence](qt3-axes084-5-normalize-space-text-predicate-2026-08-28.md)
+admits that deliberately separate text-predicate case without widening this
+attribute-composition claim.

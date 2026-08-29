@@ -2324,3 +2324,10 @@ case_name = "Axes084-4"
 selection = "selected"
 execution = "passed"
 rationale = "Executes abbreviated named attribute step after internal descendant expansion over TreeRepeat."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes084-5"
+selection = "selected"
+execution = "passed"
+rationale = "Filters leading descendant text nodes by the effective boolean value of zero-argument normalize-space under bounded large-source admission."
