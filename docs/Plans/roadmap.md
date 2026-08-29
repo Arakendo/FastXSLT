@@ -217,6 +217,11 @@ priorities in compiled template state: priority `10` selects the `doc` rule over
 the otherwise matching priority-`1` node test. Its selected attribute remains
 outside the child-axis `node()` pattern and reaches the corrected built-in
 attribute string-value rule. Fractional/general priority remains unclaimed.
+`conflict-resolution-0107` conserves the compiled higher default priority of a
+non-simple `doc/foo` pattern. Paired XSLT 3.0 cases `0108c` and `0110c` add only
+the exact unnamespaced `foo[@test]` presence pattern and prove last-declared
+selection against the equal-priority path in both source orders. Each inspected
+attribute is charged; general predicate expressions remain unsupported.
 
 The current order of work is:
 
@@ -651,6 +656,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   boundary that keeps `node()` from matching attributes; keep fractional and
   arbitrary-precision priority, duplicate-pattern resolution, and root-pattern
   priority outside the admitted slice.
+- [x] Execute `conflict-resolution-0107`, `0108c`, and `0110c` through retained
+  non-simple default priority. Add only the exact unnamespaced
+  `element[@attribute]` presence pattern, charge inspected attributes, and prove
+  source-order selection against an equal-priority path in both directions;
+  keep general predicate expressions unsupported.
 - [x] Admit the complete five-case XSLT30 `misc/initial-mode` denominator,
   preserving each mode identity and expected error or XML assertion through
   bounded snapshots. A focused host-neutral initial-mode entry executes with an

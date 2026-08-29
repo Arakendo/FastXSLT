@@ -460,6 +460,20 @@ fn compile_matched_template(
         "comment()" => MatchPattern::Comment,
         "processing-instruction()" => MatchPattern::ProcessingInstruction,
         "node()" => MatchPattern::AnyNode,
+        predicate if parse_element_attribute_predicate(predicate).is_some() => {
+            let (element, attribute) =
+                parse_element_attribute_predicate(predicate).expect("predicate shape was checked");
+            MatchPattern::ElementWithAttribute {
+                element: crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: None,
+                    local: element.to_owned(),
+                },
+                attribute: crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: None,
+                    local: attribute.to_owned(),
+                },
+            }
+        }
         attribute if attribute.starts_with('@') && is_ascii_ncname(&attribute[1..]) => {
             MatchPattern::Attribute(crate::xml::quick_xml_experiment::ExpandedName {
                 namespace: None,
@@ -497,6 +511,12 @@ fn compile_matched_template(
     })
 }
 
+fn parse_element_attribute_predicate(pattern: &str) -> Option<(&str, &str)> {
+    let (element, attribute) = pattern.split_once("[@")?;
+    let attribute = attribute.strip_suffix(']')?;
+    (is_ascii_ncname(element) && is_ascii_ncname(attribute)).then_some((element, attribute))
+}
+
 fn compile_template_priority(
     document: &Document,
     element: NodeId,
@@ -504,7 +524,9 @@ fn compile_template_priority(
 ) -> Result<TemplatePriority, CompileFailure> {
     let Some(lexical) = optional_attribute(document, element, None, "priority") else {
         return Ok(match pattern {
-            MatchPattern::Path(_) => TemplatePriority::PATH_DEFAULT,
+            MatchPattern::Path(_) | MatchPattern::ElementWithAttribute { .. } => {
+                TemplatePriority::PATH_DEFAULT
+            }
             MatchPattern::Element(_) | MatchPattern::Attribute(_) => {
                 TemplatePriority::EXACT_NAME_DEFAULT
             }
@@ -1123,6 +1145,36 @@ mod tests {
         let failure = compile_stylesheet(&root)
             .expect_err("root priority must not be ignored by the private shortcut");
         assert_eq!(failure.code, "FXST1024");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+    }
+
+    #[test]
+    fn compiles_bounded_attribute_presence_match_predicate() {
+        let stylesheet = parse_stylesheet(
+            "memory:attribute-pattern.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="doc/foo"><path/></xsl:template><xsl:template match="foo[@test]"><predicate/></xsl:template></xsl:stylesheet>"#,
+        );
+        let program =
+            compile_stylesheet(&stylesheet).expect("attribute presence pattern should compile");
+        assert!(matches!(
+            &program.matched_templates[1].pattern,
+            crate::xslt::golden_semantics_experiment::MatchPattern::ElementWithAttribute {
+                element,
+                attribute
+            } if element.local == "foo" && attribute.local == "test"
+        ));
+        assert_eq!(
+            program.matched_templates[0].priority,
+            program.matched_templates[1].priority
+        );
+
+        let comparison = parse_stylesheet(
+            "memory:attribute-comparison-pattern.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="foo[@test='true']"><out/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&comparison)
+            .expect_err("attribute value predicates must remain unsupported");
+        assert_eq!(failure.code, "FXST1005");
         assert_eq!(failure.category, CompileCategory::Unsupported);
     }
 

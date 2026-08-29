@@ -109,6 +109,10 @@ pub(crate) struct NamedTemplate {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum MatchPattern {
     Element(ExpandedName),
+    ElementWithAttribute {
+        element: ExpandedName,
+        attribute: ExpandedName,
+    },
     Path(LocationPath),
     Attribute(ExpandedName),
     Comment,

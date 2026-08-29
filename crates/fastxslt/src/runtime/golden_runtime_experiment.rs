@@ -879,6 +879,20 @@ fn match_pattern(
 ) -> Result<bool, ExecutionFailure> {
     match pattern {
         MatchPattern::Element(name) => Ok(source.name(node) == Some(name)),
+        MatchPattern::ElementWithAttribute { element, attribute } => {
+            if source.name(node) != Some(element) {
+                return Ok(false);
+            }
+            for candidate in source.attributes(node) {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                if source.name(*candidate) == Some(attribute) {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
         MatchPattern::Path(path) => match_path_pattern(source, node, path, request_id, control),
         MatchPattern::Attribute(name) => {
             Ok(source.kind(node) == NodeKind::Attribute && source.name(node) == Some(name))
