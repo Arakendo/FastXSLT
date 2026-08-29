@@ -51,6 +51,34 @@ execution = "passed"
 rationale = "The native TreeRepeat environment executes through the same memory-resident XPath path and matches assert-eq value 2."
 
 [[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes003-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc environment executes child::node() and confirms the center element has no child nodes."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes003-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Text environment executes child::node(), retains its text child, and matches assert-eq value 1."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes003-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Child environment executes child::node(), retains its element child, and matches assert-eq value 1."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes003-4"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeRepeat environment executes child::node() in document order across mixed child kinds and matches assert-eq value 19."
+
+[[case]]
 set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equalint2args-1"
 selection = "selected"

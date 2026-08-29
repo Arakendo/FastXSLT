@@ -10,7 +10,7 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use super::count_experiment;
 
 const QT3_NAMESPACE: &str = "http://www.w3.org/2010/09/qt-fots-catalog";
-const CASES: [(&str, &str, usize); 7] = [
+const CASES: [(&str, &str, usize); 11] = [
     ("Axes001-1", "fn:count(//center/child::*)", 0),
     ("Axes001-2", "fn:count(//center/child::*)", 1),
     ("Axes001-3", "fn:count(//center/child::*)", 6),
@@ -18,6 +18,10 @@ const CASES: [(&str, &str, usize); 7] = [
     ("Axes002-2", "fn:count(//center/child::south-east)", 0),
     ("Axes002-3", "fn:count(//center/child::south-east)", 1),
     ("Axes002-4", "fn:count(//center/child::south-east)", 2),
+    ("Axes003-1", "fn:count(//center/child::node())", 0),
+    ("Axes003-2", "fn:count(//center/child::node())", 1),
+    ("Axes003-3", "fn:count(//center/child::node())", 1),
+    ("Axes003-4", "fn:count(//center/child::node())", 19),
 ];
 
 fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'a str> {
@@ -74,11 +78,12 @@ fn load_axis_test_set() -> (Document, PathBuf) {
 }
 
 #[test]
-fn executes_complete_qt3_axes001_and_axes002_element_child_groups() {
+fn executes_complete_qt3_axes001_through_axes003_child_groups() {
     let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
     assert_eq!(
         overlay.matches("case_name = \"Axes001-").count()
-            + overlay.matches("case_name = \"Axes002-").count(),
+            + overlay.matches("case_name = \"Axes002-").count()
+            + overlay.matches("case_name = \"Axes003-").count(),
         CASES.len()
     );
     assert_eq!(
@@ -87,6 +92,7 @@ fn executes_complete_qt3_axes001_and_axes002_element_child_groups() {
             .filter(|record| {
                 record.contains("case_name = \"Axes001-")
                     || record.contains("case_name = \"Axes002-")
+                    || record.contains("case_name = \"Axes003-")
             })
             .filter(|record| record.contains("execution = \"passed\""))
             .count(),

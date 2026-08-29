@@ -5,12 +5,39 @@ use crate::xpath::constant_integer_experiment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ChildPath {
-    pub(crate) steps: Vec<String>,
+    pub(crate) steps: Vec<ChildStep>,
     pub(crate) selects_context_item: bool,
     pub(crate) starts_with_descendant_search: bool,
     final_predicate: Option<ExistencePredicate>,
     step_position_predicates: Vec<Option<PositionPredicate>>,
     pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ChildStep {
+    Named(String),
+    AnyElement,
+    AnyNode,
+}
+
+impl ChildStep {
+    fn from_validated(value: String) -> Self {
+        match value.as_str() {
+            "*" => Self::AnyElement,
+            "node()" => Self::AnyNode,
+            _ => Self::Named(value),
+        }
+    }
+}
+
+impl PartialEq<&str> for ChildStep {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            Self::Named(value) => value == *other,
+            Self::AnyElement => *other == "*",
+            Self::AnyNode => *other == "node()",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -113,7 +140,7 @@ pub(crate) fn parse_child_path(
     }
     if steps
         .iter()
-        .any(|step| step != "*" && !is_ascii_ncname(step))
+        .any(|step| !matches!(step.as_str(), "*" | "node()") && !is_ascii_ncname(step))
     {
         if steps.iter().any(|step| {
             step.chars().any(|character| {
@@ -133,7 +160,7 @@ pub(crate) fn parse_child_path(
         });
     }
     Ok(ChildPath {
-        steps,
+        steps: steps.into_iter().map(ChildStep::from_validated).collect(),
         selects_context_item: false,
         starts_with_descendant_search,
         final_predicate,
@@ -327,12 +354,17 @@ pub(crate) fn evaluate_child_path_controlled(
     Ok(current)
 }
 
-fn child_matches_name_test(document: &Document, child: NodeId, name_test: &str) -> bool {
-    document.kind(child) == NodeKind::Element
-        && (name_test == "*"
-            || document
-                .name(child)
-                .is_some_and(|name| name.namespace.is_none() && name.local == name_test))
+fn child_matches_name_test(document: &Document, child: NodeId, name_test: &ChildStep) -> bool {
+    match name_test {
+        ChildStep::Named(required) => {
+            document.kind(child) == NodeKind::Element
+                && document
+                    .name(child)
+                    .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
+        }
+        ChildStep::AnyElement => document.kind(child) == NodeKind::Element,
+        ChildStep::AnyNode => true,
+    }
 }
 
 fn descendant_nodes(
@@ -450,8 +482,7 @@ mod tests {
         evaluate_child_path_controlled, parse_child_path,
     };
     use crate::execution_control_experiment::{InvocationControl, WorkDomain};
-    use crate::xdm::owned_tree_experiment::Document;
-    use crate::xdm::owned_tree_experiment::SourceLocation;
+    use crate::xdm::owned_tree_experiment::{Document, NodeKind, SourceLocation};
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
     fn location() -> SourceLocation {
@@ -563,6 +594,41 @@ mod tests {
         assert_eq!(selected.len(), 2);
         assert_eq!(document.name(selected[0]).expect("a name").local, "a");
         assert_eq!(document.name(selected[1]).expect("b name").local, "b");
+        assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 4);
+    }
+
+    #[test]
+    fn explicit_child_node_test_selects_every_child_node_kind() {
+        let parsed = parse_document(
+            "memory:source.xml",
+            br"<root>text<a/><?work item?><!-- comment --></root>",
+            ParseLimits {
+                max_events: 16,
+                max_depth: 4,
+            },
+        )
+        .expect("source should parse");
+        let document = Document::from_parsed(parsed).expect("source XDM should build");
+        let root = document.children(document.document_node())[0];
+        let path =
+            parse_child_path("child::node()", location()).expect("child node test should parse");
+        let mut control = InvocationControl::unbounded();
+
+        let selected = evaluate_child_path_controlled(&document, root, &path, &mut control)
+            .expect("unbounded evaluation should succeed");
+
+        assert_eq!(
+            selected
+                .iter()
+                .map(|node| document.kind(*node))
+                .collect::<Vec<_>>(),
+            [
+                NodeKind::Text,
+                NodeKind::Element,
+                NodeKind::ProcessingInstruction,
+                NodeKind::Comment,
+            ]
+        );
         assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 4);
     }
 

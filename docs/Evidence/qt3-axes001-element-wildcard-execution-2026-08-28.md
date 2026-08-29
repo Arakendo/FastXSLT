@@ -40,7 +40,9 @@ examined child nodes are charged even though only two enter the result.
 The `Axes001` denominator is three selected, three passed, zero failed, zero
 unsupported, and zero harness errors. Together with the adjacent `Axes002`
 group, seven pinned element-child-axis cases execute through the same direct
-XPath seam.
+XPath seam. Subsequent [`Axes003` evidence](qt3-axes003-child-node-test-execution-2026-08-28.md)
+extends that seam to the four-case `child::node()` group without changing this
+result.
 
 ## Claim boundary
 
