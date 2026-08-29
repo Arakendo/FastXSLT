@@ -54,6 +54,10 @@ reported as unsupported rather than approximated.
 The admitted `Axes001` through `Axes033` selections now contribute 63 passing
 location-path cases through the same metadata-driven direct XPath seam.
 
+Subsequent [`Axes034`–`Axes037` evidence](qt3-axes034-037-descendant-or-self-execution-2026-08-28.md)
+adds the complete descendant-or-self tranche and overlapping-context duplicate
+elimination.
+
 ## Claim boundary
 
 This evidence admits only the three listed descendant step forms and their

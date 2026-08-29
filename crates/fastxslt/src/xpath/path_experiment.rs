@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
@@ -37,6 +39,9 @@ pub(crate) enum PathStep {
     DescendantNamed(String),
     DescendantAnyElement,
     DescendantAnyNode,
+    DescendantOrSelfNamed(String),
+    DescendantOrSelfAnyElement,
+    DescendantOrSelfAnyNode,
 }
 
 impl PathStep {
@@ -78,6 +83,14 @@ impl PathStep {
                 _ => Some(Self::DescendantNamed(name_test.to_owned())),
             };
         }
+        if let Some(name_test) = value.strip_prefix("descendant-or-self::") {
+            return match name_test {
+                "*" => Some(Self::DescendantOrSelfAnyElement),
+                "node()" => Some(Self::DescendantOrSelfAnyNode),
+                "text()" => None,
+                _ => Some(Self::DescendantOrSelfNamed(name_test.to_owned())),
+            };
+        }
         let name_test = value.strip_prefix("child::").unwrap_or(value);
         Some(match name_test {
             "*" => Self::ChildAnyElement,
@@ -111,6 +124,15 @@ impl PathStep {
             Self::DescendantNamed(_) | Self::DescendantAnyElement | Self::DescendantAnyNode
         )
     }
+
+    fn uses_descendant_or_self_axis(&self) -> bool {
+        matches!(
+            self,
+            Self::DescendantOrSelfNamed(_)
+                | Self::DescendantOrSelfAnyElement
+                | Self::DescendantOrSelfAnyNode
+        )
+    }
 }
 
 impl PartialEq<&str> for PathStep {
@@ -120,15 +142,18 @@ impl PartialEq<&str> for PathStep {
             | Self::AttributeNamed(value)
             | Self::ParentNamed(value)
             | Self::SelfNamed(value)
-            | Self::DescendantNamed(value) => value == *other,
+            | Self::DescendantNamed(value)
+            | Self::DescendantOrSelfNamed(value) => value == *other,
             Self::ChildAnyElement
             | Self::ParentAnyElement
             | Self::SelfAnyElement
-            | Self::DescendantAnyElement => *other == "*",
+            | Self::DescendantAnyElement
+            | Self::DescendantOrSelfAnyElement => *other == "*",
             Self::ChildAnyNode
             | Self::ParentAnyNode
             | Self::SelfAnyNode
-            | Self::DescendantAnyNode => *other == "node()",
+            | Self::DescendantAnyNode
+            | Self::DescendantOrSelfAnyNode => *other == "node()",
             Self::ChildText => *other == "text()",
             Self::AttributeAny => matches!(*other, "*" | "node()"),
         }
@@ -246,6 +271,7 @@ pub(crate) fn parse_location_path(
             .or_else(|| step.strip_prefix("parent::"))
             .or_else(|| step.strip_prefix("self::"))
             .or_else(|| step.strip_prefix("descendant::"))
+            .or_else(|| step.strip_prefix("descendant-or-self::"))
             .or_else(|| step.strip_prefix('@'))
             .unwrap_or(if step == ".." { "node()" } else { step });
         !matches!(name_test, "*" | "node()" | "text()") && !is_ascii_ncname(name_test)
@@ -449,6 +475,7 @@ pub(crate) fn evaluate_location_path_controlled(
     };
     for (step_index, step) in path.steps.iter().enumerate() {
         let mut next = Vec::new();
+        let mut seen_descendant_or_self = HashSet::new();
         for node in current {
             let candidates = if step_index == 0 && path.origin == PathOrigin::Descendant {
                 descendant_nodes(document, node, control)?
@@ -460,6 +487,8 @@ pub(crate) fn evaluate_location_path_controlled(
                 vec![node]
             } else if step.uses_descendant_axis() {
                 descendant_nodes(document, node, control)?
+            } else if step.uses_descendant_or_self_axis() {
+                descendant_or_self_nodes(document, node, control)?
             } else {
                 document.children(node).to_vec()
             };
@@ -467,6 +496,7 @@ pub(crate) fn evaluate_location_path_controlled(
             for child in candidates {
                 if (step_index != 0 || path.origin != PathOrigin::Descendant)
                     && !step.uses_descendant_axis()
+                    && !step.uses_descendant_or_self_axis()
                 {
                     control.charge(WorkDomain::XPathNodeVisit, 1)?;
                 }
@@ -508,7 +538,11 @@ pub(crate) fn evaluate_location_path_controlled(
                 } else {
                     true
                 };
-                if position_matches && existence_matches {
+                if position_matches
+                    && existence_matches
+                    && (!step.uses_descendant_or_self_axis()
+                        || seen_descendant_or_self.insert(child))
+                {
                     next.push(child);
                 }
             }
@@ -529,11 +563,13 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
         PathStep::ChildAnyElement
         | PathStep::ParentAnyElement
         | PathStep::SelfAnyElement
-        | PathStep::DescendantAnyElement => document.kind(child) == NodeKind::Element,
+        | PathStep::DescendantAnyElement
+        | PathStep::DescendantOrSelfAnyElement => document.kind(child) == NodeKind::Element,
         PathStep::ChildAnyNode
         | PathStep::ParentAnyNode
         | PathStep::SelfAnyNode
-        | PathStep::DescendantAnyNode => true,
+        | PathStep::DescendantAnyNode
+        | PathStep::DescendantOrSelfAnyNode => true,
         PathStep::ChildText => document.kind(child) == NodeKind::Text,
         PathStep::AttributeNamed(required) => {
             document.kind(child) == NodeKind::Attribute
@@ -554,13 +590,24 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
                     .name(child)
                     .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
         }
-        PathStep::DescendantNamed(required) => {
+        PathStep::DescendantNamed(required) | PathStep::DescendantOrSelfNamed(required) => {
             document.kind(child) == NodeKind::Element
                 && document
                     .name(child)
                     .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
         }
     }
+}
+
+fn descendant_or_self_nodes(
+    document: &Document,
+    context: NodeId,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ControlFailure> {
+    control.charge(WorkDomain::XPathNodeVisit, 1)?;
+    let mut nodes = vec![context];
+    nodes.extend(descendant_nodes(document, context, control)?);
+    Ok(nodes)
 }
 
 fn descendant_nodes(

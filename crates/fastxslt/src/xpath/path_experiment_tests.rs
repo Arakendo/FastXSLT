@@ -173,6 +173,54 @@ fn descendant_steps_filter_one_charged_document_order_traversal() {
 }
 
 #[test]
+fn descendant_or_self_steps_include_self_and_deduplicate_overlapping_contexts() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root><center><center><center/></center></center></root>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 6,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let outer = document.children(root)[0];
+    let descendants =
+        parse_location_path("descendant::*", location()).expect("descendant wildcard should parse");
+    let descendant_or_self = parse_location_path("descendant-or-self::*", location())
+        .expect("descendant-or-self wildcard should parse");
+    let overlapping = parse_location_path("//center/descendant-or-self::center", location())
+        .expect("overlapping named descendant-or-self path should parse");
+    let mut control = InvocationControl::unbounded();
+
+    assert_eq!(
+        evaluate_location_path(&document, outer, &descendants).len(),
+        2
+    );
+    assert_eq!(
+        evaluate_location_path(&document, outer, &descendant_or_self).len(),
+        3
+    );
+    let selected = evaluate_location_path_controlled(
+        &document,
+        document.document_node(),
+        &overlapping,
+        &mut control,
+    )
+    .expect("overlapping descendant-or-self path should execute");
+    assert_eq!(selected.len(), 3);
+    assert_eq!(selected[0], outer);
+    assert_eq!(selected[1], document.children(outer)[0]);
+    assert_eq!(selected[2], document.children(selected[1])[0]);
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 10);
+    assert!(matches!(
+        parse_location_path("descendant-or-self::text()", location()),
+        Err(PathFailure::Unsupported { .. })
+    ));
+}
+
+#[test]
 fn absolute_and_parent_steps_preserve_document_node_distinctions() {
     let parsed = parse_document(
         "memory:source.xml",

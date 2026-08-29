@@ -443,6 +443,76 @@ execution = "passed"
 rationale = "The native TreeCompass environment retains all 21 descendant node kinds in document order."
 
 [[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes034-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc environment includes the empty center element itself through descendant-or-self::* and matches one."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes034-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment selects center plus its five element descendants through descendant-or-self::*."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes035-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc environment does not widen its center self node into the named south test."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes035-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Child environment matches neither center nor its differently named child as south."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes035-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment selects its one unnamespaced south descendant."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes035-4"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeStack environment selects all eight south descendants without matching center itself."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes036-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment selects the center context itself through a named descendant-or-self step."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes036-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeRepeat environment returns nine center identities in document order after eliminating overlap duplicates."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes037-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc environment retains its center element as the only descendant-or-self node."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes037-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment retains center plus all 21 descendant node kinds in document order."
+
+[[case]]
 set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equalint2args-1"
 selection = "selected"

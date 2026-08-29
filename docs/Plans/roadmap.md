@@ -85,6 +85,10 @@ Complete `Axes031` through `Axes033` add explicit descendant any-element,
 unnamespaced named-element, and any-node tests. The typed step reuses the
 existing charged document-order traversal without double charging during
 filtering, and the direct seam now has 63 passes.
+Complete `Axes034` through `Axes037` add typed descendant-or-self element,
+named, and node tests. Nested input contexts retain one result per XDM identity
+in document order while every repeated traversal remains charged; the direct
+seam now has 73 passes.
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
 source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`
@@ -279,6 +283,11 @@ implemented behavior belongs to a named standards slice.
   and processing-instruction nodes, apply the axis's element principal node
   kind, and charge each traversed descendant once rather than charging again
   while filtering.
+- [x] Execute complete QT3 `Axes034` through `Axes037` through typed
+  descendant-or-self steps. Include the context before its descendants, retain
+  mixed node kinds for `node()`, eliminate repeated XDM identities produced by
+  overlapping nested contexts, preserve document order, and keep every actual
+  traversal visit attributable to the invocation budget.
 - [x] Admit and execute the complete two-case XSLT30 `fn/deep-equal` denominator
   through positioned descendant attribute/comment selection and charged,
   pairwise node comparison. Preserve distinct XDM identity while comparing
