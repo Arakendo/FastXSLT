@@ -21,6 +21,8 @@ mod runtime_context;
 #[path = "runtime_failure.rs"]
 mod runtime_failure;
 mod serialization;
+#[path = "stylesheet_dependency_loader.rs"]
+mod stylesheet_dependency_loader;
 #[cfg(test)]
 #[path = "transform_set_experiment.rs"]
 mod transform_set_experiment;

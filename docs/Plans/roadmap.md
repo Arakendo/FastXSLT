@@ -505,6 +505,12 @@ failed, and harness-error cases without an unqualified conformance claim.
       simplified secondary module, no fragment selection, no ambient fallback,
       and explicit unsupported outcomes for precedence or duplicate-match
       semantics that have not been admitted.
+    - [x] Prepare the complete sealed include graph before semantic compilation
+      and account independently for reference depth, module occurrences, and
+      aggregate dependency bytes. Detect active-path cycles before retention;
+      return no graph or compiled program after any limit, resolution, parse, or
+      cycle failure. The private production profile remains depth 1, two
+      modules, and 1 MiB rather than selecting public limits.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.

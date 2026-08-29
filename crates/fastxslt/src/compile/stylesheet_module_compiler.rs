@@ -18,23 +18,44 @@ pub(crate) struct IncludeReference {
 pub(crate) fn single_include_reference(
     document: &Document,
 ) -> Result<Option<IncludeReference>, CompileFailure> {
-    let include_declarations = include_nodes(document)?;
-    let Some(include) = include_declarations.first().copied() else {
+    let root = document_element(document)?;
+    require_stylesheet_root(document, root)?;
+    let include_declarations = discovered_include_references(document)?;
+    let Some(include) = include_declarations.first() else {
         return Ok(None);
     };
     if include_declarations.len() != 1 {
         return Err(unsupported(
             "FXST1018",
             "the private slice permits one xsl:include dependency",
-            document.location(include),
+            &include.location,
         ));
     }
-    ensure_only_attributes(document, include, &["href"], "xsl:include")?;
-    ensure_no_meaningful_children(document, include, "xsl:include")?;
-    Ok(Some(IncludeReference {
-        href: required_attribute(document, include, None, "href")?.to_owned(),
-        location: document.location(include).clone(),
-    }))
+    Ok(Some(include.clone()))
+}
+
+pub(crate) fn discovered_include_references(
+    document: &Document,
+) -> Result<Vec<IncludeReference>, CompileFailure> {
+    let root = document_element(document)?;
+    let is_standard_stylesheet = document.name(root).is_some_and(|name| {
+        name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+            && matches!(name.local.as_str(), "stylesheet" | "transform")
+    });
+    if !is_standard_stylesheet {
+        return Ok(Vec::new());
+    }
+    include_nodes(document)?
+        .into_iter()
+        .map(|include| {
+            ensure_only_attributes(document, include, &["href"], "xsl:include")?;
+            ensure_no_meaningful_children(document, include, "xsl:include")?;
+            Ok(IncludeReference {
+                href: required_attribute(document, include, None, "href")?.to_owned(),
+                location: document.location(include).clone(),
+            })
+        })
+        .collect()
 }
 
 pub(crate) fn compile_stylesheet_with_single_include(

@@ -60,5 +60,7 @@ This admits one executable case, not general `xsl:include` conformance. The
 private slice accepts exactly one include and a simplified secondary
 stylesheet. Fragment selection, recursive includes, import precedence,
 duplicate-match priority, included output declarations, catalogs, and live
-resolution remain unsupported or unselected. General dependency depth, cycle,
-and aggregate graph accounting remain required AR-0014 follow-up.
+resolution remain unsupported or unselected. The later
+[sealed dependency accounting experiment](sealed-stylesheet-dependency-accounting-2026-08-28.md)
+puts this case through atomic graph preparation without widening its module
+semantics.

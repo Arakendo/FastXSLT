@@ -183,8 +183,10 @@ resolver trait, URI type, catalog representation, live authority, or cache.
 - [x] Exercise a fragment-bearing same-document reference by acquiring the
   fragment-free resource identity and returning the fragment separately for
   future language-owned selection. Fragment interpretation remains open.
-- [ ] Establish dependency count/depth/byte/cycle accounting and prove failed
-  resolution cannot partially mutate compiled or snapshot generations.
+- [x] Establish private dependency count/depth/byte/cycle accounting and prove
+  failed graph preparation returns no partial graph or compiled program and
+  cannot mutate the sealed snapshot. Public limits and repeated-module
+  accounting policy remain unselected.
 - [ ] Exercise denied versus missing disclosure through the eventual Rust and
   selected .NET host profiles without parsing display strings.
 - [ ] Compare presealed closure, callback/live, and hybrid lifecycle costs on a
@@ -218,3 +220,7 @@ resolver trait, URI type, catalog representation, live authority, or cache.
   admitted in the same sealed snapshot. The experiment preserves secondary
   source identity and principal global visibility, denies ambient fallback, and
   does not select a live resolver, public resolver API, or general module graph.
+- 2026-08-28 -- The real compilation path gained atomic sealed-graph
+  preparation with independent depth, module-occurrence, aggregate-byte, and
+  active-path cycle checks. Private limits remain deliberately narrow and do
+  not select public dependency policy or module precedence.

@@ -5,11 +5,14 @@ use crate::compile::golden_stylesheet_experiment::{
     single_include_reference,
 };
 use crate::resources::{ResolutionFailure, ResolutionLimits, ResourceSnapshot, SnapshotResolver};
-use crate::xdm::owned_tree_experiment::Document;
-use crate::xml::quick_xml_experiment::parse_document;
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
 
-use super::{ExecutionFailure, FailureCategory, XML_LIMITS, failure, failure_at};
+use super::stylesheet_dependency_loader::{
+    DependencyFailure, DependencyLimits, load_include_graph,
+};
+use super::{ExecutionFailure, FailureCategory, failure, failure_at};
+
+const DEPENDENCY_LIMITS: DependencyLimits = DependencyLimits::new(1, 2, 1_048_576);
 
 pub(in crate::runtime) fn compile_resource(
     snapshot: &ResourceSnapshot,
@@ -24,66 +27,101 @@ fn compile_resource_with_resolver(
     resolver: &mut SnapshotResolver<'_>,
     stylesheet_id: &str,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
-    let resource = resolver
-        .resolve_from(stylesheet_id, "")
-        .map_err(resolution_failure)?;
-    debug_assert!(resource.fragment.is_none());
-    let parsed =
-        parse_document(&resource.identity, resource.bytes, XML_LIMITS).map_err(|error| {
-            failure(
-                "FXXM0001",
-                FailureCategory::Invalid,
-                None,
-                format!("stylesheet XML is invalid: {error:?}"),
-            )
-        })?;
-    let document = Document::from_parsed(parsed).map_err(|error| {
-        failure(
-            "FXXD0001",
-            FailureCategory::Invalid,
-            None,
-            format!("stylesheet XDM construction failed: {error:?}"),
-        )
-    })?;
-    let Some(include) = single_include_reference(&document).map_err(compile_failure)? else {
-        return compile_stylesheet(&document).map_err(compile_failure);
-    };
-    let included_resource = resolver
-        .resolve_from(&resource.identity, &include.href)
-        .map_err(resolution_failure)?;
-    if included_resource.fragment.is_some() {
-        return Err(failure_at(
+    let mut graph = load_include_graph(resolver, stylesheet_id, DEPENDENCY_LIMITS)
+        .map_err(dependency_failure)?;
+    debug_assert_eq!(graph.identity, stylesheet_id);
+    if graph.includes.is_empty() {
+        return compile_stylesheet(&graph.document).map_err(compile_failure);
+    }
+    if graph.includes.len() != 1 {
+        let failure = single_include_reference(&graph.document)
+            .expect_err("multiple includes must remain outside the private compiler slice");
+        return Err(compile_failure(failure));
+    }
+    let included = graph.includes.pop().expect("one included module");
+    compile_stylesheet_with_single_include(&graph.document, &included.document)
+        .map_err(compile_failure)
+}
+
+fn dependency_failure(error: DependencyFailure) -> ExecutionFailure {
+    match error {
+        DependencyFailure::Resolution { error, location } => resolution_failure(error, location),
+        DependencyFailure::Fragment { identity, location } => dependency_failure_at(
             "FXRS1001",
             FailureCategory::Unsupported,
-            None,
-            include.location.clone(),
-            "fragment selection for included stylesheet modules is outside the private slice",
-        ));
-    }
-    let included_parsed = parse_document(
-        &included_resource.identity,
-        included_resource.bytes,
-        XML_LIMITS,
-    )
-    .map_err(|error| {
-        failure_at(
+            location,
+            format!(
+                "fragment selection for included stylesheet modules is unsupported: {identity}"
+            ),
+        ),
+        DependencyFailure::ModuleLimit { maximum, location } => dependency_failure_at(
+            "FXRS0006",
+            FailureCategory::Limit,
+            location,
+            format!("stylesheet dependency module limit is {maximum}"),
+        ),
+        DependencyFailure::DepthLimit { maximum, location } => dependency_failure_at(
+            "FXRS0006",
+            FailureCategory::Limit,
+            location,
+            format!("stylesheet dependency depth limit is {maximum}"),
+        ),
+        DependencyFailure::ByteLimit {
+            attempted,
+            maximum,
+            location,
+        } => dependency_failure_at(
+            "FXRS0006",
+            FailureCategory::Limit,
+            location,
+            format!("stylesheet dependency bytes {attempted} exceed limit {maximum}"),
+        ),
+        DependencyFailure::ByteCountOverflow { location } => dependency_failure_at(
+            "FXRS0006",
+            FailureCategory::Limit,
+            location,
+            "stylesheet dependency byte accounting overflowed".to_owned(),
+        ),
+        DependencyFailure::Cycle { identity, location } => dependency_failure_at(
+            "FXST0030",
+            FailureCategory::Invalid,
+            location,
+            format!("stylesheet include cycle reaches {identity}"),
+        ),
+        DependencyFailure::InvalidXml {
+            identity,
+            detail,
+            location,
+        } => dependency_failure_at(
             "FXXM0001",
             FailureCategory::Invalid,
-            None,
-            include.location.clone(),
-            format!("included stylesheet XML is invalid: {error:?}"),
-        )
-    })?;
-    let included_document = Document::from_parsed(included_parsed).map_err(|error| {
-        failure_at(
+            location,
+            format!("stylesheet XML is invalid at {identity}: {detail}"),
+        ),
+        DependencyFailure::InvalidXdm {
+            identity,
+            detail,
+            location,
+        } => dependency_failure_at(
             "FXXD0001",
             FailureCategory::Invalid,
-            None,
-            include.location.clone(),
-            format!("included stylesheet XDM construction failed: {error:?}"),
-        )
-    })?;
-    compile_stylesheet_with_single_include(&document, &included_document).map_err(compile_failure)
+            location,
+            format!("stylesheet XDM construction failed at {identity}: {detail}"),
+        ),
+        DependencyFailure::InvalidDeclaration(error) => compile_failure(error),
+    }
+}
+
+fn dependency_failure_at(
+    code: &'static str,
+    category: FailureCategory,
+    location: Option<crate::xdm::owned_tree_experiment::SourceLocation>,
+    detail: String,
+) -> ExecutionFailure {
+    match location {
+        Some(location) => failure_at(code, category, None, location, detail),
+        None => failure(code, category, None, detail),
+    }
 }
 
 fn compile_failure(error: CompileFailure) -> ExecutionFailure {
@@ -103,42 +141,45 @@ fn compile_failure(error: CompileFailure) -> ExecutionFailure {
     )
 }
 
-fn resolution_failure(error: ResolutionFailure) -> ExecutionFailure {
+fn resolution_failure(
+    error: ResolutionFailure,
+    location: Option<crate::xdm::owned_tree_experiment::SourceLocation>,
+) -> ExecutionFailure {
     match error {
-        ResolutionFailure::Missing { identity } => failure(
+        ResolutionFailure::Missing { identity } => dependency_failure_at(
             "FXRS0002",
             FailureCategory::MissingResource,
-            None,
+            location,
             format!("stylesheet is not admitted: {identity}"),
         ),
-        ResolutionFailure::Denied { identity } => failure(
+        ResolutionFailure::Denied { identity } => dependency_failure_at(
             "FXRS0003",
             FailureCategory::Denied,
-            None,
+            location,
             format!("stylesheet authority is denied: {identity}"),
         ),
-        ResolutionFailure::AttemptLimit { maximum } => failure(
+        ResolutionFailure::AttemptLimit { maximum } => dependency_failure_at(
             "FXRS0006",
             FailureCategory::Limit,
-            None,
+            location,
             format!("stylesheet resolution attempt limit is {maximum}"),
         ),
-        ResolutionFailure::InvalidReference { reference } => failure(
+        ResolutionFailure::InvalidReference { reference } => dependency_failure_at(
             "FXRS0004",
             FailureCategory::Invalid,
-            None,
+            location,
             format!("stylesheet identity is not a valid absolute resource URI: {reference}"),
         ),
-        ResolutionFailure::InvalidBase { base } => failure(
+        ResolutionFailure::InvalidBase { base } => dependency_failure_at(
             "FXRS1001",
             FailureCategory::Unsupported,
-            None,
+            location,
             format!("stylesheet base identity is not a supported absolute IRI: {base}"),
         ),
-        ResolutionFailure::ResolutionFailed { base, reference } => failure(
+        ResolutionFailure::ResolutionFailed { base, reference } => dependency_failure_at(
             "FXRS0004",
             FailureCategory::Invalid,
-            None,
+            location,
             format!(
                 "stylesheet reference cannot be resolved using RFC 3986: {reference} against {base}"
             ),

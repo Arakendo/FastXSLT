@@ -14,7 +14,7 @@ mod stylesheet_module_compiler;
 mod stylesheet_validation;
 
 pub(crate) use stylesheet_module_compiler::{
-    compile_stylesheet_with_single_include, single_include_reference,
+    compile_stylesheet_with_single_include, discovered_include_references, single_include_reference,
 };
 use stylesheet_validation::validate_named_template_references;
 
