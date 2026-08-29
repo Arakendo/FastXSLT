@@ -1,8 +1,8 @@
 use std::ops::Range;
 
 use super::{
-    ExistencePredicate, PathFailure, PositionPredicate, PredicateAxis, evaluate_location_path,
-    evaluate_location_path_controlled, parse_location_path,
+    ExistencePredicate, PathFailure, PathOrigin, PositionPredicate, PredicateAxis,
+    evaluate_location_path, evaluate_location_path_controlled, parse_location_path,
 };
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeKind, SourceLocation};
@@ -20,9 +20,8 @@ fn parses_the_golden_relative_child_path() {
     let path = parse_location_path("greeting/name", location()).expect("path should parse");
 
     assert_eq!(path.steps, ["greeting", "name"]);
-    assert!(!path.selects_context_item);
+    assert_eq!(path.origin, PathOrigin::Relative);
     assert_eq!(path.final_predicate, None);
-    assert!(!path.starts_with_descendant_search);
     assert_eq!(path.location, location());
 }
 
@@ -44,7 +43,31 @@ fn selects_the_context_item_without_navigation() {
     let selected = evaluate_location_path(&document, item, &path);
 
     assert_eq!(selected, [item]);
-    assert!(path.selects_context_item);
+    assert_eq!(path.origin, PathOrigin::ContextItem);
+}
+
+#[test]
+fn root_path_selects_the_document_node_from_an_element_context() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root><item/></root>",
+        ParseLimits {
+            max_events: 8,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let path = parse_location_path("/", location()).expect("root path should parse");
+    let mut control = InvocationControl::unbounded();
+
+    let selected = evaluate_location_path_controlled(&document, root, &path, &mut control)
+        .expect("root path should execute");
+
+    assert_eq!(path.origin, PathOrigin::DocumentNode);
+    assert_eq!(selected, [document.document_node()]);
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 1);
 }
 
 #[test]
@@ -92,7 +115,7 @@ fn explicit_and_abbreviated_axes_share_typed_step_semantics() {
         .expect("explicit named child-axis step should parse");
 
     assert_eq!(explicit.steps, implicit.steps);
-    assert!(explicit.starts_with_descendant_search);
+    assert_eq!(explicit.origin, PathOrigin::Descendant);
     assert_eq!(
         parse_location_path("//center/*", location())
             .expect("abbreviated wildcard should parse")
@@ -310,7 +333,7 @@ fn searches_descendants_and_filters_by_a_named_ancestor() {
     let selected = evaluate_location_path_controlled(&document, doc, &path, &mut control)
         .expect("unbounded evaluation should succeed");
 
-    assert!(path.starts_with_descendant_search);
+    assert_eq!(path.origin, PathOrigin::Descendant);
     assert_eq!(selected.len(), 1);
     assert_eq!(document.string_value(selected[0]), "right");
     assert_eq!(

@@ -22,7 +22,7 @@ pub(crate) fn evaluate(
         .strip_prefix("fn:count(")
         .and_then(|expression| expression.strip_suffix(')'))
         .ok_or(CountFailure::Unsupported)?;
-    let path = parse_location_path(inner, location).map_err(CountFailure::Path)?;
+    let path = parse_location_path(inner.trim(), location).map_err(CountFailure::Path)?;
     evaluate_location_path_controlled(document, document.document_node(), &path, control)
         .map(|selected| selected.len())
         .map_err(CountFailure::Control)

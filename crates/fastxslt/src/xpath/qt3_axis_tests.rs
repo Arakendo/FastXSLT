@@ -10,7 +10,7 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use super::count_experiment;
 
 const QT3_NAMESPACE: &str = "http://www.w3.org/2010/09/qt-fots-catalog";
-const CASES: [(&str, &str, usize); 37] = [
+const CASES: [(&str, &str, usize); 38] = [
     ("Axes001-1", "fn:count(//center/child::*)", 0),
     ("Axes001-2", "fn:count(//center/child::*)", 1),
     ("Axes001-3", "fn:count(//center/child::*)", 6),
@@ -48,6 +48,7 @@ const CASES: [(&str, &str, usize); 37] = [
     ("Axes011-1", "fn:count(//west/@west-attr-2)", 0),
     ("Axes011-2", "fn:count(//west/@west-attr-2)", 0),
     ("Axes011-3", "fn:count(//west/@west-attr-2)", 1),
+    ("Axes012-1", "fn:count( / )", 1),
 ];
 
 fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'a str> {
@@ -104,7 +105,7 @@ fn load_axis_test_set() -> (Document, PathBuf) {
 }
 
 #[test]
-fn executes_complete_qt3_axes001_through_axes011_child_and_attribute_groups() {
+fn executes_complete_qt3_axes001_through_axes012_location_path_groups() {
     let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
     let selected_records: Vec<_> = overlay
         .split("[[case]]")

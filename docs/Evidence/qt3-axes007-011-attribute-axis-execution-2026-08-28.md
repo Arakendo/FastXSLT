@@ -44,7 +44,9 @@ does not yet implement that abbreviation's descendant-or-self expansion.
 | **Total** |  | **15** | **15** | **0** | **0** | **0** |
 
 Complete `Axes001` through `Axes011` now contribute 37 passing child- and
-attribute-axis cases through one metadata-driven direct XPath seam.
+attribute-axis cases through one metadata-driven direct XPath seam. Subsequent
+[`Axes012` evidence](qt3-axes012-root-path-execution-2026-08-28.md) adds the
+root-only path through a typed document-node origin.
 
 ## Claim boundary
 

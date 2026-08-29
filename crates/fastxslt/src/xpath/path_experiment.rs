@@ -6,11 +6,18 @@ use crate::xpath::constant_integer_experiment;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct LocationPath {
     pub(crate) steps: Vec<PathStep>,
-    pub(crate) selects_context_item: bool,
-    pub(crate) starts_with_descendant_search: bool,
+    origin: PathOrigin,
     final_predicate: Option<ExistencePredicate>,
     step_position_predicates: Vec<Option<PositionPredicate>>,
     pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PathOrigin {
+    ContextItem,
+    DocumentNode,
+    Relative,
+    Descendant,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -105,17 +112,27 @@ pub(crate) fn parse_location_path(
     if expression == "." {
         return Ok(LocationPath {
             steps: Vec::new(),
-            selects_context_item: true,
-            starts_with_descendant_search: false,
+            origin: PathOrigin::ContextItem,
+            final_predicate: None,
+            step_position_predicates: Vec::new(),
+            location,
+        });
+    }
+    if expression == "/" {
+        return Ok(LocationPath {
+            steps: Vec::new(),
+            origin: PathOrigin::DocumentNode,
             final_predicate: None,
             step_position_predicates: Vec::new(),
             location,
         });
     }
     let (expression, final_predicate) = parse_final_axis_predicate(expression);
-    let (expression, starts_with_descendant_search) = expression
+    let (expression, origin) = expression
         .strip_prefix("//")
-        .map_or((expression, false), |expression| (expression, true));
+        .map_or((expression, PathOrigin::Relative), |expression| {
+            (expression, PathOrigin::Descendant)
+        });
     let parsed_steps = if final_predicate.is_none() {
         parse_position_steps(expression)
     } else {
@@ -180,11 +197,10 @@ pub(crate) fn parse_location_path(
             location,
         });
     }
-    let steps = lower_validated_steps(&steps, starts_with_descendant_search, &location)?;
+    let steps = lower_validated_steps(&steps, origin == PathOrigin::Descendant, &location)?;
     Ok(LocationPath {
         steps,
-        selects_context_item: false,
-        starts_with_descendant_search,
+        origin,
         final_predicate,
         step_position_predicates,
         location,
@@ -328,15 +344,22 @@ pub(crate) fn evaluate_location_path_controlled(
     path: &LocationPath,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ControlFailure> {
-    if path.selects_context_item {
-        control.charge(WorkDomain::XPathNodeVisit, 1)?;
-        return Ok(vec![context]);
+    match path.origin {
+        PathOrigin::ContextItem => {
+            control.charge(WorkDomain::XPathNodeVisit, 1)?;
+            return Ok(vec![context]);
+        }
+        PathOrigin::DocumentNode => {
+            control.charge(WorkDomain::XPathNodeVisit, 1)?;
+            return Ok(vec![document.document_node()]);
+        }
+        PathOrigin::Relative | PathOrigin::Descendant => {}
     }
     let mut current = vec![context];
     for (step_index, step) in path.steps.iter().enumerate() {
         let mut next = Vec::new();
         for node in current {
-            let candidates = if step_index == 0 && path.starts_with_descendant_search {
+            let candidates = if step_index == 0 && path.origin == PathOrigin::Descendant {
                 descendant_nodes(document, node, control)?
             } else if step.uses_attribute_axis() {
                 document.attributes(node).to_vec()
@@ -345,7 +368,7 @@ pub(crate) fn evaluate_location_path_controlled(
             };
             let mut named_candidates = Vec::new();
             for child in candidates {
-                if step_index != 0 || !path.starts_with_descendant_search {
+                if step_index != 0 || path.origin != PathOrigin::Descendant {
                     control.charge(WorkDomain::XPathNodeVisit, 1)?;
                 }
                 if child_matches_name_test(document, child, step) {

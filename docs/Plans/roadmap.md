@@ -67,6 +67,10 @@ retains one production location-path owner for this tranche, then requires a
   is complete: the production owner is 527 lines, its 561-line private test
   child preserves the invariant suite, and all callers use location-path
   terminology.
+QT3 `Axes012` now adds the root-only path `/` through a typed document-node
+origin, including insignificant operand whitespace and an exact one-visit
+charge from a non-document context. The direct location-path seam now has 38
+passes without claiming general absolute paths.
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
 source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`
@@ -241,6 +245,10 @@ implemented behavior belongs to a named standards slice.
   invariant regression body to a private path-owned test module and rename
   child-only private path terminology without changing semantics, diagnostics,
   charging, or downstream compiler/runtime behavior.
+- [x] Execute QT3 `Axes012-1` through an explicit document-node path origin.
+  Accept insignificant whitespace around the root-only operand, select the
+  document node independently of the current element context, and charge that
+  selection once without admitting general absolute paths.
 - [x] Admit and execute the complete two-case XSLT30 `fn/deep-equal` denominator
   through positioned descendant attribute/comment selection and charged,
   pairwise node comparison. Preserve distinct XDM identity while comparing

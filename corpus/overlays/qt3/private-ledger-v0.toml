@@ -261,6 +261,13 @@ execution = "passed"
 rationale = "The native TreeCompass environment lowers @west-attr-2 to the same typed named-attribute step and matches assert-eq value 1."
 
 [[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes012-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment executes the whitespace-surrounded root-only path, selects the document node, and matches assert-eq value 1."
+
+[[case]]
 set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equalint2args-1"
 selection = "selected"
