@@ -29,7 +29,9 @@ charged to the invocation's XPath node-visit domain.
 
 An independent semantic test proves that the selected element has one child
 and one attribute, that the attribute was not inserted into the child list,
-and that the complete small evaluation consumes exactly four XPath node visits.
+and that the complete small evaluation consumes exactly five XPath node visits:
+the absolute leading descendant search now includes the document element
+before inspecting the selected element's separately owned attribute.
 
 ## Denominator effect
 
@@ -46,4 +48,3 @@ No membership or exclusion changed.
 This is a named attribute-existence predicate. It does not establish general
 attribute steps, attribute values, wildcards, namespace-qualified tests,
 arbitrary predicate expressions, or XPath conformance.
-

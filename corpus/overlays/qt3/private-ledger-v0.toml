@@ -877,6 +877,90 @@ execution = "passed"
 rationale = "The native TopMany descendant origin lowers //node() and retains 58 descendants without the document node."
 
 [[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes068-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc leading expansion visits descendant element contexts and finds no attributes."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes068-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeEmpty leading expansion applies attribute::* to descendant element contexts and selects one attribute."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes068-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass leading expansion selects all 14 attributes while excluding namespace declarations."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes069-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc leading expansion finds no unnamespaced mark attribute."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes069-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeEmpty leading expansion selects its one unnamespaced mark attribute."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes069-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass leading expansion selects six unnamespaced mark attributes in document order."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes070-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc leading expansion lowers //@* to the same attribute wildcard and matches zero."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes070-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeEmpty leading expansion lowers //@* to the same attribute wildcard and matches one."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes070-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass leading expansion lowers //@* and selects all 14 non-namespace attributes."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes071-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc leading expansion lowers //@mark without widening the unprefixed name test."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes071-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeEmpty leading expansion lowers //@mark and selects one attribute."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes071-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass leading expansion lowers //@mark and selects six attributes in document order."
+
+[[case]]
 set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equalint2args-1"
 selection = "selected"

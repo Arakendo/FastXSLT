@@ -103,6 +103,11 @@ abbreviated `//` child forms lower to the same typed descendant origin and
 step. One traversal remains charged once per visited node, and the direct seam
 now has 125 passes. Leading attribute steps remain deliberately unsupported
 pending correct descendant-or-self-element expansion.
+Complete `Axes068` through `Axes071` now perform that expansion: the absolute
+leading descendant origin resets to the document, visits descendant element
+contexts, then applies explicit or abbreviated attribute steps while excluding
+namespace declarations. Traversed nodes and inspected attributes are charged
+separately; the direct seam now has 137 passes.
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
 source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`
@@ -317,6 +322,11 @@ implemented behavior belongs to a named standards slice.
   named-element, and any-node child forms share typed steps, preserve document
   order, and charge each visited node once. Keep leading attribute steps
   unsupported until their distinct expansion is implemented deliberately.
+- [x] Execute complete QT3 `Axes068` through `Axes071` with deliberate leading
+  descendant attribute expansion. Reset leading `//` to the document node,
+  traverse descendant element contexts, inspect their attributes in document
+  order, exclude namespace declarations, unify explicit and abbreviated
+  attribute forms, and charge traversal plus attribute inspection separately.
 - [x] Admit and execute the complete two-case XSLT30 `fn/deep-equal` denominator
   through positioned descendant attribute/comment selection and charged,
   pairwise node comparison. Preserve distinct XDM identity while comparing

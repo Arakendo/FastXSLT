@@ -220,7 +220,7 @@ fn leading_descendant_origin_unifies_explicit_and_abbreviated_child_steps() {
     assert_eq!(
         evaluate_location_path_controlled(
             &document,
-            document.document_node(),
+            document.children(document.document_node())[0],
             &abbreviated_nodes,
             &mut control,
         )
@@ -457,10 +457,10 @@ fn explicit_and_abbreviated_axes_share_typed_step_semantics() {
 fn attribute_axis_selects_attributes_but_not_namespace_nodes() {
     let parsed = parse_document(
         "memory:source.xml",
-        br#"<root plain="1" n:other="2" xmlns:n="urn:test"/>"#,
+        br#"<root plain="1" n:other="2" xmlns:n="urn:test"><child plain="3"/></root>"#,
         ParseLimits {
-            max_events: 8,
-            max_depth: 2,
+            max_events: 12,
+            max_depth: 3,
         },
     )
     .expect("source should parse");
@@ -499,10 +499,20 @@ fn attribute_axis_selects_attributes_but_not_namespace_nodes() {
         ),
         wildcard
     );
-    assert!(matches!(
-        parse_location_path("//@*", location()),
-        Err(PathFailure::Unsupported { .. })
-    ));
+    let explicit = parse_location_path("//attribute::*", location())
+        .expect("leading explicit attribute expansion should parse");
+    let abbreviated =
+        parse_location_path("//@*", location()).expect("leading abbreviated attributes parse");
+    let named =
+        parse_location_path("//@plain", location()).expect("leading named attribute parses");
+    assert_eq!(explicit.steps, abbreviated.steps);
+    let mut descendant_control = InvocationControl::unbounded();
+    let all_attributes =
+        evaluate_location_path_controlled(&document, root, &abbreviated, &mut descendant_control)
+            .expect("leading attribute expansion should execute");
+    assert_eq!(all_attributes.len(), 3);
+    assert_eq!(evaluate_location_path(&document, root, &named).len(), 2);
+    assert_eq!(descendant_control.consumed(WorkDomain::XPathNodeVisit), 5);
 }
 
 #[test]
@@ -646,7 +656,7 @@ fn searches_descendants_and_filters_by_a_named_ancestor() {
             name: "element2".to_owned(),
         })
     );
-    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 10);
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 11);
 }
 
 #[test]
@@ -705,7 +715,7 @@ fn attribute_predicate_inspects_attributes_without_making_them_children() {
     assert_eq!(document.string_value(selected[0]), "right");
     assert_eq!(document.children(selected[0]).len(), 1);
     assert_eq!(document.attributes(selected[0]).len(), 1);
-    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 4);
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 5);
     assert_eq!(
         path.final_predicate,
         Some(ExistencePredicate {
@@ -774,7 +784,7 @@ fn parent_predicate_checks_only_the_immediate_parent() {
 
     assert_eq!(selected.len(), 1);
     assert_eq!(document.string_value(selected[0]), "right");
-    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 8);
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 9);
     assert_eq!(
         path.final_predicate,
         Some(ExistencePredicate {

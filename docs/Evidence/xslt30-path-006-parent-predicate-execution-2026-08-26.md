@@ -25,8 +25,8 @@ present parent is inspected once and charged once to the invocation's XPath
 node-visit domain.
 
 An independent semantic test distinguishes the immediate parent from other
-ancestors and fixes an exact eight-visit charge profile for its descendant
-selection plus two parent checks.
+ancestors and fixes an exact nine-visit charge profile for its absolute
+descendant selection, including the document element, plus two parent checks.
 
 ## Denominator effect
 
@@ -43,4 +43,3 @@ No membership or exclusion changed.
 This is a named parent-existence predicate. It does not establish general
 parent steps, `..`, arbitrary predicates, namespace-qualified tests, sequence
 semantics, or XPath conformance.
-

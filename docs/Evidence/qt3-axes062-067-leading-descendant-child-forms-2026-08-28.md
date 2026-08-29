@@ -60,3 +60,7 @@ must expand across descendant-or-self element contexts and then apply the
 attribute axis. This evidence also does not establish arbitrary abbreviated
 path composition, predicates, QName resolution, namespace-sensitive name
 tests, namespace nodes, or a general XPath parser.
+
+Subsequent [`Axes068`–`Axes071` evidence](qt3-axes068-071-leading-descendant-attribute-expansion-2026-08-28.md)
+implements that distinct descendant-context attribute expansion and keeps both
+traversal and attribute inspection attributable.

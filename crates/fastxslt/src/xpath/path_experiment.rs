@@ -293,7 +293,7 @@ pub(crate) fn parse_location_path(
             location,
         });
     }
-    let steps = lower_validated_steps(&steps, origin == PathOrigin::Descendant, &location)?;
+    let steps = lower_validated_steps(&steps, &location)?;
     Ok(LocationPath {
         steps,
         origin,
@@ -315,7 +315,6 @@ fn parse_path_origin(expression: &str) -> (&str, PathOrigin) {
 
 fn lower_validated_steps(
     steps: &[String],
-    starts_with_descendant_search: bool,
     location: &SourceLocation,
 ) -> Result<Vec<PathStep>, PathFailure> {
     let steps: Option<Vec<_>> = steps
@@ -329,13 +328,6 @@ fn lower_validated_steps(
             location: location.clone(),
         });
     };
-    if starts_with_descendant_search && steps.first().is_some_and(PathStep::uses_attribute_axis) {
-        return Err(PathFailure::Unsupported {
-            detail: "the private slice does not yet expand leading // before an attribute step"
-                .to_owned(),
-            location: location.clone(),
-        });
-    }
     Ok(steps)
 }
 
@@ -468,7 +460,10 @@ pub(crate) fn evaluate_location_path_controlled(
         }
         PathOrigin::DocumentNode | PathOrigin::Relative | PathOrigin::Descendant => {}
     }
-    let mut current = if path.origin == PathOrigin::DocumentNode {
+    let mut current = if matches!(
+        path.origin,
+        PathOrigin::DocumentNode | PathOrigin::Descendant
+    ) {
         vec![document.document_node()]
     } else {
         vec![context]
@@ -477,21 +472,8 @@ pub(crate) fn evaluate_location_path_controlled(
         let mut next = Vec::new();
         let mut seen_descendant_or_self = HashSet::new();
         for node in current {
-            let candidates = if step_index == 0 && path.origin == PathOrigin::Descendant {
-                descendant_nodes(document, node, control)?
-            } else if step.uses_attribute_axis() {
-                document.attributes(node).to_vec()
-            } else if step.uses_parent_axis() {
-                document.parent(node).into_iter().collect()
-            } else if step.uses_self_axis() {
-                vec![node]
-            } else if step.uses_descendant_axis() {
-                descendant_nodes(document, node, control)?
-            } else if step.uses_descendant_or_self_axis() {
-                descendant_or_self_nodes(document, node, control)?
-            } else {
-                document.children(node).to_vec()
-            };
+            let candidates =
+                step_candidates(document, node, step, step_index, path.origin, control)?;
             let mut named_candidates = Vec::new();
             for child in candidates {
                 if (step_index != 0 || path.origin != PathOrigin::Descendant)
@@ -552,6 +534,33 @@ pub(crate) fn evaluate_location_path_controlled(
     Ok(current)
 }
 
+fn step_candidates(
+    document: &Document,
+    node: NodeId,
+    step: &PathStep,
+    step_index: usize,
+    origin: PathOrigin,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ControlFailure> {
+    if step_index == 0 && origin == PathOrigin::Descendant && step.uses_attribute_axis() {
+        descendant_attributes(document, node, control)
+    } else if step_index == 0 && origin == PathOrigin::Descendant {
+        descendant_nodes(document, node, control)
+    } else if step.uses_attribute_axis() {
+        Ok(document.attributes(node).to_vec())
+    } else if step.uses_parent_axis() {
+        Ok(document.parent(node).into_iter().collect())
+    } else if step.uses_self_axis() {
+        Ok(vec![node])
+    } else if step.uses_descendant_axis() {
+        descendant_nodes(document, node, control)
+    } else if step.uses_descendant_or_self_axis() {
+        descendant_or_self_nodes(document, node, control)
+    } else {
+        Ok(document.children(node).to_vec())
+    }
+}
+
 fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathStep) -> bool {
     match name_test {
         PathStep::ChildNamed(required) => {
@@ -608,6 +617,22 @@ fn descendant_or_self_nodes(
     let mut nodes = vec![context];
     nodes.extend(descendant_nodes(document, context, control)?);
     Ok(nodes)
+}
+
+fn descendant_attributes(
+    document: &Document,
+    context: NodeId,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ControlFailure> {
+    let descendants = descendant_nodes(document, context, control)?;
+    let mut attributes = Vec::new();
+    for descendant in descendants {
+        for attribute in document.attributes(descendant).iter().copied() {
+            control.charge(WorkDomain::XPathNodeVisit, 1)?;
+            attributes.push(attribute);
+        }
+    }
+    Ok(attributes)
 }
 
 fn descendant_nodes(
