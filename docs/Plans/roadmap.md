@@ -49,6 +49,13 @@ retained-priority comparison, and source-order ties. The runtime core falls from
 normalization and priority parsing; the 1,213-line parent retains cohesive
 single-document/template assembly and integration tests. Both boundaries are
 private and one-way; temporary-tree selection remains representation-local.
+Subsequent output, static-context, and mode campaigns raised the single-document
+compiler to 1,450 lines. The renewed
+[stylesheet output compilation review](../Evidence/stylesheet-output-compilation-decomposition-review-2026-08-29.md)
+extracts the independently coherent `xsl:output` lexical and settings policy
+into a 138-line private owner. The 1,325-line parent continues to own
+single-document/template composition, while output evolution no longer shares
+that source unit and module assembly receives identical default settings.
 
 FastXSLT has accepted its staged-modern semantic direction and passes the
 complete XSLT30 `template`, `path`, and `expr/for` test-set denominators. It also
