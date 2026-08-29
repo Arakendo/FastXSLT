@@ -553,3 +553,10 @@ case_name = "conflict-resolution-0703"
 selection = "selected"
 execution = "passed"
 rationale = "A stylesheet-wide xpath-default-namespace flows into unprefixed element patterns and simple child selection while the @test selection and attribute pattern correctly remain in no namespace."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0801"
+selection = "selected"
+execution = "passed"
+rationale = "A named-template call preserves the invoking matched template's current mode, allowing mode #current to redispatch the document node independently through modes a and b."

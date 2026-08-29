@@ -108,9 +108,8 @@ fn execute_program_with_parameters(
         execute_sequence(
             &inputs,
             &root_template.body,
-            Some(source.document_node()),
+            SequenceContext::new(Some(source.document_node()), None),
             &variables,
-            0,
             control,
         )?
     } else {
@@ -161,23 +160,56 @@ fn execute_initial_mode(
         execute_sequence(
             &inputs,
             &template.body,
-            Some(source.document_node()),
+            SequenceContext::new(Some(source.document_node()), Some(name)),
             &variables,
-            0,
             control,
         )?
     } else {
-        apply_template(
-            program,
-            source,
-            source.document_node(),
-            Some(name),
-            request_id,
-            &globals,
-            control,
+        apply_initial_mode_template(
+            program, source, name, parameters, request_id, &globals, control,
         )?
     };
     Ok(SemanticResult { children })
+}
+
+#[cfg(test)]
+fn apply_initial_mode_template(
+    program: &StylesheetProgram,
+    source: &Document,
+    mode: &str,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    request_id: &str,
+    globals: &RuntimeGlobals,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let node = source.document_node();
+    charge_xslt_instruction(control, request_id)?;
+    if let Some(template) = select_template(program, source, node, Some(mode), request_id, control)?
+    {
+        let inputs = SequenceInputs {
+            program,
+            source: Some(source),
+            request_id,
+            globals,
+        };
+        let variables = bind_template_parameters(&template.template, parameters, &globals.atomics);
+        return execute_sequence(
+            &inputs,
+            &template.template.body,
+            SequenceContext::new(Some(node), Some(mode)),
+            &variables,
+            control,
+        );
+    }
+    apply_builtin_template(
+        program,
+        source,
+        node,
+        Some(mode),
+        request_id,
+        globals,
+        control,
+    )
 }
 
 #[cfg(test)]
@@ -220,20 +252,35 @@ fn execute_initial_template(
     let children = execute_sequence(
         &inputs,
         &template.template.body,
-        None,
+        SequenceContext::new(None, None),
         &RuntimeVariables::from_atomics(&globals.atomics),
-        0,
         control,
     )?;
     Ok(SemanticResult { children })
 }
 
+#[derive(Clone, Copy)]
+struct SequenceContext<'a> {
+    node: Option<NodeId>,
+    current_mode: Option<&'a str>,
+    call_depth: usize,
+}
+
+impl<'a> SequenceContext<'a> {
+    fn new(node: Option<NodeId>, current_mode: Option<&'a str>) -> Self {
+        Self {
+            node,
+            current_mode,
+            call_depth: 0,
+        }
+    }
+}
+
 fn execute_sequence(
     inputs: &SequenceInputs<'_>,
     instructions: &[Instruction],
-    context: Option<crate::xdm::owned_tree_experiment::NodeId>,
+    execution: SequenceContext<'_>,
     variables: &RuntimeVariables,
-    call_depth: usize,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let (mut result, mut scope) = (Vec::new(), variables.clone());
@@ -246,14 +293,9 @@ fn execute_sequence(
                 body,
                 ..
             } => {
-                control
-                    .charge(WorkDomain::ResultNode, 1)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
-                result.push(ResultNode::Element {
-                    name: name.clone(),
-                    namespaces: namespaces.clone(),
-                    children: execute_sequence(inputs, body, context, &scope, call_depth, control)?,
-                });
+                result.push(execute_literal_element(
+                    inputs, name, namespaces, body, execution, &scope, control,
+                )?);
             }
             Instruction::Text { value, .. } => {
                 append_text(&mut result, value, inputs.request_id, control)?;
@@ -265,22 +307,32 @@ fn execute_sequence(
                     inputs,
                     select,
                     separator,
-                    context,
+                    execution.node,
                     &scope,
                     &mut result,
                     control,
                 )?;
             }
             Instruction::SequenceNodes { select, .. } => {
-                result.extend(execute_sequence_nodes(inputs, select, context, control)?);
+                result.extend(execute_sequence_nodes(
+                    inputs,
+                    select,
+                    execution.node,
+                    control,
+                )?);
             }
             Instruction::SequenceItems { select, .. } => {
                 result.extend(execute_sequence_items(
-                    inputs, select, context, &scope, control,
+                    inputs,
+                    select,
+                    execution.node,
+                    &scope,
+                    control,
                 )?);
             }
             Instruction::Variable { name, select, .. } => {
-                let value = execute_variable_binding(inputs, name, select, context, control)?;
+                let value =
+                    execute_variable_binding(inputs, name, select, execution.node, control)?;
                 scope.atomics.insert(name.clone(), value);
             }
             Instruction::IntegerRangeVariable {
@@ -290,18 +342,16 @@ fn execute_sequence(
                 scope.atomic_sequences.insert(name.clone(), values);
             }
             Instruction::ApplyTemplates { select, mode, .. } => {
-                result.extend(execute_apply_templates(
+                result.extend(execute_apply_instruction(
                     inputs,
                     select.as_ref(),
                     mode.as_deref(),
-                    context,
+                    execution,
                     control,
                 )?);
             }
             Instruction::If { test, body, .. } => {
-                result.extend(execute_if(
-                    inputs, test, body, context, &scope, call_depth, control,
-                )?);
+                result.extend(execute_if(inputs, test, body, execution, &scope, control)?);
             }
             Instruction::Choose {
                 branches,
@@ -309,14 +359,14 @@ fn execute_sequence(
                 ..
             } => {
                 result.extend(execute_choose(
-                    inputs, branches, otherwise, context, &scope, call_depth, control,
+                    inputs, branches, otherwise, execution, &scope, control,
                 )?);
             }
             Instruction::CallTemplate {
                 name, arguments, ..
             } => {
                 result.extend(execute_named_call(
-                    inputs, name, arguments, context, call_depth, control,
+                    inputs, name, arguments, execution, control,
                 )?);
             }
             Instruction::Copy { .. } => {
@@ -330,6 +380,39 @@ fn execute_sequence(
         }
     }
     Ok(result)
+}
+
+fn execute_literal_element(
+    inputs: &SequenceInputs<'_>,
+    name: &ExpandedName,
+    namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
+    body: &[Instruction],
+    execution: SequenceContext<'_>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<ResultNode, ExecutionFailure> {
+    control
+        .charge(WorkDomain::ResultNode, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(ResultNode::Element {
+        name: name.clone(),
+        namespaces: namespaces.to_vec(),
+        children: execute_sequence(inputs, body, execution, variables, control)?,
+    })
+}
+
+fn execute_apply_instruction(
+    inputs: &SequenceInputs<'_>,
+    select: Option<&ApplySelection>,
+    mode: Option<&str>,
+    execution: SequenceContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let requested_mode = match mode {
+        Some("#current") => execution.current_mode,
+        mode => mode,
+    };
+    execute_apply_templates(inputs, select, requested_mode, execution.node, control)
 }
 
 fn execute_apply_templates(
@@ -440,13 +523,12 @@ fn execute_if(
     inputs: &SequenceInputs<'_>,
     test: &BooleanExpression,
     body: &[Instruction],
-    context: Option<NodeId>,
+    execution: SequenceContext<'_>,
     variables: &RuntimeVariables,
-    call_depth: usize,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     if evaluate_boolean(test, variables, inputs.request_id)? {
-        execute_sequence(inputs, body, context, variables, call_depth, control)
+        execute_sequence(inputs, body, execution, variables, control)
     } else {
         Ok(Vec::new())
     }
@@ -456,24 +538,16 @@ fn execute_choose(
     inputs: &SequenceInputs<'_>,
     branches: &[crate::xslt::golden_semantics_experiment::ChooseBranch],
     otherwise: &[Instruction],
-    context: Option<NodeId>,
+    execution: SequenceContext<'_>,
     variables: &RuntimeVariables,
-    call_depth: usize,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     for branch in branches {
         if evaluate_boolean(&branch.test, variables, inputs.request_id)? {
-            return execute_sequence(
-                inputs,
-                &branch.body,
-                context,
-                variables,
-                call_depth,
-                control,
-            );
+            return execute_sequence(inputs, &branch.body, execution, variables, control);
         }
     }
-    execute_sequence(inputs, otherwise, context, variables, call_depth, control)
+    execute_sequence(inputs, otherwise, execution, variables, control)
 }
 
 fn evaluate_boolean(
@@ -693,11 +767,10 @@ fn execute_named_call(
     inputs: &SequenceInputs<'_>,
     name: &str,
     arguments: &[TemplateArgument],
-    context: Option<NodeId>,
-    call_depth: usize,
+    execution: SequenceContext<'_>,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    if call_depth >= MAX_NAMED_TEMPLATE_CALL_DEPTH {
+    if execution.call_depth >= MAX_NAMED_TEMPLATE_CALL_DEPTH {
         return Err(failure(
             "FXRT0003",
             FailureCategory::Limit,
@@ -729,9 +802,11 @@ fn execute_named_call(
     execute_sequence(
         inputs,
         &target.template.body,
-        context,
+        SequenceContext {
+            call_depth: execution.call_depth + 1,
+            ..execution
+        },
         &frame,
-        call_depth + 1,
         control,
     )
 }
@@ -760,13 +835,24 @@ fn apply_template(
         return execute_sequence(
             &inputs,
             &template.template.body,
-            Some(node),
+            SequenceContext::new(Some(node), mode),
             &variables,
-            0,
             control,
         );
     }
 
+    apply_builtin_template(program, source, node, mode, request_id, globals, control)
+}
+
+fn apply_builtin_template(
+    program: &StylesheetProgram,
+    source: &Document,
+    node: NodeId,
+    mode: Option<&str>,
+    request_id: &str,
+    globals: &RuntimeGlobals,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
     match source.kind(node) {
         NodeKind::Document | NodeKind::Element => {
             let mut result = Vec::new();

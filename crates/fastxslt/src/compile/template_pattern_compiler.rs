@@ -159,7 +159,8 @@ fn compile_template_priority(
             ));
         }
         return Ok(match pattern {
-            MatchPattern::Path(_)
+            MatchPattern::Document
+            | MatchPattern::Path(_)
             | MatchPattern::DescendantAnyElement
             | MatchPattern::ElementWithAttribute { .. }
             | MatchPattern::ElementWithAttributeValue { .. } => TemplatePriority::PATH_DEFAULT,

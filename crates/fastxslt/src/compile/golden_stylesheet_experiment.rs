@@ -1,9 +1,9 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xpath::path_experiment::{PathFailure, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
-    ConstructedElement, GlobalBinding, GlobalBindingDefault, GlobalBindingKind, MatchedTemplate,
-    NamedTemplate, OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME, StylesheetProgram, Template,
-    TemplateParameter,
+    ConstructedElement, GlobalBinding, GlobalBindingDefault, GlobalBindingKind, MatchPattern,
+    MatchedTemplate, NamedTemplate, OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME,
+    StylesheetProgram, Template, TemplateParameter, TemplatePriority,
 };
 
 #[path = "instruction_compiler.rs"]
@@ -197,6 +197,30 @@ fn compile_top_level_template(
                 document.location(element),
             ));
         }
+        let modes = optional_attribute(document, element, None, "mode")
+            .map(|mode| parse_template_modes(mode, document.location(element)))
+            .transpose()?
+            .unwrap_or_default();
+        if !modes.is_empty() {
+            let matched_template = MatchedTemplate {
+                pattern: MatchPattern::Document,
+                priority: TemplatePriority::PATH_DEFAULT,
+                modes,
+                template: compile_template(document, element)?,
+            };
+            if matched_templates.iter().any(|existing| {
+                existing.pattern == matched_template.pattern
+                    && existing.modes == matched_template.modes
+            }) {
+                return Err(unsupported(
+                    "FXST1008",
+                    "template priority for duplicate mode-qualified root pattern is outside the private slice",
+                    document.location(element),
+                ));
+            }
+            matched_templates.push(matched_template);
+            return Ok(());
+        }
         if root_template.is_some() {
             return Err(unsupported(
                 "FXST1001",
@@ -204,10 +228,7 @@ fn compile_top_level_template(
                 document.location(element),
             ));
         }
-        *root_template_modes = optional_attribute(document, element, None, "mode")
-            .map(|mode| parse_template_modes(mode, document.location(element)))
-            .transpose()?
-            .unwrap_or_default();
+        root_template_modes.clear();
         *root_template = Some(compile_template(document, element)?);
         return Ok(());
     }
@@ -1036,6 +1057,21 @@ mod tests {
         );
         let program = compile_stylesheet(&mode).expect("unprefixed modes should compile");
         assert_eq!(program.matched_templates[0].modes, ["detail"]);
+
+        let current_mode = parse_stylesheet(
+            "memory:current-mode.xsl",
+            br##"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xpath-default-namespace="http://example.test/"><xsl:template match="doc"><xsl:apply-templates select="item" mode="detail"/></xsl:template><xsl:template match="item" mode="detail"><xsl:call-template name="common"/></xsl:template><xsl:template name="common"><xsl:apply-templates select="/" mode="#current"/></xsl:template><xsl:template match="/" mode="detail"><out/></xsl:template></xsl:stylesheet>"##,
+        );
+        let program = compile_stylesheet(&current_mode)
+            .expect("current mode and namespace-insensitive root path should compile");
+        assert!(matches!(
+            program.named_templates[0].template.body.as_slice(),
+            [Instruction::ApplyTemplates {
+                select: Some(crate::xslt::golden_semantics_experiment::ApplySelection::LocationPath(path)),
+                mode: Some(mode),
+                ..
+            }] if path.steps.is_empty() && mode == "#current"
+        ));
     }
 
     #[test]

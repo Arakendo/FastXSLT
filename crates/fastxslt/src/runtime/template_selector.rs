@@ -48,6 +48,7 @@ fn matches_pattern(
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
     match pattern {
+        MatchPattern::Document => Ok(source.kind(node) == NodeKind::Document),
         MatchPattern::Element(name) => Ok(source.name(node) == Some(name)),
         MatchPattern::ElementNamespace(namespace) => Ok(source
             .name(node)

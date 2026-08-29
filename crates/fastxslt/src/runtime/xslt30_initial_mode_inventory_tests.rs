@@ -15,6 +15,7 @@ use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xslt::golden_semantics_experiment::MatchPattern;
 
 const SET_FILE: &str = "tests/misc/initial-mode/_initial-mode-test-set.xml";
 const INITIAL_MODE_004: &str = "initial-mode-004";
@@ -449,7 +450,10 @@ fn executes_initial_mode_005_with_multiple_modes_and_a_temporary_tree() {
         .expect("admit stylesheet");
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, STYLESHEET_ID).expect("compile initial-mode-005");
-    assert_eq!(program.root_template_modes, ["a", "b", "c"]);
+    assert!(program.root_template.is_none());
+    assert!(program.matched_templates.iter().any(|template| {
+        matches!(template.pattern, MatchPattern::Document) && template.modes == ["a", "b", "c"]
+    }));
     let mut builder = TransformSetBuilder::new(
         snapshot,
         program,

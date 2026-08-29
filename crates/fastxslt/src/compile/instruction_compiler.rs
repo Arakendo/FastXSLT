@@ -235,7 +235,7 @@ fn compile_apply_templates(
         .map(|expression| parse_apply_selection(document, element, expression, location.clone()))
         .transpose()?;
     let mode = optional_attribute(document, element, None, "mode")
-        .map(|mode| parse_mode(mode, document.location(element)))
+        .map(|mode| parse_apply_mode(mode, document.location(element)))
         .transpose()?;
     Ok(Instruction::ApplyTemplates {
         select,
@@ -287,6 +287,11 @@ fn parse_apply_selection(
             ));
         }
     }
+    if expression == "/" {
+        return parse_location_path(expression, location)
+            .map(ApplySelection::LocationPath)
+            .map_err(map_path_failure);
+    }
     if effective_xpath_default_namespace(document, element).is_some() {
         return Err(unsupported(
             "FXST1027",
@@ -297,6 +302,14 @@ fn parse_apply_selection(
     parse_location_path(expression, location)
         .map(ApplySelection::LocationPath)
         .map_err(map_path_failure)
+}
+
+fn parse_apply_mode(mode: &str, location: &SourceLocation) -> Result<String, CompileFailure> {
+    if mode == "#current" {
+        Ok(mode.to_owned())
+    } else {
+        parse_mode(mode, location)
+    }
 }
 
 fn parse_mode(mode: &str, location: &SourceLocation) -> Result<String, CompileFailure> {
