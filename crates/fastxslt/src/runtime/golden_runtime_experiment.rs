@@ -41,7 +41,9 @@ use runtime_context::{
 pub(super) use runtime_failure::ExecutionFailure;
 use runtime_failure::{FailureCategory, control_failure, failure, failure_at};
 pub(super) use serialization::serialize_xml;
-use template_selector::{accepts_mode as template_accepts_mode, select_template};
+use template_selector::{
+    accepts_mode as template_accepts_mode, select_next_template, select_template_with_index,
+};
 #[cfg(test)]
 use transform_set_experiment::{
     ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, execute_transform_set,
@@ -184,7 +186,8 @@ fn apply_initial_mode_template(
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let node = source.document_node();
     charge_xslt_instruction(control, request_id)?;
-    if let Some(template) = select_template(program, source, node, Some(mode), request_id, control)?
+    if let Some((template_index, template)) =
+        select_template_with_index(program, source, node, Some(mode), request_id, control)?
     {
         let inputs = SequenceInputs {
             program,
@@ -196,7 +199,7 @@ fn apply_initial_mode_template(
         return execute_sequence(
             &inputs,
             &template.template.body,
-            SequenceContext::new(Some(node), Some(mode)),
+            SequenceContext::for_template(Some(node), Some(mode), template_index),
             &variables,
             control,
         );
@@ -263,6 +266,7 @@ fn execute_initial_template(
 struct SequenceContext<'a> {
     node: Option<NodeId>,
     current_mode: Option<&'a str>,
+    current_template_index: Option<usize>,
     call_depth: usize,
 }
 
@@ -271,7 +275,15 @@ impl<'a> SequenceContext<'a> {
         Self {
             node,
             current_mode,
+            current_template_index: None,
             call_depth: 0,
+        }
+    }
+
+    fn for_template(node: Option<NodeId>, current_mode: Option<&'a str>, index: usize) -> Self {
+        Self {
+            current_template_index: Some(index),
+            ..Self::new(node, current_mode)
         }
     }
 }
@@ -349,6 +361,9 @@ fn execute_sequence(
                     execution,
                     control,
                 )?);
+            }
+            Instruction::NextMatch { .. } => {
+                result.extend(execute_next_match(inputs, execution, control)?);
             }
             Instruction::If { test, body, .. } => {
                 result.extend(execute_if(inputs, test, body, execution, &scope, control)?);
@@ -455,6 +470,53 @@ fn execute_apply_templates(
         )?);
     }
     Ok(result)
+}
+
+fn execute_next_match(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let (source, node) = required_source_context(inputs, execution.node)?;
+    let current_index = execution.current_template_index.ok_or_else(|| {
+        failure(
+            "XTDE0560",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            "xsl:next-match requires a current matched template rule",
+        )
+    })?;
+    if let Some((next_index, template)) = select_next_template(
+        inputs.program,
+        source,
+        node,
+        execution.current_mode,
+        current_index,
+        inputs.request_id,
+        control,
+    )? {
+        let variables = bind_template_parameters(
+            &template.template,
+            &BTreeMap::new(),
+            &inputs.globals.atomics,
+        );
+        return execute_sequence(
+            inputs,
+            &template.template.body,
+            SequenceContext::for_template(node.into(), execution.current_mode, next_index),
+            &variables,
+            control,
+        );
+    }
+    apply_builtin_template(
+        inputs.program,
+        source,
+        node,
+        execution.current_mode,
+        inputs.request_id,
+        inputs.globals,
+        control,
+    )
 }
 
 fn charge_xslt_instruction(
@@ -856,7 +918,9 @@ fn apply_template(
     control
         .charge(WorkDomain::XsltInstruction, 1)
         .map_err(|failure| control_failure(failure, request_id))?;
-    if let Some(template) = select_template(program, source, node, mode, request_id, control)? {
+    if let Some((template_index, template)) =
+        select_template_with_index(program, source, node, mode, request_id, control)?
+    {
         let inputs = SequenceInputs {
             program,
             source: Some(source),
@@ -868,7 +932,7 @@ fn apply_template(
         return execute_sequence(
             &inputs,
             &template.template.body,
-            SequenceContext::new(Some(node), mode),
+            SequenceContext::for_template(Some(node), mode, template_index),
             &variables,
             control,
         );

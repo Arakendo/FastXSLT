@@ -268,8 +268,12 @@ selection with `/` default priority `-0.5`, bounded explicit priorities, and
 declaration-order tie-breaking. Cross-module root conflicts remain unsupported.
 `conflict-resolution-1602` and `1603` add typed exact-name and wildcard
 `document-node(element(...))` patterns. Their default priorities remain exact
-at `0` and `-0.5`; document-element inspection is locally charged, and only
-these typed duplicate patterns are admitted to compete within one module.
+at `0` and `-0.5`; document-element inspection is locally charged, and
+distinct-priority duplicate rules are admitted to compete within one module.
+`conflict-resolution-1201` retains parameter-free `xsl:next-match` and the
+current compiled-template index in its private runtime frame. It walks the
+strictly lower-ranked applicable rules `5 → 4 → 3 → 2`, then invokes the
+built-in fallback. Equal-rank ambiguity and cross-module precedence stay out.
 `conflict-resolution-0901` then conserves the existing typed path machinery
 across template selection: `//b` supplies six candidates in document order,
 while retained `doc/a/b` and `doc/z/b` patterns distinguish their parent chains
@@ -304,8 +308,8 @@ each inspected node and preserves document order. It does not widen general
 default-namespaced path support.
 The complete pinned apply-templates test set is now conserved as an ordered
 50-case denominator with 50 principal stylesheets, one secondary stylesheet,
-41 XML assertions, eight error assertions, and one compound assertion. Twenty-one
-cases have explicit passing overrides; the other 29 remain visibly not run and
+41 XML assertions, eight error assertions, and one compound assertion. Twenty-two
+cases have explicit passing overrides; the other 28 remain visibly not run and
 are not mislabeled as engine failures. This corrects the earlier provisional
 52-case count without turning inventory into a conformance percentage.
 
@@ -741,8 +745,9 @@ failed, and harness-error cases without an unqualified conformance claim.
   priority and the built-in attribute string-value rule. Preserve the child-axis
   boundary that keeps `node()` from matching attributes. Bounded fractional
   priority is admitted separately by `1701`; keep arbitrary-precision priority,
-  duplicate-pattern resolution, and root-pattern priority outside the admitted
-  slice.
+  equal-rank duplicate-pattern resolution, and root-pattern priority outside
+  the admitted slice. Distinct-priority chains are admitted separately by
+  `1201`.
 - [x] Execute `conflict-resolution-0107`, `0108c`, and `0110c` through retained
   non-simple default priority. Add only the exact unnamespaced
   `element[@attribute]` presence pattern, charge inspected attributes, and prove
@@ -776,8 +781,14 @@ failed, and harness-error cases without an unqualified conformance claim.
   bounded priorities, and declaration order; keep cross-module conflicts out.
 - [x] Execute `conflict-resolution-1602` and `1603` through typed exact-name and
   wildcard `document-node(element(...))` patterns with charged document-element
-  inspection and exact default priorities `0` and `-0.5`. Admit duplicate
-  competition only for this typed pattern and keep cross-module precedence out.
+  inspection and exact default priorities `0` and `-0.5`. Admit
+  distinct-priority duplicate competition and keep equal-rank ambiguity and
+  cross-module precedence out.
+- [x] Execute `conflict-resolution-1201` through typed parameter-free
+  `xsl:next-match`, retaining private current-template identity and selecting
+  successively lower-ranked applicable rules before built-in fallback. Admit
+  distinct-priority duplicate shapes; keep equal-rank ambiguity, parameters,
+  and imports out.
 - [x] Execute `conflict-resolution-0901` as a conservation case for typed
   leading-descendant selection, document-order candidate delivery, and retained
   multi-step parent/child match paths. Keep `current()` patterns,
@@ -785,7 +796,7 @@ failed, and harness-error cases without an unqualified conformance claim.
   propagation, and general pattern grammar outside this slice.
 - [x] Conserve the complete ordered 50-case XSLT30 apply-templates denominator,
   its 50 principal plus one secondary stylesheet, and its assertion-shape
-  counts. Record 21 explicit passes and 29 default not-run dispositions without
+  counts. Record 22 explicit passes and 28 default not-run dispositions without
   converting unexecuted cases into engine failures or an aggregate conformance
   claim.
 - [x] Execute `conflict-resolution-0701` through inherited

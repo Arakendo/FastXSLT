@@ -7,24 +7,53 @@ use crate::xslt::golden_semantics_experiment::{MatchPattern, MatchedTemplate, St
 
 use super::runtime_failure::{ExecutionFailure, control_failure};
 
-pub(super) fn select_template<'a>(
+pub(super) fn select_template_with_index<'a>(
     program: &'a StylesheetProgram,
     source: &Document,
     node: NodeId,
     mode: Option<&str>,
     request_id: &str,
     control: &mut InvocationControl,
-) -> Result<Option<&'a MatchedTemplate>, ExecutionFailure> {
+) -> Result<Option<(usize, &'a MatchedTemplate)>, ExecutionFailure> {
     let mut selected_template = None;
     let mut selected_priority = None;
-    for template in &program.matched_templates {
+    for (index, template) in program.matched_templates.iter().enumerate() {
         if !accepts_mode(&template.modes, mode)
             || !matches_pattern(&template.pattern, source, node, request_id, control)?
         {
             continue;
         }
         if selected_priority.is_none_or(|priority| template.priority >= priority) {
-            selected_template = Some(template);
+            selected_template = Some((index, template));
+            selected_priority = Some(template.priority);
+        }
+    }
+    Ok(selected_template)
+}
+
+pub(super) fn select_next_template<'a>(
+    program: &'a StylesheetProgram,
+    source: &Document,
+    node: NodeId,
+    mode: Option<&str>,
+    current_index: usize,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Option<(usize, &'a MatchedTemplate)>, ExecutionFailure> {
+    let current_priority = program.matched_templates[current_index].priority;
+    let mut selected_template = None;
+    let mut selected_priority = None;
+    for (index, template) in program.matched_templates.iter().enumerate() {
+        let lower_rank = template.priority < current_priority
+            || (template.priority == current_priority && index < current_index);
+        if !lower_rank
+            || !accepts_mode(&template.modes, mode)
+            || !matches_pattern(&template.pattern, source, node, request_id, control)?
+        {
+            continue;
+        }
+        if selected_priority.is_none_or(|priority| template.priority >= priority) {
+            selected_template = Some((index, template));
             selected_priority = Some(template.priority);
         }
     }
@@ -103,6 +132,7 @@ fn matches_pattern(
             Ok(source.kind(node) == NodeKind::Attribute && source.name(node) == Some(name))
         }
         MatchPattern::Comment => Ok(source.kind(node) == NodeKind::Comment),
+        MatchPattern::Text => Ok(source.kind(node) == NodeKind::Text),
         MatchPattern::ProcessingInstruction => {
             Ok(source.kind(node) == NodeKind::ProcessingInstruction)
         }

@@ -134,6 +134,7 @@ pub(crate) enum MatchPattern {
     Path(LocationPath),
     Attribute(ExpandedName),
     Comment,
+    Text,
     ProcessingInstruction,
     AnyNode,
     AnyElement,
@@ -195,6 +196,9 @@ pub(crate) enum Instruction {
     ApplyTemplates {
         select: Option<ApplySelection>,
         mode: Option<String>,
+        location: SourceLocation,
+    },
+    NextMatch {
         location: SourceLocation,
     },
     If {

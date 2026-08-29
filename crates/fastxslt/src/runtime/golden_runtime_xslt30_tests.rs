@@ -648,6 +648,14 @@ fn executes_xslt30_document_element_pattern_priorities() {
 }
 
 #[test]
+fn executes_xslt30_next_match_priority_chain() {
+    let (actual, expected, matched_template_count) =
+        execute_apply_templates_case("conflict-resolution-1201");
+    assert_eq!(matched_template_count, 6);
+    assert_same_result_element_string(&actual, &expected, "out");
+}
+
+#[test]
 fn executes_pinned_xslt30_template_006_from_its_upstream_test_set() {
     let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
     assert!(overlay.contains("case_name = \"template-006\""));

@@ -23,9 +23,10 @@ The pattern compiler retains the exact admitted forms as one typed
 
 Runtime matching first requires a document node, then performs a bounded,
 charged scan to its element child. Exact-name matching compares expanded names;
-the wildcard form requires only element kind. The private duplicate-pattern
-guard is widened only for this typed pattern so each case's three otherwise
-identical rules reach ordinary priority and declaration-order selection.
+the wildcard form requires only element kind. Duplicate pattern/mode shapes
+with distinct exact priorities reach ordinary selection; equal-rank duplicates
+remain rejected. The more general next-match use of that rule is evidenced by
+`conflict-resolution-1201`.
 
 ## Results
 
@@ -43,5 +44,5 @@ explicit `-0.6`.
 This evidence admits ASCII unprefixed exact-name and wildcard element tests
 nested in `document-node()` within one stylesheet module. It does not admit
 typed/schema-aware element tests, prefixed or EQName forms, other document-node
-content tests, general duplicate-pattern policy, include/import/package
+content tests, equal-rank duplicate-pattern policy, include/import/package
 precedence, or ambiguity recovery behavior.

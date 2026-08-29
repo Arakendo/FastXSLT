@@ -226,11 +226,12 @@ fn compile_top_level_template(
     }
 
     let matched_template = compile_matched_template(document, element, pattern)?;
-    let duplicates_existing = matched_templates.iter().any(|existing| {
-        existing.pattern == matched_template.pattern && existing.modes == matched_template.modes
+    let duplicates_same_rank = matched_templates.iter().any(|existing| {
+        existing.pattern == matched_template.pattern
+            && existing.modes == matched_template.modes
+            && existing.priority == matched_template.priority
     });
-    if duplicates_existing && !matches!(matched_template.pattern, MatchPattern::DocumentElement(_))
-    {
+    if duplicates_same_rank {
         return Err(unsupported(
             "FXST1008",
             format!(

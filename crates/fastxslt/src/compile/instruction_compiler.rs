@@ -86,6 +86,12 @@ pub(super) fn compile_sequence_excluding(
                         instructions.push(compile_sequence_nodes(document, child)?);
                     } else if name.local == "apply-templates" {
                         instructions.push(compile_apply_templates(document, child)?);
+                    } else if name.local == "next-match" {
+                        ensure_only_attributes(document, child, &[], "xsl:next-match")?;
+                        ensure_no_meaningful_children(document, child, "xsl:next-match")?;
+                        instructions.push(Instruction::NextMatch {
+                            location: document.location(child).clone(),
+                        });
                     } else if name.local == "if" {
                         instructions.push(compile_if(document, child)?);
                     } else if name.local == "choose" {

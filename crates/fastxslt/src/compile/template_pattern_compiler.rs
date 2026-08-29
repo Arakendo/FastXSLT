@@ -17,6 +17,7 @@ pub(super) fn compile_match_pattern(
     let pattern = match lexical_pattern {
         "/" => MatchPattern::Document,
         "comment()" => MatchPattern::Comment,
+        "text()" => MatchPattern::Text,
         "processing-instruction()" => MatchPattern::ProcessingInstruction,
         "node()" => MatchPattern::AnyNode,
         "//*" => MatchPattern::DescendantAnyElement,
@@ -208,6 +209,7 @@ fn compile_template_priority(
                 TemplatePriority::NAMESPACE_WILDCARD_DEFAULT
             }
             MatchPattern::Comment
+            | MatchPattern::Text
             | MatchPattern::ProcessingInstruction
             | MatchPattern::AnyNode
             | MatchPattern::AnyElement => TemplatePriority::NODE_TEST_DEFAULT,

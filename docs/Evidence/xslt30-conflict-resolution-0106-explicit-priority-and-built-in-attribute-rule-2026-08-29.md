@@ -51,7 +51,7 @@ invalid lexical priority (`FXST0030`).
 
 This evidence establishes signed-integer priority for `0106` and the built-in
 string-value rule for attributes. Bounded fractional priority is evidenced
-separately by `1701`. Arbitrary precision, general duplicate-pattern
-resolution, import/package precedence, `xsl:mode/@on-multiple-match`, warnings,
-namespace nodes, and the complete 50-case denominator remain outside this
-record.
+separately by `1701`. Distinct-priority duplicate rules are evidenced separately
+by `1201`; equal-rank ambiguity policy, arbitrary precision, import/package
+precedence, `xsl:mode/@on-multiple-match`, warnings, namespace nodes, and the
+complete 50-case denominator remain outside this record.
