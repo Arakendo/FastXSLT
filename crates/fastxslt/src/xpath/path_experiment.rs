@@ -5,7 +5,7 @@ use crate::xpath::constant_integer_experiment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ChildPath {
-    pub(crate) steps: Vec<ChildStep>,
+    pub(crate) steps: Vec<PathStep>,
     pub(crate) selects_context_item: bool,
     pub(crate) starts_with_descendant_search: bool,
     final_predicate: Option<ExistencePredicate>,
@@ -14,28 +14,45 @@ pub(crate) struct ChildPath {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum ChildStep {
-    Named(String),
-    AnyElement,
-    AnyNode,
+pub(crate) enum PathStep {
+    ChildNamed(String),
+    ChildAnyElement,
+    ChildAnyNode,
+    AttributeNamed(String),
+    AttributeAny,
 }
 
-impl ChildStep {
-    fn from_validated(value: String) -> Self {
-        match value.as_str() {
-            "*" => Self::AnyElement,
-            "node()" => Self::AnyNode,
-            _ => Self::Named(value),
+impl PathStep {
+    fn from_validated(value: &str) -> Self {
+        if let Some(name_test) = value
+            .strip_prefix("attribute::")
+            .or_else(|| value.strip_prefix('@'))
+        {
+            return match name_test {
+                "*" | "node()" => Self::AttributeAny,
+                _ => Self::AttributeNamed(name_test.to_owned()),
+            };
         }
+        let name_test = value.strip_prefix("child::").unwrap_or(value);
+        match name_test {
+            "*" => Self::ChildAnyElement,
+            "node()" => Self::ChildAnyNode,
+            _ => Self::ChildNamed(name_test.to_owned()),
+        }
+    }
+
+    fn uses_attribute_axis(&self) -> bool {
+        matches!(self, Self::AttributeNamed(_) | Self::AttributeAny)
     }
 }
 
-impl PartialEq<&str> for ChildStep {
+impl PartialEq<&str> for PathStep {
     fn eq(&self, other: &&str) -> bool {
         match self {
-            Self::Named(value) => value == *other,
-            Self::AnyElement => *other == "*",
-            Self::AnyNode => *other == "node()",
+            Self::ChildNamed(value) | Self::AttributeNamed(value) => value == *other,
+            Self::ChildAnyElement => *other == "*",
+            Self::ChildAnyNode => *other == "node()",
+            Self::AttributeAny => matches!(*other, "*" | "node()"),
         }
     }
 }
@@ -138,10 +155,14 @@ pub(crate) fn parse_child_path(
             location,
         });
     }
-    if steps
-        .iter()
-        .any(|step| !matches!(step.as_str(), "*" | "node()") && !is_ascii_ncname(step))
-    {
+    if steps.iter().any(|step| {
+        let name_test = step
+            .strip_prefix("child::")
+            .or_else(|| step.strip_prefix("attribute::"))
+            .or_else(|| step.strip_prefix('@'))
+            .unwrap_or(step);
+        !matches!(name_test, "*" | "node()") && !is_ascii_ncname(name_test)
+    }) {
         if steps.iter().any(|step| {
             step.chars().any(|character| {
                 !character.is_ascii_alphanumeric() && !matches!(character, '_' | '-' | '.')
@@ -159,14 +180,34 @@ pub(crate) fn parse_child_path(
             location,
         });
     }
+    let steps = lower_validated_steps(&steps, starts_with_descendant_search, &location)?;
     Ok(ChildPath {
-        steps: steps.into_iter().map(ChildStep::from_validated).collect(),
+        steps,
         selects_context_item: false,
         starts_with_descendant_search,
         final_predicate,
         step_position_predicates,
         location,
     })
+}
+
+fn lower_validated_steps(
+    steps: &[String],
+    starts_with_descendant_search: bool,
+    location: &SourceLocation,
+) -> Result<Vec<PathStep>, PathFailure> {
+    let steps: Vec<_> = steps
+        .iter()
+        .map(|step| PathStep::from_validated(step))
+        .collect();
+    if starts_with_descendant_search && steps.first().is_some_and(PathStep::uses_attribute_axis) {
+        return Err(PathFailure::Unsupported {
+            detail: "the private slice does not yet expand leading // before an attribute step"
+                .to_owned(),
+            location: location.clone(),
+        });
+    }
+    Ok(steps)
 }
 
 fn parse_final_axis_predicate(expression: &str) -> (&str, Option<ExistencePredicate>) {
@@ -226,7 +267,6 @@ fn parse_position_steps(expression: &str) -> Option<(Vec<String>, Vec<Option<Pos
         } else {
             (raw_step, None)
         };
-        let name = name.strip_prefix("child::").unwrap_or(name);
         if name.is_empty() {
             return None;
         }
@@ -298,6 +338,8 @@ pub(crate) fn evaluate_child_path_controlled(
         for node in current {
             let candidates = if step_index == 0 && path.starts_with_descendant_search {
                 descendant_nodes(document, node, control)?
+            } else if step.uses_attribute_axis() {
+                document.attributes(node).to_vec()
             } else {
                 document.children(node).to_vec()
             };
@@ -354,16 +396,23 @@ pub(crate) fn evaluate_child_path_controlled(
     Ok(current)
 }
 
-fn child_matches_name_test(document: &Document, child: NodeId, name_test: &ChildStep) -> bool {
+fn child_matches_name_test(document: &Document, child: NodeId, name_test: &PathStep) -> bool {
     match name_test {
-        ChildStep::Named(required) => {
+        PathStep::ChildNamed(required) => {
             document.kind(child) == NodeKind::Element
                 && document
                     .name(child)
                     .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
         }
-        ChildStep::AnyElement => document.kind(child) == NodeKind::Element,
-        ChildStep::AnyNode => true,
+        PathStep::ChildAnyElement => document.kind(child) == NodeKind::Element,
+        PathStep::ChildAnyNode => true,
+        PathStep::AttributeNamed(required) => {
+            document.kind(child) == NodeKind::Attribute
+                && document
+                    .name(child)
+                    .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
+        }
+        PathStep::AttributeAny => document.kind(child) == NodeKind::Attribute,
     }
 }
 
@@ -562,7 +611,7 @@ mod tests {
     }
 
     #[test]
-    fn explicit_and_abbreviated_child_axes_share_navigation_semantics() {
+    fn explicit_and_abbreviated_axes_share_typed_step_semantics() {
         let implicit = parse_child_path("//center/south-east", location())
             .expect("implicit child steps should parse");
         let explicit = parse_child_path("//center/child::south-east", location())
@@ -586,6 +635,74 @@ mod tests {
                 .expect("explicit node test should parse")
                 .steps
         );
+        assert_eq!(
+            parse_child_path("//west/@*", location())
+                .expect("abbreviated attribute wildcard should parse")
+                .steps,
+            parse_child_path("//west/attribute::*", location())
+                .expect("explicit attribute wildcard should parse")
+                .steps
+        );
+        assert_eq!(
+            parse_child_path("//west/@west-attr-2", location())
+                .expect("abbreviated named attribute should parse")
+                .steps,
+            parse_child_path("//west/attribute::west-attr-2", location())
+                .expect("explicit named attribute should parse")
+                .steps
+        );
+    }
+
+    #[test]
+    fn attribute_axis_selects_attributes_but_not_namespace_nodes() {
+        let parsed = parse_document(
+            "memory:source.xml",
+            br#"<root plain="1" n:other="2" xmlns:n="urn:test"/>"#,
+            ParseLimits {
+                max_events: 8,
+                max_depth: 2,
+            },
+        )
+        .expect("source should parse");
+        let document = Document::from_parsed(parsed).expect("source XDM should build");
+        let root = document.children(document.document_node())[0];
+        let mut control = InvocationControl::unbounded();
+
+        let wildcard = evaluate_child_path_controlled(
+            &document,
+            root,
+            &parse_child_path("attribute::*", location()).expect("wildcard should parse"),
+            &mut control,
+        )
+        .expect("attribute wildcard should execute");
+
+        assert_eq!(wildcard.len(), 2);
+        assert!(
+            wildcard
+                .iter()
+                .all(|node| document.kind(*node) == NodeKind::Attribute)
+        );
+        assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 2);
+        assert_eq!(
+            evaluate_child_path(
+                &document,
+                root,
+                &parse_child_path("attribute::plain", location()).expect("name should parse"),
+            ),
+            [wildcard[0]]
+        );
+        assert_eq!(
+            evaluate_child_path(
+                &document,
+                root,
+                &parse_child_path("attribute::node()", location()).expect("node test should parse"),
+            ),
+            wildcard
+        );
+        assert!(matches!(
+            parse_child_path("//@*", location()),
+            Err(PathFailure::Unsupported { .. })
+        ));
     }
 
     #[test]

@@ -44,7 +44,9 @@ and explicit evaluators.
 | **Total** | **11** | **11** | **0** | **0** | **0** |
 
 Together, complete `Axes001` through `Axes006` contribute 22 passing
-child-axis cases through the same metadata-driven direct XPath seam.
+child-axis cases through the same metadata-driven direct XPath seam. Subsequent
+[`Axes007`–`Axes011` evidence](qt3-axes007-011-attribute-axis-execution-2026-08-28.md)
+adds 15 explicit and abbreviated attribute-axis cases through typed steps.
 
 ## Claim boundary
 

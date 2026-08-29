@@ -1,4 +1,4 @@
-//! Executable metadata-driven `QT3` element-child-axis slice.
+//! Executable metadata-driven `QT3` child- and attribute-axis slice.
 
 use std::{fs, path::PathBuf};
 
@@ -10,7 +10,7 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use super::count_experiment;
 
 const QT3_NAMESPACE: &str = "http://www.w3.org/2010/09/qt-fots-catalog";
-const CASES: [(&str, &str, usize); 22] = [
+const CASES: [(&str, &str, usize); 37] = [
     ("Axes001-1", "fn:count(//center/child::*)", 0),
     ("Axes001-2", "fn:count(//center/child::*)", 1),
     ("Axes001-3", "fn:count(//center/child::*)", 6),
@@ -33,6 +33,21 @@ const CASES: [(&str, &str, usize); 22] = [
     ("Axes006-2", "fn:count(//center/node())", 1),
     ("Axes006-3", "fn:count(//center/node())", 1),
     ("Axes006-4", "fn:count(//center/node())", 19),
+    ("Axes007-1", "fn:count(//west/attribute::*)", 0),
+    ("Axes007-2", "fn:count(//west/attribute::*)", 1),
+    ("Axes007-3", "fn:count(//west/attribute::*)", 4),
+    ("Axes008-1", "fn:count(//west/attribute::west-attr-2)", 0),
+    ("Axes008-2", "fn:count(//west/attribute::west-attr-2)", 0),
+    ("Axes008-3", "fn:count(//west/attribute::west-attr-2)", 1),
+    ("Axes009-1", "fn:count(//west/attribute::node())", 0),
+    ("Axes009-2", "fn:count(//west/attribute::node())", 1),
+    ("Axes009-3", "fn:count(//west/attribute::node())", 4),
+    ("Axes010-1", "fn:count(//west/@*)", 0),
+    ("Axes010-2", "fn:count(//west/@*)", 1),
+    ("Axes010-3", "fn:count(//west/@*)", 4),
+    ("Axes011-1", "fn:count(//west/@west-attr-2)", 0),
+    ("Axes011-2", "fn:count(//west/@west-attr-2)", 0),
+    ("Axes011-3", "fn:count(//west/@west-attr-2)", 1),
 ];
 
 fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'a str> {
@@ -89,28 +104,20 @@ fn load_axis_test_set() -> (Document, PathBuf) {
 }
 
 #[test]
-fn executes_complete_qt3_axes001_through_axes006_child_groups() {
+fn executes_complete_qt3_axes001_through_axes011_child_and_attribute_groups() {
     let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
+    let selected_records: Vec<_> = overlay
+        .split("[[case]]")
+        .filter(|record| {
+            CASES
+                .iter()
+                .any(|(case_name, _, _)| record.contains(&format!("case_name = \"{case_name}\"")))
+        })
+        .collect();
+    assert_eq!(selected_records.len(), CASES.len());
     assert_eq!(
-        overlay.matches("case_name = \"Axes001-").count()
-            + overlay.matches("case_name = \"Axes002-").count()
-            + overlay.matches("case_name = \"Axes003-").count()
-            + overlay.matches("case_name = \"Axes004-").count()
-            + overlay.matches("case_name = \"Axes005-").count()
-            + overlay.matches("case_name = \"Axes006-").count(),
-        CASES.len()
-    );
-    assert_eq!(
-        overlay
-            .split("[[case]]")
-            .filter(|record| {
-                record.contains("case_name = \"Axes001-")
-                    || record.contains("case_name = \"Axes002-")
-                    || record.contains("case_name = \"Axes003-")
-                    || record.contains("case_name = \"Axes004-")
-                    || record.contains("case_name = \"Axes005-")
-                    || record.contains("case_name = \"Axes006-")
-            })
+        selected_records
+            .iter()
             .filter(|record| record.contains("execution = \"passed\""))
             .count(),
         CASES.len()

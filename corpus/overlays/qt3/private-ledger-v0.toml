@@ -156,6 +156,111 @@ execution = "passed"
 rationale = "The native TreeRepeat environment executes abbreviated node() across mixed child kinds and matches assert-eq value 19."
 
 [[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes007-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc environment executes attribute::* from west and matches assert-eq value 0."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes007-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Child environment executes attribute::* from west and matches assert-eq value 1."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes007-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment executes attribute::* from west in source order and matches assert-eq value 4."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes008-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc environment executes the named attribute axis from west and matches assert-eq value 0."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes008-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Child environment executes the named attribute axis from west and matches assert-eq value 0."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes008-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment selects west-attr-2 through the explicit attribute axis and matches assert-eq value 1."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes009-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc environment executes attribute::node() from west and matches assert-eq value 0."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes009-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Child environment executes attribute::node() from west and matches assert-eq value 1."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes009-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment applies the attribute-axis principal node kind and matches assert-eq value 4."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes010-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc environment executes abbreviated @* from west and matches assert-eq value 0."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes010-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Child environment executes abbreviated @* from west and matches assert-eq value 1."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes010-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment lowers @* to the same typed attribute step and matches assert-eq value 4."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes011-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc environment executes abbreviated @west-attr-2 and matches assert-eq value 0."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes011-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native Tree1Child environment executes abbreviated @west-attr-2 and matches assert-eq value 0."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes011-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass environment lowers @west-attr-2 to the same typed named-attribute step and matches assert-eq value 1."
+
+[[case]]
 set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equalint2args-1"
 selection = "selected"
