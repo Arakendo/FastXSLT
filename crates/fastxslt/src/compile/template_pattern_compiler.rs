@@ -27,6 +27,9 @@ pub(super) fn compile_match_pattern(
         predicate if parse_element_attribute_value_predicate(predicate).is_some() => {
             compile_element_attribute_value_pattern(predicate)
         }
+        predicate if parse_any_element_attribute_variable_predicate(predicate).is_some() => {
+            compile_any_element_attribute_variable_pattern(predicate)
+        }
         predicate if parse_element_attribute_predicate(predicate).is_some() => {
             let (element, attribute) =
                 parse_element_attribute_predicate(predicate).expect("predicate shape was checked");
@@ -188,6 +191,24 @@ fn parse_element_attribute_value_predicate(pattern: &str) -> Option<(&str, &str,
         .then_some((element, attribute, value))
 }
 
+fn parse_any_element_attribute_variable_predicate(pattern: &str) -> Option<(&str, &str)> {
+    let predicate = pattern.strip_prefix("*[@")?.strip_suffix(']')?;
+    let (attribute, variable) = predicate.split_once("=$")?;
+    (is_ascii_ncname(attribute) && is_ascii_ncname(variable)).then_some((attribute, variable))
+}
+
+fn compile_any_element_attribute_variable_pattern(pattern: &str) -> MatchPattern {
+    let (attribute, variable) = parse_any_element_attribute_variable_predicate(pattern)
+        .expect("variable predicate shape was checked");
+    MatchPattern::AnyElementWithAttributeVariable {
+        attribute: crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: None,
+            local: attribute.to_owned(),
+        },
+        variable: variable.to_owned(),
+    }
+}
+
 fn compile_template_priority(
     document: &Document,
     element: NodeId,
@@ -198,7 +219,10 @@ fn compile_template_priority(
             MatchPattern::Path(_)
             | MatchPattern::DescendantAnyElement
             | MatchPattern::ElementWithAttribute { .. }
-            | MatchPattern::ElementWithAttributeValue { .. } => TemplatePriority::PATH_DEFAULT,
+            | MatchPattern::ElementWithAttributeValue { .. }
+            | MatchPattern::AnyElementWithAttributeVariable { .. } => {
+                TemplatePriority::PATH_DEFAULT
+            }
             MatchPattern::Document | MatchPattern::DocumentElement(None) => {
                 TemplatePriority::ROOT_DEFAULT
             }

@@ -136,6 +136,15 @@ pub(super) fn materialize_global_defaults(
                     .atomics
                     .insert(binding.name.clone(), AtomicValue::untyped(value.clone()));
             }
+            GlobalBindingDefault::Integer(value) => {
+                globals.atomics.insert(
+                    binding.name.clone(),
+                    AtomicValue::from_validated_lexical(
+                        crate::xdm::atomic_value_experiment::BuiltinAtomicType::Integer,
+                        value.to_string(),
+                    ),
+                );
+            }
             GlobalBindingDefault::LocationPath(path) => {
                 let source = source.ok_or_else(|| {
                     failure(

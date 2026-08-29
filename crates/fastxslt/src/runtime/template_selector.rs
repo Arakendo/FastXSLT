@@ -1,25 +1,33 @@
 //! Private compiled-template selection and source-pattern evaluation.
 
+use std::collections::BTreeMap;
+
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
+use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{MatchPattern, MatchedTemplate, StylesheetProgram};
 
 use super::runtime_failure::{ExecutionFailure, control_failure};
 
+pub(super) struct TemplateSelectionContext<'a> {
+    pub(super) source: &'a Document,
+    pub(super) node: NodeId,
+    pub(super) mode: Option<&'a str>,
+    pub(super) variables: &'a BTreeMap<String, AtomicValue>,
+    pub(super) request_id: &'a str,
+}
+
 pub(super) fn select_template_with_index<'a>(
     program: &'a StylesheetProgram,
-    source: &Document,
-    node: NodeId,
-    mode: Option<&str>,
-    request_id: &str,
+    selection: &TemplateSelectionContext<'_>,
     control: &mut InvocationControl,
 ) -> Result<Option<(usize, &'a MatchedTemplate)>, ExecutionFailure> {
     let mut selected_template = None;
     let mut selected_priority = None;
     for (index, template) in program.matched_templates.iter().enumerate() {
-        if !accepts_mode(&template.modes, mode)
-            || !matches_pattern(&template.pattern, source, node, request_id, control)?
+        if !accepts_mode(&template.modes, selection.mode)
+            || !matches_pattern(&template.pattern, selection, control)?
         {
             continue;
         }
@@ -33,11 +41,8 @@ pub(super) fn select_template_with_index<'a>(
 
 pub(super) fn select_next_template<'a>(
     program: &'a StylesheetProgram,
-    source: &Document,
-    node: NodeId,
-    mode: Option<&str>,
+    selection: &TemplateSelectionContext<'_>,
     current_index: usize,
-    request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<Option<(usize, &'a MatchedTemplate)>, ExecutionFailure> {
     let current_priority = program.matched_templates[current_index].priority;
@@ -47,8 +52,8 @@ pub(super) fn select_next_template<'a>(
         let lower_rank = template.priority < current_priority
             || (template.priority == current_priority && index < current_index);
         if !lower_rank
-            || !accepts_mode(&template.modes, mode)
-            || !matches_pattern(&template.pattern, source, node, request_id, control)?
+            || !accepts_mode(&template.modes, selection.mode)
+            || !matches_pattern(&template.pattern, selection, control)?
         {
             continue;
         }
@@ -73,11 +78,17 @@ pub(super) fn accepts_mode(modes: &[String], mode: Option<&str>) -> bool {
 
 fn matches_pattern(
     pattern: &MatchPattern,
-    source: &Document,
-    node: NodeId,
-    request_id: &str,
+    selection: &TemplateSelectionContext<'_>,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
+    let TemplateSelectionContext {
+        source,
+        node,
+        variables,
+        request_id,
+        ..
+    } = selection;
+    let node = *node;
     match pattern {
         MatchPattern::Document => Ok(source.kind(node) == NodeKind::Document),
         MatchPattern::DocumentElement(required) => {
@@ -127,6 +138,28 @@ fn matches_pattern(
             }
             Ok(false)
         }
+        MatchPattern::AnyElementWithAttributeVariable {
+            attribute,
+            variable,
+        } => {
+            if source.kind(node) != NodeKind::Element {
+                return Ok(false);
+            }
+            let Some(value) = variables.get(variable) else {
+                return Ok(false);
+            };
+            for candidate in source.attributes(node) {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                if source.name(*candidate) == Some(attribute)
+                    && attribute_equals_atomic(&source.string_value(*candidate), value)
+                {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
         MatchPattern::Path(path) => match_path_pattern(source, node, path, request_id, control),
         MatchPattern::Attribute(name) => {
             Ok(source.kind(node) == NodeKind::Attribute && source.name(node) == Some(name))
@@ -144,6 +177,17 @@ fn matches_pattern(
                 | NodeKind::ProcessingInstruction
         )),
     }
+}
+
+fn attribute_equals_atomic(attribute: &str, value: &AtomicValue) -> bool {
+    if value.atomic_type() == BuiltinAtomicType::Integer {
+        return attribute
+            .parse::<i64>()
+            .ok()
+            .zip(value.lexical().parse::<i64>().ok())
+            .is_some_and(|(left, right)| left == right);
+    }
+    attribute == value.lexical()
 }
 
 fn matches_document_element(

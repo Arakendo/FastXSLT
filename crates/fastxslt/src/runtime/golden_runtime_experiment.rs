@@ -45,7 +45,8 @@ pub(super) use runtime_failure::ExecutionFailure;
 use runtime_failure::{FailureCategory, control_failure, failure, failure_at};
 pub(super) use serialization::serialize_xml;
 use template_selector::{
-    accepts_mode as template_accepts_mode, select_next_template, select_template_with_index,
+    TemplateSelectionContext, accepts_mode as template_accepts_mode, select_next_template,
+    select_template_with_index,
 };
 #[cfg(test)]
 use transform_set_experiment::{
@@ -177,9 +178,17 @@ fn apply_initial_mode_template(
         globals,
     };
     charge_xslt_instruction(control, request_id)?;
-    if let Some((template_index, template)) =
-        select_template_with_index(program, source, node, Some(mode), request_id, control)?
-    {
+    if let Some((template_index, template)) = select_template_with_index(
+        program,
+        &TemplateSelectionContext {
+            source,
+            node,
+            mode: Some(mode),
+            variables: &globals.atomics,
+            request_id,
+        },
+        control,
+    )? {
         let variables = bind_template_parameters(&template.template, parameters, &globals.atomics);
         return execute_sequence(
             &inputs,
@@ -338,15 +347,8 @@ fn execute_instruction(
                 control,
             )?);
         }
-        Instruction::Variable { name, select, .. } => {
-            let value = execute_variable_binding(inputs, name, select, execution.node, control)?;
-            scope.atomics.insert(name.clone(), value);
-        }
-        Instruction::IntegerRangeVariable {
-            name, start, end, ..
-        } => {
-            let values = materialize_integer_range(*start, *end, inputs.request_id, control)?;
-            scope.atomic_sequences.insert(name.clone(), values);
+        Instruction::Variable { .. } | Instruction::IntegerRangeVariable { .. } => {
+            execute_binding(inputs, instruction, execution.node, scope, control)?;
         }
         Instruction::ApplyTemplates {
             select,
@@ -381,27 +383,113 @@ fn execute_instruction(
                 inputs, branches, otherwise, execution, scope, control,
             )?);
         }
-        Instruction::CallTemplate {
-            name, arguments, ..
-        } => {
-            result.extend(execute_named_call(
-                inputs, name, arguments, execution, scope, control,
-            )?);
-        }
-        Instruction::Copy { .. } => {
-            return Err(unsupported_source_copy(inputs.request_id));
-        }
+        Instruction::CallTemplate { .. } => result.extend(execute_call(
+            inputs,
+            instruction,
+            execution,
+            scope,
+            control,
+        )?),
+        Instruction::Copy { .. } => result.push(execute_copy(
+            inputs,
+            instruction,
+            execution,
+            scope,
+            control,
+        )?),
     }
     Ok(())
 }
 
-fn unsupported_source_copy(request_id: &str) -> ExecutionFailure {
-    failure(
-        "FXRT1007",
-        FailureCategory::Unsupported,
-        Some(request_id),
-        "xsl:copy requires a temporary-tree context in this private slice",
-    )
+fn execute_binding(
+    inputs: &SequenceInputs<'_>,
+    instruction: &Instruction,
+    context: Option<NodeId>,
+    scope: &mut RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    match instruction {
+        Instruction::Variable { name, select, .. } => {
+            let value = execute_variable_binding(inputs, name, select, context, control)?;
+            scope.atomics.insert(name.clone(), value);
+        }
+        Instruction::IntegerRangeVariable {
+            name, start, end, ..
+        } => {
+            let values = materialize_integer_range(*start, *end, inputs.request_id, control)?;
+            scope.atomic_sequences.insert(name.clone(), values);
+        }
+        _ => unreachable!("execute_binding receives a variable instruction"),
+    }
+    Ok(())
+}
+
+fn execute_call(
+    inputs: &SequenceInputs<'_>,
+    instruction: &Instruction,
+    execution: SequenceContext<'_>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let Instruction::CallTemplate {
+        name, arguments, ..
+    } = instruction
+    else {
+        unreachable!("execute_call_instruction receives xsl:call-template")
+    };
+    execute_named_call(inputs, name, arguments, execution, variables, control)
+}
+
+fn execute_copy(
+    inputs: &SequenceInputs<'_>,
+    instruction: &Instruction,
+    execution: SequenceContext<'_>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<ResultNode, ExecutionFailure> {
+    let Instruction::Copy {
+        attributes, body, ..
+    } = instruction
+    else {
+        unreachable!("execute_copy_instruction receives xsl:copy")
+    };
+    execute_source_element_copy(inputs, attributes, body, execution, variables, control)
+}
+
+fn execute_source_element_copy(
+    inputs: &SequenceInputs<'_>,
+    attributes: &[crate::xslt::golden_semantics_experiment::LiteralAttribute],
+    body: &[Instruction],
+    execution: SequenceContext<'_>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<ResultNode, ExecutionFailure> {
+    let (source, node) = required_source_context(inputs, execution.node)?;
+    if source.kind(node) != NodeKind::Element {
+        return Err(failure(
+            "FXRT1007",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "the private xsl:copy slice requires an element context",
+        ));
+    }
+    control
+        .charge(WorkDomain::ResultNode, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(ResultNode::Element {
+        name: source
+            .name(node)
+            .expect("element context has a name")
+            .clone(),
+        namespaces: source.namespace_declarations(node).to_vec(),
+        attributes: materialize_literal_attributes(
+            attributes,
+            variables,
+            inputs.request_id,
+            control,
+        )?,
+        children: execute_sequence(inputs, body, execution, variables, control)?,
+    })
 }
 
 fn execute_literal_element(
@@ -511,11 +599,14 @@ fn execute_next_match(
     })?;
     if let Some((next_index, template)) = select_next_template(
         inputs.program,
-        source,
-        node,
-        execution.current_mode,
+        &TemplateSelectionContext {
+            source,
+            node,
+            mode: execution.current_mode,
+            variables: &inputs.globals.atomics,
+            request_id: inputs.request_id,
+        },
         current_index,
-        inputs.request_id,
         control,
     )? {
         let parameters = evaluate_template_arguments(arguments, variables, inputs.request_id)?;
@@ -933,10 +1024,13 @@ fn apply_template(
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
     if let Some((template_index, template)) = select_template_with_index(
         inputs.program,
-        source,
-        node,
-        mode,
-        inputs.request_id,
+        &TemplateSelectionContext {
+            source,
+            node,
+            mode,
+            variables: &inputs.globals.atomics,
+            request_id: inputs.request_id,
+        },
         control,
     )? {
         let variables =

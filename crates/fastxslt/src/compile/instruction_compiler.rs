@@ -24,6 +24,9 @@ use crate::xslt::golden_semantics_experiment::{
 #[path = "instruction_compiler/literal_attribute_compiler.rs"]
 mod literal_attribute_compiler;
 use literal_attribute_compiler::compile_literal_result_attributes;
+#[path = "instruction_compiler/source_copy_compiler.rs"]
+mod source_copy_compiler;
+use source_copy_compiler::compile_copy;
 
 use super::{
     CompileCategory, CompileFailure, XML_SCHEMA_NAMESPACE, XSLT_NAMESPACE,
@@ -108,11 +111,7 @@ pub(super) fn compile_sequence_excluding(
                     } else if name.local == "call-template" {
                         instructions.push(compile_call_template(document, child)?);
                     } else if name.local == "copy" {
-                        ensure_only_attributes(document, child, &[], "xsl:copy")?;
-                        ensure_no_meaningful_children(document, child, "xsl:copy")?;
-                        instructions.push(Instruction::Copy {
-                            location: document.location(child).clone(),
-                        });
+                        instructions.push(compile_copy(document, child)?);
                     } else {
                         return Err(unsupported(
                             "FXST1006",

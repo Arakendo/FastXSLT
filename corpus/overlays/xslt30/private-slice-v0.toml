@@ -623,3 +623,10 @@ case_name = "conflict-resolution-1202c"
 selection = "selected"
 execution = "passed"
 rationale = "Under the selected XSLT 3.0 semantics, equal-priority applicable rules use the last declaration and next-match can continue to the earlier equal-ranked rule; an xsl:fallback child remains inert because next-match is supported."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0601"
+selection = "selected"
+execution = "passed"
+rationale = "A global integer parameter default participates in a variable-dependent attribute predicate; the selected rule performs a source-element xsl:copy with one static constructed attribute before recursively applying templates."

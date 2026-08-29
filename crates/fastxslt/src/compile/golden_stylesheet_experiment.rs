@@ -284,6 +284,8 @@ fn compile_global_binding(
                 ));
             }
             GlobalBindingDefault::Variable(variable.to_owned())
+        } else if let Ok(value) = select.parse::<i64>() {
+            GlobalBindingDefault::Integer(value)
         } else {
             GlobalBindingDefault::LocationPath(
                 parse_location_path(select, document.location(element).clone())

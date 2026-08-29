@@ -40,6 +40,7 @@ pub(crate) struct GlobalBinding {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum GlobalBindingDefault {
     Text(String),
+    Integer(i64),
     LocationPath(LocationPath),
     Variable(String),
     TemporaryTree(Vec<ConstructedElement>),
@@ -131,6 +132,10 @@ pub(crate) enum MatchPattern {
         attribute: ExpandedName,
         value: String,
     },
+    AnyElementWithAttributeVariable {
+        attribute: ExpandedName,
+        variable: String,
+    },
     Path(LocationPath),
     Attribute(ExpandedName),
     Comment,
@@ -220,6 +225,8 @@ pub(crate) enum Instruction {
         location: SourceLocation,
     },
     Copy {
+        attributes: Vec<LiteralAttribute>,
+        body: Vec<Instruction>,
         location: SourceLocation,
     },
 }

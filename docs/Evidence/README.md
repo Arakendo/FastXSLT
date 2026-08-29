@@ -42,6 +42,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `conflict-resolution-1201` Next-Match Priority Chain](xslt30-conflict-resolution-1201-next-match-priority-chain-2026-08-29.md)
 - [XSLT30 `conflict-resolution-1202c` Equal-Rank Next-Match and Fallback](xslt30-conflict-resolution-1202c-equal-rank-next-match-and-fallback-2026-08-29.md)
 - [XSLT30 `conflict-resolution-1205` Next-Match Parameters and Result Attribute](xslt30-conflict-resolution-1205-next-match-parameters-and-result-attribute-2026-08-29.md)
+- [XSLT30 `conflict-resolution-0601` Variable Pattern and Source Copy](xslt30-conflict-resolution-0601-variable-pattern-and-source-copy-2026-08-29.md)
 - [XSLT30 Path Denominator and Child-Axis Predicate](xslt30-path-denominator-and-child-axis-predicate-2026-08-26.md)
 - [XSLT30 `path-002` Descendant and Ancestor Execution](xslt30-path-002-descendant-ancestor-execution-2026-08-26.md)
 - [XSLT30 `path-003` Ancestor-or-Self Execution](xslt30-path-003-ancestor-or-self-execution-2026-08-26.md)
