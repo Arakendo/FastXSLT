@@ -182,24 +182,31 @@ fn compile_top_level_template(
 
     let pattern = required_attribute(document, element, None, "match")?;
     if pattern == "/" {
-        if optional_attribute(document, element, None, "priority").is_some() {
-            return Err(unsupported(
-                "FXST1024",
-                "explicit priority on the private root-template path is not yet admitted",
-                document.location(element),
-            ));
-        }
-        let modes = optional_attribute(document, element, None, "mode")
-            .map(|mode| parse_template_modes(mode, document.location(element)))
-            .transpose()?
-            .unwrap_or_default();
-        if !modes.is_empty() {
-            let matched_template = MatchedTemplate {
-                pattern: MatchPattern::Document,
-                priority: TemplatePriority::PATH_DEFAULT,
-                modes,
-                template: compile_template(document, element)?,
-            };
+        let has_priority = optional_attribute(document, element, None, "priority").is_some();
+        let has_mode = optional_attribute(document, element, None, "mode").is_some();
+        let has_competing_default = matched_templates.iter().any(|existing| {
+            existing.pattern == MatchPattern::Document && existing.modes.is_empty()
+        });
+        if has_priority || has_mode || root_template.is_some() || has_competing_default {
+            let matched_template = compile_matched_template(document, element, pattern)?;
+            let competes_with_default = matched_template.modes.is_empty()
+                || matched_template
+                    .modes
+                    .iter()
+                    .any(|mode| matches!(mode.as_str(), "#default" | "#all"));
+            if competes_with_default {
+                if let Some(previous) = root_template.take() {
+                    matched_templates.push(MatchedTemplate {
+                        pattern: MatchPattern::Document,
+                        priority: TemplatePriority::ROOT_DEFAULT,
+                        modes: Vec::new(),
+                        template: previous,
+                    });
+                    root_template_modes.clear();
+                }
+                matched_templates.push(matched_template);
+                return Ok(());
+            }
             if matched_templates.iter().any(|existing| {
                 existing.pattern == matched_template.pattern
                     && existing.modes == matched_template.modes
@@ -212,13 +219,6 @@ fn compile_top_level_template(
             }
             matched_templates.push(matched_template);
             return Ok(());
-        }
-        if root_template.is_some() {
-            return Err(unsupported(
-                "FXST1001",
-                "the private slice permits one root template",
-                document.location(element),
-            ));
         }
         root_template_modes.clear();
         *root_template = Some(compile_template(document, element)?);
@@ -1009,10 +1009,23 @@ mod tests {
             "memory:root-priority.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/" priority="1"><out/></xsl:template></xsl:stylesheet>"#,
         );
-        let failure = compile_stylesheet(&root)
-            .expect_err("root priority must not be ignored by the private shortcut");
-        assert_eq!(failure.code, "FXST1024");
-        assert_eq!(failure.category, CompileCategory::Unsupported);
+        let root_program =
+            compile_stylesheet(&root).expect("explicit root priority should use typed selection");
+        assert!(root_program.root_template.is_none());
+        assert_eq!(root_program.matched_templates.len(), 1);
+        assert_eq!(
+            root_program.matched_templates[0].priority,
+            TemplatePriority::explicit_integer(1)
+        );
+
+        let default_mode_root = parse_stylesheet(
+            "memory:default-mode-root.xsl",
+            br##"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><first/></xsl:template><xsl:template match="/" mode="#default"><second/></xsl:template></xsl:stylesheet>"##,
+        );
+        let default_mode_program = compile_stylesheet(&default_mode_root)
+            .expect("#default root should compete through typed selection");
+        assert!(default_mode_program.root_template.is_none());
+        assert_eq!(default_mode_program.matched_templates.len(), 2);
     }
 
     #[test]

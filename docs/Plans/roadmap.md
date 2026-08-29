@@ -262,6 +262,10 @@ remain outside these tranches.
 typed any-element applicability and `-0.5` priority already used by `*`.
 Its exact `name(.)` value operation is admitted only for unnamespaced context
 nodes; namespaced lexical-QName reconstruction remains explicitly unsupported.
+`conflict-resolution-1601` retains the direct single-root execution path until
+root rules actually compete, then migrates them into typed document-node
+selection with `/` default priority `-0.5`, bounded explicit priorities, and
+declaration-order tie-breaking. Cross-module root conflicts remain unsupported.
 `conflict-resolution-0901` then conserves the existing typed path machinery
 across template selection: `//b` supplies six candidates in document order,
 while retained `doc/a/b` and `doc/z/b` patterns distinguish their parent chains
@@ -296,8 +300,8 @@ each inspected node and preserves document order. It does not widen general
 default-namespaced path support.
 The complete pinned apply-templates test set is now conserved as an ordered
 50-case denominator with 50 principal stylesheets, one secondary stylesheet,
-41 XML assertions, eight error assertions, and one compound assertion. Eighteen
-cases have explicit passing overrides; the other 32 remain visibly not run and
+41 XML assertions, eight error assertions, and one compound assertion. Nineteen
+cases have explicit passing overrides; the other 31 remain visibly not run and
 are not mislabeled as engine failures. This corrects the earlier provisional
 52-case count without turning inventory into a conformance percentage.
 
@@ -762,6 +766,10 @@ failed, and harness-error cases without an unqualified conformance claim.
   test to typed any-element applicability with its `-0.5` default priority.
   Admit `name(.)` only for unnamespaced context nodes until lexical QName prefix
   identity is represented faithfully.
+- [x] Execute `conflict-resolution-1601` by retaining the direct path for a lone
+  unmoded `/` template and migrating competing root rules into ordinary typed
+  document-node selection. Preserve exact `-0.5` default priority, explicit
+  bounded priorities, and declaration order; keep cross-module conflicts out.
 - [x] Execute `conflict-resolution-0901` as a conservation case for typed
   leading-descendant selection, document-order candidate delivery, and retained
   multi-step parent/child match paths. Keep `current()` patterns,
@@ -769,7 +777,7 @@ failed, and harness-error cases without an unqualified conformance claim.
   propagation, and general pattern grammar outside this slice.
 - [x] Conserve the complete ordered 50-case XSLT30 apply-templates denominator,
   its 50 principal plus one secondary stylesheet, and its assertion-shape
-  counts. Record 18 explicit passes and 32 default not-run dispositions without
+  counts. Record 19 explicit passes and 31 default not-run dispositions without
   converting unexecuted cases into engine failures or an aggregate conformance
   claim.
 - [x] Execute `conflict-resolution-0701` through inherited

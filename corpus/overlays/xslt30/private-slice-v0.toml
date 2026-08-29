@@ -581,3 +581,10 @@ case_name = "conflict-resolution-1801"
 selection = "selected"
 execution = "passed"
 rationale = "The element() kind-test pattern shares exact -0.5 priority with the admitted element wildcard, while bounded explicit priorities select the expected exact-name or kind-test rule; name(.) is evaluated only for unnamespaced context nodes."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-1601"
+selection = "selected"
+execution = "passed"
+rationale = "Competing unmoded root patterns migrate from the single-root shortcut into ordinary typed document-node selection, where / carries exact default priority -0.5 and bounded explicit priorities plus declaration order select the rule."

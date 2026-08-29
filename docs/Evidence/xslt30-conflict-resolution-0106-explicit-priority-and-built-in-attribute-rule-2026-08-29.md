@@ -25,8 +25,9 @@ with each compiled matched template. The initial case admitted integers; the
 domain now also accepts up to six fractional digits as separately evidenced by
 `conflict-resolution-1701`. Values outside that bound remain structured
 unsupported outcomes, and invalid lexicals remain structured invalid input.
-The private root-template shortcut rejects explicit priority rather than
-silently ignoring it.
+Competing and explicitly prioritized root patterns are admitted separately by
+`conflict-resolution-1601`; the direct single-root path remains an optimization
+only when no conflict semantics are needed.
 
 The case needs two independent rules to remain correct. Explicit priority `10`
 keeps the exact `doc` template ahead of the otherwise competing `node()` rule
@@ -50,7 +51,7 @@ invalid lexical priority (`FXST0030`).
 
 This evidence establishes signed-integer priority for `0106` and the built-in
 string-value rule for attributes. Bounded fractional priority is evidenced
-separately by `1701`. Arbitrary precision, explicit priority on the private
-root-template shortcut, duplicate-pattern resolution, import/package
-precedence, `xsl:mode/@on-multiple-match`, warnings, namespace nodes, and the
-complete 50-case denominator remain outside this record.
+separately by `1701`. Arbitrary precision, general duplicate-pattern
+resolution, import/package precedence, `xsl:mode/@on-multiple-match`, warnings,
+namespace nodes, and the complete 50-case denominator remain outside this
+record.

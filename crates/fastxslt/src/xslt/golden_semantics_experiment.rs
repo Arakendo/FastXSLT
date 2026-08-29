@@ -95,6 +95,7 @@ impl TemplatePriority {
     pub(crate) const PATH_DEFAULT: Self = Self(500_000);
     pub(crate) const EXACT_NAME_DEFAULT: Self = Self(0);
     pub(crate) const NAMESPACE_WILDCARD_DEFAULT: Self = Self(-250_000);
+    pub(crate) const ROOT_DEFAULT: Self = Self(-500_000);
     pub(crate) const NODE_TEST_DEFAULT: Self = Self(-500_000);
 
     pub(crate) fn explicit_integer(value: i32) -> Self {

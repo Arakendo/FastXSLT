@@ -15,6 +15,7 @@ pub(super) fn compile_match_pattern(
     lexical_pattern: &str,
 ) -> Result<(MatchPattern, TemplatePriority), CompileFailure> {
     let pattern = match lexical_pattern {
+        "/" => MatchPattern::Document,
         "comment()" => MatchPattern::Comment,
         "processing-instruction()" => MatchPattern::ProcessingInstruction,
         "node()" => MatchPattern::AnyNode,
@@ -164,11 +165,11 @@ fn compile_template_priority(
 ) -> Result<TemplatePriority, CompileFailure> {
     let Some(lexical) = optional_attribute(document, element, None, "priority") else {
         return Ok(match pattern {
-            MatchPattern::Document
-            | MatchPattern::Path(_)
+            MatchPattern::Path(_)
             | MatchPattern::DescendantAnyElement
             | MatchPattern::ElementWithAttribute { .. }
             | MatchPattern::ElementWithAttributeValue { .. } => TemplatePriority::PATH_DEFAULT,
+            MatchPattern::Document => TemplatePriority::ROOT_DEFAULT,
             MatchPattern::Element(_) | MatchPattern::Attribute(_) => {
                 TemplatePriority::EXACT_NAME_DEFAULT
             }
