@@ -734,7 +734,7 @@ fn apply_template(
         .charge(WorkDomain::XsltInstruction, 1)
         .map_err(|failure| control_failure(failure, request_id))?;
     let mut selected_template = None;
-    let mut selected_priority = 0;
+    let mut selected_priority = i8::MIN;
     for template in &program.matched_templates {
         if !template_accepts_mode(&template.modes, mode)
             || !match_pattern(&template.pattern, source, node, request_id, control)?
@@ -742,12 +742,12 @@ fn apply_template(
             continue;
         }
         let priority = match template.pattern {
-            MatchPattern::Path(_) => 3,
-            MatchPattern::Element(_) | MatchPattern::Attribute(_) => 2,
+            MatchPattern::Path(_) => 1,
+            MatchPattern::Element(_) | MatchPattern::Attribute(_) => 0,
             MatchPattern::AnyElement
             | MatchPattern::Comment
-            | MatchPattern::ProcessingInstruction => 1,
-            MatchPattern::AnyNode => 0,
+            | MatchPattern::ProcessingInstruction
+            | MatchPattern::AnyNode => -1,
         };
         if selected_template.is_none() || priority >= selected_priority {
             selected_template = Some(template);

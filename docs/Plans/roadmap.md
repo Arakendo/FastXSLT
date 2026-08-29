@@ -207,6 +207,11 @@ Pinned XSLT30 `conflict-resolution-0101` now starts standards-driven
 fallbacks. Its previously exposed `xsl:text` gap now lowers explicit character
 content to the existing owned text instruction with whitespace-preservation and
 invalid-element controls. This is one selected case, not a denominator claim.
+Paired XSLT 3.0 cases `conflict-resolution-0102c` and `0104c` correct the next
+selector boundary: element-wildcard and any-node patterns tie at the same
+default priority, so reversing their stylesheet order reverses the selected
+last-declared rule. Exact-name and path priority bands remain distinct. These
+three selected cases still do not establish the complete 52-case denominator.
 
 The current order of work is:
 
@@ -631,6 +636,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   template rules. Add only the required attribute-free `xsl:text` character
   content, preserving explicit whitespace and rejecting element content; do
   not infer complete apply-templates conflict-resolution conformance.
+- [x] Execute selected XSLT 3.0 `conflict-resolution-0102c` and `0104c` as a
+  paired source-order control. Give element wildcard and any-node patterns equal
+  default priority and select the last declaration, while preserving the higher
+  exact-name and path bands. Do not claim explicit priority, recovery policy,
+  warnings, or older-edition ambiguity behavior.
 - [x] Admit the complete five-case XSLT30 `misc/initial-mode` denominator,
   preserving each mode identity and expected error or XML assertion through
   bounded snapshots. A focused host-neutral initial-mode entry executes with an

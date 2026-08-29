@@ -264,6 +264,84 @@ fn execute_path_case(case_name: &str) -> (String, String) {
     (results.by_request[case_name].serialized.clone(), expected)
 }
 
+fn execute_apply_templates_case(case_name: &str) -> (String, String, usize) {
+    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
+    assert!(overlay.contains(&format!("case_name = \"{case_name}\"")));
+    let (test_set, set_path) = apply_templates_test_set();
+    let test_case = find_element(
+        &test_set,
+        test_set.document_node(),
+        "test-case",
+        Some(("name", case_name)),
+    )
+    .expect("overlay case should exist in pinned suite");
+    let environment_ref = find_element(&test_set, test_case, "environment", None)
+        .and_then(|node| attribute(&test_set, node, "ref"))
+        .expect("case should reference an environment");
+    let environment = find_element(
+        &test_set,
+        test_set.document_node(),
+        "environment",
+        Some(("name", environment_ref)),
+    )
+    .expect("referenced environment should exist");
+    let source = find_element(&test_set, environment, "content", None)
+        .map(|node| test_set.string_value(node))
+        .expect("environment should contain the principal source");
+    let stylesheet_file = find_element(&test_set, test_case, "stylesheet", None)
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("case should name a stylesheet");
+    let expected = find_element(&test_set, test_case, "assert-xml", None)
+        .map(|node| test_set.string_value(node))
+        .expect("case should provide an XML assertion");
+    let stylesheet = fs::read(
+        set_path
+            .parent()
+            .expect("test set should have a directory")
+            .join(stylesheet_file),
+    )
+    .expect("read upstream stylesheet and close handle");
+    let source_id = format!("urn:w3c:xslt30:{case_name}:source");
+    let stylesheet_id = format!("urn:w3c:xslt30:{case_name}:stylesheet");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(source_id.clone(), source.into_bytes())
+        .expect("admit upstream source");
+    resources
+        .admit(stylesheet_id.clone(), stylesheet)
+        .expect("admit upstream stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, &stylesheet_id).expect("compile suite case");
+    let matched_template_count = program.matched_templates.len();
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 4_096,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    set.add(TransformRequest {
+        identity: case_name.to_owned(),
+        result_identity: format!("result:{case_name}"),
+        entry: InvocationEntry::PrincipalSource {
+            resource: source_id,
+        },
+        parameters: BTreeMap::new(),
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    })
+    .expect("admit suite request");
+    let results = execute_transform_set(set.seal()).expect("execute suite case");
+    (
+        results.by_request[case_name].serialized.clone(),
+        expected,
+        matched_template_count,
+    )
+}
+
 #[test]
 fn classifies_the_complete_pinned_template_test_set_without_denominator_loss() {
     let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
@@ -402,80 +480,19 @@ fn executes_pinned_xslt30_template_001_through_005() {
 
 #[test]
 fn executes_pinned_xslt30_conflict_resolution_0101() {
-    const CASE_NAME: &str = "conflict-resolution-0101";
+    let (actual, expected, matched_template_count) =
+        execute_apply_templates_case("conflict-resolution-0101");
+    assert_eq!(matched_template_count, 4);
+    assert_same_result_element_string(&actual, &expected, "out");
+}
 
-    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
-    assert!(overlay.contains(&format!("case_name = \"{CASE_NAME}\"")));
-    let (test_set, set_path) = apply_templates_test_set();
-    let test_case = find_element(
-        &test_set,
-        test_set.document_node(),
-        "test-case",
-        Some(("name", CASE_NAME)),
-    )
-    .expect("overlay case should exist in pinned suite");
-    let environment_ref = find_element(&test_set, test_case, "environment", None)
-        .and_then(|node| attribute(&test_set, node, "ref"))
-        .expect("case should reference an environment");
-    let environment = find_element(
-        &test_set,
-        test_set.document_node(),
-        "environment",
-        Some(("name", environment_ref)),
-    )
-    .expect("referenced environment should exist");
-    let source = find_element(&test_set, environment, "content", None)
-        .map(|node| test_set.string_value(node))
-        .expect("environment should contain the principal source");
-    let stylesheet_file = find_element(&test_set, test_case, "stylesheet", None)
-        .and_then(|node| attribute(&test_set, node, "file"))
-        .expect("case should name a stylesheet");
-    let expected = find_element(&test_set, test_case, "assert-xml", None)
-        .map(|node| test_set.string_value(node))
-        .expect("case should provide an XML assertion");
-    let stylesheet = fs::read(
-        set_path
-            .parent()
-            .expect("test set should have a directory")
-            .join(stylesheet_file),
-    )
-    .expect("read upstream stylesheet and close handle");
-    let source_id = format!("urn:w3c:xslt30:{CASE_NAME}:source");
-    let stylesheet_id = format!("urn:w3c:xslt30:{CASE_NAME}:stylesheet");
-    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
-    resources
-        .admit(source_id.clone(), source.into_bytes())
-        .expect("admit upstream source");
-    resources
-        .admit(stylesheet_id.clone(), stylesheet)
-        .expect("admit upstream stylesheet");
-    let snapshot = resources.seal();
-    let program = compile_resource(&snapshot, &stylesheet_id).expect("compile suite case");
-    assert_eq!(program.matched_templates.len(), 4);
-    let mut set = TransformSetBuilder::new(
-        snapshot,
-        program,
-        1,
-        ExecutionPolicy {
-            denied_sources: HashSet::new(),
-            serialized_byte_limit: 4_096,
-            work_limits: WorkLimits::unbounded(),
-        },
-    );
-    set.add(TransformRequest {
-        identity: CASE_NAME.to_owned(),
-        result_identity: format!("result:{CASE_NAME}"),
-        entry: InvocationEntry::PrincipalSource {
-            resource: source_id,
-        },
-        parameters: BTreeMap::new(),
-        cancellation: CancellationToken::new(),
-        cancellation_fault: None,
-    })
-    .expect("admit suite request");
-    let results = execute_transform_set(set.seal()).expect("execute suite case");
-    let actual = &results.by_request[CASE_NAME].serialized;
-    assert_same_result_element_string(actual, &expected, "out");
+#[test]
+fn executes_xslt30_equal_priority_conflicts_by_last_source_order() {
+    for case_name in ["conflict-resolution-0102c", "conflict-resolution-0104c"] {
+        let (actual, expected, matched_template_count) = execute_apply_templates_case(case_name);
+        assert_eq!(matched_template_count, 3);
+        assert_same_result_element_string(&actual, &expected, "out");
+    }
 }
 
 #[test]

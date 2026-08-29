@@ -462,3 +462,17 @@ case_name = "conflict-resolution-0101"
 selection = "selected"
 execution = "passed"
 rationale = "Built-in document dispatch reaches competing exact-name, element-wildcard, and any-node template rules; the exact qualified-name rule wins by default priority."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0102c"
+selection = "selected"
+execution = "passed"
+rationale = "The XSLT 3.0 default multiple-match policy chooses the later element-wildcard rule when it ties an any-node rule at the same default priority."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0104c"
+selection = "selected"
+execution = "passed"
+rationale = "Reversing the equal-priority element-wildcard and any-node declarations makes the later any-node rule win under the XSLT 3.0 default policy."
