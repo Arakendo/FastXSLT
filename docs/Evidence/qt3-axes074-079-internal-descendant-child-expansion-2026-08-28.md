@@ -57,3 +57,6 @@ descendant abbreviation. It does not establish attribute, self, parent, or
 other axes after that abbreviation; repeated separators; internal-descendant
 forms composed with the current existence-predicate grammar; generalized path
 normalization; namespace-sensitive name tests; or a general XPath parser.
+
+Subsequent [selected `Axes080`–`Axes084` evidence](qt3-axes080-084-internal-descendant-attribute-composition-2026-08-28.md)
+adds the adjacent attribute forms while retaining the predicate boundary.

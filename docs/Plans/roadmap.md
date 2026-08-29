@@ -117,6 +117,11 @@ existing typed descendant-or-self node step before explicit or abbreviated
 child steps. Overlapping nested contexts retain unique document-ordered
 results without erasing attributable repeated traversal work; the direct seam
 now has 164 passes.
+Complete `Axes080` through `Axes083` plus `Axes084-1` through `Axes084-4`
+compose the same internal expansion with explicit and abbreviated attribute
+steps. No production widening was required; the direct seam now has 181 passes.
+`Axes084-5` remains visibly outside selection because it introduces
+`normalize-space()` predicate semantics rather than another axis form.
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
 source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`
@@ -345,6 +350,11 @@ implemented behavior belongs to a named standards slice.
   written child step. Unify explicit and abbreviated child forms, deduplicate
   overlapping result identities in document order, and retain every actual
   traversal visit in work accounting.
+- [x] Execute complete QT3 `Axes080` through `Axes083` and selected `Axes084-1`
+  through `Axes084-4` by composing internal descendant expansion with typed
+  attribute steps. Preserve attribute identity and order, exclude namespace
+  declarations, unify explicit and abbreviated forms, and keep `Axes084-5`
+  outside the passing denominator pending its distinct predicate semantics.
 - [x] Admit and execute the complete two-case XSLT30 `fn/deep-equal` denominator
   through positioned descendant attribute/comment selection and charged,
   pairwise node comparison. Preserve distinct XDM identity while comparing

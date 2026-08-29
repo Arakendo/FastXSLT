@@ -10,7 +10,7 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use super::count_experiment;
 
 const QT3_NAMESPACE: &str = "http://www.w3.org/2010/09/qt-fots-catalog";
-const CASES: [(&str, &str, usize); 164] = [
+const CASES: [(&str, &str, usize); 181] = [
     ("Axes001-1", "fn:count(//center/child::*)", 0),
     ("Axes001-2", "fn:count(//center/child::*)", 1),
     ("Axes001-3", "fn:count(//center/child::*)", 6),
@@ -223,6 +223,39 @@ const CASES: [(&str, &str, usize); 164] = [
     ("Axes079-2", "fn:count(//center//node())", 1),
     ("Axes079-3", "fn:count(//center//node())", 1),
     ("Axes079-4", "fn:count(//center//node())", 37),
+    ("Axes080-1", "fn:count(//west//attribute::*)", 0),
+    ("Axes080-2", "fn:count(//west//attribute::*)", 1),
+    ("Axes080-3", "fn:count(//west//attribute::*)", 4),
+    (
+        "Axes081-1",
+        "fn:count(//center//attribute::center-attr-2)",
+        0,
+    ),
+    (
+        "Axes081-2",
+        "fn:count(//center//attribute::center-attr-2)",
+        0,
+    ),
+    (
+        "Axes081-3",
+        "fn:count(//center//attribute::center-attr-2)",
+        1,
+    ),
+    (
+        "Axes081-4",
+        "fn:count(//center//attribute::center-attr-2)",
+        4,
+    ),
+    ("Axes082-1", "fn:count(//west//attribute::node())", 0),
+    ("Axes082-2", "fn:count(//west//attribute::node())", 1),
+    ("Axes082-3", "fn:count(//west//attribute::node())", 4),
+    ("Axes083-1", "fn:count(//west//@*)", 0),
+    ("Axes083-2", "fn:count(//west//@*)", 1),
+    ("Axes083-3", "fn:count(//west//@*)", 4),
+    ("Axes084-1", "fn:count(//center//@center-attr-2)", 0),
+    ("Axes084-2", "fn:count(//center//@center-attr-2)", 0),
+    ("Axes084-3", "fn:count(//center//@center-attr-2)", 1),
+    ("Axes084-4", "fn:count(//center//@center-attr-2)", 4),
 ];
 
 fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'a str> {
@@ -279,7 +312,7 @@ fn load_axis_test_set() -> (Document, PathBuf) {
 }
 
 #[test]
-fn executes_qt3_axes001_through_axes079_admitted_location_path_groups() {
+fn executes_qt3_axes001_through_selected_axes084_admitted_location_path_groups() {
     let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
     let selected_records: Vec<_> = overlay
         .split("[[case]]")

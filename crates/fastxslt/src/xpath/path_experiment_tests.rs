@@ -291,6 +291,42 @@ fn internal_descendant_abbreviation_lowers_to_a_typed_step_and_deduplicates() {
 }
 
 #[test]
+fn internal_descendant_abbreviation_composes_with_attribute_steps() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        br#"<root xmlns:n="urn:test"><center p="1"><a q="2"/><center p="3"><b q="4"/></center></center></root>"#,
+        ParseLimits {
+            max_events: 20,
+            max_depth: 6,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let explicit = parse_location_path("//center//attribute::*", location())
+        .expect("explicit attributes after internal descendant separator should parse");
+    let abbreviated = parse_location_path("//center//@*", location())
+        .expect("abbreviated attributes after internal descendant separator should parse");
+    let mut control = InvocationControl::unbounded();
+
+    assert_eq!(explicit.steps, abbreviated.steps);
+    let selected = evaluate_location_path_controlled(
+        &document,
+        document.children(document.document_node())[0],
+        &abbreviated,
+        &mut control,
+    )
+    .expect("internal descendant attribute composition should execute");
+
+    assert_eq!(selected.len(), 4);
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 15);
+    assert!(
+        selected
+            .iter()
+            .all(|node| document.kind(*node) == NodeKind::Attribute)
+    );
+}
+
+#[test]
 fn descendant_or_self_steps_include_self_and_deduplicate_overlapping_contexts() {
     let parsed = parse_document(
         "memory:source.xml",
