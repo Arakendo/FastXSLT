@@ -3,15 +3,16 @@
 use std::collections::BTreeMap;
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
-use crate::xdm::atomic_value_experiment::AtomicValue;
+use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    ConstructedElement, GlobalBindingDefault, StylesheetProgram, Template,
+    ConstructedElement, GlobalBindingDefault, StylesheetProgram, Template, TemplateArgument,
+    TemplateArgumentValue,
 };
 
-use super::{ExecutionFailure, FailureCategory, InvocationParameter, control_failure, failure};
+use super::{ExecutionFailure, FailureCategory, control_failure, failure, failure_at};
 
 pub(super) struct SequenceInputs<'a> {
     pub(super) program: &'a StylesheetProgram,
@@ -44,6 +45,49 @@ pub(super) struct TemporaryNode {
 pub(super) struct RuntimeVariables {
     pub(super) atomics: BTreeMap<String, AtomicValue>,
     pub(super) atomic_sequences: BTreeMap<String, Vec<AtomicValue>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct InvocationParameter {
+    pub(super) value: AtomicValue,
+    pub(super) tunnel: bool,
+}
+
+pub(super) fn evaluate_template_arguments(
+    arguments: &[TemplateArgument],
+    variables: &RuntimeVariables,
+    request_id: &str,
+) -> Result<BTreeMap<String, InvocationParameter>, ExecutionFailure> {
+    arguments
+        .iter()
+        .map(|argument| {
+            let value = match &argument.value {
+                TemplateArgumentValue::Text(value) => AtomicValue::string(value.clone()),
+                TemplateArgumentValue::Integer(value) => AtomicValue::from_validated_lexical(
+                    BuiltinAtomicType::Integer,
+                    value.to_string(),
+                ),
+                TemplateArgumentValue::Variable(name) => {
+                    variables.atomics.get(name).cloned().ok_or_else(|| {
+                        failure_at(
+                            "FXRT0002",
+                            FailureCategory::Invalid,
+                            Some(request_id),
+                            argument.location.clone(),
+                            format!("unbound template argument variable: ${name}"),
+                        )
+                    })?
+                }
+            };
+            Ok((
+                argument.name.clone(),
+                InvocationParameter {
+                    value,
+                    tunnel: false,
+                },
+            ))
+        })
+        .collect()
 }
 
 impl RuntimeVariables {

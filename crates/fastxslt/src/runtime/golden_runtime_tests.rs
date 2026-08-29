@@ -100,6 +100,7 @@ fn golden_transform_executes_through_an_unordered_identified_set() {
                 local: "message".to_owned(),
             },
             namespaces: Vec::new(),
+            attributes: Vec::new(),
             children: vec![ResultNode::Text("Hello, FastXSLT!".to_owned())],
         }]
     );
@@ -397,6 +398,7 @@ fn absent_output_declaration_does_not_silently_apply_html_serialization() {
                 local: "html".to_owned(),
             },
             namespaces: Vec::new(),
+            attributes: Vec::new(),
             children: Vec::new(),
         }],
     };
@@ -428,6 +430,7 @@ fn requested_indentation_is_preserved_as_an_explicit_serialization_boundary() {
                 local: "out".to_owned(),
             },
             namespaces: Vec::new(),
+            attributes: Vec::new(),
             children: Vec::new(),
         }],
     };
@@ -468,12 +471,14 @@ fn namespaced_element_names_use_retained_bindings_and_undeclare_defaults() {
                     namespace: "urn:default".to_owned(),
                 },
             ],
+            attributes: Vec::new(),
             children: vec![ResultNode::Element {
                 name: crate::xml::quick_xml_experiment::ExpandedName {
                     namespace: None,
                     local: "child".to_owned(),
                 },
                 namespaces: Vec::new(),
+                attributes: Vec::new(),
                 children: Vec::new(),
             }],
         }],
@@ -507,6 +512,7 @@ fn text_output_concatenates_descendant_text_without_markup_or_escaping() {
                 local: "root".to_owned(),
             },
             namespaces: Vec::new(),
+            attributes: Vec::new(),
             children: vec![
                 ResultNode::Text("A < B & C".to_owned()),
                 ResultNode::Element {
@@ -515,6 +521,7 @@ fn text_output_concatenates_descendant_text_without_markup_or_escaping() {
                         local: "nested".to_owned(),
                     },
                     namespaces: Vec::new(),
+                    attributes: Vec::new(),
                     children: vec![ResultNode::Text(" + nested".to_owned())],
                 },
             ],
@@ -549,6 +556,7 @@ fn xml_compatible_xhtml_output_honors_explicit_declaration_omission() {
                 prefix: None,
                 namespace: "http://www.w3.org/1999/xhtml".to_owned(),
             }],
+            attributes: Vec::new(),
             children: Vec::new(),
         }],
     };

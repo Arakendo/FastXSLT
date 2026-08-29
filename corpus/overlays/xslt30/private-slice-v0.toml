@@ -609,3 +609,10 @@ case_name = "conflict-resolution-1201"
 selection = "selected"
 execution = "passed"
 rationale = "xsl:next-match retains the current matched-template index and selects the highest lower-ranked applicable rule by priority and declaration order, falling through to the built-in rule when the chain is exhausted."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-1205"
+selection = "selected"
+execution = "passed"
+rationale = "Typed integer and variable xsl:with-param values flow through apply-templates and each next-match frame without entering compiled or shared invocation state; a variable-only literal attribute value template preserves the final value in the result tree."

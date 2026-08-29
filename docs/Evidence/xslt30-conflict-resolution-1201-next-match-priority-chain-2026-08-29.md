@@ -42,7 +42,8 @@ and the second `foo` at `2`, then reaches the built-in fallback.
 ## Claim boundary
 
 This evidence admits parameter-free `xsl:next-match` across differing
-priorities in one stylesheet module, including built-in fallback. It does not
-admit next-match parameters, import/package precedence, equal-priority
+priorities in one stylesheet module, including built-in fallback. Parameters
+are evidenced separately by `conflict-resolution-1205`. This record does not
+admit import/package precedence, equal-priority
 ambiguity policy, `xsl:fallback` children, temporary-tree next-match, or
 `xsl:apply-imports`.

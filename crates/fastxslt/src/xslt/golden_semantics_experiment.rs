@@ -162,6 +162,7 @@ pub(crate) enum Instruction {
     LiteralElement {
         name: ExpandedName,
         namespaces: Vec<NamespaceBinding>,
+        attributes: Vec<LiteralAttribute>,
         body: Vec<Instruction>,
         location: SourceLocation,
     },
@@ -196,9 +197,11 @@ pub(crate) enum Instruction {
     ApplyTemplates {
         select: Option<ApplySelection>,
         mode: Option<String>,
+        arguments: Vec<TemplateArgument>,
         location: SourceLocation,
     },
     NextMatch {
+        arguments: Vec<TemplateArgument>,
         location: SourceLocation,
     },
     If {
@@ -261,5 +264,26 @@ pub(crate) struct ChooseBranch {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TemplateArgument {
     pub(crate) name: String,
-    pub(crate) value: String,
+    pub(crate) value: TemplateArgumentValue,
+    pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum TemplateArgumentValue {
+    Text(String),
+    Integer(i64),
+    Variable(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct LiteralAttribute {
+    pub(crate) name: ExpandedName,
+    pub(crate) value: LiteralAttributeValue,
+    pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum LiteralAttributeValue {
+    Text(String),
+    Variable(String),
 }

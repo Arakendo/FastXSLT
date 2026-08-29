@@ -274,6 +274,11 @@ distinct-priority duplicate rules are admitted to compete within one module.
 current compiled-template index in its private runtime frame. It walks the
 strictly lower-ranked applicable rules `5 → 4 → 3 → 2`, then invokes the
 built-in fallback. Equal-rank ambiguity and cross-module precedence stay out.
+`conflict-resolution-1205` carries one non-tunnel atomic parameter from
+`xsl:apply-templates` through that entire next-match chain. Compiled argument
+expressions remain separate from invocation-local values. Its final variable
+attribute value template also admits a separately retained and charged
+unnamespaced result attribute without general AVT or namespace widening.
 `conflict-resolution-0901` then conserves the existing typed path machinery
 across template selection: `//b` supplies six candidates in document order,
 while retained `doc/a/b` and `doc/z/b` patterns distinguish their parent chains
@@ -308,8 +313,8 @@ each inspected node and preserves document order. It does not widen general
 default-namespaced path support.
 The complete pinned apply-templates test set is now conserved as an ordered
 50-case denominator with 50 principal stylesheets, one secondary stylesheet,
-41 XML assertions, eight error assertions, and one compound assertion. Twenty-two
-cases have explicit passing overrides; the other 28 remain visibly not run and
+41 XML assertions, eight error assertions, and one compound assertion. Twenty-three
+cases have explicit passing overrides; the other 27 remain visibly not run and
 are not mislabeled as engine failures. This corrects the earlier provisional
 52-case count without turning inventory into a conformance percentage.
 
@@ -789,6 +794,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   successively lower-ranked applicable rules before built-in fallback. Admit
   distinct-priority duplicate shapes; keep equal-rank ambiguity, parameters,
   and imports out.
+- [x] Execute `conflict-resolution-1205` with typed non-tunnel integer and
+  atomic-variable `xsl:with-param` arguments on `xsl:apply-templates` and
+  `xsl:next-match`. Keep values invocation-local, retain result attributes
+  separately from children, and admit only unnamespaced literal values and
+  whole-value variable AVTs; keep broader parameter and AVT semantics out.
 - [x] Execute `conflict-resolution-0901` as a conservation case for typed
   leading-descendant selection, document-order candidate delivery, and retained
   multi-step parent/child match paths. Keep `current()` patterns,
@@ -796,7 +806,7 @@ failed, and harness-error cases without an unqualified conformance claim.
   propagation, and general pattern grammar outside this slice.
 - [x] Conserve the complete ordered 50-case XSLT30 apply-templates denominator,
   its 50 principal plus one secondary stylesheet, and its assertion-shape
-  counts. Record 22 explicit passes and 28 default not-run dispositions without
+  counts. Record 23 explicit passes and 27 default not-run dispositions without
   converting unexecuted cases into engine failures or an aggregate conformance
   claim.
 - [x] Execute `conflict-resolution-0701` through inherited

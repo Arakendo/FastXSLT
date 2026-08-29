@@ -171,6 +171,7 @@ fn compile_simplified_stylesheet(document: &Document) -> Result<StylesheetProgra
         body: vec![Instruction::LiteralElement {
             name: root_name.clone(),
             namespaces: literal_result_namespaces(document, root),
+            attributes: Vec::new(),
             body: compile_sequence_excluding(document, root, &[])?,
             location: document.location(root).clone(),
         }],

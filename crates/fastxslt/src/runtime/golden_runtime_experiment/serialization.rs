@@ -113,6 +113,7 @@ fn serialize_node(
         ResultNode::Element {
             name,
             namespaces,
+            attributes,
             children,
         } => {
             let mut in_scope = inherited_namespaces.to_vec();
@@ -153,6 +154,15 @@ fn serialize_node(
                 escape_attribute(&binding.namespace, output)?;
                 output.push('"')?;
             }
+            for attribute in attributes {
+                output.push(' ')?;
+                let prefix =
+                    attribute_prefix(attribute.name.namespace.as_deref(), &in_scope, output)?;
+                write_name(prefix, &attribute.name.local, output)?;
+                output.push_str("=\"")?;
+                escape_attribute(&attribute.value, output)?;
+                output.push('"')?;
+            }
             output.push('>')?;
             for child in children {
                 serialize_node(child, &in_scope, output)?;
@@ -163,6 +173,29 @@ fn serialize_node(
         }
     }
     Ok(())
+}
+
+fn attribute_prefix<'a>(
+    namespace: Option<&str>,
+    in_scope: &'a [crate::xml::quick_xml_experiment::NamespaceBinding],
+    output: &BudgetedString,
+) -> Result<Option<&'a str>, ExecutionFailure> {
+    let Some(namespace) = namespace else {
+        return Ok(None);
+    };
+    in_scope
+        .iter()
+        .find(|binding| binding.prefix.is_some() && binding.namespace == namespace)
+        .and_then(|binding| binding.prefix.as_deref())
+        .map(Some)
+        .ok_or_else(|| {
+            failure(
+                "FXSR1002",
+                FailureCategory::Unsupported,
+                Some(&output.request_id),
+                format!("result attribute namespace has no retained prefix binding: {namespace}"),
+            )
+        })
 }
 
 fn element_prefix<'a>(

@@ -18,8 +18,12 @@ use crate::xpath::integer_for_experiment::parse as parse_integer_for;
 use crate::xpath::path_experiment::parse_location_path;
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, BooleanExpression, ChooseBranch, EqualityTest, Instruction, NodeTest,
-    SequenceItemExpression, TemplateArgument, ValueExpression,
+    SequenceItemExpression, TemplateArgument, TemplateArgumentValue, ValueExpression,
 };
+
+#[path = "instruction_compiler/literal_attribute_compiler.rs"]
+mod literal_attribute_compiler;
+use literal_attribute_compiler::compile_literal_result_attributes;
 
 use super::{
     CompileCategory, CompileFailure, XML_SCHEMA_NAMESPACE, XSLT_NAMESPACE,
@@ -88,8 +92,8 @@ pub(super) fn compile_sequence_excluding(
                         instructions.push(compile_apply_templates(document, child)?);
                     } else if name.local == "next-match" {
                         ensure_only_attributes(document, child, &[], "xsl:next-match")?;
-                        ensure_no_meaningful_children(document, child, "xsl:next-match")?;
                         instructions.push(Instruction::NextMatch {
+                            arguments: compile_with_params(document, child, "xsl:next-match")?,
                             location: document.location(child).clone(),
                         });
                     } else if name.local == "if" {
@@ -116,6 +120,7 @@ pub(super) fn compile_sequence_excluding(
                     instructions.push(Instruction::LiteralElement {
                         name: name.clone(),
                         namespaces: literal_result_namespaces(document, child),
+                        attributes: compile_literal_result_attributes(document, child)?,
                         body: compile_sequence(document, child)?,
                         location: document.location(child).clone(),
                     });
@@ -141,12 +146,12 @@ fn ensure_literal_result_control_attributes(
         let name = document
             .name(*attribute)
             .expect("attribute nodes have expanded names");
-        if name.namespace.as_deref() != Some(XSLT_NAMESPACE)
-            || name.local != "xpath-default-namespace"
+        if name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+            && name.local != "xpath-default-namespace"
         {
             return Err(unsupported(
                 "FXST1007",
-                "literal result attributes are outside the private slice except for xsl:xpath-default-namespace static context",
+                "unsupported XSLT control attribute on a literal result element",
                 document.location(*attribute),
             ));
         }
@@ -235,7 +240,6 @@ fn compile_apply_templates(
         &["select", "mode"],
         "xsl:apply-templates",
     )?;
-    ensure_no_meaningful_children(document, element, "xsl:apply-templates")?;
     let location = document.location(element).clone();
     let select = optional_attribute(document, element, None, "select")
         .map(|expression| parse_apply_selection(document, element, expression, location.clone()))
@@ -246,8 +250,66 @@ fn compile_apply_templates(
     Ok(Instruction::ApplyTemplates {
         select,
         mode,
+        arguments: compile_with_params(document, element, "xsl:apply-templates")?,
         location,
     })
+}
+
+fn compile_with_params(
+    document: &Document,
+    parent: NodeId,
+    parent_label: &str,
+) -> Result<Vec<TemplateArgument>, CompileFailure> {
+    let mut arguments = Vec::new();
+    for child in meaningful_children(document, parent) {
+        if !is_xslt_element(document, child, "with-param") {
+            return Err(unsupported(
+                "FXST1014",
+                format!("the private {parent_label} slice permits only xsl:with-param children"),
+                document.location(child),
+            ));
+        }
+        ensure_only_attributes(document, child, &["name", "select"], "xsl:with-param")?;
+        ensure_no_meaningful_children(document, child, "xsl:with-param")?;
+        let argument_name = required_attribute(document, child, None, "name")?;
+        if !is_ascii_ncname(argument_name)
+            || arguments
+                .iter()
+                .any(|argument: &TemplateArgument| argument.name == argument_name)
+        {
+            return Err(invalid(
+                "FXST0013",
+                format!("invalid or duplicate template argument: {argument_name}"),
+                document.location(child),
+            ));
+        }
+        let select = required_attribute(document, child, None, "select")?;
+        let value = if let Some(variable) = select.strip_prefix('$') {
+            if !is_ascii_ncname(variable) {
+                return Err(invalid(
+                    "FXXP0002",
+                    format!("invalid variable reference: {select}"),
+                    document.location(child),
+                ));
+            }
+            TemplateArgumentValue::Variable(variable.to_owned())
+        } else {
+            let integer = select.parse::<i64>().map_err(|_| {
+                unsupported(
+                    "FXXP1011",
+                    format!("unsupported template argument expression: {select}"),
+                    document.location(child),
+                )
+            })?;
+            TemplateArgumentValue::Integer(integer)
+        };
+        arguments.push(TemplateArgument {
+            name: argument_name.to_owned(),
+            value,
+            location: document.location(child).clone(),
+        });
+    }
+    Ok(arguments)
 }
 
 fn parse_apply_selection(
@@ -870,7 +932,8 @@ fn compile_call_template(
         }
         arguments.push(TemplateArgument {
             name: argument_name.to_owned(),
-            value: document.string_value(child),
+            value: TemplateArgumentValue::Text(document.string_value(child)),
+            location: document.location(child).clone(),
         });
     }
     Ok(Instruction::CallTemplate {
