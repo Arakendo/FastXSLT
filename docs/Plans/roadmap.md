@@ -30,11 +30,16 @@ context owner. Structured runtime failures and admitted-resource compilation
 now have 92-line and 60-line one-way owners. The runtime core fell from 2,431 to
 990 lines; its 304-line transform-set and 267-line value children call, but do
 not own, the remaining invocation semantics.
-The stylesheet compiler is now divided between a 1,019-line top-level assembly
-and validation owner and a 775-line private instruction compiler. The remaining
-mutually recursive sequence/template core is retained rather than split behind
-callbacks or a broad context. The compiler and runtime units retain the
-reopening triggers recorded by the review.
+The stylesheet compiler's first module dependency crossed its retained
+decomposition trigger. The resulting
+[stylesheet-module assembly review](../Evidence/stylesheet-module-assembly-decomposition-review-2026-08-28.md)
+leaves a 1,135-line single-document compiler, a 775-line instruction compiler,
+a 176-line module assembly owner, and an 80-line cross-template validation
+owner. Module discovery/merge and whole-program validation now have explicit
+one-way children without creating a public compiler graph or importing host
+authority into compiler semantics. The remaining mutually recursive
+sequence/template core is retained rather than split behind callbacks or a
+broad context.
 
 FastXSLT has accepted its staged-modern semantic direction and passes the
 complete XSLT30 `template`, `path`, and `expr/for` test-set denominators. It also
@@ -489,13 +494,17 @@ failed, and harness-error cases without an unqualified conformance claim.
   - [x] Inventory the complete pinned XSLT30 `decl/include` denominator: 16
     cases, 16 principal stylesheet references, 34 repeated secondary references,
     and explicit harness-unsupported dispositions without denominator loss.
-  - [ ] Execute `include-0401` as the first sealed-memory module case, preserving
+  - [x] Execute `include-0401` as the first sealed-memory module case, preserving
     its relative base identity, one secondary simplified stylesheet, global
     variable visibility, bounded acquisition, and exact `assert-xml` result.
     - [x] Establish the private RFC 3986/3987 mechanics prerequisite with an
       exact-pinned, license-reviewed `iri-string` adapter: resolve sibling and
       parent references only into the sealed snapshot, reject WHATWG-only
       serialization fallback, and separate fragment selection from acquisition.
+    - [x] Keep the private slice deliberately narrow: one include, one
+      simplified secondary module, no fragment selection, no ambient fallback,
+      and explicit unsupported outcomes for precedence or duplicate-match
+      semantics that have not been admitted.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.

@@ -79,5 +79,7 @@ conformance. It does not yet derive an element's base URI from document identity
 and `xml:base`, perform XSLT's escaping step, assemble stylesheet modules,
 interpret a fragment, apply catalogs, expose a resolver API, or authorize live
 acquisition. It selects no cache identity and admits no cross-generation
-sharing. `include-0401` remains harness-unsupported until its complete module
-graph and transformation result execute.
+sharing. The later
+[include-0401 execution](xslt30-include-0401-sealed-module-execution-2026-08-28.md)
+uses this exact resolver path without broadening the mechanics experiment into
+general module or resolver conformance.

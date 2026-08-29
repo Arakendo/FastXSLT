@@ -95,3 +95,5 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 Include Denominator Inventory](xslt30-include-denominator-inventory-2026-08-28.md)
 - [Peer AR-0014 Review: Monday](peer-ar-0014-review-monday-2026-08-28.md)
 - [RFC 3986 Relative-Reference Mechanics](rfc3986-relative-reference-mechanics-2026-08-28.md)
+- [XSLT30 include-0401 Sealed Module Execution](xslt30-include-0401-sealed-module-execution-2026-08-28.md)
+- [Stylesheet-Module Assembly Decomposition Review](stylesheet-module-assembly-decomposition-review-2026-08-28.md)

@@ -1,19 +1,28 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xpath::path_experiment::{PathFailure, parse_child_path};
 use crate::xslt::golden_semantics_experiment::{
-    ConstructedElement, GlobalBinding, GlobalBindingDefault, GlobalBindingKind, Instruction,
-    MatchPattern, MatchedTemplate, NamedTemplate, OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME,
+    ConstructedElement, GlobalBinding, GlobalBindingDefault, GlobalBindingKind, MatchPattern,
+    MatchedTemplate, NamedTemplate, OutputSettings, STANDARD_INITIAL_TEMPLATE_NAME,
     StylesheetProgram, Template, TemplateParameter,
 };
 
 #[path = "instruction_compiler.rs"]
 mod instruction_compiler;
+#[path = "stylesheet_module_compiler.rs"]
+mod stylesheet_module_compiler;
+#[path = "stylesheet_validation.rs"]
+mod stylesheet_validation;
+
+pub(crate) use stylesheet_module_compiler::{
+    compile_stylesheet_with_single_include, single_include_reference,
+};
+use stylesheet_validation::validate_named_template_references;
 
 use instruction_compiler::{
     compile_sequence_excluding, literal_result_namespaces, parse_template_modes,
 };
 
-const XSLT_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
+pub(super) const XSLT_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
 const XML_SCHEMA_NAMESPACE: &str = "http://www.w3.org/2001/XMLSchema";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,6 +40,13 @@ pub(crate) struct CompileFailure {
 }
 
 pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgram, CompileFailure> {
+    compile_stylesheet_excluding(document, &[])
+}
+
+pub(super) fn compile_stylesheet_excluding(
+    document: &Document,
+    excluded_top_level: &[NodeId],
+) -> Result<StylesheetProgram, CompileFailure> {
     let root = document_element(document)?;
     require_stylesheet_root(document, root)?;
     let declared_version = required_attribute(document, root, None, "version")?.to_owned();
@@ -41,7 +57,10 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
     let mut matched_templates = Vec::new();
     let mut named_templates = Vec::new();
     let mut global_bindings = Vec::new();
-    for child in meaningful_children(document, root) {
+    for child in meaningful_children(document, root)
+        .into_iter()
+        .filter(|child| !excluded_top_level.contains(child))
+    {
         let Some(name) = document.name(child) else {
             continue;
         };
@@ -104,15 +123,7 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
 
     let program = StylesheetProgram {
         declared_version,
-        output: output.unwrap_or(OutputSettings {
-            method: None,
-            encoding: None,
-            media_type: None,
-            include_content_type: None,
-            byte_order_mark: None,
-            omit_xml_declaration: false,
-            indent: None,
-        }),
+        output: output.unwrap_or_else(default_output_settings),
         root_template,
         root_template_modes,
         matched_templates,
@@ -123,7 +134,22 @@ pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgra
     Ok(program)
 }
 
-fn require_stylesheet_root(document: &Document, root: NodeId) -> Result<(), CompileFailure> {
+pub(super) fn default_output_settings() -> OutputSettings {
+    OutputSettings {
+        method: None,
+        encoding: None,
+        media_type: None,
+        include_content_type: None,
+        byte_order_mark: None,
+        omit_xml_declaration: false,
+        indent: None,
+    }
+}
+
+pub(super) fn require_stylesheet_root(
+    document: &Document,
+    root: NodeId,
+) -> Result<(), CompileFailure> {
     if document.name(root).is_some_and(|name| {
         name.namespace.as_deref() == Some(XSLT_NAMESPACE)
             && matches!(name.local.as_str(), "stylesheet" | "transform")
@@ -641,7 +667,7 @@ fn normalize_variable_qname(
     ))
 }
 
-fn is_xslt_element(document: &Document, node: NodeId, local: &str) -> bool {
+pub(super) fn is_xslt_element(document: &Document, node: NodeId, local: &str) -> bool {
     document.name(node).is_some_and(|name| {
         document.kind(node) == NodeKind::Element
             && name.namespace.as_deref() == Some(XSLT_NAMESPACE)
@@ -649,82 +675,7 @@ fn is_xslt_element(document: &Document, node: NodeId, local: &str) -> bool {
     })
 }
 
-fn validate_named_template_references(program: &StylesheetProgram) -> Result<(), CompileFailure> {
-    if let Some(root) = &program.root_template {
-        validate_named_calls(program, &root.body)?;
-    }
-    for template in &program.matched_templates {
-        validate_named_calls(program, &template.template.body)?;
-    }
-    for template in &program.named_templates {
-        validate_named_calls(program, &template.template.body)?;
-    }
-    Ok(())
-}
-
-fn validate_named_calls(
-    program: &StylesheetProgram,
-    instructions: &[Instruction],
-) -> Result<(), CompileFailure> {
-    for instruction in instructions {
-        match instruction {
-            Instruction::LiteralElement { body, .. } | Instruction::If { body, .. } => {
-                validate_named_calls(program, body)?;
-            }
-            Instruction::Choose {
-                branches,
-                otherwise,
-                ..
-            } => {
-                for branch in branches {
-                    validate_named_calls(program, &branch.body)?;
-                }
-                validate_named_calls(program, otherwise)?;
-            }
-            Instruction::CallTemplate {
-                name,
-                arguments,
-                location,
-            } => {
-                let target = program
-                    .named_templates
-                    .iter()
-                    .find(|template| template.name == *name)
-                    .ok_or_else(|| {
-                        invalid(
-                            "FXST0014",
-                            format!("unknown named template: {name}"),
-                            location,
-                        )
-                    })?;
-                if let Some(argument) = arguments
-                    .iter()
-                    .find(|argument| !target.parameters.contains(&argument.name))
-                {
-                    return Err(invalid(
-                        "FXST0015",
-                        format!(
-                            "unknown parameter {} for named template {name}",
-                            argument.name
-                        ),
-                        location,
-                    ));
-                }
-            }
-            Instruction::Text { .. }
-            | Instruction::ValueOf { .. }
-            | Instruction::Variable { .. }
-            | Instruction::IntegerRangeVariable { .. }
-            | Instruction::SequenceNodes { .. }
-            | Instruction::SequenceItems { .. }
-            | Instruction::ApplyTemplates { .. }
-            | Instruction::Copy { .. } => {}
-        }
-    }
-    Ok(())
-}
-
-fn ensure_only_attributes(
+pub(super) fn ensure_only_attributes(
     document: &Document,
     element: NodeId,
     allowed: &[&str],
@@ -749,7 +700,7 @@ fn ensure_only_attributes(
     Ok(())
 }
 
-fn document_element(document: &Document) -> Result<NodeId, CompileFailure> {
+pub(super) fn document_element(document: &Document) -> Result<NodeId, CompileFailure> {
     let root = document.document_node();
     let elements: Vec<_> = document
         .children(root)
@@ -767,7 +718,7 @@ fn document_element(document: &Document) -> Result<NodeId, CompileFailure> {
     ))
 }
 
-fn meaningful_children(document: &Document, parent: NodeId) -> Vec<NodeId> {
+pub(super) fn meaningful_children(document: &Document, parent: NodeId) -> Vec<NodeId> {
     document
         .children(parent)
         .iter()
@@ -784,7 +735,7 @@ fn meaningful_children(document: &Document, parent: NodeId) -> Vec<NodeId> {
         .collect()
 }
 
-fn ensure_no_meaningful_children(
+pub(super) fn ensure_no_meaningful_children(
     document: &Document,
     element: NodeId,
     display_name: &str,
@@ -800,7 +751,7 @@ fn ensure_no_meaningful_children(
     }
 }
 
-fn required_attribute<'a>(
+pub(super) fn required_attribute<'a>(
     document: &'a Document,
     element: NodeId,
     namespace: Option<&str>,
@@ -871,7 +822,7 @@ fn map_path_failure(failure: PathFailure) -> CompileFailure {
     }
 }
 
-fn invalid(
+pub(super) fn invalid(
     code: &'static str,
     detail: impl Into<String>,
     location: &SourceLocation,
@@ -884,7 +835,7 @@ fn invalid(
     }
 }
 
-fn unsupported(
+pub(super) fn unsupported(
     code: &'static str,
     detail: impl Into<String>,
     location: &SourceLocation,

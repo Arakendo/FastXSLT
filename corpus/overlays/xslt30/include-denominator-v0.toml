@@ -7,3 +7,9 @@ case_count = 16
 selection = "harness-unsupported"
 execution = "not-run"
 rationale = "The private compiler does not yet assemble included/imported stylesheet modules or implement their base-identity and precedence semantics. No case is silently omitted or treated as an engine failure."
+
+[[case_override]]
+case_name = "include-0401"
+selection = "selected"
+execution = "passed"
+rationale = "Executes one relative xsl:include from a sealed snapshot, compiles the secondary simplified stylesheet as an implicit root template, preserves the principal global variable, and compares the exact assert-xml result after XML-declaration removal."

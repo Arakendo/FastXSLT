@@ -154,8 +154,10 @@ or default precedence.
 - It remains unknown whether the supported Rust facade needs synchronous,
   asynchronous, presealed-only, or multiple resolver profiles. AR-0012 and
   representative consumers must supply that pressure.
-- No evidence currently selects a URI library, catalog format, callback ABI,
-  resolver cache, live-result admission rule, or cross-generation sharing.
+- The private mechanics experiment selects exact-pinned `iri-string` for RFC
+  3986/3987 parsing and resolution behind engine-owned types. No evidence
+  selects a public URI type, catalog format, callback ABI, resolver cache,
+  live-result admission rule, or cross-generation sharing.
 - Resolution identity alone cannot safely select a reusable cache entry, and a
   fragment-bearing reference cannot automatically select a distinct acquired
   blob. Exact cache-key and fragment semantics remain unselected.
@@ -187,8 +189,9 @@ resolver trait, URI type, catalog representation, live authority, or cache.
   selected .NET host profiles without parsing display strings.
 - [ ] Compare presealed closure, callback/live, and hybrid lifecycle costs on a
   representative multi-resource workload before selecting supported profiles.
-- [ ] Review URI parsing/normalization and catalog dependencies for standards
-  behavior, portability, maintenance, and license before admission.
+- [x] Review and exact-pin the private URI parsing/normalization dependency for
+  standards behavior, portability, maintenance, Rust floor, and license before
+  admission. Catalog dependency selection remains open.
 
 ## Reopening triggers
 
@@ -211,3 +214,7 @@ resolver trait, URI type, catalog representation, live authority, or cache.
 - 2026-08-28 -- A private exact-pinned `iri-string` experiment resolved sibling
   and parent IRI references inside a sealed snapshot and separated fragments
   from acquisition identity; no module semantics or live authority were added.
+- 2026-08-28 -- XSLT30 `include-0401` executed through one relative dependency
+  admitted in the same sealed snapshot. The experiment preserves secondary
+  source identity and principal global visibility, denies ambient fallback, and
+  does not select a live resolver, public resolver API, or general module graph.

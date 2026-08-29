@@ -1,6 +1,9 @@
 //! Adapts an admitted stylesheet resource into the private compiled program.
 
-use crate::compile::golden_stylesheet_experiment::compile_stylesheet;
+use crate::compile::golden_stylesheet_experiment::{
+    CompileCategory, CompileFailure, compile_stylesheet, compile_stylesheet_with_single_include,
+    single_include_reference,
+};
 use crate::resources::{ResolutionFailure, ResolutionLimits, ResourceSnapshot, SnapshotResolver};
 use crate::xdm::owned_tree_experiment::Document;
 use crate::xml::quick_xml_experiment::parse_document;
@@ -13,7 +16,7 @@ pub(in crate::runtime) fn compile_resource(
     stylesheet_id: &str,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
     let mut resolver =
-        SnapshotResolver::new(snapshot, std::iter::empty(), ResolutionLimits::new(1));
+        SnapshotResolver::new(snapshot, std::iter::empty(), ResolutionLimits::new(2));
     compile_resource_with_resolver(&mut resolver, stylesheet_id)
 }
 
@@ -42,28 +45,62 @@ fn compile_resource_with_resolver(
             format!("stylesheet XDM construction failed: {error:?}"),
         )
     })?;
-    compile_stylesheet(&document).map_err(|error| {
-        failure_at(
-            error.code,
-            match error.category {
-                crate::compile::golden_stylesheet_experiment::CompileCategory::Invalid => {
-                    FailureCategory::Invalid
-                }
-                crate::compile::golden_stylesheet_experiment::CompileCategory::Unsupported => {
-                    FailureCategory::Unsupported
-                }
-            },
+    let Some(include) = single_include_reference(&document).map_err(compile_failure)? else {
+        return compile_stylesheet(&document).map_err(compile_failure);
+    };
+    let included_resource = resolver
+        .resolve_from(&resource.identity, &include.href)
+        .map_err(resolution_failure)?;
+    if included_resource.fragment.is_some() {
+        return Err(failure_at(
+            "FXRS1001",
+            FailureCategory::Unsupported,
             None,
-            error.location.clone(),
-            format!(
-                "{} at {}:{}..{}",
-                error.detail,
-                error.location.resource,
-                error.location.span.start,
-                error.location.span.end
-            ),
+            include.location.clone(),
+            "fragment selection for included stylesheet modules is outside the private slice",
+        ));
+    }
+    let included_parsed = parse_document(
+        &included_resource.identity,
+        included_resource.bytes,
+        XML_LIMITS,
+    )
+    .map_err(|error| {
+        failure_at(
+            "FXXM0001",
+            FailureCategory::Invalid,
+            None,
+            include.location.clone(),
+            format!("included stylesheet XML is invalid: {error:?}"),
         )
-    })
+    })?;
+    let included_document = Document::from_parsed(included_parsed).map_err(|error| {
+        failure_at(
+            "FXXD0001",
+            FailureCategory::Invalid,
+            None,
+            include.location.clone(),
+            format!("included stylesheet XDM construction failed: {error:?}"),
+        )
+    })?;
+    compile_stylesheet_with_single_include(&document, &included_document).map_err(compile_failure)
+}
+
+fn compile_failure(error: CompileFailure) -> ExecutionFailure {
+    let detail = format!(
+        "{} at {}:{}..{}",
+        error.detail, error.location.resource, error.location.span.start, error.location.span.end
+    );
+    failure_at(
+        error.code,
+        match error.category {
+            CompileCategory::Invalid => FailureCategory::Invalid,
+            CompileCategory::Unsupported => FailureCategory::Unsupported,
+        },
+        None,
+        error.location,
+        detail,
+    )
 }
 
 fn resolution_failure(error: ResolutionFailure) -> ExecutionFailure {
@@ -189,5 +226,29 @@ mod tests {
             .expect_err("second lookup must fail before accessing admitted bytes");
         assert_eq!(exhausted.code, "FXRS0006");
         assert_eq!(exhausted.category, FailureCategory::Limit);
+    }
+
+    #[test]
+    fn compilation_reports_the_resolved_missing_include_without_ambient_fallback() {
+        const PRINCIPAL: &str = "https://example.invalid/styles/main.xsl";
+        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, 512, 512));
+        resources
+            .admit(
+                PRINCIPAL,
+                br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="missing.xsl"/></xsl:stylesheet>"#
+                    .to_vec(),
+            )
+            .expect("admit principal stylesheet only");
+
+        let failure = compile_resource(&resources.seal(), PRINCIPAL)
+            .expect_err("missing included stylesheet must remain an operation failure");
+
+        assert_eq!(failure.code, "FXRS0002");
+        assert_eq!(failure.category, FailureCategory::MissingResource);
+        assert!(
+            failure
+                .detail
+                .contains("https://example.invalid/styles/missing.xsl")
+        );
     }
 }

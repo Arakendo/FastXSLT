@@ -1,7 +1,17 @@
 //! Conserved preview of the complete XSLT30 `decl/include` denominator.
 
-use std::{collections::BTreeMap, fs, path::PathBuf};
+use std::{
+    collections::{BTreeMap, HashSet},
+    fs,
+    path::PathBuf,
+};
 
+use super::{
+    ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, compile_resource,
+    execute_transform_set,
+};
+use crate::execution_control_experiment::{CancellationToken, WorkLimits};
+use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
@@ -25,9 +35,102 @@ const CASE_NAMES: [&str; 16] = [
 ];
 const OVERLAY: &str =
     include_str!("../../../../corpus/overlays/xslt30/include-denominator-v0.toml");
+const PRINCIPAL_ID: &str = "https://example.invalid/xslt30/decl/include/include-0401.xsl";
+const SECONDARY_ID: &str = "https://example.invalid/xslt30/decl/include/include-0401a.xsl";
+const SOURCE_ID: &str = "urn:w3c:xslt30:decl:include:include-0401:source";
 
 #[test]
-fn inventories_complete_include_denominator_without_admitting_dependency_semantics() {
+fn executes_include_0401_through_one_sealed_relative_module() {
+    let document = load_test_set();
+    let case = element_children(&document, document_element(&document))
+        .into_iter()
+        .find(|node| attribute(&document, *node, "name") == Some("include-0401"))
+        .expect("pinned include-0401 case");
+    let test = child_named(&document, case, "test").expect("test metadata");
+    let stylesheet_files = element_children(&document, test)
+        .into_iter()
+        .filter(|node| local_name(&document, *node) == "stylesheet")
+        .map(|node| attribute(&document, node, "file").expect("stylesheet file"))
+        .collect::<Vec<_>>();
+    assert_eq!(stylesheet_files, ["include-0401.xsl", "include-0401a.xsl"]);
+    let environment = child_named(&document, case, "environment").expect("inline environment");
+    let source = child_named(&document, environment, "source").expect("principal source");
+    let content = child_named(&document, source, "content").expect("inline source content");
+    let result = child_named(&document, case, "result").expect("case result");
+    let assertion = first_element_child(&document, result).expect("result assertion");
+    assert_eq!(local_name(&document, assertion), "assert-xml");
+    let expected = document.string_value(assertion);
+
+    let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../vendor/xslt30-test/tests/decl/include");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 16_384));
+    resources
+        .admit(SOURCE_ID, document.string_value(content).into_bytes())
+        .expect("admit inline source");
+    resources
+        .admit(
+            PRINCIPAL_ID,
+            fs::read(directory.join(stylesheet_files[0]))
+                .expect("read principal stylesheet and close handle"),
+        )
+        .expect("admit principal stylesheet");
+    resources
+        .admit(
+            SECONDARY_ID,
+            fs::read(directory.join(stylesheet_files[1]))
+                .expect("read secondary stylesheet and close handle"),
+        )
+        .expect("admit secondary stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, PRINCIPAL_ID).expect("compile included stylesheet");
+    assert_eq!(
+        program
+            .root_template
+            .as_ref()
+            .expect("simplified stylesheet implicit root template")
+            .location
+            .resource,
+        SECONDARY_ID
+    );
+    assert!(program.global_bindings.iter().any(|binding| {
+        binding.name == "greeting"
+            && matches!(
+                &binding.default,
+                crate::xslt::golden_semantics_experiment::GlobalBindingDefault::Text(value)
+                    if value == "Hi there!"
+            )
+    }));
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 8_192,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    set.add(TransformRequest {
+        identity: "include-0401".to_owned(),
+        result_identity: "urn:w3c:xslt30:decl:include:include-0401:result".to_owned(),
+        entry: InvocationEntry::PrincipalSource {
+            resource: SOURCE_ID.to_owned(),
+        },
+        parameters: BTreeMap::new(),
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    })
+    .expect("admit include-0401 request");
+    let results = execute_transform_set(set.seal()).expect("execute include-0401");
+    let actual = &results.by_request["include-0401"].serialized;
+    assert_eq!(
+        without_xml_declaration(actual.trim()),
+        without_xml_declaration(expected.trim())
+    );
+}
+
+#[test]
+fn inventories_complete_include_denominator_with_explicit_dispositions() {
     let document = load_test_set();
     let cases = element_children(&document, document_element(&document))
         .into_iter()
@@ -77,6 +180,12 @@ fn inventories_complete_include_denominator_without_admitting_dependency_semanti
     assert!(OVERLAY.contains("case_count = 16"));
     assert!(OVERLAY.contains("selection = \"harness-unsupported\""));
     assert!(OVERLAY.contains("execution = \"not-run\""));
+    let include_0401_override = OVERLAY
+        .split("[[case_override]]")
+        .find(|section| section.contains("case_name = \"include-0401\""))
+        .expect("include-0401 overlay override");
+    assert!(include_0401_override.contains("selection = \"selected\""));
+    assert!(include_0401_override.contains("execution = \"passed\""));
     for case_name in CASE_NAMES {
         assert!(names.contains(&case_name));
     }
@@ -136,4 +245,12 @@ fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'
             .filter(|name| name.namespace.is_none() && name.local == local)
             .and_then(|_| document.value(*attribute))
     })
+}
+
+fn without_xml_declaration(xml: &str) -> &str {
+    if xml.starts_with("<?xml") {
+        xml.find("?>").map_or(xml, |end| &xml[end + 2..])
+    } else {
+        xml
+    }
 }
