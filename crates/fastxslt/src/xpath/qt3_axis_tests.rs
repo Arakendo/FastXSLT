@@ -10,7 +10,7 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use super::count_experiment;
 
 const QT3_NAMESPACE: &str = "http://www.w3.org/2010/09/qt-fots-catalog";
-const CASES: [(&str, &str, usize); 137] = [
+const CASES: [(&str, &str, usize); 141] = [
     ("Axes001-1", "fn:count(//center/child::*)", 0),
     ("Axes001-2", "fn:count(//center/child::*)", 1),
     ("Axes001-3", "fn:count(//center/child::*)", 6),
@@ -196,6 +196,10 @@ const CASES: [(&str, &str, usize); 137] = [
     ("Axes071-1", "fn:count(//@mark)", 0),
     ("Axes071-2", "fn:count(//@mark)", 1),
     ("Axes071-3", "fn:count(//@mark)", 6),
+    ("Axes072-1", "fn:count(//self::*)", 1),
+    ("Axes072-2", "fn:count(//self::*)", 15),
+    ("Axes073-1", "fn:count(//self::node())", 57),
+    ("Axes073-2", "fn:count(//self::node())", 59),
 ];
 
 fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'a str> {
@@ -252,7 +256,7 @@ fn load_axis_test_set() -> (Document, PathBuf) {
 }
 
 #[test]
-fn executes_qt3_axes001_through_axes071_admitted_location_path_groups() {
+fn executes_qt3_axes001_through_axes073_admitted_location_path_groups() {
     let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
     let selected_records: Vec<_> = overlay
         .split("[[case]]")

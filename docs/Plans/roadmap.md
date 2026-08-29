@@ -108,6 +108,10 @@ leading descendant origin resets to the document, visits descendant element
 contexts, then applies explicit or abbreviated attribute steps while excluding
 namespace declarations. Traversed nodes and inspected attributes are charged
 separately; the direct seam now has 137 passes.
+Complete `Axes072` and `Axes073` make that leading expansion axis-aware for
+self steps. `//self::node()` retains the document node while `//self::*`
+applies the element-principal node kind after the same charged expansion; the
+direct seam now has 141 passes.
 The complete five-case QT3 `fn-deep-equalint2args` group also executes through
 source-free checked `xs:int` comparison, and the adjacent five-case
 `fn-deep-equalintg2args` group extends that evidence to the checked `i128`
@@ -327,6 +331,10 @@ implemented behavior belongs to a named standards slice.
   traverse descendant element contexts, inspect their attributes in document
   order, exclude namespace declarations, unify explicit and abbreviated
   attribute forms, and charge traversal plus attribute inspection separately.
+- [x] Execute complete QT3 `Axes072` and `Axes073` with an axis-aware leading
+  descendant self expansion. Retain the document node for `self::node()`,
+  exclude it through the element-principal wildcard, preserve document order,
+  and charge each expanded context exactly once.
 - [x] Admit and execute the complete two-case XSLT30 `fn/deep-equal` denominator
   through positioned descendant attribute/comment selection and charged,
   pairwise node comparison. Preserve distinct XDM identity while comparing

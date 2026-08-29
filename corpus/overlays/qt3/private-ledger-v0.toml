@@ -2016,3 +2016,31 @@ case_name = "fn-deep-equal-mix-args-031"
 selection = "selected"
 execution = "passed"
 rationale = "Validates and retains the admitted xs:time value, returning false against an equal lexical string."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes072-1"
+selection = "selected"
+execution = "passed"
+rationale = "Expands leading descendant-or-self contexts before the self element wildcard over TreeEmpty."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes072-2"
+selection = "selected"
+execution = "passed"
+rationale = "Expands leading descendant-or-self contexts before the self element wildcard over TreeCompass."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes073-1"
+selection = "selected"
+execution = "passed"
+rationale = "Retains the TreeCompass document node when leading descendant-or-self expansion feeds self::node()."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes073-2"
+selection = "selected"
+execution = "passed"
+rationale = "Retains the TopMany document node when leading descendant-or-self expansion feeds self::node()."

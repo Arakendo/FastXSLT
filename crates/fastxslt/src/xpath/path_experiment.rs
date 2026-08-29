@@ -542,7 +542,9 @@ fn step_candidates(
     origin: PathOrigin,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ControlFailure> {
-    if step_index == 0 && origin == PathOrigin::Descendant && step.uses_attribute_axis() {
+    if step_index == 0 && origin == PathOrigin::Descendant && step.uses_self_axis() {
+        descendant_or_self_nodes(document, node, control)
+    } else if step_index == 0 && origin == PathOrigin::Descendant && step.uses_attribute_axis() {
         descendant_attributes(document, node, control)
     } else if step_index == 0 && origin == PathOrigin::Descendant {
         descendant_nodes(document, node, control)

@@ -58,3 +58,7 @@ does not establish namespace-node axes, QName resolution, namespace-sensitive
 attribute name tests, arbitrary abbreviated path composition, predicates,
 generalized attribute ordering across arbitrary input sequences, other axes,
 or a general XPath parser.
+
+Subsequent [`Axes072`–`Axes073` evidence](qt3-axes072-073-leading-descendant-self-expansion-2026-08-28.md)
+adds the axis-distinct leading self expansion without changing this attribute
+claim.

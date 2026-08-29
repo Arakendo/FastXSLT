@@ -229,6 +229,27 @@ fn leading_descendant_origin_unifies_explicit_and_abbreviated_child_steps() {
         5
     );
     assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 5);
+
+    let self_nodes =
+        parse_location_path("//self::node()", location()).expect("self node test should parse");
+    let self_elements =
+        parse_location_path("//self::*", location()).expect("self wildcard should parse");
+    let mut self_control = InvocationControl::unbounded();
+    let selected = evaluate_location_path_controlled(
+        &document,
+        document.children(document.document_node())[0],
+        &self_nodes,
+        &mut self_control,
+    )
+    .expect("leading descendant self expansion should execute");
+
+    assert_eq!(selected.len(), 6);
+    assert_eq!(selected[0], document.document_node());
+    assert_eq!(
+        evaluate_location_path(&document, selected[1], &self_elements).len(),
+        3
+    );
+    assert_eq!(self_control.consumed(WorkDomain::XPathNodeVisit), 6);
 }
 
 #[test]
