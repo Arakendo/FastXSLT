@@ -40,7 +40,7 @@ pub(super) use resource_compiler::compile_resource;
 pub(super) use resource_compiler::compile_resource_with_denied;
 use result_tree::{ResultNode, materialize_literal_attributes};
 use runtime_context::{
-    InvocationParameter, RuntimeVariables, SequenceInputs, bind_template_parameters,
+    InvocationParameter, RuntimeVariables, SequenceInputs, TemporaryTree, bind_template_parameters,
     evaluate_template_arguments, materialize_global_defaults, materialize_temporary_tree,
     required_source_context,
 };
@@ -254,6 +254,7 @@ fn execute_initial_template(
 #[derive(Clone, Copy)]
 struct SequenceContext<'a> {
     node: Option<NodeId>,
+    temporary_focus: Option<TemporaryFocus<'a>>,
     current_mode: Option<&'a str>,
     current_template_index: Option<usize>,
     call_depth: usize,
@@ -263,6 +264,7 @@ impl<'a> SequenceContext<'a> {
     fn new(node: Option<NodeId>, current_mode: Option<&'a str>) -> Self {
         Self {
             node,
+            temporary_focus: None,
             current_mode,
             current_template_index: None,
             call_depth: 0,
@@ -275,6 +277,24 @@ impl<'a> SequenceContext<'a> {
             ..Self::new(node, current_mode)
         }
     }
+
+    fn for_temporary_template(
+        focus: TemporaryFocus<'a>,
+        current_mode: Option<&'a str>,
+        index: usize,
+    ) -> Self {
+        Self {
+            temporary_focus: Some(focus),
+            current_template_index: Some(index),
+            ..Self::new(None, current_mode)
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum TemporaryFocus<'a> {
+    Document(&'a TemporaryTree),
+    Element(&'a TemporaryTree, usize),
 }
 
 fn execute_sequence(
@@ -371,11 +391,9 @@ fn execute_instruction(
                 control,
             )?);
         }
-        Instruction::NextMatch { arguments, .. } => {
-            result.extend(execute_next_match(
-                inputs, arguments, execution, scope, control,
-            )?);
-        }
+        Instruction::NextMatch { .. } | Instruction::ApplyImports { .. } => result.extend(
+            execute_continuation_instruction(inputs, instruction, execution, scope, control)?,
+        ),
         Instruction::If { test, body, .. } => {
             result.extend(execute_if(inputs, test, body, execution, scope, control)?);
         }
@@ -404,6 +422,24 @@ fn execute_instruction(
         )?),
     }
     Ok(())
+}
+
+fn execute_continuation_instruction(
+    inputs: &SequenceInputs<'_>,
+    instruction: &Instruction,
+    execution: SequenceContext<'_>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    match instruction {
+        Instruction::NextMatch { arguments, .. } => {
+            execute_next_match(inputs, arguments, execution, variables, control)
+        }
+        Instruction::ApplyImports { arguments, .. } => {
+            execute_apply_imports(inputs, arguments, execution, variables, control)
+        }
+        _ => unreachable!("continuation dispatch receives only continuation instructions"),
+    }
 }
 
 fn execute_binding(
@@ -643,6 +679,35 @@ fn execute_next_match(
         );
     }
     let parameters = evaluate_template_arguments(arguments, variables, inputs.request_id)?;
+    apply_builtin_template(inputs, node, execution.current_mode, &parameters, control)
+}
+
+fn execute_apply_imports(
+    inputs: &SequenceInputs<'_>,
+    arguments: &[TemplateArgument],
+    execution: SequenceContext<'_>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    if execution.current_template_index.is_none() {
+        return Err(failure(
+            "XTDE0560",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            "xsl:apply-imports requires a current matched template rule",
+        ));
+    }
+    let parameters = evaluate_template_arguments(arguments, variables, inputs.request_id)?;
+    if let Some(focus) = execution.temporary_focus {
+        return temporary_tree_executor::apply_temporary_builtin(
+            inputs,
+            focus,
+            execution.current_mode,
+            &parameters,
+            control,
+        );
+    }
+    let (_, node) = required_source_context(inputs, execution.node)?;
     apply_builtin_template(inputs, node, execution.current_mode, &parameters, control)
 }
 

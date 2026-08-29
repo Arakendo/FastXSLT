@@ -733,6 +733,14 @@ fn executes_xslt30_builtin_temporary_tree_parameter_propagation() {
 }
 
 #[test]
+fn executes_xslt30_apply_imports_builtin_parameter_propagation() {
+    let (actual, expected, matched_template_count) =
+        execute_apply_templates_case("conflict-resolution-1102");
+    assert_eq!(matched_template_count, 3);
+    assert_same_result_element_string(&actual, &expected, "z");
+}
+
+#[test]
 fn executes_xslt30_next_match_parameter_chain() {
     let (actual, expected, matched_template_count) =
         execute_apply_templates_case("conflict-resolution-1205");

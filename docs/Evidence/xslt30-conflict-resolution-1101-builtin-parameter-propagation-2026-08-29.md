@@ -44,3 +44,6 @@ It does not admit arbitrary local sequence constructors, temporary text or
 attribute nodes, general temporary-tree navigation, same-tree context-dependent
 instructions, tunnel parameters through this path, XSLT 1.0 compatibility
 behavior, `xsl:apply-imports`, or the mode/import behavior exercised by `1102`.
+
+The bounded no-import `xsl:apply-imports` successor is recorded separately in
+the `conflict-resolution-1102` evidence.

@@ -225,6 +225,10 @@ pub(crate) enum Instruction {
         arguments: Vec<TemplateArgument>,
         location: SourceLocation,
     },
+    ApplyImports {
+        arguments: Vec<TemplateArgument>,
+        location: SourceLocation,
+    },
     If {
         test: BooleanExpression,
         body: Vec<Instruction>,

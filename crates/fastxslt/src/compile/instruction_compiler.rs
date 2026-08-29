@@ -105,6 +105,8 @@ pub(super) fn compile_sequence_excluding(
                             )?,
                             location: document.location(child).clone(),
                         });
+                    } else if name.local == "apply-imports" {
+                        instructions.push(compile_apply_imports(document, child)?);
                     } else if name.local == "if" {
                         instructions.push(compile_if(document, child)?);
                     } else if name.local == "choose" {
@@ -141,6 +143,17 @@ pub(super) fn compile_sequence_excluding(
         }
     }
     Ok(instructions)
+}
+
+fn compile_apply_imports(
+    document: &Document,
+    element: NodeId,
+) -> Result<Instruction, CompileFailure> {
+    ensure_only_attributes(document, element, &[], "xsl:apply-imports")?;
+    Ok(Instruction::ApplyImports {
+        arguments: compile_with_params(document, element, "xsl:apply-imports", false)?,
+        location: document.location(element).clone(),
+    })
 }
 
 fn ensure_literal_result_control_attributes(

@@ -312,6 +312,12 @@ the invocation variable frame and applies templates through its conceptual
 document root. Built-in document/element descent preserves the supplied
 non-tunnel parameter, overriding the matched template's compiled integer
 default. Neither the temporary tree nor parameter value enters reusable state.
+`conflict-resolution-1102` retains temporary document and element focus while
+dispatching in mode `m`. Its `xsl:apply-imports` instruction has no imported
+module or lower-precedence user rule, so it falls through to the built-in
+document rule while preserving the current mode and non-tunnel parameter.
+Import precedence and lower-precedence user-template selection remain outside
+the admitted slice.
 `conflict-resolution-0901` then conserves the existing typed path machinery
 across template selection: `//b` supplies six candidates in document order,
 while retained `doc/a/b` and `doc/z/b` patterns distinguish their parent chains
@@ -861,6 +867,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   non-tunnel parameter preservation through built-in document/element rules.
   Keep general local constructors, temporary-tree navigation, compatibility
   mode, tunnel behavior, modes, and `xsl:apply-imports` out.
+- [x] Execute `conflict-resolution-1102` through mode-aware temporary document
+  focus and the no-import `xsl:apply-imports` fallback to the built-in rule,
+  preserving non-tunnel parameters and current mode. Keep `xsl:import`, import
+  precedence, lower-precedence user rules, tunnel parameters, and compatibility
+  behavior out.
 - [x] Execute `conflict-resolution-0901` as a conservation case for typed
   leading-descendant selection, document-order candidate delivery, and retained
   multi-step parent/child match paths. Keep general `current()` patterns,
@@ -868,7 +879,7 @@ failed, and harness-error cases without an unqualified conformance claim.
   propagation, and general pattern grammar outside that conservation slice.
 - [x] Conserve the complete ordered 50-case XSLT30 apply-templates denominator,
   its 50 principal plus one secondary stylesheet, and its assertion-shape
-  counts. Record 30 explicit passes and 20 default not-run dispositions without
+  counts. Record 31 explicit passes and 19 default not-run dispositions without
   converting unexecuted cases into engine failures or an aggregate conformance
   claim.
 - [x] Execute `conflict-resolution-0701` through inherited

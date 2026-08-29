@@ -665,3 +665,10 @@ case_name = "conflict-resolution-1101"
 selection = "selected"
 execution = "passed"
 rationale = "A local constructed temporary tree remains invocation-local; applying templates to its root uses built-in descent that preserves the supplied non-tunnel parameter before the inner element template emits the value."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-1102"
+selection = "selected"
+execution = "passed"
+rationale = "A mode-specific temporary document rule invokes xsl:apply-imports in a stylesheet with no imported packages; the built-in document rule retains the current mode and supplied non-tunnel parameter while descending to the temporary element rule."

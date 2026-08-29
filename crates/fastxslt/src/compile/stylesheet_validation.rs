@@ -75,6 +75,7 @@ fn validate_named_calls(
             | Instruction::SequenceItems { .. }
             | Instruction::ApplyTemplates { .. }
             | Instruction::NextMatch { .. }
+            | Instruction::ApplyImports { .. }
             | Instruction::Copy { .. } => {}
         }
     }
