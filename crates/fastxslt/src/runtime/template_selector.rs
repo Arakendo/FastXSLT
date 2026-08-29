@@ -51,6 +51,9 @@ fn matches_pattern(
 ) -> Result<bool, ExecutionFailure> {
     match pattern {
         MatchPattern::Document => Ok(source.kind(node) == NodeKind::Document),
+        MatchPattern::DocumentElement(required) => {
+            matches_document_element(source, node, required.as_ref(), request_id, control)
+        }
         MatchPattern::Element(name) => Ok(source.name(node) == Some(name)),
         MatchPattern::ElementLocal(local) => Ok(source
             .name(node)
@@ -111,6 +114,27 @@ fn matches_pattern(
                 | NodeKind::ProcessingInstruction
         )),
     }
+}
+
+fn matches_document_element(
+    source: &Document,
+    node: NodeId,
+    required: Option<&crate::xml::quick_xml_experiment::ExpandedName>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if source.kind(node) != NodeKind::Document {
+        return Ok(false);
+    }
+    for child in source.children(node) {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if source.kind(*child) == NodeKind::Element {
+            return Ok(required.is_none_or(|name| source.name(*child) == Some(name)));
+        }
+    }
+    Ok(false)
 }
 
 fn match_path_pattern(

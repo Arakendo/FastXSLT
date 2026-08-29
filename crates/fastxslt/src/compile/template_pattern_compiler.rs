@@ -20,20 +20,11 @@ pub(super) fn compile_match_pattern(
         "processing-instruction()" => MatchPattern::ProcessingInstruction,
         "node()" => MatchPattern::AnyNode,
         "//*" => MatchPattern::DescendantAnyElement,
+        lexical if parse_document_element_test(lexical).is_some() => {
+            compile_document_element_pattern(document, element, lexical)
+        }
         predicate if parse_element_attribute_value_predicate(predicate).is_some() => {
-            let (element, attribute, value) = parse_element_attribute_value_predicate(predicate)
-                .expect("attribute-value predicate shape was checked");
-            MatchPattern::ElementWithAttributeValue {
-                element: crate::xml::quick_xml_experiment::ExpandedName {
-                    namespace: None,
-                    local: element.to_owned(),
-                },
-                attribute: crate::xml::quick_xml_experiment::ExpandedName {
-                    namespace: None,
-                    local: attribute.to_owned(),
-                },
-                value: value.to_owned(),
-            }
+            compile_element_attribute_value_pattern(predicate)
         }
         predicate if parse_element_attribute_predicate(predicate).is_some() => {
             let (element, attribute) =
@@ -119,6 +110,44 @@ fn parse_local_name_wildcard(pattern: &str) -> Option<&str> {
     is_ascii_ncname(local).then_some(local)
 }
 
+fn parse_document_element_test(pattern: &str) -> Option<&str> {
+    let element = pattern
+        .strip_prefix("document-node(element(")?
+        .strip_suffix("))")?;
+    (element == "*" || is_ascii_ncname(element)).then_some(element)
+}
+
+fn compile_document_element_pattern(
+    document: &Document,
+    element: NodeId,
+    pattern: &str,
+) -> MatchPattern {
+    let element_test =
+        parse_document_element_test(pattern).expect("document element-test shape was checked");
+    MatchPattern::DocumentElement((element_test != "*").then(|| {
+        crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: effective_xpath_default_namespace(document, element).map(str::to_owned),
+            local: element_test.to_owned(),
+        }
+    }))
+}
+
+fn compile_element_attribute_value_pattern(pattern: &str) -> MatchPattern {
+    let (element, attribute, value) = parse_element_attribute_value_predicate(pattern)
+        .expect("attribute-value predicate shape was checked");
+    MatchPattern::ElementWithAttributeValue {
+        element: crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: None,
+            local: element.to_owned(),
+        },
+        attribute: crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: None,
+            local: attribute.to_owned(),
+        },
+        value: value.to_owned(),
+    }
+}
+
 fn parse_qualified_element_test(pattern: &str) -> Option<(&str, &str)> {
     let (prefix, local) = pattern.split_once(':')?;
     (is_ascii_ncname(prefix) && (local == "*" || is_ascii_ncname(local))).then_some((prefix, local))
@@ -169,10 +198,12 @@ fn compile_template_priority(
             | MatchPattern::DescendantAnyElement
             | MatchPattern::ElementWithAttribute { .. }
             | MatchPattern::ElementWithAttributeValue { .. } => TemplatePriority::PATH_DEFAULT,
-            MatchPattern::Document => TemplatePriority::ROOT_DEFAULT,
-            MatchPattern::Element(_) | MatchPattern::Attribute(_) => {
-                TemplatePriority::EXACT_NAME_DEFAULT
+            MatchPattern::Document | MatchPattern::DocumentElement(None) => {
+                TemplatePriority::ROOT_DEFAULT
             }
+            MatchPattern::DocumentElement(Some(_))
+            | MatchPattern::Element(_)
+            | MatchPattern::Attribute(_) => TemplatePriority::EXACT_NAME_DEFAULT,
             MatchPattern::ElementLocal(_) | MatchPattern::ElementNamespace(_) => {
                 TemplatePriority::NAMESPACE_WILDCARD_DEFAULT
             }

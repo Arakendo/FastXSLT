@@ -58,7 +58,7 @@ const CASE_NAMES: [&str; 50] = [
     "conflict-resolution-1801",
 ];
 
-const PASSED_CASES: [&str; 19] = [
+const PASSED_CASES: [&str; 21] = [
     "conflict-resolution-0101",
     "conflict-resolution-0102c",
     "conflict-resolution-0104c",
@@ -76,6 +76,8 @@ const PASSED_CASES: [&str; 19] = [
     "conflict-resolution-0802",
     "conflict-resolution-0901",
     "conflict-resolution-1601",
+    "conflict-resolution-1602",
+    "conflict-resolution-1603",
     "conflict-resolution-1701",
     "conflict-resolution-1801",
 ];

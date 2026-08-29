@@ -43,6 +43,7 @@ the existing request-local selector; resource authority, invocation state,
 diagnostics, serialization, and host APIs do not move.
 
 This evidence admits competing unmoded `/` rules and bounded explicit priority
-within one stylesheet module. It does not admit `document-node(element(...))`,
+within one stylesheet module. Typed `document-node(element(...))` patterns are
+evidenced separately by `1602`–`1603`. This record does not admit
 include/import/package precedence, generalized duplicate-pattern policy,
 ambiguity recovery, or alternate standards-edition conflict behavior.

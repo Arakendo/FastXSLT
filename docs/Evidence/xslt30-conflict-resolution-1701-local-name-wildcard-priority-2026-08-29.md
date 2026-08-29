@@ -58,6 +58,6 @@ ordering only. No parser, runtime, host, resource, or public boundary moved.
 This evidence admits ASCII `*:NCName`, implicit namespace/local wildcard
 quarter-step priority, and bounded six-place explicit decimals on non-root
 patterns. It does not admit arbitrary-precision decimals, wildcard attributes,
-EQNames, Unicode QName grammar, union patterns, document kind tests,
-import/package precedence, or ambiguity policy. Root-pattern priority is
-evidenced separately by `conflict-resolution-1601`.
+EQNames, Unicode QName grammar, union patterns, import/package precedence, or
+ambiguity policy. Root and document-element pattern priorities are evidenced
+separately by `conflict-resolution-1601`–`1603`.

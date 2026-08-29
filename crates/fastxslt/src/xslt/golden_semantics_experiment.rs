@@ -117,6 +117,7 @@ pub(crate) struct NamedTemplate {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum MatchPattern {
     Document,
+    DocumentElement(Option<ExpandedName>),
     Element(ExpandedName),
     ElementLocal(String),
     ElementNamespace(String),

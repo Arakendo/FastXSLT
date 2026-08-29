@@ -43,5 +43,6 @@ matches `coo` and outranks the explicit `foo` priority `-0.6`.
 This evidence admits the exact `element()` pattern and `name(.)` for an
 unnamespaced named context node. It does not admit typed element tests,
 schema-aware patterns, wildcard attributes, general function calls, lexical
-QName reconstruction for namespaced nodes, document kind tests, import or
-package precedence, or broader pattern grammar.
+QName reconstruction for namespaced nodes, import or package precedence, or
+broader pattern grammar. The admitted document-element kind tests are evidenced
+separately by `conflict-resolution-1602`–`1603`.

@@ -588,3 +588,17 @@ case_name = "conflict-resolution-1601"
 selection = "selected"
 execution = "passed"
 rationale = "Competing unmoded root patterns migrate from the single-root shortcut into ordinary typed document-node selection, where / carries exact default priority -0.5 and bounded explicit priorities plus declaration order select the rule."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-1602"
+selection = "selected"
+execution = "passed"
+rationale = "The document-node(element(doc)) pattern retains a typed exact document-element test with default priority 0 and selects among bounded explicit decimal competitors."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-1603"
+selection = "selected"
+execution = "passed"
+rationale = "The document-node(element(*)) pattern retains typed document-element applicability with exact default priority -0.5 and selects among bounded explicit decimal competitors."
