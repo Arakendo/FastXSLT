@@ -673,6 +673,10 @@ pub extern "C" fn fastxslt_workbench_v0_engine_release(engine_handle: u64) -> u3
 }
 
 #[cfg(test)]
+#[path = "diagnostic_tests.rs"]
+mod diagnostic_tests;
+
+#[cfg(test)]
 mod tests {
     use super::{
         BoundaryFailure, OUTCOME_FAILURE, OUTCOME_RESULT, State, copy_input, copy_output,
@@ -792,38 +796,6 @@ mod tests {
         let failure = BoundaryFailure::new("FXFFI0004", "unknown engine handle");
         assert_eq!(failure.code, "FXFFI0004");
         assert_eq!(failure.detail, "unknown engine handle");
-    }
-
-    #[test]
-    fn native_failure_envelope_preserves_structured_location() {
-        let source_identity = b"urn:fastxslt:diagnostic:source";
-        let source = b"<order/>";
-        let stylesheet_identity = b"urn:fastxslt:diagnostic:unsupported-stylesheet";
-        let stylesheet = br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><xsl:message/></xsl:template></xsl:stylesheet>"#;
-        let outcome = fastxslt_workbench_v0_create(
-            source_identity.as_ptr(),
-            source_identity.len(),
-            source.as_ptr(),
-            source.len(),
-            stylesheet_identity.as_ptr(),
-            stylesheet_identity.len(),
-            stylesheet.as_ptr(),
-            stylesheet.len(),
-        );
-        assert_eq!(fastxslt_workbench_v0_outcome_kind(outcome), OUTCOME_FAILURE);
-        assert_eq!(
-            failure_fields(outcome),
-            [
-                "FXST1006",
-                "unsupported",
-                "",
-                "urn:fastxslt:diagnostic:unsupported-stylesheet",
-                "103",
-                "117",
-                "unsupported XSLT instruction: xsl:message at urn:fastxslt:diagnostic:unsupported-stylesheet:103..117",
-            ]
-        );
-        assert_eq!(fastxslt_workbench_v0_outcome_release(outcome), 1);
     }
 
     #[test]

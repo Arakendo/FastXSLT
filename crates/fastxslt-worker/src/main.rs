@@ -458,3 +458,58 @@ fn write_failure(output: &mut impl Write, failure: &WorkbenchFailure) -> io::Res
     write_string(output, &failure.detail)?;
     output.flush()
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io::Cursor;
+
+    use fastxslt::workbench::{ExperimentalEngine, WorkbenchLimits, WorkbenchStylesheetResources};
+
+    use super::{ERROR, MAX_IDENTITY_BYTES, read_byte, read_string, write_failure};
+
+    #[test]
+    fn worker_failure_envelope_preserves_resource_authority_categories() {
+        const SOURCE_ID: &str = "urn:fastxslt:worker-resource-diagnostic:source";
+        const STYLESHEET_ID: &str = "https://example.invalid/styles/main.xsl";
+        const DEPENDENCY_ID: &str = "https://example.invalid/styles/dependency.xsl";
+        let stylesheet = br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="dependency.xsl"/></xsl:stylesheet>"#;
+
+        for (policy, expected_code, expected_category) in [
+            (
+                WorkbenchStylesheetResources::default(),
+                "FXRS0002",
+                "missing-resource",
+            ),
+            (
+                WorkbenchStylesheetResources {
+                    dependencies: Vec::new(),
+                    denied_identities: vec![DEPENDENCY_ID.to_owned()],
+                },
+                "FXRS0003",
+                "denied",
+            ),
+        ] {
+            let Err(failure) = ExperimentalEngine::new_with_stylesheet_resources(
+                SOURCE_ID,
+                b"<source/>".to_vec(),
+                STYLESHEET_ID,
+                stylesheet.to_vec(),
+                policy,
+                WorkbenchLimits::default(),
+            ) else {
+                panic!("resource authority probe must fail during compilation");
+            };
+            let mut encoded = Vec::new();
+            write_failure(&mut encoded, &failure).expect("encode worker failure");
+            let mut input = Cursor::new(encoded);
+            assert_eq!(read_byte(&mut input).expect("error tag"), ERROR);
+            let fields = (0..7)
+                .map(|_| read_string(&mut input, MAX_IDENTITY_BYTES).expect("failure field"))
+                .collect::<Vec<_>>();
+            assert_eq!(fields[0], expected_code);
+            assert_eq!(fields[1], expected_category);
+            assert_eq!(fields[3], STYLESHEET_ID);
+            assert!(fields[6].contains(DEPENDENCY_ID));
+        }
+    }
+}

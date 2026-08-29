@@ -98,3 +98,5 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 include-0401 Sealed Module Execution](xslt30-include-0401-sealed-module-execution-2026-08-28.md)
 - [Stylesheet-Module Assembly Decomposition Review](stylesheet-module-assembly-decomposition-review-2026-08-28.md)
 - [Sealed Stylesheet-Dependency Accounting](sealed-stylesheet-dependency-accounting-2026-08-28.md)
+- [Workbench Resource-Authority Diagnostic Parity](workbench-resource-authority-diagnostic-parity-2026-08-28.md)
+- [Native Boundary Diagnostic-Test Decomposition](native-boundary-diagnostic-test-decomposition-2026-08-28.md)

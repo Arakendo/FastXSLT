@@ -14,12 +14,20 @@ use super::{ExecutionFailure, FailureCategory, failure, failure_at};
 
 const DEPENDENCY_LIMITS: DependencyLimits = DependencyLimits::new(1, 2, 1_048_576);
 
+#[cfg(test)]
 pub(in crate::runtime) fn compile_resource(
     snapshot: &ResourceSnapshot,
     stylesheet_id: &str,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
-    let mut resolver =
-        SnapshotResolver::new(snapshot, std::iter::empty(), ResolutionLimits::new(2));
+    compile_resource_with_denied(snapshot, stylesheet_id, std::iter::empty())
+}
+
+pub(in crate::runtime) fn compile_resource_with_denied(
+    snapshot: &ResourceSnapshot,
+    stylesheet_id: &str,
+    denied: impl IntoIterator<Item = String>,
+) -> Result<StylesheetProgram, ExecutionFailure> {
+    let mut resolver = SnapshotResolver::new(snapshot, denied, ResolutionLimits::new(2));
     compile_resource_with_resolver(&mut resolver, stylesheet_id)
 }
 

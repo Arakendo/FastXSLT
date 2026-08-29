@@ -29,6 +29,6 @@ mod xslt;
 pub mod workbench {
     pub use crate::runtime::workbench_experiment::{
         ExperimentalEngine, WorkbenchCancellation, WorkbenchFailure, WorkbenchLimits,
-        WorkbenchLocation,
+        WorkbenchLocation, WorkbenchResource, WorkbenchStylesheetResources,
     };
 }

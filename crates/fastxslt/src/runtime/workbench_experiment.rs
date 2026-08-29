@@ -5,7 +5,7 @@ use crate::execution_control_experiment::{
 };
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::runtime::golden_runtime_experiment::{
-    ExecutionFailure, compile_resource, execute_program, serialize_xml,
+    ExecutionFailure, compile_resource_with_denied, execute_program, serialize_xml,
 };
 use crate::runtime::prepared_input_experiment::{
     PreparationFailure, PreparedInputBuilder, PreparedInputSet,
@@ -74,6 +74,24 @@ pub struct WorkbenchLocation {
     pub end: usize,
 }
 
+/// One additional immutable stylesheet dependency supplied to the workbench.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkbenchResource {
+    /// Qualified logical identity used for resolution, not ambient authority.
+    pub identity: String,
+    /// Owned resource bytes copied into the sealed snapshot.
+    pub bytes: Vec<u8>,
+}
+
+/// Explicit resource inputs and denial policy for workbench compilation.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct WorkbenchStylesheetResources {
+    /// Additional stylesheet modules admitted before compilation.
+    pub dependencies: Vec<WorkbenchResource>,
+    /// Logical identities denied before snapshot membership is disclosed.
+    pub denied_identities: Vec<String>,
+}
+
 /// Cooperative cancellation state supplied to one experimental invocation.
 #[derive(Debug, Clone)]
 pub struct WorkbenchCancellation(CancellationToken);
@@ -134,14 +152,47 @@ impl ExperimentalEngine {
         stylesheet: Vec<u8>,
         limits: WorkbenchLimits,
     ) -> Result<Self, WorkbenchFailure> {
+        Self::new_with_stylesheet_resources(
+            source_id,
+            source,
+            stylesheet_id,
+            stylesheet,
+            WorkbenchStylesheetResources::default(),
+            limits,
+        )
+    }
+
+    /// Imports an explicit stylesheet dependency set, applies denial policy,
+    /// compiles once, and prepares the source.
+    ///
+    /// This workbench-only constructor exists to pressure resource diagnostics;
+    /// it is not a supported resolver or resource API.
+    ///
+    /// # Errors
+    ///
+    /// Returns a structured failure when admission, resolution, compilation, or
+    /// preparation rejects the supplied resources or limits.
+    pub fn new_with_stylesheet_resources(
+        source_id: impl Into<String>,
+        source: Vec<u8>,
+        stylesheet_id: impl Into<String>,
+        stylesheet: Vec<u8>,
+        stylesheet_resources: WorkbenchStylesheetResources,
+        limits: WorkbenchLimits,
+    ) -> Result<Self, WorkbenchFailure> {
         let source_id = source_id.into();
         let stylesheet_id = stylesheet_id.into();
+        let entry_limit = stylesheet_resources
+            .dependencies
+            .len()
+            .checked_add(2)
+            .ok_or_else(|| workbench_failure("FXWB0001", "limit", "resource count overflow"))?;
         let total_limit = limits
             .max_resource_bytes
-            .checked_mul(2)
+            .checked_mul(entry_limit)
             .ok_or_else(|| workbench_failure("FXWB0001", "limit", "resource limit overflow"))?;
         let mut resources = ResourceSetBuilder::new(ResourceLimits::new(
-            2,
+            entry_limit,
             limits.max_resource_bytes,
             total_limit,
         ));
@@ -163,9 +214,24 @@ impl ExperimentalEngine {
                     format!("stylesheet admission: {failure:?}"),
                 )
             })?;
+        for dependency in stylesheet_resources.dependencies {
+            resources
+                .admit(dependency.identity, dependency.bytes)
+                .map_err(|failure| {
+                    workbench_failure(
+                        "FXWB0002",
+                        "limit",
+                        format!("stylesheet dependency admission: {failure:?}"),
+                    )
+                })?;
+        }
         let snapshot = resources.seal();
-        let program = compile_resource(&snapshot, &stylesheet_id)
-            .map_err(|failure| project_execution(&failure))?;
+        let program = compile_resource_with_denied(
+            &snapshot,
+            &stylesheet_id,
+            stylesheet_resources.denied_identities,
+        )
+        .map_err(|failure| project_execution(&failure))?;
         let mut builder = PreparedInputBuilder::with_parse_limits(
             snapshot,
             ParseLimits {
@@ -348,7 +414,10 @@ fn workbench_failure(
 
 #[cfg(test)]
 mod tests {
-    use super::{ExperimentalEngine, WorkbenchCancellation, WorkbenchLimits};
+    use super::{
+        ExperimentalEngine, WorkbenchCancellation, WorkbenchLimits, WorkbenchResource,
+        WorkbenchStylesheetResources,
+    };
 
     #[test]
     fn compiles_prepares_and_reuses_one_native_workload() {
@@ -498,6 +567,78 @@ mod tests {
         assert_eq!(
             unsupported.detail,
             "unsupported XSLT instruction: xsl:message at urn:fastxslt:diagnostic:unsupported-stylesheet:103..117"
+        );
+    }
+
+    #[test]
+    fn distinguishes_missing_and_denied_stylesheet_dependencies_without_string_parsing() {
+        const SOURCE_ID: &str = "urn:fastxslt:resource-diagnostic:source";
+        const STYLESHEET_ID: &str = "https://example.invalid/styles/main.xsl";
+        const DEPENDENCY_ID: &str = "https://example.invalid/styles/dependency.xsl";
+        let stylesheet = br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="dependency.xsl"/></xsl:stylesheet>"#;
+
+        let Err(missing) = ExperimentalEngine::new_with_stylesheet_resources(
+            SOURCE_ID,
+            b"<source/>".to_vec(),
+            STYLESHEET_ID,
+            stylesheet.to_vec(),
+            WorkbenchStylesheetResources::default(),
+            WorkbenchLimits::default(),
+        ) else {
+            panic!("unadmitted dependency must be missing");
+        };
+        let Err(denied) = ExperimentalEngine::new_with_stylesheet_resources(
+            SOURCE_ID,
+            b"<source/>".to_vec(),
+            STYLESHEET_ID,
+            stylesheet.to_vec(),
+            WorkbenchStylesheetResources {
+                dependencies: Vec::new(),
+                denied_identities: vec![DEPENDENCY_ID.to_owned()],
+            },
+            WorkbenchLimits::default(),
+        ) else {
+            panic!("denial must precede membership disclosure");
+        };
+
+        assert_eq!(missing.code, "FXRS0002");
+        assert_eq!(missing.category, "missing-resource");
+        assert_eq!(denied.code, "FXRS0003");
+        assert_eq!(denied.category, "denied");
+        for failure in [&missing, &denied] {
+            assert_eq!(failure.request_id, None);
+            let location = failure
+                .location
+                .as_ref()
+                .expect("dependency failure should retain the include location");
+            assert_eq!(location.resource, STYLESHEET_ID);
+            assert!(location.start < location.end);
+            assert!(failure.detail.contains(DEPENDENCY_ID));
+        }
+    }
+
+    #[test]
+    fn compiles_one_explicit_workbench_stylesheet_dependency() {
+        const DEPENDENCY_ID: &str = "https://example.invalid/styles/dependency.xsl";
+        let engine = ExperimentalEngine::new_with_stylesheet_resources(
+            "urn:fastxslt:workbench-dependency:source",
+            b"<source/>".to_vec(),
+            "https://example.invalid/styles/main.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="dependency.xsl"/><xsl:variable name="greeting">hello</xsl:variable></xsl:stylesheet>"#.to_vec(),
+            WorkbenchStylesheetResources {
+                dependencies: vec![WorkbenchResource {
+                    identity: DEPENDENCY_ID.to_owned(),
+                    bytes: br#"<out xsl:version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:value-of select="$greeting"/></out>"#.to_vec(),
+                }],
+                denied_identities: Vec::new(),
+            },
+            WorkbenchLimits::default(),
+        )
+        .expect("explicit sealed dependency should compile");
+
+        assert_eq!(
+            engine.transform("dependency-transform").expect("transform"),
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>hello</out>"
         );
     }
 

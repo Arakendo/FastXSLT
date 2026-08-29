@@ -29,7 +29,9 @@ mod transform_set_experiment;
 #[path = "value_evaluator.rs"]
 mod value_evaluator;
 
+#[cfg(test)]
 pub(super) use resource_compiler::compile_resource;
+pub(super) use resource_compiler::compile_resource_with_denied;
 use runtime_context::{
     RuntimeGlobals, RuntimeVariables, SequenceInputs, TemporaryTree, bind_template_parameters,
     materialize_global_defaults, required_source_context,

@@ -511,6 +511,10 @@ failed, and harness-error cases without an unqualified conformance claim.
       return no graph or compiled program after any limit, resolution, parse, or
       cycle failure. The private production profile remains depth 1, two
       modules, and 1 MiB rather than selecting public limits.
+    - [x] Add a workbench-only explicit dependency/denial input and prove
+      `missing-resource` and `denied` remain distinct structured categories
+      through the Rust facade plus native and isolated-worker failure envelopes.
+      Actual dependency-set framing in the two .NET transports remains open.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.

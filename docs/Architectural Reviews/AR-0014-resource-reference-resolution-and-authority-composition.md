@@ -187,8 +187,12 @@ resolver trait, URI type, catalog representation, live authority, or cache.
   failed graph preparation returns no partial graph or compiled program and
   cannot mutate the sealed snapshot. Public limits and repeated-module
   accounting policy remain unselected.
-- [ ] Exercise denied versus missing disclosure through the eventual Rust and
-  selected .NET host profiles without parsing display strings.
+- [x] Exercise denied versus missing disclosure through the workbench Rust
+  facade and both .NET-mode failure envelopes without parsing display strings.
+  The current transports still cannot submit dependency sets or denial policy.
+- [ ] Extend selected host initialization protocols to submit bounded
+  dependency sets and denial policy before claiming end-to-end .NET resolver
+  support.
 - [ ] Compare presealed closure, callback/live, and hybrid lifecycle costs on a
   representative multi-resource workload before selecting supported profiles.
 - [x] Review and exact-pin the private URI parsing/normalization dependency for
@@ -224,3 +228,7 @@ resolver trait, URI type, catalog representation, live authority, or cache.
   preparation with independent depth, module-occurrence, aggregate-byte, and
   active-path cycle checks. Private limits remain deliberately narrow and do
   not select public dependency policy or module precedence.
+- 2026-08-28 -- A workbench-only explicit dependency/denial input preserved
+  `FXRS0002 / missing-resource` and `FXRS0003 / denied` through Rust, native,
+  and isolated-worker diagnostic envelopes. Transport framing for those inputs
+  remains deliberately unresolved.
