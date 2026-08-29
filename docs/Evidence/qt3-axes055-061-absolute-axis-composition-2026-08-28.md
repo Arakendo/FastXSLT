@@ -54,6 +54,10 @@ wildcards, and the document-leading node result of
 The admitted `Axes001` through `Axes061` selections now contribute 107 passing
 location-path cases through the same metadata-driven direct XPath seam.
 
+Subsequent [`Axes062`–`Axes067` evidence](qt3-axes062-067-leading-descendant-child-forms-2026-08-28.md)
+verifies explicit and abbreviated child steps after the leading descendant
+origin.
+
 ## Claim boundary
 
 This evidence admits only the listed absolute axis forms. It does not establish

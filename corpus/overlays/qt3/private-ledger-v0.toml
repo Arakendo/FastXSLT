@@ -751,6 +751,132 @@ execution = "passed"
 rationale = "The native TopMany document origin retains document self plus all 58 descendants through node()."
 
 [[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes062-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeEmpty descendant origin selects its one element through explicit child::*."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes062-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass descendant origin selects all 15 elements through explicit child::*."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes063-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc descendant origin finds no unnamespaced south element through explicit child syntax."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes063-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeEmpty descendant origin selects its one south element through explicit child syntax."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes063-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass descendant origin selects its one south element through explicit child syntax."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes063-4"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeStack descendant origin selects all eight south elements in document order."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes064-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeEmpty descendant origin retains its one node through explicit child::node()."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes064-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass descendant origin retains all 56 nodes through explicit child::node()."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes064-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TopMany descendant origin retains 58 nodes while excluding the document node."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes065-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeEmpty descendant origin lowers //* to the same any-element child step and matches one."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes065-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass descendant origin lowers //* to the same any-element child step and matches 15."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes066-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeTrunc descendant origin lowers //south without widening its unprefixed name test."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes066-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeEmpty descendant origin lowers //south and selects one element."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes066-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass descendant origin lowers //south and selects one element."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes066-4"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeStack descendant origin lowers //south and selects all eight matches in document order."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes067-1"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeEmpty descendant origin lowers //node() to the any-node child step and matches one."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes067-2"
+selection = "selected"
+execution = "passed"
+rationale = "The native TreeCompass descendant origin lowers //node() and retains all 56 nodes."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes067-3"
+selection = "selected"
+execution = "passed"
+rationale = "The native TopMany descendant origin lowers //node() and retains 58 descendants without the document node."
+
+[[case]]
 set_file = "fn/deep-equal.xml"
 case_name = "fn-deep-equalint2args-1"
 selection = "selected"

@@ -183,6 +183,55 @@ fn descendant_steps_filter_one_charged_document_order_traversal() {
 }
 
 #[test]
+fn leading_descendant_origin_unifies_explicit_and_abbreviated_child_steps() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root><!--c--><a>text<b/></a></root>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 5,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let explicit_elements = parse_location_path("//child::*", location())
+        .expect("explicit leading descendant child wildcard should parse");
+    let abbreviated_elements =
+        parse_location_path("//*", location()).expect("abbreviated wildcard should parse");
+    let explicit_nodes = parse_location_path("//child::node()", location())
+        .expect("explicit leading descendant child node test should parse");
+    let abbreviated_nodes =
+        parse_location_path("//node()", location()).expect("abbreviated node test should parse");
+    let named =
+        parse_location_path("//b", location()).expect("abbreviated named child should parse");
+    let mut control = InvocationControl::unbounded();
+
+    assert_eq!(explicit_elements.steps, abbreviated_elements.steps);
+    assert_eq!(explicit_nodes.steps, abbreviated_nodes.steps);
+    assert_eq!(explicit_elements.origin, PathOrigin::Descendant);
+    assert_eq!(
+        evaluate_location_path(&document, document.document_node(), &explicit_elements).len(),
+        3
+    );
+    assert_eq!(
+        evaluate_location_path(&document, document.document_node(), &named).len(),
+        1
+    );
+    assert_eq!(
+        evaluate_location_path_controlled(
+            &document,
+            document.document_node(),
+            &abbreviated_nodes,
+            &mut control,
+        )
+        .expect("controlled leading descendant traversal should execute")
+        .len(),
+        5
+    );
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 5);
+}
+
+#[test]
 fn descendant_or_self_steps_include_self_and_deduplicate_overlapping_contexts() {
     let parsed = parse_document(
         "memory:source.xml",
