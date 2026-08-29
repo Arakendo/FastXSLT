@@ -49,6 +49,9 @@ fn matches_pattern(
 ) -> Result<bool, ExecutionFailure> {
     match pattern {
         MatchPattern::Element(name) => Ok(source.name(node) == Some(name)),
+        MatchPattern::DescendantAnyElement | MatchPattern::AnyElement => {
+            Ok(source.kind(node) == NodeKind::Element)
+        }
         MatchPattern::ElementWithAttribute { element, attribute } => {
             if source.name(node) != Some(element) {
                 return Ok(false);
@@ -78,7 +81,6 @@ fn matches_pattern(
                 | NodeKind::Comment
                 | NodeKind::ProcessingInstruction
         )),
-        MatchPattern::AnyElement => Ok(source.kind(node) == NodeKind::Element),
     }
 }
 

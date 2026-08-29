@@ -504,3 +504,10 @@ case_name = "conflict-resolution-0110c"
 selection = "selected"
 execution = "passed"
 rationale = "Reversing the equal-priority path and attribute-predicate declarations makes the later foo[@test] pattern win under the XSLT 3.0 default policy."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0112"
+selection = "selected"
+execution = "passed"
+rationale = "The exact descendant wildcard pattern matches elements but retains non-simple default priority, so it beats the exact-name and node-test rules without runtime priority reconstruction."

@@ -231,6 +231,10 @@ non-simple `doc/foo` pattern. Paired XSLT 3.0 cases `0108c` and `0110c` add only
 the exact unnamespaced `foo[@test]` presence pattern and prove last-declared
 selection against the equal-priority path in both source orders. Each inspected
 attribute is charged; general predicate expressions remain unsupported.
+`conflict-resolution-0112` adds only exact `//*`: compilation specializes it as
+element applicability with retained non-simple priority, so it beats exact-name
+and node-test rules without general descendant navigation in the dispatch hot
+path. Named and arbitrary descendant patterns remain unsupported.
 
 The current order of work is:
 
@@ -670,6 +674,10 @@ failed, and harness-error cases without an unqualified conformance claim.
   `element[@attribute]` presence pattern, charge inspected attributes, and prove
   source-order selection against an equal-priority path in both directions;
   keep general predicate expressions unsupported.
+- [x] Execute `conflict-resolution-0112` through an exact compiled `//*`
+  specialization whose element applicability retains non-simple default
+  priority. Keep `//QName`, arbitrary descendant patterns, union patterns, and
+  the general pattern grammar unsupported.
 - [x] Admit the complete five-case XSLT30 `misc/initial-mode` denominator,
   preserving each mode identity and expected error or XML assertion through
   bounded snapshots. A focused host-neutral initial-mode entry executes with an

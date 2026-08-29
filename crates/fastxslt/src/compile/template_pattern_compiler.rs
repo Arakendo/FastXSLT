@@ -17,6 +17,7 @@ pub(super) fn compile_match_pattern(
         "comment()" => MatchPattern::Comment,
         "processing-instruction()" => MatchPattern::ProcessingInstruction,
         "node()" => MatchPattern::AnyNode,
+        "//*" => MatchPattern::DescendantAnyElement,
         predicate if parse_element_attribute_predicate(predicate).is_some() => {
             let (element, attribute) =
                 parse_element_attribute_predicate(predicate).expect("predicate shape was checked");
@@ -73,9 +74,9 @@ fn compile_template_priority(
 ) -> Result<TemplatePriority, CompileFailure> {
     let Some(lexical) = optional_attribute(document, element, None, "priority") else {
         return Ok(match pattern {
-            MatchPattern::Path(_) | MatchPattern::ElementWithAttribute { .. } => {
-                TemplatePriority::PATH_DEFAULT
-            }
+            MatchPattern::Path(_)
+            | MatchPattern::DescendantAnyElement
+            | MatchPattern::ElementWithAttribute { .. } => TemplatePriority::PATH_DEFAULT,
             MatchPattern::Element(_) | MatchPattern::Attribute(_) => {
                 TemplatePriority::EXACT_NAME_DEFAULT
             }

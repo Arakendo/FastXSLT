@@ -1083,6 +1083,30 @@ mod tests {
     }
 
     #[test]
+    fn compiles_exact_descendant_wildcard_with_non_simple_priority() {
+        let stylesheet = parse_stylesheet(
+            "memory:descendant-wildcard-pattern.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="foo"><exact/></xsl:template><xsl:template match="//*"><descendant/></xsl:template></xsl:stylesheet>"#,
+        );
+        let program =
+            compile_stylesheet(&stylesheet).expect("exact descendant wildcard should compile");
+        assert!(matches!(
+            program.matched_templates[1].pattern,
+            crate::xslt::golden_semantics_experiment::MatchPattern::DescendantAnyElement
+        ));
+        assert!(program.matched_templates[1].priority > program.matched_templates[0].priority);
+
+        let named_descendant = parse_stylesheet(
+            "memory:named-descendant-pattern.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="//foo"><out/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&named_descendant)
+            .expect_err("general descendant patterns must remain unsupported");
+        assert_eq!(failure.code, "FXST1005");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+    }
+
+    #[test]
     fn distinguishes_invalid_stylesheet_from_unsupported_instruction() {
         let invalid = parse_stylesheet(
             "memory:invalid.xsl",
