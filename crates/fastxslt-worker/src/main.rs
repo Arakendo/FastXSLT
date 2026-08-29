@@ -7,6 +7,7 @@ use std::{
 
 use fastxslt::workbench::{
     ExperimentalEngine, WorkbenchCancellation, WorkbenchFailure, WorkbenchLimits,
+    WorkbenchResource, WorkbenchStylesheetResources,
 };
 
 const INITIALIZE: u8 = 1;
@@ -18,6 +19,7 @@ const CONTROLLED_TRANSFORM: u8 = 6;
 const CANCEL: u8 = 7;
 const UNPAUSED_CONTROLLED_TRANSFORM: u8 = 8;
 const INSTRUCTION_LIMITED_TRANSFORM: u8 = 9;
+const INITIALIZE_WITH_STYLESHEET_DEPENDENCY: u8 = 10;
 const READY: u8 = 0x81;
 const RESULT: u8 = 0x82;
 const STOPPED: u8 = 0x83;
@@ -90,11 +92,13 @@ impl Supervisor {
                 source,
                 stylesheet_id,
                 stylesheet,
-            } => match ExperimentalEngine::new(
+                stylesheet_resources,
+            } => match ExperimentalEngine::new_with_stylesheet_resources(
                 source_id,
                 source,
                 stylesheet_id,
                 stylesheet,
+                stylesheet_resources,
                 WorkbenchLimits::default(),
             ) {
                 Ok(initialized) => {
@@ -297,7 +301,40 @@ fn read_command(input: &mut impl Read) -> io::Result<Option<Command>> {
             source: read_bytes(input, MAX_RESOURCE_BYTES)?,
             stylesheet_id: read_string(input, MAX_IDENTITY_BYTES)?,
             stylesheet: read_bytes(input, MAX_RESOURCE_BYTES)?,
+            stylesheet_resources: WorkbenchStylesheetResources::default(),
         },
+        INITIALIZE_WITH_STYLESHEET_DEPENDENCY => {
+            let source_id = read_string(input, MAX_IDENTITY_BYTES)?;
+            let source = read_bytes(input, MAX_RESOURCE_BYTES)?;
+            let stylesheet_id = read_string(input, MAX_IDENTITY_BYTES)?;
+            let stylesheet = read_bytes(input, MAX_RESOURCE_BYTES)?;
+            let dependency_id = read_string(input, MAX_IDENTITY_BYTES)?;
+            let dependency = read_bytes(input, MAX_RESOURCE_BYTES)?;
+            let admitted = read_boolean(input, "dependency admission")?;
+            let denied = read_boolean(input, "dependency denial")?;
+            if !admitted && !dependency.is_empty() {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "unadmitted dependency must not carry resource bytes",
+                ));
+            }
+            Command::Initialize {
+                source_id,
+                source,
+                stylesheet_id,
+                stylesheet,
+                stylesheet_resources: WorkbenchStylesheetResources {
+                    dependencies: admitted
+                        .then_some(WorkbenchResource {
+                            identity: dependency_id.clone(),
+                            bytes: dependency,
+                        })
+                        .into_iter()
+                        .collect(),
+                    denied_identities: denied.then_some(dependency_id).into_iter().collect(),
+                },
+            }
+        }
         TRANSFORM
         | CANCELLED_TRANSFORM
         | CONTROLLED_TRANSFORM
@@ -351,6 +388,7 @@ enum Command {
         source: Vec<u8>,
         stylesheet_id: String,
         stylesheet: Vec<u8>,
+        stylesheet_resources: WorkbenchStylesheetResources,
     },
     Transform {
         request_id: String,
@@ -387,6 +425,17 @@ fn read_byte(input: &mut impl Read) -> io::Result<u8> {
     let mut value = [0_u8; 1];
     input.read_exact(&mut value)?;
     Ok(value[0])
+}
+
+fn read_boolean(input: &mut impl Read, field: &str) -> io::Result<bool> {
+    match read_byte(input)? {
+        0 => Ok(false),
+        1 => Ok(true),
+        value => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("{field} flag must be zero or one, received {value}"),
+        )),
+    }
 }
 
 fn read_u64(input: &mut impl Read) -> io::Result<u64> {
@@ -461,46 +510,55 @@ fn write_failure(output: &mut impl Write, failure: &WorkbenchFailure) -> io::Res
 
 #[cfg(test)]
 mod tests {
-    use std::io::Cursor;
+    use std::{io::Cursor, sync::mpsc};
 
-    use fastxslt::workbench::{ExperimentalEngine, WorkbenchLimits, WorkbenchStylesheetResources};
+    use super::{
+        ERROR, INITIALIZE_WITH_STYLESHEET_DEPENDENCY, MAX_IDENTITY_BYTES, READY, Supervisor,
+        read_byte, read_command, read_string,
+    };
 
-    use super::{ERROR, MAX_IDENTITY_BYTES, read_byte, read_string, write_failure};
+    fn push_bytes(frame: &mut Vec<u8>, value: &[u8]) {
+        frame.extend_from_slice(
+            &u32::try_from(value.len())
+                .expect("test frame length")
+                .to_le_bytes(),
+        );
+        frame.extend_from_slice(value);
+    }
+
+    fn initialize_frame(dependency: &[u8], admitted: bool, denied: bool) -> Vec<u8> {
+        let mut frame = vec![INITIALIZE_WITH_STYLESHEET_DEPENDENCY];
+        for value in [
+            b"urn:fastxslt:worker-resource-diagnostic:source".as_slice(),
+            b"<source/>",
+            b"https://example.invalid/styles/main.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="dependency.xsl"/><xsl:variable name="greeting">hello</xsl:variable></xsl:stylesheet>"#,
+            b"https://example.invalid/styles/dependency.xsl",
+            dependency,
+        ] {
+            push_bytes(&mut frame, value);
+        }
+        frame.extend_from_slice(&[u8::from(admitted), u8::from(denied)]);
+        frame
+    }
 
     #[test]
     fn worker_failure_envelope_preserves_resource_authority_categories() {
-        const SOURCE_ID: &str = "urn:fastxslt:worker-resource-diagnostic:source";
         const STYLESHEET_ID: &str = "https://example.invalid/styles/main.xsl";
         const DEPENDENCY_ID: &str = "https://example.invalid/styles/dependency.xsl";
-        let stylesheet = br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="dependency.xsl"/></xsl:stylesheet>"#;
-
-        for (policy, expected_code, expected_category) in [
-            (
-                WorkbenchStylesheetResources::default(),
-                "FXRS0002",
-                "missing-resource",
-            ),
-            (
-                WorkbenchStylesheetResources {
-                    dependencies: Vec::new(),
-                    denied_identities: vec![DEPENDENCY_ID.to_owned()],
-                },
-                "FXRS0003",
-                "denied",
-            ),
+        for (denied, expected_code, expected_category) in [
+            (false, "FXRS0002", "missing-resource"),
+            (true, "FXRS0003", "denied"),
         ] {
-            let Err(failure) = ExperimentalEngine::new_with_stylesheet_resources(
-                SOURCE_ID,
-                b"<source/>".to_vec(),
-                STYLESHEET_ID,
-                stylesheet.to_vec(),
-                policy,
-                WorkbenchLimits::default(),
-            ) else {
-                panic!("resource authority probe must fail during compilation");
-            };
+            let command = read_command(&mut Cursor::new(initialize_frame(&[], false, denied)))
+                .expect("read initialization")
+                .expect("initialization command");
+            let (events, _) = mpsc::channel();
+            let mut supervisor = Supervisor::new(events);
             let mut encoded = Vec::new();
-            write_failure(&mut encoded, &failure).expect("encode worker failure");
+            supervisor
+                .handle_command(command, &mut encoded)
+                .expect("handle initialization");
             let mut input = Cursor::new(encoded);
             assert_eq!(read_byte(&mut input).expect("error tag"), ERROR);
             let fields = (0..7)
@@ -511,5 +569,46 @@ mod tests {
             assert_eq!(fields[3], STYLESHEET_ID);
             assert!(fields[6].contains(DEPENDENCY_ID));
         }
+    }
+
+    #[test]
+    fn worker_dependency_initialization_executes_admitted_module() {
+        let dependency = br#"<out xsl:version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:value-of select="$greeting"/></out>"#;
+        let command = read_command(&mut Cursor::new(initialize_frame(dependency, true, false)))
+            .expect("read initialization")
+            .expect("initialization command");
+        let (events, _) = mpsc::channel();
+        let mut supervisor = Supervisor::new(events);
+        let mut encoded = Vec::new();
+        supervisor
+            .handle_command(command, &mut encoded)
+            .expect("handle initialization");
+        assert_eq!(encoded, [READY]);
+        assert_eq!(
+            supervisor
+                .engine
+                .as_ref()
+                .expect("initialized engine")
+                .transform("worker-dependency")
+                .expect("transform"),
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>hello</out>"
+        );
+    }
+
+    #[test]
+    fn worker_dependency_initialization_rejects_invalid_framing() {
+        let mut invalid_flag = initialize_frame(&[], false, false);
+        *invalid_flag.last_mut().expect("denial flag") = 2;
+        let Err(invalid_flag) = read_command(&mut Cursor::new(invalid_flag)) else {
+            panic!("invalid flag must reject framing");
+        };
+        assert_eq!(invalid_flag.kind(), std::io::ErrorKind::InvalidData);
+
+        let Err(unadmitted_bytes) =
+            read_command(&mut Cursor::new(initialize_frame(b"bytes", false, false)))
+        else {
+            panic!("unadmitted bytes must reject framing");
+        };
+        assert_eq!(unadmitted_bytes.kind(), std::io::ErrorKind::InvalidData);
     }
 }

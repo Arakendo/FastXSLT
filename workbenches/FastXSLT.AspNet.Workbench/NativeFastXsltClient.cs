@@ -16,13 +16,10 @@ public sealed class NativeFastXsltClient : IDisposable
         string stylesheetIdentity,
         byte[] stylesheet)
     {
-        if (NativeMethods.AbiVersion() != 1)
-        {
-            throw new InvalidOperationException("Unexpected native FastXSLT workbench ABI version.");
-        }
+        AssertAbiVersion();
         var sourceIdentityBytes = Encoding.UTF8.GetBytes(sourceIdentity);
         var stylesheetIdentityBytes = Encoding.UTF8.GetBytes(stylesheetIdentity);
-        var outcome = NativeMethods.Create(
+        return FromCreationOutcome(NativeMethods.Create(
             sourceIdentityBytes,
             (nuint)sourceIdentityBytes.Length,
             source,
@@ -30,7 +27,56 @@ public sealed class NativeFastXsltClient : IDisposable
             stylesheetIdentityBytes,
             (nuint)stylesheetIdentityBytes.Length,
             stylesheet,
-            (nuint)stylesheet.Length);
+            (nuint)stylesheet.Length));
+    }
+
+    public static NativeFastXsltClient CreateWithStylesheetDependency(
+        string sourceIdentity,
+        byte[] source,
+        string stylesheetIdentity,
+        byte[] stylesheet,
+        string dependencyIdentity,
+        byte[] dependency,
+        bool admitted,
+        bool denied)
+    {
+        if (!admitted && dependency.Length != 0)
+        {
+            throw new ArgumentException(
+                "An unadmitted stylesheet dependency must not carry bytes.",
+                nameof(dependency));
+        }
+        AssertAbiVersion();
+        var sourceIdentityBytes = Encoding.UTF8.GetBytes(sourceIdentity);
+        var stylesheetIdentityBytes = Encoding.UTF8.GetBytes(stylesheetIdentity);
+        var dependencyIdentityBytes = Encoding.UTF8.GetBytes(dependencyIdentity);
+        return FromCreationOutcome(NativeMethods.CreateWithStylesheetDependency(
+            sourceIdentityBytes,
+            (nuint)sourceIdentityBytes.Length,
+            source,
+            (nuint)source.Length,
+            stylesheetIdentityBytes,
+            (nuint)stylesheetIdentityBytes.Length,
+            stylesheet,
+            (nuint)stylesheet.Length,
+            dependencyIdentityBytes,
+            (nuint)dependencyIdentityBytes.Length,
+            dependency,
+            (nuint)dependency.Length,
+            admitted ? 1u : 0u,
+            denied ? 1u : 0u));
+    }
+
+    private static void AssertAbiVersion()
+    {
+        if (NativeMethods.AbiVersion() != 2)
+        {
+            throw new InvalidOperationException("Unexpected native FastXSLT workbench ABI version.");
+        }
+    }
+
+    private static NativeFastXsltClient FromCreationOutcome(ulong outcome)
+    {
         if (NativeMethods.OutcomeKind(outcome) != 1)
         {
             throw ReadFailureAndRelease(outcome);
@@ -312,6 +358,25 @@ public sealed class NativeFastXsltClient : IDisposable
             nuint stylesheetIdentityLength,
             byte[] stylesheet,
             nuint stylesheetLength);
+
+        [DllImport(
+            Library,
+            EntryPoint = "fastxslt_workbench_v0_create_with_stylesheet_dependency")]
+        internal static extern ulong CreateWithStylesheetDependency(
+            byte[] sourceIdentity,
+            nuint sourceIdentityLength,
+            byte[] source,
+            nuint sourceLength,
+            byte[] stylesheetIdentity,
+            nuint stylesheetIdentityLength,
+            byte[] stylesheet,
+            nuint stylesheetLength,
+            byte[] dependencyIdentity,
+            nuint dependencyIdentityLength,
+            byte[] dependency,
+            nuint dependencyLength,
+            uint admitDependency,
+            uint denyDependency);
 
         [DllImport(Library, EntryPoint = "fastxslt_workbench_v0_transform")]
         internal static extern ulong Transform(

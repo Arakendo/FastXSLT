@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | Date | 2026-08-28 |
-| Boundary | Unstable workbench Rust facade and .NET-mode diagnostic envelopes |
+| Boundary | Unstable Rust facade plus native and isolated .NET initialization transports |
 | Missing outcome | `FXRS0002 / missing-resource` |
 | Denied outcome | `FXRS0003 / denied` |
 | Authority order | Denial before snapshot membership disclosure |
@@ -30,30 +30,34 @@ Both failures retain the principal stylesheet's structured include location
 and mention the resolved logical dependency identity only in human-readable
 detail. Callers select behavior from code and category, not detail parsing.
 
-## Host-envelope parity
+## Host-transport parity
 
-The native workbench's seven-field binary failure envelope and the isolated
-worker's length-prefixed failure envelope are each tested with the real
-compilation failures above. Both preserve code, category, resource location,
-span fields, and detail without collapsing denial into absence. No new native
-export, unsafe block, or unsafe allowance was introduced.
+ADR-0011 adds an explicit one-dependency initialization operation to each
+unpublished .NET workbench mode. Both transport implementations now accept the
+logical dependency identity, optional bounded bytes, and independent admission
+and denial flags. Their positive controls compile and execute the included
+module. Their negative controls preserve code, category, resource location,
+span fields, and detail without collapsing denial into absence.
+
+Malformed flag values and nonempty bytes attached to an unadmitted dependency
+are rejected at the transport boundary. The managed adapters expose the same
+narrow input and compile against native ABI version 2. The native extension
+reuses the existing immediate buffer-copy helper: one export and one scoped
+allowance were added, while the exact unsafe operation count remains two.
 
 ## Claim boundary
 
-This proves diagnostic projection and encoding parity, not an end-to-end
-managed resolver API. The existing native create export and isolated worker
-initialize command still accept only one source and one principal stylesheet;
-they cannot yet frame dependency sets or denial policy. The new Rust types are
-documentation-hidden, feature-gated workbench inputs, not supported FastXSLT
-facade contracts.
+This proves one end-to-end workbench initialization shape, not a supported
+managed resolver API. It deliberately accepts only one dependency and does not
+select a general collection representation. The Rust and managed types remain
+private or workbench-only inputs, not supported FastXSLT facade contracts.
 
 Catalogs, live callbacks, async acquisition, credentials, tenant policy, and
 public disclosure defaults remain unselected under AR-0014.
 
 ## Validation
 
-`scripts/verify.ps1` passes the enforced unsafe-surface check, formatting,
-workspace Clippy with warnings denied, all-feature tests, Markdown links,
-conformance-source checks and inventories, and workspace documentation. The
-engine has 218 passing tests and 7 ignored manual probes; the native workbench
-has 8 passes and the isolated worker has 1 transport-envelope pass.
+Focused Rust transport tests pass with one admitted execution plus missing and
+denied failures in each mode. The managed ASP.NET project builds in Release
+configuration against ABI version 2. Full workspace gate results are recorded
+at the implementation checkpoint rather than frozen into this evidence record.

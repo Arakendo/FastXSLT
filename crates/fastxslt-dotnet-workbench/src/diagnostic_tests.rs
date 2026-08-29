@@ -1,9 +1,9 @@
-use fastxslt::workbench::{ExperimentalEngine, WorkbenchLimits, WorkbenchStylesheetResources};
-
 use super::{
-    OUTCOME_FAILURE, engine_failure, fastxslt_workbench_v0_create,
+    OUTCOME_FAILURE, OUTCOME_RESULT, fastxslt_workbench_v0_create,
+    fastxslt_workbench_v0_create_with_stylesheet_dependency, fastxslt_workbench_v0_engine_release,
     fastxslt_workbench_v0_outcome_copy, fastxslt_workbench_v0_outcome_kind,
-    fastxslt_workbench_v0_outcome_length, fastxslt_workbench_v0_outcome_release, state,
+    fastxslt_workbench_v0_outcome_length, fastxslt_workbench_v0_outcome_release,
+    fastxslt_workbench_v0_outcome_take_engine, fastxslt_workbench_v0_transform,
 };
 
 fn failure_fields(outcome: u64) -> Vec<String> {
@@ -71,37 +71,106 @@ fn native_failure_envelope_preserves_resource_authority_categories() {
     const DEPENDENCY_ID: &str = "https://example.invalid/styles/dependency.xsl";
     let stylesheet = br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="dependency.xsl"/></xsl:stylesheet>"#;
 
-    for (policy, expected_code, expected_category) in [
-        (
-            WorkbenchStylesheetResources::default(),
-            "FXRS0002",
-            "missing-resource",
-        ),
-        (
-            WorkbenchStylesheetResources {
-                dependencies: Vec::new(),
-                denied_identities: vec![DEPENDENCY_ID.to_owned()],
-            },
-            "FXRS0003",
-            "denied",
-        ),
+    for (deny, expected_code, expected_category) in [
+        (0, "FXRS0002", "missing-resource"),
+        (1, "FXRS0003", "denied"),
     ] {
-        let Err(failure) = ExperimentalEngine::new_with_stylesheet_resources(
-            SOURCE_ID,
-            b"<source/>".to_vec(),
-            STYLESHEET_ID,
-            stylesheet.to_vec(),
-            policy,
-            WorkbenchLimits::default(),
-        ) else {
-            panic!("resource authority probe must fail during compilation");
-        };
-        let outcome = state().insert_outcome(engine_failure(&failure));
+        let outcome = fastxslt_workbench_v0_create_with_stylesheet_dependency(
+            SOURCE_ID.as_ptr(),
+            SOURCE_ID.len(),
+            b"<source/>".as_ptr(),
+            b"<source/>".len(),
+            STYLESHEET_ID.as_ptr(),
+            STYLESHEET_ID.len(),
+            stylesheet.as_ptr(),
+            stylesheet.len(),
+            DEPENDENCY_ID.as_ptr(),
+            DEPENDENCY_ID.len(),
+            std::ptr::null(),
+            0,
+            0,
+            deny,
+        );
+        assert_eq!(fastxslt_workbench_v0_outcome_kind(outcome), OUTCOME_FAILURE);
         let fields = failure_fields(outcome);
         assert_eq!(fields[0], expected_code);
         assert_eq!(fields[1], expected_category);
         assert_eq!(fields[3], STYLESHEET_ID);
         assert!(fields[6].contains(DEPENDENCY_ID));
+        assert_eq!(fastxslt_workbench_v0_outcome_release(outcome), 1);
+    }
+}
+
+#[test]
+fn native_dependency_initialization_executes_admitted_module() {
+    const SOURCE_ID: &str = "urn:fastxslt:native-dependency:source";
+    const STYLESHEET_ID: &str = "https://example.invalid/styles/main.xsl";
+    const DEPENDENCY_ID: &str = "https://example.invalid/styles/dependency.xsl";
+    let source = b"<source/>";
+    let stylesheet = br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="dependency.xsl"/><xsl:variable name="greeting">hello</xsl:variable></xsl:stylesheet>"#;
+    let dependency = br#"<out xsl:version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:value-of select="$greeting"/></out>"#;
+    let creation = fastxslt_workbench_v0_create_with_stylesheet_dependency(
+        SOURCE_ID.as_ptr(),
+        SOURCE_ID.len(),
+        source.as_ptr(),
+        source.len(),
+        STYLESHEET_ID.as_ptr(),
+        STYLESHEET_ID.len(),
+        stylesheet.as_ptr(),
+        stylesheet.len(),
+        DEPENDENCY_ID.as_ptr(),
+        DEPENDENCY_ID.len(),
+        dependency.as_ptr(),
+        dependency.len(),
+        1,
+        0,
+    );
+    let engine = fastxslt_workbench_v0_outcome_take_engine(creation);
+    assert_ne!(engine, 0);
+    let request = b"native-dependency";
+    let result = fastxslt_workbench_v0_transform(engine, request.as_ptr(), request.len());
+    assert_eq!(fastxslt_workbench_v0_outcome_kind(result), OUTCOME_RESULT);
+    let length = fastxslt_workbench_v0_outcome_length(result);
+    let mut bytes = vec![0_u8; length];
+    assert_eq!(
+        fastxslt_workbench_v0_outcome_copy(result, bytes.as_mut_ptr(), bytes.len()),
+        0
+    );
+    assert_eq!(
+        bytes,
+        b"<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>hello</out>"
+    );
+    assert_eq!(fastxslt_workbench_v0_outcome_release(result), 1);
+    assert_eq!(fastxslt_workbench_v0_engine_release(engine), 1);
+}
+
+#[test]
+fn native_dependency_initialization_rejects_invalid_framing() {
+    let source = b"<source/>";
+    let stylesheet = b"<out/>";
+    let dependency_id = b"urn:fastxslt:invalid-framing:dependency";
+    for (dependency, admitted, expected_code) in [
+        (b"".as_slice(), 2, "FXFFI0012"),
+        (b"bytes".as_slice(), 0, "FXFFI0013"),
+    ] {
+        let outcome = fastxslt_workbench_v0_create_with_stylesheet_dependency(
+            b"urn:fastxslt:invalid-framing:source".as_ptr(),
+            b"urn:fastxslt:invalid-framing:source".len(),
+            source.as_ptr(),
+            source.len(),
+            b"urn:fastxslt:invalid-framing:stylesheet".as_ptr(),
+            b"urn:fastxslt:invalid-framing:stylesheet".len(),
+            stylesheet.as_ptr(),
+            stylesheet.len(),
+            dependency_id.as_ptr(),
+            dependency_id.len(),
+            dependency.as_ptr(),
+            dependency.len(),
+            admitted,
+            0,
+        );
+        assert_eq!(fastxslt_workbench_v0_outcome_kind(outcome), OUTCOME_FAILURE);
+        assert_eq!(failure_fields(outcome)[0], expected_code);
         assert_eq!(fastxslt_workbench_v0_outcome_release(outcome), 1);
     }
 }

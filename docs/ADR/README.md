@@ -53,3 +53,6 @@ but supersede a materially changed decision instead of rewriting its history.
   -- Accepted; use Rust-owned numeric control handles for active cooperative
   native cancellation, with explicit cancel/release races and no callback,
   foreign borrow, or additional unsafe block.
+- [ADR-0011: Bounded Stylesheet Dependency Host Framing](ADR-0011-bounded-stylesheet-dependency-host-framing.md)
+  -- Accepted; admit one explicit sealed stylesheet dependency and independent
+  denial policy through each unpublished .NET workbench initialization boundary.

@@ -13,6 +13,7 @@ public sealed class FastXsltWorkerClient : IDisposable
     private const byte Cancel = 7;
     private const byte UnpausedControlledTransform = 8;
     private const byte InstructionLimitedTransform = 9;
+    private const byte InitializeWithStylesheetDependency = 10;
     private const byte Ready = 0x81;
     private const byte Result = 0x82;
     private const byte Stopped = 0x83;
@@ -41,6 +42,56 @@ public sealed class FastXsltWorkerClient : IDisposable
         byte[] source,
         string stylesheetIdentity,
         byte[] stylesheet)
+        => await StartCoreAsync(
+            workerPath,
+            sourceIdentity,
+            source,
+            stylesheetIdentity,
+            stylesheet,
+            null,
+            null,
+            admitted: false,
+            denied: false);
+
+    public static async Task<FastXsltWorkerClient> StartWithStylesheetDependencyAsync(
+        string workerPath,
+        string sourceIdentity,
+        byte[] source,
+        string stylesheetIdentity,
+        byte[] stylesheet,
+        string dependencyIdentity,
+        byte[] dependency,
+        bool admitted,
+        bool denied)
+    {
+        if (!admitted && dependency.Length != 0)
+        {
+            throw new ArgumentException(
+                "An unadmitted stylesheet dependency must not carry bytes.",
+                nameof(dependency));
+        }
+        return await StartCoreAsync(
+            workerPath,
+            sourceIdentity,
+            source,
+            stylesheetIdentity,
+            stylesheet,
+            dependencyIdentity,
+            dependency,
+            admitted,
+            denied);
+    }
+
+    private static async Task<FastXsltWorkerClient> StartCoreAsync(
+        string workerPath,
+        string sourceIdentity,
+        byte[] source,
+        string stylesheetIdentity,
+        byte[] stylesheet,
+        string? dependencyIdentity,
+        byte[]? dependency,
+        bool admitted,
+        bool denied)
     {
         if (!File.Exists(workerPath))
         {
@@ -59,11 +110,19 @@ public sealed class FastXsltWorkerClient : IDisposable
         var client = new FastXsltWorkerClient(process);
         try
         {
-            await client.WriteByteAsync(Initialize);
+            await client.WriteByteAsync(
+                dependencyIdentity is null ? Initialize : InitializeWithStylesheetDependency);
             await client.WriteStringAsync(sourceIdentity);
             await client.WriteBytesAsync(source);
             await client.WriteStringAsync(stylesheetIdentity);
             await client.WriteBytesAsync(stylesheet);
+            if (dependencyIdentity is not null)
+            {
+                await client.WriteStringAsync(dependencyIdentity);
+                await client.WriteBytesAsync(dependency ?? []);
+                await client.WriteByteAsync(admitted ? (byte)1 : (byte)0);
+                await client.WriteByteAsync(denied ? (byte)1 : (byte)0);
+            }
             await client._input.FlushAsync();
             var response = await client.ReadByteAsync();
             if (response == Error)

@@ -189,10 +189,12 @@ resolver trait, URI type, catalog representation, live authority, or cache.
   accounting policy remain unselected.
 - [x] Exercise denied versus missing disclosure through the workbench Rust
   facade and both .NET-mode failure envelopes without parsing display strings.
-  The current transports still cannot submit dependency sets or denial policy.
-- [ ] Extend selected host initialization protocols to submit bounded
+  The current transports now submit one deliberately narrow dependency and
+  denial choice; arbitrary sets remain unselected.
+- [x] Extend selected host initialization protocols to submit bounded
   dependency sets and denial policy before claiming end-to-end .NET resolver
-  support.
+  support. ADR-0011 admits one-dependency framing in both workbench modes and
+  explicitly leaves a general resolver contract open.
 - [ ] Compare presealed closure, callback/live, and hybrid lifecycle costs on a
   representative multi-resource workload before selecting supported profiles.
 - [x] Review and exact-pin the private URI parsing/normalization dependency for
@@ -232,3 +234,8 @@ resolver trait, URI type, catalog representation, live authority, or cache.
   `FXRS0002 / missing-resource` and `FXRS0003 / denied` through Rust, native,
   and isolated-worker diagnostic envelopes. Transport framing for those inputs
   remains deliberately unresolved.
+- 2026-08-28 -- ADR-0011 carried one bounded dependency identity, optional
+  admitted bytes, and independent denial policy through both .NET workbench
+  initialization protocols. Positive include execution and missing/denied
+  diagnostics now cross the real transport implementations; arbitrary resource
+  collections and live resolution remain unselected.

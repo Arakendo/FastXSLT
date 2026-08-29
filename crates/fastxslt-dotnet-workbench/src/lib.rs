@@ -11,10 +11,11 @@ use std::{
 };
 
 use fastxslt::workbench::{
-    ExperimentalEngine, WorkbenchCancellation, WorkbenchFailure, WorkbenchLimits, WorkbenchLocation,
+    ExperimentalEngine, WorkbenchCancellation, WorkbenchFailure, WorkbenchLimits,
+    WorkbenchLocation, WorkbenchResource, WorkbenchStylesheetResources,
 };
 
-const ABI_VERSION: u32 = 1;
+const ABI_VERSION: u32 = 2;
 const MAX_IDENTITY_BYTES: usize = 4_096;
 const MAX_RESOURCE_BYTES: usize = 1_048_576;
 const MAX_OUTCOME_BYTES: usize = 1_048_576;
@@ -246,6 +247,35 @@ fn engine_failure(failure: &WorkbenchFailure) -> Outcome {
     }
 }
 
+fn decode_flag(value: u32, field: &str) -> Result<bool, BoundaryFailure> {
+    match value {
+        0 => Ok(false),
+        1 => Ok(true),
+        _ => Err(BoundaryFailure::new(
+            "FXFFI0012",
+            format!("{field} flag must be zero or one"),
+        )),
+    }
+}
+
+fn insert_created_engine(state: &State, result: Result<ExperimentalEngine, CreateFailure>) -> u64 {
+    match result {
+        Ok(engine) => {
+            let Ok(engine_handle) = state.next_handle() else {
+                return 0;
+            };
+            let Ok(mut engines) = state.engines() else {
+                return 0;
+            };
+            engines.insert(engine_handle, Arc::new(engine));
+            drop(engines);
+            state.insert_outcome(Outcome::Engine(engine_handle))
+        }
+        Err(CreateFailure::Boundary(failure)) => state.insert_boundary_failure(&failure),
+        Err(CreateFailure::Engine(failure)) => state.insert_outcome(engine_failure(&failure)),
+    }
+}
+
 /// Returns the explicitly unstable native workbench ABI version.
 #[allow(unsafe_code)]
 #[unsafe(no_mangle)]
@@ -295,21 +325,88 @@ pub extern "C" fn fastxslt_workbench_v0_create(
             )
             .map_err(CreateFailure::Engine)
         })();
-        match result {
-            Ok(engine) => {
-                let Ok(engine_handle) = state.next_handle() else {
-                    return 0;
-                };
-                let Ok(mut engines) = state.engines() else {
-                    return 0;
-                };
-                engines.insert(engine_handle, Arc::new(engine));
-                drop(engines);
-                state.insert_outcome(Outcome::Engine(engine_handle))
+        insert_created_engine(state, result)
+    })
+}
+
+/// Copies one optional stylesheet dependency and explicit denial policy before
+/// creating a retained experimental engine.
+#[allow(unsafe_code, clippy::too_many_arguments)]
+#[unsafe(no_mangle)]
+pub extern "C" fn fastxslt_workbench_v0_create_with_stylesheet_dependency(
+    source_identity_pointer: *const u8,
+    source_identity_length: usize,
+    source_pointer: *const u8,
+    source_length: usize,
+    stylesheet_identity_pointer: *const u8,
+    stylesheet_identity_length: usize,
+    stylesheet_pointer: *const u8,
+    stylesheet_length: usize,
+    dependency_identity_pointer: *const u8,
+    dependency_identity_length: usize,
+    dependency_pointer: *const u8,
+    dependency_length: usize,
+    admit_dependency: u32,
+    deny_dependency: u32,
+) -> u64 {
+    guarded(0, |state| {
+        let result = (|| {
+            let admitted = decode_flag(admit_dependency, "dependency admission")?;
+            let denied = decode_flag(deny_dependency, "dependency denial")?;
+            if !admitted && dependency_length != 0 {
+                return Err(BoundaryFailure::new(
+                    "FXFFI0013",
+                    "unadmitted dependency must not carry resource bytes",
+                )
+                .into());
             }
-            Err(CreateFailure::Boundary(failure)) => state.insert_boundary_failure(&failure),
-            Err(CreateFailure::Engine(failure)) => state.insert_outcome(engine_failure(&failure)),
-        }
+            let source_identity = decode_identity(
+                copy_input(
+                    source_identity_pointer,
+                    source_identity_length,
+                    MAX_IDENTITY_BYTES,
+                )?,
+                "source identity",
+            )?;
+            let source = copy_input(source_pointer, source_length, MAX_RESOURCE_BYTES)?;
+            let stylesheet_identity = decode_identity(
+                copy_input(
+                    stylesheet_identity_pointer,
+                    stylesheet_identity_length,
+                    MAX_IDENTITY_BYTES,
+                )?,
+                "stylesheet identity",
+            )?;
+            let stylesheet = copy_input(stylesheet_pointer, stylesheet_length, MAX_RESOURCE_BYTES)?;
+            let dependency_identity = decode_identity(
+                copy_input(
+                    dependency_identity_pointer,
+                    dependency_identity_length,
+                    MAX_IDENTITY_BYTES,
+                )?,
+                "dependency identity",
+            )?;
+            let dependency = copy_input(dependency_pointer, dependency_length, MAX_RESOURCE_BYTES)?;
+            ExperimentalEngine::new_with_stylesheet_resources(
+                source_identity,
+                source,
+                stylesheet_identity,
+                stylesheet,
+                WorkbenchStylesheetResources {
+                    dependencies: admitted
+                        .then_some(WorkbenchResource {
+                            identity: dependency_identity.clone(),
+                            bytes: dependency,
+                        })
+                        .into_iter()
+                        .collect(),
+                    denied_identities: denied.then_some(dependency_identity).into_iter().collect(),
+                },
+                WorkbenchLimits::default(),
+            )
+            .map_err(CreateFailure::Engine)
+        })();
+        insert_created_engine(state, result)
     })
 }
 

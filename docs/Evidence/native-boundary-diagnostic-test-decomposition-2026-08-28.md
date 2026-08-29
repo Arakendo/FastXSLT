@@ -5,9 +5,9 @@
 | Date | 2026-08-28 |
 | Governing decision | ADR-0004 |
 | Native boundary at inspection | 1,061 physical lines |
-| Native boundary after extraction | 989 physical lines |
-| Diagnostic companion | 107 physical lines |
-| Unsafe surface | Unchanged: 2 blocks, 15 exports, 17 allowances |
+| Native boundary after ADR-0011 | 1,086 physical lines |
+| Diagnostic companion after ADR-0011 | 176 physical lines |
+| Unsafe surface | 2 blocks, 16 exports, 18 allowances |
 | Disposition | Inspection trigger discharged by private test-owner extraction |
 
 ## Trigger and ownership
@@ -24,10 +24,19 @@ that engine diagnostic code, category, request, location, span, and detail
 survive native outcome encoding. General native lifecycle and control tests
 remain beside the ABI behavior they exercise.
 
+ADR-0011 later returned the parent to the inspection band by adding a second
+creation operation. That operation has the same native-boundary responsibility,
+copy primitive, registry lifecycle, and panic containment as the original
+creation symbol. No second owner or independent crate boundary appeared, so the
+unit is retained after renewed inspection. The dependency transport tests stay
+with the diagnostic companion because they conserve the same seven-field
+authority outcomes.
+
 ## Conservation
 
-The extraction changes no export, symbol, argument, outcome encoding, pointer
-operation, handle lifecycle, quarantine rule, safe engine facade, or unsafe
-contract. The verification script's exact unsafe counts remain unchanged. Both
-moved tests pass under their original names and still exercise the actual
-native encode/copy/release path.
+The original extraction changed no export, symbol, argument, outcome encoding,
+pointer operation, handle lifecycle, quarantine rule, safe engine facade, or
+unsafe contract. ADR-0011 subsequently adds one reviewed export and allowance
+but no unsafe block or new pointer operation. The verification script now
+enforces the updated exact counts, and all companion tests exercise the actual
+native create/encode/copy/release paths.

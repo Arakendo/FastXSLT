@@ -514,7 +514,11 @@ failed, and harness-error cases without an unqualified conformance claim.
     - [x] Add a workbench-only explicit dependency/denial input and prove
       `missing-resource` and `denied` remain distinct structured categories
       through the Rust facade plus native and isolated-worker failure envelopes.
-      Actual dependency-set framing in the two .NET transports remains open.
+    - [x] Admit ADR-0011 and carry one bounded stylesheet dependency plus an
+      independent denial flag through both .NET initialization protocols.
+      Execute an included module, preserve missing/denied diagnostics, reject
+      malformed framing, and advance the native workbench ABI to version 2.
+      General dependency collections and resolver profiles remain under AR-0014.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.
