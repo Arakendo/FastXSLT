@@ -24,9 +24,9 @@ The pattern compiler retains the exact admitted forms as one typed
 Runtime matching first requires a document node, then performs a bounded,
 charged scan to its element child. Exact-name matching compares expanded names;
 the wildcard form requires only element kind. Duplicate pattern/mode shapes
-with distinct exact priorities reach ordinary selection; equal-rank duplicates
-remain rejected. The more general next-match use of that rule is evidenced by
-`conflict-resolution-1201`.
+with distinct exact priorities reach ordinary selection. The more general
+next-match use is evidenced by `conflict-resolution-1201`, while XSLT 3.0
+equal-rank continuation is evidenced by `1202c`.
 
 ## Results
 
@@ -44,5 +44,5 @@ explicit `-0.6`.
 This evidence admits ASCII unprefixed exact-name and wildcard element tests
 nested in `document-node()` within one stylesheet module. It does not admit
 typed/schema-aware element tests, prefixed or EQName forms, other document-node
-content tests, equal-rank duplicate-pattern policy, include/import/package
+content tests, legacy equal-rank recovery/error policy, include/import/package
 precedence, or ambiguity recovery behavior.

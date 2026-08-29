@@ -52,6 +52,7 @@ invalid lexical priority (`FXST0030`).
 This evidence establishes signed-integer priority for `0106` and the built-in
 string-value rule for attributes. Bounded fractional priority is evidenced
 separately by `1701`. Distinct-priority duplicate rules are evidenced separately
-by `1201`; equal-rank ambiguity policy, arbitrary precision, import/package
+by `1201`; XSLT 3.0 equal-rank use-last selection is evidenced by `1202c`.
+Legacy ambiguity policy, arbitrary precision, import/package
 precedence, `xsl:mode/@on-multiple-match`, warnings, namespace nodes, and the
 complete 50-case denominator remain outside this record.

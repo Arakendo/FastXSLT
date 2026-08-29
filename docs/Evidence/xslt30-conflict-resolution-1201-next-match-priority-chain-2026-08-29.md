@@ -25,10 +25,11 @@ It selects the highest remaining rank and invokes the built-in template rule
 when no compiled rule remains. Each applicability check retains its existing
 work accounting.
 
-The compiler now admits duplicate pattern/mode shapes when their exact compiled
-priorities differ. Equal-priority duplicates remain unsupported, so this case
-does not silently select an ambiguity policy. The exact `text()` pattern is also
-retained as a typed text-node test with node-test default priority.
+The compiler admits duplicate pattern/mode shapes when their exact compiled
+priorities differ. XSLT 3.0 equal-priority continuation is evidenced separately
+by `conflict-resolution-1202c`; this case itself does not select that policy.
+The exact `text()` pattern is also retained as a typed text-node test with
+node-test default priority.
 
 ## Result
 
@@ -44,6 +45,6 @@ and the second `foo` at `2`, then reaches the built-in fallback.
 This evidence admits parameter-free `xsl:next-match` across differing
 priorities in one stylesheet module, including built-in fallback. Parameters
 are evidenced separately by `conflict-resolution-1205`. This record does not
-admit import/package precedence, equal-priority
-ambiguity policy, `xsl:fallback` children, temporary-tree next-match, or
+admit import/package precedence, legacy equal-priority recovery/error profiles,
+`xsl:fallback` children, temporary-tree next-match, or
 `xsl:apply-imports`.

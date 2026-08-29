@@ -7,6 +7,11 @@
 | Decision pressure | AR-0001 next semantic family and AR-0007 navigation needs |
 | Claim | Private exact-name dispatch evidence; no XSLT version or conformance claim |
 
+Current note: the duplicate-pattern rejection recorded by this historical
+checkpoint was superseded by the XSLT 3.0 use-last and next-match evidence in
+`conflict-resolution-1202c`. The original boundary below remains the evidence
+available on the checkpoint date.
+
 ## Implemented boundary
 
 The existing reference compiler now retains one required root template and a

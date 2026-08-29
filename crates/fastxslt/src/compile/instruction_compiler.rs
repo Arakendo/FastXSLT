@@ -93,7 +93,12 @@ pub(super) fn compile_sequence_excluding(
                     } else if name.local == "next-match" {
                         ensure_only_attributes(document, child, &[], "xsl:next-match")?;
                         instructions.push(Instruction::NextMatch {
-                            arguments: compile_with_params(document, child, "xsl:next-match")?,
+                            arguments: compile_with_params(
+                                document,
+                                child,
+                                "xsl:next-match",
+                                true,
+                            )?,
                             location: document.location(child).clone(),
                         });
                     } else if name.local == "if" {
@@ -250,7 +255,7 @@ fn compile_apply_templates(
     Ok(Instruction::ApplyTemplates {
         select,
         mode,
-        arguments: compile_with_params(document, element, "xsl:apply-templates")?,
+        arguments: compile_with_params(document, element, "xsl:apply-templates", false)?,
         location,
     })
 }
@@ -259,9 +264,14 @@ fn compile_with_params(
     document: &Document,
     parent: NodeId,
     parent_label: &str,
+    allow_fallback: bool,
 ) -> Result<Vec<TemplateArgument>, CompileFailure> {
     let mut arguments = Vec::new();
     for child in meaningful_children(document, parent) {
+        if allow_fallback && is_xslt_element(document, child, "fallback") {
+            ensure_only_attributes(document, child, &[], "xsl:fallback")?;
+            continue;
+        }
         if !is_xslt_element(document, child, "with-param") {
             return Err(unsupported(
                 "FXST1014",

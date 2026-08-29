@@ -273,7 +273,13 @@ distinct-priority duplicate rules are admitted to compete within one module.
 `conflict-resolution-1201` retains parameter-free `xsl:next-match` and the
 current compiled-template index in its private runtime frame. It walks the
 strictly lower-ranked applicable rules `5 → 4 → 3 → 2`, then invokes the
-built-in fallback. Equal-rank ambiguity and cross-module precedence stay out.
+built-in fallback. Equal-rank semantics are admitted separately; cross-module
+precedence stays out.
+`conflict-resolution-1202c` then applies the selected XSLT 3.0 use-last rule to
+two equal-priority wildcard templates and retains declaration rank across
+`xsl:next-match`, producing `(3b)(3a)`. Its `xsl:fallback` content stays inert
+because next-match is supported. Older recover/error profiles and mode controls
+remain out.
 `conflict-resolution-1205` carries one non-tunnel atomic parameter from
 `xsl:apply-templates` through that entire next-match chain. Compiled argument
 expressions remain separate from invocation-local values. Its final variable
@@ -293,8 +299,9 @@ rather than falling through to local-name-only semantics.
 `conflict-resolution-0702` places the same static-context control on a literal
 result element using the XSLT namespace. Compilation applies it to the
 descendant selection without manufacturing a result attribute, while the
-stylesheet's retained `u` binding remains serialized on `out`. Other literal
-attributes and XSLT control attributes remain unsupported.
+stylesheet's retained `u` binding remains serialized on `out`. Narrow
+unnamespaced literal attributes are admitted separately by `1205`; other XSLT
+control attributes remain unsupported.
 `conflict-resolution-0703` propagates a stylesheet-wide
 `xpath-default-namespace` into simple element patterns and child selection,
 while preserving the XSLT rule that unprefixed attribute names remain in no
@@ -313,8 +320,8 @@ each inspected node and preserves document order. It does not widen general
 default-namespaced path support.
 The complete pinned apply-templates test set is now conserved as an ordered
 50-case denominator with 50 principal stylesheets, one secondary stylesheet,
-41 XML assertions, eight error assertions, and one compound assertion. Twenty-three
-cases have explicit passing overrides; the other 27 remain visibly not run and
+41 XML assertions, eight error assertions, and one compound assertion. Twenty-four
+cases have explicit passing overrides; the other 26 remain visibly not run and
 are not mislabeled as engine failures. This corrects the earlier provisional
 52-case count without turning inventory into a conformance percentage.
 
@@ -750,9 +757,9 @@ failed, and harness-error cases without an unqualified conformance claim.
   priority and the built-in attribute string-value rule. Preserve the child-axis
   boundary that keeps `node()` from matching attributes. Bounded fractional
   priority is admitted separately by `1701`; keep arbitrary-precision priority,
-  equal-rank duplicate-pattern resolution, and root-pattern priority outside
+  root-pattern priority and legacy equal-rank recovery/error profiles outside
   the admitted slice. Distinct-priority chains are admitted separately by
-  `1201`.
+  `1201`; XSLT 3.0 equal-rank use-last selection is admitted by `1202c`.
 - [x] Execute `conflict-resolution-0107`, `0108c`, and `0110c` through retained
   non-simple default priority. Add only the exact unnamespaced
   `element[@attribute]` presence pattern, charge inspected attributes, and prove
@@ -787,13 +794,18 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [x] Execute `conflict-resolution-1602` and `1603` through typed exact-name and
   wildcard `document-node(element(...))` patterns with charged document-element
   inspection and exact default priorities `0` and `-0.5`. Admit
-  distinct-priority duplicate competition and keep equal-rank ambiguity and
-  cross-module precedence out.
+  distinct-priority duplicate competition; XSLT 3.0 equal-rank selection is
+  admitted separately by `1202c`. Keep cross-module precedence out.
 - [x] Execute `conflict-resolution-1201` through typed parameter-free
   `xsl:next-match`, retaining private current-template identity and selecting
   successively lower-ranked applicable rules before built-in fallback. Admit
-  distinct-priority duplicate shapes; keep equal-rank ambiguity, parameters,
-  and imports out.
+  distinct-priority duplicate shapes; equal-rank XSLT 3.0 continuation and
+  parameters are admitted separately. Keep imports out.
+- [x] Execute XSLT 3.0 `conflict-resolution-1202c` with use-last selection for
+  equal-priority applicable rules and same-rank `xsl:next-match` continuation.
+  Recognize but do not execute `xsl:fallback` content on the supported
+  instruction; keep legacy recover/error profiles, mode controls, warnings,
+  root duplicates, and cross-module precedence out.
 - [x] Execute `conflict-resolution-1205` with typed non-tunnel integer and
   atomic-variable `xsl:with-param` arguments on `xsl:apply-templates` and
   `xsl:next-match`. Keep values invocation-local, retain result attributes
@@ -806,7 +818,7 @@ failed, and harness-error cases without an unqualified conformance claim.
   propagation, and general pattern grammar outside this slice.
 - [x] Conserve the complete ordered 50-case XSLT30 apply-templates denominator,
   its 50 principal plus one secondary stylesheet, and its assertion-shape
-  counts. Record 23 explicit passes and 27 default not-run dispositions without
+  counts. Record 24 explicit passes and 26 default not-run dispositions without
   converting unexecuted cases into engine failures or an aggregate conformance
   claim.
 - [x] Execute `conflict-resolution-0701` through inherited

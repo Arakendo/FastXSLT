@@ -616,3 +616,10 @@ case_name = "conflict-resolution-1205"
 selection = "selected"
 execution = "passed"
 rationale = "Typed integer and variable xsl:with-param values flow through apply-templates and each next-match frame without entering compiled or shared invocation state; a variable-only literal attribute value template preserves the final value in the result tree."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-1202c"
+selection = "selected"
+execution = "passed"
+rationale = "Under the selected XSLT 3.0 semantics, equal-priority applicable rules use the last declaration and next-match can continue to the earlier equal-ranked rule; an xsl:fallback child remains inert because next-match is supported."

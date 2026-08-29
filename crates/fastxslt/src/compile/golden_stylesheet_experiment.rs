@@ -226,20 +226,6 @@ fn compile_top_level_template(
     }
 
     let matched_template = compile_matched_template(document, element, pattern)?;
-    let duplicates_same_rank = matched_templates.iter().any(|existing| {
-        existing.pattern == matched_template.pattern
-            && existing.modes == matched_template.modes
-            && existing.priority == matched_template.priority
-    });
-    if duplicates_same_rank {
-        return Err(unsupported(
-            "FXST1008",
-            format!(
-                "template priority for duplicate match pattern is outside the private slice: {pattern}"
-            ),
-            document.location(element),
-        ));
-    }
     matched_templates.push(matched_template);
     Ok(())
 }
@@ -924,10 +910,13 @@ mod tests {
             "memory:duplicate-pattern.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out/></xsl:template><xsl:template match="item"><a/></xsl:template><xsl:template match="item"><b/></xsl:template></xsl:stylesheet>"#,
         );
-        let failure = compile_stylesheet(&duplicate)
-            .expect_err("priority conflict must remain visibly unsupported");
-        assert_eq!(failure.category, CompileCategory::Unsupported);
-        assert_eq!(failure.code, "FXST1008");
+        let duplicate_program =
+            compile_stylesheet(&duplicate).expect("XSLT 3.0 use-last conflict should compile");
+        assert_eq!(duplicate_program.matched_templates.len(), 2);
+        assert_eq!(
+            duplicate_program.matched_templates[0].priority,
+            duplicate_program.matched_templates[1].priority
+        );
 
         let mode = parse_stylesheet(
             "memory:mode.xsl",

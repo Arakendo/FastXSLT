@@ -43,5 +43,6 @@ selection on `xsl:apply-templates` and `xsl:next-match`, plus the exact
 unnamespaced result-attribute forms described above. It does not admit sequence
 constructors in `xsl:with-param`, general XPath argument expressions, tunnel
 propagation, required-parameter errors, namespaced result attributes, general
-attribute value templates, next-match import precedence, or equal-rank
-ambiguity policy.
+attribute value templates, next-match import precedence, or legacy equal-rank
+recovery/error policy. XSLT 3.0 equal-rank continuation is evidenced separately
+by `conflict-resolution-1202c`.
