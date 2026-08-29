@@ -87,6 +87,7 @@ pub(crate) enum TemplateParameterDefault {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct MatchedTemplate {
     pub(crate) pattern: MatchPattern,
+    pub(crate) import_precedence: i32,
     pub(crate) priority: TemplatePriority,
     pub(crate) modes: Vec<String>,
     pub(crate) template: Template,

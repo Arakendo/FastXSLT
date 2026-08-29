@@ -6,7 +6,7 @@
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/decl/include/_include-test-set.xml` |
 | Cases | 16 |
-| Current ledger | 2 selected/passed; 14 harness-unsupported / not-run as of 2026-08-29 |
+| Current ledger | 3 selected/passed; 13 harness-unsupported / not-run as of 2026-08-29 |
 | Catalog stylesheet references | 16 principal; 34 secondary (including repeated case environments) |
 
 ## Conserved denominator
@@ -16,8 +16,8 @@ requires one principal stylesheet per case, counts all 34 catalog-declared
 secondary stylesheet references, and conserves the direct result shapes as 14
 `assert-xml`, one `any-of`, and one expected `error`. A first-party overlay gives
 every case an explicit default `harness-unsupported / not-run` disposition,
-with first-party selected/passed overrides for `include-0401` and
-`include-0201`. FastXSLT
+with first-party selected/passed overrides for `include-0401`, `include-0201`,
+and `include-0301`. FastXSLT
 therefore records the complete denominator without calling unresolved module
 semantics an engine failure or quietly dropping cases.
 
@@ -53,8 +53,9 @@ retains its principal-module value. See
 
 ## Claim boundary
 
-The inventory plus selected execution proves only the named one-include slice
-and the independent no-module `include-0201` built-in fallback.
+The inventory plus selected execution proves only the named one-include slice,
+the independent no-module `include-0201` built-in fallback, and one sealed
+single-import/repeated-apply-imports path from `include-0301`.
 It makes no general claim for `xsl:include`, `xsl:import`, import precedence,
 embedded stylesheet fragments, module cycles, or multi-module graphs. Upstream
 bytes remain immutable in the W3C submodule; all disposition policy remains in

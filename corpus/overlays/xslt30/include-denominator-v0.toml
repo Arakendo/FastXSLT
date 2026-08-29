@@ -19,3 +19,9 @@ case_name = "include-0201"
 selection = "selected"
 execution = "passed"
 rationale = "Executes xsl:apply-imports from a source element template in a stylesheet with no imported modules; the built-in element rule preserves focus and emits the source text into the asserted wrapper."
+
+[[case_override]]
+case_name = "include-0301"
+selection = "selected"
+execution = "passed"
+rationale = "Resolves one relative xsl:import from the sealed snapshot, retains lower import precedence separately from template priority and source order, and executes the imported rule independently for three xsl:apply-imports calls."

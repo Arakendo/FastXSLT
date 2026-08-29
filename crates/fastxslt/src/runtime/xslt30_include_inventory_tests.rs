@@ -33,7 +33,7 @@ const CASE_NAMES: [&str; 16] = [
     "include-0702c",
     "include-0801",
 ];
-const PASSED_CASES: [&str; 2] = ["include-0201", "include-0401"];
+const PASSED_CASES: [&str; 3] = ["include-0201", "include-0301", "include-0401"];
 const OVERLAY: &str =
     include_str!("../../../../corpus/overlays/xslt30/include-denominator-v0.toml");
 const PRINCIPAL_ID: &str = "https://example.invalid/xslt30/decl/include/include-0401.xsl";
@@ -137,6 +137,151 @@ fn executes_include_0201_apply_imports_builtin_fallback() {
         without_xml_declaration(actual.trim()),
         without_xml_declaration(expected.trim())
     );
+}
+
+#[test]
+fn executes_include_0301_repeated_apply_imports() {
+    let document = load_test_set();
+    let case = element_children(&document, document_element(&document))
+        .into_iter()
+        .find(|node| attribute(&document, *node, "name") == Some("include-0301"))
+        .expect("pinned include-0301 case");
+    let test = child_named(&document, case, "test").expect("test metadata");
+    let stylesheet_files = element_children(&document, test)
+        .into_iter()
+        .filter(|node| local_name(&document, *node) == "stylesheet")
+        .map(|node| attribute(&document, node, "file").expect("stylesheet file"))
+        .collect::<Vec<_>>();
+    assert_eq!(stylesheet_files, ["include-0301.xsl", "include-0301a.xsl"]);
+    let environment = child_named(&document, case, "environment").expect("inline environment");
+    let content = child_named(
+        &document,
+        child_named(&document, environment, "source").expect("principal source"),
+        "content",
+    )
+    .expect("inline source content");
+    let expected = document.string_value(
+        child_named(
+            &document,
+            child_named(&document, case, "result").expect("result metadata"),
+            "assert-xml",
+        )
+        .expect("XML assertion"),
+    );
+
+    let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../vendor/xslt30-test/tests/decl/include");
+    let principal_id = "https://example.invalid/xslt30/decl/include/include-0301.xsl";
+    let imported_id = "https://example.invalid/xslt30/decl/include/include-0301a.xsl";
+    let source_id = "urn:w3c:xslt30:decl:include:include-0301:source";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 16_384));
+    resources
+        .admit(source_id, document.string_value(content).into_bytes())
+        .expect("admit inline source");
+    resources
+        .admit(
+            principal_id,
+            fs::read(directory.join(stylesheet_files[0])).expect("read principal stylesheet"),
+        )
+        .expect("admit principal stylesheet");
+    resources
+        .admit(
+            imported_id,
+            fs::read(directory.join(stylesheet_files[1])).expect("read imported stylesheet"),
+        )
+        .expect("admit imported stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, principal_id).expect("compile imported stylesheet");
+    assert_eq!(program.matched_templates.len(), 2);
+    assert!(
+        program.matched_templates[0].import_precedence
+            < program.matched_templates[1].import_precedence
+    );
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 8_192,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    set.add(TransformRequest {
+        identity: "include-0301".to_owned(),
+        result_identity: "urn:w3c:xslt30:decl:include:include-0301:result".to_owned(),
+        entry: InvocationEntry::PrincipalSource {
+            resource: source_id.to_owned(),
+        },
+        parameters: BTreeMap::new(),
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    })
+    .expect("admit include-0301 request");
+    let results = execute_transform_set(set.seal()).expect("execute include-0301");
+    assert_xml_equivalent(&results.by_request["include-0301"].serialized, &expected);
+}
+
+fn assert_xml_equivalent(actual: &str, expected: &str) {
+    let limits = ParseLimits {
+        max_events: 256,
+        max_depth: 32,
+    };
+    let actual = Document::from_parsed(
+        parse_document(
+            "urn:fastxslt:include:actual",
+            actual.trim().as_bytes(),
+            limits,
+        )
+        .expect("actual XML result should parse"),
+    )
+    .expect("actual XML result should build");
+    let expected = Document::from_parsed(
+        parse_document(
+            "urn:fastxslt:include:expected",
+            expected.trim().as_bytes(),
+            limits,
+        )
+        .expect("expected XML result should parse"),
+    )
+    .expect("expected XML result should build");
+    assert_xml_nodes_equal(
+        &actual,
+        actual.document_node(),
+        &expected,
+        expected.document_node(),
+    );
+}
+
+fn assert_xml_nodes_equal(
+    actual: &Document,
+    actual_node: NodeId,
+    expected: &Document,
+    expected_node: NodeId,
+) {
+    assert_eq!(actual.kind(actual_node), expected.kind(expected_node));
+    assert_eq!(actual.name(actual_node), expected.name(expected_node));
+    assert_eq!(actual.value(actual_node), expected.value(expected_node));
+    let actual_attributes = actual.attributes(actual_node);
+    let expected_attributes = expected.attributes(expected_node);
+    assert_eq!(actual_attributes.len(), expected_attributes.len());
+    for expected_attribute in expected_attributes {
+        let expected_name = expected.name(*expected_attribute).expect("attribute name");
+        let actual_attribute = actual_attributes
+            .iter()
+            .find(|attribute| actual.name(**attribute) == Some(expected_name))
+            .expect("matching actual attribute");
+        assert_eq!(
+            actual.value(*actual_attribute),
+            expected.value(*expected_attribute)
+        );
+    }
+    let actual_children = actual.children(actual_node);
+    let expected_children = expected.children(expected_node);
+    assert_eq!(actual_children.len(), expected_children.len());
+    for (actual_child, expected_child) in actual_children.iter().zip(expected_children) {
+        assert_xml_nodes_equal(actual, *actual_child, expected, *expected_child);
+    }
 }
 
 fn execute_inline_case_without_dependencies(case_name: &str) -> (String, String) {

@@ -20,7 +20,8 @@ mod template_pattern_compiler;
 mod variable_filtered_path_compiler;
 
 pub(crate) use stylesheet_module_compiler::{
-    compile_stylesheet_with_single_include, discovered_include_references, single_include_reference,
+    StylesheetDependencyKind, compile_stylesheet_with_single_import,
+    compile_stylesheet_with_single_include, discovered_stylesheet_dependencies,
 };
 use stylesheet_validation::validate_named_template_references;
 use template_pattern_compiler::compile_match_pattern;
@@ -200,6 +201,7 @@ fn compile_top_level_template(
                 if let Some(previous) = root_template.take() {
                     matched_templates.push(MatchedTemplate {
                         pattern: MatchPattern::Document,
+                        import_precedence: 0,
                         priority: TemplatePriority::ROOT_DEFAULT,
                         modes: Vec::new(),
                         template: previous,
@@ -354,6 +356,7 @@ fn compile_matched_template(
         .transpose()?;
     Ok(MatchedTemplate {
         pattern,
+        import_precedence: 0,
         priority,
         modes: modes.unwrap_or_default(),
         template: compile_template(document, element)?,

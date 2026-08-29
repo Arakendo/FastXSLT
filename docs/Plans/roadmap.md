@@ -1002,6 +1002,13 @@ failed, and harness-error cases without an unqualified conformance claim.
     built-in element/text rules and produces the exact asserted wrapper. Keep
     import precedence and lower-precedence user-rule selection out. The include
     denominator now records 2 passes and 14 visible not-run dispositions.
+  - [x] Execute `include-0301` as the first sealed-memory import case. Retain
+    import precedence separately from template priority and declaration order,
+    and prove three repeated `xsl:apply-imports` calls independently select the
+    lower-precedence rule. Keep nested/multiple imports, imported globals,
+    imported named/root templates, import/include composition, and parameters
+    outside this slice. The denominator now records 3 passes and 13 visible
+    not-run dispositions.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.

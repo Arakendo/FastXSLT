@@ -1,14 +1,14 @@
 //! Adapts an admitted stylesheet resource into the private compiled program.
 
 use crate::compile::golden_stylesheet_experiment::{
-    CompileCategory, CompileFailure, compile_stylesheet, compile_stylesheet_with_single_include,
-    single_include_reference,
+    CompileCategory, CompileFailure, StylesheetDependencyKind, compile_stylesheet,
+    compile_stylesheet_with_single_import, compile_stylesheet_with_single_include,
 };
 use crate::resources::{ResolutionFailure, ResolutionLimits, ResourceSnapshot, SnapshotResolver};
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
 
 use super::stylesheet_dependency_loader::{
-    DependencyFailure, DependencyLimits, load_include_graph,
+    DependencyFailure, DependencyLimits, load_stylesheet_dependency_graph,
 };
 use super::{ExecutionFailure, FailureCategory, failure, failure_at};
 
@@ -35,20 +35,49 @@ fn compile_resource_with_resolver(
     resolver: &mut SnapshotResolver<'_>,
     stylesheet_id: &str,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
-    let mut graph = load_include_graph(resolver, stylesheet_id, DEPENDENCY_LIMITS)
+    let mut graph = load_stylesheet_dependency_graph(resolver, stylesheet_id, DEPENDENCY_LIMITS)
         .map_err(dependency_failure)?;
     debug_assert_eq!(graph.identity, stylesheet_id);
-    if graph.includes.is_empty() {
+    if graph.dependencies.is_empty() {
         return compile_stylesheet(&graph.document).map_err(compile_failure);
     }
-    if graph.includes.len() != 1 {
-        let failure = single_include_reference(&graph.document)
-            .expect_err("multiple includes must remain outside the private compiler slice");
-        return Err(compile_failure(failure));
+    if graph.dependencies.len() != 1 {
+        return Err(failure_at(
+            "FXST1018",
+            FailureCategory::Unsupported,
+            None,
+            graph
+                .document
+                .location(graph.document.document_node())
+                .clone(),
+            "the private slice permits one stylesheet dependency".to_owned(),
+        ));
     }
-    let included = graph.includes.pop().expect("one included module");
-    compile_stylesheet_with_single_include(&graph.document, &included.document)
-        .map_err(compile_failure)
+    let dependency = graph.dependencies.pop().expect("one stylesheet dependency");
+    if !dependency.dependencies.is_empty() {
+        return Err(failure_at(
+            "FXST1027",
+            FailureCategory::Unsupported,
+            None,
+            dependency
+                .document
+                .location(dependency.document.document_node())
+                .clone(),
+            "nested stylesheet dependencies are outside the private compiler slice".to_owned(),
+        ));
+    }
+    match dependency
+        .dependency_kind
+        .expect("loaded dependency retains its declaration kind")
+    {
+        StylesheetDependencyKind::Include => {
+            compile_stylesheet_with_single_include(&graph.document, &dependency.document)
+        }
+        StylesheetDependencyKind::Import => {
+            compile_stylesheet_with_single_import(&graph.document, &dependency.document)
+        }
+    }
+    .map_err(compile_failure)
 }
 
 fn dependency_failure(error: DependencyFailure) -> ExecutionFailure {
@@ -58,9 +87,7 @@ fn dependency_failure(error: DependencyFailure) -> ExecutionFailure {
             "FXRS1001",
             FailureCategory::Unsupported,
             location,
-            format!(
-                "fragment selection for included stylesheet modules is unsupported: {identity}"
-            ),
+            format!("fragment selection for stylesheet dependencies is unsupported: {identity}"),
         ),
         DependencyFailure::ModuleLimit { maximum, location } => dependency_failure_at(
             "FXRS0006",
@@ -94,7 +121,7 @@ fn dependency_failure(error: DependencyFailure) -> ExecutionFailure {
             "FXST0030",
             FailureCategory::Invalid,
             location,
-            format!("stylesheet include cycle reaches {identity}"),
+            format!("stylesheet dependency cycle reaches {identity}"),
         ),
         DependencyFailure::InvalidXml {
             identity,
@@ -298,6 +325,37 @@ mod tests {
             failure
                 .detail
                 .contains("https://example.invalid/styles/missing.xsl")
+        );
+    }
+
+    #[test]
+    fn compilation_rejects_import_after_another_top_level_declaration() {
+        const PRINCIPAL: &str = "https://example.invalid/styles/main.xsl";
+        const IMPORTED: &str = "https://example.invalid/styles/imported.xsl";
+        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 1_024, 2_048));
+        resources
+            .admit(
+                PRINCIPAL,
+                br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="doc"><out/></xsl:template><xsl:import href="imported.xsl"/></xsl:stylesheet>"#
+                    .to_vec(),
+            )
+            .expect("admit principal stylesheet");
+        resources
+            .admit(
+                IMPORTED,
+                br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="doc"><in/></xsl:template></xsl:stylesheet>"#
+                    .to_vec(),
+            )
+            .expect("admit imported stylesheet");
+
+        let failure = compile_resource(&resources.seal(), PRINCIPAL)
+            .expect_err("late xsl:import must be rejected");
+
+        assert_eq!(failure.code, "XTSE0200");
+        assert_eq!(failure.category, FailureCategory::Invalid);
+        assert_eq!(
+            failure.location.expect("import location").resource,
+            PRINCIPAL
         );
     }
 }

@@ -1,6 +1,8 @@
-//! Builds one bounded, immutable stylesheet include graph from a sealed snapshot.
+//! Builds one bounded, immutable stylesheet dependency graph from a sealed snapshot.
 
-use crate::compile::golden_stylesheet_experiment::{CompileFailure, discovered_include_references};
+use crate::compile::golden_stylesheet_experiment::{
+    CompileFailure, StylesheetDependencyKind, discovered_stylesheet_dependencies,
+};
 use crate::resources::{ResolutionFailure, SnapshotResolver};
 use crate::xdm::owned_tree_experiment::{Document, SourceLocation};
 use crate::xml::quick_xml_experiment::parse_document;
@@ -28,7 +30,8 @@ impl DependencyLimits {
 pub(super) struct LoadedStylesheetModule {
     pub(super) identity: String,
     pub(super) document: Document,
-    pub(super) includes: Vec<LoadedStylesheetModule>,
+    pub(super) dependency_kind: Option<StylesheetDependencyKind>,
+    pub(super) dependencies: Vec<LoadedStylesheetModule>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -74,7 +77,7 @@ pub(super) enum DependencyFailure {
     InvalidDeclaration(CompileFailure),
 }
 
-pub(super) fn load_include_graph(
+pub(super) fn load_stylesheet_dependency_graph(
     resolver: &mut SnapshotResolver<'_>,
     principal_identity: &str,
     limits: DependencyLimits,
@@ -85,7 +88,7 @@ pub(super) fn load_include_graph(
         bytes: 0,
         active: Vec::new(),
     };
-    load_module(resolver, principal_identity, "", 0, None, &mut state)
+    load_module(resolver, principal_identity, "", None, 0, None, &mut state)
 }
 
 struct LoadState {
@@ -99,6 +102,7 @@ fn load_module(
     resolver: &mut SnapshotResolver<'_>,
     base: &str,
     reference: &str,
+    dependency_kind: Option<StylesheetDependencyKind>,
     depth: usize,
     location: Option<SourceLocation>,
     state: &mut LoadState,
@@ -164,17 +168,18 @@ fn load_module(
             detail: format!("{error:?}"),
             location: location.clone(),
         })?;
-    let references =
-        discovered_include_references(&document).map_err(DependencyFailure::InvalidDeclaration)?;
+    let references = discovered_stylesheet_dependencies(&document)
+        .map_err(DependencyFailure::InvalidDeclaration)?;
     state.active.push(resource.identity.clone());
-    let mut includes = Vec::with_capacity(references.len());
-    for include in references {
-        includes.push(load_module(
+    let mut dependencies = Vec::with_capacity(references.len());
+    for dependency in references {
+        dependencies.push(load_module(
             resolver,
             &resource.identity,
-            &include.href,
+            &dependency.href,
+            Some(dependency.kind),
             depth + 1,
-            Some(include.location),
+            Some(dependency.location),
             state,
         )?);
     }
@@ -182,7 +187,8 @@ fn load_module(
     Ok(LoadedStylesheetModule {
         identity: resource.identity,
         document,
-        includes,
+        dependency_kind,
+        dependencies,
     })
 }
 
@@ -192,7 +198,7 @@ mod tests {
         ResolutionLimits, ResourceLimits, ResourceSetBuilder, SnapshotResolver,
     };
 
-    use super::{DependencyFailure, DependencyLimits, load_include_graph};
+    use super::{DependencyFailure, DependencyLimits, load_stylesheet_dependency_graph};
 
     const ROOT: &str = "https://example.invalid/styles/root.xsl";
     const CHILD: &str = "https://example.invalid/styles/child.xsl";
@@ -226,12 +232,16 @@ mod tests {
         let snapshot = snapshot("child.xsl", Some("leaf.xsl"));
         let mut resolver = SnapshotResolver::new(&snapshot, [], ResolutionLimits::new(3));
 
-        let graph = load_include_graph(&mut resolver, ROOT, DependencyLimits::new(2, 3, 1_536))
-            .expect("bounded graph");
+        let graph = load_stylesheet_dependency_graph(
+            &mut resolver,
+            ROOT,
+            DependencyLimits::new(2, 3, 1_536),
+        )
+        .expect("bounded graph");
 
         assert_eq!(graph.identity, ROOT);
-        assert_eq!(graph.includes[0].identity, CHILD);
-        assert_eq!(graph.includes[0].includes[0].identity, LEAF);
+        assert_eq!(graph.dependencies[0].identity, CHILD);
+        assert_eq!(graph.dependencies[0].dependencies[0].identity, LEAF);
     }
 
     #[test]
@@ -240,7 +250,11 @@ mod tests {
 
         let mut resolver = SnapshotResolver::new(&chain, [], ResolutionLimits::new(3));
         assert!(matches!(
-            load_include_graph(&mut resolver, ROOT, DependencyLimits::new(1, 3, 1_536)),
+            load_stylesheet_dependency_graph(
+                &mut resolver,
+                ROOT,
+                DependencyLimits::new(1, 3, 1_536)
+            ),
             Err(DependencyFailure::DepthLimit {
                 maximum: 1,
                 location: Some(_)
@@ -249,7 +263,11 @@ mod tests {
 
         let mut resolver = SnapshotResolver::new(&chain, [], ResolutionLimits::new(3));
         assert!(matches!(
-            load_include_graph(&mut resolver, ROOT, DependencyLimits::new(2, 2, 1_536)),
+            load_stylesheet_dependency_graph(
+                &mut resolver,
+                ROOT,
+                DependencyLimits::new(2, 2, 1_536)
+            ),
             Err(DependencyFailure::ModuleLimit {
                 maximum: 2,
                 location: Some(_)
@@ -259,7 +277,7 @@ mod tests {
         let root_bytes = chain.get(ROOT).expect("root bytes").len();
         let mut resolver = SnapshotResolver::new(&chain, [], ResolutionLimits::new(3));
         assert!(matches!(
-            load_include_graph(
+            load_stylesheet_dependency_graph(
                 &mut resolver,
                 ROOT,
                 DependencyLimits::new(2, 3, root_bytes)
@@ -270,7 +288,11 @@ mod tests {
         let cycle = snapshot("child.xsl", Some("root.xsl"));
         let mut resolver = SnapshotResolver::new(&cycle, [], ResolutionLimits::new(3));
         assert!(matches!(
-            load_include_graph(&mut resolver, ROOT, DependencyLimits::new(3, 3, 1_536)),
+            load_stylesheet_dependency_graph(
+                &mut resolver,
+                ROOT,
+                DependencyLimits::new(3, 3, 1_536)
+            ),
             Err(DependencyFailure::Cycle {
                 identity,
                 location: Some(_)

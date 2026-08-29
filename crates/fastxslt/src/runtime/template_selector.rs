@@ -25,16 +25,17 @@ pub(super) fn select_template_with_index<'a>(
     control: &mut InvocationControl,
 ) -> Result<Option<(usize, &'a MatchedTemplate)>, ExecutionFailure> {
     let mut selected_template = None;
-    let mut selected_priority = None;
+    let mut selected_rank = None;
     for (index, template) in program.matched_templates.iter().enumerate() {
         if !accepts_mode(&template.modes, selection.mode)
             || !matches_pattern(&template.pattern, selection, control)?
         {
             continue;
         }
-        if selected_priority.is_none_or(|priority| template.priority >= priority) {
+        let rank = (template.import_precedence, template.priority, index);
+        if selected_rank.is_none_or(|selected| rank >= selected) {
             selected_template = Some((index, template));
-            selected_priority = Some(template.priority);
+            selected_rank = Some(rank);
         }
     }
     Ok(selected_template)
@@ -46,21 +47,47 @@ pub(super) fn select_next_template<'a>(
     current_index: usize,
     control: &mut InvocationControl,
 ) -> Result<Option<(usize, &'a MatchedTemplate)>, ExecutionFailure> {
-    let current_priority = program.matched_templates[current_index].priority;
+    let current = &program.matched_templates[current_index];
+    let current_rank = (current.import_precedence, current.priority, current_index);
     let mut selected_template = None;
-    let mut selected_priority = None;
+    let mut selected_rank = None;
     for (index, template) in program.matched_templates.iter().enumerate() {
-        let lower_rank = template.priority < current_priority
-            || (template.priority == current_priority && index < current_index);
+        let rank = (template.import_precedence, template.priority, index);
+        let lower_rank = rank < current_rank;
         if !lower_rank
             || !accepts_mode(&template.modes, selection.mode)
             || !matches_pattern(&template.pattern, selection, control)?
         {
             continue;
         }
-        if selected_priority.is_none_or(|priority| template.priority >= priority) {
+        if selected_rank.is_none_or(|selected| rank >= selected) {
             selected_template = Some((index, template));
-            selected_priority = Some(template.priority);
+            selected_rank = Some(rank);
+        }
+    }
+    Ok(selected_template)
+}
+
+pub(super) fn select_imported_template<'a>(
+    program: &'a StylesheetProgram,
+    selection: &TemplateSelectionContext<'_>,
+    current_index: usize,
+    control: &mut InvocationControl,
+) -> Result<Option<(usize, &'a MatchedTemplate)>, ExecutionFailure> {
+    let current_precedence = program.matched_templates[current_index].import_precedence;
+    let mut selected_template = None;
+    let mut selected_rank = None;
+    for (index, template) in program.matched_templates.iter().enumerate() {
+        if template.import_precedence >= current_precedence
+            || !accepts_mode(&template.modes, selection.mode)
+            || !matches_pattern(&template.pattern, selection, control)?
+        {
+            continue;
+        }
+        let rank = (template.import_precedence, template.priority, index);
+        if selected_rank.is_none_or(|selected| rank >= selected) {
+            selected_template = Some((index, template));
+            selected_rank = Some(rank);
         }
     }
     Ok(selected_template)

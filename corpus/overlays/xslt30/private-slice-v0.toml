@@ -699,3 +699,10 @@ case_name = "include-0201"
 selection = "selected"
 execution = "passed"
 rationale = "A source element rule invokes xsl:apply-imports with no imported modules or lower-precedence user rule; the built-in element and text rules preserve the current focus and emit the expected text inside the literal wrapper."
+
+[[case]]
+set_file = "tests/decl/include/_include-test-set.xml"
+case_name = "include-0301"
+selection = "selected"
+execution = "passed"
+rationale = "One sealed relative xsl:import contributes a lower-precedence doc rule; three repeated xsl:apply-imports calls select that rule without confusing import precedence with priority or retaining continuation state between calls."

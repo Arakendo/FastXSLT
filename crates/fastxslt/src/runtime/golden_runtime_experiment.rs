@@ -50,7 +50,8 @@ pub(super) use runtime_failure::ExecutionFailure;
 use runtime_failure::{FailureCategory, control_failure, failure, failure_at};
 pub(super) use serialization::serialize_xml;
 use template_selector::{
-    TemplateSelectionContext, select_next_template, select_template_with_index,
+    TemplateSelectionContext, select_imported_template, select_next_template,
+    select_template_with_index,
 };
 use temporary_tree_executor::{apply_temporary_roots, apply_temporary_template};
 #[cfg(test)]
@@ -695,14 +696,14 @@ fn execute_apply_imports(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    if execution.current_template_index.is_none() {
-        return Err(failure(
+    let current_index = execution.current_template_index.ok_or_else(|| {
+        failure(
             "XTDE0560",
             FailureCategory::Invalid,
             Some(inputs.request_id),
             "xsl:apply-imports requires a current matched template rule",
-        ));
-    }
+        )
+    })?;
     let parameters = evaluate_template_arguments(arguments, variables, inputs.request_id)?;
     if let Some(focus) = execution.temporary_focus {
         return temporary_tree_executor::apply_temporary_builtin(
@@ -713,7 +714,29 @@ fn execute_apply_imports(
             control,
         );
     }
-    let (_, node) = required_source_context(inputs, execution.node)?;
+    let (source, node) = required_source_context(inputs, execution.node)?;
+    if let Some((next_index, template)) = select_imported_template(
+        inputs.program,
+        &TemplateSelectionContext {
+            source,
+            node,
+            mode: execution.current_mode,
+            variables: &inputs.globals.atomics,
+            request_id: inputs.request_id,
+        },
+        current_index,
+        control,
+    )? {
+        let variables =
+            bind_template_parameters(&template.template, &parameters, &inputs.globals.atomics);
+        return execute_sequence(
+            inputs,
+            &template.template.body,
+            SequenceContext::for_template(node.into(), execution.current_mode, next_index),
+            &variables,
+            control,
+        );
+    }
     apply_builtin_template(inputs, node, execution.current_mode, &parameters, control)
 }
 

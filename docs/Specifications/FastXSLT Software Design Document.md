@@ -206,6 +206,13 @@ must retain sufficient source provenance for diagnostics and must not capture
 per-transform source documents, parameters, messages, clocks, resolver state,
 budgets, or host resources as hidden global state.
 
+Compiled template rules retain stylesheet-module import precedence separately
+from template priority and declaration order. Ordinary dispatch ranks all three;
+`xsl:next-match` continues to a lower-ranked applicable rule, while
+`xsl:apply-imports` considers only applicable rules at lower import precedence
+before using the built-in rule. The current executable slice proves one sealed
+relative import only; it does not define a public module graph representation.
+
 Compilation may eventually attach required navigation, retention, buffering,
 or evaluation capabilities to normalized expressions and templates. This is a
 reserved ownership seam, not an accepted metadata schema or requirement to

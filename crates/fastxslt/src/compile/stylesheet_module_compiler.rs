@@ -9,34 +9,22 @@ use super::{
     is_xslt_element, meaningful_children, require_stylesheet_root, required_attribute, unsupported,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum StylesheetDependencyKind {
+    Include,
+    Import,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct IncludeReference {
+pub(crate) struct StylesheetDependencyReference {
+    pub(crate) kind: StylesheetDependencyKind,
     pub(crate) href: String,
     pub(crate) location: SourceLocation,
 }
 
-pub(crate) fn single_include_reference(
+pub(crate) fn discovered_stylesheet_dependencies(
     document: &Document,
-) -> Result<Option<IncludeReference>, CompileFailure> {
-    let root = document_element(document)?;
-    require_stylesheet_root(document, root)?;
-    let include_declarations = discovered_include_references(document)?;
-    let Some(include) = include_declarations.first() else {
-        return Ok(None);
-    };
-    if include_declarations.len() != 1 {
-        return Err(unsupported(
-            "FXST1018",
-            "the private slice permits one xsl:include dependency",
-            &include.location,
-        ));
-    }
-    Ok(Some(include.clone()))
-}
-
-pub(crate) fn discovered_include_references(
-    document: &Document,
-) -> Result<Vec<IncludeReference>, CompileFailure> {
+) -> Result<Vec<StylesheetDependencyReference>, CompileFailure> {
     let root = document_element(document)?;
     let is_standard_stylesheet = document.name(root).is_some_and(|name| {
         name.namespace.as_deref() == Some(XSLT_NAMESPACE)
@@ -45,14 +33,24 @@ pub(crate) fn discovered_include_references(
     if !is_standard_stylesheet {
         return Ok(Vec::new());
     }
-    include_nodes(document)?
+    dependency_nodes(document)?
         .into_iter()
-        .map(|include| {
-            ensure_only_attributes(document, include, &["href"], "xsl:include")?;
-            ensure_no_meaningful_children(document, include, "xsl:include")?;
-            Ok(IncludeReference {
-                href: required_attribute(document, include, None, "href")?.to_owned(),
-                location: document.location(include).clone(),
+        .map(|declaration| {
+            let kind = if is_xslt_element(document, declaration, "include") {
+                StylesheetDependencyKind::Include
+            } else {
+                StylesheetDependencyKind::Import
+            };
+            let label = match kind {
+                StylesheetDependencyKind::Include => "xsl:include",
+                StylesheetDependencyKind::Import => "xsl:import",
+            };
+            ensure_only_attributes(document, declaration, &["href"], label)?;
+            ensure_no_meaningful_children(document, declaration, label)?;
+            Ok(StylesheetDependencyReference {
+                kind,
+                href: required_attribute(document, declaration, None, "href")?.to_owned(),
+                location: document.location(declaration).clone(),
             })
         })
         .collect()
@@ -143,6 +141,61 @@ pub(crate) fn compile_stylesheet_with_single_include(
     Ok(program)
 }
 
+pub(crate) fn compile_stylesheet_with_single_import(
+    principal: &Document,
+    imported: &Document,
+) -> Result<StylesheetProgram, CompileFailure> {
+    let import_declarations = import_nodes(principal)?;
+    let [import] = import_declarations.as_slice() else {
+        return Err(invalid(
+            "FXST0031",
+            "single-import compilation requires exactly one xsl:import",
+            principal.location(principal.document_node()),
+        ));
+    };
+    let root = document_element(principal)?;
+    if meaningful_children(principal, root).first() != Some(import) {
+        return Err(invalid(
+            "XTSE0200",
+            "xsl:import must precede every other top-level declaration",
+            principal.location(*import),
+        ));
+    }
+    let mut principal_program = compile_stylesheet_excluding(principal, &[*import])?;
+    let mut imported_program = super::compile_stylesheet(imported)?;
+    if imported_program.output != default_output_settings() {
+        return Err(unsupported(
+            "FXST1024",
+            "imported output declarations are outside the single-import slice",
+            imported.location(imported.document_node()),
+        ));
+    }
+    if principal_program.root_template.is_some() || imported_program.root_template.is_some() {
+        return Err(unsupported(
+            "FXST1025",
+            "root templates are outside the single-import slice",
+            imported.location(imported.document_node()),
+        ));
+    }
+    if !imported_program.named_templates.is_empty() || !imported_program.global_bindings.is_empty()
+    {
+        return Err(unsupported(
+            "FXST1026",
+            "imported named templates and global bindings are outside the single-import slice",
+            imported.location(imported.document_node()),
+        ));
+    }
+    for template in &mut imported_program.matched_templates {
+        template.import_precedence = -1;
+    }
+    imported_program
+        .matched_templates
+        .append(&mut principal_program.matched_templates);
+    principal_program.matched_templates = imported_program.matched_templates;
+    validate_named_template_references(&principal_program)?;
+    Ok(principal_program)
+}
+
 fn compile_simplified_stylesheet(document: &Document) -> Result<StylesheetProgram, CompileFailure> {
     let root = document_element(document)?;
     let root_name = document.name(root).expect("element nodes have names");
@@ -194,5 +247,26 @@ fn include_nodes(document: &Document) -> Result<Vec<NodeId>, CompileFailure> {
     Ok(meaningful_children(document, root)
         .into_iter()
         .filter(|child| is_xslt_element(document, *child, "include"))
+        .collect())
+}
+
+fn import_nodes(document: &Document) -> Result<Vec<NodeId>, CompileFailure> {
+    let root = document_element(document)?;
+    require_stylesheet_root(document, root)?;
+    Ok(meaningful_children(document, root)
+        .into_iter()
+        .filter(|child| is_xslt_element(document, *child, "import"))
+        .collect())
+}
+
+fn dependency_nodes(document: &Document) -> Result<Vec<NodeId>, CompileFailure> {
+    let root = document_element(document)?;
+    require_stylesheet_root(document, root)?;
+    Ok(meaningful_children(document, root)
+        .into_iter()
+        .filter(|child| {
+            is_xslt_element(document, *child, "include")
+                || is_xslt_element(document, *child, "import")
+        })
         .collect())
 }
