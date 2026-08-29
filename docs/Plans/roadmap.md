@@ -252,7 +252,7 @@ the XSLT 2.0 recover/error variants remain outside this tranche.
 across template selection: `//b` supplies six candidates in document order,
 while retained `doc/a/b` and `doc/z/b` patterns distinguish their parent chains
 and produce `111222`. No lexical pattern parsing enters the dispatch loop. The
-adjacent `0501–0503` current/range-variable cases and `0702–0802` broader
+adjacent `0501–0503` current/range-variable cases and `0703–0802` broader
 static-default-namespace/current-mode cases remain deliberate language slices
 rather than targets for stylesheet-shaped shortcuts.
 `conflict-resolution-0701` now resolves an inherited template-local
@@ -260,10 +260,15 @@ rather than targets for stylesheet-shaped shortcuts.
 patterns and child selections. The prefixed child rule proves equivalent
 expanded-name matching. Multi-step default-namespaced paths fail explicitly
 rather than falling through to local-name-only semantics.
+`conflict-resolution-0702` places the same static-context control on a literal
+result element using the XSLT namespace. Compilation applies it to the
+descendant selection without manufacturing a result attribute, while the
+stylesheet's retained `u` binding remains serialized on `out`. Other literal
+attributes and XSLT control attributes remain unsupported.
 The complete pinned apply-templates test set is now conserved as an ordered
 50-case denominator with 50 principal stylesheets, one secondary stylesheet,
-41 XML assertions, eight error assertions, and one compound assertion. Twelve
-cases have explicit passing overrides; the other 38 remain visibly not run and
+41 XML assertions, eight error assertions, and one compound assertion. Thirteen
+cases have explicit passing overrides; the other 37 remain visibly not run and
 are not mislabeled as engine failures. This corrects the earlier provisional
 52-case count without turning inventory into a conformance percentage.
 
@@ -734,6 +739,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   selections, retaining expanded names through runtime comparison. Reject
   broader default-namespaced paths explicitly until the typed path
   representation owns namespace resolution throughout.
+- [x] Execute `conflict-resolution-0702` with
+  `xsl:xpath-default-namespace` on a literal result element as descendant
+  static context only. Preserve required namespace declarations while proving
+  the XSLT control attribute never becomes a result attribute; keep ordinary
+  literal attributes and other control attributes unsupported.
 - [x] Admit the complete five-case XSLT30 `misc/initial-mode` denominator,
   preserving each mode identity and expected error or XML assertion through
   bounded snapshots. A focused host-neutral initial-mode entry executes with an

@@ -106,13 +106,7 @@ pub(super) fn compile_sequence_excluding(
                         ));
                     }
                 } else {
-                    if !document.attributes(child).is_empty() {
-                        return Err(unsupported(
-                            "FXST1007",
-                            "literal result attributes are outside the private slice",
-                            document.location(child),
-                        ));
-                    }
+                    ensure_literal_result_control_attributes(document, child)?;
                     instructions.push(Instruction::LiteralElement {
                         name: name.clone(),
                         namespaces: literal_result_namespaces(document, child),
@@ -131,6 +125,27 @@ pub(super) fn compile_sequence_excluding(
         }
     }
     Ok(instructions)
+}
+
+fn ensure_literal_result_control_attributes(
+    document: &Document,
+    element: NodeId,
+) -> Result<(), CompileFailure> {
+    for attribute in document.attributes(element) {
+        let name = document
+            .name(*attribute)
+            .expect("attribute nodes have expanded names");
+        if name.namespace.as_deref() != Some(XSLT_NAMESPACE)
+            || name.local != "xpath-default-namespace"
+        {
+            return Err(unsupported(
+                "FXST1007",
+                "literal result attributes are outside the private slice except for xsl:xpath-default-namespace static context",
+                document.location(*attribute),
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn compile_text(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {

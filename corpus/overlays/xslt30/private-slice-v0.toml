@@ -539,3 +539,10 @@ case_name = "conflict-resolution-0701"
 selection = "selected"
 execution = "passed"
 rationale = "A template-local xpath-default-namespace resolves its unprefixed exact element pattern and simple child selection into expanded names; the separately prefixed child rule matches the same source namespace."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0702"
+selection = "selected"
+execution = "passed"
+rationale = "An XSLT-namespaced xpath-default-namespace attribute on a literal result element supplies descendant static context without becoming a result attribute; the retained u binding remains serialized on the result."

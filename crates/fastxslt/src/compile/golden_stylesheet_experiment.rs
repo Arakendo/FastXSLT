@@ -1224,6 +1224,21 @@ mod tests {
             .expect_err("multi-step default-namespace selection must not lose expanded names");
         assert_eq!(failure.code, "FXST1027");
         assert_eq!(failure.category, CompileCategory::Unsupported);
+
+        let literal_context = parse_stylesheet(
+            "memory:literal-xpath-default-namespace.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="doc"><out xsl:xpath-default-namespace="http://example.test/"><xsl:apply-templates select="item"/></out></xsl:template></xsl:stylesheet>"#,
+        );
+        let program = compile_stylesheet(&literal_context)
+            .expect("literal result static-context attribute should compile");
+        assert!(matches!(
+            program.matched_templates[0].template.body.as_slice(),
+            [Instruction::LiteralElement { body, .. }]
+                if matches!(body.as_slice(), [Instruction::ApplyTemplates {
+                    select: Some(crate::xslt::golden_semantics_experiment::ApplySelection::ChildElement(name)),
+                    ..
+                }] if name.namespace.as_deref() == Some("http://example.test/") && name.local == "item")
+        ));
     }
 
     #[test]

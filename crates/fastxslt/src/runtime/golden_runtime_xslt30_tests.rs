@@ -564,6 +564,30 @@ fn executes_xslt30_xpath_default_namespace_pattern_and_selection() {
 }
 
 #[test]
+fn executes_xslt30_literal_result_xpath_default_namespace_context() {
+    let (actual, expected, matched_template_count) =
+        execute_apply_templates_case("conflict-resolution-0702");
+    assert_eq!(matched_template_count, 4);
+    assert_same_result_element_string(&actual, &expected, "out");
+    assert!(!actual.contains("xpath-default-namespace"));
+    let parsed = parse_document(
+        "urn:fastxslt:conflict-resolution-0702:actual",
+        actual.as_bytes(),
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("actual result should parse");
+    let document = Document::from_parsed(parsed).expect("actual result should build");
+    let out =
+        find_element(&document, document.document_node(), "out", None).expect("actual out element");
+    assert!(document.namespace_declarations(out).iter().any(|binding| {
+        binding.prefix.as_deref() == Some("u") && binding.namespace == "http://some.uri/"
+    }));
+}
+
+#[test]
 fn executes_pinned_xslt30_template_006_from_its_upstream_test_set() {
     let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
     assert!(overlay.contains("case_name = \"template-006\""));
