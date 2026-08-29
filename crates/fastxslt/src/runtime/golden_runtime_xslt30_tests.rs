@@ -664,6 +664,15 @@ fn executes_xslt30_global_variable_pattern_and_source_copy() {
 }
 
 #[test]
+fn executes_xslt30_equivalent_same_named_child_patterns() {
+    for case_name in ["conflict-resolution-0501", "conflict-resolution-0502"] {
+        let (actual, expected, matched_template_count) = execute_apply_templates_case(case_name);
+        assert_eq!(matched_template_count, 2);
+        assert_same_result_element_string(&actual, &expected, "doc");
+    }
+}
+
+#[test]
 fn executes_xslt30_next_match_parameter_chain() {
     let (actual, expected, matched_template_count) =
         execute_apply_templates_case("conflict-resolution-1205");

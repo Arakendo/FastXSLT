@@ -8,7 +8,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{MatchPattern, MatchedTemplate, StylesheetProgram};
 
-use super::runtime_failure::{ExecutionFailure, control_failure};
+use super::runtime_failure::{ExecutionFailure, FailureCategory, control_failure, failure};
 
 pub(super) struct TemplateSelectionContext<'a> {
     pub(super) source: &'a Document,
@@ -160,6 +160,9 @@ fn matches_pattern(
             }
             Ok(false)
         }
+        MatchPattern::ElementWithSameNamedChild => {
+            matches_same_named_child(source, node, request_id, control)
+        }
         MatchPattern::Path(path) => match_path_pattern(source, node, path, request_id, control),
         MatchPattern::Attribute(name) => {
             Ok(source.kind(node) == NodeKind::Attribute && source.name(node) == Some(name))
@@ -177,6 +180,48 @@ fn matches_pattern(
                 | NodeKind::ProcessingInstruction
         )),
     }
+}
+
+fn matches_same_named_child(
+    source: &Document,
+    node: NodeId,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if source.kind(node) != NodeKind::Element {
+        return Ok(false);
+    }
+    let parent_name = source
+        .name(node)
+        .expect("element pattern candidate has a name");
+    if parent_name.namespace.is_some() {
+        return Err(unsupported_name_comparison(request_id));
+    }
+    for child in source.children(node) {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if source.kind(*child) != NodeKind::Element {
+            continue;
+        }
+        let child_name = source.name(*child).expect("element child has a name");
+        if child_name.namespace.is_some() {
+            return Err(unsupported_name_comparison(request_id));
+        }
+        if child_name.local == parent_name.local {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn unsupported_name_comparison(request_id: &str) -> ExecutionFailure {
+    failure(
+        "FXRT1013",
+        FailureCategory::Unsupported,
+        Some(request_id),
+        "name() pattern comparison requires unnamespaced elements in the private slice",
+    )
 }
 
 fn attribute_equals_atomic(attribute: &str, value: &AtomicValue) -> bool {

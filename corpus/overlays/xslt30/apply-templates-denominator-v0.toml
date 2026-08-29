@@ -132,3 +132,13 @@ execution = "passed"
 case_name = "conflict-resolution-0601"
 selection = "selected"
 execution = "passed"
+
+[[case_override]]
+case_name = "conflict-resolution-0501"
+selection = "selected"
+execution = "passed"
+
+[[case_override]]
+case_name = "conflict-resolution-0502"
+selection = "selected"
+execution = "passed"

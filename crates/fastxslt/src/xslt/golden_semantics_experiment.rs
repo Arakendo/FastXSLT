@@ -136,6 +136,7 @@ pub(crate) enum MatchPattern {
         attribute: ExpandedName,
         variable: String,
     },
+    ElementWithSameNamedChild,
     Path(LocationPath),
     Attribute(ExpandedName),
     Comment,

@@ -30,6 +30,9 @@ pub(super) fn compile_match_pattern(
         predicate if parse_any_element_attribute_variable_predicate(predicate).is_some() => {
             compile_any_element_attribute_variable_pattern(predicate)
         }
+        "*[*[name()=name(current())]]" | "*[some $x in child::* satisfies name($x) = name(.)]" => {
+            MatchPattern::ElementWithSameNamedChild
+        }
         predicate if parse_element_attribute_predicate(predicate).is_some() => {
             let (element, attribute) =
                 parse_element_attribute_predicate(predicate).expect("predicate shape was checked");
@@ -220,9 +223,8 @@ fn compile_template_priority(
             | MatchPattern::DescendantAnyElement
             | MatchPattern::ElementWithAttribute { .. }
             | MatchPattern::ElementWithAttributeValue { .. }
-            | MatchPattern::AnyElementWithAttributeVariable { .. } => {
-                TemplatePriority::PATH_DEFAULT
-            }
+            | MatchPattern::AnyElementWithAttributeVariable { .. }
+            | MatchPattern::ElementWithSameNamedChild => TemplatePriority::PATH_DEFAULT,
             MatchPattern::Document | MatchPattern::DocumentElement(None) => {
                 TemplatePriority::ROOT_DEFAULT
             }
