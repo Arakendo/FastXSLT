@@ -69,6 +69,18 @@ execution = "passed"
 rationale = "An attribute selection in mode1 reaches the exact moded attribute rule without treating attributes as child nodes."
 
 [[case_override]]
+case_name = "mode-0901"
+selection = "selected"
+execution = "passed"
+rationale = "Distinct lexical prefixes bound to the same namespace resolve to one expanded mode identity across apply-templates and template declaration."
+
+[[case_override]]
+case_name = "mode-1001"
+selection = "selected"
+execution = "passed"
+rationale = "Unprefixed mode names retain admitted ASCII NCName punctuation, including a leading underscore and internal dots, across nested dispatch."
+
+[[case_override]]
 case_name = "mode-0105"
 selection = "selected"
 execution = "passed"

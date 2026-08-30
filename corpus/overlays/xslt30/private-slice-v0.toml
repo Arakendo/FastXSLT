@@ -73,6 +73,20 @@ rationale = "Mode-qualified attribute dispatch selects the exact moded attribute
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0901"
+selection = "selected"
+execution = "passed"
+rationale = "Different prefixes bound to one namespace resolve to the same expanded mode identity."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1001"
+selection = "selected"
+execution = "passed"
+rationale = "Mode identity preserves admitted leading-underscore and internal-dot NCName forms through nested dispatch."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-0105"
 selection = "selected"
 execution = "passed"

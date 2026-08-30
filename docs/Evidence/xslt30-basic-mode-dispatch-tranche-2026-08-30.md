@@ -5,12 +5,12 @@
 | Date | 2026-08-30 |
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/attr/mode/_mode-test-set.xml` |
-| Cases | `mode-0101` through `mode-0108`, `mode-0201` through `mode-0701` |
-| Result | 14 selected native passes; 155 visible default not-run cases |
+| Cases | `mode-0101` through `mode-0108`, `mode-0201` through `mode-0701`, `mode-0901`, `mode-1001` |
+| Result | 16 selected native passes; 153 visible default not-run cases |
 
 ## Added evidence
 
-Ten newly selected cases execute through the existing compiled stylesheet and
+Twelve newly selected cases execute through the existing compiled stylesheet and
 runtime path:
 
 - explicit modes select only rules in the same mode;
@@ -21,7 +21,10 @@ runtime path:
 - comment, processing-instruction, any-node, and attribute selections retain
   their XDM kinds through mode-qualified dispatch; and
 - a named-template call preserves current mode while an inner unmoded
-  `xsl:apply-templates` deliberately enters the unnamed mode.
+  `xsl:apply-templates` deliberately enters the unnamed mode;
+- distinct lexical prefixes bound to the same namespace compare as one expanded
+  mode identity; and
+- admitted ASCII NCName punctuation survives nested mode dispatch.
 
 `mode-0301` exposed a compiler gap: an `xsl:template` may carry both `name` and
 `match`. Compilation previously returned after recording the named identity and

@@ -16,7 +16,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 14] = [
+const SELECTED_CASES: [&str; 16] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -31,6 +31,8 @@ const SELECTED_CASES: [&str; 14] = [
     "mode-0501",
     "mode-0601",
     "mode-0701",
+    "mode-0901",
+    "mode-1001",
 ];
 const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/mode-denominator-v0.toml");
 
@@ -112,6 +114,14 @@ fn executes_mode_preservation_and_typed_node_dispatch() {
         "mode-0601",
         "mode-0701",
     ] {
+        let (actual, expected) = execute_case(case_name);
+        assert_xml_equivalent(&actual, &expected);
+    }
+}
+
+#[test]
+fn executes_equivalent_prefixed_and_punctuated_mode_names() {
+    for case_name in ["mode-0901", "mode-1001"] {
         let (actual, expected) = execute_case(case_name);
         assert_xml_equivalent(&actual, &expected);
     }

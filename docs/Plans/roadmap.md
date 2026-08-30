@@ -390,14 +390,17 @@ complete explicit dispositions with no default not-run cases. This corrects
 the earlier provisional counts without turning inventory into a conformance
 percentage or preprocessing upstream bytes in the harness.
 
-The next coherent mode tranche executes `mode-0101` through `mode-0104` and
-`mode-0201` through `mode-0701`. Explicit and omitted mode selection remain
+The next coherent mode tranche executes `mode-0101` through `mode-0104`,
+`mode-0201` through `mode-0701`, and `mode-0901` through `mode-1001`. Explicit
+and omitted mode selection remain
 isolated, built-in rules preserve an active explicit mode, nested omitted mode
 returns deliberately to the unnamed mode, and comment, processing-instruction,
 node, and attribute selections dispatch through typed moded rules. The compiler
 now correctly admits one template carrying both `name` and `match` into both
-indexes instead of dropping one identity. The complete mode denominator now
-records 14 passes and 155 visible default not-run cases.
+indexes instead of dropping one identity. Equivalent namespace prefixes and
+admitted NCName punctuation also retain exact expanded mode identity. The
+complete mode denominator now records 16 passes and 153 visible default not-run
+cases.
 
 ## Corpus audit -- 2026-08-30
 
@@ -438,10 +441,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 14 | 0 | 0 | 155 |
+| `attr/mode` | 169 | 16 | 0 | 0 | 153 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **208** | **3** | **5** | **315** |
+| **Conserved total** | **531** | **210** | **3** | **5** | **313** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -496,7 +499,7 @@ count:
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
 2. [ ] Continue coherent semantic slices through the 160 visible `output`
-   gaps and 155 visible `mode` gaps. Each promotion still requires native
+   gaps and 153 visible `mode` gaps. Each promotion still requires native
    metadata validation, a focused control, and an owned comparator or exact
    diagnostic—not merely successful stylesheet execution.
 3. [ ] Give `AxisStep.xml` and `fn/deep-equal.xml` complete QT3 overlays so all
@@ -1230,6 +1233,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   template carrying both `name` and `match` into both compiled indexes while
   retaining one shared body semantics. The mode ledger now records 14 passes
   and 155 visible default not-run cases.
+- [x] Execute `mode-0901` by resolving distinct prefixes bound to the same
+  namespace into one expanded mode identity, and `mode-1001` by retaining a
+  leading underscore and internal dot in admitted unprefixed NCNames. Reuse the
+  same compiled mode path rather than adding lexical-name dispatch. The mode
+  ledger now records 16 passes and 153 visible default not-run cases.
 - [x] Retain non-whitespace text children in the private attribute-free
   temporary-tree representation and preserve mixed element/text order through
   invocation-owned materialization, built-in traversal, result accounting, and
