@@ -1032,6 +1032,12 @@ failed, and harness-error cases without an unqualified conformance claim.
     precedence, non-text shadowed defaults, dependency ordering, and multiple
     imports out. The denominator now records 5 passes and 11 visible not-run
     dispositions.
+  - [x] Execute `include-0601` with one imported simplified stylesheet. Lower
+    its implicit template into a lower-precedence document rule, let the
+    principal `text()` rule invoke `xsl:apply-imports`, and preserve built-in
+    text fallback when no lower-precedence text rule exists. Keep general
+    imported root conflicts, modes, output merging, and multiple imports out.
+    The denominator now records 6 passes and 10 visible not-run dispositions.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.

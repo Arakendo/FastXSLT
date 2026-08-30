@@ -6,7 +6,7 @@ case_count = 16
 [default_disposition]
 selection = "harness-unsupported"
 execution = "not-run"
-rationale = "The private compiler does not yet assemble included/imported stylesheet modules or implement their base-identity and precedence semantics. No case is silently omitted or treated as an engine failure."
+rationale = "The private compiler implements only the explicitly selected bounded include/import slices below. Remaining module graphs, precedence combinations, and related semantics stay visible as harness gaps; no case is silently omitted or treated as an engine failure."
 
 [[case_override]]
 case_name = "include-0401"
@@ -37,3 +37,9 @@ case_name = "include-0105"
 selection = "selected"
 execution = "passed"
 rationale = "Resolves one imported named template after module assembly and removes its shadowed ERROR global binding so both the principal root rule and imported named rule observe the principal OK binding."
+
+[[case_override]]
+case_name = "include-0601"
+selection = "selected"
+execution = "passed"
+rationale = "Compiles one imported simplified stylesheet, lowers its implicit template into a lower-precedence document rule, and lets the principal text rule use xsl:apply-imports before falling through to the built-in text rule."

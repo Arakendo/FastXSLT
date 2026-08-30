@@ -1,5 +1,7 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
-use crate::xslt::golden_semantics_experiment::{Instruction, StylesheetProgram, Template};
+use crate::xslt::golden_semantics_experiment::{
+    Instruction, MatchPattern, MatchedTemplate, StylesheetProgram, Template, TemplatePriority,
+};
 
 use super::instruction_compiler::{compile_sequence_excluding, literal_result_namespaces};
 use super::stylesheet_validation::validate_named_template_references;
@@ -163,7 +165,7 @@ pub(crate) fn compile_stylesheet_with_single_import(
         ));
     }
     let mut principal_program = compile_stylesheet_excluding_unvalidated(principal, &[*import])?;
-    let mut imported_program = super::compile_stylesheet(imported)?;
+    let mut imported_program = compile_imported_module(imported)?;
     if imported_program.output != default_output_settings() {
         return Err(unsupported(
             "FXST1024",
@@ -171,12 +173,17 @@ pub(crate) fn compile_stylesheet_with_single_import(
             imported.location(imported.document_node()),
         ));
     }
-    if imported_program.root_template.is_some() {
-        return Err(unsupported(
-            "FXST1025",
-            "imported root templates are outside the single-import slice",
-            imported.location(imported.document_node()),
-        ));
+    if let Some(template) = imported_program.root_template.take() {
+        imported_program.matched_templates.insert(
+            0,
+            MatchedTemplate {
+                pattern: MatchPattern::Document,
+                import_precedence: -1,
+                priority: TemplatePriority::ROOT_DEFAULT,
+                modes: std::mem::take(&mut imported_program.root_template_modes),
+                template,
+            },
+        );
     }
     for template in &mut imported_program.matched_templates {
         template.import_precedence = -1;
@@ -189,6 +196,18 @@ pub(crate) fn compile_stylesheet_with_single_import(
     merge_imported_global_bindings(&mut principal_program, imported_program.global_bindings);
     validate_named_template_references(&principal_program)?;
     Ok(principal_program)
+}
+
+fn compile_imported_module(document: &Document) -> Result<StylesheetProgram, CompileFailure> {
+    let root = document_element(document)?;
+    if document
+        .name(root)
+        .is_some_and(|name| name.namespace.as_deref() == Some(XSLT_NAMESPACE))
+    {
+        super::compile_stylesheet(document)
+    } else {
+        compile_simplified_stylesheet(document)
+    }
 }
 
 fn merge_imported_named_templates(

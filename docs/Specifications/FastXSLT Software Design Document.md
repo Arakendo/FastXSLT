@@ -218,7 +218,11 @@ whole-program validation and runtime materialization. Within the bounded
 single-import slice, a principal global binding shadows an imported binding of
 the same supported binding name, and the shadowed default is not retained for
 runtime evaluation. Imported named templates are linked before reference validation;
-duplicate named-template precedence remains outside the current slice.
+duplicate named-template precedence remains outside the current slice. An
+imported simplified stylesheet's implicit template is normalized into an
+ordinary lower-precedence document-matching rule. It therefore participates in
+normal template selection and `xsl:apply-imports`, rather than acquiring the
+principal module's direct root-template execution privilege.
 
 The prepared instruction representation may fold a statically validated result
 construction into its owning literal element when the operation cannot be

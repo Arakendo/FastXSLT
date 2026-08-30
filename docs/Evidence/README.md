@@ -151,6 +151,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `include-0301` Single Import and Repeated Apply-Imports](xslt30-include-0301-single-import-repeated-apply-imports-2026-08-29.md)
 - [XSLT30 `include-0202` Imported Parameter and Computed Attribute](xslt30-include-0202-imported-parameter-computed-attribute-2026-08-29.md)
 - [XSLT30 `include-0105` Imported Named Template and Global Override](xslt30-include-0105-imported-named-template-global-override-2026-08-29.md)
+- [XSLT30 `include-0601` Imported Simplified Root and Text Fallback](xslt30-include-0601-imported-simplified-root-text-fallback-2026-08-29.md)
 - [Stylesheet-Module Assembly Decomposition Review](stylesheet-module-assembly-decomposition-review-2026-08-28.md)
 - [Instruction-Compiler Template-Invocation Decomposition Review](instruction-compiler-template-invocation-decomposition-review-2026-08-29.md)
 - [Sealed Stylesheet-Dependency Accounting](sealed-stylesheet-dependency-accounting-2026-08-28.md)

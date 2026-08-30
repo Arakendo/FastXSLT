@@ -720,3 +720,10 @@ case_name = "include-0105"
 selection = "selected"
 execution = "passed"
 rationale = "The principal module's text global binding shadows the same-named imported binding before runtime materialization; an imported named template is linked after assembly and observes the same principal binding as the root template."
+
+[[case]]
+set_file = "tests/decl/include/_include-test-set.xml"
+case_name = "include-0601"
+selection = "selected"
+execution = "passed"
+rationale = "One imported simplified stylesheet contributes its implicit template as a lower-precedence document rule; the principal text rule wraps source text and xsl:apply-imports correctly reaches the built-in text fallback."

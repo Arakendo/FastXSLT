@@ -33,12 +33,13 @@ const CASE_NAMES: [&str; 16] = [
     "include-0702c",
     "include-0801",
 ];
-const PASSED_CASES: [&str; 5] = [
+const PASSED_CASES: [&str; 6] = [
     "include-0105",
     "include-0201",
     "include-0202",
     "include-0301",
     "include-0401",
+    "include-0601",
 ];
 const OVERLAY: &str =
     include_str!("../../../../corpus/overlays/xslt30/include-denominator-v0.toml");
@@ -170,6 +171,15 @@ fn executes_include_0105_principal_global_override_and_imported_named_template()
         [("test".to_owned(), "OK".to_owned())]
     );
     assert_eq!(execution.named_template_names, ["two"]);
+    assert_xml_equivalent(&execution.actual, &execution.expected);
+}
+
+#[test]
+fn executes_include_0601_imported_simplified_root_and_text_fallback() {
+    let execution = execute_inline_case_with_single_dependency("include-0601");
+    assert_eq!(execution.import_precedences, [-1, 0]);
+    assert!(execution.global_text_defaults.is_empty());
+    assert!(execution.named_template_names.is_empty());
     assert_xml_equivalent(&execution.actual, &execution.expected);
 }
 
