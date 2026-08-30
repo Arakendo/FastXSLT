@@ -312,7 +312,7 @@ impl<'a> SequenceContext<'a> {
 #[derive(Clone, Copy)]
 enum TemporaryFocus<'a> {
     Document(&'a TemporaryTree),
-    Element(&'a TemporaryTree, usize),
+    Node(&'a TemporaryTree, usize),
 }
 
 fn execute_sequence(

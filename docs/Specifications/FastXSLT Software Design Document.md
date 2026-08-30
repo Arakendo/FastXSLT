@@ -234,10 +234,12 @@ The private temporary-tree path distinguishes its document focus from the
 principal source document. A bare variable selected by `xsl:apply-templates`
 may resolve an invocation-local or global temporary tree, with local lexical
 state taking precedence. Nested apply-templates with no explicit selection
-continues from that temporary document or element focus and does not silently
-fall back to the principal source. The current representation remains a
-bounded element-only experiment; text nodes, general temporary-tree paths, and
-continuation selection require separate evidence.
+continues from that temporary document or node focus and does not silently fall
+back to the principal source. The current representation admits attribute-free
+literal element trees with non-whitespace text children, preserving mixed child
+order and accounting separately for retained XDM nodes and result text bytes.
+Top-level text, attributes, comments, processing instructions, general
+temporary-tree paths, and continuation selection require separate evidence.
 
 The same private path admits `xsl:for-each` only when its selection is one bare
 temporary-tree variable. That form establishes the selected temporary document

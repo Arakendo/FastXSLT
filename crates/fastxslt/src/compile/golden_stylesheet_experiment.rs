@@ -1,9 +1,9 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xpath::path_experiment::{PathFailure, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
-    ConstructedElement, GlobalBinding, GlobalBindingDefault, GlobalBindingKind, MatchPattern,
-    MatchedTemplate, NamedTemplate, STANDARD_INITIAL_TEMPLATE_NAME, StylesheetProgram, Template,
-    TemplateParameter, TemplateParameterDefault, TemplatePriority,
+    ConstructedElement, ConstructedNode, GlobalBinding, GlobalBindingDefault, GlobalBindingKind,
+    MatchPattern, MatchedTemplate, NamedTemplate, STANDARD_INITIAL_TEMPLATE_NAME,
+    StylesheetProgram, Template, TemplateParameter, TemplateParameterDefault, TemplatePriority,
 };
 
 #[path = "instruction_compiler.rs"]
@@ -350,23 +350,54 @@ fn compile_constructed_elements(
                 document.location(child),
             ));
         }
-        let name = document.name(child).expect("element nodes have names");
-        if name.namespace.as_deref() == Some(XSLT_NAMESPACE)
-            || !document.attributes(child).is_empty()
-        {
-            return Err(unsupported(
-                "FXST1015",
-                "only attribute-free literal elements are admitted in global temporary trees",
-                document.location(child),
-            ));
-        }
-        elements.push(ConstructedElement {
-            name: name.clone(),
-            namespaces: literal_result_namespaces(document, child),
-            children: compile_constructed_elements(document, child)?,
-        });
+        elements.push(compile_constructed_element(document, child)?);
     }
     Ok(elements)
+}
+
+fn compile_constructed_element(
+    document: &Document,
+    element: NodeId,
+) -> Result<ConstructedElement, CompileFailure> {
+    let name = document.name(element).expect("element nodes have names");
+    if name.namespace.as_deref() == Some(XSLT_NAMESPACE) || !document.attributes(element).is_empty()
+    {
+        return Err(unsupported(
+            "FXST1015",
+            "only attribute-free literal elements are admitted in global temporary trees",
+            document.location(element),
+        ));
+    }
+    Ok(ConstructedElement {
+        name: name.clone(),
+        namespaces: literal_result_namespaces(document, element),
+        children: compile_constructed_children(document, element)?,
+    })
+}
+
+fn compile_constructed_children(
+    document: &Document,
+    parent: NodeId,
+) -> Result<Vec<ConstructedNode>, CompileFailure> {
+    meaningful_children(document, parent)
+        .into_iter()
+        .map(|child| match document.kind(child) {
+            NodeKind::Text => Ok(ConstructedNode::Text(
+                document.value(child).unwrap_or_default().to_owned(),
+            )),
+            NodeKind::Element => {
+                compile_constructed_element(document, child).map(ConstructedNode::Element)
+            }
+            NodeKind::Comment | NodeKind::ProcessingInstruction => {
+                unreachable!("meaningful_children excludes comments and processing instructions")
+            }
+            NodeKind::Document | NodeKind::Attribute => Err(invalid(
+                "FXST0006",
+                "unexpected node kind in a temporary-tree constructor",
+                document.location(child),
+            )),
+        })
+        .collect()
 }
 
 fn compile_matched_template(

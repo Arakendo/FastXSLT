@@ -973,6 +973,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   focus for its body while retaining the surrounding current-template and mode
   context. Keep general `xsl:for-each` selection and iteration outside this
   slice.
+- [x] Retain non-whitespace text children in the private attribute-free
+  temporary-tree representation and preserve mixed element/text order through
+  invocation-owned materialization, built-in traversal, result accounting, and
+  serialization. Treat this as one prerequisite for `conflict-resolution-1401`,
+  not admission of its deeper path, union-pattern, or temporary `next-match`
+  semantics.
 - [x] Execute `conflict-resolution-0802` with one template in named modes plus
   `#default`, explicit unnamed-mode dispatch, inherited `#current`, and a typed
   default-namespaced descendant-name selection. Keep QName modes, mode

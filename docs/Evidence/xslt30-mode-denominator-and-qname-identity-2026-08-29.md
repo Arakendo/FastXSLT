@@ -46,13 +46,26 @@ document, the instruction body retains the surrounding current-template
 context, and its explicit mode dispatch reaches the temporary `x` element
 rule. Other `xsl:for-each` selections remain outside the private slice.
 
+## Subsequent temporary-text prerequisite
+
+A focused first-party execution test now retains non-whitespace text children
+inside attribute-free constructed elements. Invocation materialization charges
+each text node as XDM work, built-in temporary-tree traversal preserves mixed
+element/text document order, and result construction charges both the result
+node and retained UTF-8 text bytes. The exercised tree
+`<x>head<y>middle</y>tail</x>` produces `headmiddletail` through built-in rules.
+
+This closes only the retained-text representation prerequisite for
+`conflict-resolution-1401`; it does not select that pinned case or change the
+four-case mode denominator.
+
 ## Architectural consequence
 
 Mode identity is semantic QName identity rather than raw prefix spelling. This
 removes one independent blocker from `conflict-resolution-1401`. The added
 temporary-document focus behavior removes another, but does not claim that
-case: its deeper global temporary-tree path, union match pattern, retained text
-nodes, and temporary-focus `xsl:next-match` still require dedicated work.
+case: its deeper global temporary-tree path, union match pattern, and
+temporary-focus `xsl:next-match` still require dedicated work.
 
 ## Claim boundary
 

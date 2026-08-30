@@ -50,7 +50,13 @@ pub(crate) enum GlobalBindingDefault {
 pub(crate) struct ConstructedElement {
     pub(crate) name: ExpandedName,
     pub(crate) namespaces: Vec<NamespaceBinding>,
-    pub(crate) children: Vec<ConstructedElement>,
+    pub(crate) children: Vec<ConstructedNode>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ConstructedNode {
+    Element(ConstructedElement),
+    Text(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

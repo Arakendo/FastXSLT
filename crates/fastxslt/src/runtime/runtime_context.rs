@@ -8,8 +8,8 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    ConstructedElement, GlobalBindingDefault, StylesheetProgram, Template, TemplateArgument,
-    TemplateArgumentValue, TemplateParameterDefault,
+    ConstructedElement, ConstructedNode, GlobalBindingDefault, StylesheetProgram, Template,
+    TemplateArgument, TemplateArgumentValue, TemplateParameterDefault,
 };
 
 use super::{
@@ -39,9 +39,17 @@ pub(super) struct TemporaryTree {
 
 #[derive(Debug, Clone)]
 pub(super) struct TemporaryNode {
-    pub(super) name: ExpandedName,
-    pub(super) namespaces: Vec<NamespaceBinding>,
+    pub(super) kind: TemporaryNodeKind,
     pub(super) children: Vec<usize>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) enum TemporaryNodeKind {
+    Element {
+        name: ExpandedName,
+        namespaces: Vec<NamespaceBinding>,
+    },
+    Text(String),
 }
 
 #[derive(Debug, Clone, Default)]
@@ -215,15 +223,41 @@ fn materialize_temporary_element(
         .map_err(|failure| control_failure(failure, request_id))?;
     let node = tree.nodes.len();
     tree.nodes.push(TemporaryNode {
-        name: element.name.clone(),
-        namespaces: element.namespaces.clone(),
+        kind: TemporaryNodeKind::Element {
+            name: element.name.clone(),
+            namespaces: element.namespaces.clone(),
+        },
         children: Vec::new(),
     });
     for child in &element.children {
-        let child = materialize_temporary_element(child, tree, request_id, control)?;
+        let child = materialize_temporary_node(child, tree, request_id, control)?;
         tree.nodes[node].children.push(child);
     }
     Ok(node)
+}
+
+fn materialize_temporary_node(
+    constructed: &ConstructedNode,
+    tree: &mut TemporaryTree,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<usize, ExecutionFailure> {
+    match constructed {
+        ConstructedNode::Element(element) => {
+            materialize_temporary_element(element, tree, request_id, control)
+        }
+        ConstructedNode::Text(value) => {
+            control
+                .charge(WorkDomain::XdmNode, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            let node = tree.nodes.len();
+            tree.nodes.push(TemporaryNode {
+                kind: TemporaryNodeKind::Text(value.clone()),
+                children: Vec::new(),
+            });
+            Ok(node)
+        }
+    }
 }
 
 pub(super) fn bind_template_parameters(

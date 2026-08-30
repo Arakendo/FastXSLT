@@ -150,6 +150,38 @@ fn exact_element_templates_dispatch_repeated_nodes_in_document_order() {
 }
 
 #[test]
+fn temporary_tree_builtins_preserve_mixed_text_in_document_order() {
+    const TEMP_SOURCE: &str = "urn:fastxslt:temporary-text:source";
+    const TEMP_STYLESHEET: &str = "urn:fastxslt:temporary-text:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:variable name="temporary"><x>head<y>middle</y>tail</x></xsl:variable>
+        <xsl:template match="/"><out><xsl:apply-templates select="$temporary" mode="temporary"/></out></xsl:template>
+        <xsl:template match="/" mode="temporary"><tree><xsl:apply-templates mode="temporary"/></tree></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(TEMP_SOURCE, b"<principal/>".to_vec())
+        .expect("admit principal source");
+    resources
+        .admit(TEMP_STYLESHEET, stylesheet.to_vec())
+        .expect("admit mixed temporary-tree stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, TEMP_STYLESHEET)
+        .expect("compile mixed temporary-tree stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("temporary-text", "result", TEMP_SOURCE))
+        .expect("admit temporary-text request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute temporary text traversal");
+    assert_eq!(
+        results.by_request["temporary-text"].serialized,
+        "<out><tree>headmiddletail</tree></out>"
+    );
+}
+
+#[test]
 fn context_node_name_refuses_to_fabricate_a_namespaced_lexical_qname() {
     const SOURCE: &str = "urn:fastxslt:name-context:source";
     const STYLESHEET: &str = "urn:fastxslt:name-context:stylesheet";

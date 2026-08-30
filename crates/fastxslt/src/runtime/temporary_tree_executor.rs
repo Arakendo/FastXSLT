@@ -5,7 +5,7 @@ use crate::xslt::golden_semantics_experiment::{Instruction, MatchPattern};
 
 use super::result_tree::ResultNode;
 use super::runtime_context::{
-    InvocationParameter, SequenceInputs, TemporaryTree, bind_template_parameters,
+    InvocationParameter, SequenceInputs, TemporaryNodeKind, TemporaryTree, bind_template_parameters,
 };
 use super::runtime_failure::{ExecutionFailure, control_failure};
 use super::template_selector::accepts_mode as template_accepts_mode;
@@ -29,12 +29,7 @@ pub(super) fn apply_temporary_template(
         .rev()
         .find(|(_, template)| {
             template_accepts_mode(&template.modes, mode)
-                && match &template.pattern {
-                    MatchPattern::Element(name) => &temporary.name == name,
-                    MatchPattern::ElementLocal(local) => temporary.name.local == *local,
-                    MatchPattern::AnyElement | MatchPattern::AnyNode => true,
-                    _ => false,
-                }
+                && temporary_matches(&temporary.kind, &template.pattern)
         });
     if let Some((template_index, template)) = template {
         if matches!(
@@ -54,13 +49,16 @@ pub(super) fn apply_temporary_template(
             inputs,
             &template.template.body,
             SequenceContext::for_temporary_template(
-                TemporaryFocus::Element(tree, node),
+                TemporaryFocus::Node(tree, node),
                 mode,
                 template_index,
             ),
             &variables,
             control,
         );
+    }
+    if let TemporaryNodeKind::Text(value) = &temporary.kind {
+        return copy_temporary_text(value, inputs.request_id, control);
     }
     let mut result = Vec::new();
     for child in &temporary.children {
@@ -123,7 +121,7 @@ pub(super) fn apply_temporary_builtin(
     let mut result = Vec::new();
     let (tree, children) = match focus {
         TemporaryFocus::Document(tree) => (tree, tree.roots.as_slice()),
-        TemporaryFocus::Element(tree, node) => (tree, tree.nodes[node].children.as_slice()),
+        TemporaryFocus::Node(tree, node) => (tree, tree.nodes[node].children.as_slice()),
     };
     for root in children {
         result.extend(apply_temporary_template(
@@ -143,15 +141,52 @@ fn copy_temporary_node(
         .charge(WorkDomain::ResultNode, 1)
         .map_err(|failure| control_failure(failure, request_id))?;
     let node = &tree.nodes[node];
+    if let TemporaryNodeKind::Text(value) = &node.kind {
+        control
+            .charge(WorkDomain::ResultTextByte, value.len())
+            .map_err(|failure| control_failure(failure, request_id))?;
+        return Ok(ResultNode::Text(value.clone()));
+    }
+    let TemporaryNodeKind::Element { name, namespaces } = &node.kind else {
+        unreachable!("temporary node kinds are exhausted")
+    };
     let children = node
         .children
         .iter()
         .map(|child| copy_temporary_node(tree, *child, request_id, control))
         .collect::<Result<Vec<_>, _>>()?;
     Ok(ResultNode::Element {
-        name: node.name.clone(),
-        namespaces: node.namespaces.clone(),
+        name: name.clone(),
+        namespaces: namespaces.clone(),
         attributes: Vec::new(),
         children,
     })
+}
+
+fn temporary_matches(node: &TemporaryNodeKind, pattern: &MatchPattern) -> bool {
+    match (node, pattern) {
+        (TemporaryNodeKind::Element { name, .. }, MatchPattern::Element(expected)) => {
+            name == expected
+        }
+        (TemporaryNodeKind::Element { name, .. }, MatchPattern::ElementLocal(local)) => {
+            name.local == *local
+        }
+        (TemporaryNodeKind::Element { .. }, MatchPattern::AnyElement | MatchPattern::AnyNode)
+        | (TemporaryNodeKind::Text(_), MatchPattern::Text | MatchPattern::AnyNode) => true,
+        _ => false,
+    }
+}
+
+fn copy_temporary_text(
+    value: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    control
+        .charge(WorkDomain::ResultNode, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    control
+        .charge(WorkDomain::ResultTextByte, value.len())
+        .map_err(|failure| control_failure(failure, request_id))?;
+    Ok(vec![ResultNode::Text(value.to_owned())])
 }
