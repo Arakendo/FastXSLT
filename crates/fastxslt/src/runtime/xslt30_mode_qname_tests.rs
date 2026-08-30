@@ -7,16 +7,17 @@ use std::{
 };
 
 use super::{
-    ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, compile_resource,
-    execute_transform_set,
+    ExecutionPolicy, InvocationEntry, InvocationParameter, TransformRequest, TransformSetBuilder,
+    compile_resource, execute_transform_set,
 };
 use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
+use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 16] = [
+const SELECTED_CASES: [&str; 24] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -33,6 +34,14 @@ const SELECTED_CASES: [&str; 16] = [
     "mode-0701",
     "mode-0901",
     "mode-1001",
+    "mode-1101",
+    "mode-1102",
+    "mode-1103",
+    "mode-1104",
+    "mode-1201",
+    "mode-1202",
+    "mode-1203",
+    "mode-1204",
 ];
 const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/mode-denominator-v0.toml");
 
@@ -127,6 +136,22 @@ fn executes_equivalent_prefixed_and_punctuated_mode_names() {
     }
 }
 
+#[test]
+fn executes_native_initial_mode_and_current_mode_continuation() {
+    for case_name in ["mode-1101", "mode-1102", "mode-1103", "mode-1104"] {
+        let (actual, expected) = execute_case(case_name);
+        assert_xml_equivalent(&actual, &expected);
+    }
+}
+
+#[test]
+fn executes_all_mode_priority_and_next_match() {
+    for case_name in ["mode-1201", "mode-1202", "mode-1203", "mode-1204"] {
+        let (actual, expected) = execute_case(case_name);
+        assert_xml_equivalent(&actual, &expected);
+    }
+}
+
 fn execute_case(case_name: &str) -> (String, String) {
     let private_overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
     assert!(private_overlay.contains(&format!("case_name = \"{case_name}\"")));
@@ -151,13 +176,10 @@ fn execute_case(case_name: &str) -> (String, String) {
         "content",
     )
     .expect("inline source content");
-    let stylesheet_file = child_named(
-        &document,
-        child_named(&document, case, "test").expect("test metadata"),
-        "stylesheet",
-    )
-    .and_then(|node| attribute(&document, node, "file"))
-    .expect("stylesheet file");
+    let test = child_named(&document, case, "test").expect("test metadata");
+    let stylesheet_file = child_named(&document, test, "stylesheet")
+        .and_then(|node| attribute(&document, node, "file"))
+        .expect("stylesheet file");
     let directory =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../vendor/xslt30-test/tests/attr/mode");
     let assertion = child_named(
@@ -206,19 +228,57 @@ fn execute_case(case_name: &str) -> (String, String) {
             work_limits: WorkLimits::unbounded(),
         },
     );
+    let entry = case_entry(&document, test, &source_id);
+    let parameters = case_parameters(&document, test);
     set.add(TransformRequest {
         identity: case_name.to_owned(),
         result_identity: format!("result:{case_name}"),
-        entry: InvocationEntry::PrincipalSource {
-            resource: source_id,
-        },
-        parameters: BTreeMap::new(),
+        entry,
+        parameters,
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     })
     .expect("admit mode request");
     let results = execute_transform_set(set.seal()).expect("execute selected mode case");
     (results.by_request[case_name].serialized.clone(), expected)
+}
+
+fn case_entry(document: &Document, test: NodeId, source_id: &str) -> InvocationEntry {
+    child_named(document, test, "initial-mode").map_or_else(
+        || InvocationEntry::PrincipalSource {
+            resource: source_id.to_owned(),
+        },
+        |initial_mode| InvocationEntry::InitialMode {
+            resource: source_id.to_owned(),
+            name: attribute(document, initial_mode, "name")
+                .expect("initial mode name")
+                .to_owned(),
+        },
+    )
+}
+
+fn case_parameters(document: &Document, test: NodeId) -> BTreeMap<String, InvocationParameter> {
+    element_children(document, test)
+        .into_iter()
+        .filter(|node| local_name(document, *node) == "param")
+        .map(|parameter| {
+            let name = attribute(document, parameter, "name")
+                .expect("parameter name")
+                .to_owned();
+            let select = attribute(document, parameter, "select").expect("parameter select");
+            let value = select
+                .strip_prefix('\'')
+                .and_then(|value| value.strip_suffix('\''))
+                .expect("admitted mode parameter is one quoted string");
+            (
+                name,
+                InvocationParameter {
+                    value: AtomicValue::string(value),
+                    tunnel: false,
+                },
+            )
+        })
+        .collect()
 }
 
 fn load_test_set() -> Document {

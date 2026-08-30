@@ -81,6 +81,54 @@ execution = "passed"
 rationale = "Unprefixed mode names retain admitted ASCII NCName punctuation, including a leading underscore and internal dots, across nested dispatch."
 
 [[case_override]]
+case_name = "mode-1101"
+selection = "selected"
+execution = "passed"
+rationale = "The native initial-mode X entry selects the exact moded source rule and #current survives its named-template call before child dispatch."
+
+[[case_override]]
+case_name = "mode-1102"
+selection = "selected"
+execution = "passed"
+rationale = "Whitespace-normalized multi-mode declarations include initial mode X without acquiring #default, and #current remains X across named-template invocation."
+
+[[case_override]]
+case_name = "mode-1103"
+selection = "selected"
+execution = "passed"
+rationale = "A #all source rule participates in native initial mode X while a later exact-X child rule receives #current dispatch."
+
+[[case_override]]
+case_name = "mode-1104"
+selection = "selected"
+execution = "passed"
+rationale = "The native string parameter overrides its compiled global default for an initial-mode X document rule, while #current reaches a #all child rule and explicit X continuation."
+
+[[case_override]]
+case_name = "mode-1201"
+selection = "selected"
+execution = "passed"
+rationale = "A #all element rule participates independently in explicit modes m1 and m2 alongside their mode-specific sibling rules."
+
+[[case_override]]
+case_name = "mode-1202"
+selection = "selected"
+execution = "passed"
+rationale = "Later higher-priority mode-specific rules beat an earlier #all rule in both explicit modes without making declaration order the primary rank."
+
+[[case_override]]
+case_name = "mode-1203"
+selection = "selected"
+execution = "passed"
+rationale = "An earlier explicit-priority-3 #all rule beats later priority-2 mode-specific rules in both explicit modes."
+
+[[case_override]]
+case_name = "mode-1204"
+selection = "selected"
+execution = "passed"
+rationale = "Next-match from the winning #all rule retains the active explicit mode and selects that mode's lower-ranked specific rule."
+
+[[case_override]]
 case_name = "mode-0105"
 selection = "selected"
 execution = "passed"

@@ -402,6 +402,16 @@ admitted NCName punctuation also retain exact expanded mode identity. The
 complete mode denominator now records 16 passes and 153 visible default not-run
 cases.
 
+The following initial-mode and `#all` tranche adds `mode-1101` through
+`mode-1104` and `mode-1201` through `mode-1204`. Suite-native initial-mode
+entry now flows through the shared transform request, one exact quoted-string
+parameter shape reaches invocation-local global override, and `#all` competes
+by ordinary priority before `xsl:next-match` retains the active explicit mode.
+The complete mode denominator now records 24 passes and 145 visible default
+not-run cases. `mode-1105` remains outside selection because its environment
+requests an element initial context rather than the currently admitted document
+entry; no harness selector fabricates that engine lifecycle contract.
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -441,10 +451,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 16 | 0 | 0 | 153 |
+| `attr/mode` | 169 | 24 | 0 | 0 | 145 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **210** | **3** | **5** | **313** |
+| **Conserved total** | **531** | **218** | **3** | **5** | **305** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -499,7 +509,7 @@ count:
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
 2. [ ] Continue coherent semantic slices through the 160 visible `output`
-   gaps and 153 visible `mode` gaps. Each promotion still requires native
+   gaps and 145 visible `mode` gaps. Each promotion still requires native
    metadata validation, a focused control, and an owned comparator or exact
    diagnostic—not merely successful stylesheet execution.
 3. [ ] Give `AxisStep.xml` and `fn/deep-equal.xml` complete QT3 overlays so all
@@ -1238,6 +1248,16 @@ failed, and harness-error cases without an unqualified conformance claim.
   leading underscore and internal dot in admitted unprefixed NCNames. Reuse the
   same compiled mode path rather than adding lexical-name dispatch. The mode
   ledger now records 16 passes and 153 visible default not-run cases.
+- [x] Execute `mode-1101` through `mode-1104` through native initial-mode X
+  entry, preserving `#current` across named-template calls, whitespace-
+  normalized multi-mode declarations, `#all` participation, and one exact
+  suite-supplied string parameter override. Keep `mode-1105` unselected until
+  an engine-owned element initial-context boundary exists.
+- [x] Execute `mode-1201` through `mode-1204` by ranking `#all` and
+  mode-specific rules through the shared priority model, independent of source
+  order. Preserve the active explicit mode when `xsl:next-match` continues from
+  the winning `#all` rule. The mode ledger now records 24 passes and 145 visible
+  default not-run cases.
 - [x] Retain non-whitespace text children in the private attribute-free
   temporary-tree representation and preserve mixed element/text order through
   invocation-owned materialization, built-in traversal, result accounting, and

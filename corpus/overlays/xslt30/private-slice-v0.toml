@@ -87,6 +87,62 @@ rationale = "Mode identity preserves admitted leading-underscore and internal-do
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1101"
+selection = "selected"
+execution = "passed"
+rationale = "Native initial mode X and named-template #current dispatch retain one explicit mode identity."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1102"
+selection = "selected"
+execution = "passed"
+rationale = "A whitespace-normalized multi-mode declaration participates in native initial mode X without acquiring the unnamed mode."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1103"
+selection = "selected"
+execution = "passed"
+rationale = "A #all rule participates in initial mode X and named-template #current continuation reaches an exact-X child rule."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1104"
+selection = "selected"
+execution = "passed"
+rationale = "A native supplied string parameter overrides its global default during initial-mode X execution without entering reusable compiled state."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1201"
+selection = "selected"
+execution = "passed"
+rationale = "A #all element rule participates in two explicit modes alongside distinct mode-specific rules."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1202"
+selection = "selected"
+execution = "passed"
+rationale = "Higher-priority mode-specific rules beat an earlier #all rule independently in two modes."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1203"
+selection = "selected"
+execution = "passed"
+rationale = "A higher-priority #all rule beats later lower-priority mode-specific rules independently in two modes."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1204"
+selection = "selected"
+execution = "passed"
+rationale = "Next-match from #all preserves the active explicit mode while selecting its lower-ranked mode-specific rule."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-0105"
 selection = "selected"
 execution = "passed"
