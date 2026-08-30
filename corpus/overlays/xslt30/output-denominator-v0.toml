@@ -39,6 +39,18 @@ execution = "passed"
 rationale = "Executes the same bounded XHTML indentation with the whitespace-normalized XSLT 3.0 numeric-one lexical."
 
 [[case_override]]
+case_name = "output-0107"
+selection = "selected"
+execution = "passed"
+rationale = "Executes XHTML script content through XML-compatible text escaping and matches the upstream XSLT 2.0 serialization alternative exactly after explicit checkout-EOL normalization."
+
+[[case_override]]
+case_name = "output-0108"
+selection = "selected"
+execution = "passed"
+rationale = "Executes XHTML style content through XML-compatible text escaping and matches the upstream XSLT 2.0 serialization alternative exactly after explicit checkout-EOL normalization."
+
+[[case_override]]
 case_name = "output-0109"
 selection = "selected"
 execution = "passed"

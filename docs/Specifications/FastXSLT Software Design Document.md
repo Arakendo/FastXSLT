@@ -380,7 +380,9 @@ receives one serializer-owned empty `meta` whose content combines the explicit
 media type or `text/html` default with UTF-8; an existing Content-Type meta is
 replaced for serialization rather than mutating the semantic result tree.
 Disabling the property retains authored metadata. This does not extend the
-private lane to general HTML serialization.
+private lane to general HTML serialization. XHTML `script` and `style` text
+continues to use XML escaping; the raw-text conventions of the HTML method are
+not inferred from element names.
 Unnamed output declarations may now merge only when their scalar properties do
 not overlap; repeated scalar properties remain explicitly unsupported until
 precedence and conflict semantics are implemented. `cdata-section-elements`

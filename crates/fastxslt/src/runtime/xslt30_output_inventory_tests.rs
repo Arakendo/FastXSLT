@@ -93,6 +93,19 @@ fn executes_xhtml_indentation_boolean_variants_without_reflowing_text() {
 }
 
 #[test]
+fn executes_xhtml_script_and_style_text_with_xml_compatible_escaping() {
+    for case_name in ["output-0107", "output-0108"] {
+        let execution = execute_assert_serialization_case(case_name, "xhtml");
+        assert_eq!(execution.method.as_deref(), Some("xhtml"), "{case_name}");
+        assert_eq!(
+            execution.expected.as_deref(),
+            Some(execution.actual.as_str()),
+            "{case_name}"
+        );
+    }
+}
+
+#[test]
 fn executes_output_0109_with_an_empty_xhtml_namespace_root() {
     let execution = execute_output_case("output-0109", None);
     assert_eq!(execution.method.as_deref(), Some("xhtml"));
