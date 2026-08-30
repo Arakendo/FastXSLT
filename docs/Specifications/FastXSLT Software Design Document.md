@@ -239,6 +239,12 @@ fall back to the principal source. The current representation remains a
 bounded element-only experiment; text nodes, general temporary-tree paths, and
 continuation selection require separate evidence.
 
+The same private path admits `xsl:for-each` only when its selection is one bare
+temporary-tree variable. That form establishes the selected temporary document
+as focus for the instruction body without changing the surrounding current
+template rule or current mode. This is not a general `xsl:for-each` or sequence
+iteration contract.
+
 The bounded include slice also admits one three-module include chain in which a
 simple fragment selects exactly one embedded stylesheet by `xml:id`. Resource
 bytes are acquired under the fragmentless identity before fragment semantics

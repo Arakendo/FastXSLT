@@ -232,6 +232,11 @@ pub(crate) enum Instruction {
         arguments: Vec<TemplateArgument>,
         location: SourceLocation,
     },
+    ForEachTemporaryRoot {
+        variable: String,
+        body: Vec<Instruction>,
+        location: SourceLocation,
+    },
     NextMatch {
         arguments: Vec<TemplateArgument>,
         location: SourceLocation,

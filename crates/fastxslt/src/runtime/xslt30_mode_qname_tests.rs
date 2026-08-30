@@ -16,7 +16,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 3] = ["mode-0105", "mode-0106", "mode-0107"];
+const SELECTED_CASES: [&str; 4] = ["mode-0105", "mode-0106", "mode-0107", "mode-0108"];
 const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/mode-denominator-v0.toml");
 
 #[test]
@@ -36,7 +36,7 @@ fn inventories_the_complete_mode_denominator_before_selection() {
     assert_eq!(names.last(), Some(&"mode-1905"));
     assert!(OVERLAY.contains("case_count = 169"));
     assert!(OVERLAY.contains("selection = \"harness-unsupported\""));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 3);
+    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 4);
     for case_name in SELECTED_CASES {
         assert!(names.contains(case_name));
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
@@ -62,6 +62,12 @@ fn executes_qualified_and_unqualified_mode_names_as_distinct_expanded_qnames() {
 #[test]
 fn executes_mode_0107_from_a_global_temporary_document_focus() {
     let (actual, expected) = execute_case("mode-0107");
+    assert_xml_equivalent(&actual, &expected);
+}
+
+#[test]
+fn executes_mode_0108_with_for_each_temporary_document_focus() {
+    let (actual, expected) = execute_case("mode-0108");
     assert_xml_equivalent(&actual, &expected);
 }
 

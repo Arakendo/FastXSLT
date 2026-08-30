@@ -27,6 +27,7 @@ enum SemanticFeature {
     SequenceNodes,
     SequenceItems,
     ApplyTemplates,
+    ForEach,
     NextMatch,
     ApplyImports,
     If,
@@ -206,6 +207,9 @@ fn observe_instructions(
             Instruction::SequenceNodes { .. } => (SemanticFeature::SequenceNodes, None),
             Instruction::SequenceItems { .. } => (SemanticFeature::SequenceItems, None),
             Instruction::ApplyTemplates { .. } => (SemanticFeature::ApplyTemplates, None),
+            Instruction::ForEachTemporaryRoot { body, .. } => {
+                (SemanticFeature::ForEach, Some(body.as_slice()))
+            }
             Instruction::NextMatch { .. } => (SemanticFeature::NextMatch, None),
             Instruction::ApplyImports { .. } => (SemanticFeature::ApplyImports, None),
             Instruction::If { body, .. } => (SemanticFeature::If, Some(body.as_slice())),

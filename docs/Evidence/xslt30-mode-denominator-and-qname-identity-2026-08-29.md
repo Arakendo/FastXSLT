@@ -7,13 +7,13 @@ Date: 2026-08-29
 - Suite revision: `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b`
 - Test set: `tests/attr/mode/_mode-test-set.xml`
 - First-party overlay: `corpus/overlays/xslt30/mode-denominator-v0.toml`
-- Selected cases: `mode-0105`, `mode-0106`, `mode-0107`
+- Selected cases: `mode-0105`, `mode-0106`, `mode-0107`, `mode-0108`
 
 ## Denominator
 
 An executable inventory parses the pinned native test-set document, conserves
 169 uniquely named cases from `mode-0001` through `mode-1905`, and requires the
-overlay's default `harness-unsupported / not-run` disposition. Exactly three
+overlay's default `harness-unsupported / not-run` disposition. Exactly four
 case-specific overrides are currently selected and passed. Unexecuted cases
 remain visible and are not classified as engine failures.
 
@@ -40,6 +40,12 @@ moded document rule, and then applies templates from temporary focus rather
 than accidentally returning to the principal source. Local temporary-tree
 variables use the same selection form and shadow globals during runtime lookup.
 
+`mode-0108` changes focus through the deliberately bounded
+`xsl:for-each select="$x"` form. The variable again identifies a temporary-tree
+document, the instruction body retains the surrounding current-template
+context, and its explicit mode dispatch reaches the temporary `x` element
+rule. Other `xsl:for-each` selections remain outside the private slice.
+
 ## Architectural consequence
 
 Mode identity is semantic QName identity rather than raw prefix spelling. This
@@ -50,6 +56,6 @@ nodes, and temporary-focus `xsl:next-match` still require dedicated work.
 
 ## Claim boundary
 
-Three passes out of 169 are not a mode-conformance percentage. This slice does
+Four passes out of 169 are not a mode-conformance percentage. This slice does
 not select packages, streamability, typed modes, public initial-mode QName
 syntax, or the many remaining mode semantics represented by the denominator.

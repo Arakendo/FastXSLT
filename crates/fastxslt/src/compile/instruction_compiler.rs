@@ -221,6 +221,18 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
 
 fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
     let select = required_attribute(document, element, None, "select")?;
+    if let Some(variable) = select
+        .trim()
+        .strip_prefix('$')
+        .filter(|name| is_ascii_ncname(name))
+    {
+        ensure_only_attributes(document, element, &["select"], "xsl:for-each")?;
+        return Ok(Instruction::ForEachTemporaryRoot {
+            variable: variable.to_owned(),
+            body: compile_sequence(document, element)?,
+            location: document.location(element).clone(),
+        });
+    }
     if is_static_integer_range(select) {
         for child in meaningful_children(document, element) {
             if is_xslt_element(document, child, "apply-templates") {

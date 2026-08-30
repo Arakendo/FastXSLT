@@ -23,6 +23,13 @@ execution = "passed"
 rationale = "A global temporary-tree variable supplies document focus to a moded document rule, whose unmoded apply-templates instruction traverses temporary children rather than falling back to the principal source."
 
 [[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0108"
+selection = "selected"
+execution = "passed"
+rationale = "A bounded xsl:for-each over a temporary-tree variable establishes temporary document focus before explicit mode dispatch reaches the temporary element rule."
+
+[[case]]
 set_file = "tests/misc/initial-mode/_initial-mode-test-set.xml"
 case_name = "initial-mode-001"
 selection = "selected"

@@ -968,6 +968,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   temporary focus for the nested unmoded apply-templates instruction. Unify
   local/global temporary-root selection with lexical shadowing while keeping
   deeper temporary paths, text nodes, and temporary-focus continuation out.
+- [x] Execute `mode-0108` through the bounded
+  `xsl:for-each select="$temporary-tree"` form, establishing temporary document
+  focus for its body while retaining the surrounding current-template and mode
+  context. Keep general `xsl:for-each` selection and iteration outside this
+  slice.
 - [x] Execute `conflict-resolution-0802` with one template in named modes plus
   `#default`, explicit unnamed-mode dispatch, inherited `#current`, and a typed
   default-namespaced descendant-name selection. Keep QName modes, mode

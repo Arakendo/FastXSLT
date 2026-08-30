@@ -25,3 +25,9 @@ case_name = "mode-0107"
 selection = "selected"
 execution = "passed"
 rationale = "Resolves $x to a global temporary-tree document, dispatches its document rule in mode a, and applies the built-in temporary-document rule from temporary focus before selecting the unmoded x rule."
+
+[[case_override]]
+case_name = "mode-0108"
+selection = "selected"
+execution = "passed"
+rationale = "A bounded xsl:for-each over $x changes focus to the global temporary-tree document while retaining the surrounding template rule context, then explicit mode a dispatch selects its temporary child element rule."

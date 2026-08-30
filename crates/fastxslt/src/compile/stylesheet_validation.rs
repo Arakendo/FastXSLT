@@ -23,7 +23,9 @@ fn validate_named_calls(
 ) -> Result<(), CompileFailure> {
     for instruction in instructions {
         match instruction {
-            Instruction::LiteralElement { body, .. } | Instruction::If { body, .. } => {
+            Instruction::LiteralElement { body, .. }
+            | Instruction::ForEachTemporaryRoot { body, .. }
+            | Instruction::If { body, .. } => {
                 validate_named_calls(program, body)?;
             }
             Instruction::Choose {

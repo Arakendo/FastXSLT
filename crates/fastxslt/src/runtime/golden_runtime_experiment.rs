@@ -355,9 +355,7 @@ fn execute_instruction(
                 control,
             )?);
         }
-        Instruction::Text { value, .. } => {
-            append_text(result, value, inputs.request_id, control)?;
-        }
+        Instruction::Text { value, .. } => append_text(result, value, inputs.request_id, control)?,
         Instruction::ValueOf {
             select, separator, ..
         } => {
@@ -409,6 +407,9 @@ fn execute_instruction(
                 control,
             )?);
         }
+        Instruction::ForEachTemporaryRoot { variable, body, .. } => result.extend(
+            execute_for_each_temporary_root(inputs, variable, body, execution, scope, control)?,
+        ),
         Instruction::NextMatch { .. } | Instruction::ApplyImports { .. } => result.extend(
             execute_continuation_instruction(inputs, instruction, execution, scope, control)?,
         ),
@@ -444,6 +445,39 @@ fn execute_instruction(
         }
     }
     Ok(())
+}
+
+fn execute_for_each_temporary_root<'a>(
+    inputs: &SequenceInputs<'a>,
+    variable: &str,
+    body: &[Instruction],
+    execution: SequenceContext<'a>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let tree = variables
+        .temporary_trees
+        .get(variable)
+        .or_else(|| inputs.globals.temporary_trees.get(variable))
+        .ok_or_else(|| {
+            failure(
+                "FXRT0002",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("unbound temporary tree: ${variable}"),
+            )
+        })?;
+    execute_sequence(
+        inputs,
+        body,
+        SequenceContext {
+            node: None,
+            temporary_focus: Some(TemporaryFocus::Document(tree)),
+            ..execution
+        },
+        variables,
+        control,
+    )
 }
 
 fn execute_continuation_instruction(
