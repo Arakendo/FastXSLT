@@ -1,4 +1,4 @@
-# XSLT30 `conflict-resolution-1301` Positional-Focus Prerequisite
+# XSLT30 `conflict-resolution-1301` Positional Focus and ISO-8859-1 Bytes
 
 Date: 2026-08-30
 
@@ -14,8 +14,8 @@ requires three independently observable behaviors:
   selected by `xsl:apply-templates`, including whitespace text nodes;
 - serialization requests ISO-8859-1 bytes.
 
-The third behavior cannot be represented honestly by the current UTF-8 Rust
-`String` result lane and remains separate.
+The third behavior cannot be represented honestly by the UTF-8 Rust `String`
+result lane and therefore requires a separate byte result.
 
 ## Executable prerequisite
 
@@ -35,14 +35,28 @@ them when a matched rule enters `xsl:next-match` or `xsl:apply-imports`. Built-i
 child traversal establishes a new focus using the child's actual position and
 the complete child-sequence size.
 
+## Pinned-case result
+
+The unmodified upstream source and stylesheet now produce the native expected
+XML through a bounded byte serializer. The result begins with the exact
+ISO-8859-1 declaration and retains the four asserted blocks with positions
+`2`, `4`, `6`, and `8`, size `9`, and the expected black/blue last-member
+distinction. The upstream file-backed `assert-xml` is loaded without copying it
+into first-party MIT-licensed fixtures.
+
+This moves the complete apply-templates denominator to 49 selected passes and
+one visible schema-aware not-run case.
+
 ## Conservation boundary
 
-This change does not select or pass `conflict-resolution-1301`. The upstream
-stylesheet still requests `encoding="ISO-8859-1"`, which compilation rejects as
-unsupported in the current string serialization lane. FastXSLT does not emit a
-UTF-8 `String` whose XML declaration falsely names another encoding.
+The existing UTF-8 `String` lane still rejects ISO-8859-1 rather than returning
+mislabeled text. The byte lane admits only UTF-8 generally and the ASCII subset
+of ISO-8859-1 required by this case. A negative test rejects non-ASCII result
+characters with structured `FXSR1006 / unsupported`; it neither replaces them
+nor claims general character-reference or Latin-1 encoding support. Byte limits
+and `SerializedByte` work charges include the encoding declaration and body.
 
 The evidence admits only the two exact positional pattern shapes and the two
 exact whole-value focus AVTs. It does not admit general numeric predicates,
 focus functions in XPath expressions, composite AVTs, sorting, schema-aware
-matching, or a byte serialization API.
+matching, or a supported public byte serialization API.

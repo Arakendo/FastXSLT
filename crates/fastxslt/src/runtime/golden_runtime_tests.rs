@@ -11,7 +11,7 @@ use crate::xdm::atomic_value_experiment::AtomicValue;
 use super::{
     ExecutionPolicy, FailureCategory, InvocationEntry, InvocationParameter, ResultNode,
     SemanticResult, TransformRequest, TransformSetBuilder, compile_resource, execute_transform_set,
-    materialize_integer_range, serialize_xml,
+    materialize_integer_range, serialize_xml, serialize_xml_bytes,
 };
 
 const SOURCE_ID: &str = "urn:fastxslt:golden:hello:source";
@@ -719,6 +719,51 @@ fn string_serialization_accepts_utf8_without_bom_and_rejects_bom_emission() {
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>result"
     );
     assert_eq!(failure.code, "FXSR1005");
+    assert_eq!(failure.category, FailureCategory::Unsupported);
+}
+
+#[test]
+fn byte_serialization_emits_bounded_ascii_iso_8859_1() {
+    let result = SemanticResult {
+        children: vec![ResultNode::Element {
+            name: crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: None,
+                local: "out".to_owned(),
+            },
+            namespaces: Vec::new(),
+            attributes: Vec::new(),
+            children: vec![ResultNode::Text("ASCII result".to_owned())],
+        }],
+    };
+    let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
+        method: Some("xml".to_owned()),
+        encoding: Some("ISO-8859-1".to_owned()),
+        media_type: None,
+        include_content_type: None,
+        byte_order_mark: Some(false),
+        omit_xml_declaration: false,
+        indent: Some(false),
+    };
+    let mut control = InvocationControl::unbounded();
+    let bytes = serialize_xml_bytes(&result, &settings, "latin1", 4_096, &mut control)
+        .expect("serialize the bounded ASCII subset as ISO-8859-1 bytes");
+    assert_eq!(
+        bytes,
+        b"<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><out>ASCII result</out>"
+    );
+
+    let non_ascii = SemanticResult {
+        children: vec![ResultNode::Text("\u{e9}".to_owned())],
+    };
+    let failure = serialize_xml_bytes(
+        &non_ascii,
+        &settings,
+        "latin1-non-ascii",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect_err("the bounded lane must not replace or misencode non-ASCII text");
+    assert_eq!(failure.code, "FXSR1006");
     assert_eq!(failure.category, FailureCategory::Unsupported);
 }
 

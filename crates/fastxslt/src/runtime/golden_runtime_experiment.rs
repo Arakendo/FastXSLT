@@ -51,6 +51,8 @@ use runtime_context::{
 pub(super) use runtime_failure::ExecutionFailure;
 use runtime_failure::{FailureCategory, control_failure, failure, failure_at};
 pub(super) use serialization::serialize_xml;
+#[cfg(test)]
+pub(super) use serialization::serialize_xml_bytes;
 use template_selector::{
     TemplateSelectionContext, select_imported_template, select_next_template,
     select_template_with_index,

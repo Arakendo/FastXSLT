@@ -752,6 +752,13 @@ rationale = "A qualified path selects one title from an invocation-owned tempora
 
 [[case]]
 set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-1301"
+selection = "selected"
+execution = "passed"
+rationale = "Typed matching-sibling boundary predicates distinguish the last member, full apply-templates focus supplies positions 2/4/6/8 with size 9 to exact focus AVTs, and the ASCII result is emitted through a bounded ISO-8859-1 byte lane."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
 case_name = "conflict-resolution-0601"
 selection = "selected"
 execution = "passed"

@@ -45,7 +45,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `conflict-resolution-1204` Import-Precedence Next-Match](xslt30-conflict-resolution-1204-import-precedence-next-match-2026-08-29.md)
 - [XSLT30 `conflict-resolution-1205` Next-Match Parameters and Result Attribute](xslt30-conflict-resolution-1205-next-match-parameters-and-result-attribute-2026-08-29.md)
 - [XSLT30 `conflict-resolution-1401` Temporary-Tree Next-Match](xslt30-conflict-resolution-1401-temporary-next-match-2026-08-29.md)
-- [XSLT30 `conflict-resolution-1301` Positional-Focus Prerequisite](xslt30-conflict-resolution-1301-positional-focus-prerequisite-2026-08-30.md)
+- [XSLT30 `conflict-resolution-1301` Positional Focus and ISO-8859-1 Bytes](xslt30-conflict-resolution-1301-positional-focus-prerequisite-2026-08-30.md)
 - [XSLT30 `conflict-resolution-0601` Variable Pattern and Source Copy](xslt30-conflict-resolution-0601-variable-pattern-and-source-copy-2026-08-29.md)
 - [XSLT30 `conflict-resolution-0501`–`0502` Equivalent Pattern Normalization](xslt30-conflict-resolution-0501-0502-equivalent-pattern-normalization-2026-08-29.md)
 - [XSLT30 `conflict-resolution-0503` Current-Focus Parent Pattern](xslt30-conflict-resolution-0503-current-focus-parent-pattern-2026-08-29.md)

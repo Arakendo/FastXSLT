@@ -1004,6 +1004,13 @@ failed, and harness-error cases without an unqualified conformance claim.
   `{position()}` and `{last()}` AVT forms. Preserve the case's ISO-8859-1
   serialization request as a separate unsupported byte-output boundary; do not
   mislabel UTF-8 `String` output as another encoding.
+- [x] Execute complete pinned `conflict-resolution-1301` through a private
+  bounded byte-result lane. Retain the existing string lane's UTF-8-only
+  contract, emit the exact ISO-8859-1 declaration for the case's ASCII result,
+  include declaration and body bytes in limits/work accounting, and reject
+  non-ASCII output explicitly rather than replacing or mislabeling it. The
+  complete apply-templates ledger now records 49 passes and one visible
+  schema-aware not-run case.
 - [x] Execute `conflict-resolution-0802` with one template in named modes plus
   `#default`, explicit unnamed-mode dispatch, inherited `#current`, and a typed
   default-namespaced descendant-name selection. Keep QName modes, mode

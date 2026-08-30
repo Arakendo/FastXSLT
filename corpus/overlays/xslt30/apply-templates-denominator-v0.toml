@@ -192,6 +192,12 @@ execution = "passed"
 rationale = "A qualified path selects one title from an invocation-owned temporary tree; the explicit-priority qualified union rule creates the XHTML heading and temporary-focus next-match continues to the lower-ranked exact-name fallback."
 
 [[case_override]]
+case_name = "conflict-resolution-1301"
+selection = "selected"
+execution = "passed"
+rationale = "Typed matching-sibling boundary predicates distinguish the last member, full apply-templates focus supplies positions 2/4/6/8 with size 9 to exact focus AVTs, and the ASCII result is emitted through a bounded ISO-8859-1 byte lane."
+
+[[case_override]]
 case_name = "conflict-resolution-0601"
 selection = "selected"
 execution = "passed"

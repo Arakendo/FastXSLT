@@ -9,13 +9,14 @@ use std::{
 use super::{
     ExecutionFailure, ExecutionPolicy, FailureCategory, InvocationEntry, InvocationParameter,
     MultipleMatchPolicy, TransformRequest, TransformSetBuilder, compile_resource,
-    execute_transform_set,
+    execute_program_with_parameters, execute_transform_set, serialize_xml_bytes,
 };
-use crate::execution_control_experiment::{CancellationToken, WorkLimits};
-use crate::resources::{ResourceLimits, ResourceSetBuilder};
+use crate::execution_control_experiment::{CancellationToken, InvocationControl, WorkLimits};
+use crate::resources::{ResourceLimits, ResourceSetBuilder, ResourceSnapshot};
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
-use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xml::quick_xml_experiment::{ParseLimits, parse_document, parse_document_controlled};
+use crate::xslt::golden_semantics_experiment::StylesheetProgram;
 
 const CASE_NAME: &str = "template-006";
 const TEMPLATE_CASES: [&str; 6] = [
@@ -127,8 +128,8 @@ fn assert_same_empty_document_element(actual: &str, expected: &str) {
 
 fn assert_same_result_element_string(actual: &str, expected: &str, local: &str) {
     let limits = ParseLimits {
-        max_events: 32,
-        max_depth: 8,
+        max_events: 2_048,
+        max_depth: 64,
     };
     let actual_document = Document::from_parsed(
         parse_document("urn:fastxslt:actual", actual.as_bytes(), limits)
@@ -224,24 +225,9 @@ fn try_execute_apply_templates_case_with_parameters(
     let [(principal_file, _)] = principal_files.as_slice() else {
         panic!("case should name exactly one principal stylesheet");
     };
-    let expected = find_element(&test_set, test_case, "assert-xml", None)
-        .map(|node| test_set.string_value(node))
-        .or_else(|| expected_apply_templates_all_of(case_name))
-        .or_else(|| {
-            find_element(&test_set, test_case, "error", None)
-                .and_then(|node| attribute(&test_set, node, "code"))
-                .map(str::to_owned)
-        })
-        .expect("case should provide an admitted result assertion");
     let case_directory = set_path.parent().expect("test set should have a directory");
-    let source = if let Some(content) = find_element(&test_set, source_element, "content", None) {
-        test_set.string_value(content).into_bytes()
-    } else {
-        let source_file = attribute(&test_set, source_element, "file")
-            .expect("principal source should be inline or name a file");
-        fs::read(case_directory.join(source_file))
-            .expect("read upstream apply-templates source and close handle")
-    };
+    let expected = expected_apply_templates_result(&test_set, test_case, case_directory, case_name);
+    let source = apply_templates_source(&test_set, source_element, case_directory);
     let source_id = format!("urn:w3c:xslt30:{case_name}:source");
     let stylesheet_base = "https://example.invalid/xslt30/insn/apply-templates/";
     let stylesheet_id = format!("{stylesheet_base}{principal_file}");
@@ -265,6 +251,19 @@ fn try_execute_apply_templates_case_with_parameters(
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, &stylesheet_id).expect("compile suite case");
     let matched_template_count = program.matched_templates.len();
+    if case_name == "conflict-resolution-1301" {
+        return (
+            Ok(execute_conflict_resolution_1301_bytes(
+                &snapshot,
+                &program,
+                &source_id,
+                &parameters,
+                multiple_match_policy,
+            )),
+            expected,
+            matched_template_count,
+        );
+    }
     let mut set = TransformSetBuilder::new(
         snapshot,
         program,
@@ -290,6 +289,88 @@ fn try_execute_apply_templates_case_with_parameters(
     let result = execute_transform_set(set.seal())
         .map(|results| results.by_request[case_name].serialized.clone());
     (result, expected, matched_template_count)
+}
+
+fn expected_apply_templates_result(
+    test_set: &Document,
+    test_case: NodeId,
+    case_directory: &std::path::Path,
+    case_name: &str,
+) -> String {
+    find_element(test_set, test_case, "assert-xml", None)
+        .map(|node| {
+            attribute(test_set, node, "file").map_or_else(
+                || test_set.string_value(node),
+                |file| {
+                    fs::read_to_string(case_directory.join(file))
+                        .expect("read upstream expected XML and close handle")
+                },
+            )
+        })
+        .or_else(|| expected_apply_templates_all_of(case_name))
+        .or_else(|| {
+            find_element(test_set, test_case, "error", None)
+                .and_then(|node| attribute(test_set, node, "code"))
+                .map(str::to_owned)
+        })
+        .expect("case should provide an admitted result assertion")
+}
+
+fn apply_templates_source(
+    test_set: &Document,
+    source_element: NodeId,
+    case_directory: &std::path::Path,
+) -> Vec<u8> {
+    if let Some(content) = find_element(test_set, source_element, "content", None) {
+        return test_set.string_value(content).into_bytes();
+    }
+    let source_file = attribute(test_set, source_element, "file")
+        .expect("principal source should be inline or name a file");
+    fs::read(case_directory.join(source_file))
+        .expect("read upstream apply-templates source and close handle")
+}
+
+fn execute_conflict_resolution_1301_bytes(
+    snapshot: &ResourceSnapshot,
+    program: &StylesheetProgram,
+    source_id: &str,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    multiple_match_policy: MultipleMatchPolicy,
+) -> String {
+    let mut control = InvocationControl::unbounded();
+    let source_bytes = snapshot
+        .get(source_id)
+        .expect("the sealed snapshot retains the principal source");
+    let parsed = parse_document_controlled(
+        source_id,
+        source_bytes,
+        ParseLimits {
+            max_events: 1_024,
+            max_depth: 64,
+        },
+        &mut control,
+    )
+    .expect("parse the valid upstream source through bounded XML work");
+    let source = Document::from_parsed_controlled(parsed, &mut control)
+        .expect("build the upstream source through bounded XDM work");
+    let semantic = execute_program_with_parameters(
+        program,
+        &source,
+        parameters,
+        multiple_match_policy,
+        "conflict-resolution-1301",
+        &mut control,
+    )
+    .expect("execute the upstream positional stylesheet");
+    let bytes = serialize_xml_bytes(
+        &semantic,
+        &program.output,
+        "conflict-resolution-1301",
+        65_536,
+        &mut control,
+    )
+    .expect("serialize the upstream ASCII result as ISO-8859-1 bytes");
+    String::from_utf8(bytes).expect("the admitted byte lane is ASCII")
 }
 
 fn case_stylesheet_files(test_set: &Document, test_case: NodeId) -> Vec<(&str, Option<&str>)> {
@@ -899,6 +980,26 @@ fn executes_xslt30_temporary_tree_union_next_match() {
         execute_apply_templates_case("conflict-resolution-1401");
     assert_eq!(matched_template_count, 3);
     assert_same_result_element_string(&actual, &expected, "h2");
+}
+
+#[test]
+fn executes_xslt30_positional_focus_with_iso_8859_1_bytes() {
+    let (actual, expected, matched_template_count) =
+        execute_apply_templates_case("conflict-resolution-1301");
+    assert_eq!(matched_template_count, 5);
+    assert_same_result_element_string(&actual, &expected, "root");
+    assert!(actual.starts_with("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>"));
+    for fragment in [
+        "<fo:block text-align=\"justify\" color=\"black\" pos=\"2\" last=\"9\">11111111</fo:block>",
+        "<fo:block text-align=\"justify\" color=\"black\" pos=\"4\" last=\"9\">22222222</fo:block>",
+        "<fo:block text-align=\"justify\" color=\"black\" pos=\"6\" last=\"9\">33333333</fo:block>",
+        "<fo:block text-align=\"justify\" color=\"blue\" pos=\"8\" last=\"9\">44444444</fo:block>",
+    ] {
+        assert!(
+            actual.contains(fragment),
+            "missing result fragment: {fragment}"
+        );
+    }
 }
 
 #[test]

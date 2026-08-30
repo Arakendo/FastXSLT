@@ -49,7 +49,9 @@ pub(super) fn compile_output(
         ));
     }
     let encoding = optional_attribute(document, element, None, "encoding");
-    if encoding.is_some_and(|value| !value.eq_ignore_ascii_case("UTF-8")) {
+    if encoding.is_some_and(|value| {
+        !value.eq_ignore_ascii_case("UTF-8") && !value.eq_ignore_ascii_case("ISO-8859-1")
+    }) {
         return Err(unsupported(
             "FXST1016",
             format!(

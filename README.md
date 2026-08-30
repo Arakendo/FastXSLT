@@ -9,8 +9,8 @@ The repository is currently in **M1 pre-stability development**. Its test-only
 private engine executes pinned W3C XSLT30 and QT3 slices through in-memory
 resources, XML, owned XDM, XSLT/XPath compilation, reusable prepared state,
 runtime, semantic result, and separate serialization. The complete 50-case
-XSLT30 apply-templates ledger currently records 48 passes and two visible
-not-run dispositions. There is no supported public transform API or broad
+XSLT30 apply-templates ledger currently records 49 passes and one visible
+schema-aware not-run disposition. There is no supported public transform API or broad
 conformance claim.
 [ADR-0007](docs/ADR/ADR-0007-staged-modern-standards-profile.md) selects modern
 reference editions for an explicitly incomplete, feature-enumerated preview.
@@ -101,7 +101,8 @@ executable. M1 uses complete pinned W3C case metadata to widen the staged
 standards-driven preview accepted by ADR-0007. Complete selected denominators
 now pass for XSLT30 `template`, `path`, `expr/for`, `expr/data-manipulation`, and
 `misc/initial-mode`; the apply-templates denominator remains explicitly
-incomplete at 48 of 50. These are bounded case results, not a broader
+incomplete at 49 of 50 because schema-aware matching is outside the selected
+profile. These are bounded case results, not a broader
 conformance claim.
 Representative consumer transforms refine application priorities and
 ASP.NET/performance decisions in parallel; they do not block standards testing.

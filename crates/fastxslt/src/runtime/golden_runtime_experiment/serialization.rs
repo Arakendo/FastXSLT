@@ -88,6 +88,77 @@ pub(in crate::runtime) fn serialize_xml(
     Ok(output.finish())
 }
 
+#[cfg(test)]
+pub(in crate::runtime) fn serialize_xml_bytes(
+    result: &SemanticResult,
+    settings: &OutputSettings,
+    request_id: &str,
+    byte_limit: usize,
+    control: &mut InvocationControl,
+) -> Result<Vec<u8>, ExecutionFailure> {
+    let encoding = settings.encoding.as_deref().unwrap_or("UTF-8");
+    if encoding.eq_ignore_ascii_case("UTF-8") {
+        return serialize_xml(result, settings, request_id, byte_limit, control)
+            .map(String::into_bytes);
+    }
+    if !encoding.eq_ignore_ascii_case("ISO-8859-1") {
+        return Err(failure(
+            "FXSR1004",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            format!("unsupported byte serialization encoding: {encoding}"),
+        ));
+    }
+    if settings.byte_order_mark == Some(true) {
+        return Err(failure(
+            "FXSR1005",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "the bounded ISO-8859-1 lane does not emit a byte-order mark",
+        ));
+    }
+
+    let declaration = if settings.omit_xml_declaration || settings.method.as_deref() == Some("text")
+    {
+        String::new()
+    } else {
+        format!("<?xml version=\"1.0\" encoding=\"{encoding}\"?>")
+    };
+    let body_limit = byte_limit.checked_sub(declaration.len()).ok_or_else(|| {
+        failure(
+            "FXSR0002",
+            FailureCategory::Limit,
+            Some(request_id),
+            format!(
+                "serialized result requires at least {} bytes; limit is {byte_limit}",
+                declaration.len()
+            ),
+        )
+    })?;
+    if !declaration.is_empty() {
+        control
+            .charge(WorkDomain::SerializedByte, declaration.len())
+            .map_err(|failure| control_failure(failure, request_id))?;
+    }
+
+    let mut body_settings = settings.clone();
+    body_settings.encoding = Some("UTF-8".to_owned());
+    body_settings.omit_xml_declaration = true;
+    let body = serialize_xml(result, &body_settings, request_id, body_limit, control)?;
+    if !body.is_ascii() {
+        return Err(failure(
+            "FXSR1006",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "the bounded ISO-8859-1 lane currently admits only ASCII result characters",
+        ));
+    }
+
+    let mut bytes = declaration.into_bytes();
+    bytes.extend_from_slice(body.as_bytes());
+    Ok(bytes)
+}
+
 fn serialize_text_node(
     node: &ResultNode,
     output: &mut BudgetedString,

@@ -910,13 +910,21 @@ mod tests {
     }
 
     #[test]
-    fn rejects_non_utf8_encoding_in_the_private_string_result_lane() {
-        let stylesheet = parse_stylesheet(
+    fn admits_bounded_iso_8859_1_bytes_and_rejects_unadmitted_encodings() {
+        let iso_8859_1 = parse_stylesheet(
+            "memory:iso-8859-1-output.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" encoding="ISO-8859-1"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
+        );
+        let program = compile_stylesheet(&iso_8859_1)
+            .expect("the bounded byte lane should retain ISO-8859-1 metadata");
+        assert_eq!(program.output.encoding.as_deref(), Some("ISO-8859-1"));
+
+        let utf_16 = parse_stylesheet(
             "memory:unsupported-encoding.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" encoding="UTF-16"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
         );
 
-        let failure = compile_stylesheet(&stylesheet).expect_err("UTF-16 needs a byte result lane");
+        let failure = compile_stylesheet(&utf_16).expect_err("UTF-16 remains unadmitted");
 
         assert_eq!(failure.code, "FXST1016");
         assert_eq!(failure.category, CompileCategory::Unsupported);
