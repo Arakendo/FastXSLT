@@ -32,12 +32,19 @@ evidence exists.
 | `assert-xml` results | 41 |
 | `error` results | 8 |
 | `all-of` results | 1 |
-| Selected/passed overrides | 24 |
-| Default not-run dispositions | 33 |
+| Selected/passed overrides | 40 |
+| Default not-run dispositions | 10 |
 
-The one secondary stylesheet belongs to `conflict-resolution-1204`. The 17
-passing overrides are the previously evidenced conflict-resolution cases from
-`0101` through `0901`.
+The one secondary stylesheet belongs to `conflict-resolution-1204`. The current
+40 passing overrides include 34 previously evidenced cases and six explicit
+recover variants whose native dependency metadata is checked before execution.
+The ten not-run cases comprise six expected multiple-match errors plus
+`conflict-resolution-1204`, `1301`, `1401`, and schema-aware `1402`.
+
+This revision corrects stale summary values left behind as individual case
+tranches advanced. The executable overlay-count assertion remained the source
+of truth and now agrees with this evidence record: 40 plus 10 conserves the
+50-case denominator.
 
 This inventory also corrects the earlier provisional claim that the test set
 contained 52 cases. The pinned native metadata contains exactly 50; the
@@ -46,7 +53,7 @@ executable ordered-name assertion will fail if that denominator changes.
 ## Claim boundary
 
 Inventory is not conformance. The result establishes complete denominator
-visibility and 24 case-specific passes only. The remaining 26 cases are not
+visibility and 40 case-specific passes only. The remaining 10 cases are not
 engine failures, and no aggregate apply-templates conformance percentage is
 claimed. A submodule revision change requires renewed inventory and provenance
 review.

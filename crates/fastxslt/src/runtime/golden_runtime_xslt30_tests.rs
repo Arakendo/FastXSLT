@@ -551,6 +551,40 @@ fn executes_xslt30_equal_priority_conflicts_by_last_source_order() {
 }
 
 #[test]
+fn executes_declared_legacy_recovery_variants_without_selecting_legacy_profile() {
+    for (case_name, spec, matched_template_count, result_element) in [
+        ("conflict-resolution-0102a", "XSLT10 XSLT20", 3, "out"),
+        ("conflict-resolution-0104a", "XSLT10 XSLT20", 3, "out"),
+        ("conflict-resolution-0108a", "XSLT10 XSLT20", 6, "out"),
+        ("conflict-resolution-0110a", "XSLT10 XSLT20", 6, "out"),
+        ("conflict-resolution-0401a", "XSLT20", 2, "b"),
+        ("conflict-resolution-1202a", "XSLT10 XSLT20", 7, "out"),
+    ] {
+        assert_apply_templates_dependency(case_name, "spec", spec);
+        assert_apply_templates_dependency(case_name, "on-multiple-match", "recover");
+        let (actual, expected, actual_template_count) = execute_apply_templates_case(case_name);
+        assert_eq!(actual_template_count, matched_template_count);
+        assert_same_result_element_string(&actual, &expected, result_element);
+    }
+}
+
+fn assert_apply_templates_dependency(case_name: &str, dependency: &str, expected: &str) {
+    let (test_set, _) = apply_templates_test_set();
+    let test_case = find_element(
+        &test_set,
+        test_set.document_node(),
+        "test-case",
+        Some(("name", case_name)),
+    )
+    .expect("pinned recovery case");
+    let dependencies =
+        find_element(&test_set, test_case, "dependencies", None).expect("case dependency metadata");
+    let declaration = find_element(&test_set, dependencies, dependency, None)
+        .expect("requested dependency metadata");
+    assert_eq!(attribute(&test_set, declaration, "value"), Some(expected));
+}
+
+#[test]
 fn executes_xslt30_explicit_priority_without_widening_node_test_axis() {
     let (actual, expected, matched_template_count) =
         execute_apply_templates_case("conflict-resolution-0106");

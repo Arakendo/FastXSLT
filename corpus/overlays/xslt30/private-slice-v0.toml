@@ -472,10 +472,24 @@ rationale = "The XSLT 3.0 default multiple-match policy chooses the later elemen
 
 [[case]]
 set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0102a"
+selection = "selected"
+execution = "passed"
+rationale = "The case's explicit XSLT 1.0/2.0 recover dependency is verified before the admitted use-last wildcard conflict path executes; no general legacy profile is selected."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
 case_name = "conflict-resolution-0104c"
 selection = "selected"
 execution = "passed"
 rationale = "Reversing the equal-priority element-wildcard and any-node declarations makes the later any-node rule win under the XSLT 3.0 default policy."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0104a"
+selection = "selected"
+execution = "passed"
+rationale = "The case's explicit XSLT 1.0/2.0 recover dependency is verified before the admitted use-last node-test conflict path executes."
 
 [[case]]
 set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
@@ -500,10 +514,24 @@ rationale = "The equal-priority doc/foo path and foo[@test] attribute-predicate 
 
 [[case]]
 set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0108a"
+selection = "selected"
+execution = "passed"
+rationale = "The explicit recover variant selects the later equal-priority non-simple path rule after the harness conserves its native dependency metadata."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
 case_name = "conflict-resolution-0110c"
 selection = "selected"
 execution = "passed"
 rationale = "Reversing the equal-priority path and attribute-predicate declarations makes the later foo[@test] pattern win under the XSLT 3.0 default policy."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0110a"
+selection = "selected"
+execution = "passed"
+rationale = "The explicit recover variant selects the later equal-priority attribute-predicate rule after the harness conserves its native dependency metadata."
 
 [[case]]
 set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
@@ -525,6 +553,13 @@ case_name = "conflict-resolution-0401c"
 selection = "selected"
 execution = "passed"
 rationale = "A prefixed exact-name rule and namespace-wildcard rule resolve their static prefix to the same namespace and explicit priority; XSLT 3.0 source-order selection chooses the later wildcard rule."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0401a"
+selection = "selected"
+execution = "passed"
+rationale = "The XSLT 2.0 recover dependency is verified before the existing equal-priority namespace-wildcard selection executes."
 
 [[case]]
 set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
@@ -623,6 +658,13 @@ case_name = "conflict-resolution-1202c"
 selection = "selected"
 execution = "passed"
 rationale = "Under the selected XSLT 3.0 semantics, equal-priority applicable rules use the last declaration and next-match can continue to the earlier equal-ranked rule; an xsl:fallback child remains inert because next-match is supported."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-1202a"
+selection = "selected"
+execution = "passed"
+rationale = "The explicit recover variant uses the same admitted use-last entry and equal-rank next-match continuation after its native metadata is verified."
 
 [[case]]
 set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"

@@ -29,9 +29,21 @@ selection = "selected"
 execution = "passed"
 
 [[case_override]]
+case_name = "conflict-resolution-0102a"
+selection = "selected"
+execution = "passed"
+rationale = "The harness verifies the XSLT 1.0/2.0 recover dependency before executing the already-admitted use-last wildcard conflict path; this is case evidence, not selection of a legacy compatibility profile."
+
+[[case_override]]
 case_name = "conflict-resolution-0104c"
 selection = "selected"
 execution = "passed"
+
+[[case_override]]
+case_name = "conflict-resolution-0104a"
+selection = "selected"
+execution = "passed"
+rationale = "The harness verifies the XSLT 1.0/2.0 recover dependency before executing the already-admitted use-last node-test conflict path."
 
 [[case_override]]
 case_name = "conflict-resolution-0106"
@@ -49,9 +61,21 @@ selection = "selected"
 execution = "passed"
 
 [[case_override]]
+case_name = "conflict-resolution-0108a"
+selection = "selected"
+execution = "passed"
+rationale = "The explicit recover variant selects the later equal-priority non-simple path rule after its native dependency metadata is conserved."
+
+[[case_override]]
 case_name = "conflict-resolution-0110c"
 selection = "selected"
 execution = "passed"
+
+[[case_override]]
+case_name = "conflict-resolution-0110a"
+selection = "selected"
+execution = "passed"
+rationale = "The explicit recover variant selects the later equal-priority attribute-predicate rule after its native dependency metadata is conserved."
 
 [[case_override]]
 case_name = "conflict-resolution-0112"
@@ -67,6 +91,12 @@ execution = "passed"
 case_name = "conflict-resolution-0401c"
 selection = "selected"
 execution = "passed"
+
+[[case_override]]
+case_name = "conflict-resolution-0401a"
+selection = "selected"
+execution = "passed"
+rationale = "The harness verifies the XSLT 2.0 recover dependency and executes the existing equal-explicit-priority namespace-wildcard selection."
 
 [[case_override]]
 case_name = "conflict-resolution-0901"
@@ -142,6 +172,12 @@ execution = "passed"
 case_name = "conflict-resolution-1202c"
 selection = "selected"
 execution = "passed"
+
+[[case_override]]
+case_name = "conflict-resolution-1202a"
+selection = "selected"
+execution = "passed"
+rationale = "The explicit recover variant preserves use-last entry into the equal-priority next-match chain and produces the same asserted continuation sequence."
 
 [[case_override]]
 case_name = "conflict-resolution-0601"

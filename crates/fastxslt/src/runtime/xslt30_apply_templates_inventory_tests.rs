@@ -58,18 +58,23 @@ const CASE_NAMES: [&str; 50] = [
     "conflict-resolution-1801",
 ];
 
-const PASSED_CASES: [&str; 34] = [
+const PASSED_CASES: [&str; 40] = [
     "apply-templates-001",
     "apply-templates-002",
     "conflict-resolution-0101",
+    "conflict-resolution-0102a",
     "conflict-resolution-0102c",
+    "conflict-resolution-0104a",
     "conflict-resolution-0104c",
     "conflict-resolution-0106",
     "conflict-resolution-0107",
+    "conflict-resolution-0108a",
     "conflict-resolution-0108c",
+    "conflict-resolution-0110a",
     "conflict-resolution-0110c",
     "conflict-resolution-0112",
     "conflict-resolution-0201",
+    "conflict-resolution-0401a",
     "conflict-resolution-0401c",
     "conflict-resolution-0501",
     "conflict-resolution-0502",
@@ -85,6 +90,7 @@ const PASSED_CASES: [&str; 34] = [
     "conflict-resolution-1101",
     "conflict-resolution-1102",
     "conflict-resolution-1201",
+    "conflict-resolution-1202a",
     "conflict-resolution-1202c",
     "conflict-resolution-1205",
     "conflict-resolution-1501",

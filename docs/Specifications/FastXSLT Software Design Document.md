@@ -210,9 +210,13 @@ Compiled template rules retain stylesheet-module import precedence separately
 from template priority and declaration order. Ordinary dispatch ranks all three;
 `xsl:next-match` continues to a lower-ranked applicable rule, while
 `xsl:apply-imports` considers only applicable rules at lower import precedence
-before using the built-in rule. The current executable slice proves at most two
-sealed sibling imports with no nested dependencies; it does not define a public
-module graph representation.
+before using the built-in rule. Equal-ranked ordinary dispatch uses the later
+declaration in the admitted recovery path. Corpus harnesses may verify an
+upstream case's explicit recover dependency before using that path, but the
+engine does not thereby select a legacy compatibility profile or expose a
+configurable multiple-match policy. The current executable slice proves only
+the bounded module topologies below; it does not define a public module graph
+representation.
 
 The bounded include slice also admits one three-module include chain in which a
 simple fragment selects exactly one embedded stylesheet by `xml:id`. Resource

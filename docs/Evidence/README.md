@@ -23,6 +23,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `template-005` Named-Template Execution](xslt30-template-005-named-template-execution-2026-08-26.md)
 - [XSLT30 `conflict-resolution-0101` Template Priority and `xsl:text`](xslt30-conflict-resolution-0101-template-priority-and-xsl-text-2026-08-28.md)
 - [XSLT30 `conflict-resolution-0102c/0104c` Equal-Priority Source Order](xslt30-conflict-resolution-0102c-0104c-equal-priority-source-order-2026-08-29.md)
+- [XSLT30 Explicit Conflict-Recovery Variants](xslt30-conflict-resolution-recover-variants-2026-08-29.md)
 - [XSLT30 `conflict-resolution-0106` Explicit Priority and Built-In Attribute Rule](xslt30-conflict-resolution-0106-explicit-priority-and-built-in-attribute-rule-2026-08-29.md)
 - [XSLT30 `0107/0108c/0110c` Non-Simple Pattern Priority](xslt30-conflict-resolution-0107-0108c-0110c-non-simple-pattern-priority-2026-08-29.md)
 - [XSLT30 `conflict-resolution-0112` Descendant-Wildcard Priority](xslt30-conflict-resolution-0112-descendant-wildcard-priority-2026-08-29.md)

@@ -858,6 +858,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   Recognize but do not execute `xsl:fallback` content on the supported
   instruction; keep legacy recover/error profiles, mode controls, warnings,
   root duplicates, and cross-module precedence out.
+- [x] Execute the six adjacent explicit-recovery variants `0102a`, `0104a`,
+  `0108a`, `0110a`, `0401a`, and `1202a` only after verifying each case's
+  native `on-multiple-match=recover` dependency. Reuse the already-evidenced
+  use-last paths without selecting a general XSLT 1.0/2.0 compatibility profile
+  or admitting the six corresponding `XTRE0540` error variants. The complete
+  apply-templates ledger now records 40 passes and 10 visible not-run cases.
 - [x] Execute `conflict-resolution-1205` with typed non-tunnel integer and
   atomic-variable `xsl:with-param` arguments on `xsl:apply-templates` and
   `xsl:next-match`. Keep values invocation-local, retain result attributes
