@@ -57,6 +57,15 @@ pub(super) fn compile_stylesheet_excluding(
     document: &Document,
     excluded_top_level: &[NodeId],
 ) -> Result<StylesheetProgram, CompileFailure> {
+    let program = compile_stylesheet_excluding_unvalidated(document, excluded_top_level)?;
+    validate_named_template_references(&program)?;
+    Ok(program)
+}
+
+pub(super) fn compile_stylesheet_excluding_unvalidated(
+    document: &Document,
+    excluded_top_level: &[NodeId],
+) -> Result<StylesheetProgram, CompileFailure> {
     let root = document_element(document)?;
     require_stylesheet_root(document, root)?;
     let declared_version = required_attribute(document, root, None, "version")?.to_owned();
@@ -131,7 +140,7 @@ pub(super) fn compile_stylesheet_excluding(
         }
     }
 
-    let program = StylesheetProgram {
+    Ok(StylesheetProgram {
         declared_version,
         output: output.unwrap_or_else(default_output_settings),
         root_template,
@@ -139,9 +148,7 @@ pub(super) fn compile_stylesheet_excluding(
         matched_templates,
         named_templates,
         global_bindings,
-    };
-    validate_named_template_references(&program)?;
-    Ok(program)
+    })
 }
 
 pub(super) fn require_stylesheet_root(
@@ -288,6 +295,11 @@ fn compile_global_binding(
                 ));
             }
             GlobalBindingDefault::Variable(variable.to_owned())
+        } else if let Some(value) = select
+            .strip_prefix('\'')
+            .and_then(|value| value.strip_suffix('\''))
+        {
+            GlobalBindingDefault::Text(value.to_owned())
         } else if let Ok(value) = select.parse::<i64>() {
             GlobalBindingDefault::Integer(value)
         } else {

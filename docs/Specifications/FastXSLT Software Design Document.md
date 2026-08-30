@@ -213,6 +213,13 @@ from template priority and declaration order. Ordinary dispatch ranks all three;
 before using the built-in rule. The current executable slice proves one sealed
 relative import only; it does not define a public module graph representation.
 
+Module assembly resolves statically known cross-module declarations before
+whole-program validation and runtime materialization. Within the bounded
+single-import slice, a principal global binding shadows an imported binding of
+the same supported binding name, and the shadowed default is not retained for
+runtime evaluation. Imported named templates are linked before reference validation;
+duplicate named-template precedence remains outside the current slice.
+
 The prepared instruction representation may fold a statically validated result
 construction into its owning literal element when the operation cannot be
 observed independently. The current bounded example is a leading,

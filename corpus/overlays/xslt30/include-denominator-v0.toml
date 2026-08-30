@@ -31,3 +31,9 @@ case_name = "include-0202"
 selection = "selected"
 execution = "passed"
 rationale = "Passes an integer parameter through xsl:apply-imports to one lower-precedence imported rule, then constructs one statically named unnamespaced result attribute from the bound variable before child construction."
+
+[[case_override]]
+case_name = "include-0105"
+selection = "selected"
+execution = "passed"
+rationale = "Resolves one imported named template after module assembly and removes its shadowed ERROR global binding so both the principal root rule and imported named rule observe the principal OK binding."

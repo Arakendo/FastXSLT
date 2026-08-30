@@ -1024,6 +1024,14 @@ failed, and harness-error cases without an unqualified conformance claim.
     literal-result plan; keep computed names/namespaces, general sequence
     constructors, late attributes, and broader imported declarations out. The
     denominator now records 4 passes and 12 visible not-run dispositions.
+  - [x] Execute `include-0105` through post-assembly named-template validation
+    and principal-over-import global binding precedence. Remove the shadowed
+    imported text default before invocation materialization, preserve one
+    resolved imported named template, and let both root and named templates see
+    the same invocation-local global value. Keep duplicate named-template
+    precedence, non-text shadowed defaults, dependency ordering, and multiple
+    imports out. The denominator now records 5 passes and 11 visible not-run
+    dispositions.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.

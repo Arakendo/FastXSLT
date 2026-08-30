@@ -4,9 +4,10 @@ use crate::xslt::golden_semantics_experiment::{Instruction, StylesheetProgram, T
 use super::instruction_compiler::{compile_sequence_excluding, literal_result_namespaces};
 use super::stylesheet_validation::validate_named_template_references;
 use super::{
-    CompileFailure, XSLT_NAMESPACE, compile_stylesheet_excluding, default_output_settings,
-    document_element, ensure_no_meaningful_children, ensure_only_attributes, invalid,
-    is_xslt_element, meaningful_children, require_stylesheet_root, required_attribute, unsupported,
+    CompileFailure, XSLT_NAMESPACE, compile_stylesheet_excluding_unvalidated,
+    default_output_settings, document_element, ensure_no_meaningful_children,
+    ensure_only_attributes, invalid, is_xslt_element, meaningful_children, require_stylesheet_root,
+    required_attribute, unsupported,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -68,7 +69,7 @@ pub(crate) fn compile_stylesheet_with_single_include(
             principal.location(principal.document_node()),
         ));
     };
-    let mut program = compile_stylesheet_excluding(principal, &[*include])?;
+    let mut program = compile_stylesheet_excluding_unvalidated(principal, &[*include])?;
     let included_program = compile_simplified_stylesheet(included)?;
 
     if included_program.output != default_output_settings() {
@@ -161,7 +162,7 @@ pub(crate) fn compile_stylesheet_with_single_import(
             principal.location(*import),
         ));
     }
-    let mut principal_program = compile_stylesheet_excluding(principal, &[*import])?;
+    let mut principal_program = compile_stylesheet_excluding_unvalidated(principal, &[*import])?;
     let mut imported_program = super::compile_stylesheet(imported)?;
     if imported_program.output != default_output_settings() {
         return Err(unsupported(
@@ -170,18 +171,10 @@ pub(crate) fn compile_stylesheet_with_single_import(
             imported.location(imported.document_node()),
         ));
     }
-    if principal_program.root_template.is_some() || imported_program.root_template.is_some() {
+    if imported_program.root_template.is_some() {
         return Err(unsupported(
             "FXST1025",
-            "root templates are outside the single-import slice",
-            imported.location(imported.document_node()),
-        ));
-    }
-    if !imported_program.named_templates.is_empty() || !imported_program.global_bindings.is_empty()
-    {
-        return Err(unsupported(
-            "FXST1026",
-            "imported named templates and global bindings are outside the single-import slice",
+            "imported root templates are outside the single-import slice",
             imported.location(imported.document_node()),
         ));
     }
@@ -192,8 +185,45 @@ pub(crate) fn compile_stylesheet_with_single_import(
         .matched_templates
         .append(&mut principal_program.matched_templates);
     principal_program.matched_templates = imported_program.matched_templates;
+    merge_imported_named_templates(&mut principal_program, imported_program.named_templates)?;
+    merge_imported_global_bindings(&mut principal_program, imported_program.global_bindings);
     validate_named_template_references(&principal_program)?;
     Ok(principal_program)
+}
+
+fn merge_imported_named_templates(
+    principal: &mut StylesheetProgram,
+    imported: Vec<crate::xslt::golden_semantics_experiment::NamedTemplate>,
+) -> Result<(), CompileFailure> {
+    for template in imported {
+        if principal
+            .named_templates
+            .iter()
+            .any(|existing| existing.name == template.name)
+        {
+            return Err(unsupported(
+                "FXST1026",
+                "duplicate named templates across import precedence are outside the single-import slice",
+                &template.template.location,
+            ));
+        }
+        principal.named_templates.push(template);
+    }
+    Ok(())
+}
+
+fn merge_imported_global_bindings(
+    principal: &mut StylesheetProgram,
+    mut imported: Vec<crate::xslt::golden_semantics_experiment::GlobalBinding>,
+) {
+    imported.retain(|binding| {
+        !principal
+            .global_bindings
+            .iter()
+            .any(|existing| existing.name == binding.name)
+    });
+    imported.append(&mut principal.global_bindings);
+    principal.global_bindings = imported;
 }
 
 fn compile_simplified_stylesheet(document: &Document) -> Result<StylesheetProgram, CompileFailure> {

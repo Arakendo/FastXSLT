@@ -33,7 +33,8 @@ const CASE_NAMES: [&str; 16] = [
     "include-0702c",
     "include-0801",
 ];
-const PASSED_CASES: [&str; 4] = [
+const PASSED_CASES: [&str; 5] = [
+    "include-0105",
     "include-0201",
     "include-0202",
     "include-0301",
@@ -160,10 +161,24 @@ fn executes_include_0202_apply_imports_with_parameter_and_computed_attribute() {
     assert_xml_equivalent(&execution.actual, &execution.expected);
 }
 
+#[test]
+fn executes_include_0105_principal_global_override_and_imported_named_template() {
+    let execution = execute_inline_case_with_single_dependency("include-0105");
+    assert!(execution.import_precedences.is_empty());
+    assert_eq!(
+        execution.global_text_defaults,
+        [("test".to_owned(), "OK".to_owned())]
+    );
+    assert_eq!(execution.named_template_names, ["two"]);
+    assert_xml_equivalent(&execution.actual, &execution.expected);
+}
+
 struct DependencyCaseExecution {
     actual: String,
     expected: String,
     import_precedences: Vec<i32>,
+    global_text_defaults: Vec<(String, String)>,
+    named_template_names: Vec<String>,
 }
 
 fn execute_inline_case_with_single_dependency(case_name: &str) -> DependencyCaseExecution {
@@ -227,11 +242,8 @@ fn execute_inline_case_with_single_dependency(case_name: &str) -> DependencyCase
         .expect("admit imported stylesheet");
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, &principal_id).expect("compile imported stylesheet");
-    let import_precedences = program
-        .matched_templates
-        .iter()
-        .map(|template| template.import_precedence)
-        .collect();
+    let (import_precedences, global_text_defaults, named_template_names) =
+        observe_dependency_program(&program);
     let mut set = TransformSetBuilder::new(
         snapshot,
         program,
@@ -258,7 +270,37 @@ fn execute_inline_case_with_single_dependency(case_name: &str) -> DependencyCase
         actual: results.by_request[case_name].serialized.clone(),
         expected,
         import_precedences,
+        global_text_defaults,
+        named_template_names,
     }
+}
+
+type DependencyProgramObservation = (Vec<i32>, Vec<(String, String)>, Vec<String>);
+
+fn observe_dependency_program(
+    program: &crate::xslt::golden_semantics_experiment::StylesheetProgram,
+) -> DependencyProgramObservation {
+    let precedences = program
+        .matched_templates
+        .iter()
+        .map(|template| template.import_precedence)
+        .collect();
+    let text_defaults = program
+        .global_bindings
+        .iter()
+        .filter_map(|binding| match &binding.default {
+            crate::xslt::golden_semantics_experiment::GlobalBindingDefault::Text(value) => {
+                Some((binding.name.clone(), value.clone()))
+            }
+            _ => None,
+        })
+        .collect();
+    let named_templates = program
+        .named_templates
+        .iter()
+        .map(|template| template.name.clone())
+        .collect();
+    (precedences, text_defaults, named_templates)
 }
 
 fn case_environment(document: &Document, case: NodeId) -> NodeId {

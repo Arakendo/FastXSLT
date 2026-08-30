@@ -1130,7 +1130,7 @@ fn execute_named_call(
         .iter()
         .find(|template| template.name == name)
         .expect("named-template references were validated during compilation");
-    let mut frame = RuntimeVariables::default();
+    let mut frame = RuntimeVariables::from_atomics(&inputs.globals.atomics);
     frame.atomics.extend(
         target
             .parameters
