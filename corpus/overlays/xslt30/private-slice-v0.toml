@@ -741,3 +741,10 @@ case_name = "include-0103"
 selection = "selected"
 execution = "passed"
 rationale = "The fragment-bearing include acquires one XML resource without its fragment, selects the embedded xsl:stylesheet by xml:id, resolves its child include against xml:base='x/', and links named template x through the sealed three-module graph."
+
+[[case]]
+set_file = "tests/decl/include/_include-test-set.xml"
+case_name = "include-0104"
+selection = "selected"
+execution = "passed"
+rationale = "The principal's included one-tag rule remains at principal precedence while the sibling imported one-tag rule is lower; xsl:apply-imports from the included rule therefore emits the imported result inside its wrapper."

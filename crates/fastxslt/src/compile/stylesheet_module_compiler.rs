@@ -85,18 +85,32 @@ pub(crate) fn compile_stylesheet_with_single_include_program_at(
     let mut program =
         compile_stylesheet_at_excluding_unvalidated(principal, principal_root, &[*include])?;
 
+    merge_included_program(
+        &mut program,
+        included_program,
+        principal.location(principal_root),
+    )?;
+    validate_named_template_references(&program)?;
+    Ok(program)
+}
+
+fn merge_included_program(
+    program: &mut StylesheetProgram,
+    included_program: StylesheetProgram,
+    location: &SourceLocation,
+) -> Result<(), CompileFailure> {
     if included_program.output != default_output_settings() {
         return Err(unsupported(
             "FXST1019",
             "included output declarations are outside the single-include slice",
-            principal.location(principal_root),
+            location,
         ));
     }
     if program.root_template.is_some() && included_program.root_template.is_some() {
         return Err(unsupported(
             "FXST1020",
             "template priority across duplicate root matches is outside the single-include slice",
-            principal.location(principal_root),
+            location,
         ));
     }
     if program.root_template.is_none() {
@@ -146,11 +160,49 @@ pub(crate) fn compile_stylesheet_with_single_include_program_at(
                     "duplicate global binding across included modules: ${}",
                     binding.name
                 ),
-                principal.location(principal_root),
+                location,
             ));
         }
         program.global_bindings.push(binding);
     }
+    Ok(())
+}
+
+pub(crate) fn compile_stylesheet_with_import_and_include(
+    principal: &Document,
+    imported: (&Document, NodeId),
+    included: (&Document, NodeId),
+) -> Result<StylesheetProgram, CompileFailure> {
+    let root = document_element(principal)?;
+    let dependencies = dependency_nodes_at(principal, root)?;
+    let [import, include] = dependencies.as_slice() else {
+        return Err(invalid(
+            "FXST0033",
+            "mixed compilation requires exactly one xsl:import followed by one xsl:include",
+            principal.location(root),
+        ));
+    };
+    if !is_xslt_element(principal, *import, "import")
+        || !is_xslt_element(principal, *include, "include")
+        || meaningful_children(principal, root).first() != Some(import)
+    {
+        return Err(invalid(
+            "XTSE0200",
+            "xsl:import must precede every other top-level declaration",
+            principal.location(*import),
+        ));
+    }
+    let mut program = compile_stylesheet_at_excluding_unvalidated(principal, root, &dependencies)?;
+    let included_program = compile_dependency_module(included.0, included.1)?;
+    merge_included_program(&mut program, included_program, principal.location(*include))?;
+
+    let mut imported_program = compile_imported_program(imported.0, imported.1, -1)?;
+    imported_program
+        .matched_templates
+        .append(&mut program.matched_templates);
+    program.matched_templates = imported_program.matched_templates;
+    merge_imported_named_templates(&mut program, imported_program.named_templates)?;
+    merge_imported_global_bindings(&mut program, imported_program.global_bindings);
     validate_named_template_references(&program)?;
     Ok(program)
 }

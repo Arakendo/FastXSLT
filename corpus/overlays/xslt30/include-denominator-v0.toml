@@ -55,3 +55,9 @@ case_name = "include-0103"
 selection = "selected"
 execution = "passed"
 rationale = "Acquires fragmentless embedded-module bytes, selects one xsl:stylesheet by xml:id, applies its inherited xml:base to one nested include, and executes the assembled named template without ambient resource authority."
+
+[[case_override]]
+case_name = "include-0104"
+selection = "selected"
+execution = "passed"
+rationale = "Assembles one imported rule below one included rule at principal precedence, then proves xsl:apply-imports from the included rule selects the lower-precedence imported rule."

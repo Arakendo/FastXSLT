@@ -221,6 +221,13 @@ are applied, and inherited `xml:base` determines the embedded module's nested
 reference base. General XPointer, DTD-typed IDs, and arbitrary nested or mixed
 module graphs remain outside the slice.
 
+One additional bounded topology admits a principal module with exactly one
+leading import followed by one include. Included declarations share principal
+import precedence; imported declarations remain lower. This permits
+`xsl:apply-imports` from an included rule to select its imported counterpart
+without treating inclusion as a separate precedence level. Other mixed,
+repeated, or nested import/include graphs remain outside the executable slice.
+
 Module assembly resolves statically known cross-module declarations before
 whole-program validation and runtime materialization. Within the bounded
 bounded import slice, a principal global binding shadows an imported binding of

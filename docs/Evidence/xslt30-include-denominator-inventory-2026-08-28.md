@@ -6,7 +6,7 @@
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/decl/include/_include-test-set.xml` |
 | Cases | 16 |
-| Current ledger | 8 selected/passed; 8 harness-unsupported / not-run as of 2026-08-29 |
+| Current ledger | 9 selected/passed; 7 harness-unsupported / not-run as of 2026-08-29 |
 | Catalog stylesheet references | 16 principal; 34 secondary (including repeated case environments) |
 
 ## Conserved denominator
@@ -18,7 +18,7 @@ secondary stylesheet references, and conserves the direct result shapes as 14
 every case an explicit default `harness-unsupported / not-run` disposition,
 with first-party selected/passed overrides for `include-0401`, `include-0201`,
 `include-0301`, `include-0202`, `include-0105`, `include-0601`, and
-`include-0501`, and `include-0103`. FastXSLT
+`include-0501`, `include-0103`, and `include-0104`. FastXSLT
 therefore records the complete denominator without calling unresolved module
 semantics an engine failure or quietly dropping cases.
 
@@ -70,6 +70,8 @@ their competing global parameter defaults.
 inherited `xml:base`, and one nested include. The adjacent `include-0102`
 remains not-run because its identifier typing depends on a DTD, which the
 current XML boundary deliberately denies.
+`include-0104` adds the exact leading-import/then-include topology and proves an
+included rule retains principal precedence when invoking `xsl:apply-imports`.
 It makes no general claim for `xsl:include`, `xsl:import`, import precedence,
 general embedded stylesheet fragments, module cycles, or arbitrary module graphs. Upstream
 bytes remain immutable in the W3C submodule; all disposition policy remains in

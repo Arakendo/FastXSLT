@@ -1050,6 +1050,12 @@ failed, and harness-error cases without an unqualified conformance claim.
     `x`, and retain DTD denial. Keep `include-0102` excluded because its ID
     typing depends on a DTD; keep general XPointer and arbitrary nested graphs
     out. The denominator now records 8 passes and 8 visible not-run dispositions.
+  - [x] Execute `include-0104` through exactly one leading import followed by
+    one include. Preserve included rules at principal precedence, retain the
+    imported rule below them, and prove `xsl:apply-imports` from the included
+    `one-tag` rule selects its imported counterpart. Keep other mixed, repeated,
+    and nested import/include topologies out. The denominator now records 9
+    passes and 7 visible not-run dispositions.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.

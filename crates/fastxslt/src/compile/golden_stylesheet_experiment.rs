@@ -20,9 +20,9 @@ mod template_pattern_compiler;
 mod variable_filtered_path_compiler;
 
 pub(crate) use stylesheet_module_compiler::{
-    StylesheetDependencyKind, compile_stylesheet_with_imports,
-    compile_stylesheet_with_single_include, compile_stylesheet_with_single_include_program_at,
-    discovered_stylesheet_dependencies_at,
+    StylesheetDependencyKind, compile_stylesheet_with_import_and_include,
+    compile_stylesheet_with_imports, compile_stylesheet_with_single_include,
+    compile_stylesheet_with_single_include_program_at, discovered_stylesheet_dependencies_at,
 };
 use stylesheet_validation::validate_named_template_references;
 use template_pattern_compiler::compile_match_pattern;

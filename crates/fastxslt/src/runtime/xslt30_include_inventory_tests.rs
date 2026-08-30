@@ -33,8 +33,9 @@ const CASE_NAMES: [&str; 16] = [
     "include-0702c",
     "include-0801",
 ];
-const PASSED_CASES: [&str; 8] = [
+const PASSED_CASES: [&str; 9] = [
     "include-0103",
+    "include-0104",
     "include-0105",
     "include-0201",
     "include-0202",
@@ -212,6 +213,15 @@ fn executes_include_0103_embedded_stylesheet_fragment_and_base() {
     assert!(execution.import_precedences.is_empty());
     assert!(execution.global_text_defaults.is_empty());
     assert_eq!(execution.named_template_names, ["x"]);
+    assert_xml_equivalent(&execution.actual, &execution.expected);
+}
+
+#[test]
+fn executes_include_0104_apply_imports_across_included_rule() {
+    let execution = execute_inline_case_with_dependencies("include-0104");
+    assert_eq!(execution.import_precedences, [-1, 0, 0]);
+    assert!(execution.global_text_defaults.is_empty());
+    assert!(execution.named_template_names.is_empty());
     assert_xml_equivalent(&execution.actual, &execution.expected);
 }
 

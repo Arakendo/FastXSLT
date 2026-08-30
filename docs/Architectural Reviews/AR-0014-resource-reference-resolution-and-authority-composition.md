@@ -247,3 +247,6 @@ resolver trait, URI type, catalog representation, live authority, or cache.
   simple `xml:id` module selection, applied inherited `xml:base` to one nested
   include, and executed the sealed three-module graph. DTD-backed `include-0102`
   remains excluded under the current XML security boundary.
+- 2026-08-29 -- XSLT30 `include-0104` assembled one sealed leading import plus
+  one include and preserved their different precedence semantics. This admits
+  one exact mixed topology, not a general dependency-graph compiler.

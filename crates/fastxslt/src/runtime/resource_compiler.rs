@@ -2,14 +2,14 @@
 
 use crate::compile::golden_stylesheet_experiment::{
     CompileCategory, CompileFailure, StylesheetDependencyKind, compile_stylesheet,
-    compile_stylesheet_with_imports, compile_stylesheet_with_single_include,
-    compile_stylesheet_with_single_include_program_at,
+    compile_stylesheet_with_import_and_include, compile_stylesheet_with_imports,
+    compile_stylesheet_with_single_include, compile_stylesheet_with_single_include_program_at,
 };
 use crate::resources::{ResolutionFailure, ResolutionLimits, ResourceSnapshot, SnapshotResolver};
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
 
 use super::stylesheet_dependency_loader::{
-    DependencyFailure, DependencyLimits, load_stylesheet_dependency_graph,
+    DependencyFailure, DependencyLimits, LoadedStylesheetModule, load_stylesheet_dependency_graph,
 };
 use super::{ExecutionFailure, FailureCategory, failure, failure_at};
 
@@ -39,20 +39,25 @@ fn compile_resource_with_resolver(
     let graph = load_stylesheet_dependency_graph(resolver, stylesheet_id, DEPENDENCY_LIMITS)
         .map_err(dependency_failure)?;
     debug_assert_eq!(graph.identity, stylesheet_id);
+    compile_loaded_graph(&graph).map_err(compile_failure)
+}
+
+fn compile_loaded_graph(
+    graph: &LoadedStylesheetModule,
+) -> Result<StylesheetProgram, CompileFailure> {
     if graph.dependencies.is_empty() {
-        return compile_stylesheet(&graph.document).map_err(compile_failure);
+        return compile_stylesheet(&graph.document);
     }
     if graph.dependencies.len() > 2 {
-        return Err(failure_at(
-            "FXST1018",
-            FailureCategory::Unsupported,
-            None,
-            graph
+        return Err(CompileFailure {
+            code: "FXST1018",
+            category: CompileCategory::Unsupported,
+            detail: "the private slice permits at most two stylesheet dependencies".to_owned(),
+            location: graph
                 .document
                 .location(graph.document.document_node())
                 .clone(),
-            "the private slice permits at most two stylesheet dependencies".to_owned(),
-        ));
+        });
     }
     if let [dependency] = graph.dependencies.as_slice() {
         if dependency.dependency_kind == Some(StylesheetDependencyKind::Include) {
@@ -64,36 +69,33 @@ fn compile_resource_with_resolver(
                         crate::compile::golden_stylesheet_experiment::compile_stylesheet_at(
                             &nested.document,
                             nested.root,
-                        )
-                        .map_err(compile_failure)?;
+                        )?;
                     let dependency_program = compile_stylesheet_with_single_include_program_at(
                         &dependency.document,
                         dependency.root,
                         nested_program,
-                    )
-                    .map_err(compile_failure)?;
+                    )?;
                     return compile_stylesheet_with_single_include_program_at(
                         &graph.document,
                         graph.root,
                         dependency_program,
-                    )
-                    .map_err(compile_failure);
+                    );
                 }
             }
         }
     }
     for dependency in &graph.dependencies {
         if !dependency.dependencies.is_empty() {
-            return Err(failure_at(
-                "FXST1027",
-                FailureCategory::Unsupported,
-                None,
-                dependency
+            return Err(CompileFailure {
+                code: "FXST1027",
+                category: CompileCategory::Unsupported,
+                detail: "nested stylesheet dependencies are outside the private compiler slice"
+                    .to_owned(),
+                location: dependency
                     .document
                     .location(dependency.document.document_node())
                     .clone(),
-                "nested stylesheet dependencies are outside the private compiler slice".to_owned(),
-            ));
+            });
         }
     }
     let dependency_kinds = graph
@@ -106,6 +108,14 @@ fn compile_resource_with_resolver(
             &graph.document,
             &graph.dependencies[0].document,
             graph.dependencies[0].root,
+        ),
+        [
+            StylesheetDependencyKind::Import,
+            StylesheetDependencyKind::Include,
+        ] => compile_stylesheet_with_import_and_include(
+            &graph.document,
+            (&graph.dependencies[0].document, graph.dependencies[0].root),
+            (&graph.dependencies[1].document, graph.dependencies[1].root),
         ),
         kinds
             if kinds
@@ -130,7 +140,6 @@ fn compile_resource_with_resolver(
                 .clone(),
         }),
     }
-    .map_err(compile_failure)
 }
 
 fn dependency_failure(error: DependencyFailure) -> ExecutionFailure {
