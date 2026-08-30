@@ -348,8 +348,9 @@ transformation result model -> serialization -> bytes, text, or output sink
 The first slice may implement them together, but tests and future APIs must be
 able to distinguish semantic result correctness from serialization correctness.
 The private string result remains UTF-8-only. A separate bounded byte lane
-admits UTF-8 and the ASCII subset of ISO-8859-1, charges the actual declaration
-and body bytes, and rejects non-ASCII ISO-8859-1 output rather than substituting
+admits UTF-8, including an explicitly requested three-byte UTF-8 byte-order
+mark, and the ASCII subset of ISO-8859-1. It charges marks, declarations, and
+body bytes and rejects non-ASCII ISO-8859-1 output rather than substituting
 characters or returning a mislabeled UTF-8 string. This is executable
 serialization evidence, not selection of a public byte-result contract or
 general encoding support.

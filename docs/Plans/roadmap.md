@@ -785,6 +785,12 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [x] Execute `output-0166` with retained UTF-8 and no-BOM metadata, rejecting
   non-UTF-8 encodings and BOM emission until a byte result lane owns those
   semantics.
+- [x] Execute `output-0165` through the private bounded byte-result lane. Emit
+  the exact three-byte UTF-8 byte-order mark before the declared XML result,
+  charge it against both result limits and invocation work, and keep the normal
+  string lane's BOM rejection intact. Preserve byte output as private evidence,
+  not a selected public result contract. The output ledger now records 12
+  passes and 220 visible harness gaps.
 - [x] Execute `output-0127` through its upstream `all-of` using a harness-owned
   literal-plus-required-whitespace serialization matcher that rejects every
   unadmitted regex operator. Preserve 221 visible harness gaps and make no broad

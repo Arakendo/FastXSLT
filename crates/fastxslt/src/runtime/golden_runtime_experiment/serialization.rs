@@ -98,8 +98,31 @@ pub(in crate::runtime) fn serialize_xml_bytes(
 ) -> Result<Vec<u8>, ExecutionFailure> {
     let encoding = settings.encoding.as_deref().unwrap_or("UTF-8");
     if encoding.eq_ignore_ascii_case("UTF-8") {
-        return serialize_xml(result, settings, request_id, byte_limit, control)
-            .map(String::into_bytes);
+        let bom = settings.byte_order_mark == Some(true);
+        let body_limit = byte_limit
+            .checked_sub(usize::from(bom) * 3)
+            .ok_or_else(|| {
+                failure(
+                    "FXSR0002",
+                    FailureCategory::Limit,
+                    Some(request_id),
+                    format!("serialized result requires at least 3 bytes; limit is {byte_limit}"),
+                )
+            })?;
+        if bom {
+            control
+                .charge(WorkDomain::SerializedByte, 3)
+                .map_err(|failure| control_failure(failure, request_id))?;
+        }
+        let mut body_settings = settings.clone();
+        body_settings.byte_order_mark = Some(false);
+        let body = serialize_xml(result, &body_settings, request_id, body_limit, control)?;
+        let mut bytes = Vec::with_capacity(usize::from(bom) * 3 + body.len());
+        if bom {
+            bytes.extend_from_slice(&[0xef, 0xbb, 0xbf]);
+        }
+        bytes.extend_from_slice(body.as_bytes());
+        return Ok(bytes);
     }
     if !encoding.eq_ignore_ascii_case("ISO-8859-1") {
         return Err(failure(

@@ -69,6 +69,12 @@ execution = "passed"
 rationale = "Executes text-method descendant-text concatenation and proves include-content-type does not inject markup. The comparator restores canonical LF from Windows CRLF checkout materialization before exact text comparison; no other whitespace is changed."
 
 [[case_override]]
+case_name = "output-0165"
+selection = "selected"
+execution = "passed"
+rationale = "Executes UTF-8 XML serialization through the private bounded byte-result lane, verifies the exact UTF-8 byte-order mark and body bytes, and includes the three-byte mark in result limits and work accounting."
+
+[[case_override]]
 case_name = "output-0166"
 selection = "selected"
 execution = "passed"

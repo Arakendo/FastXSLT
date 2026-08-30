@@ -768,6 +768,42 @@ fn byte_serialization_emits_bounded_ascii_iso_8859_1() {
 }
 
 #[test]
+fn byte_serialization_emits_and_accounts_for_a_utf8_byte_order_mark() {
+    let result = SemanticResult {
+        children: vec![ResultNode::Text("result".to_owned())],
+    };
+    let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
+        method: Some("text".to_owned()),
+        encoding: Some("UTF-8".to_owned()),
+        media_type: None,
+        include_content_type: None,
+        byte_order_mark: Some(true),
+        omit_xml_declaration: false,
+        indent: Some(false),
+    };
+    let bytes = serialize_xml_bytes(
+        &result,
+        &settings,
+        "utf8-bom-bytes",
+        9,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("the byte lane should prepend the UTF-8 byte-order mark");
+    assert_eq!(bytes, b"\xef\xbb\xbfresult");
+
+    let failure = serialize_xml_bytes(
+        &result,
+        &settings,
+        "utf8-bom-limit",
+        8,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect_err("the byte limit must include the byte-order mark");
+    assert_eq!(failure.code, "FXSR0002");
+    assert_eq!(failure.category, FailureCategory::Limit);
+}
+
+#[test]
 fn integer_range_materialization_charges_each_atomic_item_before_retention() {
     let mut limits = WorkLimits::unbounded();
     limits.xpath_operations = 9;

@@ -8,9 +8,9 @@ use std::{
 
 use super::{
     ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, compile_resource,
-    execute_transform_set,
+    execute_program, execute_transform_set, serialize_xml_bytes,
 };
-use crate::execution_control_experiment::{CancellationToken, WorkLimits};
+use crate::execution_control_experiment::{CancellationToken, InvocationControl, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
@@ -178,6 +178,17 @@ fn executes_output_0166_as_utf8_without_a_byte_order_mark() {
     );
 }
 
+#[test]
+fn executes_output_0165_as_utf8_bytes_with_a_byte_order_mark() {
+    const CASE_NAME: &str = "output-0165";
+    let bytes = execute_output_bytes_case(CASE_NAME);
+    assert!(bytes.starts_with(&[0xef, 0xbb, 0xbf]));
+    assert_eq!(
+        &bytes[3..],
+        b"<?xml version=\"1.0\" encoding=\"UTF-8\"?><html><body>Hello</body></html>"
+    );
+}
+
 struct SerializationExecution {
     method: Option<String>,
     encoding: Option<String>,
@@ -286,6 +297,62 @@ fn execute_output_case(case_name: &str, assertion_method: Option<&str>) -> Seria
         actual,
         expected,
     }
+}
+
+fn execute_output_bytes_case(case_name: &str) -> Vec<u8> {
+    assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
+    let (test_set, set_path) = load_test_set();
+    let directory = set_path.parent().expect("output test-set directory");
+    let root = document_element(&test_set);
+    let case = element_children(&test_set, root)
+        .into_iter()
+        .find(|node| {
+            local_name(&test_set, *node) == "test-case"
+                && attribute(&test_set, *node, "name") == Some(case_name)
+        })
+        .expect("pinned byte-output case");
+    let test = child_named(&test_set, case, "test").expect("byte-output test");
+    let stylesheet_file = child_named(&test_set, test, "stylesheet")
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("byte-output stylesheet file");
+    let environment = resolve_environment(&test_set, root, case).expect("byte-output environment");
+    let source = child_named(&test_set, environment, "source").expect("byte-output source");
+    let source_content = child_named(&test_set, source, "content").expect("inline source content");
+    let source_id = format!("urn:w3c:xslt30:{case_name}:source");
+    let stylesheet_id = format!("urn:w3c:xslt30:{case_name}:stylesheet");
+    let source_bytes = test_set.string_value(source_content).into_bytes();
+
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 65_536, 131_072));
+    resources
+        .admit(source_id.clone(), source_bytes.clone())
+        .expect("admit byte-output source");
+    resources
+        .admit(
+            stylesheet_id.clone(),
+            fs::read(directory.join(stylesheet_file))
+                .expect("read and close byte-output stylesheet"),
+        )
+        .expect("admit byte-output stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, &stylesheet_id).expect("compile byte-output case");
+    assert_eq!(program.output.encoding.as_deref(), Some("UTF-8"));
+    assert_eq!(program.output.byte_order_mark, Some(true));
+
+    let parsed = parse_document(
+        &source_id,
+        &source_bytes,
+        ParseLimits {
+            max_events: 1_024,
+            max_depth: 64,
+        },
+    )
+    .expect("parse byte-output source");
+    let source = Document::from_parsed(parsed).expect("build byte-output source XDM");
+    let mut control = InvocationControl::unbounded();
+    let result = execute_program(&program, &source, case_name, &mut control)
+        .expect("execute byte-output case");
+    serialize_xml_bytes(&result, &program.output, case_name, 8_192, &mut control)
+        .expect("serialize UTF-8 output with a byte-order mark")
 }
 
 fn matches_literal_whitespace_pattern(actual: &str, pattern: &str) -> Option<bool> {
