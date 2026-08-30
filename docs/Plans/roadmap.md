@@ -819,6 +819,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   and keep `output-0173`'s declaration merging, standalone, and CDATA semantics
   as separate work. The output ledger now records 24 passes and 208 visible
   harness gaps.
+- [x] Execute standalone cases `output-0149` through `0150b` plus `0152` by
+  retaining canonical `yes`, `no`, or `omit` metadata and emitting the exact
+  XML declaration for the XML-compatible XHTML lane. Preserve XSLT 2.0 and 3.0
+  lexical distinctions and treat this as one prerequisite for `output-0173`,
+  not admission of declaration merging or CDATA. The output ledger now records
+  31 passes and 201 visible harness gaps.
 - [x] Execute `output-0127` through its upstream `all-of` using a harness-owned
   literal-plus-required-whitespace serialization matcher that rejects every
   unadmitted regex operator. Preserve 221 visible harness gaps and make no broad

@@ -117,6 +117,48 @@ execution = "passed"
 rationale = "Executes text-method descendant-text concatenation and proves include-content-type does not inject markup. The comparator restores canonical LF from Windows CRLF checkout materialization before exact text comparison; no other whitespace is changed."
 
 [[case_override]]
+case_name = "output-0149"
+selection = "selected"
+execution = "passed"
+rationale = "Retains XSLT 2.0 standalone=yes and emits the exact XHTML XML declaration and result expected by the pinned file."
+
+[[case_override]]
+case_name = "output-0149a"
+selection = "selected"
+execution = "passed"
+rationale = "Canonicalizes the XSLT 3.0 true standalone lexical to yes and emits the same exact XHTML result."
+
+[[case_override]]
+case_name = "output-0149b"
+selection = "selected"
+execution = "passed"
+rationale = "Canonicalizes the XSLT 3.0 numeric-one standalone lexical to yes and emits the same exact XHTML result."
+
+[[case_override]]
+case_name = "output-0150"
+selection = "selected"
+execution = "passed"
+rationale = "Retains XSLT 2.0 standalone=no and emits the exact XHTML XML declaration and result expected by the pinned file."
+
+[[case_override]]
+case_name = "output-0150a"
+selection = "selected"
+execution = "passed"
+rationale = "Canonicalizes the XSLT 3.0 false standalone lexical to no and emits the same exact XHTML result."
+
+[[case_override]]
+case_name = "output-0150b"
+selection = "selected"
+execution = "passed"
+rationale = "Canonicalizes the XSLT 3.0 numeric-zero standalone lexical to no and emits the same exact XHTML result."
+
+[[case_override]]
+case_name = "output-0152"
+selection = "selected"
+execution = "passed"
+rationale = "Retains standalone=omit and proves the exact XHTML XML declaration contains no standalone pseudo-attribute."
+
+[[case_override]]
 case_name = "output-0165"
 selection = "selected"
 execution = "passed"

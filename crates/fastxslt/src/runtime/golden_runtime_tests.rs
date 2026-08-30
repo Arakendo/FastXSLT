@@ -514,6 +514,7 @@ fn absent_output_declaration_does_not_silently_apply_html_serialization() {
         include_content_type: None,
         byte_order_mark: None,
         normalization_form: None,
+        standalone: None,
         omit_xml_declaration: false,
         indent: None,
     };
@@ -547,6 +548,7 @@ fn requested_indentation_is_preserved_as_an_explicit_serialization_boundary() {
         include_content_type: None,
         byte_order_mark: None,
         normalization_form: None,
+        standalone: None,
         omit_xml_declaration: false,
         indent: Some(true),
     };
@@ -597,6 +599,7 @@ fn namespaced_element_names_use_retained_bindings_and_undeclare_defaults() {
         include_content_type: None,
         byte_order_mark: None,
         normalization_form: None,
+        standalone: None,
         omit_xml_declaration: true,
         indent: None,
     };
@@ -642,6 +645,7 @@ fn text_output_concatenates_descendant_text_without_markup_or_escaping() {
         include_content_type: Some(true),
         byte_order_mark: None,
         normalization_form: None,
+        standalone: None,
         omit_xml_declaration: false,
         indent: None,
     };
@@ -676,6 +680,7 @@ fn xml_compatible_xhtml_output_honors_explicit_declaration_omission() {
         include_content_type: None,
         byte_order_mark: None,
         normalization_form: None,
+        standalone: None,
         omit_xml_declaration: true,
         indent: Some(false),
     };
@@ -702,6 +707,7 @@ fn string_serialization_accepts_utf8_without_bom_and_rejects_bom_emission() {
         include_content_type: None,
         byte_order_mark: Some(false),
         normalization_form: None,
+        standalone: None,
         omit_xml_declaration: false,
         indent: Some(false),
     };
@@ -748,6 +754,7 @@ fn byte_serialization_emits_bounded_ascii_iso_8859_1() {
         include_content_type: None,
         byte_order_mark: Some(false),
         normalization_form: None,
+        standalone: None,
         omit_xml_declaration: false,
         indent: Some(false),
     };
@@ -786,6 +793,7 @@ fn byte_serialization_emits_and_accounts_for_a_utf8_byte_order_mark() {
         include_content_type: None,
         byte_order_mark: Some(true),
         normalization_form: None,
+        standalone: None,
         omit_xml_declaration: false,
         indent: Some(false),
     };

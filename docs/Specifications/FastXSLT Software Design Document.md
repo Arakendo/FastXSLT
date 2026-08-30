@@ -357,6 +357,9 @@ general encoding support. Compiled output metadata may explicitly retain
 `normalization-form="none"`, which preserves result characters byte-for-byte;
 other normalization forms remain unsupported until backed by a complete
 Unicode normalization implementation rather than case-specific substitutions.
+The XML-compatible lane also retains canonical standalone `yes`, `no`, and
+`omit` metadata; `yes` and `no` become declaration pseudo-attributes, while
+`omit` emits none. This does not yet select output-declaration merging.
 
 ### Resource snapshots and volume execution
 

@@ -53,6 +53,7 @@ struct OutputInspection {
     include_content_type: Option<bool>,
     byte_order_mark: Option<bool>,
     normalization_form: Option<String>,
+    standalone: Option<String>,
     omit_xml_declaration: bool,
     indent: Option<bool>,
 }
@@ -168,6 +169,7 @@ fn output_text_bytes(output: &OutputSettings) -> Option<usize> {
         .checked_add(output.encoding.as_ref().map_or(0, String::len))?
         .checked_add(output.media_type.as_ref().map_or(0, String::len))?
         .checked_add(output.normalization_form.as_ref().map_or(0, String::len))
+        .and_then(|bytes| bytes.checked_add(output.standalone.as_ref().map_or(0, String::len)))
 }
 
 fn inspect_output(output: &OutputSettings) -> OutputInspection {
@@ -178,6 +180,7 @@ fn inspect_output(output: &OutputSettings) -> OutputInspection {
         include_content_type: output.include_content_type,
         byte_order_mark: output.byte_order_mark,
         normalization_form: output.normalization_form.clone(),
+        standalone: output.standalone.clone(),
         omit_xml_declaration: output.omit_xml_declaration,
         indent: output.indent,
     }
@@ -307,6 +310,7 @@ mod tests {
                     include_content_type: None,
                     byte_order_mark: None,
                     normalization_form: None,
+                    standalone: None,
                     omit_xml_declaration: true,
                     indent: None,
                 },

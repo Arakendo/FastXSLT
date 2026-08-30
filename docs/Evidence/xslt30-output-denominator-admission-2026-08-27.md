@@ -6,18 +6,19 @@
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/decl/output/_output-test-set.xml` |
 | Discovered cases | 232 |
-| Current disposition | 24 passed; 208 harness-unsupported |
+| Current disposition | 31 passed; 201 harness-unsupported |
 
 ## Conserved inventory
 
 The private XSLT30 adapter now parses the complete pinned `decl/output` test
 set and requires all 232 distinct native case identities. A first-party
 set-level overlay applies an explicit default disposition to the immutable
-complete denominator: `harness-unsupported / not-run`. Twenty-four named overrides now
+complete denominator: `harness-unsupported / not-run`. Thirty-one named overrides now
 select a bounded XML-compatible XHTML declaration tranche plus `output-0128`
 and the XML/text cases `output-0129`, `output-0165`, `output-0166`,
 `output-0171`, `output-0172`, `output-0139`, `output-0168`, and
-`output-0170`, and `output-0131` as passed. The other 208
+`output-0170`, and `output-0131` as passed, together with seven standalone
+lexical cases. The other 201
 cases remain harness-unsupported,
 not engine-unsupported, because their serialization assertions or execution
 adapter paths have not yet been exercised far enough to distinguish engine
@@ -155,6 +156,13 @@ shape; it does not interpret arbitrary `any-of` trees. Adjacent `output-0173`
 remains separate because it simultaneously requires output-declaration merging,
 standalone metadata, and CDATA serialization.
 
+Cases `output-0149`, `0149a`, `0149b`, `0150`, `0150a`, `0150b`, and `0152`
+retain standalone metadata through compilation, bounded inspection, and XML
+declaration serialization. XSLT 2.0 admits `yes`, `no`, and `omit`; XSLT 3.0
+boolean and numeric lexicals canonicalize to `yes` or `no`. Exact upstream file
+comparisons prove `omit` emits no standalone pseudo-attribute. This discharges
+one prerequisite for `0173` without admitting declaration merging or CDATA.
+
 Case `output-0127` is the first passed composite serialization assertion. The
 harness requires its top-level `all-of`, executes both child
 `serialization-matches` assertions, and admits only a comparator subset made of
@@ -168,10 +176,10 @@ assertion engine.
 ## Claim boundary
 
 This checkpoint proves denominator discovery, metadata classification, file
-resolution by the harness, bounded memory admission, and twenty-four exact or
+resolution by the harness, bounded memory admission, and thirty-one exact or
 bounded-comparator upstream executions, including one byte-exact UTF-8 BOM
 XML case and a paired BOM/no-BOM text control. It does not establish the first
-unsupported frontier for the other 208
+unsupported frontier for the other 201
 cases or claim general XML/HTML/XHTML/text serialization
 conformance.
 

@@ -907,6 +907,7 @@ mod tests {
         assert_eq!(program.output.include_content_type, None);
         assert_eq!(program.output.byte_order_mark, None);
         assert_eq!(program.output.normalization_form, None);
+        assert_eq!(program.output.standalone, None);
         assert!(!program.output.omit_xml_declaration);
     }
 

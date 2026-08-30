@@ -233,6 +233,27 @@ fn executes_output_0131_as_a_multi_root_xhtml_result() {
 }
 
 #[test]
+fn executes_xhtml_standalone_yes_no_and_omit_variants() {
+    for case_name in [
+        "output-0149",
+        "output-0149a",
+        "output-0149b",
+        "output-0150",
+        "output-0150a",
+        "output-0150b",
+        "output-0152",
+    ] {
+        let execution = execute_assert_serialization_case(case_name, "xhtml");
+        assert_eq!(execution.method.as_deref(), Some("xhtml"), "{case_name}");
+        assert_eq!(
+            execution.expected.as_deref(),
+            Some(execution.actual.as_str()),
+            "{case_name}"
+        );
+    }
+}
+
+#[test]
 fn executes_xml_and_text_with_normalization_form_none() {
     let decomposed = "A\u{301}";
     let xml = execute_output_bytes_case("output-0168");
