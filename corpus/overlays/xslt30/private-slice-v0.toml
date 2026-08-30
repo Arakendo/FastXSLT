@@ -856,6 +856,13 @@ rationale = "The case explicitly requests XSLT 1.0/2.0 recover behavior for the 
 
 [[case]]
 set_file = "tests/decl/include/_include-test-set.xml"
+case_name = "include-0702b"
+selection = "selected"
+execution = "passed"
+rationale = "The case explicitly requests XSLT 1.0/2.0 error behavior for the same five-module graph; the private invocation policy reports concrete XTDE0540 for its tied principal-precedence title rules."
+
+[[case]]
+set_file = "tests/decl/include/_include-test-set.xml"
 case_name = "include-0702c"
 selection = "selected"
 execution = "passed"

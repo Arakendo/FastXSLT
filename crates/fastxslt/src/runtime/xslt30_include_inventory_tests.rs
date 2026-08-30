@@ -7,8 +7,8 @@ use std::{
 };
 
 use super::{
-    ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, compile_resource,
-    execute_transform_set,
+    ExecutionFailure, ExecutionPolicy, FailureCategory, InvocationEntry, MultipleMatchPolicy,
+    TransformRequest, TransformSetBuilder, compile_resource, execute_transform_set,
 };
 use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
@@ -33,7 +33,7 @@ const CASE_NAMES: [&str; 16] = [
     "include-0702c",
     "include-0801",
 ];
-const PASSED_CASES: [&str; 13] = [
+const PASSED_CASES: [&str; 14] = [
     "include-0103",
     "include-0104",
     "include-0105",
@@ -45,6 +45,7 @@ const PASSED_CASES: [&str; 13] = [
     "include-0601",
     "include-0701",
     "include-0702a",
+    "include-0702b",
     "include-0702c",
     "include-0801",
 ];
@@ -272,6 +273,50 @@ fn executes_include_0702c_with_xslt30_default_recovery() {
 }
 
 #[test]
+fn reports_include_0702b_with_declared_error_policy() {
+    let document = load_test_set();
+    let case = case_named(&document, "include-0702b");
+    let dependencies = child_named(&document, case, "dependencies").expect("dependencies");
+    assert_eq!(
+        child_named(&document, dependencies, "spec")
+            .and_then(|node| attribute(&document, node, "value")),
+        Some("XSLT10 XSLT20")
+    );
+    assert_eq!(
+        child_named(&document, dependencies, "on-multiple-match")
+            .and_then(|node| attribute(&document, node, "value")),
+        Some("error")
+    );
+
+    let execution =
+        try_execute_inline_case_with_dependencies("include-0702b", MultipleMatchPolicy::Error);
+    assert_eq!(execution.expected_error.as_deref(), Some("XTRE0540"));
+    assert_eq!(
+        execution
+            .import_precedences
+            .iter()
+            .filter(|precedence| **precedence < 0)
+            .count(),
+        4
+    );
+    assert_eq!(
+        execution
+            .import_precedences
+            .iter()
+            .filter(|precedence| **precedence == 0)
+            .count(),
+        6
+    );
+    let failure = execution
+        .result
+        .expect_err("the principal-precedence title rules should conflict");
+    assert_eq!(failure.code, "XTDE0540");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+    assert_eq!(failure.request_id.as_deref(), Some("include-0702b"));
+    assert!(failure.location.is_some());
+}
+
+#[test]
 fn executes_include_0801_two_nested_import_branches() {
     let execution = execute_inline_case_with_dependencies("include-0801");
     assert_eq!(
@@ -312,6 +357,30 @@ struct DependencyCaseExecution {
 }
 
 fn execute_inline_case_with_dependencies(case_name: &str) -> DependencyCaseExecution {
+    let attempt =
+        try_execute_inline_case_with_dependencies(case_name, MultipleMatchPolicy::UseLast);
+    DependencyCaseExecution {
+        actual: attempt.result.expect("execute dependency case"),
+        expected: attempt.expected.expect("dependency case XML assertion"),
+        import_precedences: attempt.import_precedences,
+        global_text_defaults: attempt.global_text_defaults,
+        named_template_names: attempt.named_template_names,
+    }
+}
+
+struct DependencyCaseAttempt {
+    result: Result<String, ExecutionFailure>,
+    expected: Option<String>,
+    expected_error: Option<String>,
+    import_precedences: Vec<i32>,
+    global_text_defaults: Vec<(String, String)>,
+    named_template_names: Vec<String>,
+}
+
+fn try_execute_inline_case_with_dependencies(
+    case_name: &str,
+    multiple_match_policy: MultipleMatchPolicy,
+) -> DependencyCaseAttempt {
     let document = load_test_set();
     let case = element_children(&document, document_element(&document))
         .into_iter()
@@ -335,16 +404,17 @@ fn execute_inline_case_with_dependencies(case_name: &str) -> DependencyCaseExecu
         },
         |content| document.string_value(content).into_bytes(),
     );
-    let assertion = child_named(
-        &document,
-        child_named(&document, case, "result").expect("result metadata"),
-        "assert-xml",
-    )
-    .expect("XML assertion");
-    let expected = attribute(&document, assertion, "file").map_or_else(
-        || document.string_value(assertion),
-        |file| fs::read_to_string(directory.join(file)).expect("read expected XML"),
-    );
+    let result = child_named(&document, case, "result").expect("result metadata");
+    let expected = child_named(&document, result, "assert-xml").map(|assertion| {
+        attribute(&document, assertion, "file").map_or_else(
+            || document.string_value(assertion),
+            |file| fs::read_to_string(directory.join(file)).expect("read expected XML"),
+        )
+    });
+    let expected_error = child_named(&document, result, "error")
+        .and_then(|error| attribute(&document, error, "code"))
+        .map(str::to_owned);
+    assert_ne!(expected.is_some(), expected_error.is_some());
     let principal_id = format!(
         "https://example.invalid/xslt30/decl/include/{}",
         stylesheet_files[0]
@@ -381,7 +451,8 @@ fn execute_inline_case_with_dependencies(case_name: &str) -> DependencyCaseExecu
             serialized_byte_limit: 8_192,
             work_limits: WorkLimits::unbounded(),
         },
-    );
+    )
+    .with_multiple_match_policy(multiple_match_policy);
     set.add(TransformRequest {
         identity: case_name.to_owned(),
         result_identity: format!("urn:w3c:xslt30:decl:include:{case_name}:result"),
@@ -393,10 +464,12 @@ fn execute_inline_case_with_dependencies(case_name: &str) -> DependencyCaseExecu
         cancellation_fault: None,
     })
     .expect("admit dependency request");
-    let results = execute_transform_set(set.seal()).expect("execute dependency case");
-    DependencyCaseExecution {
-        actual: results.by_request[case_name].serialized.clone(),
+    let result = execute_transform_set(set.seal())
+        .map(|results| results.by_request[case_name].serialized.clone());
+    DependencyCaseAttempt {
+        result,
         expected,
+        expected_error,
         import_precedences,
         global_text_defaults,
         named_template_names,

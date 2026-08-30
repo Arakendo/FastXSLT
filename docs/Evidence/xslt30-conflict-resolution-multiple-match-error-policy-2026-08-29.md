@@ -48,5 +48,6 @@ native error assertion shapes in that set are executed.
 
 This is private reference-path and corpus evidence. It does not expose a public
 Rust or host-adapter policy, select a general XSLT 1.0/2.0 compatibility mode,
-or admit the separate `include-0702b` case. Warning delivery for recovery mode
-also remains outside this tranche.
+or, within this tranche, admit the separate `include-0702b` case. That case was
+subsequently admitted through the same private policy seam. Warning delivery
+for recovery mode remains outside this evidence.

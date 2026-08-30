@@ -38,3 +38,12 @@ pass, not conformance evidence.
 
 The conserved 16-case include denominator now has 12 explicit passes and four
 visible not-run dispositions.
+
+## Subsequent disposition
+
+Later on 2026-08-29, the private invocation-local error policy admitted
+`include-0702b` without reusing the recovery path. See
+[the dedicated error-policy evidence](xslt30-include-0702b-multiple-match-error-2026-08-29.md).
+The current denominator is therefore 14 passes and two DTD-dependent not-run
+cases; the figures above preserve this record's earlier positive-variant
+checkpoint.

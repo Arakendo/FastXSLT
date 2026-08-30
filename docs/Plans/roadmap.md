@@ -1100,6 +1100,12 @@ failed, and harness-error cases without an unqualified conformance claim.
     All positive cases in the set now execute; the denominator records 13
     passes and 3 explicit non-passes for two DTD-dependent cases and the
     expected multiple-match error case.
+  - [x] Execute `include-0702b` through the same sealed five-module graph under
+    its explicit `on-multiple-match=error` dependency. Reuse the private
+    invocation policy to report concrete `XTDE0540` for the tied
+    principal-precedence `title` rules while retaining the graph's four lower-
+    and six principal-precedence rules. The denominator now records 14 passes
+    and 2 explicit DTD-dependent non-passes.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.

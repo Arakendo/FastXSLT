@@ -75,6 +75,12 @@ execution = "passed"
 rationale = "Executes the same sealed five-module graph under the case's XSLT 1.0/2.0 metadata and explicit on-multiple-match=recover dependency, preserving the distinction between requested recovery and an implicit engine default."
 
 [[case_override]]
+case_name = "include-0702b"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the same sealed five-module graph under its explicit on-multiple-match=error dependency and reports concrete dynamic error XTDE0540 for the tied principal-precedence title rules, satisfying the suite's XTRE0540 pattern."
+
+[[case_override]]
 case_name = "include-0702c"
 selection = "selected"
 execution = "passed"

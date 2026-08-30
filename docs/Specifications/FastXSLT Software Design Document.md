@@ -243,9 +243,9 @@ each imported leaf remains lower for `xsl:apply-imports`. This is corpus-bound
 evidence, not a general precedence-graph or configurable conflict-policy model.
 The private path admits both the suite's explicit recover request for its
 XSLT 1.0/2.0 variant and its XSLT 3.0+ positive variant. The same private
-policy seam now has corpus evidence for error-on-multiple-match in the
-apply-templates set, but it is not exposed as a host-selectable contract; the
-corresponding include-set error case remains a separate admission task.
+policy seam now has corpus evidence for error-on-multiple-match in both the
+apply-templates set and the exact five-module `include-0702b` graph, but it is
+not exposed as a host-selectable contract.
 
 A second five-module topology admits two leading imports from the principal,
 each with one leaf import. The first leaf, first branch, second leaf, second
