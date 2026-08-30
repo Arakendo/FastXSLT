@@ -906,7 +906,26 @@ mod tests {
         assert_eq!(program.output.media_type, None);
         assert_eq!(program.output.include_content_type, None);
         assert_eq!(program.output.byte_order_mark, None);
+        assert_eq!(program.output.normalization_form, None);
         assert!(!program.output.omit_xml_declaration);
+    }
+
+    #[test]
+    fn retains_no_normalization_and_rejects_unimplemented_normalization() {
+        let none = parse_stylesheet(
+            "memory:no-normalization.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" normalization-form="none"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
+        );
+        let nfc = parse_stylesheet(
+            "memory:nfc-normalization.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" normalization-form="NFC"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
+        );
+
+        let program = compile_stylesheet(&none).expect("none should preserve result characters");
+        assert_eq!(program.output.normalization_form.as_deref(), Some("none"));
+        let failure = compile_stylesheet(&nfc).expect_err("NFC needs real Unicode normalization");
+        assert_eq!(failure.code, "FXST1017");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
     }
 
     #[test]

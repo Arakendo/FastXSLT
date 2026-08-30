@@ -222,6 +222,21 @@ fn executes_xhtml_utf8_multibyte_text_bytes() {
     assert!(bytes.ends_with(b"Hello\xc3\x81</body></html>"));
 }
 
+#[test]
+fn executes_xml_and_text_with_normalization_form_none() {
+    let decomposed = "A\u{301}";
+    let xml = execute_output_bytes_case("output-0168");
+    assert_eq!(
+        xml,
+        format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><html><body>{decomposed}</body></html>")
+            .as_bytes()
+    );
+    assert!(xml.windows(3).any(|bytes| bytes == [0x41, 0xcc, 0x81]));
+
+    let text = execute_output_bytes_case("output-0170");
+    assert_eq!(text, decomposed.as_bytes());
+}
+
 struct SerializationExecution {
     method: Option<String>,
     encoding: Option<String>,

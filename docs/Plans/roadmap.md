@@ -807,6 +807,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   body bytes and require `Á` to remain the exact `C3 81` sequence, without
   claiming UTF-16, normalization, or general encoding support. The output
   ledger now records 21 passes and 211 visible harness gaps.
+- [x] Execute `output-0168` and `output-0170` by retaining
+  `normalization-form="none"` in compiled output metadata and preserving the
+  exact decomposed `41 CC 81` UTF-8 bytes for XML and text methods. Keep NFC
+  cases `0167` and `0169` explicitly unsupported until a real Unicode
+  normalization implementation and dependency review exist. The output ledger
+  now records 23 passes and 209 visible harness gaps.
 - [x] Execute `output-0127` through its upstream `all-of` using a harness-owned
   literal-plus-required-whitespace serialization matcher that rejects every
   unadmitted regex operator. Preserve 221 visible harness gaps and make no broad

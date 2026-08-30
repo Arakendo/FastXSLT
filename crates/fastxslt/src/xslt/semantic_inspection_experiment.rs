@@ -2,7 +2,9 @@
 
 use std::collections::BTreeMap;
 
-use super::golden_semantics_experiment::{GlobalBindingKind, Instruction, StylesheetProgram};
+use super::golden_semantics_experiment::{
+    GlobalBindingKind, Instruction, OutputSettings, StylesheetProgram,
+};
 
 #[derive(Debug, Clone, Copy)]
 struct InspectionLimits {
@@ -50,6 +52,7 @@ struct OutputInspection {
     media_type: Option<String>,
     include_content_type: Option<bool>,
     byte_order_mark: Option<bool>,
+    normalization_form: Option<String>,
     omit_xml_declaration: bool,
     indent: Option<bool>,
 }
@@ -77,13 +80,7 @@ fn inspect_compiled(
     let text_bytes = stylesheet_identity
         .len()
         .checked_add(program.declared_version.len())
-        .and_then(|bytes| bytes.checked_add(program.output.method.as_ref().map_or(0, String::len)))
-        .and_then(|bytes| {
-            bytes.checked_add(program.output.encoding.as_ref().map_or(0, String::len))
-        })
-        .and_then(|bytes| {
-            bytes.checked_add(program.output.media_type.as_ref().map_or(0, String::len))
-        })
+        .and_then(|bytes| output_text_bytes(&program.output)?.checked_add(bytes))
         .and_then(|bytes| {
             bytes.checked_add(program.root_template_modes.iter().map(String::len).sum())
         })
@@ -128,15 +125,7 @@ fn inspect_compiled(
     Ok(CompiledInspection {
         stylesheet_identity: stylesheet_identity.to_owned(),
         declared_version: program.declared_version.clone(),
-        output: OutputInspection {
-            method: program.output.method.clone(),
-            encoding: program.output.encoding.clone(),
-            media_type: program.output.media_type.clone(),
-            include_content_type: program.output.include_content_type,
-            byte_order_mark: program.output.byte_order_mark,
-            omit_xml_declaration: program.output.omit_xml_declaration,
-            indent: program.output.indent,
-        },
+        output: inspect_output(&program.output),
         root_template_count: usize::from(program.root_template.is_some()),
         root_template_modes: program.root_template_modes.clone(),
         exact_element_template_count: program
@@ -169,6 +158,29 @@ fn inspect_compiled(
             })
             .collect(),
     })
+}
+
+fn output_text_bytes(output: &OutputSettings) -> Option<usize> {
+    output
+        .method
+        .as_ref()
+        .map_or(0, String::len)
+        .checked_add(output.encoding.as_ref().map_or(0, String::len))?
+        .checked_add(output.media_type.as_ref().map_or(0, String::len))?
+        .checked_add(output.normalization_form.as_ref().map_or(0, String::len))
+}
+
+fn inspect_output(output: &OutputSettings) -> OutputInspection {
+    OutputInspection {
+        method: output.method.clone(),
+        encoding: output.encoding.clone(),
+        media_type: output.media_type.clone(),
+        include_content_type: output.include_content_type,
+        byte_order_mark: output.byte_order_mark,
+        normalization_form: output.normalization_form.clone(),
+        omit_xml_declaration: output.omit_xml_declaration,
+        indent: output.indent,
+    }
 }
 
 fn observe_instructions(
@@ -294,6 +306,7 @@ mod tests {
                     media_type: Some("application/xml".to_owned()),
                     include_content_type: None,
                     byte_order_mark: None,
+                    normalization_form: None,
                     omit_xml_declaration: true,
                     indent: None,
                 },

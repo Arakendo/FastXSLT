@@ -15,6 +15,7 @@ pub(in crate::compile) fn default_output_settings() -> OutputSettings {
         media_type: None,
         include_content_type: None,
         byte_order_mark: None,
+        normalization_form: None,
         omit_xml_declaration: false,
         indent: None,
     }
@@ -34,6 +35,7 @@ pub(super) fn compile_output(
             "media-type",
             "include-content-type",
             "byte-order-mark",
+            "normalization-form",
             "omit-xml-declaration",
             "indent",
         ],
@@ -102,12 +104,24 @@ pub(super) fn compile_output(
             )
         })
         .transpose()?;
+    let normalization_form = optional_attribute(document, element, None, "normalization-form");
+    if normalization_form.is_some_and(|value| value != "none") {
+        return Err(unsupported(
+            "FXST1017",
+            format!(
+                "unsupported output normalization form: {}",
+                normalization_form.unwrap_or_default()
+            ),
+            document.location(element),
+        ));
+    }
     Ok(OutputSettings {
         method: method.map(str::to_owned),
         encoding: encoding.map(str::to_owned),
         media_type: optional_attribute(document, element, None, "media-type").map(str::to_owned),
         include_content_type,
         byte_order_mark,
+        normalization_form: normalization_form.map(str::to_owned),
         omit_xml_declaration,
         indent,
     })

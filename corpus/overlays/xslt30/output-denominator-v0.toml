@@ -123,6 +123,12 @@ execution = "passed"
 rationale = "Executes UTF-8 XML serialization with byte-order-mark=no, verifies the string result has no leading BOM, and compares exactly after the case-specific checkout-EOL correction."
 
 [[case_override]]
+case_name = "output-0168"
+selection = "selected"
+execution = "passed"
+rationale = "Retains normalization-form=none as immutable output metadata and verifies the XML byte result preserves the exact decomposed A plus combining-acute UTF-8 sequence."
+
+[[case_override]]
 case_name = "output-0171"
 selection = "selected"
 execution = "passed"
@@ -133,6 +139,12 @@ case_name = "output-0172"
 selection = "selected"
 execution = "passed"
 rationale = "Executes the paired UTF-8 text serialization with byte-order-mark=no and verifies the exact descendant text bytes contain no leading mark."
+
+[[case_override]]
+case_name = "output-0170"
+selection = "selected"
+execution = "passed"
+rationale = "Retains normalization-form=none for text output and verifies the exact decomposed A plus combining-acute UTF-8 bytes without markup or normalization."
 
 [[assertion_family]]
 name = "all-of"

@@ -353,7 +353,10 @@ mark, and the ASCII subset of ISO-8859-1. It charges marks, declarations, and
 body bytes and rejects non-ASCII ISO-8859-1 output rather than substituting
 characters or returning a mislabeled UTF-8 string. This is executable
 serialization evidence, not selection of a public byte-result contract or
-general encoding support.
+general encoding support. Compiled output metadata may explicitly retain
+`normalization-form="none"`, which preserves result characters byte-for-byte;
+other normalization forms remain unsupported until backed by a complete
+Unicode normalization implementation rather than case-specific substitutions.
 
 ### Resource snapshots and volume execution
 
