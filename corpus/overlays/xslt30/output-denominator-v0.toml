@@ -87,6 +87,12 @@ execution = "passed"
 rationale = "Executes XML-compatible XHTML serialization with explicit UTF-8 and verifies the exact declaration, namespace, and multibyte encoding of the non-ASCII result text."
 
 [[case_override]]
+case_name = "output-0147"
+selection = "selected"
+execution = "passed"
+rationale = "Composes normalization-form=none with XML-compatible XHTML serialization and verifies the exact decomposed A plus combining-acute UTF-8 bytes in the complete result."
+
+[[case_override]]
 case_name = "output-0148"
 selection = "selected"
 execution = "passed"

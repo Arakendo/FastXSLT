@@ -268,6 +268,20 @@ fn executes_xml_and_text_with_normalization_form_none() {
     assert_eq!(text, decomposed.as_bytes());
 }
 
+#[test]
+fn executes_xhtml_with_normalization_form_none() {
+    let decomposed = "A\u{301}";
+    let bytes = execute_output_bytes_case("output-0147");
+    assert_eq!(
+        bytes,
+        format!(
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\"><body>{decomposed}</body></html>"
+        )
+        .as_bytes()
+    );
+    assert!(bytes.windows(3).any(|part| part == [0x41, 0xcc, 0x81]));
+}
+
 struct SerializationExecution {
     method: Option<String>,
     encoding: Option<String>,

@@ -825,6 +825,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   lexical distinctions and treat this as one prerequisite for `output-0173`,
   not admission of declaration merging or CDATA. The output ledger now records
   31 passes and 201 visible harness gaps.
+- [x] Execute `output-0147` by composing `normalization-form="none"` with the
+  XML-compatible XHTML byte lane and preserving the exact decomposed
+  `41 CC 81` sequence. Keep NFC sibling `0146` unsupported until real Unicode
+  normalization exists. The output ledger now records 32 passes and 200 visible
+  harness gaps.
 - [x] Execute `output-0127` through its upstream `all-of` using a harness-owned
   literal-plus-required-whitespace serialization matcher that rejects every
   unadmitted regex operator. Preserve 221 visible harness gaps and make no broad
