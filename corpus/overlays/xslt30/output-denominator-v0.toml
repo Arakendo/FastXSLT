@@ -75,6 +75,24 @@ execution = "passed"
 rationale = "Executes the XSLT 3.0 numeric-one lexical form for XHTML declaration omission and exact file comparison after the case-specific checkout-EOL correction."
 
 [[case_override]]
+case_name = "output-0111"
+selection = "selected"
+execution = "passed"
+rationale = "Retains an XHTML doctype-system property and verifies the complete XML declaration, SYSTEM doctype, namespace-qualified root, and paired element result."
+
+[[case_override]]
+case_name = "output-0112"
+selection = "selected"
+execution = "passed"
+rationale = "Retains a doctype-public property without a system identifier and verifies that the bounded XHTML serializer emits no doctype, as required by the upstream XSLT 2.0 control."
+
+[[case_override]]
+case_name = "output-0113"
+selection = "selected"
+execution = "passed"
+rationale = "Retains paired XHTML public and system identifiers and verifies the complete PUBLIC doctype serialization before the namespace-qualified root."
+
+[[case_override]]
 case_name = "output-0114"
 selection = "selected"
 execution = "passed"

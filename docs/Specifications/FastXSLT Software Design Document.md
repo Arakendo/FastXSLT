@@ -385,6 +385,11 @@ continues to use XML escaping; the raw-text conventions of the HTML method are
 not inferred from element names. Selected XHTML CDATA elements use the same
 expanded-name matching and terminator-splitting behavior as XML output, so a
 literal `]]>` becomes adjacent CDATA sections without changing result text.
+DOCTYPE system and public identifiers are retained as compiled output metadata.
+The current serializer emits SYSTEM or paired PUBLIC declarations only for an
+XHTML `html` document element; a public identifier alone is inert. An emitted
+identifier containing both quote forms, or any other result shape, remains
+explicitly unsupported. Emitted bytes use the normal serialization budget.
 Unnamed output declarations may now merge only when their scalar properties do
 not overlap; repeated scalar properties remain explicitly unsupported until
 precedence and conflict semantics are implemented. `cdata-section-elements`

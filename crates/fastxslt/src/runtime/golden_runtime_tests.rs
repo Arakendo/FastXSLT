@@ -512,6 +512,8 @@ fn absent_output_declaration_does_not_silently_apply_html_serialization() {
         version: None,
         encoding: None,
         media_type: None,
+        doctype_system: None,
+        doctype_public: None,
         include_content_type: None,
         byte_order_mark: None,
         normalization_form: None,
@@ -587,6 +589,8 @@ fn requested_indentation_formats_only_element_only_child_sequences() {
         version: None,
         encoding: None,
         media_type: None,
+        doctype_system: None,
+        doctype_public: None,
         include_content_type: None,
         byte_order_mark: None,
         normalization_form: None,
@@ -646,6 +650,8 @@ fn xhtml_content_type_replaces_an_existing_meta_without_mutating_result_content(
         version: None,
         encoding: Some("UTF-8".to_owned()),
         media_type: Some("application/example+xml".to_owned()),
+        doctype_system: None,
+        doctype_public: None,
         include_content_type: Some(true),
         byte_order_mark: None,
         normalization_form: None,
@@ -705,6 +711,8 @@ fn serializer_uses_the_predefined_xml_prefix_without_a_namespace_declaration() {
         version: None,
         encoding: None,
         media_type: None,
+        doctype_system: None,
+        doctype_public: None,
         include_content_type: None,
         byte_order_mark: None,
         normalization_form: None,
@@ -761,6 +769,8 @@ fn namespaced_element_names_use_retained_bindings_and_undeclare_defaults() {
         version: None,
         encoding: None,
         media_type: None,
+        doctype_system: None,
+        doctype_public: None,
         include_content_type: None,
         byte_order_mark: None,
         normalization_form: None,
@@ -809,6 +819,8 @@ fn text_output_concatenates_descendant_text_without_markup_or_escaping() {
         version: None,
         encoding: None,
         media_type: None,
+        doctype_system: None,
+        doctype_public: None,
         include_content_type: Some(true),
         byte_order_mark: None,
         normalization_form: None,
@@ -846,6 +858,8 @@ fn xml_compatible_xhtml_output_honors_explicit_declaration_omission() {
         version: None,
         encoding: None,
         media_type: None,
+        doctype_system: None,
+        doctype_public: None,
         include_content_type: None,
         byte_order_mark: None,
         normalization_form: None,
@@ -866,6 +880,61 @@ fn xml_compatible_xhtml_output_honors_explicit_declaration_omission() {
 }
 
 #[test]
+fn xhtml_doctype_bytes_are_bounded_with_the_rest_of_serialization() {
+    let result = SemanticResult {
+        children: vec![ResultNode::Element {
+            name: crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: Some("http://www.w3.org/1999/xhtml".to_owned()),
+                local: "html".to_owned(),
+            },
+            namespaces: vec![crate::xml::quick_xml_experiment::NamespaceBinding {
+                prefix: None,
+                namespace: "http://www.w3.org/1999/xhtml".to_owned(),
+            }],
+            attributes: Vec::new(),
+            children: Vec::new(),
+        }],
+    };
+    let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
+        method: Some("xhtml".to_owned()),
+        version: None,
+        encoding: None,
+        media_type: None,
+        doctype_system: Some("out.dtd".to_owned()),
+        doctype_public: None,
+        include_content_type: None,
+        byte_order_mark: None,
+        normalization_form: None,
+        standalone: None,
+        cdata_section_elements: Vec::new(),
+        omit_xml_declaration: true,
+        indent: Some(false),
+    };
+    let expected =
+        "<!DOCTYPE html SYSTEM \"out.dtd\"><html xmlns=\"http://www.w3.org/1999/xhtml\"></html>";
+    let serialized = serialize_xml(
+        &result,
+        &settings,
+        "bounded-doctype",
+        expected.len(),
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("serialize a DOCTYPE at the exact byte limit");
+    assert_eq!(serialized, expected);
+
+    let failure = serialize_xml(
+        &result,
+        &settings,
+        "bounded-doctype",
+        expected.len() - 1,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect_err("DOCTYPE bytes must not bypass the serialized result limit");
+    assert_eq!(failure.code, "FXSR0002");
+    assert_eq!(failure.category, FailureCategory::Limit);
+}
+
+#[test]
 fn string_serialization_accepts_utf8_without_bom_and_rejects_bom_emission() {
     let result = SemanticResult {
         children: vec![ResultNode::Text("result".to_owned())],
@@ -875,6 +944,8 @@ fn string_serialization_accepts_utf8_without_bom_and_rejects_bom_emission() {
         version: None,
         encoding: Some("UTF-8".to_owned()),
         media_type: None,
+        doctype_system: None,
+        doctype_public: None,
         include_content_type: None,
         byte_order_mark: Some(false),
         normalization_form: None,
@@ -924,6 +995,8 @@ fn byte_serialization_emits_bounded_ascii_iso_8859_1() {
         version: None,
         encoding: Some("ISO-8859-1".to_owned()),
         media_type: None,
+        doctype_system: None,
+        doctype_public: None,
         include_content_type: None,
         byte_order_mark: Some(false),
         normalization_form: None,
@@ -965,6 +1038,8 @@ fn byte_serialization_emits_and_accounts_for_a_utf8_byte_order_mark() {
         version: None,
         encoding: Some("UTF-8".to_owned()),
         media_type: None,
+        doctype_system: None,
+        doctype_public: None,
         include_content_type: None,
         byte_order_mark: Some(true),
         normalization_form: None,

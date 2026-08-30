@@ -218,6 +218,39 @@ fn executes_xhtml_cdata_terminator_boundary_cases() {
 }
 
 #[test]
+fn executes_bounded_xhtml_doctype_variants() {
+    let system = execute_output_case("output-0111", None);
+    assert_eq!(system.doctype_system.as_deref(), Some("out.dtd"));
+    assert_eq!(system.doctype_public, None);
+    assert_eq!(
+        system.actual,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE html SYSTEM \"out.dtd\"><html xmlns=\"http://www.w3.org/1999/xhtml\"></html>"
+    );
+
+    let public_only = execute_output_case("output-0112", None);
+    assert_eq!(
+        public_only.doctype_public.as_deref(),
+        Some("-//BOAG//DTD Websites V1.3//EN")
+    );
+    assert_eq!(public_only.doctype_system, None);
+    assert_eq!(
+        public_only.actual,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\"></html>"
+    );
+
+    let paired = execute_output_case("output-0113", None);
+    assert_eq!(paired.doctype_system.as_deref(), Some("out.dtd"));
+    assert_eq!(
+        paired.doctype_public.as_deref(),
+        Some("-//BOAG//DTD Websites V1.3//EN")
+    );
+    assert_eq!(
+        paired.actual,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE html PUBLIC \"-//BOAG//DTD Websites V1.3//EN\" \"out.dtd\"><html xmlns=\"http://www.w3.org/1999/xhtml\"></html>"
+    );
+}
+
+#[test]
 fn executes_explicit_false_lexicals_for_retained_xhtml_declaration() {
     for case_name in ["output-0148", "output-0148a", "output-0148b"] {
         let execution = execute_assert_serialization_case(case_name, "xhtml");
@@ -481,6 +514,8 @@ struct SerializationExecution {
     method: Option<String>,
     version: Option<String>,
     encoding: Option<String>,
+    doctype_system: Option<String>,
+    doctype_public: Option<String>,
     include_content_type: Option<bool>,
     byte_order_mark: Option<bool>,
     omit_xml_declaration: bool,
@@ -552,6 +587,8 @@ fn execute_output_case(case_name: &str, assertion_method: Option<&str>) -> Seria
     let method = program.output.method.clone();
     let version = program.output.version.clone();
     let encoding = program.output.encoding.clone();
+    let doctype_system = program.output.doctype_system.clone();
+    let doctype_public = program.output.doctype_public.clone();
     let include_content_type = program.output.include_content_type;
     let byte_order_mark = program.output.byte_order_mark;
     let omit_xml_declaration = program.output.omit_xml_declaration;
@@ -588,6 +625,8 @@ fn execute_output_case(case_name: &str, assertion_method: Option<&str>) -> Seria
         method,
         version,
         encoding,
+        doctype_system,
+        doctype_public,
         include_content_type,
         byte_order_mark,
         omit_xml_declaration,

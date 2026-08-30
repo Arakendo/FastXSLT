@@ -11,12 +11,30 @@ use super::{
     optional_attribute, unsupported,
 };
 
+const OUTPUT_ATTRIBUTES: &[&str] = &[
+    "method",
+    "version",
+    "encoding",
+    "media-type",
+    "doctype-system",
+    "doctype-public",
+    "include-content-type",
+    "byte-order-mark",
+    "normalization-form",
+    "standalone",
+    "cdata-section-elements",
+    "omit-xml-declaration",
+    "indent",
+];
+
 pub(in crate::compile) fn default_output_settings() -> OutputSettings {
     OutputSettings {
         method: None,
         version: None,
         encoding: None,
         media_type: None,
+        doctype_system: None,
+        doctype_public: None,
         include_content_type: None,
         byte_order_mark: None,
         normalization_form: None,
@@ -38,24 +56,7 @@ pub(super) fn compile_output(
     element: NodeId,
     declared_version: &str,
 ) -> Result<OutputDeclaration, CompileFailure> {
-    ensure_only_attributes(
-        document,
-        element,
-        &[
-            "method",
-            "version",
-            "encoding",
-            "media-type",
-            "include-content-type",
-            "byte-order-mark",
-            "normalization-form",
-            "standalone",
-            "cdata-section-elements",
-            "omit-xml-declaration",
-            "indent",
-        ],
-        "xsl:output",
-    )?;
+    ensure_only_attributes(document, element, OUTPUT_ATTRIBUTES, "xsl:output")?;
     ensure_no_meaningful_children(document, element, "xsl:output")?;
     let method = optional_attribute(document, element, None, "method");
     if method.is_some_and(|method| !matches!(method, "xml" | "text" | "xhtml")) {
@@ -116,6 +117,10 @@ pub(super) fn compile_output(
         version: compile_serialization_version(document, element)?.map(str::to_owned),
         encoding: encoding.map(str::to_owned),
         media_type: optional_attribute(document, element, None, "media-type").map(str::to_owned),
+        doctype_system: optional_attribute(document, element, None, "doctype-system")
+            .map(str::to_owned),
+        doctype_public: optional_attribute(document, element, None, "doctype-public")
+            .map(str::to_owned),
         include_content_type,
         byte_order_mark,
         normalization_form: normalization_form.map(str::to_owned),
@@ -162,6 +167,14 @@ pub(super) fn merge_output(
     merge_optional(&mut existing.settings.version, next.settings.version);
     merge_optional(&mut existing.settings.encoding, next.settings.encoding);
     merge_optional(&mut existing.settings.media_type, next.settings.media_type);
+    merge_optional(
+        &mut existing.settings.doctype_system,
+        next.settings.doctype_system,
+    );
+    merge_optional(
+        &mut existing.settings.doctype_public,
+        next.settings.doctype_public,
+    );
     merge_optional(
         &mut existing.settings.include_content_type,
         next.settings.include_content_type,

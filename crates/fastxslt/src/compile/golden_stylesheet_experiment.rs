@@ -902,6 +902,8 @@ mod tests {
         assert_eq!(program.output.version, None);
         assert_eq!(program.output.encoding, None);
         assert_eq!(program.output.media_type, None);
+        assert_eq!(program.output.doctype_system, None);
+        assert_eq!(program.output.doctype_public, None);
         assert_eq!(program.output.include_content_type, None);
         assert_eq!(program.output.byte_order_mark, None);
         assert_eq!(program.output.normalization_form, None);
@@ -944,6 +946,22 @@ mod tests {
         let failure = compile_stylesheet(&xml_11).expect_err("XML 1.1 remains unadmitted");
         assert_eq!(failure.code, "FXST1021");
         assert_eq!(failure.category, CompileCategory::Unsupported);
+    }
+
+    #[test]
+    fn retains_doctype_identifiers_as_owned_serialization_metadata() {
+        let stylesheet = parse_stylesheet(
+            "memory:doctype-output.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xhtml" doctype-system="out.dtd" doctype-public="-//EXAMPLE//DTD Test//EN"/><xsl:template match="/"><html xmlns="http://www.w3.org/1999/xhtml"/></xsl:template></xsl:stylesheet>"#,
+        );
+
+        let program = compile_stylesheet(&stylesheet).expect("DOCTYPE metadata should compile");
+
+        assert_eq!(program.output.doctype_system.as_deref(), Some("out.dtd"));
+        assert_eq!(
+            program.output.doctype_public.as_deref(),
+            Some("-//EXAMPLE//DTD Test//EN")
+        );
     }
 
     #[test]

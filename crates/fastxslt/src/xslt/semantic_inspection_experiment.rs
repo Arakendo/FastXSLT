@@ -51,6 +51,8 @@ struct OutputInspection {
     version: Option<String>,
     encoding: Option<String>,
     media_type: Option<String>,
+    doctype_system: Option<String>,
+    doctype_public: Option<String>,
     include_content_type: Option<bool>,
     byte_order_mark: Option<bool>,
     normalization_form: Option<String>,
@@ -171,6 +173,8 @@ fn output_text_bytes(output: &OutputSettings) -> Option<usize> {
         .checked_add(output.version.as_ref().map_or(0, String::len))?
         .checked_add(output.encoding.as_ref().map_or(0, String::len))?
         .checked_add(output.media_type.as_ref().map_or(0, String::len))?
+        .checked_add(output.doctype_system.as_ref().map_or(0, String::len))?
+        .checked_add(output.doctype_public.as_ref().map_or(0, String::len))?
         .checked_add(output.normalization_form.as_ref().map_or(0, String::len))
         .and_then(|bytes| bytes.checked_add(output.standalone.as_ref().map_or(0, String::len)))
         .and_then(|bytes| {
@@ -190,6 +194,8 @@ fn inspect_output(output: &OutputSettings) -> OutputInspection {
         version: output.version.clone(),
         encoding: output.encoding.clone(),
         media_type: output.media_type.clone(),
+        doctype_system: output.doctype_system.clone(),
+        doctype_public: output.doctype_public.clone(),
         include_content_type: output.include_content_type,
         byte_order_mark: output.byte_order_mark,
         normalization_form: output.normalization_form.clone(),
@@ -322,6 +328,8 @@ mod tests {
                     version: None,
                     encoding: None,
                     media_type: Some("application/xml".to_owned()),
+                    doctype_system: None,
+                    doctype_public: None,
                     include_content_type: None,
                     byte_order_mark: None,
                     normalization_form: None,

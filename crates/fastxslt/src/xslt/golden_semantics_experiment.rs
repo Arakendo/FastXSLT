@@ -65,6 +65,8 @@ pub(crate) struct OutputSettings {
     pub(crate) version: Option<String>,
     pub(crate) encoding: Option<String>,
     pub(crate) media_type: Option<String>,
+    pub(crate) doctype_system: Option<String>,
+    pub(crate) doctype_public: Option<String>,
     pub(crate) include_content_type: Option<bool>,
     pub(crate) byte_order_mark: Option<bool>,
     pub(crate) normalization_form: Option<String>,

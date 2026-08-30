@@ -82,6 +82,7 @@ pub(in crate::runtime) fn serialize_xml(
         }
         output.push_str("?>")?;
     }
+    serialize_xhtml_doctype(result, settings, &mut output)?;
     let xhtml_media_type = (settings.method.as_deref() == Some("xhtml")
         && settings.include_content_type != Some(false))
     .then(|| settings.media_type.as_deref().unwrap_or("text/html"));
@@ -97,6 +98,73 @@ pub(in crate::runtime) fn serialize_xml(
         )?;
     }
     Ok(output.finish())
+}
+
+fn serialize_xhtml_doctype(
+    result: &SemanticResult,
+    settings: &OutputSettings,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    let Some(system) = settings.doctype_system.as_deref() else {
+        return Ok(());
+    };
+    if settings.method.as_deref() != Some("xhtml") || !is_xhtml_html_document(result) {
+        return Err(failure(
+            "FXSR1007",
+            FailureCategory::Unsupported,
+            Some(&output.request_id),
+            "DOCTYPE serialization is currently bounded to an XHTML html document element",
+        ));
+    }
+    output.push_str("<!DOCTYPE html")?;
+    if let Some(public) = settings.doctype_public.as_deref() {
+        output.push_str(" PUBLIC ")?;
+        serialize_external_identifier(public, output)?;
+        output.push(' ')?;
+    } else {
+        output.push_str(" SYSTEM ")?;
+    }
+    serialize_external_identifier(system, output)?;
+    output.push('>')
+}
+
+fn is_xhtml_html_document(result: &SemanticResult) -> bool {
+    let mut root_seen = false;
+    for node in &result.children {
+        match node {
+            ResultNode::Text(value) if value.chars().all(char::is_whitespace) => {}
+            ResultNode::Element { name, .. }
+                if !root_seen
+                    && name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml")
+                    && name.local == "html" =>
+            {
+                root_seen = true;
+            }
+            _ => return false,
+        }
+    }
+    root_seen
+}
+
+fn serialize_external_identifier(
+    value: &str,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    let delimiter = if !value.contains('"') {
+        '"'
+    } else if !value.contains('\'') {
+        '\''
+    } else {
+        return Err(failure(
+            "FXSR1008",
+            FailureCategory::Unsupported,
+            Some(&output.request_id),
+            "DOCTYPE identifier containing both quote forms is outside the private slice",
+        ));
+    };
+    output.push(delimiter)?;
+    output.push_str(value)?;
+    output.push(delimiter)
 }
 
 #[cfg(test)]
