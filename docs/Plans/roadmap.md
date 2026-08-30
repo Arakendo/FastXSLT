@@ -842,6 +842,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   element in a different default namespace. Check every native `all-of`
   fragment without admitting a general regex comparator. The output ledger now
   records 35 passes and 197 visible harness gaps.
+- [x] Execute `output-0153` and `output-0156` as XML-compatible declaration
+  controls. Retain and emit only admitted serialization version `1.0`, reject
+  other versions as `FXST1021`, and prove `include-content-type="no"` remains
+  inert under XML output. The output ledger now records 37 passes and 195
+  visible harness gaps.
 - [x] Execute `output-0127` through its upstream `all-of` using a harness-owned
   literal-plus-required-whitespace serialization matcher that rejects every
   unadmitted regex operator. Preserve 221 visible harness gaps and make no broad

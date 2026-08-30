@@ -365,7 +365,9 @@ other normalization forms remain unsupported until backed by a complete
 Unicode normalization implementation rather than case-specific substitutions.
 The XML-compatible lane also retains canonical standalone `yes`, `no`, and
 `omit` metadata; `yes` and `no` become declaration pseudo-attributes, while
-`omit` emits none.
+`omit` emits none. An explicit serialization version is retained separately
+from the stylesheet language version; the current bounded lane admits and emits
+only XML `1.0`. XHTML-only content-type metadata remains inert for XML output.
 Unnamed output declarations may now merge only when their scalar properties do
 not overlap; repeated scalar properties remain explicitly unsupported until
 precedence and conflict semantics are implemented. `cdata-section-elements`

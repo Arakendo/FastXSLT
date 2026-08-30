@@ -6,20 +6,20 @@
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/decl/output/_output-test-set.xml` |
 | Discovered cases | 232 |
-| Current disposition | 35 passed; 197 harness-unsupported |
+| Current disposition | 37 passed; 195 harness-unsupported |
 
 ## Conserved inventory
 
 The private XSLT30 adapter now parses the complete pinned `decl/output` test
 set and requires all 232 distinct native case identities. A first-party
 set-level overlay applies an explicit default disposition to the immutable
-complete denominator: `harness-unsupported / not-run`. Thirty-five named overrides now
+complete denominator: `harness-unsupported / not-run`. Thirty-seven named overrides now
 select a bounded XML-compatible XHTML declaration tranche plus `output-0128`
 and the XML/text cases `output-0129`, `output-0165`, `output-0166`,
 `output-0171`, `output-0172`, `output-0139`, `output-0168`, and
 `output-0170`, and `output-0131` as passed, together with seven standalone
 lexical cases, the XHTML no-normalization control, and two bounded output-merge
-cases. The other 197
+cases. The other 195
 cases remain harness-unsupported,
 not engine-unsupported, because their serialization assertions or execution
 adapter paths have not yet been exercised far enough to distinguish engine
@@ -189,6 +189,15 @@ default namespace retain ordinary escaped text. Bounded literal-fragment checks
 cover every member of the upstream `all-of`; this does not admit a general
 regular-expression comparator.
 
+Case `output-0153` retains the explicitly requested XML serialization version
+`1.0` in compiled output state and emits it in the XML-compatible XHTML
+declaration. Other versions fail explicitly as unsupported `FXST1021`; the case
+does not claim XML 1.1 output or XHTML version/DOCTYPE rules beyond its complete
+admitted result. Case `output-0156` independently composes XML output with
+`include-content-type="no"` and proves the XHTML-only metadata remains inert:
+the exact result contains only the XML declaration and namespace-qualified
+`out` element.
+
 Case `output-0127` is the first passed composite serialization assertion. The
 harness requires its top-level `all-of`, executes both child
 `serialization-matches` assertions, and admits only a comparator subset made of
@@ -202,10 +211,10 @@ assertion engine.
 ## Claim boundary
 
 This checkpoint proves denominator discovery, metadata classification, file
-resolution by the harness, bounded memory admission, and thirty-five exact or
+resolution by the harness, bounded memory admission, and thirty-seven exact or
 bounded-comparator upstream executions, including one byte-exact UTF-8 BOM
 XML case and a paired BOM/no-BOM text control. It does not establish the first
-unsupported frontier for the other 197
+unsupported frontier for the other 195
 cases or claim general XML/HTML/XHTML/text serialization
 conformance.
 

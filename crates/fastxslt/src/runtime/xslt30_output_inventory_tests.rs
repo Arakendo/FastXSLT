@@ -272,6 +272,28 @@ fn executes_output_0138_with_expanded_name_cdata_selection() {
 }
 
 #[test]
+fn executes_output_0153_with_explicit_xml_10_serialization_version() {
+    let execution = execute_output_case("output-0153", None);
+    assert_eq!(execution.method.as_deref(), Some("xhtml"));
+    assert_eq!(execution.version.as_deref(), Some("1.0"));
+    assert_eq!(
+        execution.actual,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\"></html>"
+    );
+}
+
+#[test]
+fn executes_output_0156_with_inert_xml_content_type_setting() {
+    let execution = execute_output_case("output-0156", None);
+    assert_eq!(execution.method.as_deref(), Some("xml"));
+    assert_eq!(execution.include_content_type, Some(false));
+    assert_eq!(
+        execution.actual,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out xmlns=\"http://www.w3.org/1999/xhtml\">Hello</out>"
+    );
+}
+
+#[test]
 fn executes_output_0173_with_merged_standalone_and_cdata_settings() {
     let execution = execute_assert_serialization_case("output-0173", "xhtml");
     assert_eq!(execution.method.as_deref(), Some("xml"));
@@ -333,6 +355,7 @@ fn executes_xhtml_with_normalization_form_none() {
 
 struct SerializationExecution {
     method: Option<String>,
+    version: Option<String>,
     encoding: Option<String>,
     include_content_type: Option<bool>,
     byte_order_mark: Option<bool>,
@@ -403,6 +426,7 @@ fn execute_output_case(case_name: &str, assertion_method: Option<&str>) -> Seria
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, &stylesheet_id).expect("compile output case");
     let method = program.output.method.clone();
+    let version = program.output.version.clone();
     let encoding = program.output.encoding.clone();
     let include_content_type = program.output.include_content_type;
     let byte_order_mark = program.output.byte_order_mark;
@@ -438,6 +462,7 @@ fn execute_output_case(case_name: &str, assertion_method: Option<&str>) -> Seria
     });
     SerializationExecution {
         method,
+        version,
         encoding,
         include_content_type,
         byte_order_mark,

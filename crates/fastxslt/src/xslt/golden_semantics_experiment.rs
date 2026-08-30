@@ -62,6 +62,7 @@ pub(crate) enum ConstructedNode {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct OutputSettings {
     pub(crate) method: Option<String>,
+    pub(crate) version: Option<String>,
     pub(crate) encoding: Option<String>,
     pub(crate) media_type: Option<String>,
     pub(crate) include_content_type: Option<bool>,

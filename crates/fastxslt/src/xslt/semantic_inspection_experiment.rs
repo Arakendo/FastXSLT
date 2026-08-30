@@ -48,6 +48,7 @@ struct FeatureObservation {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct OutputInspection {
     method: Option<String>,
+    version: Option<String>,
     encoding: Option<String>,
     media_type: Option<String>,
     include_content_type: Option<bool>,
@@ -167,6 +168,7 @@ fn output_text_bytes(output: &OutputSettings) -> Option<usize> {
         .method
         .as_ref()
         .map_or(0, String::len)
+        .checked_add(output.version.as_ref().map_or(0, String::len))?
         .checked_add(output.encoding.as_ref().map_or(0, String::len))?
         .checked_add(output.media_type.as_ref().map_or(0, String::len))?
         .checked_add(output.normalization_form.as_ref().map_or(0, String::len))
@@ -185,6 +187,7 @@ fn output_text_bytes(output: &OutputSettings) -> Option<usize> {
 fn inspect_output(output: &OutputSettings) -> OutputInspection {
     OutputInspection {
         method: output.method.clone(),
+        version: output.version.clone(),
         encoding: output.encoding.clone(),
         media_type: output.media_type.clone(),
         include_content_type: output.include_content_type,
@@ -316,6 +319,7 @@ mod tests {
                 declared_version: "1.0".to_owned(),
                 output: OutputInspection {
                     method: Some("xml".to_owned()),
+                    version: None,
                     encoding: None,
                     media_type: Some("application/xml".to_owned()),
                     include_content_type: None,

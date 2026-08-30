@@ -177,6 +177,18 @@ execution = "passed"
 rationale = "Retains standalone=omit and proves the exact XHTML XML declaration contains no standalone pseudo-attribute."
 
 [[case_override]]
+case_name = "output-0153"
+selection = "selected"
+execution = "passed"
+rationale = "Retains the explicit XML 1.0 serialization version and verifies the complete XML-compatible XHTML declaration, namespace, and empty-element result while leaving other serialization versions unsupported."
+
+[[case_override]]
+case_name = "output-0156"
+selection = "selected"
+execution = "passed"
+rationale = "Executes XML output with include-content-type=no and verifies the complete declaration and namespace-qualified result without injecting XHTML content-type metadata."
+
+[[case_override]]
 case_name = "output-0165"
 selection = "selected"
 execution = "passed"

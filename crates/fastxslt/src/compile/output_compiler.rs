@@ -14,6 +14,7 @@ use super::{
 pub(in crate::compile) fn default_output_settings() -> OutputSettings {
     OutputSettings {
         method: None,
+        version: None,
         encoding: None,
         media_type: None,
         include_content_type: None,
@@ -42,6 +43,7 @@ pub(super) fn compile_output(
         element,
         &[
             "method",
+            "version",
             "encoding",
             "media-type",
             "include-content-type",
@@ -111,6 +113,7 @@ pub(super) fn compile_output(
         .transpose()?;
     let settings = OutputSettings {
         method: method.map(str::to_owned),
+        version: compile_serialization_version(document, element)?.map(str::to_owned),
         encoding: encoding.map(str::to_owned),
         media_type: optional_attribute(document, element, None, "media-type").map(str::to_owned),
         include_content_type,
@@ -156,6 +159,7 @@ pub(super) fn merge_output(
         ));
     }
     merge_optional(&mut existing.settings.method, next.settings.method);
+    merge_optional(&mut existing.settings.version, next.settings.version);
     merge_optional(&mut existing.settings.encoding, next.settings.encoding);
     merge_optional(&mut existing.settings.media_type, next.settings.media_type);
     merge_optional(
@@ -203,6 +207,24 @@ fn compile_encoding(document: &Document, element: NodeId) -> Result<Option<&str>
         ));
     }
     Ok(encoding)
+}
+
+fn compile_serialization_version(
+    document: &Document,
+    element: NodeId,
+) -> Result<Option<&str>, CompileFailure> {
+    let version = optional_attribute(document, element, None, "version");
+    if version.is_some_and(|value| value != "1.0") {
+        return Err(unsupported(
+            "FXST1021",
+            format!(
+                "unsupported output serialization version: {}",
+                version.unwrap_or_default()
+            ),
+            document.location(element),
+        ));
+    }
+    Ok(version)
 }
 
 fn compile_normalization_form(

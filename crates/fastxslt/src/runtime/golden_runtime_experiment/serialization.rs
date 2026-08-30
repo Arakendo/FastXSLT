@@ -80,7 +80,9 @@ pub(in crate::runtime) fn serialize_xml(
     }
     let mut output = BudgetedString::new(byte_limit, request_id, control);
     if !settings.omit_xml_declaration {
-        output.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"")?;
+        output.push_str("<?xml version=\"")?;
+        output.push_str(settings.version.as_deref().unwrap_or("1.0"))?;
+        output.push_str("\" encoding=\"UTF-8\"")?;
         if let Some(standalone @ ("yes" | "no")) = settings.standalone.as_deref() {
             output.push_str(" standalone=\"")?;
             output.push_str(standalone)?;

@@ -899,6 +899,7 @@ mod tests {
         let program = compile_stylesheet(&stylesheet).expect("stylesheet should compile");
 
         assert_eq!(program.output.method, None);
+        assert_eq!(program.output.version, None);
         assert_eq!(program.output.encoding, None);
         assert_eq!(program.output.media_type, None);
         assert_eq!(program.output.include_content_type, None);
@@ -924,6 +925,24 @@ mod tests {
         assert_eq!(program.output.normalization_form.as_deref(), Some("none"));
         let failure = compile_stylesheet(&nfc).expect_err("NFC needs real Unicode normalization");
         assert_eq!(failure.code, "FXST1017");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+    }
+
+    #[test]
+    fn retains_xml_10_serialization_version_and_rejects_unadmitted_versions() {
+        let xml_10 = parse_stylesheet(
+            "memory:xml-10-output.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xhtml" version="1.0"/><xsl:template match="/"><html/></xsl:template></xsl:stylesheet>"#,
+        );
+        let xml_11 = parse_stylesheet(
+            "memory:xml-11-output.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" version="1.1"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+        );
+
+        let program = compile_stylesheet(&xml_10).expect("XML 1.0 serialization should compile");
+        assert_eq!(program.output.version.as_deref(), Some("1.0"));
+        let failure = compile_stylesheet(&xml_11).expect_err("XML 1.1 remains unadmitted");
+        assert_eq!(failure.code, "FXST1021");
         assert_eq!(failure.category, CompileCategory::Unsupported);
     }
 
