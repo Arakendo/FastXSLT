@@ -37,6 +37,7 @@ pub(crate) struct NamespaceBinding {
 pub(crate) enum OwnedXmlEvent {
     Start {
         name: ExpandedName,
+        prefix: Option<String>,
         attributes: Vec<XmlAttribute>,
         namespaces: Vec<NamespaceBinding>,
         span: Range<usize>,
@@ -93,11 +94,13 @@ impl OwnedXmlEvent {
         match self {
             Self::Start {
                 name,
+                prefix,
                 attributes,
                 namespaces,
                 ..
             } => {
                 name.owned_capacity_bytes()
+                    + prefix.as_ref().map_or(0, String::capacity)
                     + attributes.capacity() * std::mem::size_of::<XmlAttribute>()
                     + attributes
                         .iter()
@@ -266,6 +269,7 @@ fn parse_bytes(
         match event {
             Event::Start(element) => {
                 let name = resolve_element_name(&reader, &element, start)?;
+                let prefix = lexical_prefix(element.name().as_ref(), start)?;
                 let attributes = resolve_attributes(&reader, &element, start)?;
                 let namespaces = resolve_namespace_declarations(&reader, &element, start)?;
                 if depth == 0 {
@@ -289,6 +293,7 @@ fn parse_bytes(
                 element_count += 1;
                 events.push(OwnedXmlEvent::Start {
                     name,
+                    prefix,
                     attributes,
                     namespaces,
                     span,
@@ -296,6 +301,7 @@ fn parse_bytes(
             }
             Event::Empty(element) => {
                 let name = resolve_element_name(&reader, &element, start)?;
+                let prefix = lexical_prefix(element.name().as_ref(), start)?;
                 let attributes = resolve_attributes(&reader, &element, start)?;
                 let namespaces = resolve_namespace_declarations(&reader, &element, start)?;
                 if depth == 0 {
@@ -318,6 +324,7 @@ fn parse_bytes(
                 element_count += 1;
                 events.push(OwnedXmlEvent::Start {
                     name: name.clone(),
+                    prefix,
                     attributes,
                     namespaces,
                     span: span.clone(),
@@ -421,6 +428,13 @@ fn resolve_element_name(
 ) -> Result<ExpandedName, ParseFailure> {
     let (namespace, local) = reader.resolver().resolve_element(element.name());
     expanded_name(namespace, local.as_ref(), offset)
+}
+
+fn lexical_prefix(name: &[u8], offset: usize) -> Result<Option<String>, ParseFailure> {
+    name.iter()
+        .position(|byte| *byte == b':')
+        .map(|separator| decode_name(&name[..separator], offset))
+        .transpose()
 }
 
 fn resolve_end_name(

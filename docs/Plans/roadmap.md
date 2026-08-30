@@ -837,6 +837,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   CDATA while retaining ordinary escaping elsewhere. Keep named declarations
   and import-precedence merging outside the slice. The output ledger now records
   34 passes and 198 visible harness gaps.
+- [x] Execute `output-0138` as an expanded-name CDATA selection control across
+  unprefixed names, two prefixes bound to one namespace, and a same-local-name
+  element in a different default namespace. Check every native `all-of`
+  fragment without admitting a general regex comparator. The output ledger now
+  records 35 passes and 197 visible harness gaps.
 - [x] Execute `output-0127` through its upstream `all-of` using a harness-owned
   literal-plus-required-whitespace serialization matcher that rejects every
   unadmitted regex operator. Preserve 221 visible harness gaps and make no broad

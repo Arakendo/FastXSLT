@@ -6,20 +6,20 @@
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/decl/output/_output-test-set.xml` |
 | Discovered cases | 232 |
-| Current disposition | 34 passed; 198 harness-unsupported |
+| Current disposition | 35 passed; 197 harness-unsupported |
 
 ## Conserved inventory
 
 The private XSLT30 adapter now parses the complete pinned `decl/output` test
 set and requires all 232 distinct native case identities. A first-party
 set-level overlay applies an explicit default disposition to the immutable
-complete denominator: `harness-unsupported / not-run`. Thirty-four named overrides now
+complete denominator: `harness-unsupported / not-run`. Thirty-five named overrides now
 select a bounded XML-compatible XHTML declaration tranche plus `output-0128`
 and the XML/text cases `output-0129`, `output-0165`, `output-0166`,
 `output-0171`, `output-0172`, `output-0139`, `output-0168`, and
 `output-0170`, and `output-0131` as passed, together with seven standalone
 lexical cases, the XHTML no-normalization control, and two bounded output-merge
-cases. The other 198
+cases. The other 197
 cases remain harness-unsupported,
 not engine-unsupported, because their serialization assertions or execution
 adapter paths have not yet been exercised far enough to distinguish engine
@@ -180,6 +180,15 @@ continues ordinary escaping elsewhere. Case `0122` proves two XHTML-namespaced
 CDATA names, while `0173` composes one unnamespaced name with standalone `yes`.
 Neither case admits named output definitions or import-precedence merging.
 
+Case `output-0138` broadens CDATA evidence from declaration merging to a native
+XHTML list of QNames. Unprefixed `h1` and `h5` select the stylesheet's XHTML
+default namespace, while `one:h3` and `my:h3` prove that two lexical prefixes
+bound to the same URI select by expanded name rather than prefix spelling. The
+XHTML `h2`, XHTML `h3`, XHTML `h4`, and same-local-name `h3` in a different
+default namespace retain ordinary escaped text. Bounded literal-fragment checks
+cover every member of the upstream `all-of`; this does not admit a general
+regular-expression comparator.
+
 Case `output-0127` is the first passed composite serialization assertion. The
 harness requires its top-level `all-of`, executes both child
 `serialization-matches` assertions, and admits only a comparator subset made of
@@ -193,10 +202,10 @@ assertion engine.
 ## Claim boundary
 
 This checkpoint proves denominator discovery, metadata classification, file
-resolution by the harness, bounded memory admission, and thirty-four exact or
+resolution by the harness, bounded memory admission, and thirty-five exact or
 bounded-comparator upstream executions, including one byte-exact UTF-8 BOM
 XML case and a paired BOM/no-BOM text control. It does not establish the first
-unsupported frontier for the other 198
+unsupported frontier for the other 197
 cases or claim general XML/HTML/XHTML/text serialization
 conformance.
 

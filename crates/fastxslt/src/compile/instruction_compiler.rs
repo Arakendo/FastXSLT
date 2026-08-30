@@ -329,9 +329,10 @@ pub(super) fn literal_result_namespaces(
     while let Some(node) = current {
         for binding in document.namespace_declarations(node) {
             let prefix = binding.prefix.as_deref();
-            let required_for_element = document
-                .name(element)
-                .is_some_and(|name| name.namespace.as_deref() == Some(binding.namespace.as_str()));
+            let required_for_element = document.name(element).is_some_and(|name| {
+                name.namespace.as_deref() == Some(binding.namespace.as_str())
+                    && document.prefix(element) == prefix
+            });
             let excluded = match prefix {
                 Some(prefix) => excluded_prefixes.contains(&prefix),
                 None => excluded_prefixes.contains(&"#default"),
@@ -348,6 +349,13 @@ pub(super) fn literal_result_namespaces(
             }
         }
         current = document.parent(node);
+    }
+    if let Some(preferred_prefix) = document.prefix(element)
+        && let Some(index) = namespaces
+            .iter()
+            .position(|binding| binding.prefix.as_deref() == Some(preferred_prefix))
+    {
+        namespaces[..=index].rotate_right(1);
     }
     namespaces
 }

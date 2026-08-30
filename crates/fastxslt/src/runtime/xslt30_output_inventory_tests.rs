@@ -243,6 +243,35 @@ fn executes_output_0122_with_merged_cdata_element_names() {
 }
 
 #[test]
+fn executes_output_0138_with_expanded_name_cdata_selection() {
+    let actual = String::from_utf8(execute_output_bytes_case("output-0138"))
+        .expect("output-0138 declares UTF-8 output");
+
+    for selected in [
+        "<h1><![CDATA[a & b]]></h1>",
+        "<one:h3 xmlns:one=\"http://ns.example.com\"><![CDATA[a & b]]></one:h3>",
+        "<my:h3 xmlns:my=\"http://ns.example.com\"><![CDATA[a & b]]></my:h3>",
+        "<h5><![CDATA[a & b]]></h5>",
+    ] {
+        assert!(
+            actual.contains(selected),
+            "missing selected fragment: {selected}\nactual: {actual}"
+        );
+    }
+    for unselected in [
+        "<h2>a &amp; b</h2>",
+        "<h3>a &amp; b</h3>",
+        "<h3 xmlns=\"http://www.mytest.example.org\">a &amp; b</h3>",
+        "<h4>a &amp; b</h4>",
+    ] {
+        assert!(
+            actual.contains(unselected),
+            "missing unselected fragment: {unselected}"
+        );
+    }
+}
+
+#[test]
 fn executes_output_0173_with_merged_standalone_and_cdata_settings() {
     let execution = execute_assert_serialization_case("output-0173", "xhtml");
     assert_eq!(execution.method.as_deref(), Some("xml"));

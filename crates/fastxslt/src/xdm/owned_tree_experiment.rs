@@ -32,6 +32,7 @@ struct Node {
     attributes: Vec<NodeId>,
     namespaces: Vec<NamespaceBinding>,
     name: Option<ExpandedName>,
+    prefix: Option<String>,
     value: Option<String>,
     location: SourceLocation,
     document_order: Option<usize>,
@@ -92,6 +93,7 @@ impl Document {
                 attributes: Vec::new(),
                 namespaces: Vec::new(),
                 name: None,
+                prefix: None,
                 value: None,
                 location: SourceLocation {
                     resource: parsed.resource.clone(),
@@ -107,6 +109,7 @@ impl Document {
             match event {
                 OwnedXmlEvent::Start {
                     name,
+                    prefix,
                     attributes,
                     namespaces,
                     span,
@@ -123,6 +126,7 @@ impl Document {
                         &parsed.resource,
                         span.clone(),
                     );
+                    result.nodes[element.0].prefix = prefix;
                     result.nodes[element.0].namespaces = namespaces;
                     for attribute in attributes {
                         control
@@ -135,6 +139,7 @@ impl Document {
                             attributes: Vec::new(),
                             namespaces: Vec::new(),
                             name: Some(attribute.name),
+                            prefix: None,
                             value: Some(attribute.value),
                             location: SourceLocation {
                                 resource: parsed.resource.clone(),
@@ -238,6 +243,7 @@ impl Document {
             attributes: Vec::new(),
             namespaces: Vec::new(),
             name,
+            prefix: None,
             value,
             location: SourceLocation {
                 resource: resource.to_owned(),
@@ -299,6 +305,7 @@ impl Document {
                             .map_or(0, std::string::String::capacity)
                 });
                 let value_bytes = node.value.as_ref().map_or(0, std::string::String::capacity);
+                let prefix_bytes = node.prefix.as_ref().map_or(0, String::capacity);
                 let namespace_bytes = node.namespaces.capacity()
                     * std::mem::size_of::<NamespaceBinding>()
                     + node
@@ -311,6 +318,7 @@ impl Document {
                         .sum::<usize>();
                 relationships
                     + name_bytes
+                    + prefix_bytes
                     + value_bytes
                     + namespace_bytes
                     + node.location.resource.capacity()
@@ -325,6 +333,10 @@ impl Document {
 
     pub(crate) fn name(&self, id: NodeId) -> Option<&ExpandedName> {
         self.nodes[id.0].name.as_ref()
+    }
+
+    pub(crate) fn prefix(&self, id: NodeId) -> Option<&str> {
+        self.nodes[id.0].prefix.as_deref()
     }
 
     pub(crate) fn children(&self, id: NodeId) -> &[NodeId] {
@@ -526,6 +538,23 @@ mod tests {
             document.namespace_declarations(child)[0].prefix.as_deref(),
             Some("q")
         );
+    }
+
+    #[test]
+    fn element_prefixes_remain_distinct_from_expanded_name_identity() {
+        let parsed = parse_document(
+            "memory:prefixes.xml",
+            b"<root xmlns:one='urn:same' xmlns:two='urn:same'><one:item/><two:item/></root>",
+            LIMITS,
+        )
+        .expect("prefix fixture should parse");
+        let document = Document::from_parsed(parsed).expect("owned XDM should build");
+        let root = document.children(document.document_node())[0];
+        let children = document.children(root);
+
+        assert_eq!(document.name(children[0]), document.name(children[1]));
+        assert_eq!(document.prefix(children[0]), Some("one"));
+        assert_eq!(document.prefix(children[1]), Some("two"));
     }
 
     #[test]

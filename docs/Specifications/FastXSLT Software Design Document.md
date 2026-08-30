@@ -172,6 +172,12 @@ expected to include node kind, identity, expanded name, string value,
 relationships, root/document membership, and document order. Attributes,
 namespaces, and typed values depend on the selected profile.
 
+Expanded-name identity remains independent of lexical prefix spelling. The
+owned XML/XDM boundary nevertheless retains an element's authored prefix when
+result namespace fixup or serialization must preserve a selected qualified
+name; two prefixes bound to one namespace therefore compare as one expanded
+name without becoming indistinguishable serialization choices.
+
 The physical representation is not yet decided. In particular:
 
 ```text

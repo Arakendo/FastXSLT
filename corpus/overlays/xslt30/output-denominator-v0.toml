@@ -87,6 +87,12 @@ execution = "passed"
 rationale = "Executes the whitespace-normalized XSLT 3.0 numeric-zero lexical form for the same exact unmarked XHTML byte result."
 
 [[case_override]]
+case_name = "output-0138"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the native all-of intent through bounded fragment checks, selecting CDATA by expanded QName across unprefixed and same-URI prefixed names while preserving ordinary escaping for non-selected namespaces and names."
+
+[[case_override]]
 case_name = "output-0139"
 selection = "selected"
 execution = "passed"
