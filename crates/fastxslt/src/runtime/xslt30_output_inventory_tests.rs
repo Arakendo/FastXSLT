@@ -56,6 +56,26 @@ fn executes_output_0110_with_explicit_xhtml_declaration_omission() {
 }
 
 #[test]
+fn executes_output_0105_with_explicit_xhtml_method_for_a_null_namespace_root() {
+    let execution = execute_output_case("output-0105", None);
+    assert_eq!(execution.method.as_deref(), Some("xhtml"));
+    assert_eq!(
+        execution.actual,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><html><body>This is the body</body></html>"
+    );
+}
+
+#[test]
+fn executes_output_0109_with_an_empty_xhtml_namespace_root() {
+    let execution = execute_output_case("output-0109", None);
+    assert_eq!(execution.method.as_deref(), Some("xhtml"));
+    assert_eq!(
+        execution.actual,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\"></html>"
+    );
+}
+
+#[test]
 fn executes_xslt30_true_lexicals_for_xhtml_declaration_omission() {
     for case_name in ["output-0110a", "output-0110b"] {
         let execution = execute_assert_serialization_case(case_name, "xhtml");

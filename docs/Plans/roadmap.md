@@ -779,6 +779,11 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [x] Execute XSLT30 `output-0110` and `output-0121` through the bounded
   XML-compatible XHTML lane, proving explicit declaration omission and default
   retention with namespace-preserving exact comparisons.
+- [x] Execute `output-0105` and `output-0109` as opposing XHTML root-name
+  controls: explicit XHTML serialization of a null-namespace `html`, and an
+  empty XHTML-namespaced `html` with paired tags. Keep `output-0106` unsupported
+  until real indentation semantics exist. The output ledger now records 39
+  passes and 193 visible harness gaps.
 - [x] Extend that declaration lane through `output-0110a`, `output-0110b`, and
   `output-0148` through `output-0148b`, accepting whitespace-normalized XSLT
   3.0 boolean lexicals without widening XSLT 2.0 beyond `yes`/`no`.

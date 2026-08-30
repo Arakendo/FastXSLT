@@ -9,6 +9,18 @@ execution = "not-run"
 rationale = "Unless overridden below, the case requires serialization assertion or execution-adapter ownership that the private harness has not implemented; no case is silently omitted or treated as an engine pass/failure."
 
 [[case_override]]
+case_name = "output-0105"
+selection = "selected"
+execution = "passed"
+rationale = "Executes an explicitly selected XHTML method over a null-namespace html result and verifies the complete XML declaration and nested body without inferring the method from the root name."
+
+[[case_override]]
+case_name = "output-0109"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the empty XHTML-namespaced html result and verifies the complete declaration, default namespace, and non-self-closing element bytes without admitting general XHTML empty-element rules."
+
+[[case_override]]
 case_name = "output-0110"
 selection = "selected"
 execution = "passed"
