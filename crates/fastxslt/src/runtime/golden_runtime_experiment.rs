@@ -366,16 +366,17 @@ fn execute_instruction(
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     match instruction {
-        Instruction::LiteralElement { .. } => {
-            result.push(execute_literal_element(
-                inputs,
-                instruction,
-                execution,
-                scope,
-                control,
-            )?);
-        }
+        Instruction::LiteralElement { .. } => result.push(execute_literal_element(
+            inputs,
+            instruction,
+            execution,
+            scope,
+            control,
+        )?),
         Instruction::Text { value, .. } => append_text(result, value, inputs.request_id, control)?,
+        Instruction::ProcessingInstructionNode { target, value, .. } => result.push(
+            construct_processing_instruction(target, value, inputs.request_id, control)?,
+        ),
         Instruction::ValueOf {
             select, separator, ..
         } => {
@@ -452,6 +453,9 @@ fn execute_instruction(
             scope,
             control,
         )?),
+        Instruction::CopyOfCurrent { .. } => {
+            result.extend(execute_copy_of_current(inputs, execution.node, control)?);
+        }
         Instruction::Copy { .. } => result.push(execute_copy(
             inputs,
             instruction,
@@ -459,12 +463,17 @@ fn execute_instruction(
             scope,
             control,
         )?),
-        Instruction::CopyOfCurrent { .. } => {
-            let (source, node) = required_source_context(inputs, execution.node)?;
-            result.extend(copy_source_node(source, inputs.request_id, node, control)?);
-        }
     }
     Ok(())
+}
+
+fn execute_copy_of_current(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let (source, node) = required_source_context(inputs, context)?;
+    copy_source_node(source, inputs.request_id, node, control)
 }
 
 fn execute_for_each_temporary_root<'a>(
@@ -1406,6 +1415,24 @@ fn append_text(
         nodes.push(ResultNode::Text(value.to_owned()));
     }
     Ok(())
+}
+
+fn construct_processing_instruction(
+    target: &str,
+    value: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<ResultNode, ExecutionFailure> {
+    control
+        .charge(WorkDomain::ResultNode, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    control
+        .charge(WorkDomain::ResultTextByte, target.len() + value.len())
+        .map_err(|failure| control_failure(failure, request_id))?;
+    Ok(ResultNode::ProcessingInstruction {
+        target: target.to_owned(),
+        value: value.to_owned(),
+    })
 }
 
 #[cfg(test)]

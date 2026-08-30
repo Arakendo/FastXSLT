@@ -218,6 +218,11 @@ pub(crate) enum Instruction {
         value: String,
         location: SourceLocation,
     },
+    ProcessingInstructionNode {
+        target: String,
+        value: String,
+        location: SourceLocation,
+    },
     ValueOf {
         select: ValueExpression,
         separator: String,

@@ -1460,6 +1460,31 @@ mod tests {
     }
 
     #[test]
+    fn processing_instruction_compiles_static_target_and_literal_data() {
+        let stylesheet = parse_stylesheet(
+            "memory:processing-instruction.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:processing-instruction name="my-pi">href="book.css" type="text/css"</xsl:processing-instruction></xsl:template></xsl:stylesheet>"#,
+        );
+        let program = compile_stylesheet(&stylesheet).expect("static PI should compile");
+        let root_template = program.root_template.expect("root template");
+        let [Instruction::ProcessingInstructionNode { target, value, .. }] =
+            root_template.body.as_slice()
+        else {
+            panic!("xsl:processing-instruction should lower to one PI instruction");
+        };
+        assert_eq!(target, "my-pi");
+        assert_eq!(value, "href=\"book.css\" type=\"text/css\"");
+
+        let invalid = parse_stylesheet(
+            "memory:invalid-processing-instruction.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:processing-instruction name="xml">data</xsl:processing-instruction></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&invalid).expect_err("reserved target should fail");
+        assert_eq!(failure.code, "FXST0036");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+    }
+
+    #[test]
     fn separates_invalid_deep_equal_arity_from_unsupported_collation_semantics() {
         let invalid = parse_stylesheet(
             "memory:deep-equal-arity.xsl",

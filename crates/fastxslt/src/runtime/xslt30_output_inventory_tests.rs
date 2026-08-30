@@ -106,6 +106,18 @@ fn executes_xhtml_script_and_style_text_with_xml_compatible_escaping() {
 }
 
 #[test]
+fn executes_output_0118_with_a_static_processing_instruction() {
+    let execution = execute_output_case("output-0118", None);
+    assert_eq!(execution.method.as_deref(), Some("xhtml"));
+    assert!(
+        execution
+            .actual
+            .contains("<?my-pi href=\"book.css\" type=\"text/css\"?>")
+    );
+    assert!(!execution.actual.contains("<!DOCTYPE"));
+}
+
+#[test]
 fn executes_output_0109_with_an_empty_xhtml_namespace_root() {
     let execution = execute_output_case("output-0109", None);
     assert_eq!(execution.method.as_deref(), Some("xhtml"));

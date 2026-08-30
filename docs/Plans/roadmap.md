@@ -802,9 +802,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   DOCTYPE behavior is covered by `output-0111` through `output-0113`. The
   XHTML empty-content list, non-minimized attribute control, paired-body
   control, and expanded-name CDATA control are covered by `output-0116` through
-  `output-0117` and `output-0119` through `output-0120`. Explicit and inferred
+  `output-0117` and `output-0119` through `output-0120`. `output-0118` adds a
+  static-target, literal-data processing-instruction result while preserving
+  public-only DOCTYPE inertia. Explicit and inferred
   XHTML content-type insertion is covered by `output-0126` and `output-0130`.
-  The output ledger now records 63 passes and 169 visible harness gaps.
+  The output ledger now records 64 passes and 168 visible harness gaps.
 - [x] Extend that declaration lane through `output-0110a`, `output-0110b`, and
   `output-0148` through `output-0148b`, accepting whitespace-normalized XSLT
   3.0 boolean lexicals without widening XSLT 2.0 beyond `yes`/`no`.

@@ -18,6 +18,10 @@ pub(super) enum ResultNode {
         children: Vec<ResultNode>,
     },
     Text(String),
+    ProcessingInstruction {
+        target: String,
+        value: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

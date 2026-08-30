@@ -395,6 +395,15 @@ Empty XHTML `area`, `base`, `basefont`, `br`, `col`, `frame`, `hr`, `img`,
 empty-element syntax. Other empty XHTML elements retain paired tags, and
 attribute values are never minimized merely because their names resemble HTML
 boolean attributes.
+The private sequence-constructor slice admits `xsl:processing-instruction`
+with a static NCName target other than reserved `xml` and literal character
+data that excludes `?>`. It produces a distinct semantic result node rather
+than markup-shaped text, participates in result-node and retained-text work
+accounting, serializes as `<?target data?>`, and contributes no characters to
+text-method output. Processing instructions do not select an inferred output
+method or disqualify an otherwise valid XHTML document element for bounded
+DOCTYPE emission. Computed targets/content and PI-terminator recovery remain
+explicitly unsupported.
 When no output method is declared, an XHTML-namespaced `html` document element
 selects the XHTML serializer and its content-type behavior. A null-namespace
 `html` selects the still-unsupported HTML method; the two inference rules must

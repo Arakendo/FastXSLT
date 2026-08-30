@@ -24,6 +24,7 @@ enum SemanticFeature {
     LiteralElement,
     ComputedAttribute,
     Text,
+    ProcessingInstruction,
     ValueOf,
     LocalVariable,
     SequenceNodes,
@@ -235,6 +236,9 @@ fn observe_instructions(
                 (SemanticFeature::LiteralElement, Some(body.as_slice()))
             }
             Instruction::Text { .. } => (SemanticFeature::Text, None),
+            Instruction::ProcessingInstructionNode { .. } => {
+                (SemanticFeature::ProcessingInstruction, None)
+            }
             Instruction::ValueOf { .. } => (SemanticFeature::ValueOf, None),
             Instruction::Variable { .. }
             | Instruction::IntegerRangeVariable { .. }

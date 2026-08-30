@@ -891,6 +891,45 @@ fn text_output_concatenates_descendant_text_without_markup_or_escaping() {
 }
 
 #[test]
+fn processing_instruction_serializes_as_markup_but_not_as_text_value() {
+    let result = SemanticResult {
+        children: vec![ResultNode::ProcessingInstruction {
+            target: "my-pi".to_owned(),
+            value: "href=\"book.css\" type=\"text/css\"".to_owned(),
+        }],
+    };
+    let mut settings = crate::xslt::golden_semantics_experiment::OutputSettings {
+        method: Some("xml".to_owned()),
+        version: None,
+        encoding: None,
+        media_type: None,
+        doctype_system: None,
+        doctype_public: None,
+        include_content_type: None,
+        byte_order_mark: None,
+        normalization_form: None,
+        standalone: None,
+        cdata_section_elements: Vec::new(),
+        omit_xml_declaration: true,
+        indent: None,
+    };
+    let mut control = InvocationControl::unbounded();
+    assert_eq!(
+        serialize_xml(&result, &settings, "pi", 4_096, &mut control)
+            .expect("serialize processing instruction"),
+        "<?my-pi href=\"book.css\" type=\"text/css\"?>"
+    );
+
+    settings.method = Some("text".to_owned());
+    let mut control = InvocationControl::unbounded();
+    assert_eq!(
+        serialize_xml(&result, &settings, "pi-text", 4_096, &mut control)
+            .expect("serialize PI document string value"),
+        ""
+    );
+}
+
+#[test]
 fn xml_compatible_xhtml_output_honors_explicit_declaration_omission() {
     let result = SemanticResult {
         children: vec![ResultNode::Element {

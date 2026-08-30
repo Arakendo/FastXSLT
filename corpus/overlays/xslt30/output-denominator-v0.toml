@@ -129,6 +129,12 @@ execution = "passed"
 rationale = "Verifies that an XHTML attribute whose name resembles an HTML boolean attribute remains explicitly valued and that a public-only doctype property remains inert."
 
 [[case_override]]
+case_name = "output-0118"
+selection = "selected"
+execution = "passed"
+rationale = "Executes a static-name xsl:processing-instruction with literal character data, retains it as a semantic result node, and serializes the exact PI while a public-only doctype property remains inert."
+
+[[case_override]]
 case_name = "output-0119"
 selection = "selected"
 execution = "passed"

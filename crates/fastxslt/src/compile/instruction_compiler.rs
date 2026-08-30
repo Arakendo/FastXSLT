@@ -76,6 +76,8 @@ pub(super) fn compile_sequence_excluding(
                 if name.namespace.as_deref() == Some(XSLT_NAMESPACE) {
                     if name.local == "text" {
                         instructions.push(compile_text(document, child)?);
+                    } else if name.local == "processing-instruction" {
+                        instructions.push(compile_processing_instruction(document, child)?);
                     } else if name.local == "value-of" {
                         instructions.push(compile_value_of(document, child)?);
                     } else if name.local == "variable" {
@@ -298,6 +300,54 @@ fn compile_text(document: &Document, element: NodeId) -> Result<Instruction, Com
         }
     }
     Ok(Instruction::Text {
+        value,
+        location: document.location(element).clone(),
+    })
+}
+
+fn compile_processing_instruction(
+    document: &Document,
+    element: NodeId,
+) -> Result<Instruction, CompileFailure> {
+    ensure_only_attributes(document, element, &["name"], "xsl:processing-instruction")?;
+    let target = required_attribute(document, element, None, "name")?;
+    if !is_ascii_ncname(target) || target.eq_ignore_ascii_case("xml") {
+        return Err(invalid(
+            "FXST0036",
+            "the static processing-instruction target must be an NCName other than XML",
+            document.location(element),
+        ));
+    }
+    let mut value = String::new();
+    for child in document.children(element).iter().copied() {
+        match document.kind(child) {
+            NodeKind::Text => value.push_str(document.value(child).unwrap_or_default()),
+            NodeKind::Comment | NodeKind::ProcessingInstruction => {}
+            NodeKind::Element => {
+                return Err(unsupported(
+                    "FXST1034",
+                    "computed processing-instruction content is outside the private slice",
+                    document.location(child),
+                ));
+            }
+            NodeKind::Document | NodeKind::Attribute => {
+                return Err(invalid(
+                    "FXST0006",
+                    "unexpected node kind in xsl:processing-instruction",
+                    document.location(child),
+                ));
+            }
+        }
+    }
+    if value.contains("?>") {
+        return Err(unsupported(
+            "FXST1035",
+            "processing-instruction data containing ?> requires recovery outside the private slice",
+            document.location(element),
+        ));
+    }
+    Ok(Instruction::ProcessingInstructionNode {
+        target: target.to_owned(),
         value,
         location: document.location(element).clone(),
     })

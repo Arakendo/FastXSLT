@@ -6,20 +6,20 @@
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/decl/output/_output-test-set.xml` |
 | Discovered cases | 232 |
-| Current disposition | 63 passed; 169 harness-unsupported |
+| Current disposition | 64 passed; 168 harness-unsupported |
 
 ## Conserved inventory
 
 The private XSLT30 adapter now parses the complete pinned `decl/output` test
 set and requires all 232 distinct native case identities. A first-party
 set-level overlay applies an explicit default disposition to the immutable
-complete denominator: `harness-unsupported / not-run`. Sixty-three named overrides now
+complete denominator: `harness-unsupported / not-run`. Sixty-four named overrides now
 select a bounded XML-compatible XHTML declaration tranche plus `output-0128`
 and the XML/text cases `output-0129`, `output-0165`, `output-0166`,
 `output-0171`, `output-0172`, `output-0139`, `output-0168`, and
 `output-0170`, and `output-0131` as passed, together with seven standalone
 lexical cases, the XHTML no-normalization control, and two bounded output-merge
-cases. The other 169
+cases. The other 168
 cases remain harness-unsupported,
 not engine-unsupported, because their serialization assertions or execution
 adapter paths have not yet been exercised far enough to distinguish engine
@@ -135,6 +135,15 @@ spaced ` />` form; ordinary empty XHTML elements remain paired. Cases
 values, paired non-void elements, and public-only DOCTYPE inertia. Case
 `output-0120` proves CDATA selection remains expanded-name-specific alongside
 ordinary escaped XHTML text.
+
+Case `output-0118` adds the first constructed processing instruction. The
+compiler admits a static NCName target other than reserved `xml` and literal
+character data that does not contain `?>`; execution retains a distinct
+semantic PI node, charges its target/data storage, and serialization emits the
+exact `<?target data?>` form. Processing instructions remain absent from text
+output string values and do not affect inferred output-method or XHTML document
+root selection. Computed names/content and the standards recovery rule for
+forbidden PI terminators remain explicitly unsupported.
 
 Cases `output-0126` and `output-0130` pair explicit and inferred XHTML method
 selection. The explicit case inserts Content-Type metadata using its authored

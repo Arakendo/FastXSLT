@@ -44,6 +44,7 @@ pub(in crate::runtime) fn serialize_xml(
     let first_significant = result.children.iter().find(|node| match node {
         ResultNode::Text(value) => !value.chars().all(char::is_whitespace),
         ResultNode::Element { .. } => true,
+        ResultNode::ProcessingInstruction { .. } => false,
     });
     let unsupported_adaptive_html = settings.method.is_none()
         && matches!(
@@ -147,6 +148,7 @@ fn is_xhtml_html_document(result: &SemanticResult) -> bool {
     for node in &result.children {
         match node {
             ResultNode::Text(value) if value.chars().all(char::is_whitespace) => {}
+            ResultNode::ProcessingInstruction { .. } => {}
             ResultNode::Element { name, .. }
                 if !root_seen
                     && name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml")
@@ -281,6 +283,7 @@ fn serialize_text_node(
 ) -> Result<(), ExecutionFailure> {
     match node {
         ResultNode::Text(value) => output.push_str(value),
+        ResultNode::ProcessingInstruction { .. } => Ok(()),
         ResultNode::Element { children, .. } => {
             for child in children {
                 serialize_text_node(child, output)?;
@@ -299,11 +302,28 @@ fn serialize_node(
 ) -> Result<(), ExecutionFailure> {
     match node {
         ResultNode::Text(value) => escape_text(value, output)?,
+        ResultNode::ProcessingInstruction { target, value } => {
+            serialize_processing_instruction(target, value, output)?;
+        }
         ResultNode::Element { .. } => {
             serialize_element(node, inherited_namespaces, options, depth, output)?;
         }
     }
     Ok(())
+}
+
+fn serialize_processing_instruction(
+    target: &str,
+    value: &str,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    output.push_str("<?")?;
+    output.push_str(target)?;
+    if !value.is_empty() {
+        output.push(' ')?;
+        output.push_str(value)?;
+    }
+    output.push_str("?>")
 }
 
 fn serialize_element(
