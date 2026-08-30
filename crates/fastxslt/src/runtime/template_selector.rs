@@ -6,7 +6,9 @@ use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
-use crate::xslt::golden_semantics_experiment::{MatchPattern, MatchedTemplate, StylesheetProgram};
+use crate::xslt::golden_semantics_experiment::{
+    MatchPattern, MatchedTemplate, NamedSiblingBoundary, StylesheetProgram,
+};
 
 use super::MultipleMatchPolicy;
 use super::runtime_failure::{
@@ -228,6 +230,9 @@ fn matches_pattern(
         | MatchPattern::ElementWithSameNamedParentAtPosition(_) => {
             matches_name_relation(pattern, source, node, request_id, control)
         }
+        MatchPattern::ElementAtNamedSiblingBoundary { element, boundary } => {
+            matches_named_sibling_boundary(source, node, element, *boundary, request_id, control)
+        }
         MatchPattern::Path(path) => match_path_pattern(source, node, path, request_id, control),
         MatchPattern::QualifiedElementPathAlternatives(alternatives) => {
             matches_qualified_path_alternatives(selection, alternatives, control)
@@ -284,6 +289,38 @@ fn matches_any_node(kind: NodeKind) -> bool {
         kind,
         NodeKind::Element | NodeKind::Text | NodeKind::Comment | NodeKind::ProcessingInstruction
     )
+}
+
+fn matches_named_sibling_boundary(
+    source: &Document,
+    node: NodeId,
+    element: &crate::xml::quick_xml_experiment::ExpandedName,
+    boundary: NamedSiblingBoundary,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if source.name(node) != Some(element) {
+        return Ok(false);
+    }
+    let Some(parent) = source.parent(node) else {
+        return Ok(false);
+    };
+    let mut reached_candidate = false;
+    let mut later_match = false;
+    for sibling in source.children(parent).iter().copied() {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if sibling == node {
+            reached_candidate = true;
+        } else if reached_candidate && source.name(sibling) == Some(element) {
+            later_match = true;
+        }
+    }
+    Ok(match boundary {
+        NamedSiblingBoundary::BeforeLast => later_match,
+        NamedSiblingBoundary::Last => !later_match,
+    })
 }
 
 fn matches_name_relation(

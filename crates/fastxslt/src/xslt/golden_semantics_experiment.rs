@@ -154,6 +154,10 @@ pub(crate) enum MatchPattern {
     ElementWithSameNamedChild,
     ElementWithSameNamedParent,
     ElementWithSameNamedParentAtPosition(usize),
+    ElementAtNamedSiblingBoundary {
+        element: ExpandedName,
+        boundary: NamedSiblingBoundary,
+    },
     QualifiedElementPathAlternatives(Vec<Vec<ExpandedName>>),
     Path(LocationPath),
     Attribute(ExpandedName),
@@ -350,4 +354,12 @@ pub(crate) struct ComputedAttribute {
 pub(crate) enum LiteralAttributeValue {
     Text(String),
     Variable(String),
+    ContextPosition,
+    ContextSize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum NamedSiblingBoundary {
+    BeforeLast,
+    Last,
 }

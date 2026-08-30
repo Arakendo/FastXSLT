@@ -275,6 +275,8 @@ struct SequenceContext<'a> {
     temporary_focus: Option<TemporaryFocus<'a>>,
     current_mode: Option<&'a str>,
     current_template_index: Option<usize>,
+    focus_position: usize,
+    focus_size: usize,
     call_depth: usize,
 }
 
@@ -285,6 +287,8 @@ impl<'a> SequenceContext<'a> {
             temporary_focus: None,
             current_mode,
             current_template_index: None,
+            focus_position: 1,
+            focus_size: 1,
             call_depth: 0,
         }
     }
@@ -293,6 +297,20 @@ impl<'a> SequenceContext<'a> {
         Self {
             current_template_index: Some(index),
             ..Self::new(node, current_mode)
+        }
+    }
+
+    fn for_template_at(
+        node: NodeId,
+        current_mode: Option<&'a str>,
+        index: usize,
+        focus_position: usize,
+        focus_size: usize,
+    ) -> Self {
+        Self {
+            focus_position,
+            focus_size,
+            ..Self::for_template(Some(node), current_mode, index)
         }
     }
 
@@ -586,6 +604,8 @@ fn execute_source_element_copy(
         attributes: materialize_literal_attributes(
             attributes,
             variables,
+            execution.focus_position,
+            execution.focus_size,
             inputs.request_id,
             control,
         )?,
@@ -614,11 +634,19 @@ fn execute_literal_element(
     control
         .charge(WorkDomain::ResultNode, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let mut attributes =
-        materialize_literal_attributes(attributes, variables, inputs.request_id, control)?;
+    let mut attributes = materialize_literal_attributes(
+        attributes,
+        variables,
+        execution.focus_position,
+        execution.focus_size,
+        inputs.request_id,
+        control,
+    )?;
     attributes.extend(materialize_computed_attributes(
         computed_attributes,
         variables,
+        execution.focus_position,
+        execution.focus_size,
         inputs.request_id,
         control,
     )?);
@@ -724,8 +752,17 @@ fn execute_apply_templates(
     let (_, context) = required_source_context(inputs, execution.node)?;
     let selected = select_apply_nodes(inputs, select, context, &variables.atomics, control)?;
     let mut result = Vec::new();
-    for node in selected {
-        result.extend(apply_template(inputs, node, mode, parameters, control)?);
+    let focus_size = selected.len();
+    for (offset, node) in selected.into_iter().enumerate() {
+        result.extend(apply_template_at(
+            inputs,
+            node,
+            mode,
+            parameters,
+            offset + 1,
+            focus_size,
+            control,
+        )?);
     }
     Ok(result)
 }
@@ -775,7 +812,10 @@ fn execute_next_match(
         return execute_sequence(
             inputs,
             &template.template.body,
-            SequenceContext::for_template(node.into(), execution.current_mode, next_index),
+            SequenceContext {
+                current_template_index: Some(next_index),
+                ..execution
+            },
             &variables,
             control,
         );
@@ -826,7 +866,10 @@ fn execute_apply_imports(
         return execute_sequence(
             inputs,
             &template.template.body,
-            SequenceContext::for_template(node.into(), execution.current_mode, next_index),
+            SequenceContext {
+                current_template_index: Some(next_index),
+                ..execution
+            },
             &variables,
             control,
         );
@@ -1246,6 +1289,18 @@ fn apply_template(
     parameters: &BTreeMap<String, InvocationParameter>,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    apply_template_at(inputs, node, mode, parameters, 1, 1, control)
+}
+
+fn apply_template_at(
+    inputs: &SequenceInputs<'_>,
+    node: NodeId,
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    focus_position: usize,
+    focus_size: usize,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let source = inputs
         .source
         .expect("matched and built-in source templates require a source document");
@@ -1269,7 +1324,13 @@ fn apply_template(
         return execute_sequence(
             inputs,
             &template.template.body,
-            SequenceContext::for_template(Some(node), mode, template_index),
+            SequenceContext::for_template_at(
+                node,
+                mode,
+                template_index,
+                focus_position,
+                focus_size,
+            ),
             &variables,
             control,
         );
@@ -1291,8 +1352,18 @@ fn apply_builtin_template(
     match source.kind(node) {
         NodeKind::Document | NodeKind::Element => {
             let mut result = Vec::new();
-            for child in source.children(node) {
-                result.extend(apply_template(inputs, *child, mode, parameters, control)?);
+            let children = source.children(node);
+            let focus_size = children.len();
+            for (offset, child) in children.iter().copied().enumerate() {
+                result.extend(apply_template_at(
+                    inputs,
+                    child,
+                    mode,
+                    parameters,
+                    offset + 1,
+                    focus_size,
+                    control,
+                )?);
             }
             Ok(result)
         }

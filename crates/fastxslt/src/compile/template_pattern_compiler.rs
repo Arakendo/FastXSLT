@@ -2,7 +2,9 @@
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xpath::path_experiment::parse_location_path;
-use crate::xslt::golden_semantics_experiment::{MatchPattern, TemplatePriority};
+use crate::xslt::golden_semantics_experiment::{
+    MatchPattern, NamedSiblingBoundary, TemplatePriority,
+};
 
 use super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
 use super::{
@@ -51,6 +53,18 @@ pub(super) fn compile_match_pattern(
         }
         "*[name()=name(current())]/*" => MatchPattern::ElementWithSameNamedParent,
         "*[name()=name(current())][2]/*" => MatchPattern::ElementWithSameNamedParentAtPosition(2),
+        positional if parse_named_sibling_boundary(positional).is_some() => {
+            let (element_name, boundary) =
+                parse_named_sibling_boundary(positional).expect("positional shape was checked");
+            MatchPattern::ElementAtNamedSiblingBoundary {
+                element: crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: effective_xpath_default_namespace(document, element)
+                        .map(str::to_owned),
+                    local: element_name.to_owned(),
+                },
+                boundary,
+            }
+        }
         predicate if parse_element_attribute_predicate(predicate).is_some() => {
             let (element, attribute) =
                 parse_element_attribute_predicate(predicate).expect("predicate shape was checked");
@@ -183,6 +197,20 @@ fn parse_local_name_wildcard(pattern: &str) -> Option<&str> {
     is_ascii_ncname(local).then_some(local)
 }
 
+fn parse_named_sibling_boundary(pattern: &str) -> Option<(&str, NamedSiblingBoundary)> {
+    let (element, predicate) = pattern.split_once('[')?;
+    let predicate = predicate.strip_suffix(']')?.trim();
+    if !is_ascii_ncname(element) {
+        return None;
+    }
+    let boundary = match predicate {
+        "position()=last()" => NamedSiblingBoundary::Last,
+        "position()<last()" => NamedSiblingBoundary::BeforeLast,
+        _ => return None,
+    };
+    Some((element, boundary))
+}
+
 fn parse_document_element_test(pattern: &str) -> Option<&str> {
     let element = pattern
         .strip_prefix("document-node(element(")?
@@ -294,9 +322,8 @@ fn compile_template_priority(
             | MatchPattern::VariableFilteredElementPath(_)
             | MatchPattern::ElementWithSameNamedChild
             | MatchPattern::ElementWithSameNamedParent
-            | MatchPattern::ElementWithSameNamedParentAtPosition(_) => {
-                TemplatePriority::PATH_DEFAULT
-            }
+            | MatchPattern::ElementWithSameNamedParentAtPosition(_)
+            | MatchPattern::ElementAtNamedSiblingBoundary { .. } => TemplatePriority::PATH_DEFAULT,
             MatchPattern::Document | MatchPattern::DocumentElement(None) => {
                 TemplatePriority::ROOT_DEFAULT
             }

@@ -5,10 +5,13 @@ Its motivating consumers include ASP.NET applications that need reusable,
 high-throughput transformations without treating an external command-line tool
 as the primary product boundary.
 
-The repository is currently in **M1 pre-stability development**. A test-only
-private slice executes the `hello` golden transform through in-memory resources,
-XML, owned XDM, XSLT/XPath compilation, runtime, semantic result, and separate
-serialization. There is no public transform API or broad conformance claim.
+The repository is currently in **M1 pre-stability development**. Its test-only
+private engine executes pinned W3C XSLT30 and QT3 slices through in-memory
+resources, XML, owned XDM, XSLT/XPath compilation, reusable prepared state,
+runtime, semantic result, and separate serialization. The complete 50-case
+XSLT30 apply-templates ledger currently records 48 passes and two visible
+not-run dispositions. There is no supported public transform API or broad
+conformance claim.
 [ADR-0007](docs/ADR/ADR-0007-staged-modern-standards-profile.md) selects modern
 reference editions for an explicitly incomplete, feature-enumerated preview.
 
@@ -66,10 +69,10 @@ The Rust API and future host adapters must preserve one engine contract. The
 ASP.NET integration mechanism remains under review in
 [AR-0002](docs/Architectural%20Reviews/AR-0002-aspnet-host-integration.md).
 
-For volume workloads, FastXSLT is expected to admit resources into a bounded
+For volume workloads, FastXSLT admits resources into a bounded
 in-memory snapshot, compile reusable stylesheets from that snapshot, and execute
 sets of transformations without reopening files for every call. The snapshot
-and batch boundary is under review in
+and batch boundary is accepted in
 [AR-0003](docs/Architectural%20Reviews/AR-0003-memory-resource-snapshots-and-batch-transforms.md).
 
 [ADR-0002](docs/ADR/ADR-0002-memory-resident-execution.md) makes memory-resident
@@ -93,10 +96,13 @@ The [documentation index](docs/README.md) explains which records are binding:
 
 The [roadmap](docs/Plans/roadmap.md) defines milestone outcomes. The private
 architecture slice, bounded resources, invocation controls, prepared-input
-reuse, and corpus-ledger invariants are executable. M1 now uses complete pinned
-W3C case metadata to widen the staged standards-driven preview accepted by
-ADR-0007. All six cases in the first complete XSLT30 `template` test-set
-denominator now pass, without creating a broader conformance claim.
+reuse, native and isolated ASP.NET workbenches, and corpus-ledger invariants are
+executable. M1 uses complete pinned W3C case metadata to widen the staged
+standards-driven preview accepted by ADR-0007. Complete selected denominators
+now pass for XSLT30 `template`, `path`, `expr/for`, `expr/data-manipulation`, and
+`misc/initial-mode`; the apply-templates denominator remains explicitly
+incomplete at 48 of 50. These are bounded case results, not a broader
+conformance claim.
 Representative consumer transforms refine application priorities and
 ASP.NET/performance decisions in parallel; they do not block standards testing.
 

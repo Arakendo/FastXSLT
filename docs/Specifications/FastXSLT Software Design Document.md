@@ -222,6 +222,13 @@ compatibility profile or expose a public or host-configurable policy. The
 current executable slice proves only the bounded module topologies below; it
 does not define a public module graph representation.
 
+Each source-node template invocation retains its position and size within the
+sequence selected by the applying instruction, including non-element child
+nodes. The bounded positional-pattern slice evaluates `position()` against the
+matching named-element sibling sequence, while the exact `{position()}` and
+`{last()}` literal-result AVTs observe the invocation focus. This does not admit
+general focus functions, positional expressions, or arbitrary AVTs.
+
 Compiled mode names use expanded QName identity. An unprefixed lexical mode is
 in no namespace; a prefixed mode is resolved against the namespace context of
 the containing stylesheet instruction and retained in canonical expanded form.

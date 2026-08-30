@@ -39,6 +39,12 @@ fn parse_literal_attribute_value(
     lexical: &str,
     location: &SourceLocation,
 ) -> Result<LiteralAttributeValue, CompileFailure> {
+    if lexical == "{position()}" {
+        return Ok(LiteralAttributeValue::ContextPosition);
+    }
+    if lexical == "{last()}" {
+        return Ok(LiteralAttributeValue::ContextSize);
+    }
     if let Some(variable) = lexical
         .strip_prefix("{$")
         .and_then(|value| value.strip_suffix('}'))

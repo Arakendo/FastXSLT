@@ -150,6 +150,42 @@ fn exact_element_templates_dispatch_repeated_nodes_in_document_order() {
 }
 
 #[test]
+fn positional_patterns_and_avts_share_the_apply_templates_focus() {
+    const POSITION_SOURCE: &str = "urn:fastxslt:position-focus:source";
+    const POSITION_STYLESHEET: &str = "urn:fastxslt:position-focus:stylesheet";
+    let source = b"<doc><simplelist>\n<member>1</member>\n<member>2</member>\n<member>3</member>\n<member>4</member>\n</simplelist></doc>";
+    let stylesheet = br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:template match="/"><xsl:apply-templates/></xsl:template>
+        <xsl:template match="doc"><xsl:apply-templates/></xsl:template>
+        <xsl:template match="simplelist"><out><xsl:apply-templates/></out></xsl:template>
+        <xsl:template match="member[position()&lt;last()]"><member pos="{position()}" last="{last()}"/></xsl:template>
+        <xsl:template match="member[position()=last()]"><member final="yes" pos="{position()}" last="{last()}"/></xsl:template>
+        <xsl:template match="text()"/>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(POSITION_SOURCE, source.to_vec())
+        .expect("admit positional source");
+    resources
+        .admit(POSITION_STYLESHEET, stylesheet.to_vec())
+        .expect("admit positional stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, POSITION_STYLESHEET)
+        .expect("compile positional patterns and context AVTs");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("position-focus", "result", POSITION_SOURCE))
+        .expect("admit positional request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute positional request");
+    assert_eq!(
+        results.by_request["position-focus"].serialized,
+        "<out><member pos=\"2\" last=\"9\"></member><member pos=\"4\" last=\"9\"></member><member pos=\"6\" last=\"9\"></member><member final=\"yes\" pos=\"8\" last=\"9\"></member></out>"
+    );
+}
+
+#[test]
 fn temporary_tree_builtins_preserve_mixed_text_in_document_order() {
     const TEMP_SOURCE: &str = "urn:fastxslt:temporary-text:source";
     const TEMP_STYLESHEET: &str = "urn:fastxslt:temporary-text:stylesheet";

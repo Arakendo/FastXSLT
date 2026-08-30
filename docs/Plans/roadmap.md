@@ -378,8 +378,8 @@ each inspected node and preserves document order. It does not widen general
 default-namespaced path support.
 The complete pinned apply-templates test set is now conserved as an ordered
 50-case denominator with 50 principal stylesheets, one secondary stylesheet,
-41 XML assertions, eight error assertions, and one compound assertion. Twenty-four
-cases have explicit passing overrides; the other 26 remain visibly not run and
+41 XML assertions, eight error assertions, and one compound assertion. Forty-eight
+cases have explicit passing overrides; the other two remain visibly not run and
 are not mislabeled as engine failures. This corrects the earlier provisional
 52-case count without turning inventory into a conformance percentage.
 
@@ -996,6 +996,14 @@ failed, and harness-error cases without an unqualified conformance claim.
   shared import-precedence/priority/declaration-order model and retain the
   XHTML `h2` result. The complete apply-templates ledger now records 48 passes
   and 2 visible not-run cases.
+- [x] Admit the positional-focus prerequisite for `conflict-resolution-1301`.
+  Carry the actual selected sequence position and size into each matched
+  template, compile its exact `member[position() &lt; last()]` and
+  `member[position() = last()]` boundary predicates over matching element
+  siblings, and expose that dynamic focus only through the exact
+  `{position()}` and `{last()}` AVT forms. Preserve the case's ISO-8859-1
+  serialization request as a separate unsupported byte-output boundary; do not
+  mislabel UTF-8 `String` output as another encoding.
 - [x] Execute `conflict-resolution-0802` with one template in named modes plus
   `#default`, explicit unnamed-mode dispatch, inherited `#current`, and a typed
   default-namespaced descendant-name selection. Keep QName modes, mode
