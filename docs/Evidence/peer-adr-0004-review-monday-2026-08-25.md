@@ -1,10 +1,10 @@
 # Peer ADR-0004 Review: Monday
 
-| Field | Value |
-| --- | --- |
-| Received | 2026-08-25 |
-| Reviewer | Monday, identified by the project owner as a peer |
-| Scope | ADR-0004 source cohesion and decomposition policy |
+| Field       | Value                                                    |
+| ----------- | -------------------------------------------------------- |
+| Received    | 2026-08-25                                               |
+| Reviewer    | Monday                                                   |
+| Scope       | ADR-0004 source cohesion and decomposition policy        |
 | Disposition | Accepted decision confirmed; minor clarification applied |
 
 ## Confirmed findings

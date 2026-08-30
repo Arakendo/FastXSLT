@@ -1,11 +1,11 @@
 # Peer Project Review: Tokimu and Weaver XSLT
 
-| Field | Value |
-| --- | --- |
-| Reviewed | 2026-08-25 |
-| Peer root | `F:\LocalSource\tokimu` |
+| Field     | Value                                           |
+| --------- | ----------------------------------------------- |
+| Reviewed  | 2026-08-25                                      |
+| Peer root | `F:\LocalSource\tokimu`                         |
 | XSLT peer | `F:\LocalSource\tokimu\third-party\weaver-xslt` |
-| Purpose | Inform the initial FastXSLT work environment |
+| Purpose   | Inform the initial FastXSLT work environment    |
 
 ## Material reviewed
 
@@ -112,4 +112,3 @@ The peer repositories were reviewed from local working trees, not immutable
 release tags. Their files may contain work newer than their public releases.
 No performance results, suite counts, architecture claims, or dependency safety
 claims were independently reproduced for this review.
-

@@ -1,13 +1,13 @@
 # Peer AR-0014 Review: Monday
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-28 |
-| Reviewer | Monday |
-| Reviewed revision | `2a08449` |
-| Subject | AR-0014 resource reference resolution and authority composition |
-| Outcome | Retain Incubating; make cache identity and fragment semantics explicit |
-| Informs | AR-0014 and the planned sealed-memory `include-0401` experiment |
+| Field             | Value                                                                  |
+| ----------------- | ---------------------------------------------------------------------- |
+| Date              | 2026-08-28                                                             |
+| Reviewer          | Monday                                                                 |
+| Reviewed revision | `2a08449`                                                              |
+| Subject           | AR-0014 resource reference resolution and authority composition        |
+| Outcome           | Retain Incubating; make cache identity and fragment semantics explicit |
+| Informs           | AR-0014 and the planned sealed-memory `include-0401` experiment        |
 
 ## Review conclusion
 

@@ -1,23 +1,23 @@
 # Peer Test-Corpus Review: Monday
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-25 |
-| Reviewer | Monday, peer review supplied by the project owner |
-| Scope | External standards suites and distinct adversarial/performance corpus purposes |
-| Informs | AR-0001, AR-0008, AR-0010, AR-0011, testing strategy, and corpus planning |
+| Field    | Value                                                                          |
+| -------- | ------------------------------------------------------------------------------ |
+| Date     | 2026-08-25                                                                     |
+| Reviewer | Monday                                                                         |
+| Scope    | External standards suites and distinct adversarial/performance corpus purposes |
+| Informs  | AR-0001, AR-0008, AR-0010, AR-0011, testing strategy, and corpus planning      |
 
 ## Reconciliation with the repository
 
 The review recommended four external families. FastXSLT already pins two of
 them at immutable revisions:
 
-| Suggested source | Current FastXSLT disposition |
-| --- | --- |
-| W3C XSLT 3.0 test suite | Admitted as immutable `vendor/xslt30-test`; one overlay-selected case executes privately |
-| W3C QT3 | Admitted as immutable `vendor/qt3tests`; catalog inventoried, execution harness pending profile selection |
-| W3C XML Conformance Test Suite | Useful AR-0008 candidate; official 2013 archive inspected locally but not admitted |
-| QT4 | Deferred future-language/regression candidate; no initial XPath/XSLT profile requires proposed 4.0 behavior |
+| Suggested source               | Current FastXSLT disposition                                                                                |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| W3C XSLT 3.0 test suite        | Admitted as immutable `vendor/xslt30-test`; one overlay-selected case executes privately                    |
+| W3C QT3                        | Admitted as immutable `vendor/qt3tests`; catalog inventoried, execution harness pending profile selection   |
+| W3C XML Conformance Test Suite | Useful AR-0008 candidate; official 2013 archive inspected locally but not admitted                          |
+| QT4                            | Deferred future-language/regression candidate; no initial XPath/XSLT profile requires proposed 4.0 behavior |
 
 This confirms the existing modern-language corpus direction rather than adding
 duplicate sources. The immediate new pressure is XML mechanics, where AR-0008

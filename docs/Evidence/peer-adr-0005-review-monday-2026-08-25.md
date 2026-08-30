@@ -1,11 +1,11 @@
 # Peer ADR-0005 Review: Monday
 
-| Field | Value |
-| --- | --- |
-| Received | 2026-08-25 |
-| Reviewer | Monday, identified by the project owner as a peer |
-| Scope | ADR-0005 unordered transform sets and host-owned workflow |
-| Disposition | Accepted decision confirmed; no ADR revision required |
+| Field       | Value                                                     |
+| ----------- | --------------------------------------------------------- |
+| Received    | 2026-08-25                                                |
+| Reviewer    | Monday                                                    |
+| Scope       | ADR-0005 unordered transform sets and host-owned workflow |
+| Disposition | Accepted decision confirmed; no ADR revision required     |
 
 ## Confirmed findings
 

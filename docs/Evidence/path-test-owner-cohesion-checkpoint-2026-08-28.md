@@ -28,11 +28,11 @@ production subject and introduces no sibling coupling.
 
 ## Mechanical change
 
-| Unit | Before | After | Responsibility |
-| --- | ---: | ---: | --- |
+| Unit                       |    Before |     After | Responsibility                                                                          |
+| -------------------------- | --------: | --------: | --------------------------------------------------------------------------------------- |
 | `path_experiment_tests.rs` | 992 lines | 891 lines | path evaluation, XDM navigation/order, predicates, identity, and work-charge invariants |
-| `path_syntax_tests.rs` | absent | 112 lines | path grammar lowering and diagnostic-classification invariants |
-| `path_experiment.rs` | 757 lines | 761 lines | unchanged production owner plus two private `cfg(test)` module declarations |
+| `path_syntax_tests.rs`     |    absent | 112 lines | path grammar lowering and diagnostic-classification invariants                          |
+| `path_experiment.rs`       | 757 lines | 761 lines | unchanged production owner plus two private `cfg(test)` module declarations             |
 
 Four tests moved without weakening assertions. Their module-qualified test
 names now identify the syntax responsibility explicitly. Twenty-two evaluation

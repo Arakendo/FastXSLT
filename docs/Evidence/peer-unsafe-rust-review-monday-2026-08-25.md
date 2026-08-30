@@ -1,11 +1,11 @@
 # Peer Unsafe-Rust Review: Monday
 
-| Field | Value |
-| --- | --- |
-| Received | 2026-08-25 |
-| Reviewer | Monday, identified by the project owner as a peer |
-| Scope | Conditions for permitting first-party unsafe Rust |
-| Disposition | Accepted and formalized in ADR-0003 |
+| Field       | Value                                             |
+| ----------- | ------------------------------------------------- |
+| Received    | 2026-08-25                                        |
+| Reviewer    | Monday                                            |
+| Scope       | Conditions for permitting first-party unsafe Rust |
+| Disposition | Accepted and formalized in ADR-0003               |
 
 ## Summary
 

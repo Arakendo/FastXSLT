@@ -1,11 +1,11 @@
 # Peer Documentation Review: Tosumu Database
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-25 |
-| Peer checkout | `F:\LocalSource\Database` |
-| Peer revision | `a84a0c09c05de85751c1456151ac35afeb97da15` |
-| Peer worktree | Clean at review time |
+| Field          | Value                                                                                    |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| Date           | 2026-08-25                                                                               |
+| Peer checkout  | `F:\LocalSource\Database`                                                                |
+| Peer revision  | `a84a0c09c05de85751c1456151ac35afeb97da15`                                               |
+| Peer worktree  | Clean at review time                                                                     |
 | FastXSLT scope | Documentation authority, consumer boundaries, safety, diagnostics, inspection, and plans |
 
 ## Purpose

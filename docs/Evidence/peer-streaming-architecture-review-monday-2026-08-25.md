@@ -1,11 +1,11 @@
 # Peer Streaming Architecture Review: Monday
 
-| Field | Value |
-| --- | --- |
-| Received | 2026-08-25 |
-| Reviewer | Monday, identified by the project owner as a peer |
-| Scope | Planning for future streaming without committing to implementation |
-| Disposition | Accepted as incubation evidence for AR-0007 |
+| Field       | Value                                                              |
+| ----------- | ------------------------------------------------------------------ |
+| Received    | 2026-08-25                                                         |
+| Reviewer    | Monday                                                             |
+| Scope       | Planning for future streaming without committing to implementation |
+| Disposition | Accepted as incubation evidence for AR-0007                        |
 
 ## Summary
 

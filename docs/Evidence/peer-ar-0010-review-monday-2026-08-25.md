@@ -1,13 +1,13 @@
 # Peer AR-0010 Review: Monday
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-25 |
-| Reviewer | Monday |
-| Reviewed revision | `2ba41c8` |
-| Subject | AR-0010 execution supervision and isolation boundary |
-| Outcome | Retain Incubating disposition without revision |
-| Informs | AR-0010 and its planned invocation-control experiments |
+| Field             | Value                                                  |
+| ----------------- | ------------------------------------------------------ |
+| Date              | 2026-08-25                                             |
+| Reviewer          | Monday                                                 |
+| Reviewed revision | `2ba41c8`                                              |
+| Subject           | AR-0010 execution supervision and isolation boundary   |
+| Outcome           | Retain Incubating disposition without revision         |
+| Informs           | AR-0010 and its planned invocation-control experiments |
 
 ## Review conclusion
 

@@ -1,10 +1,10 @@
 # Peer SDD Review: Monday
 
-| Field | Value |
-| --- | --- |
-| Received | 2026-08-25 |
-| Reviewer | Monday, identified by the project owner as a peer |
-| Scope | Initial FastXSLT Software Design Document |
+| Field       | Value                                         |
+| ----------- | --------------------------------------------- |
+| Received    | 2026-08-25                                    |
+| Reviewer    | Monday                                        |
+| Scope       | Initial FastXSLT Software Design Document     |
 | Disposition | Accepted with bounded documentation revisions |
 
 ## Summary
@@ -71,4 +71,3 @@ restraint. It can now reject circular semantic ownership, leaked invocation
 state, provenance-destroying lowering, ambient authority, serialization-coupled
 semantics, and globally stateful instrumentation without prejudging the concrete
 implementation.
-
