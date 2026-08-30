@@ -802,6 +802,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   2.0 `yes`/`no` and XSLT 3.0 `true`/`false`/`1`/`0`, without admitting broader
   XHTML rules or regex assertions. The output ledger now records 20 passes and
   212 visible harness gaps.
+- [x] Execute `output-0139` as a non-ASCII UTF-8 byte control over the existing
+  XML-compatible XHTML lane. Compare the complete declaration, namespace, and
+  body bytes and require `Á` to remain the exact `C3 81` sequence, without
+  claiming UTF-16, normalization, or general encoding support. The output
+  ledger now records 21 passes and 211 visible harness gaps.
 - [x] Execute `output-0127` through its upstream `all-of` using a harness-owned
   literal-plus-required-whitespace serialization matcher that rejects every
   unadmitted regex operator. Preserve 221 visible harness gaps and make no broad

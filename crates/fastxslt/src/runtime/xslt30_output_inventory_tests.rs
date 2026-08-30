@@ -211,6 +211,17 @@ fn executes_xhtml_byte_order_mark_boolean_variants() {
     }
 }
 
+#[test]
+fn executes_xhtml_utf8_multibyte_text_bytes() {
+    let bytes = execute_output_bytes_case("output-0139");
+    assert_eq!(
+        bytes,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\"><body>HelloÁ</body></html>"
+            .as_bytes()
+    );
+    assert!(bytes.ends_with(b"Hello\xc3\x81</body></html>"));
+}
+
 struct SerializationExecution {
     method: Option<String>,
     encoding: Option<String>,

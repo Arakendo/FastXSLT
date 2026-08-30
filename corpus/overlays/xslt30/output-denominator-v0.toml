@@ -75,6 +75,12 @@ execution = "passed"
 rationale = "Executes the whitespace-normalized XSLT 3.0 numeric-zero lexical form for the same exact unmarked XHTML byte result."
 
 [[case_override]]
+case_name = "output-0139"
+selection = "selected"
+execution = "passed"
+rationale = "Executes XML-compatible XHTML serialization with explicit UTF-8 and verifies the exact declaration, namespace, and multibyte encoding of the non-ASCII result text."
+
+[[case_override]]
 case_name = "output-0148"
 selection = "selected"
 execution = "passed"
