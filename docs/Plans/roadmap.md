@@ -830,6 +830,13 @@ failed, and harness-error cases without an unqualified conformance claim.
   `41 CC 81` sequence. Keep NFC sibling `0146` unsupported until real Unicode
   normalization exists. The output ledger now records 32 passes and 200 visible
   harness gaps.
+- [x] Execute `output-0122` and `output-0173` through bounded unnamed
+  output-declaration merging. Allow non-overlapping scalar properties, reject
+  repeated scalar properties as `FXST1018`, union expanded
+  `cdata-section-elements` names, and serialize selected immediate text as safe
+  CDATA while retaining ordinary escaping elsewhere. Keep named declarations
+  and import-precedence merging outside the slice. The output ledger now records
+  34 passes and 198 visible harness gaps.
 - [x] Execute `output-0127` through its upstream `all-of` using a harness-owned
   literal-plus-required-whitespace serialization matcher that rejects every
   unadmitted regex operator. Preserve 221 visible harness gaps and make no broad

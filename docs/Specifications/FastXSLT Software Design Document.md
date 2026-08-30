@@ -359,7 +359,12 @@ other normalization forms remain unsupported until backed by a complete
 Unicode normalization implementation rather than case-specific substitutions.
 The XML-compatible lane also retains canonical standalone `yes`, `no`, and
 `omit` metadata; `yes` and `no` become declaration pseudo-attributes, while
-`omit` emits none. This does not yet select output-declaration merging.
+`omit` emits none.
+Unnamed output declarations may now merge only when their scalar properties do
+not overlap; repeated scalar properties remain explicitly unsupported until
+precedence and conflict semantics are implemented. `cdata-section-elements`
+is unioned by expanded QName and affects only serialization of selected result
+element text. Named output definitions remain outside the private slice.
 
 ### Resource snapshots and volume execution
 

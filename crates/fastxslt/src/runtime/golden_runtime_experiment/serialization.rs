@@ -89,7 +89,7 @@ pub(in crate::runtime) fn serialize_xml(
         output.push_str("?>")?;
     }
     for node in &result.children {
-        serialize_node(node, &[], &mut output)?;
+        serialize_node(node, &[], &settings.cdata_section_elements, &mut output)?;
     }
     Ok(output.finish())
 }
@@ -206,6 +206,7 @@ fn serialize_text_node(
 fn serialize_node(
     node: &ResultNode,
     inherited_namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
+    cdata_section_elements: &[crate::xml::quick_xml_experiment::ExpandedName],
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
     match node {
@@ -265,7 +266,13 @@ fn serialize_node(
             }
             output.push('>')?;
             for child in children {
-                serialize_node(child, &in_scope, output)?;
+                if cdata_section_elements.contains(name) {
+                    if let ResultNode::Text(value) = child {
+                        serialize_cdata(value, output)?;
+                        continue;
+                    }
+                }
+                serialize_node(child, &in_scope, cdata_section_elements, output)?;
             }
             output.push_str("</")?;
             write_name(prefix, &name.local, output)?;
@@ -273,6 +280,12 @@ fn serialize_node(
         }
     }
     Ok(())
+}
+
+fn serialize_cdata(value: &str, output: &mut BudgetedString) -> Result<(), ExecutionFailure> {
+    output.push_str("<![CDATA[")?;
+    output.push_str(&value.replace("]]>", "]]]]><![CDATA[>"))?;
+    output.push_str("]]>")
 }
 
 fn attribute_prefix<'a>(

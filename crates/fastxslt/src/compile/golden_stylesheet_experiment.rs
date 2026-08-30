@@ -32,8 +32,8 @@ use template_pattern_compiler::compile_match_pattern;
 use instruction_compiler::{
     compile_sequence_excluding, literal_result_namespaces, parse_template_modes,
 };
-use output_compiler::compile_output;
 pub(super) use output_compiler::default_output_settings;
+use output_compiler::{compile_output, merge_output};
 
 pub(super) const XSLT_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
 const XML_SCHEMA_NAMESPACE: &str = "http://www.w3.org/2001/XMLSchema";
@@ -97,14 +97,11 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         };
         match (name.namespace.as_deref(), name.local.as_str()) {
             (Some(XSLT_NAMESPACE), "output") => {
-                if output.is_some() {
-                    return Err(invalid(
-                        "FXST0002",
-                        "the private slice permits one xsl:output declaration",
-                        document.location(child),
-                    ));
-                }
-                output = Some(compile_output(document, child, &declared_version)?);
+                let declaration = compile_output(document, child, &declared_version)?;
+                output = Some(match output {
+                    Some(existing) => merge_output(existing, declaration)?,
+                    None => declaration,
+                });
             }
             (Some(XSLT_NAMESPACE), "template") => {
                 compile_top_level_template(
@@ -154,7 +151,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
 
     Ok(StylesheetProgram {
         declared_version,
-        output: output.unwrap_or_else(default_output_settings),
+        output: output.map_or_else(default_output_settings, |declaration| declaration.settings),
         root_template,
         root_template_modes,
         matched_templates,
@@ -908,6 +905,7 @@ mod tests {
         assert_eq!(program.output.byte_order_mark, None);
         assert_eq!(program.output.normalization_form, None);
         assert_eq!(program.output.standalone, None);
+        assert!(program.output.cdata_section_elements.is_empty());
         assert!(!program.output.omit_xml_declaration);
     }
 
@@ -926,6 +924,18 @@ mod tests {
         assert_eq!(program.output.normalization_form.as_deref(), Some("none"));
         let failure = compile_stylesheet(&nfc).expect_err("NFC needs real Unicode normalization");
         assert_eq!(failure.code, "FXST1017");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+    }
+
+    #[test]
+    fn rejects_overlapping_output_properties_during_bounded_merge() {
+        let stylesheet = parse_stylesheet(
+            "memory:overlapping-output.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml"/><xsl:output method="xhtml"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&stylesheet)
+            .expect_err("repeated scalar properties remain outside bounded merging");
+        assert_eq!(failure.code, "FXST1018");
         assert_eq!(failure.category, CompileCategory::Unsupported);
     }
 

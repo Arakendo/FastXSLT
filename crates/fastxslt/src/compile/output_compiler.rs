@@ -1,6 +1,9 @@
 //! Private compilation of `xsl:output` declarations.
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
+use std::collections::BTreeSet;
+
+use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xslt::golden_semantics_experiment::OutputSettings;
 
 use super::{
@@ -17,16 +20,23 @@ pub(in crate::compile) fn default_output_settings() -> OutputSettings {
         byte_order_mark: None,
         normalization_form: None,
         standalone: None,
+        cdata_section_elements: Vec::new(),
         omit_xml_declaration: false,
         indent: None,
     }
+}
+
+pub(super) struct OutputDeclaration {
+    pub(super) settings: OutputSettings,
+    specified: BTreeSet<String>,
+    location: SourceLocation,
 }
 
 pub(super) fn compile_output(
     document: &Document,
     element: NodeId,
     declared_version: &str,
-) -> Result<OutputSettings, CompileFailure> {
+) -> Result<OutputDeclaration, CompileFailure> {
     ensure_only_attributes(
         document,
         element,
@@ -38,6 +48,7 @@ pub(super) fn compile_output(
             "byte-order-mark",
             "normalization-form",
             "standalone",
+            "cdata-section-elements",
             "omit-xml-declaration",
             "indent",
         ],
@@ -98,7 +109,7 @@ pub(super) fn compile_output(
     let standalone = optional_attribute(document, element, None, "standalone")
         .map(|value| parse_standalone(value, declared_version, document.location(element)))
         .transpose()?;
-    Ok(OutputSettings {
+    let settings = OutputSettings {
         method: method.map(str::to_owned),
         encoding: encoding.map(str::to_owned),
         media_type: optional_attribute(document, element, None, "media-type").map(str::to_owned),
@@ -106,9 +117,75 @@ pub(super) fn compile_output(
         byte_order_mark,
         normalization_form: normalization_form.map(str::to_owned),
         standalone,
+        cdata_section_elements: compile_cdata_section_elements(document, element)?,
         omit_xml_declaration,
         indent,
+    };
+    let specified = document
+        .attributes(element)
+        .iter()
+        .filter_map(|attribute| document.name(*attribute))
+        .filter(|name| name.namespace.is_none())
+        .map(|name| name.local.clone())
+        .collect();
+    Ok(OutputDeclaration {
+        settings,
+        specified,
+        location: document.location(element).clone(),
     })
+}
+
+pub(super) fn merge_output(
+    mut existing: OutputDeclaration,
+    next: OutputDeclaration,
+) -> Result<OutputDeclaration, CompileFailure> {
+    let overlaps = existing
+        .specified
+        .intersection(&next.specified)
+        .filter(|property| property.as_str() != "cdata-section-elements")
+        .cloned()
+        .collect::<Vec<_>>();
+    if !overlaps.is_empty() {
+        return Err(unsupported(
+            "FXST1018",
+            format!(
+                "merging repeated output properties is outside the private slice: {}",
+                overlaps.join(", ")
+            ),
+            &next.location,
+        ));
+    }
+    merge_optional(&mut existing.settings.method, next.settings.method);
+    merge_optional(&mut existing.settings.encoding, next.settings.encoding);
+    merge_optional(&mut existing.settings.media_type, next.settings.media_type);
+    merge_optional(
+        &mut existing.settings.include_content_type,
+        next.settings.include_content_type,
+    );
+    merge_optional(
+        &mut existing.settings.byte_order_mark,
+        next.settings.byte_order_mark,
+    );
+    merge_optional(
+        &mut existing.settings.normalization_form,
+        next.settings.normalization_form,
+    );
+    merge_optional(&mut existing.settings.standalone, next.settings.standalone);
+    merge_optional(&mut existing.settings.indent, next.settings.indent);
+    existing.settings.omit_xml_declaration |= next.settings.omit_xml_declaration;
+    for name in next.settings.cdata_section_elements {
+        if !existing.settings.cdata_section_elements.contains(&name) {
+            existing.settings.cdata_section_elements.push(name);
+        }
+    }
+    existing.specified.extend(next.specified);
+    Ok(existing)
+}
+
+fn merge_optional<T>(target: &mut Option<T>, value: Option<T>) {
+    if value.is_some() {
+        *target = value;
+    }
 }
 
 fn compile_encoding(document: &Document, element: NodeId) -> Result<Option<&str>, CompileFailure> {
@@ -144,6 +221,68 @@ fn compile_normalization_form(
         ));
     }
     Ok(value)
+}
+
+fn compile_cdata_section_elements(
+    document: &Document,
+    element: NodeId,
+) -> Result<Vec<ExpandedName>, CompileFailure> {
+    let Some(value) = optional_attribute(document, element, None, "cdata-section-elements") else {
+        return Ok(Vec::new());
+    };
+    value
+        .split_whitespace()
+        .map(|lexical| {
+            let (prefix, local) = lexical
+                .split_once(':')
+                .map_or((None, lexical), |(prefix, local)| (Some(prefix), local));
+            if !is_ascii_ncname(local) || prefix.is_some_and(|prefix| !is_ascii_ncname(prefix)) {
+                return Err(invalid(
+                    "FXST1019",
+                    format!("invalid cdata-section-elements QName: {lexical}"),
+                    document.location(element),
+                ));
+            }
+            let namespace = namespace_for_prefix(document, element, prefix).ok_or_else(|| {
+                invalid(
+                    "FXST1020",
+                    format!("unbound cdata-section-elements prefix: {lexical}"),
+                    document.location(element),
+                )
+            })?;
+            Ok(ExpandedName {
+                namespace: (!namespace.is_empty()).then(|| namespace.to_owned()),
+                local: local.to_owned(),
+            })
+        })
+        .collect()
+}
+
+fn namespace_for_prefix<'a>(
+    document: &'a Document,
+    element: NodeId,
+    prefix: Option<&str>,
+) -> Option<&'a str> {
+    let mut current = Some(element);
+    while let Some(node) = current {
+        if let Some(binding) = document
+            .namespace_declarations(node)
+            .iter()
+            .find(|binding| binding.prefix.as_deref() == prefix)
+        {
+            return Some(binding.namespace.as_str());
+        }
+        current = document.parent(node);
+    }
+    prefix.is_none().then_some("")
+}
+
+fn is_ascii_ncname(value: &str) -> bool {
+    let mut chars = value.chars();
+    chars
+        .next()
+        .is_some_and(|ch| ch.is_ascii_alphabetic() || ch == '_')
+        && chars.all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '.'))
 }
 
 fn parse_standalone(

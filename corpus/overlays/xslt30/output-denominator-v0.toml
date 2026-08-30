@@ -33,6 +33,12 @@ execution = "passed"
 rationale = "Executes XML-compatible XHTML serialization with the default retained XML declaration and exact file comparison after the case-specific checkout-EOL correction."
 
 [[case_override]]
+case_name = "output-0122"
+selection = "selected"
+execution = "passed"
+rationale = "Merges two unnamed output declarations with non-overlapping scalar properties, unions their expanded cdata-section-elements names, and exactly serializes only the selected XHTML-namespaced element text as CDATA."
+
+[[case_override]]
 case_name = "output-0127"
 selection = "selected"
 execution = "passed"
@@ -181,6 +187,12 @@ case_name = "output-0168"
 selection = "selected"
 execution = "passed"
 rationale = "Retains normalization-form=none as immutable output metadata and verifies the XML byte result preserves the exact decomposed A plus combining-acute UTF-8 sequence."
+
+[[case_override]]
+case_name = "output-0173"
+selection = "selected"
+execution = "passed"
+rationale = "Merges two unnamed declarations with non-overlapping scalar properties, retains standalone=yes, and exactly serializes the selected unnamespaced item1 text as CDATA while escaping item2 normally."
 
 [[case_override]]
 case_name = "output-0171"

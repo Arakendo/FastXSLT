@@ -233,6 +233,26 @@ fn executes_output_0131_as_a_multi_root_xhtml_result() {
 }
 
 #[test]
+fn executes_output_0122_with_merged_cdata_element_names() {
+    let execution = execute_assert_serialization_case("output-0122", "xml");
+    assert_eq!(execution.method.as_deref(), Some("xml"));
+    assert_eq!(
+        execution.expected.as_deref(),
+        Some(execution.actual.as_str())
+    );
+}
+
+#[test]
+fn executes_output_0173_with_merged_standalone_and_cdata_settings() {
+    let execution = execute_assert_serialization_case("output-0173", "xhtml");
+    assert_eq!(execution.method.as_deref(), Some("xml"));
+    assert_eq!(
+        execution.expected.as_deref(),
+        Some(execution.actual.as_str())
+    );
+}
+
+#[test]
 fn executes_xhtml_standalone_yes_no_and_omit_variants() {
     for case_name in [
         "output-0149",

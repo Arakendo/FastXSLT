@@ -54,6 +54,7 @@ struct OutputInspection {
     byte_order_mark: Option<bool>,
     normalization_form: Option<String>,
     standalone: Option<String>,
+    cdata_section_elements: Vec<crate::xml::quick_xml_experiment::ExpandedName>,
     omit_xml_declaration: bool,
     indent: Option<bool>,
 }
@@ -170,6 +171,15 @@ fn output_text_bytes(output: &OutputSettings) -> Option<usize> {
         .checked_add(output.media_type.as_ref().map_or(0, String::len))?
         .checked_add(output.normalization_form.as_ref().map_or(0, String::len))
         .and_then(|bytes| bytes.checked_add(output.standalone.as_ref().map_or(0, String::len)))
+        .and_then(|bytes| {
+            output
+                .cdata_section_elements
+                .iter()
+                .try_fold(bytes, |sum, name| {
+                    sum.checked_add(name.local.len())?
+                        .checked_add(name.namespace.as_ref().map_or(0, String::len))
+                })
+        })
 }
 
 fn inspect_output(output: &OutputSettings) -> OutputInspection {
@@ -181,6 +191,7 @@ fn inspect_output(output: &OutputSettings) -> OutputInspection {
         byte_order_mark: output.byte_order_mark,
         normalization_form: output.normalization_form.clone(),
         standalone: output.standalone.clone(),
+        cdata_section_elements: output.cdata_section_elements.clone(),
         omit_xml_declaration: output.omit_xml_declaration,
         indent: output.indent,
     }
@@ -311,6 +322,7 @@ mod tests {
                     byte_order_mark: None,
                     normalization_form: None,
                     standalone: None,
+                    cdata_section_elements: Vec::new(),
                     omit_xml_declaration: true,
                     indent: None,
                 },
