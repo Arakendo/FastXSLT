@@ -813,6 +813,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   cases `0167` and `0169` explicitly unsupported until a real Unicode
   normalization implementation and dependency review exist. The output ledger
   now records 23 passes and 209 visible harness gaps.
+- [x] Execute `output-0131` through the file-backed branch of its native
+  `any-of`, preserving two top-level XHTML elements, authored interstitial text,
+  ordering, and namespace fixup. Admit only the exact composite assertion shape
+  and keep `output-0173`'s declaration merging, standalone, and CDATA semantics
+  as separate work. The output ledger now records 24 passes and 208 visible
+  harness gaps.
 - [x] Execute `output-0127` through its upstream `all-of` using a harness-owned
   literal-plus-required-whitespace serialization matcher that rejects every
   unadmitted regex operator. Preserve 221 visible harness gaps and make no broad

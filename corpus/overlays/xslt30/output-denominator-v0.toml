@@ -39,6 +39,12 @@ execution = "passed"
 rationale = "Executes XHTML include-content-type=no and both members of the upstream all-of through the harness's admitted literal-plus-required-whitespace serialization-matches subset."
 
 [[case_override]]
+case_name = "output-0131"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the upstream any-of through its exact file-backed XHTML alternative, preserving two top-level result elements, intervening text, and namespace fixup after the explicit checkout-EOL correction."
+
+[[case_override]]
 case_name = "output-0136"
 selection = "selected"
 execution = "passed"

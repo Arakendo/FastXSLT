@@ -223,6 +223,16 @@ fn executes_xhtml_utf8_multibyte_text_bytes() {
 }
 
 #[test]
+fn executes_output_0131_as_a_multi_root_xhtml_result() {
+    let execution = execute_assert_serialization_case("output-0131", "xhtml");
+    assert_eq!(execution.method.as_deref(), Some("xhtml"));
+    assert_eq!(
+        execution.expected.as_deref(),
+        Some(execution.actual.as_str())
+    );
+}
+
+#[test]
 fn executes_xml_and_text_with_normalization_form_none() {
     let decomposed = "A\u{301}";
     let xml = execute_output_bytes_case("output-0168");
@@ -277,7 +287,13 @@ fn execute_output_case(case_name: &str, assertion_method: Option<&str>) -> Seria
     let source_content = child_named(&test_set, source, "content").expect("inline source content");
     let expected_file = assertion_method.map(|method| {
         let result = child_named(&test_set, case, "result").expect("output result");
-        let assertion = first_element_child(&test_set, result).expect("output assertion");
+        let top_level = first_element_child(&test_set, result).expect("output assertion");
+        let assertion = if local_name(&test_set, top_level) == "any-of" {
+            child_named(&test_set, top_level, "assert-serialization")
+                .expect("admitted any-of has a file-backed serialization alternative")
+        } else {
+            top_level
+        };
         assert_eq!(local_name(&test_set, assertion), "assert-serialization");
         assert_eq!(attribute(&test_set, assertion, "method"), Some(method));
         attribute(&test_set, assertion, "file")
