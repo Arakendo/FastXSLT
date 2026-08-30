@@ -9,6 +9,12 @@ execution = "not-run"
 rationale = "Unless overridden below, the case requires serialization assertion or execution-adapter ownership that the private harness has not implemented; no case is silently omitted or treated as an engine pass/failure."
 
 [[case_override]]
+case_name = "output-0104"
+selection = "selected"
+execution = "passed"
+rationale = "Executes XHTML attribute serialization with the predefined xml namespace, retains xml:lang without requiring a redundant declaration, and verifies that an apostrophe remains literal inside a double-quoted attribute value."
+
+[[case_override]]
 case_name = "output-0105"
 selection = "selected"
 execution = "passed"

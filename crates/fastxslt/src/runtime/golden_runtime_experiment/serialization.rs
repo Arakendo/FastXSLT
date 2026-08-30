@@ -409,6 +409,9 @@ fn attribute_prefix<'a>(
     let Some(namespace) = namespace else {
         return Ok(None);
     };
+    if namespace == "http://www.w3.org/XML/1998/namespace" {
+        return Ok(Some("xml"));
+    }
     in_scope
         .iter()
         .find(|binding| binding.prefix.is_some() && binding.namespace == namespace)

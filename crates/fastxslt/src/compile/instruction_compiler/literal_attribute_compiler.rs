@@ -5,6 +5,8 @@ use crate::xslt::golden_semantics_experiment::{LiteralAttribute, LiteralAttribut
 
 use super::{CompileFailure, XSLT_NAMESPACE, invalid, is_ascii_ncname, unsupported};
 
+const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
+
 pub(super) fn compile_literal_result_attributes(
     document: &Document,
     element: NodeId,
@@ -17,7 +19,11 @@ pub(super) fn compile_literal_result_attributes(
         if name.namespace.as_deref() == Some(XSLT_NAMESPACE) {
             continue;
         }
-        if name.namespace.is_some() {
+        if name
+            .namespace
+            .as_deref()
+            .is_some_and(|namespace| namespace != XML_NAMESPACE)
+        {
             return Err(unsupported(
                 "FXST1007",
                 "namespaced literal result attributes are outside the private slice",

@@ -34,6 +34,23 @@ struct InventoryObservation {
 }
 
 #[test]
+fn executes_output_0104_with_predefined_xml_attribute_prefix_and_literal_apostrophe() {
+    let execution = execute_output_case("output-0104", None);
+    assert_eq!(execution.method.as_deref(), Some("xhtml"));
+    assert!(
+        execution
+            .actual
+            .contains("<html xml:lang=\"en\" lang=\"en\">")
+    );
+    assert!(
+        execution
+            .actual
+            .contains("<div style=\"don't try this\">example.org</div>")
+    );
+    assert!(!execution.actual.contains("&apos;"));
+}
+
+#[test]
 fn executes_output_0128_without_injecting_html_content_type_metadata() {
     let execution = execute_assert_serialization_case("output-0128", "xml");
     assert_eq!(execution.method.as_deref(), Some("xml"));

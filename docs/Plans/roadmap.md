@@ -792,7 +792,9 @@ failed, and harness-error cases without an unqualified conformance claim.
   serializer-owned XHTML Content-Type insertion/replacement. Use explicit or
   default media type, emit UTF-8, replace one existing matching meta without
   mutating the semantic result, and preserve paired tags for non-empty-content
-  XHTML elements. The output ledger now records 47 passes and 185 visible
+  XHTML elements. The predefined `xml` namespace is also recognized during
+  attribute serialization, admitting the XHTML `xml:lang` and apostrophe
+  control in `output-0104`. The output ledger now records 48 passes and 184 visible
   harness gaps.
 - [x] Extend that declaration lane through `output-0110a`, `output-0110b`, and
   `output-0148` through `output-0148b`, accepting whitespace-normalized XSLT

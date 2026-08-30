@@ -682,6 +682,51 @@ fn xhtml_content_type_replaces_an_existing_meta_without_mutating_result_content(
 }
 
 #[test]
+fn serializer_uses_the_predefined_xml_prefix_without_a_namespace_declaration() {
+    let result = SemanticResult {
+        children: vec![ResultNode::Element {
+            name: crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: None,
+                local: "out".to_owned(),
+            },
+            namespaces: Vec::new(),
+            attributes: vec![ResultAttribute {
+                name: crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: Some("http://www.w3.org/XML/1998/namespace".to_owned()),
+                    local: "lang".to_owned(),
+                },
+                value: "en".to_owned(),
+            }],
+            children: Vec::new(),
+        }],
+    };
+    let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
+        method: Some("xml".to_owned()),
+        version: None,
+        encoding: None,
+        media_type: None,
+        include_content_type: None,
+        byte_order_mark: None,
+        normalization_form: None,
+        standalone: None,
+        cdata_section_elements: Vec::new(),
+        omit_xml_declaration: true,
+        indent: Some(false),
+    };
+
+    let serialized = serialize_xml(
+        &result,
+        &settings,
+        "predefined-xml-prefix",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("serialize an XML-namespaced attribute without an authored binding");
+
+    assert_eq!(serialized, "<out xml:lang=\"en\"></out>");
+}
+
+#[test]
 fn namespaced_element_names_use_retained_bindings_and_undeclare_defaults() {
     let result = SemanticResult {
         children: vec![ResultNode::Element {
