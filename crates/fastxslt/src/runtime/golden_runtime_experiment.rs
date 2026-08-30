@@ -1309,5 +1309,9 @@ mod xslt30_output_inventory_tests;
 mod xslt30_include_inventory_tests;
 
 #[cfg(test)]
+#[path = "xslt30_mode_qname_tests.rs"]
+mod xslt30_mode_qname_tests;
+
+#[cfg(test)]
 #[path = "xslt30_deep_equal_inventory_tests.rs"]
 mod xslt30_deep_equal_inventory_tests;

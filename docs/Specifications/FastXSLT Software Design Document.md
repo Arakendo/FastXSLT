@@ -222,6 +222,14 @@ compatibility profile or expose a public or host-configurable policy. The
 current executable slice proves only the bounded module topologies below; it
 does not define a public module graph representation.
 
+Compiled mode names use expanded QName identity. An unprefixed lexical mode is
+in no namespace; a prefixed mode is resolved against the namespace context of
+the containing stylesheet instruction and retained in canonical expanded form.
+Template declarations and apply-templates instructions therefore do not equate
+names merely because their prefixes or local parts match. `#default`, `#all`,
+and `#current` retain their separate control meanings. This private identity
+model does not yet define a public initial-mode QName type.
+
 The bounded include slice also admits one three-module include chain in which a
 simple fragment selects exactly one embedded stylesheet by `xml:id`. Resource
 bytes are acquired under the fragmentless identity before fragment semantics

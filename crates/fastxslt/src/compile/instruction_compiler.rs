@@ -362,10 +362,11 @@ fn compile_with_params(
 }
 
 pub(super) fn parse_template_modes(
+    document: &Document,
+    element: NodeId,
     mode: &str,
-    location: &SourceLocation,
 ) -> Result<Vec<String>, CompileFailure> {
-    template_invocation_compiler::parse_template_modes(mode, location)
+    template_invocation_compiler::parse_template_modes(document, element, mode)
 }
 
 fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {

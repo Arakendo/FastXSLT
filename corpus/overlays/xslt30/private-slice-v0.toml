@@ -2,6 +2,20 @@ suite = "W3C XSLT 3.0 test suite"
 revision = "6f8fd9e966ae74a251a2604abef9d904c7bc5c9b"
 
 [[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0105"
+selection = "selected"
+execution = "passed"
+rationale = "Qualified mode foo:a is resolved to expanded identity Q{http://foo.com}a at each stylesheet use and dispatches the matching text rule."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0106"
+selection = "selected"
+execution = "passed"
+rationale = "Unqualified mode a remains a no-namespace identity distinct from the simultaneously declared foo:a mode."
+
+[[case]]
 set_file = "tests/misc/initial-mode/_initial-mode-test-set.xml"
 case_name = "initial-mode-001"
 selection = "selected"

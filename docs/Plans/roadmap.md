@@ -956,6 +956,13 @@ failed, and harness-error cases without an unqualified conformance claim.
   named-template calls and dispatching mode-qualified document-node patterns
   through the ordinary typed selector. Keep `#default` multi-mode declarations,
   mode QNames, and broader mode declarations outside this slice.
+- [x] Conserve the complete 169-case XSLT30 `attr/mode` denominator under a
+  first-party default-not-run overlay and execute `mode-0105` and `mode-0106`.
+  Resolve prefixed mode names through stylesheet namespace context into
+  expanded identities while keeping unprefixed modes in no namespace, proving
+  `foo:a` and `a` remain distinct. This is the first prerequisite for
+  `conflict-resolution-1401`; temporary-tree path navigation, union patterns,
+  and temporary-focus `xsl:next-match` remain separate work.
 - [x] Execute `conflict-resolution-0802` with one template in named modes plus
   `#default`, explicit unnamed-mode dispatch, inherited `#current`, and a typed
   default-namespaced descendant-name selection. Keep QName modes, mode

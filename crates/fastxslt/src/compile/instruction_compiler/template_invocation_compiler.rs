@@ -39,7 +39,7 @@ pub(super) fn compile_apply_templates(
         .map(|expression| parse_apply_selection(document, element, expression, location.clone()))
         .transpose()?;
     let mode = optional_attribute(document, element, None, "mode")
-        .map(|mode| parse_apply_mode(mode, document.location(element)))
+        .map(|mode| parse_apply_mode(document, element, mode))
         .transpose()?;
     Ok(Instruction::ApplyTemplates {
         select,
@@ -194,31 +194,67 @@ fn expanded_name(
 }
 
 pub(super) fn parse_apply_mode(
+    document: &Document,
+    element: NodeId,
     mode: &str,
-    location: &SourceLocation,
 ) -> Result<String, CompileFailure> {
     if matches!(mode, "#current" | "#default") {
         Ok(mode.to_owned())
     } else {
-        parse_mode(mode, location)
+        parse_mode(document, element, mode)
     }
 }
 
-pub(super) fn parse_mode(mode: &str, location: &SourceLocation) -> Result<String, CompileFailure> {
+pub(super) fn parse_mode(
+    document: &Document,
+    element: NodeId,
+    mode: &str,
+) -> Result<String, CompileFailure> {
     if is_ascii_ncname(mode) {
-        Ok(mode.to_owned())
-    } else {
-        Err(unsupported(
-            "FXST1012",
-            format!("unsupported mode name: {mode}"),
-            location,
-        ))
+        return Ok(mode.to_owned());
     }
+    if let Some((prefix, local)) = mode.split_once(':').filter(|(prefix, local)| {
+        is_ascii_ncname(prefix) && is_ascii_ncname(local) && !local.contains(':')
+    }) {
+        let namespace = namespace_for_prefix(document, element, prefix).ok_or_else(|| {
+            invalid(
+                "FXST0031",
+                format!("unbound prefix in mode name: {prefix}"),
+                document.location(element),
+            )
+        })?;
+        return Ok(format!("Q{{{namespace}}}{local}"));
+    }
+    Err(unsupported(
+        "FXST1012",
+        format!("unsupported mode name: {mode}"),
+        document.location(element),
+    ))
+}
+
+fn namespace_for_prefix<'a>(
+    document: &'a Document,
+    element: NodeId,
+    prefix: &str,
+) -> Option<&'a str> {
+    let mut current = Some(element);
+    while let Some(node) = current {
+        if let Some(binding) = document
+            .namespace_declarations(node)
+            .iter()
+            .find(|binding| binding.prefix.as_deref() == Some(prefix))
+        {
+            return Some(binding.namespace.as_str());
+        }
+        current = document.parent(node);
+    }
+    None
 }
 
 pub(super) fn parse_template_modes(
+    document: &Document,
+    element: NodeId,
     mode: &str,
-    location: &SourceLocation,
 ) -> Result<Vec<String>, CompileFailure> {
     let modes = mode
         .split_whitespace()
@@ -226,7 +262,7 @@ pub(super) fn parse_template_modes(
             if matches!(name, "#all" | "#default") {
                 Ok(name.to_owned())
             } else {
-                parse_mode(name, location)
+                parse_mode(document, element, name)
             }
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -234,7 +270,7 @@ pub(super) fn parse_template_modes(
         return Err(unsupported(
             "FXST1012",
             "template mode list is empty",
-            location,
+            document.location(element),
         ));
     }
     Ok(modes)

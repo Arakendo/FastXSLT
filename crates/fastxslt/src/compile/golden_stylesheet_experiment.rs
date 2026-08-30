@@ -376,7 +376,7 @@ fn compile_matched_template(
 ) -> Result<MatchedTemplate, CompileFailure> {
     let (pattern, priority) = compile_match_pattern(document, element, pattern)?;
     let modes = optional_attribute(document, element, None, "mode")
-        .map(|mode| parse_template_modes(mode, document.location(element)))
+        .map(|mode| parse_template_modes(document, element, mode))
         .transpose()?;
     Ok(MatchedTemplate {
         pattern,
