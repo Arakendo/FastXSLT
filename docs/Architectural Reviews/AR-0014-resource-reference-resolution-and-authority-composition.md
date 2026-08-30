@@ -254,3 +254,8 @@ resolver trait, URI type, catalog representation, live authority, or cache.
   two included branches and one leaf import per branch. The private ceiling rose
   to five occurrences at depth two; public limits and general graph assembly
   remain unselected.
+- 2026-08-29 -- XSLT30 `include-0801` reused that sealed acquisition ceiling for
+  two ordered imported subtrees with one leaf import each. Five distinct
+  precedence strata now survive graph preparation and execution without
+  changing resource authority; general recursive graph assembly remains
+  unselected.

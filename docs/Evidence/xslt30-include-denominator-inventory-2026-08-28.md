@@ -6,7 +6,7 @@
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/decl/include/_include-test-set.xml` |
 | Cases | 16 |
-| Current ledger | 12 selected/passed; 4 harness-unsupported / not-run as of 2026-08-29 |
+| Current ledger | 13 selected/passed; 3 explicit non-passes as of 2026-08-29 |
 | Catalog stylesheet references | 16 principal; 34 secondary (including repeated case environments) |
 
 ## Conserved denominator
@@ -19,7 +19,7 @@ every case an explicit default `harness-unsupported / not-run` disposition,
 with first-party selected/passed overrides for `include-0401`, `include-0201`,
 `include-0301`, `include-0202`, `include-0105`, `include-0601`, and
 `include-0501`, `include-0103`, `include-0104`, `include-0701`, `include-0702a`,
-and `include-0702c`. FastXSLT
+`include-0702c`, and `include-0801`. FastXSLT
 therefore records the complete denominator without calling unresolved module
 semantics an engine failure or quietly dropping cases.
 
@@ -80,6 +80,12 @@ difference between an explicit XSLT 1.0/2.0 recover request and the XSLT 3.0+
 positive case. `include-0702b` remains visibly not-run because its expected
 `XTRE0540` outcome requires error-on-multiple-match behavior that the private
 compiler and invocation policy cannot request.
+`include-0801` adds two ordered imported subtrees, each containing one leaf
+import, and preserves five precedence strata through chained
+`xsl:apply-imports` execution. It is the final positive case in this test set.
+The three remaining cases are deliberately visible: `include-0101` and
+`include-0102` depend on denied DTD behavior, while `include-0702b` expects the
+unsupported multiple-match error policy.
 It makes no general claim for `xsl:include`, `xsl:import`, import precedence,
 general embedded stylesheet fragments, module cycles, or arbitrary module graphs. Upstream
 bytes remain immutable in the W3C submodule; all disposition policy remains in

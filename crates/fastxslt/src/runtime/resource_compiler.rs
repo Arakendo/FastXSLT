@@ -4,6 +4,7 @@ use crate::compile::golden_stylesheet_experiment::{
     CompileCategory, CompileFailure, StylesheetDependencyKind, compile_stylesheet,
     compile_stylesheet_with_import_and_include, compile_stylesheet_with_imports,
     compile_stylesheet_with_single_include, compile_stylesheet_with_single_include_program_at,
+    compile_stylesheet_with_two_imported_programs_at,
     compile_stylesheet_with_two_included_programs_at,
 };
 use crate::resources::{ResolutionFailure, ResolutionLimits, ResourceSnapshot, SnapshotResolver};
@@ -61,6 +62,9 @@ fn compile_loaded_graph(
         });
     }
     if let Some(program) = compile_two_include_leaf_import_graph(graph) {
+        return program;
+    }
+    if let Some(program) = compile_two_import_leaf_import_graph(graph) {
         return program;
     }
     if let Some(program) = compile_nested_include_chain(graph) {
@@ -122,6 +126,44 @@ fn compile_loaded_graph(
                 .clone(),
         }),
     }
+}
+
+fn compile_two_import_leaf_import_graph(
+    graph: &LoadedStylesheetModule,
+) -> Option<Result<StylesheetProgram, CompileFailure>> {
+    let [first, second] = graph.dependencies.as_slice() else {
+        return None;
+    };
+    let ([first_import], [second_import]) = (
+        first.dependencies.as_slice(),
+        second.dependencies.as_slice(),
+    ) else {
+        return None;
+    };
+    if first.dependency_kind != Some(StylesheetDependencyKind::Import)
+        || second.dependency_kind != Some(StylesheetDependencyKind::Import)
+        || first_import.dependency_kind != Some(StylesheetDependencyKind::Import)
+        || second_import.dependency_kind != Some(StylesheetDependencyKind::Import)
+        || !first_import.dependencies.is_empty()
+        || !second_import.dependencies.is_empty()
+    {
+        return None;
+    }
+    Some((|| {
+        let first_program = compile_stylesheet_with_imports(
+            &first.document,
+            &[(&first_import.document, first_import.root)],
+        )?;
+        let second_program = compile_stylesheet_with_imports(
+            &second.document,
+            &[(&second_import.document, second_import.root)],
+        )?;
+        compile_stylesheet_with_two_imported_programs_at(
+            &graph.document,
+            graph.root,
+            [first_program, second_program],
+        )
+    })())
 }
 
 fn compile_two_include_leaf_import_graph(

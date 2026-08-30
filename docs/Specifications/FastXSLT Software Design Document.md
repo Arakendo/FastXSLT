@@ -237,6 +237,13 @@ The private path admits both the suite's explicit recover request for its
 XSLT 1.0/2.0 variant and its XSLT 3.0+ positive variant. It does not expose a
 host-selectable multiple-match policy or admit the expected-error variant.
 
+A second five-module topology admits two leading imports from the principal,
+each with one leaf import. The first leaf, first branch, second leaf, second
+branch, and principal occupy distinct increasing import-precedence strata.
+This preserves declaration-order precedence between sibling import subtrees
+and lets `xsl:apply-imports` select the highest applicable lower stratum. The
+topology is bounded evidence, not a general recursive precedence-graph model.
+
 Module assembly resolves statically known cross-module declarations before
 whole-program validation and runtime materialization. Within the bounded
 bounded import slice, a principal global binding shadows an imported binding of

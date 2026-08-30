@@ -769,3 +769,10 @@ case_name = "include-0702c"
 selection = "selected"
 execution = "passed"
 rationale = "The XSLT 3.0+ positive variant executes the same five-module graph and XML assertion under the admitted default later-rule recovery path; configurable error policy remains outside the slice."
+
+[[case]]
+set_file = "tests/decl/include/_include-test-set.xml"
+case_name = "include-0801"
+selection = "selected"
+execution = "passed"
+rationale = "Two principal imports and their respective leaf imports retain the exact precedence ladder -4/-3/-2/-1 below principal precedence 0, so apply-imports from the principal title rule reaches the later branch and then its leaf."

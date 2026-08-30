@@ -1068,6 +1068,12 @@ failed, and harness-error cases without an unqualified conformance claim.
     Keep `include-0702b` not-run until compilation or invocation can request
     error-on-multiple-match and report `XTRE0540`. The denominator now records
     12 passes and 4 visible not-run dispositions.
+  - [x] Execute `include-0801` through two ordered principal imports, each with
+    one leaf import. Preserve five precedence strata so chained
+    `xsl:apply-imports` selects the later branch and then its own imported leaf.
+    All positive cases in the set now execute; the denominator records 13
+    passes and 3 explicit non-passes for two DTD-dependent cases and the
+    expected multiple-match error case.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.

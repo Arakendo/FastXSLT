@@ -303,6 +303,97 @@ pub(crate) fn compile_stylesheet_with_imports(
     Ok(principal_program)
 }
 
+pub(crate) fn compile_stylesheet_with_two_imported_programs_at(
+    principal: &Document,
+    principal_root: NodeId,
+    imported_programs: [StylesheetProgram; 2],
+) -> Result<StylesheetProgram, CompileFailure> {
+    let import_declarations = import_nodes_at(principal, principal_root)?;
+    if import_declarations.len() != imported_programs.len() {
+        return Err(invalid(
+            "FXST0035",
+            "two-program import compilation requires exactly two xsl:import declarations",
+            principal.location(principal_root),
+        ));
+    }
+    let children = meaningful_children(principal, principal_root);
+    if children
+        .iter()
+        .take(import_declarations.len())
+        .ne(import_declarations.iter())
+    {
+        return Err(invalid(
+            "XTSE0200",
+            "xsl:import must precede every other top-level declaration",
+            principal.location(import_declarations[0]),
+        ));
+    }
+
+    let mut principal_program = compile_stylesheet_at_excluding_unvalidated(
+        principal,
+        principal_root,
+        &import_declarations,
+    )?;
+    let mut imported_programs = imported_programs;
+    for (program, shift) in imported_programs.iter_mut().zip([-3, -1]) {
+        rebase_imported_program(program, shift, principal.location(principal_root))?;
+    }
+
+    let mut matched_templates = Vec::new();
+    for program in &mut imported_programs {
+        matched_templates.append(&mut program.matched_templates);
+    }
+    matched_templates.append(&mut principal_program.matched_templates);
+    principal_program.matched_templates = matched_templates;
+    for program in imported_programs.into_iter().rev() {
+        merge_imported_named_templates(&mut principal_program, program.named_templates)?;
+        merge_imported_global_bindings(&mut principal_program, program.global_bindings);
+    }
+    validate_named_template_references(&principal_program)?;
+    Ok(principal_program)
+}
+
+fn rebase_imported_program(
+    program: &mut StylesheetProgram,
+    shift: i32,
+    location: &SourceLocation,
+) -> Result<(), CompileFailure> {
+    if program.output != default_output_settings() {
+        return Err(unsupported(
+            "FXST1024",
+            "imported output declarations are outside the bounded import slice",
+            location,
+        ));
+    }
+    if program
+        .matched_templates
+        .iter()
+        .any(|template| !matches!(template.import_precedence, -1 | 0))
+    {
+        return Err(unsupported(
+            "FXST1030",
+            "the private nested-import slice requires one precedence level below each imported branch",
+            location,
+        ));
+    }
+    for template in &mut program.matched_templates {
+        template.import_precedence += shift;
+    }
+    if let Some(template) = program.root_template.take() {
+        program.matched_templates.insert(
+            0,
+            MatchedTemplate {
+                pattern: MatchPattern::Document,
+                import_precedence: shift,
+                priority: TemplatePriority::ROOT_DEFAULT,
+                modes: std::mem::take(&mut program.root_template_modes),
+                template,
+            },
+        );
+    }
+    Ok(())
+}
+
 fn compile_imported_program(
     imported: &Document,
     imported_root: NodeId,
@@ -441,6 +532,10 @@ fn include_nodes_at(document: &Document, root: NodeId) -> Result<Vec<NodeId>, Co
 
 fn import_nodes(document: &Document) -> Result<Vec<NodeId>, CompileFailure> {
     let root = document_element(document)?;
+    import_nodes_at(document, root)
+}
+
+fn import_nodes_at(document: &Document, root: NodeId) -> Result<Vec<NodeId>, CompileFailure> {
     require_stylesheet_root(document, root)?;
     Ok(meaningful_children(document, root)
         .into_iter()

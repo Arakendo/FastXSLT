@@ -79,3 +79,9 @@ case_name = "include-0702c"
 selection = "selected"
 execution = "passed"
 rationale = "Executes the same sealed five-module graph under the case's XSLT 3.0+ metadata and applies the admitted later-rule recovery path without claiming support for configurable conflict policy."
+
+[[case_override]]
+case_name = "include-0801"
+selection = "selected"
+execution = "passed"
+rationale = "Assembles two ordered principal imports, each with one leaf import, preserves five distinct precedence strata, and executes chained xsl:apply-imports against the file-backed XML assertion."

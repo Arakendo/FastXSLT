@@ -33,7 +33,7 @@ const CASE_NAMES: [&str; 16] = [
     "include-0702c",
     "include-0801",
 ];
-const PASSED_CASES: [&str; 12] = [
+const PASSED_CASES: [&str; 13] = [
     "include-0103",
     "include-0104",
     "include-0105",
@@ -46,6 +46,7 @@ const PASSED_CASES: [&str; 12] = [
     "include-0701",
     "include-0702a",
     "include-0702c",
+    "include-0801",
 ];
 const OVERLAY: &str =
     include_str!("../../../../corpus/overlays/xslt30/include-denominator-v0.toml");
@@ -268,6 +269,18 @@ fn executes_include_0702c_with_xslt30_default_recovery() {
 
     let execution = execute_inline_case_with_dependencies("include-0702c");
     assert_five_module_conflict_recovery(&execution);
+}
+
+#[test]
+fn executes_include_0801_two_nested_import_branches() {
+    let execution = execute_inline_case_with_dependencies("include-0801");
+    assert_eq!(
+        execution.import_precedences,
+        [-4, -4, -3, -2, -2, -1, -1, 0]
+    );
+    assert!(execution.global_text_defaults.is_empty());
+    assert!(execution.named_template_names.is_empty());
+    assert_xml_equivalent(&execution.actual, &execution.expected);
 }
 
 fn assert_five_module_conflict_recovery(execution: &DependencyCaseExecution) {
