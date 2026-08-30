@@ -995,8 +995,8 @@ failed, and harness-error cases without an unqualified conformance claim.
       and account independently for reference depth, module occurrences, and
       aggregate dependency bytes. Detect active-path cycles before retention;
       return no graph or compiled program after any limit, resolution, parse, or
-      cycle failure. The private production profile remains depth 1, two
-      modules, and 1 MiB rather than selecting public limits.
+      cycle failure. The private production profile now remains depth 1, three
+      module occurrences, and 1 MiB rather than selecting public limits.
     - [x] Add a workbench-only explicit dependency/denial input and prove
       `missing-resource` and `denied` remain distinct structured categories
       through the Rust facade plus native and isolated-worker failure envelopes.
@@ -1038,6 +1038,12 @@ failed, and harness-error cases without an unqualified conformance claim.
     text fallback when no lower-precedence text rule exists. Keep general
     imported root conflicts, modes, output merging, and multiple imports out.
     The denominator now records 6 passes and 10 visible not-run dispositions.
+  - [x] Execute `include-0501` through two sibling imports. Assign the later
+    import higher precedence, discard the earlier shadowed `$second` global
+    parameter default before runtime materialization, and preserve the earlier
+    module's unshadowed `$first` default. Keep nested imports, mixed
+    include/import assembly, and duplicate named-template precedence out. The
+    denominator now records 7 passes and 9 visible not-run dispositions.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.

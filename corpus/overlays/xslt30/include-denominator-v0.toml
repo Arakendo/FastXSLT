@@ -43,3 +43,9 @@ case_name = "include-0601"
 selection = "selected"
 execution = "passed"
 rationale = "Compiles one imported simplified stylesheet, lowers its implicit template into a lower-precedence document rule, and lets the principal text rule use xsl:apply-imports before falling through to the built-in text rule."
+
+[[case_override]]
+case_name = "include-0501"
+selection = "selected"
+execution = "passed"
+rationale = "Loads two sibling imports from one sealed snapshot, gives the later import higher precedence, removes the earlier shadowed second global parameter, and retains both winning defaults for principal execution."

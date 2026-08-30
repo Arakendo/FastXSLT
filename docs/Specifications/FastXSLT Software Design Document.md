@@ -210,14 +210,16 @@ Compiled template rules retain stylesheet-module import precedence separately
 from template priority and declaration order. Ordinary dispatch ranks all three;
 `xsl:next-match` continues to a lower-ranked applicable rule, while
 `xsl:apply-imports` considers only applicable rules at lower import precedence
-before using the built-in rule. The current executable slice proves one sealed
-relative import only; it does not define a public module graph representation.
+before using the built-in rule. The current executable slice proves at most two
+sealed sibling imports with no nested dependencies; it does not define a public
+module graph representation.
 
 Module assembly resolves statically known cross-module declarations before
 whole-program validation and runtime materialization. Within the bounded
-single-import slice, a principal global binding shadows an imported binding of
-the same supported binding name, and the shadowed default is not retained for
-runtime evaluation. Imported named templates are linked before reference validation;
+bounded import slice, a principal global binding shadows an imported binding of
+the same supported binding name, and a later sibling import shadows an earlier
+one. Shadowed defaults are not retained for runtime evaluation. Imported named
+templates are linked before reference validation;
 duplicate named-template precedence remains outside the current slice. An
 imported simplified stylesheet's implicit template is normalized into an
 ordinary lower-precedence document-matching rule. It therefore participates in

@@ -33,12 +33,13 @@ const CASE_NAMES: [&str; 16] = [
     "include-0702c",
     "include-0801",
 ];
-const PASSED_CASES: [&str; 6] = [
+const PASSED_CASES: [&str; 7] = [
     "include-0105",
     "include-0201",
     "include-0202",
     "include-0301",
     "include-0401",
+    "include-0501",
     "include-0601",
 ];
 const OVERLAY: &str =
@@ -148,7 +149,7 @@ fn executes_include_0201_apply_imports_builtin_fallback() {
 
 #[test]
 fn executes_include_0301_repeated_apply_imports() {
-    let execution = execute_inline_case_with_single_dependency("include-0301");
+    let execution = execute_inline_case_with_dependencies("include-0301");
     assert_eq!(execution.import_precedences.len(), 2);
     assert!(execution.import_precedences[0] < execution.import_precedences[1]);
     assert_xml_equivalent(&execution.actual, &execution.expected);
@@ -156,7 +157,7 @@ fn executes_include_0301_repeated_apply_imports() {
 
 #[test]
 fn executes_include_0202_apply_imports_with_parameter_and_computed_attribute() {
-    let execution = execute_inline_case_with_single_dependency("include-0202");
+    let execution = execute_inline_case_with_dependencies("include-0202");
     assert_eq!(execution.import_precedences.len(), 2);
     assert!(execution.import_precedences[0] < execution.import_precedences[1]);
     assert_xml_equivalent(&execution.actual, &execution.expected);
@@ -164,7 +165,7 @@ fn executes_include_0202_apply_imports_with_parameter_and_computed_attribute() {
 
 #[test]
 fn executes_include_0105_principal_global_override_and_imported_named_template() {
-    let execution = execute_inline_case_with_single_dependency("include-0105");
+    let execution = execute_inline_case_with_dependencies("include-0105");
     assert!(execution.import_precedences.is_empty());
     assert_eq!(
         execution.global_text_defaults,
@@ -176,9 +177,30 @@ fn executes_include_0105_principal_global_override_and_imported_named_template()
 
 #[test]
 fn executes_include_0601_imported_simplified_root_and_text_fallback() {
-    let execution = execute_inline_case_with_single_dependency("include-0601");
+    let execution = execute_inline_case_with_dependencies("include-0601");
     assert_eq!(execution.import_precedences, [-1, 0]);
     assert!(execution.global_text_defaults.is_empty());
+    assert!(execution.named_template_names.is_empty());
+    assert_xml_equivalent(&execution.actual, &execution.expected);
+}
+
+#[test]
+fn executes_include_0501_later_import_global_parameter_precedence() {
+    let execution = execute_inline_case_with_dependencies("include-0501");
+    assert!(execution.import_precedences.is_empty());
+    assert_eq!(
+        execution.global_text_defaults,
+        [
+            (
+                "first".to_owned(),
+                "aaa, as defined in first.xsl".to_owned()
+            ),
+            (
+                "second".to_owned(),
+                "ZZZ, as defined in second.xsl".to_owned()
+            ),
+        ]
+    );
     assert!(execution.named_template_names.is_empty());
     assert_xml_equivalent(&execution.actual, &execution.expected);
 }
@@ -191,7 +213,7 @@ struct DependencyCaseExecution {
     named_template_names: Vec<String>,
 }
 
-fn execute_inline_case_with_single_dependency(case_name: &str) -> DependencyCaseExecution {
+fn execute_inline_case_with_dependencies(case_name: &str) -> DependencyCaseExecution {
     let document = load_test_set();
     let case = element_children(&document, document_element(&document))
         .into_iter()
@@ -203,7 +225,7 @@ fn execute_inline_case_with_single_dependency(case_name: &str) -> DependencyCase
         .filter(|node| local_name(&document, *node) == "stylesheet")
         .map(|node| attribute(&document, node, "file").expect("stylesheet file"))
         .collect::<Vec<_>>();
-    assert_eq!(stylesheet_files.len(), 2);
+    assert!(matches!(stylesheet_files.len(), 2 | 3));
     let environment = case_environment(&document, case);
     let content = child_named(
         &document,
@@ -226,12 +248,8 @@ fn execute_inline_case_with_single_dependency(case_name: &str) -> DependencyCase
         "https://example.invalid/xslt30/decl/include/{}",
         stylesheet_files[0]
     );
-    let imported_id = format!(
-        "https://example.invalid/xslt30/decl/include/{}",
-        stylesheet_files[1]
-    );
     let source_id = format!("urn:w3c:xslt30:decl:include:{case_name}:source");
-    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 16_384));
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(4, 12_288, 24_576));
     resources
         .admit(
             source_id.clone(),
@@ -244,12 +262,14 @@ fn execute_inline_case_with_single_dependency(case_name: &str) -> DependencyCase
             fs::read(directory.join(stylesheet_files[0])).expect("read principal stylesheet"),
         )
         .expect("admit principal stylesheet");
-    resources
-        .admit(
-            imported_id,
-            fs::read(directory.join(stylesheet_files[1])).expect("read imported stylesheet"),
-        )
-        .expect("admit imported stylesheet");
+    for stylesheet_file in &stylesheet_files[1..] {
+        resources
+            .admit(
+                format!("https://example.invalid/xslt30/decl/include/{stylesheet_file}"),
+                fs::read(directory.join(stylesheet_file)).expect("read imported stylesheet"),
+            )
+            .expect("admit imported stylesheet");
+    }
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, &principal_id).expect("compile imported stylesheet");
     let (import_precedences, global_text_defaults, named_template_names) =

@@ -6,7 +6,7 @@
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/decl/include/_include-test-set.xml` |
 | Cases | 16 |
-| Current ledger | 6 selected/passed; 10 harness-unsupported / not-run as of 2026-08-29 |
+| Current ledger | 7 selected/passed; 9 harness-unsupported / not-run as of 2026-08-29 |
 | Catalog stylesheet references | 16 principal; 34 secondary (including repeated case environments) |
 
 ## Conserved denominator
@@ -17,7 +17,8 @@ secondary stylesheet references, and conserves the direct result shapes as 14
 `assert-xml`, one `any-of`, and one expected `error`. A first-party overlay gives
 every case an explicit default `harness-unsupported / not-run` disposition,
 with first-party selected/passed overrides for `include-0401`, `include-0201`,
-`include-0301`, `include-0202`, `include-0105`, and `include-0601`. FastXSLT
+`include-0301`, `include-0202`, `include-0105`, `include-0601`, and
+`include-0501`. FastXSLT
 therefore records the complete denominator without calling unresolved module
 semantics an engine failure or quietly dropping cases.
 
@@ -63,6 +64,8 @@ global binding that shadows its imported same-named declaration.
 `include-0601` adds an imported simplified stylesheet whose implicit template
 is normalized as a lower-precedence document rule, plus principal text-rule
 `xsl:apply-imports` fallback to the built-in text rule.
+`include-0501` adds two sibling imports and declaration-order precedence between
+their competing global parameter defaults.
 It makes no general claim for `xsl:include`, `xsl:import`, import precedence,
 embedded stylesheet fragments, module cycles, or multi-module graphs. Upstream
 bytes remain immutable in the W3C submodule; all disposition policy remains in

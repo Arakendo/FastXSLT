@@ -9,6 +9,12 @@
 | Corpus conservation | XSLT30 `include-0401` remains selected/passed |
 | Public contract | None selected |
 
+> **2026-08-29 addendum:** the private production ceiling subsequently rose to
+> three module occurrences at the same maximum depth and byte ceiling to admit
+> the two-sibling-import `include-0501` case. The original two-module profile
+> recorded below remains the profile under which this accounting experiment was
+> first run.
+
 ## Experiment
 
 The admitted-resource compiler now prepares the complete reachable
@@ -58,9 +64,11 @@ work accounting but is not selected as public policy. The experiment also does
 not settle repeated-module semantics, shared subgraphs, `xsl:import`, import
 precedence, fragments, `xml:base`, catalogs, live resolution, or caching.
 
-The real production slice remains limited to the principal plus one simplified
-included module. The deeper handcrafted graph exists to verify accounting and
-failure behavior; it is not compiled or reported as XSLT conformance.
+At the time of this record, the real production slice was limited to the
+principal plus one simplified included module. The deeper handcrafted graph
+existed to verify accounting and failure behavior; it was not compiled or
+reported as XSLT conformance. The addendum above records the later bounded
+ceiling change.
 
 ## Validation
 

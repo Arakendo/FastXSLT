@@ -727,3 +727,10 @@ case_name = "include-0601"
 selection = "selected"
 execution = "passed"
 rationale = "One imported simplified stylesheet contributes its implicit template as a lower-precedence document rule; the principal text rule wraps source text and xsl:apply-imports correctly reaches the built-in text fallback."
+
+[[case]]
+set_file = "tests/decl/include/_include-test-set.xml"
+case_name = "include-0501"
+selection = "selected"
+execution = "passed"
+rationale = "Two sealed sibling imports retain declaration-order precedence: the first supplies $first, the later import shadows its $second default, and the principal root rule observes both winning global parameter values."

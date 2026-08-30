@@ -144,32 +144,74 @@ pub(crate) fn compile_stylesheet_with_single_include(
     Ok(program)
 }
 
-pub(crate) fn compile_stylesheet_with_single_import(
+pub(crate) fn compile_stylesheet_with_imports(
     principal: &Document,
-    imported: &Document,
+    imported: &[&Document],
 ) -> Result<StylesheetProgram, CompileFailure> {
     let import_declarations = import_nodes(principal)?;
-    let [import] = import_declarations.as_slice() else {
+    if import_declarations.is_empty() || import_declarations.len() != imported.len() {
         return Err(invalid(
             "FXST0031",
-            "single-import compilation requires exactly one xsl:import",
+            "import compilation requires one supplied module per xsl:import",
             principal.location(principal.document_node()),
         ));
-    };
+    }
+    if imported.len() > 2 {
+        return Err(unsupported(
+            "FXST1028",
+            "the private import slice permits at most two sibling imports",
+            principal.location(principal.document_node()),
+        ));
+    }
     let root = document_element(principal)?;
-    if meaningful_children(principal, root).first() != Some(import) {
+    let children = meaningful_children(principal, root);
+    if children
+        .iter()
+        .take(import_declarations.len())
+        .ne(import_declarations.iter())
+    {
         return Err(invalid(
             "XTSE0200",
             "xsl:import must precede every other top-level declaration",
-            principal.location(*import),
+            principal.location(import_declarations[0]),
         ));
     }
-    let mut principal_program = compile_stylesheet_excluding_unvalidated(principal, &[*import])?;
+    let mut principal_program =
+        compile_stylesheet_excluding_unvalidated(principal, &import_declarations)?;
+    let import_count = i32::try_from(imported.len()).expect("bounded import count fits i32");
+    let mut imported_programs = imported
+        .iter()
+        .enumerate()
+        .map(|(index, document)| {
+            let precedence =
+                i32::try_from(index).expect("bounded import index fits i32") - import_count;
+            compile_imported_program(document, precedence)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut matched_templates = Vec::new();
+    for program in &mut imported_programs {
+        matched_templates.append(&mut program.matched_templates);
+    }
+    matched_templates.append(&mut principal_program.matched_templates);
+    principal_program.matched_templates = matched_templates;
+    for program in imported_programs.into_iter().rev() {
+        merge_imported_named_templates(&mut principal_program, program.named_templates)?;
+        merge_imported_global_bindings(&mut principal_program, program.global_bindings);
+    }
+    validate_named_template_references(&principal_program)?;
+    Ok(principal_program)
+}
+
+fn compile_imported_program(
+    imported: &Document,
+    import_precedence: i32,
+) -> Result<StylesheetProgram, CompileFailure> {
     let mut imported_program = compile_imported_module(imported)?;
     if imported_program.output != default_output_settings() {
         return Err(unsupported(
             "FXST1024",
-            "imported output declarations are outside the single-import slice",
+            "imported output declarations are outside the bounded import slice",
             imported.location(imported.document_node()),
         ));
     }
@@ -178,7 +220,7 @@ pub(crate) fn compile_stylesheet_with_single_import(
             0,
             MatchedTemplate {
                 pattern: MatchPattern::Document,
-                import_precedence: -1,
+                import_precedence,
                 priority: TemplatePriority::ROOT_DEFAULT,
                 modes: std::mem::take(&mut imported_program.root_template_modes),
                 template,
@@ -186,16 +228,9 @@ pub(crate) fn compile_stylesheet_with_single_import(
         );
     }
     for template in &mut imported_program.matched_templates {
-        template.import_precedence = -1;
+        template.import_precedence = import_precedence;
     }
-    imported_program
-        .matched_templates
-        .append(&mut principal_program.matched_templates);
-    principal_program.matched_templates = imported_program.matched_templates;
-    merge_imported_named_templates(&mut principal_program, imported_program.named_templates)?;
-    merge_imported_global_bindings(&mut principal_program, imported_program.global_bindings);
-    validate_named_template_references(&principal_program)?;
-    Ok(principal_program)
+    Ok(imported_program)
 }
 
 fn compile_imported_module(document: &Document) -> Result<StylesheetProgram, CompileFailure> {
@@ -222,7 +257,7 @@ fn merge_imported_named_templates(
         {
             return Err(unsupported(
                 "FXST1026",
-                "duplicate named templates across import precedence are outside the single-import slice",
+                "duplicate named templates across import precedence are outside the bounded import slice",
                 &template.template.location,
             ));
         }

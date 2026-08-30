@@ -2,7 +2,7 @@
 
 use crate::compile::golden_stylesheet_experiment::{
     CompileCategory, CompileFailure, StylesheetDependencyKind, compile_stylesheet,
-    compile_stylesheet_with_single_import, compile_stylesheet_with_single_include,
+    compile_stylesheet_with_imports, compile_stylesheet_with_single_include,
 };
 use crate::resources::{ResolutionFailure, ResolutionLimits, ResourceSnapshot, SnapshotResolver};
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
@@ -12,7 +12,7 @@ use super::stylesheet_dependency_loader::{
 };
 use super::{ExecutionFailure, FailureCategory, failure, failure_at};
 
-const DEPENDENCY_LIMITS: DependencyLimits = DependencyLimits::new(1, 2, 1_048_576);
+const DEPENDENCY_LIMITS: DependencyLimits = DependencyLimits::new(1, 3, 1_048_576);
 
 #[cfg(test)]
 pub(in crate::runtime) fn compile_resource(
@@ -27,7 +27,7 @@ pub(in crate::runtime) fn compile_resource_with_denied(
     stylesheet_id: &str,
     denied: impl IntoIterator<Item = String>,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
-    let mut resolver = SnapshotResolver::new(snapshot, denied, ResolutionLimits::new(2));
+    let mut resolver = SnapshotResolver::new(snapshot, denied, ResolutionLimits::new(3));
     compile_resource_with_resolver(&mut resolver, stylesheet_id)
 }
 
@@ -35,13 +35,13 @@ fn compile_resource_with_resolver(
     resolver: &mut SnapshotResolver<'_>,
     stylesheet_id: &str,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
-    let mut graph = load_stylesheet_dependency_graph(resolver, stylesheet_id, DEPENDENCY_LIMITS)
+    let graph = load_stylesheet_dependency_graph(resolver, stylesheet_id, DEPENDENCY_LIMITS)
         .map_err(dependency_failure)?;
     debug_assert_eq!(graph.identity, stylesheet_id);
     if graph.dependencies.is_empty() {
         return compile_stylesheet(&graph.document).map_err(compile_failure);
     }
-    if graph.dependencies.len() != 1 {
+    if graph.dependencies.len() > 2 {
         return Err(failure_at(
             "FXST1018",
             FailureCategory::Unsupported,
@@ -50,32 +50,54 @@ fn compile_resource_with_resolver(
                 .document
                 .location(graph.document.document_node())
                 .clone(),
-            "the private slice permits one stylesheet dependency".to_owned(),
+            "the private slice permits at most two stylesheet dependencies".to_owned(),
         ));
     }
-    let dependency = graph.dependencies.pop().expect("one stylesheet dependency");
-    if !dependency.dependencies.is_empty() {
-        return Err(failure_at(
-            "FXST1027",
-            FailureCategory::Unsupported,
-            None,
-            dependency
+    for dependency in &graph.dependencies {
+        if !dependency.dependencies.is_empty() {
+            return Err(failure_at(
+                "FXST1027",
+                FailureCategory::Unsupported,
+                None,
+                dependency
+                    .document
+                    .location(dependency.document.document_node())
+                    .clone(),
+                "nested stylesheet dependencies are outside the private compiler slice".to_owned(),
+            ));
+        }
+    }
+    let dependency_kinds = graph
+        .dependencies
+        .iter()
+        .map(|dependency| dependency.dependency_kind.expect("dependency kind"))
+        .collect::<Vec<_>>();
+    match dependency_kinds.as_slice() {
+        [StylesheetDependencyKind::Include] => {
+            compile_stylesheet_with_single_include(&graph.document, &graph.dependencies[0].document)
+        }
+        kinds
+            if kinds
+                .iter()
+                .all(|kind| *kind == StylesheetDependencyKind::Import) =>
+        {
+            let imported = graph
+                .dependencies
+                .iter()
+                .map(|dependency| &dependency.document)
+                .collect::<Vec<_>>();
+            compile_stylesheet_with_imports(&graph.document, &imported)
+        }
+        _ => Err(CompileFailure {
+            code: "FXST1029",
+            category: CompileCategory::Unsupported,
+            detail: "mixed include/import assembly is outside the private compiler slice"
+                .to_owned(),
+            location: graph
                 .document
-                .location(dependency.document.document_node())
+                .location(graph.document.document_node())
                 .clone(),
-            "nested stylesheet dependencies are outside the private compiler slice".to_owned(),
-        ));
-    }
-    match dependency
-        .dependency_kind
-        .expect("loaded dependency retains its declaration kind")
-    {
-        StylesheetDependencyKind::Include => {
-            compile_stylesheet_with_single_include(&graph.document, &dependency.document)
-        }
-        StylesheetDependencyKind::Import => {
-            compile_stylesheet_with_single_import(&graph.document, &dependency.document)
-        }
+        }),
     }
     .map_err(compile_failure)
 }
