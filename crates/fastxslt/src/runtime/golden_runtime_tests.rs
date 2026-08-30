@@ -531,7 +531,7 @@ fn absent_output_declaration_does_not_silently_apply_html_serialization() {
 }
 
 #[test]
-fn requested_indentation_is_preserved_as_an_explicit_serialization_boundary() {
+fn requested_indentation_formats_only_element_only_child_sequences() {
     let result = SemanticResult {
         children: vec![ResultNode::Element {
             name: crate::xml::quick_xml_experiment::ExpandedName {
@@ -540,7 +540,46 @@ fn requested_indentation_is_preserved_as_an_explicit_serialization_boundary() {
             },
             namespaces: Vec::new(),
             attributes: Vec::new(),
-            children: Vec::new(),
+            children: vec![
+                ResultNode::Element {
+                    name: crate::xml::quick_xml_experiment::ExpandedName {
+                        namespace: None,
+                        local: "group".to_owned(),
+                    },
+                    namespaces: Vec::new(),
+                    attributes: Vec::new(),
+                    children: vec![ResultNode::Element {
+                        name: crate::xml::quick_xml_experiment::ExpandedName {
+                            namespace: None,
+                            local: "item".to_owned(),
+                        },
+                        namespaces: Vec::new(),
+                        attributes: Vec::new(),
+                        children: vec![ResultNode::Text("value".to_owned())],
+                    }],
+                },
+                ResultNode::Element {
+                    name: crate::xml::quick_xml_experiment::ExpandedName {
+                        namespace: None,
+                        local: "mixed".to_owned(),
+                    },
+                    namespaces: Vec::new(),
+                    attributes: Vec::new(),
+                    children: vec![
+                        ResultNode::Text("left".to_owned()),
+                        ResultNode::Element {
+                            name: crate::xml::quick_xml_experiment::ExpandedName {
+                                namespace: None,
+                                local: "em".to_owned(),
+                            },
+                            namespaces: Vec::new(),
+                            attributes: Vec::new(),
+                            children: Vec::new(),
+                        },
+                        ResultNode::Text("right".to_owned()),
+                    ],
+                },
+            ],
         }],
     };
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
@@ -558,12 +597,13 @@ fn requested_indentation_is_preserved_as_an_explicit_serialization_boundary() {
     };
 
     let mut control = InvocationControl::unbounded();
-    let failure = serialize_xml(&result, &settings, "indented-result", 4_096, &mut control)
-        .expect_err("indentation must not be silently ignored");
+    let serialized = serialize_xml(&result, &settings, "indented-result", 4_096, &mut control)
+        .expect("bounded element-only indentation should serialize");
 
-    assert_eq!(failure.code, "FXSR1003");
-    assert_eq!(failure.category, FailureCategory::Unsupported);
-    assert_eq!(failure.request_id.as_deref(), Some("indented-result"));
+    assert_eq!(
+        serialized,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>\n  <group>\n    <item>value</item>\n  </group>\n  <mixed>left<em></em>right</mixed>\n</out>"
+    );
 }
 
 #[test]

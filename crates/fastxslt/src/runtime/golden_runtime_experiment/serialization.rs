@@ -70,14 +70,6 @@ pub(in crate::runtime) fn serialize_xml(
             "the selected output method is outside the private XML-compatible serialization slice",
         ));
     }
-    if settings.indent == Some(true) {
-        return Err(failure(
-            "FXSR1003",
-            FailureCategory::Unsupported,
-            Some(request_id),
-            "indenting XML serialization is outside the private serialization slice",
-        ));
-    }
     let mut output = BudgetedString::new(byte_limit, request_id, control);
     if !settings.omit_xml_declaration {
         output.push_str("<?xml version=\"")?;
@@ -91,7 +83,14 @@ pub(in crate::runtime) fn serialize_xml(
         output.push_str("?>")?;
     }
     for node in &result.children {
-        serialize_node(node, &[], &settings.cdata_section_elements, &mut output)?;
+        serialize_node(
+            node,
+            &[],
+            &settings.cdata_section_elements,
+            settings.indent == Some(true),
+            0,
+            &mut output,
+        )?;
     }
     Ok(output.finish())
 }
@@ -209,6 +208,8 @@ fn serialize_node(
     node: &ResultNode,
     inherited_namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
     cdata_section_elements: &[crate::xml::quick_xml_experiment::ExpandedName],
+    indent: bool,
+    depth: usize,
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
     match node {
@@ -267,19 +268,45 @@ fn serialize_node(
                 output.push('"')?;
             }
             output.push('>')?;
+            let indent_children = indent
+                && !children.is_empty()
+                && children
+                    .iter()
+                    .all(|child| matches!(child, ResultNode::Element { .. }));
             for child in children {
+                if indent_children {
+                    write_indentation(depth + 1, output)?;
+                }
                 if cdata_section_elements.contains(name) {
                     if let ResultNode::Text(value) = child {
                         serialize_cdata(value, output)?;
                         continue;
                     }
                 }
-                serialize_node(child, &in_scope, cdata_section_elements, output)?;
+                serialize_node(
+                    child,
+                    &in_scope,
+                    cdata_section_elements,
+                    indent,
+                    depth + 1,
+                    output,
+                )?;
+            }
+            if indent_children {
+                write_indentation(depth, output)?;
             }
             output.push_str("</")?;
             write_name(prefix, &name.local, output)?;
             output.push('>')?;
         }
+    }
+    Ok(())
+}
+
+fn write_indentation(depth: usize, output: &mut BudgetedString) -> Result<(), ExecutionFailure> {
+    output.push('\n')?;
+    for _ in 0..depth {
+        output.push_str("  ")?;
     }
     Ok(())
 }

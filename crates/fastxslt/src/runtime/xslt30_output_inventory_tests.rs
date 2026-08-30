@@ -66,6 +66,16 @@ fn executes_output_0105_with_explicit_xhtml_method_for_a_null_namespace_root() {
 }
 
 #[test]
+fn executes_xhtml_indentation_boolean_variants_without_reflowing_text() {
+    let expected = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\">\n  <body>This is the body</body>\n</html>";
+    for case_name in ["output-0106", "output-0106a", "output-0106b"] {
+        let execution = execute_output_case(case_name, None);
+        assert_eq!(execution.method.as_deref(), Some("xhtml"), "{case_name}");
+        assert_eq!(execution.actual, expected, "{case_name}");
+    }
+}
+
+#[test]
 fn executes_output_0109_with_an_empty_xhtml_namespace_root() {
     let execution = execute_output_case("output-0109", None);
     assert_eq!(execution.method.as_deref(), Some("xhtml"));

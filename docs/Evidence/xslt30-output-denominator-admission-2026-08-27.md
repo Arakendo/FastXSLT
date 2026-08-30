@@ -6,20 +6,20 @@
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/decl/output/_output-test-set.xml` |
 | Discovered cases | 232 |
-| Current disposition | 39 passed; 193 harness-unsupported |
+| Current disposition | 42 passed; 190 harness-unsupported |
 
 ## Conserved inventory
 
 The private XSLT30 adapter now parses the complete pinned `decl/output` test
 set and requires all 232 distinct native case identities. A first-party
 set-level overlay applies an explicit default disposition to the immutable
-complete denominator: `harness-unsupported / not-run`. Thirty-nine named overrides now
+complete denominator: `harness-unsupported / not-run`. Forty-two named overrides now
 select a bounded XML-compatible XHTML declaration tranche plus `output-0128`
 and the XML/text cases `output-0129`, `output-0165`, `output-0166`,
 `output-0171`, `output-0172`, `output-0139`, `output-0168`, and
 `output-0170`, and `output-0131` as passed, together with seven standalone
 lexical cases, the XHTML no-normalization control, and two bounded output-merge
-cases. The other 193
+cases. The other 190
 cases remain harness-unsupported,
 not engine-unsupported, because their serialization assertions or execution
 adapter paths have not yet been exercised far enough to distinguish engine
@@ -103,8 +103,15 @@ lane. Explicit `method="xhtml"` serializes a null-namespace `html` without
 triggering unsupported adaptive HTML inference, while an empty XHTML-namespaced
 `html` retains its default namespace and emits paired start/end tags. Complete
 byte comparisons satisfy each case's native fragments without claiming general
-XHTML empty-element or indentation behavior; `output-0106` remains visible
-pending real `indent="yes"` semantics.
+XHTML empty-element behavior.
+
+Cases `output-0106`, `output-0106a`, and `output-0106b` now provide that first
+bounded indentation behavior for `yes`, XSLT 3.0 `true`, and whitespace-wrapped
+`1`. Serialization adds newlines and two-space depth prefixes only when an
+element has a non-empty, element-only child sequence. Text-only and mixed
+content remain inline, so formatting cannot manufacture whitespace inside
+their string values. The cases do not claim implementation-defined pretty
+printing choices beyond this conserved shape.
 
 The declaration tranche also executes `output-0110a`, `output-0110b`,
 `output-0148`, `output-0148a`, and `output-0148b`. XSLT 3.0 stylesheets accept
@@ -219,10 +226,10 @@ assertion engine.
 ## Claim boundary
 
 This checkpoint proves denominator discovery, metadata classification, file
-resolution by the harness, bounded memory admission, and thirty-nine exact or
+resolution by the harness, bounded memory admission, and forty-two exact or
 bounded-comparator upstream executions, including one byte-exact UTF-8 BOM
 XML case and a paired BOM/no-BOM text control. It does not establish the first
-unsupported frontier for the other 193
+unsupported frontier for the other 190
 cases or claim general XML/HTML/XHTML/text serialization
 conformance.
 

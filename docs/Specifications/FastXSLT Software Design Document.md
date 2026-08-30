@@ -368,6 +368,10 @@ The XML-compatible lane also retains canonical standalone `yes`, `no`, and
 `omit` emits none. An explicit serialization version is retained separately
 from the stylesheet language version; the current bounded lane admits and emits
 only XML `1.0`. XHTML-only content-type metadata remains inert for XML output.
+Requested indentation currently adds newline plus two-space depth prefixes only
+around non-empty element-only child sequences. Text-only and mixed-content
+elements remain inline so indentation does not alter their string values; wider
+pretty-printing choices remain implementation-defined and unclaimed.
 Unnamed output declarations may now merge only when their scalar properties do
 not overlap; repeated scalar properties remain explicitly unsupported until
 precedence and conflict semantics are implemented. `cdata-section-elements`

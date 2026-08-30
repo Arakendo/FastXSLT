@@ -15,6 +15,24 @@ execution = "passed"
 rationale = "Executes an explicitly selected XHTML method over a null-namespace html result and verifies the complete XML declaration and nested body without inferring the method from the root name."
 
 [[case_override]]
+case_name = "output-0106"
+selection = "selected"
+execution = "passed"
+rationale = "Executes bounded element-only XHTML indentation for the XSLT 2.0 yes lexical while preserving the body text inline."
+
+[[case_override]]
+case_name = "output-0106a"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the same bounded XHTML indentation with the XSLT 3.0 true lexical."
+
+[[case_override]]
+case_name = "output-0106b"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the same bounded XHTML indentation with the whitespace-normalized XSLT 3.0 numeric-one lexical."
+
+[[case_override]]
 case_name = "output-0109"
 selection = "selected"
 execution = "passed"
