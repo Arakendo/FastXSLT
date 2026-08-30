@@ -191,6 +191,87 @@ pub(super) fn apply_temporary_path(
     Ok(result)
 }
 
+pub(super) fn apply_temporary_next(
+    inputs: &SequenceInputs<'_>,
+    focus: TemporaryFocus<'_>,
+    mode: Option<&str>,
+    current_index: usize,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    if let Some((next_index, template)) =
+        select_next_temporary_template(inputs, focus, mode, current_index, control)?
+    {
+        let variables =
+            bind_template_parameters(&template.template, parameters, &inputs.globals.atomics);
+        return execute_sequence(
+            inputs,
+            &template.template.body,
+            SequenceContext::for_temporary_template(focus, mode, next_index),
+            &variables,
+            control,
+        );
+    }
+    apply_temporary_builtin(inputs, focus, mode, parameters, control)
+}
+
+fn select_next_temporary_template<'a>(
+    inputs: &'a SequenceInputs<'_>,
+    focus: TemporaryFocus<'_>,
+    mode: Option<&str>,
+    current_index: usize,
+    control: &mut InvocationControl,
+) -> Result<Option<(usize, &'a MatchedTemplate)>, ExecutionFailure> {
+    let current = &inputs.program.matched_templates[current_index];
+    let current_rank = (current.import_precedence, current.priority, current_index);
+    let mut selected = None;
+    let mut selected_rank = None;
+    let mut ambiguous = false;
+    for (index, candidate) in inputs.program.matched_templates.iter().enumerate() {
+        let rank = (candidate.import_precedence, candidate.priority, index);
+        if rank >= current_rank
+            || !template_accepts_mode(&candidate.modes, mode)
+            || !temporary_focus_matches(focus, &candidate.pattern, inputs.request_id, control)?
+        {
+            continue;
+        }
+        let semantic_rank = (candidate.import_precedence, candidate.priority);
+        if selected_rank.is_none_or(|current| semantic_rank > current) {
+            selected = Some((index, candidate));
+            selected_rank = Some(semantic_rank);
+            ambiguous = false;
+        } else if selected_rank == Some(semantic_rank) {
+            selected = Some((index, candidate));
+            ambiguous = true;
+        }
+    }
+    if inputs.multiple_match_policy == super::MultipleMatchPolicy::Error && ambiguous {
+        let (_, selected) = selected.expect("an ambiguous temporary next rank has a template");
+        return Err(failure_at(
+            "XTDE0540",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            selected.template.location.clone(),
+            "more than one temporary-tree next-match rule has the highest eligible rank",
+        ));
+    }
+    Ok(selected)
+}
+
+fn temporary_focus_matches(
+    focus: TemporaryFocus<'_>,
+    pattern: &MatchPattern,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    match focus {
+        TemporaryFocus::Document(_) => Ok(pattern == &MatchPattern::Document),
+        TemporaryFocus::Node(tree, node) => {
+            temporary_matches(tree, node, pattern, request_id, control)
+        }
+    }
+}
+
 pub(super) fn apply_temporary_builtin(
     inputs: &SequenceInputs<'_>,
     focus: TemporaryFocus<'_>,

@@ -75,12 +75,19 @@ matching rules by import precedence and compiled priority rather than merely
 taking the last matching declaration. The source-tree selector evaluates the
 same typed union form for semantic parity.
 
+The complete pinned `conflict-resolution-1401` case now passes. Its
+`xsl:next-match` instruction retains temporary node focus, current mode, and
+current-template identity, then selects the lower-ranked applicable exact-name
+rule through the same import-precedence, priority, and declaration-order model
+used for principal-source focus. Exhaustion still reaches the temporary-tree
+built-in rule rather than the principal source.
+
 ## Architectural consequence
 
-Mode identity is semantic QName identity rather than raw prefix spelling. This
-removes one independent blocker from `conflict-resolution-1401`. The added
-temporary-document focus behavior removes another, but does not claim that
-case: temporary-focus `xsl:next-match` still requires dedicated work.
+Mode identity is semantic QName identity rather than raw prefix spelling. These
+prerequisites now compose in the complete pinned `conflict-resolution-1401`
+execution. The case is recorded separately in the apply-templates denominator
+and dedicated evidence; the four-case mode denominator remains unchanged.
 
 ## Claim boundary
 

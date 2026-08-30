@@ -737,7 +737,6 @@ fn execute_next_match(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    let (source, node) = required_source_context(inputs, execution.node)?;
     let current_index = execution.current_template_index.ok_or_else(|| {
         failure(
             "XTDE0560",
@@ -746,6 +745,18 @@ fn execute_next_match(
             "xsl:next-match requires a current matched template rule",
         )
     })?;
+    let parameters = evaluate_template_arguments(arguments, variables, inputs.request_id)?;
+    if let Some(focus) = execution.temporary_focus {
+        return temporary_tree_executor::apply_temporary_next(
+            inputs,
+            focus,
+            execution.current_mode,
+            current_index,
+            &parameters,
+            control,
+        );
+    }
+    let (source, node) = required_source_context(inputs, execution.node)?;
     if let Some((next_index, template)) = select_next_template(
         inputs.program,
         &TemplateSelectionContext {
@@ -759,7 +770,6 @@ fn execute_next_match(
         inputs.multiple_match_policy,
         control,
     )? {
-        let parameters = evaluate_template_arguments(arguments, variables, inputs.request_id)?;
         let variables =
             bind_template_parameters(&template.template, &parameters, &inputs.globals.atomics);
         return execute_sequence(
@@ -770,7 +780,6 @@ fn execute_next_match(
             control,
         );
     }
-    let parameters = evaluate_template_arguments(arguments, variables, inputs.request_id)?;
     apply_builtin_template(inputs, node, execution.current_mode, &parameters, control)
 }
 

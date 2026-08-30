@@ -990,6 +990,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   and temporary trees. Rank temporary matches by import precedence and compiled
   priority so the explicit-priority union rule wins over a later exact-name
   fallback. Keep temporary-focus `xsl:next-match` as the final case blocker.
+- [x] Execute complete pinned `conflict-resolution-1401` by preserving
+  temporary node focus, current mode, and current-template identity through
+  `xsl:next-match`. Select the lower-ranked exact-name fallback through the
+  shared import-precedence/priority/declaration-order model and retain the
+  XHTML `h2` result. The complete apply-templates ledger now records 48 passes
+  and 2 visible not-run cases.
 - [x] Execute `conflict-resolution-0802` with one template in named modes plus
   `#default`, explicit unnamed-mode dispatch, inherited `#current`, and a typed
   default-namespaced descendant-name selection. Keep QName modes, mode

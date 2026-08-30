@@ -238,8 +238,8 @@ continues from that temporary document or node focus and does not silently fall
 back to the principal source. The current representation admits attribute-free
 literal element trees with non-whitespace text children, preserving mixed child
 order and accounting separately for retained XDM nodes and result text bytes.
-Top-level text, attributes, comments, processing instructions, general
-temporary-tree paths, and continuation selection require separate evidence.
+Top-level text, attributes, comments, processing instructions, and general
+temporary-tree paths require separate evidence.
 
 The private temporary selection path also admits an exact child-element path
 whose origin is one temporary-tree variable and whose steps are lexical QNames
@@ -255,6 +255,12 @@ temporary trees share the same rule-ranking contract: import precedence and
 compiled priority determine the winning semantic rank, with later declaration
 order used only for tied recovery where policy permits it. Wildcards,
 predicates, axes, and general union operands remain unsupported.
+
+`xsl:next-match` preserves temporary focus, current mode, and matched-template
+identity. It selects the highest eligible lower-ranked applicable rule using
+the same ranking and ambiguity policy as source-tree continuation; exhaustion
+uses the temporary-tree built-in rule and never silently changes focus to the
+principal source.
 
 The same private path admits `xsl:for-each` only when its selection is one bare
 temporary-tree variable. That form establishes the selected temporary document

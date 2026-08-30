@@ -745,6 +745,13 @@ rationale = "One sealed relative import contributes a priority-25 foo rule below
 
 [[case]]
 set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-1401"
+selection = "selected"
+execution = "passed"
+rationale = "A qualified path selects one title from an invocation-owned temporary tree; the explicit-priority qualified union rule creates the XHTML heading and temporary-focus next-match continues to the lower-ranked exact-name fallback."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
 case_name = "conflict-resolution-0601"
 selection = "selected"
 execution = "passed"
