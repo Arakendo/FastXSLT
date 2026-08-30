@@ -16,7 +16,22 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 4] = ["mode-0105", "mode-0106", "mode-0107", "mode-0108"];
+const SELECTED_CASES: [&str; 14] = [
+    "mode-0101",
+    "mode-0102",
+    "mode-0103",
+    "mode-0104",
+    "mode-0105",
+    "mode-0106",
+    "mode-0107",
+    "mode-0108",
+    "mode-0201",
+    "mode-0301",
+    "mode-0401",
+    "mode-0501",
+    "mode-0601",
+    "mode-0701",
+];
 const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/mode-denominator-v0.toml");
 
 #[test]
@@ -36,7 +51,10 @@ fn inventories_the_complete_mode_denominator_before_selection() {
     assert_eq!(names.last(), Some(&"mode-1905"));
     assert!(OVERLAY.contains("case_count = 169"));
     assert!(OVERLAY.contains("selection = \"harness-unsupported\""));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 4);
+    assert_eq!(
+        OVERLAY.matches("[[case_override]]").count(),
+        SELECTED_CASES.len()
+    );
     for case_name in SELECTED_CASES {
         assert!(names.contains(case_name));
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
@@ -71,6 +89,34 @@ fn executes_mode_0108_with_for_each_temporary_document_focus() {
     assert_xml_equivalent(&actual, &expected);
 }
 
+#[test]
+fn executes_basic_mode_selection_isolation_and_builtin_rules() {
+    for case_name in [
+        "mode-0101",
+        "mode-0102",
+        "mode-0103",
+        "mode-0104",
+        "mode-0201",
+    ] {
+        let (actual, expected) = execute_case(case_name);
+        assert_xml_equivalent(&actual, &expected);
+    }
+}
+
+#[test]
+fn executes_mode_preservation_and_typed_node_dispatch() {
+    for case_name in [
+        "mode-0301",
+        "mode-0401",
+        "mode-0501",
+        "mode-0601",
+        "mode-0701",
+    ] {
+        let (actual, expected) = execute_case(case_name);
+        assert_xml_equivalent(&actual, &expected);
+    }
+}
+
 fn execute_case(case_name: &str) -> (String, String) {
     let private_overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
     assert!(private_overlay.contains(&format!("case_name = \"{case_name}\"")));
@@ -102,16 +148,19 @@ fn execute_case(case_name: &str) -> (String, String) {
     )
     .and_then(|node| attribute(&document, node, "file"))
     .expect("stylesheet file");
-    let expected = child_named(
+    let directory =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../vendor/xslt30-test/tests/attr/mode");
+    let assertion = child_named(
         &document,
         child_named(&document, case, "result").expect("result metadata"),
         "assert-xml",
     )
-    .map(|node| document.string_value(node))
     .expect("XML assertion");
+    let expected = attribute(&document, assertion, "file").map_or_else(
+        || document.string_value(assertion),
+        |file| fs::read_to_string(directory.join(file)).expect("read expected XML result"),
+    );
 
-    let directory =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../vendor/xslt30-test/tests/attr/mode");
     let source_id = format!("urn:w3c:xslt30:attr:mode:{case_name}:source");
     let stylesheet_id = format!("https://example.invalid/xslt30/attr/mode/{stylesheet_file}");
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));

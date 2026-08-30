@@ -3,6 +3,76 @@ revision = "6f8fd9e966ae74a251a2604abef9d904c7bc5c9b"
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0101"
+selection = "selected"
+execution = "passed"
+rationale = "Explicit mode dispatch selects the mode-a element rule without admitting the matching unnamed rule."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0102"
+selection = "selected"
+execution = "passed"
+rationale = "An unmatched explicit mode remains isolated while mode-local built-in rules descend and copy source text."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0103"
+selection = "selected"
+execution = "passed"
+rationale = "Omitted mode dispatch selects the unnamed template rule rather than a rule in mode a."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0104"
+selection = "selected"
+execution = "passed"
+rationale = "The built-in element rule retains explicit mode a while descending to the matching moded text rule."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0201"
+selection = "selected"
+execution = "passed"
+rationale = "An omitted mode on nested apply-templates selects the unnamed child rule instead of inheriting the caller's mode b."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0301"
+selection = "selected"
+execution = "passed"
+rationale = "Named-template invocation preserves the current mode, while an omitted nested apply-templates mode explicitly selects the unnamed mode."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0401"
+selection = "selected"
+execution = "passed"
+rationale = "Mode-qualified comment-node dispatch selects the moded rule and excludes its unnamed counterpart."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0501"
+selection = "selected"
+execution = "passed"
+rationale = "Mode-qualified processing-instruction dispatch selects the moded rule and preserves PI string value."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0601"
+selection = "selected"
+execution = "passed"
+rationale = "Mode-qualified node() dispatch applies the moded any-node rule to the typed child sequence."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0701"
+selection = "selected"
+execution = "passed"
+rationale = "Mode-qualified attribute dispatch selects the exact moded attribute rule outside the child sequence."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-0105"
 selection = "selected"
 execution = "passed"

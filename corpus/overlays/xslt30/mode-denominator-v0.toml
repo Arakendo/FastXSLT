@@ -9,6 +9,66 @@ execution = "not-run"
 rationale = "Unless overridden below, the mode case has not been admitted through the private metadata-driven execution slice. Missing mode, package, streaming, schema, typing, temporary-tree, and assertion semantics remain visible rather than being guessed as engine failures."
 
 [[case_override]]
+case_name = "mode-0101"
+selection = "selected"
+execution = "passed"
+rationale = "Explicit mode a selects the matching element rule and excludes the otherwise applicable unmoded rule."
+
+[[case_override]]
+case_name = "mode-0102"
+selection = "selected"
+execution = "passed"
+rationale = "An unmatched explicit mode z uses mode-local built-in document/element/text behavior without falling through to user rules in other modes or the unnamed mode."
+
+[[case_override]]
+case_name = "mode-0103"
+selection = "selected"
+execution = "passed"
+rationale = "An apply-templates instruction with no mode selects the unnamed element rule and does not activate the otherwise matching mode-a rule."
+
+[[case_override]]
+case_name = "mode-0104"
+selection = "selected"
+execution = "passed"
+rationale = "Explicit mode a uses its built-in element descent before selecting the mode-a text rule, retaining the active mode through built-in dispatch."
+
+[[case_override]]
+case_name = "mode-0201"
+selection = "selected"
+execution = "passed"
+rationale = "A mode-b element rule performs an unmoded apply-templates instruction whose omitted mode selects the unnamed child rule rather than inheriting mode b."
+
+[[case_override]]
+case_name = "mode-0301"
+selection = "selected"
+execution = "passed"
+rationale = "Calling a named template from mode a preserves the caller's current mode, while the named template's unmoded apply-templates instruction deliberately enters the unnamed mode."
+
+[[case_override]]
+case_name = "mode-0401"
+selection = "selected"
+execution = "passed"
+rationale = "A comment-node selection in mode1 reaches the matching moded comment rule and excludes the unnamed comment rule."
+
+[[case_override]]
+case_name = "mode-0501"
+selection = "selected"
+execution = "passed"
+rationale = "A processing-instruction selection in mode1 reaches the matching moded PI rule and preserves its string value."
+
+[[case_override]]
+case_name = "mode-0601"
+selection = "selected"
+execution = "passed"
+rationale = "A typed child node() selection in mode1 dispatches each selected node through the moded any-node rule."
+
+[[case_override]]
+case_name = "mode-0701"
+selection = "selected"
+execution = "passed"
+rationale = "An attribute selection in mode1 reaches the exact moded attribute rule without treating attributes as child nodes."
+
+[[case_override]]
 case_name = "mode-0105"
 selection = "selected"
 execution = "passed"

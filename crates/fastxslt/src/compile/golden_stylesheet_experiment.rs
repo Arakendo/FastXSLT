@@ -196,7 +196,9 @@ fn compile_top_level_template(
             ));
         }
         named_templates.push(compile_named_template(document, element, &name)?);
-        return Ok(());
+        if optional_attribute(document, element, None, "match").is_none() {
+            return Ok(());
+        }
     }
 
     let pattern = required_attribute(document, element, None, "match")?;
@@ -419,7 +421,13 @@ fn compile_template(document: &Document, element: NodeId) -> Result<Template, Co
     ensure_only_attributes(
         document,
         element,
-        &["match", "mode", "priority", "xpath-default-namespace"],
+        &[
+            "name",
+            "match",
+            "mode",
+            "priority",
+            "xpath-default-namespace",
+        ],
         "xsl:template",
     )?;
     let mut parameters = Vec::new();
@@ -496,7 +504,18 @@ fn compile_named_template(
     element: NodeId,
     name: &str,
 ) -> Result<NamedTemplate, CompileFailure> {
-    ensure_only_attributes(document, element, &["name"], "xsl:template")?;
+    ensure_only_attributes(
+        document,
+        element,
+        &[
+            "name",
+            "match",
+            "mode",
+            "priority",
+            "xpath-default-namespace",
+        ],
+        "xsl:template",
+    )?;
     let mut parameters = Vec::new();
     let mut parameter_nodes = Vec::new();
     let mut body_started = false;
@@ -1426,6 +1445,21 @@ mod tests {
         let program = compile_stylesheet(&named_template).expect("named template should compile");
         assert_eq!(program.named_templates.len(), 1);
         assert_eq!(program.named_templates[0].name, "worker");
+
+        let named_and_matched = parse_stylesheet(
+            "memory:named-and-matched-template.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template name="scan" match="*" mode="a" priority="2"><out/></xsl:template></xsl:stylesheet>"#,
+        );
+        let program = compile_stylesheet(&named_and_matched)
+            .expect("one template may be both named and matched");
+        assert_eq!(program.named_templates.len(), 1);
+        assert_eq!(program.named_templates[0].name, "scan");
+        assert_eq!(program.matched_templates.len(), 1);
+        assert_eq!(program.matched_templates[0].modes, ["a"]);
+        assert_eq!(
+            program.matched_templates[0].priority,
+            TemplatePriority::explicit_integer(2)
+        );
 
         let standard_initial_template = parse_stylesheet(
             "memory:standard-initial-template.xsl",

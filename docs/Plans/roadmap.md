@@ -390,6 +390,15 @@ complete explicit dispositions with no default not-run cases. This corrects
 the earlier provisional counts without turning inventory into a conformance
 percentage or preprocessing upstream bytes in the harness.
 
+The next coherent mode tranche executes `mode-0101` through `mode-0104` and
+`mode-0201` through `mode-0701`. Explicit and omitted mode selection remain
+isolated, built-in rules preserve an active explicit mode, nested omitted mode
+returns deliberately to the unnamed mode, and comment, processing-instruction,
+node, and attribute selections dispatch through typed moded rules. The compiler
+now correctly admits one template carrying both `name` and `match` into both
+indexes instead of dropping one identity. The complete mode denominator now
+records 14 passes and 155 visible default not-run cases.
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -429,10 +438,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 4 | 0 | 0 | 165 |
+| `attr/mode` | 169 | 14 | 0 | 0 | 155 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **198** | **3** | **5** | **325** |
+| **Conserved total** | **531** | **208** | **3** | **5** | **315** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -487,7 +496,7 @@ count:
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
 2. [ ] Continue coherent semantic slices through the 160 visible `output`
-   gaps and 165 visible `mode` gaps. Each promotion still requires native
+   gaps and 155 visible `mode` gaps. Each promotion still requires native
    metadata validation, a focused control, and an owned comparator or exact
    diagnostic—not merely successful stylesheet execution.
 3. [ ] Give `AxisStep.xml` and `fn/deep-equal.xml` complete QT3 overlays so all
@@ -1213,6 +1222,14 @@ failed, and harness-error cases without an unqualified conformance claim.
   focus for its body while retaining the surrounding current-template and mode
   context. Keep general `xsl:for-each` selection and iteration outside this
   slice.
+- [x] Execute `mode-0101` through `mode-0104` and `mode-0201` through
+  `mode-0701` as one basic dispatch tranche. Preserve explicit versus unnamed
+  mode isolation, active mode through built-in descent, deliberate unnamed
+  mode selection when nested `xsl:apply-templates` omits `mode`, and typed
+  comment, processing-instruction, node, and attribute dispatch. Admit a
+  template carrying both `name` and `match` into both compiled indexes while
+  retaining one shared body semantics. The mode ledger now records 14 passes
+  and 155 visible default not-run cases.
 - [x] Retain non-whitespace text children in the private attribute-free
   temporary-tree representation and preserve mixed element/text order through
   invocation-owned materialization, built-in traversal, result accounting, and
