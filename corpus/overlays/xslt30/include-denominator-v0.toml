@@ -61,3 +61,9 @@ case_name = "include-0104"
 selection = "selected"
 execution = "passed"
 rationale = "Assembles one imported rule below one included rule at principal precedence, then proves xsl:apply-imports from the included rule selects the lower-precedence imported rule."
+
+[[case_override]]
+case_name = "include-0701"
+selection = "selected"
+execution = "passed"
+rationale = "Assembles two principal-precedence included modules, each with one leaf import, uses later same-precedence template recovery, and executes the file-backed source and assert-xml result through a sealed five-module graph."

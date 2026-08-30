@@ -155,6 +155,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `include-0501` Sibling-Import Global Parameter Precedence](xslt30-include-0501-sibling-import-global-parameter-precedence-2026-08-29.md)
 - [XSLT30 `include-0103` Embedded Stylesheet Fragment and Base](xslt30-include-0103-embedded-stylesheet-fragment-base-2026-08-29.md)
 - [XSLT30 `include-0104` Mixed Import/Include Apply-Imports](xslt30-include-0104-mixed-import-include-apply-imports-2026-08-29.md)
+- [XSLT30 `include-0701` Two-Include Leaf-Import Graph](xslt30-include-0701-two-include-leaf-import-graph-2026-08-29.md)
 - [Stylesheet-Module Assembly Decomposition Review](stylesheet-module-assembly-decomposition-review-2026-08-28.md)
 - [Instruction-Compiler Template-Invocation Decomposition Review](instruction-compiler-template-invocation-decomposition-review-2026-08-29.md)
 - [Sealed Stylesheet-Dependency Accounting](sealed-stylesheet-dependency-accounting-2026-08-28.md)

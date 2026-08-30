@@ -16,6 +16,11 @@
 > depth-one profile recorded below remains the profile under which this
 > accounting experiment was first run.
 
+> **Later 2026-08-29 addendum:** `include-0701` raised the private occurrence
+> ceiling to five while retaining depth two and the 1 MiB byte ceiling. This
+> admits exactly two included branches with one leaf import each; it does not
+> select public graph limits.
+
 ## Experiment
 
 The admitted-resource compiler now prepares the complete reachable

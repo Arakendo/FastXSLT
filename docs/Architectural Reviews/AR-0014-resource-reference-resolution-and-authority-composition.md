@@ -250,3 +250,7 @@ resolver trait, URI type, catalog representation, live authority, or cache.
 - 2026-08-29 -- XSLT30 `include-0104` assembled one sealed leading import plus
   one include and preserved their different precedence semantics. This admits
   one exact mixed topology, not a general dependency-graph compiler.
+- 2026-08-29 -- XSLT30 `include-0701` executed a sealed five-module graph with
+  two included branches and one leaf import per branch. The private ceiling rose
+  to five occurrences at depth two; public limits and general graph assembly
+  remain unselected.

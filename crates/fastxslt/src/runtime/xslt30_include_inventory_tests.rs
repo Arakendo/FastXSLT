@@ -33,7 +33,7 @@ const CASE_NAMES: [&str; 16] = [
     "include-0702c",
     "include-0801",
 ];
-const PASSED_CASES: [&str; 9] = [
+const PASSED_CASES: [&str; 10] = [
     "include-0103",
     "include-0104",
     "include-0105",
@@ -43,6 +43,7 @@ const PASSED_CASES: [&str; 9] = [
     "include-0401",
     "include-0501",
     "include-0601",
+    "include-0701",
 ];
 const OVERLAY: &str =
     include_str!("../../../../corpus/overlays/xslt30/include-denominator-v0.toml");
@@ -225,6 +226,28 @@ fn executes_include_0104_apply_imports_across_included_rule() {
     assert_xml_equivalent(&execution.actual, &execution.expected);
 }
 
+#[test]
+fn executes_include_0701_two_includes_with_leaf_imports() {
+    let execution = execute_inline_case_with_dependencies("include-0701");
+    assert_eq!(
+        execution
+            .import_precedences
+            .iter()
+            .filter(|precedence| **precedence < 0)
+            .count(),
+        4
+    );
+    assert_eq!(
+        execution
+            .import_precedences
+            .iter()
+            .filter(|precedence| **precedence == 0)
+            .count(),
+        6
+    );
+    assert_xml_equivalent(&execution.actual, &execution.expected);
+}
+
 struct DependencyCaseExecution {
     actual: String,
     expected: String,
@@ -245,36 +268,36 @@ fn execute_inline_case_with_dependencies(case_name: &str) -> DependencyCaseExecu
         .filter(|node| local_name(&document, *node) == "stylesheet")
         .map(|node| attribute(&document, node, "file").expect("stylesheet file"))
         .collect::<Vec<_>>();
-    assert!(matches!(stylesheet_files.len(), 2 | 3));
-    let environment = case_environment(&document, case);
-    let content = child_named(
-        &document,
-        child_named(&document, environment, "source").expect("principal source"),
-        "content",
-    )
-    .expect("inline source content");
-    let expected = document.string_value(
-        child_named(
-            &document,
-            child_named(&document, case, "result").expect("result metadata"),
-            "assert-xml",
-        )
-        .expect("XML assertion"),
-    );
-
+    assert!(matches!(stylesheet_files.len(), 2 | 3 | 5));
     let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../vendor/xslt30-test/tests/decl/include");
+    let environment = case_environment(&document, case);
+    let source = child_named(&document, environment, "source").expect("principal source");
+    let source_bytes = child_named(&document, source, "content").map_or_else(
+        || {
+            fs::read(directory.join(attribute(&document, source, "file").expect("source file")))
+                .expect("read source file")
+        },
+        |content| document.string_value(content).into_bytes(),
+    );
+    let assertion = child_named(
+        &document,
+        child_named(&document, case, "result").expect("result metadata"),
+        "assert-xml",
+    )
+    .expect("XML assertion");
+    let expected = attribute(&document, assertion, "file").map_or_else(
+        || document.string_value(assertion),
+        |file| fs::read_to_string(directory.join(file)).expect("read expected XML"),
+    );
     let principal_id = format!(
         "https://example.invalid/xslt30/decl/include/{}",
         stylesheet_files[0]
     );
     let source_id = format!("urn:w3c:xslt30:decl:include:{case_name}:source");
-    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(4, 12_288, 24_576));
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(6, 12_288, 49_152));
     resources
-        .admit(
-            source_id.clone(),
-            document.string_value(content).into_bytes(),
-        )
+        .admit(source_id.clone(), source_bytes)
         .expect("admit inline source");
     resources
         .admit(

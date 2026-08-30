@@ -748,3 +748,10 @@ case_name = "include-0104"
 selection = "selected"
 execution = "passed"
 rationale = "The principal's included one-tag rule remains at principal precedence while the sibling imported one-tag rule is lower; xsl:apply-imports from the included rule therefore emits the imported result inside its wrapper."
+
+[[case]]
+set_file = "tests/decl/include/_include-test-set.xml"
+case_name = "include-0701"
+selection = "selected"
+execution = "passed"
+rationale = "Two included modules share principal precedence and each owns one lower leaf import; later same-precedence title recovery selects the later included rule, while apply-imports reaches the applicable imported rule and the sealed file-backed result is XML-equivalent."

@@ -228,6 +228,12 @@ import precedence; imported declarations remain lower. This permits
 without treating inclusion as a separate precedence level. Other mixed,
 repeated, or nested import/include graphs remain outside the executable slice.
 
+The largest admitted private topology contains two principal includes, each
+with one leaf import. Included rules share principal precedence and declaration
+order provides use-last recovery for the selected same-precedence conflict;
+each imported leaf remains lower for `xsl:apply-imports`. This is corpus-bound
+evidence, not a general precedence-graph or configurable conflict-policy model.
+
 Module assembly resolves statically known cross-module declarations before
 whole-program validation and runtime materialization. Within the bounded
 bounded import slice, a principal global binding shadows an imported binding of

@@ -17,6 +17,7 @@ pub(super) fn compile_match_pattern(
 ) -> Result<(MatchPattern, TemplatePriority), CompileFailure> {
     let pattern = match lexical_pattern {
         "/" => MatchPattern::Document,
+        "/*" => MatchPattern::DocumentElement(None),
         "comment()" => MatchPattern::Comment,
         "text()" => MatchPattern::Text,
         "processing-instruction()" => MatchPattern::ProcessingInstruction,

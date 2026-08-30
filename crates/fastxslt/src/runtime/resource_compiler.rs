@@ -4,6 +4,7 @@ use crate::compile::golden_stylesheet_experiment::{
     CompileCategory, CompileFailure, StylesheetDependencyKind, compile_stylesheet,
     compile_stylesheet_with_import_and_include, compile_stylesheet_with_imports,
     compile_stylesheet_with_single_include, compile_stylesheet_with_single_include_program_at,
+    compile_stylesheet_with_two_included_programs_at,
 };
 use crate::resources::{ResolutionFailure, ResolutionLimits, ResourceSnapshot, SnapshotResolver};
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
@@ -13,7 +14,7 @@ use super::stylesheet_dependency_loader::{
 };
 use super::{ExecutionFailure, FailureCategory, failure, failure_at};
 
-const DEPENDENCY_LIMITS: DependencyLimits = DependencyLimits::new(2, 3, 1_048_576);
+const DEPENDENCY_LIMITS: DependencyLimits = DependencyLimits::new(2, 5, 1_048_576);
 
 #[cfg(test)]
 pub(in crate::runtime) fn compile_resource(
@@ -28,7 +29,7 @@ pub(in crate::runtime) fn compile_resource_with_denied(
     stylesheet_id: &str,
     denied: impl IntoIterator<Item = String>,
 ) -> Result<StylesheetProgram, ExecutionFailure> {
-    let mut resolver = SnapshotResolver::new(snapshot, denied, ResolutionLimits::new(3));
+    let mut resolver = SnapshotResolver::new(snapshot, denied, ResolutionLimits::new(5));
     compile_resource_with_resolver(&mut resolver, stylesheet_id)
 }
 
@@ -59,30 +60,11 @@ fn compile_loaded_graph(
                 .clone(),
         });
     }
-    if let [dependency] = graph.dependencies.as_slice() {
-        if dependency.dependency_kind == Some(StylesheetDependencyKind::Include) {
-            if let [nested] = dependency.dependencies.as_slice() {
-                if nested.dependency_kind == Some(StylesheetDependencyKind::Include)
-                    && nested.dependencies.is_empty()
-                {
-                    let nested_program =
-                        crate::compile::golden_stylesheet_experiment::compile_stylesheet_at(
-                            &nested.document,
-                            nested.root,
-                        )?;
-                    let dependency_program = compile_stylesheet_with_single_include_program_at(
-                        &dependency.document,
-                        dependency.root,
-                        nested_program,
-                    )?;
-                    return compile_stylesheet_with_single_include_program_at(
-                        &graph.document,
-                        graph.root,
-                        dependency_program,
-                    );
-                }
-            }
-        }
+    if let Some(program) = compile_two_include_leaf_import_graph(graph) {
+        return program;
+    }
+    if let Some(program) = compile_nested_include_chain(graph) {
+        return program;
     }
     for dependency in &graph.dependencies {
         if !dependency.dependencies.is_empty() {
@@ -140,6 +122,77 @@ fn compile_loaded_graph(
                 .clone(),
         }),
     }
+}
+
+fn compile_two_include_leaf_import_graph(
+    graph: &LoadedStylesheetModule,
+) -> Option<Result<StylesheetProgram, CompileFailure>> {
+    let [first, second] = graph.dependencies.as_slice() else {
+        return None;
+    };
+    let ([first_import], [second_import]) = (
+        first.dependencies.as_slice(),
+        second.dependencies.as_slice(),
+    ) else {
+        return None;
+    };
+    if first.dependency_kind != Some(StylesheetDependencyKind::Include)
+        || second.dependency_kind != Some(StylesheetDependencyKind::Include)
+        || first_import.dependency_kind != Some(StylesheetDependencyKind::Import)
+        || second_import.dependency_kind != Some(StylesheetDependencyKind::Import)
+        || !first_import.dependencies.is_empty()
+        || !second_import.dependencies.is_empty()
+    {
+        return None;
+    }
+    Some((|| {
+        let first_program = compile_stylesheet_with_imports(
+            &first.document,
+            &[(&first_import.document, first_import.root)],
+        )?;
+        let second_program = compile_stylesheet_with_imports(
+            &second.document,
+            &[(&second_import.document, second_import.root)],
+        )?;
+        compile_stylesheet_with_two_included_programs_at(
+            &graph.document,
+            graph.root,
+            [first_program, second_program],
+        )
+    })())
+}
+
+fn compile_nested_include_chain(
+    graph: &LoadedStylesheetModule,
+) -> Option<Result<StylesheetProgram, CompileFailure>> {
+    let [dependency] = graph.dependencies.as_slice() else {
+        return None;
+    };
+    let [nested] = dependency.dependencies.as_slice() else {
+        return None;
+    };
+    if dependency.dependency_kind != Some(StylesheetDependencyKind::Include)
+        || nested.dependency_kind != Some(StylesheetDependencyKind::Include)
+        || !nested.dependencies.is_empty()
+    {
+        return None;
+    }
+    Some((|| {
+        let nested_program = crate::compile::golden_stylesheet_experiment::compile_stylesheet_at(
+            &nested.document,
+            nested.root,
+        )?;
+        let dependency_program = compile_stylesheet_with_single_include_program_at(
+            &dependency.document,
+            dependency.root,
+            nested_program,
+        )?;
+        compile_stylesheet_with_single_include_program_at(
+            &graph.document,
+            graph.root,
+            dependency_program,
+        )
+    })())
 }
 
 fn dependency_failure(error: DependencyFailure) -> ExecutionFailure {

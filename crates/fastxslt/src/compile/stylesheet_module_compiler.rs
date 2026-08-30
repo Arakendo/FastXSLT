@@ -89,6 +89,7 @@ pub(crate) fn compile_stylesheet_with_single_include_program_at(
         &mut program,
         included_program,
         principal.location(principal_root),
+        false,
     )?;
     validate_named_template_references(&program)?;
     Ok(program)
@@ -98,6 +99,7 @@ fn merge_included_program(
     program: &mut StylesheetProgram,
     included_program: StylesheetProgram,
     location: &SourceLocation,
+    allow_duplicate_matches: bool,
 ) -> Result<(), CompileFailure> {
     if included_program.output != default_output_settings() {
         return Err(unsupported(
@@ -118,10 +120,10 @@ fn merge_included_program(
         program.root_template_modes = included_program.root_template_modes;
     }
     for matched in included_program.matched_templates {
-        if program
-            .matched_templates
-            .iter()
-            .any(|existing| existing.pattern == matched.pattern && existing.modes == matched.modes)
+        if !allow_duplicate_matches
+            && program.matched_templates.iter().any(|existing| {
+                existing.pattern == matched.pattern && existing.modes == matched.modes
+            })
         {
             return Err(unsupported(
                 "FXST1021",
@@ -168,6 +170,36 @@ fn merge_included_program(
     Ok(())
 }
 
+pub(crate) fn compile_stylesheet_with_two_included_programs_at(
+    principal: &Document,
+    principal_root: NodeId,
+    included_programs: [StylesheetProgram; 2],
+) -> Result<StylesheetProgram, CompileFailure> {
+    let include_declarations = include_nodes_at(principal, principal_root)?;
+    if include_declarations.len() != included_programs.len() {
+        return Err(invalid(
+            "FXST0034",
+            "two-include compilation requires exactly two supplied included modules",
+            principal.location(principal_root),
+        ));
+    }
+    let mut program = compile_stylesheet_at_excluding_unvalidated(
+        principal,
+        principal_root,
+        &include_declarations,
+    )?;
+    for included in included_programs {
+        merge_included_program(
+            &mut program,
+            included,
+            principal.location(principal_root),
+            true,
+        )?;
+    }
+    validate_named_template_references(&program)?;
+    Ok(program)
+}
+
 pub(crate) fn compile_stylesheet_with_import_and_include(
     principal: &Document,
     imported: (&Document, NodeId),
@@ -194,7 +226,12 @@ pub(crate) fn compile_stylesheet_with_import_and_include(
     }
     let mut program = compile_stylesheet_at_excluding_unvalidated(principal, root, &dependencies)?;
     let included_program = compile_dependency_module(included.0, included.1)?;
-    merge_included_program(&mut program, included_program, principal.location(*include))?;
+    merge_included_program(
+        &mut program,
+        included_program,
+        principal.location(*include),
+        false,
+    )?;
 
     let mut imported_program = compile_imported_program(imported.0, imported.1, -1)?;
     imported_program

@@ -995,7 +995,7 @@ failed, and harness-error cases without an unqualified conformance claim.
       and account independently for reference depth, module occurrences, and
       aggregate dependency bytes. Detect active-path cycles before retention;
       return no graph or compiled program after any limit, resolution, parse, or
-      cycle failure. The private production profile now remains depth 2, three
+      cycle failure. The private production profile now remains depth 2, five
       module occurrences, and 1 MiB rather than selecting public limits.
     - [x] Add a workbench-only explicit dependency/denial input and prove
       `missing-resource` and `denied` remain distinct structured categories
@@ -1056,6 +1056,12 @@ failed, and harness-error cases without an unqualified conformance claim.
     `one-tag` rule selects its imported counterpart. Keep other mixed, repeated,
     and nested import/include topologies out. The denominator now records 9
     passes and 7 visible not-run dispositions.
+  - [x] Execute `include-0701` through two principal includes, each with one
+    leaf import, using a sealed file-backed source and expected result. Preserve
+    included rules at principal precedence, lower imported leaves, and bounded
+    later-rule recovery for the same-precedence `title` conflict. Keep the
+    `include-0702*` conflict-policy variants and general graph construction out.
+    The denominator now records 10 passes and 6 visible not-run dispositions.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.
