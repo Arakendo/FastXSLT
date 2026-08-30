@@ -19,3 +19,9 @@ case_name = "mode-0106"
 selection = "selected"
 execution = "passed"
 rationale = "Keeps unqualified mode a in no namespace even while foo:a is in scope, proving lexical local-name equality does not collapse distinct expanded mode identities."
+
+[[case_override]]
+case_name = "mode-0107"
+selection = "selected"
+execution = "passed"
+rationale = "Resolves $x to a global temporary-tree document, dispatches its document rule in mode a, and applies the built-in temporary-document rule from temporary focus before selecting the unmoded x rule."

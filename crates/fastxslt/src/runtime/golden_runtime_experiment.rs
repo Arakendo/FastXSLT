@@ -615,7 +615,7 @@ fn execute_apply_instruction(
         inputs,
         select,
         requested_mode,
-        execution.node,
+        execution,
         &parameters,
         variables,
         control,
@@ -626,20 +626,24 @@ fn execute_apply_templates(
     inputs: &SequenceInputs<'_>,
     select: Option<&ApplySelection>,
     mode: Option<&str>,
-    context: Option<NodeId>,
+    execution: SequenceContext<'_>,
     parameters: &BTreeMap<String, InvocationParameter>,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    if let Some(ApplySelection::LocalTemporaryRoot(name)) = select {
-        let tree = variables.temporary_trees.get(name).ok_or_else(|| {
-            failure(
-                "FXRT0002",
-                FailureCategory::Invalid,
-                Some(inputs.request_id),
-                format!("unbound local temporary tree: ${name}"),
-            )
-        })?;
+    if let Some(ApplySelection::TemporaryRoot(name)) = select {
+        let tree = variables
+            .temporary_trees
+            .get(name)
+            .or_else(|| inputs.globals.temporary_trees.get(name))
+            .ok_or_else(|| {
+                failure(
+                    "FXRT0002",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    format!("unbound temporary tree: ${name}"),
+                )
+            })?;
         return apply_temporary_roots(inputs, tree, mode, parameters, control);
     }
     if let Some(ApplySelection::GlobalTemporaryChildren(name)) = select {
@@ -659,7 +663,14 @@ fn execute_apply_templates(
         }
         return Ok(result);
     }
-    let (_, context) = required_source_context(inputs, context)?;
+    if select.is_none()
+        && let Some(focus) = execution.temporary_focus
+    {
+        return temporary_tree_executor::apply_temporary_builtin(
+            inputs, focus, mode, parameters, control,
+        );
+    }
+    let (_, context) = required_source_context(inputs, execution.node)?;
     let selected = select_apply_nodes(inputs, select, context, &variables.atomics, control)?;
     let mut result = Vec::new();
     for node in selected {
@@ -1094,7 +1105,7 @@ fn select_apply_nodes(
             inputs.request_id,
             control,
         ),
-        ApplySelection::GlobalTemporaryChildren(_) | ApplySelection::LocalTemporaryRoot(_) => {
+        ApplySelection::GlobalTemporaryChildren(_) | ApplySelection::TemporaryRoot(_) => {
             unreachable!("temporary-tree selection is dispatched before source selection")
         }
     }

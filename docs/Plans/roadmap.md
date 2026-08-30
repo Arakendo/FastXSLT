@@ -963,6 +963,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   `foo:a` and `a` remain distinct. This is the first prerequisite for
   `conflict-resolution-1401`; temporary-tree path navigation, union patterns,
   and temporary-focus `xsl:next-match` remain separate work.
+- [x] Execute `mode-0107` by resolving a bare global temporary-tree variable to
+  its document node, dispatching its moded document rule, and retaining
+  temporary focus for the nested unmoded apply-templates instruction. Unify
+  local/global temporary-root selection with lexical shadowing while keeping
+  deeper temporary paths, text nodes, and temporary-focus continuation out.
 - [x] Execute `conflict-resolution-0802` with one template in named modes plus
   `#default`, explicit unnamed-mode dispatch, inherited `#current`, and a typed
   default-namespaced descendant-name selection. Keep QName modes, mode

@@ -230,6 +230,15 @@ names merely because their prefixes or local parts match. `#default`, `#all`,
 and `#current` retain their separate control meanings. This private identity
 model does not yet define a public initial-mode QName type.
 
+The private temporary-tree path distinguishes its document focus from the
+principal source document. A bare variable selected by `xsl:apply-templates`
+may resolve an invocation-local or global temporary tree, with local lexical
+state taking precedence. Nested apply-templates with no explicit selection
+continues from that temporary document or element focus and does not silently
+fall back to the principal source. The current representation remains a
+bounded element-only experiment; text nodes, general temporary-tree paths, and
+continuation selection require separate evidence.
+
 The bounded include slice also admits one three-module include chain in which a
 simple fragment selects exactly one embedded stylesheet by `xml:id`. Resource
 bytes are acquired under the fragmentless identity before fragment semantics

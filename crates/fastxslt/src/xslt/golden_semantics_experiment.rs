@@ -165,7 +165,7 @@ pub(crate) enum ApplySelection {
     ChildNodes(NodeTest),
     Attribute(ExpandedName),
     GlobalTemporaryChildren(String),
-    LocalTemporaryRoot(String),
+    TemporaryRoot(String),
     VariableFilteredElementPath(VariableFilteredElementPath),
 }
 

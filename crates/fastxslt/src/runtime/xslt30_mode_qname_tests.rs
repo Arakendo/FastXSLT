@@ -16,7 +16,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 2] = ["mode-0105", "mode-0106"];
+const SELECTED_CASES: [&str; 3] = ["mode-0105", "mode-0106", "mode-0107"];
 const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/mode-denominator-v0.toml");
 
 #[test]
@@ -36,7 +36,7 @@ fn inventories_the_complete_mode_denominator_before_selection() {
     assert_eq!(names.last(), Some(&"mode-1905"));
     assert!(OVERLAY.contains("case_count = 169"));
     assert!(OVERLAY.contains("selection = \"harness-unsupported\""));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 2);
+    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 3);
     for case_name in SELECTED_CASES {
         assert!(names.contains(case_name));
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
@@ -57,6 +57,12 @@ fn executes_qualified_and_unqualified_mode_names_as_distinct_expanded_qnames() {
     );
     assert!(qualified.0.contains("mode-foo:a:a-text"));
     assert!(unqualified.0.contains("mode-a:a-text"));
+}
+
+#[test]
+fn executes_mode_0107_from_a_global_temporary_document_focus() {
+    let (actual, expected) = execute_case("mode-0107");
+    assert_xml_equivalent(&actual, &expected);
 }
 
 fn execute_case(case_name: &str) -> (String, String) {
@@ -117,12 +123,14 @@ fn execute_case(case_name: &str) -> (String, String) {
         .expect("admit stylesheet");
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, &stylesheet_id).expect("compile selected mode case");
-    assert!(program.matched_templates.iter().any(|template| {
-        template
-            .modes
-            .iter()
-            .any(|mode| mode == "Q{http://foo.com}a")
-    }));
+    if matches!(case_name, "mode-0105" | "mode-0106") {
+        assert!(program.matched_templates.iter().any(|template| {
+            template
+                .modes
+                .iter()
+                .any(|mode| mode == "Q{http://foo.com}a")
+        }));
+    }
     let mut set = TransformSetBuilder::new(
         snapshot,
         program,
@@ -200,4 +208,48 @@ fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'
 fn without_xml_declaration(xml: &str) -> &str {
     xml.strip_prefix("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
         .unwrap_or(xml)
+}
+
+fn assert_xml_equivalent(actual: &str, expected: &str) {
+    let limits = ParseLimits {
+        max_events: 64,
+        max_depth: 16,
+    };
+    let actual = Document::from_parsed(
+        parse_document("urn:fastxslt:mode:actual", actual.as_bytes(), limits)
+            .expect("actual mode result should parse"),
+    )
+    .expect("actual mode result should build");
+    let expected = Document::from_parsed(
+        parse_document("urn:fastxslt:mode:expected", expected.as_bytes(), limits)
+            .expect("expected mode result should parse"),
+    )
+    .expect("expected mode result should build");
+    assert_xml_nodes_equal(
+        &actual,
+        actual.document_node(),
+        &expected,
+        expected.document_node(),
+    );
+}
+
+fn assert_xml_nodes_equal(
+    actual: &Document,
+    actual_node: NodeId,
+    expected: &Document,
+    expected_node: NodeId,
+) {
+    assert_eq!(actual.kind(actual_node), expected.kind(expected_node));
+    assert_eq!(actual.name(actual_node), expected.name(expected_node));
+    assert_eq!(actual.value(actual_node), expected.value(expected_node));
+    assert_eq!(
+        actual.attributes(actual_node).len(),
+        expected.attributes(expected_node).len()
+    );
+    let actual_children = actual.children(actual_node);
+    let expected_children = expected.children(expected_node);
+    assert_eq!(actual_children.len(), expected_children.len());
+    for (actual_child, expected_child) in actual_children.iter().zip(expected_children) {
+        assert_xml_nodes_equal(actual, *actual_child, expected, *expected_child);
+    }
 }

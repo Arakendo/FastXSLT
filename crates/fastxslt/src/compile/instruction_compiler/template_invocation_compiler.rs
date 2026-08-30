@@ -123,7 +123,7 @@ pub(super) fn parse_apply_selection(
         .strip_prefix('$')
         .filter(|name| is_ascii_ncname(name))
     {
-        return Ok(ApplySelection::LocalTemporaryRoot(variable.to_owned()));
+        return Ok(ApplySelection::TemporaryRoot(variable.to_owned()));
     }
     if let Some(variable) = expression
         .strip_prefix('$')
