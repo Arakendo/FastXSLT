@@ -6,7 +6,7 @@
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/decl/include/_include-test-set.xml` |
 | Cases | 16 |
-| Current ledger | 10 selected/passed; 6 harness-unsupported / not-run as of 2026-08-29 |
+| Current ledger | 12 selected/passed; 4 harness-unsupported / not-run as of 2026-08-29 |
 | Catalog stylesheet references | 16 principal; 34 secondary (including repeated case environments) |
 
 ## Conserved denominator
@@ -18,7 +18,8 @@ secondary stylesheet references, and conserves the direct result shapes as 14
 every case an explicit default `harness-unsupported / not-run` disposition,
 with first-party selected/passed overrides for `include-0401`, `include-0201`,
 `include-0301`, `include-0202`, `include-0105`, `include-0601`, and
-`include-0501`, `include-0103`, `include-0104`, and `include-0701`. FastXSLT
+`include-0501`, `include-0103`, `include-0104`, `include-0701`, `include-0702a`,
+and `include-0702c`. FastXSLT
 therefore records the complete denominator without calling unresolved module
 semantics an engine failure or quietly dropping cases.
 
@@ -74,6 +75,11 @@ current XML boundary deliberately denies.
 included rule retains principal precedence when invoking `xsl:apply-imports`.
 `include-0701` adds the sealed five-module two-include/two-leaf-import graph,
 file-backed harness inputs, and later same-precedence rule recovery.
+`include-0702a` and `include-0702c` execute that graph while conserving the
+difference between an explicit XSLT 1.0/2.0 recover request and the XSLT 3.0+
+positive case. `include-0702b` remains visibly not-run because its expected
+`XTRE0540` outcome requires error-on-multiple-match behavior that the private
+compiler and invocation policy cannot request.
 It makes no general claim for `xsl:include`, `xsl:import`, import precedence,
 general embedded stylesheet fragments, module cycles, or arbitrary module graphs. Upstream
 bytes remain immutable in the W3C submodule; all disposition policy remains in

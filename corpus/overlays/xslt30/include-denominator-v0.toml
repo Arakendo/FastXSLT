@@ -67,3 +67,15 @@ case_name = "include-0701"
 selection = "selected"
 execution = "passed"
 rationale = "Assembles two principal-precedence included modules, each with one leaf import, uses later same-precedence template recovery, and executes the file-backed source and assert-xml result through a sealed five-module graph."
+
+[[case_override]]
+case_name = "include-0702a"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the same sealed five-module graph under the case's XSLT 1.0/2.0 metadata and explicit on-multiple-match=recover dependency, preserving the distinction between requested recovery and an implicit engine default."
+
+[[case_override]]
+case_name = "include-0702c"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the same sealed five-module graph under the case's XSLT 3.0+ metadata and applies the admitted later-rule recovery path without claiming support for configurable conflict policy."

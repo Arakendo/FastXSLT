@@ -233,6 +233,9 @@ with one leaf import. Included rules share principal precedence and declaration
 order provides use-last recovery for the selected same-precedence conflict;
 each imported leaf remains lower for `xsl:apply-imports`. This is corpus-bound
 evidence, not a general precedence-graph or configurable conflict-policy model.
+The private path admits both the suite's explicit recover request for its
+XSLT 1.0/2.0 variant and its XSLT 3.0+ positive variant. It does not expose a
+host-selectable multiple-match policy or admit the expected-error variant.
 
 Module assembly resolves statically known cross-module declarations before
 whole-program validation and runtime materialization. Within the bounded

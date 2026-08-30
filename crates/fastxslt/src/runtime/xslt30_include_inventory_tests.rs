@@ -33,7 +33,7 @@ const CASE_NAMES: [&str; 16] = [
     "include-0702c",
     "include-0801",
 ];
-const PASSED_CASES: [&str; 10] = [
+const PASSED_CASES: [&str; 12] = [
     "include-0103",
     "include-0104",
     "include-0105",
@@ -44,6 +44,8 @@ const PASSED_CASES: [&str; 10] = [
     "include-0501",
     "include-0601",
     "include-0701",
+    "include-0702a",
+    "include-0702c",
 ];
 const OVERLAY: &str =
     include_str!("../../../../corpus/overlays/xslt30/include-denominator-v0.toml");
@@ -229,6 +231,46 @@ fn executes_include_0104_apply_imports_across_included_rule() {
 #[test]
 fn executes_include_0701_two_includes_with_leaf_imports() {
     let execution = execute_inline_case_with_dependencies("include-0701");
+    assert_five_module_conflict_recovery(&execution);
+}
+
+#[test]
+fn executes_include_0702a_with_declared_recovery_policy() {
+    let document = load_test_set();
+    let case = case_named(&document, "include-0702a");
+    let dependencies = child_named(&document, case, "dependencies").expect("dependencies");
+    assert_eq!(
+        child_named(&document, dependencies, "spec")
+            .and_then(|node| attribute(&document, node, "value")),
+        Some("XSLT10 XSLT20")
+    );
+    assert_eq!(
+        child_named(&document, dependencies, "on-multiple-match")
+            .and_then(|node| attribute(&document, node, "value")),
+        Some("recover")
+    );
+
+    let execution = execute_inline_case_with_dependencies("include-0702a");
+    assert_five_module_conflict_recovery(&execution);
+}
+
+#[test]
+fn executes_include_0702c_with_xslt30_default_recovery() {
+    let document = load_test_set();
+    let case = case_named(&document, "include-0702c");
+    let dependencies = child_named(&document, case, "dependencies").expect("dependencies");
+    assert_eq!(
+        child_named(&document, dependencies, "spec")
+            .and_then(|node| attribute(&document, node, "value")),
+        Some("XSLT30+")
+    );
+    assert!(child_named(&document, dependencies, "on-multiple-match").is_none());
+
+    let execution = execute_inline_case_with_dependencies("include-0702c");
+    assert_five_module_conflict_recovery(&execution);
+}
+
+fn assert_five_module_conflict_recovery(execution: &DependencyCaseExecution) {
     assert_eq!(
         execution
             .import_precedences
@@ -600,6 +642,16 @@ fn load_test_set() -> Document {
     )
     .expect("parse pinned include test set");
     Document::from_parsed(parsed).expect("build include test-set document")
+}
+
+fn case_named(document: &Document, name: &str) -> NodeId {
+    element_children(document, document_element(document))
+        .into_iter()
+        .find(|node| {
+            local_name(document, *node) == "test-case"
+                && attribute(document, *node, "name") == Some(name)
+        })
+        .expect("pinned include case")
 }
 
 fn document_element(document: &Document) -> NodeId {

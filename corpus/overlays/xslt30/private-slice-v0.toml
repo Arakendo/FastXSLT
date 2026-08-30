@@ -755,3 +755,17 @@ case_name = "include-0701"
 selection = "selected"
 execution = "passed"
 rationale = "Two included modules share principal precedence and each owns one lower leaf import; later same-precedence title recovery selects the later included rule, while apply-imports reaches the applicable imported rule and the sealed file-backed result is XML-equivalent."
+
+[[case]]
+set_file = "tests/decl/include/_include-test-set.xml"
+case_name = "include-0702a"
+selection = "selected"
+execution = "passed"
+rationale = "The case explicitly requests XSLT 1.0/2.0 recover behavior for the same five-module conflict graph; the harness verifies that metadata before executing the admitted later-rule recovery path."
+
+[[case]]
+set_file = "tests/decl/include/_include-test-set.xml"
+case_name = "include-0702c"
+selection = "selected"
+execution = "passed"
+rationale = "The XSLT 3.0+ positive variant executes the same five-module graph and XML assertion under the admitted default later-rule recovery path; configurable error policy remains outside the slice."

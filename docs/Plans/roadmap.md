@@ -1062,6 +1062,12 @@ failed, and harness-error cases without an unqualified conformance claim.
     later-rule recovery for the same-precedence `title` conflict. Keep the
     `include-0702*` conflict-policy variants and general graph construction out.
     The denominator now records 10 passes and 6 visible not-run dispositions.
+  - [x] Execute the positive `include-0702a` and `include-0702c` variants through
+    that same graph while conserving their distinct suite metadata: explicit
+    XSLT 1.0/2.0 `on-multiple-match=recover` versus XSLT 3.0+ default recovery.
+    Keep `include-0702b` not-run until compilation or invocation can request
+    error-on-multiple-match and report `XTRE0540`. The denominator now records
+    12 passes and 4 visible not-run dispositions.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.
