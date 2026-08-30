@@ -1260,8 +1260,12 @@ mod control_phase_tests;
 mod workflow_tests;
 
 #[cfg(test)]
-#[path = "golden_runtime_xslt30_tests.rs"]
-mod xslt30_tests;
+#[path = "xslt30_template_dispatch_tests.rs"]
+mod xslt30_template_dispatch_tests;
+
+#[cfg(test)]
+#[path = "xslt30_path_tests.rs"]
+mod xslt30_path_tests;
 
 #[cfg(test)]
 #[path = "xslt30_apply_templates_inventory_tests.rs"]

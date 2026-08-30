@@ -64,6 +64,12 @@ extracts a 289-line owner for apply/call invocation, arguments, selections, and
 modes. The 854-line parent retains sequence composition and delegates through
 five narrow entry points; the separate 125-line computed-attribute owner retains
 its static construction policy.
+The shared XSLT30 corpus test unit then reached 1,117 lines while owning both
+template-dispatch and XPath path-expression campaigns. Its
+[test-owner decomposition review](../Evidence/xslt30-corpus-test-owner-decomposition-review-2026-08-29.md)
+extracts a self-contained 342-line path corpus adapter and leaves an 866-line
+template-dispatch owner. Both exercise the same production runtime directly;
+neither depends on sibling test internals or changes corpus dispositions.
 
 FastXSLT has accepted its staged-modern semantic direction and passes the
 complete XSLT30 `template`, `path`, and `expr/for` test-set denominators. It also

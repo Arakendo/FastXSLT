@@ -161,6 +161,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `include-0801` Nested-Import Precedence](xslt30-include-0801-nested-import-precedence-2026-08-29.md)
 - [Stylesheet-Module Assembly Decomposition Review](stylesheet-module-assembly-decomposition-review-2026-08-28.md)
 - [Instruction-Compiler Template-Invocation Decomposition Review](instruction-compiler-template-invocation-decomposition-review-2026-08-29.md)
+- [XSLT30 Corpus Test-Owner Decomposition Review](xslt30-corpus-test-owner-decomposition-review-2026-08-29.md)
 - [Sealed Stylesheet-Dependency Accounting](sealed-stylesheet-dependency-accounting-2026-08-28.md)
 - [Workbench Resource-Authority Diagnostic Parity](workbench-resource-authority-diagnostic-parity-2026-08-28.md)
 - [Native Boundary Diagnostic-Test Decomposition](native-boundary-diagnostic-test-decomposition-2026-08-28.md)
