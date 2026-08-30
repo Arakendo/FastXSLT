@@ -796,8 +796,10 @@ failed, and harness-error cases without an unqualified conformance claim.
   attribute serialization, admitting the XHTML `xml:lang` and apostrophe
   control in `output-0104`. XHTML `script` and `style` content retains
   XML-compatible escaping through `output-0107` and `output-0108`, without
-  implying HTML raw-text behavior. The output ledger now records 50 passes and
-  182 visible harness gaps.
+  implying HTML raw-text behavior. XHTML CDATA terminator handling is conserved
+  through `output-0114` and `output-0115`, including a split into adjacent
+  sections for `]]>`. The output ledger now records 52 passes and 180 visible
+  harness gaps.
 - [x] Extend that declaration lane through `output-0110a`, `output-0110b`, and
   `output-0148` through `output-0148b`, accepting whitespace-normalized XSLT
   3.0 boolean lexicals without widening XSLT 2.0 beyond `yes`/`no`.

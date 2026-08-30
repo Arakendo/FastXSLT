@@ -382,7 +382,9 @@ replaced for serialization rather than mutating the semantic result tree.
 Disabling the property retains authored metadata. This does not extend the
 private lane to general HTML serialization. XHTML `script` and `style` text
 continues to use XML escaping; the raw-text conventions of the HTML method are
-not inferred from element names.
+not inferred from element names. Selected XHTML CDATA elements use the same
+expanded-name matching and terminator-splitting behavior as XML output, so a
+literal `]]>` becomes adjacent CDATA sections without changing result text.
 Unnamed output declarations may now merge only when their scalar properties do
 not overlap; repeated scalar properties remain explicitly unsupported until
 precedence and conflict semantics are implemented. `cdata-section-elements`

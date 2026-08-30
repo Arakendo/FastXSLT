@@ -201,6 +201,23 @@ fn bounded_serialization_matcher_requires_whitespace_and_rejects_other_operators
 }
 
 #[test]
+fn executes_xhtml_cdata_terminator_boundary_cases() {
+    let paired_brackets = execute_output_case("output-0114", None);
+    assert_eq!(paired_brackets.method.as_deref(), Some("xhtml"));
+    assert_eq!(
+        paired_brackets.actual,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\"><out><example><![CDATA[]]]]></example></out></html>"
+    );
+
+    let terminator = execute_output_case("output-0115", None);
+    assert_eq!(terminator.method.as_deref(), Some("xhtml"));
+    assert_eq!(
+        terminator.actual,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\"><out><example><![CDATA[]]]]><![CDATA[>]]></example></out></html>"
+    );
+}
+
+#[test]
 fn executes_explicit_false_lexicals_for_retained_xhtml_declaration() {
     for case_name in ["output-0148", "output-0148a", "output-0148b"] {
         let execution = execute_assert_serialization_case(case_name, "xhtml");

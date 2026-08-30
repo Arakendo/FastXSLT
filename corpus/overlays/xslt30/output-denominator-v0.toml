@@ -75,6 +75,18 @@ execution = "passed"
 rationale = "Executes the XSLT 3.0 numeric-one lexical form for XHTML declaration omission and exact file comparison after the case-specific checkout-EOL correction."
 
 [[case_override]]
+case_name = "output-0114"
+selection = "selected"
+execution = "passed"
+rationale = "Executes XHTML serialization with a selected CDATA element whose text ends in two closing brackets and verifies the complete serialized result."
+
+[[case_override]]
+case_name = "output-0115"
+selection = "selected"
+execution = "passed"
+rationale = "Executes XHTML serialization with a selected CDATA element containing the forbidden CDATA terminator and verifies the serializer splits it across adjacent CDATA sections without changing text content."
+
+[[case_override]]
 case_name = "output-0121"
 selection = "selected"
 execution = "passed"
