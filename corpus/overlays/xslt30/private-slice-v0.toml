@@ -668,6 +668,13 @@ rationale = "The explicit recover variant uses the same admitted use-last entry 
 
 [[case]]
 set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-1204"
+selection = "selected"
+execution = "passed"
+rationale = "One sealed relative import contributes a priority-25 foo rule below every principal rule; next-match follows principal ranks 5, 4, 3, and 2 before crossing import precedence to the imported rule."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
 case_name = "conflict-resolution-0601"
 selection = "selected"
 execution = "passed"

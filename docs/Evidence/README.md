@@ -42,6 +42,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `conflict-resolution-1602`–`1603` Document-Element Pattern Priority](xslt30-conflict-resolution-1602-1603-document-element-pattern-priority-2026-08-29.md)
 - [XSLT30 `conflict-resolution-1201` Next-Match Priority Chain](xslt30-conflict-resolution-1201-next-match-priority-chain-2026-08-29.md)
 - [XSLT30 `conflict-resolution-1202c` Equal-Rank Next-Match and Fallback](xslt30-conflict-resolution-1202c-equal-rank-next-match-and-fallback-2026-08-29.md)
+- [XSLT30 `conflict-resolution-1204` Import-Precedence Next-Match](xslt30-conflict-resolution-1204-import-precedence-next-match-2026-08-29.md)
 - [XSLT30 `conflict-resolution-1205` Next-Match Parameters and Result Attribute](xslt30-conflict-resolution-1205-next-match-parameters-and-result-attribute-2026-08-29.md)
 - [XSLT30 `conflict-resolution-0601` Variable Pattern and Source Copy](xslt30-conflict-resolution-0601-variable-pattern-and-source-copy-2026-08-29.md)
 - [XSLT30 `conflict-resolution-0501`–`0502` Equivalent Pattern Normalization](xslt30-conflict-resolution-0501-0502-equivalent-pattern-normalization-2026-08-29.md)

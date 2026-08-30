@@ -870,6 +870,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   use-last paths without selecting a general XSLT 1.0/2.0 compatibility profile
   or admitting the six corresponding `XTRE0540` error variants. The complete
   apply-templates ledger now records 40 passes and 10 visible not-run cases.
+- [x] Execute `conflict-resolution-1204` with its principal and one relative
+  import admitted into the sealed snapshot. Preserve import precedence ahead of
+  template priority so `xsl:next-match` walks principal priorities
+  `5 → 4 → 3 → 2` before the imported priority-`25` rule. Generalize only the
+  private corpus adapter to catalog-declared secondary stylesheets. The ledger
+  now records 41 passes and 9 visible not-run cases.
 - [x] Execute `conflict-resolution-1205` with typed non-tunnel integer and
   atomic-variable `xsl:with-param` arguments on `xsl:apply-templates` and
   `xsl:next-match`. Keep values invocation-local, retain result attributes

@@ -197,9 +197,14 @@ fn execute_apply_templates_case_with_parameters(
     };
     let source_element = find_element(&test_set, environment, "source", None)
         .expect("environment should contain the principal source");
-    let stylesheet_file = find_element(&test_set, test_case, "stylesheet", None)
-        .and_then(|node| attribute(&test_set, node, "file"))
-        .expect("case should name a stylesheet");
+    let stylesheet_files = case_stylesheet_files(&test_set, test_case);
+    let principal_files = stylesheet_files
+        .iter()
+        .filter(|(_, role)| *role != Some("secondary"))
+        .collect::<Vec<_>>();
+    let [(principal_file, _)] = principal_files.as_slice() else {
+        panic!("case should name exactly one principal stylesheet");
+    };
     let expected = find_element(&test_set, test_case, "assert-xml", None)
         .map(|node| test_set.string_value(node))
         .or_else(|| expected_apply_templates_all_of(case_name))
@@ -213,17 +218,26 @@ fn execute_apply_templates_case_with_parameters(
         fs::read(case_directory.join(source_file))
             .expect("read upstream apply-templates source and close handle")
     };
-    let stylesheet = fs::read(case_directory.join(stylesheet_file))
-        .expect("read upstream stylesheet and close handle");
     let source_id = format!("urn:w3c:xslt30:{case_name}:source");
-    let stylesheet_id = format!("urn:w3c:xslt30:{case_name}:stylesheet");
-    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    let stylesheet_base = "https://example.invalid/xslt30/insn/apply-templates/";
+    let stylesheet_id = format!("{stylesheet_base}{principal_file}");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(
+        stylesheet_files.len() + 1,
+        8_192,
+        65_536,
+    ));
     resources
         .admit(source_id.clone(), source)
         .expect("admit upstream source");
-    resources
-        .admit(stylesheet_id.clone(), stylesheet)
-        .expect("admit upstream stylesheet");
+    for (stylesheet_file, _) in stylesheet_files {
+        resources
+            .admit(
+                format!("{stylesheet_base}{stylesheet_file}"),
+                fs::read(case_directory.join(stylesheet_file))
+                    .expect("read upstream stylesheet and close handle"),
+            )
+            .expect("admit upstream stylesheet");
+    }
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, &stylesheet_id).expect("compile suite case");
     let matched_template_count = program.matched_templates.len();
@@ -254,6 +268,27 @@ fn execute_apply_templates_case_with_parameters(
         expected,
         matched_template_count,
     )
+}
+
+fn case_stylesheet_files(test_set: &Document, test_case: NodeId) -> Vec<(&str, Option<&str>)> {
+    let test = find_element(test_set, test_case, "test", None).expect("case test metadata");
+    test_set
+        .children(test)
+        .iter()
+        .copied()
+        .filter(|node| {
+            test_set.kind(*node) == NodeKind::Element
+                && test_set
+                    .name(*node)
+                    .is_some_and(|name| name.local == "stylesheet")
+        })
+        .map(|node| {
+            (
+                attribute(test_set, node, "file").expect("stylesheet file"),
+                attribute(test_set, node, "role"),
+            )
+        })
+        .collect()
 }
 
 fn compile_apply_templates_error_case(case_name: &str) -> (ExecutionFailure, String) {
@@ -780,6 +815,14 @@ fn executes_xslt30_next_match_parameter_chain() {
 fn executes_xslt30_equal_rank_next_match_chain() {
     let (actual, expected, matched_template_count) =
         execute_apply_templates_case("conflict-resolution-1202c");
+    assert_eq!(matched_template_count, 7);
+    assert_same_result_element_string(&actual, &expected, "out");
+}
+
+#[test]
+fn executes_xslt30_next_match_across_import_precedence() {
+    let (actual, expected, matched_template_count) =
+        execute_apply_templates_case("conflict-resolution-1204");
     assert_eq!(matched_template_count, 7);
     assert_same_result_element_string(&actual, &expected, "out");
 }

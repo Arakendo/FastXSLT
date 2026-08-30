@@ -180,6 +180,12 @@ execution = "passed"
 rationale = "The explicit recover variant preserves use-last entry into the equal-priority next-match chain and produces the same asserted continuation sequence."
 
 [[case_override]]
+case_name = "conflict-resolution-1204"
+selection = "selected"
+execution = "passed"
+rationale = "The harness admits the principal and secondary stylesheet into one sealed snapshot; next-match exhausts principal-precedence rules before selecting the imported priority-25 rule, proving import precedence dominates template priority."
+
+[[case_override]]
 case_name = "conflict-resolution-0601"
 selection = "selected"
 execution = "passed"
