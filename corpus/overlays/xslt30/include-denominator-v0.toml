@@ -25,3 +25,9 @@ case_name = "include-0301"
 selection = "selected"
 execution = "passed"
 rationale = "Resolves one relative xsl:import from the sealed snapshot, retains lower import precedence separately from template priority and source order, and executes the imported rule independently for three xsl:apply-imports calls."
+
+[[case_override]]
+case_name = "include-0202"
+selection = "selected"
+execution = "passed"
+rationale = "Passes an integer parameter through xsl:apply-imports to one lower-precedence imported rule, then constructs one statically named unnamespaced result attribute from the bound variable before child construction."

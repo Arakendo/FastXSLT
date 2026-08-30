@@ -189,6 +189,7 @@ pub(crate) enum Instruction {
         name: ExpandedName,
         namespaces: Vec<NamespaceBinding>,
         attributes: Vec<LiteralAttribute>,
+        computed_attributes: Vec<ComputedAttribute>,
         body: Vec<Instruction>,
         location: SourceLocation,
     },
@@ -317,6 +318,13 @@ pub(crate) enum TemplateArgumentValue {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct LiteralAttribute {
+    pub(crate) name: ExpandedName,
+    pub(crate) value: LiteralAttributeValue,
+    pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ComputedAttribute {
     pub(crate) name: ExpandedName,
     pub(crate) value: LiteralAttributeValue,
     pub(crate) location: SourceLocation,

@@ -45,9 +45,10 @@ rules at distinct import precedence, and repeated parameter-free
 import/include composition, imported root or named templates, imported global
 bindings, apply-imports parameters, or general import-precedence graphs.
 
-`include-0202` remains unselected because its imported rule also requires the
-separate computed `xsl:attribute` instruction surface. It is not classified as
-an engine failure without execution through that missing feature.
+The adjacent `include-0202` was initially left unselected because its imported
+rule also required computed `xsl:attribute`. That separate feature subsequently
+earned a bounded prepared representation and executable corpus evidence; it
+does not widen this case's claim boundary.
 
 This case also activates ADR-0011's import revisit pressure. No host framing or
 ABI change is required: its already accepted one-dependency operation carries

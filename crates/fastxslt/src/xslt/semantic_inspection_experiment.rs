@@ -20,6 +20,7 @@ enum InspectionFailure {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum SemanticFeature {
     LiteralElement,
+    ComputedAttribute,
     Text,
     ValueOf,
     LocalVariable,
@@ -179,7 +180,22 @@ fn observe_instructions(
             .checked_add(1)
             .ok_or(InspectionFailure::CountOverflow)?;
         let (feature, body) = match instruction {
-            Instruction::LiteralElement { body, .. } => {
+            Instruction::LiteralElement {
+                computed_attributes,
+                body,
+                ..
+            } => {
+                if !computed_attributes.is_empty() {
+                    *instruction_count = instruction_count
+                        .checked_add(computed_attributes.len())
+                        .ok_or(InspectionFailure::CountOverflow)?;
+                    let occurrences = feature_counts
+                        .entry(SemanticFeature::ComputedAttribute)
+                        .or_default();
+                    *occurrences = occurrences
+                        .checked_add(computed_attributes.len())
+                        .ok_or(InspectionFailure::CountOverflow)?;
+                }
                 (SemanticFeature::LiteralElement, Some(body.as_slice()))
             }
             Instruction::Text { .. } => (SemanticFeature::Text, None),
@@ -333,5 +349,40 @@ mod tests {
                 observed: 3,
             })
         );
+    }
+
+    #[test]
+    fn reports_specialized_computed_attributes_without_exposing_plan_layout() {
+        let parsed = parse_document(
+            IDENTITY,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="doc"><out><xsl:attribute name="magic"><xsl:value-of select="$magic"/></xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+            ParseLimits {
+                max_events: 64,
+                max_depth: 16,
+            },
+        )
+        .expect("parse computed-attribute inspection stylesheet");
+        let document = Document::from_parsed(parsed).expect("build inspection stylesheet XDM");
+        let program = compile_stylesheet(&document).expect("compile computed-attribute stylesheet");
+
+        let inspection = inspect_compiled(
+            IDENTITY,
+            &program,
+            InspectionLimits {
+                max_text_bytes: 256,
+                max_feature_kinds: 4,
+            },
+        )
+        .expect("inspect computed-attribute semantics");
+
+        assert_eq!(inspection.instruction_count, 2);
+        assert!(inspection.features.contains(&FeatureObservation {
+            feature: SemanticFeature::ComputedAttribute,
+            occurrences: 1,
+        }));
+        assert!(inspection.features.contains(&FeatureObservation {
+            feature: SemanticFeature::LiteralElement,
+            occurrences: 1,
+        }));
     }
 }

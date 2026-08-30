@@ -33,7 +33,12 @@ const CASE_NAMES: [&str; 16] = [
     "include-0702c",
     "include-0801",
 ];
-const PASSED_CASES: [&str; 3] = ["include-0201", "include-0301", "include-0401"];
+const PASSED_CASES: [&str; 4] = [
+    "include-0201",
+    "include-0202",
+    "include-0301",
+    "include-0401",
+];
 const OVERLAY: &str =
     include_str!("../../../../corpus/overlays/xslt30/include-denominator-v0.toml");
 const PRINCIPAL_ID: &str = "https://example.invalid/xslt30/decl/include/include-0401.xsl";
@@ -141,19 +146,40 @@ fn executes_include_0201_apply_imports_builtin_fallback() {
 
 #[test]
 fn executes_include_0301_repeated_apply_imports() {
+    let execution = execute_inline_case_with_single_dependency("include-0301");
+    assert_eq!(execution.import_precedences.len(), 2);
+    assert!(execution.import_precedences[0] < execution.import_precedences[1]);
+    assert_xml_equivalent(&execution.actual, &execution.expected);
+}
+
+#[test]
+fn executes_include_0202_apply_imports_with_parameter_and_computed_attribute() {
+    let execution = execute_inline_case_with_single_dependency("include-0202");
+    assert_eq!(execution.import_precedences.len(), 2);
+    assert!(execution.import_precedences[0] < execution.import_precedences[1]);
+    assert_xml_equivalent(&execution.actual, &execution.expected);
+}
+
+struct DependencyCaseExecution {
+    actual: String,
+    expected: String,
+    import_precedences: Vec<i32>,
+}
+
+fn execute_inline_case_with_single_dependency(case_name: &str) -> DependencyCaseExecution {
     let document = load_test_set();
     let case = element_children(&document, document_element(&document))
         .into_iter()
-        .find(|node| attribute(&document, *node, "name") == Some("include-0301"))
-        .expect("pinned include-0301 case");
+        .find(|node| attribute(&document, *node, "name") == Some(case_name))
+        .expect("pinned dependency case");
     let test = child_named(&document, case, "test").expect("test metadata");
     let stylesheet_files = element_children(&document, test)
         .into_iter()
         .filter(|node| local_name(&document, *node) == "stylesheet")
         .map(|node| attribute(&document, node, "file").expect("stylesheet file"))
         .collect::<Vec<_>>();
-    assert_eq!(stylesheet_files, ["include-0301.xsl", "include-0301a.xsl"]);
-    let environment = child_named(&document, case, "environment").expect("inline environment");
+    assert_eq!(stylesheet_files.len(), 2);
+    let environment = case_environment(&document, case);
     let content = child_named(
         &document,
         child_named(&document, environment, "source").expect("principal source"),
@@ -171,16 +197,25 @@ fn executes_include_0301_repeated_apply_imports() {
 
     let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../vendor/xslt30-test/tests/decl/include");
-    let principal_id = "https://example.invalid/xslt30/decl/include/include-0301.xsl";
-    let imported_id = "https://example.invalid/xslt30/decl/include/include-0301a.xsl";
-    let source_id = "urn:w3c:xslt30:decl:include:include-0301:source";
+    let principal_id = format!(
+        "https://example.invalid/xslt30/decl/include/{}",
+        stylesheet_files[0]
+    );
+    let imported_id = format!(
+        "https://example.invalid/xslt30/decl/include/{}",
+        stylesheet_files[1]
+    );
+    let source_id = format!("urn:w3c:xslt30:decl:include:{case_name}:source");
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 16_384));
     resources
-        .admit(source_id, document.string_value(content).into_bytes())
+        .admit(
+            source_id.clone(),
+            document.string_value(content).into_bytes(),
+        )
         .expect("admit inline source");
     resources
         .admit(
-            principal_id,
+            principal_id.clone(),
             fs::read(directory.join(stylesheet_files[0])).expect("read principal stylesheet"),
         )
         .expect("admit principal stylesheet");
@@ -191,12 +226,12 @@ fn executes_include_0301_repeated_apply_imports() {
         )
         .expect("admit imported stylesheet");
     let snapshot = resources.seal();
-    let program = compile_resource(&snapshot, principal_id).expect("compile imported stylesheet");
-    assert_eq!(program.matched_templates.len(), 2);
-    assert!(
-        program.matched_templates[0].import_precedence
-            < program.matched_templates[1].import_precedence
-    );
+    let program = compile_resource(&snapshot, &principal_id).expect("compile imported stylesheet");
+    let import_precedences = program
+        .matched_templates
+        .iter()
+        .map(|template| template.import_precedence)
+        .collect();
     let mut set = TransformSetBuilder::new(
         snapshot,
         program,
@@ -208,18 +243,35 @@ fn executes_include_0301_repeated_apply_imports() {
         },
     );
     set.add(TransformRequest {
-        identity: "include-0301".to_owned(),
-        result_identity: "urn:w3c:xslt30:decl:include:include-0301:result".to_owned(),
+        identity: case_name.to_owned(),
+        result_identity: format!("urn:w3c:xslt30:decl:include:{case_name}:result"),
         entry: InvocationEntry::PrincipalSource {
-            resource: source_id.to_owned(),
+            resource: source_id,
         },
         parameters: BTreeMap::new(),
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     })
-    .expect("admit include-0301 request");
-    let results = execute_transform_set(set.seal()).expect("execute include-0301");
-    assert_xml_equivalent(&results.by_request["include-0301"].serialized, &expected);
+    .expect("admit dependency request");
+    let results = execute_transform_set(set.seal()).expect("execute dependency case");
+    DependencyCaseExecution {
+        actual: results.by_request[case_name].serialized.clone(),
+        expected,
+        import_precedences,
+    }
+}
+
+fn case_environment(document: &Document, case: NodeId) -> NodeId {
+    let declaration = child_named(document, case, "environment").expect("case environment");
+    attribute(document, declaration, "ref").map_or(declaration, |reference| {
+        element_children(document, document_element(document))
+            .into_iter()
+            .find(|node| {
+                local_name(document, *node) == "environment"
+                    && attribute(document, *node, "name") == Some(reference)
+            })
+            .expect("referenced environment")
+    })
 }
 
 fn assert_xml_equivalent(actual: &str, expected: &str) {

@@ -40,7 +40,9 @@ mod variable_filtered_path;
 #[cfg(test)]
 pub(super) use resource_compiler::compile_resource;
 pub(super) use resource_compiler::compile_resource_with_denied;
-use result_tree::{ResultAttribute, ResultNode, materialize_literal_attributes};
+use result_tree::{
+    ResultAttribute, ResultNode, materialize_computed_attributes, materialize_literal_attributes,
+};
 use runtime_context::{
     InvocationParameter, RuntimeVariables, SequenceInputs, TemporaryTree, bind_template_parameters,
     evaluate_template_arguments, materialize_global_defaults, materialize_temporary_tree,
@@ -555,6 +557,7 @@ fn execute_literal_element(
         name,
         namespaces,
         attributes,
+        computed_attributes,
         body,
         ..
     } = instruction
@@ -564,8 +567,14 @@ fn execute_literal_element(
     control
         .charge(WorkDomain::ResultNode, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let attributes =
+    let mut attributes =
         materialize_literal_attributes(attributes, variables, inputs.request_id, control)?;
+    attributes.extend(materialize_computed_attributes(
+        computed_attributes,
+        variables,
+        inputs.request_id,
+        control,
+    )?);
     Ok(ResultNode::Element {
         name: name.clone(),
         namespaces: namespaces.clone(),

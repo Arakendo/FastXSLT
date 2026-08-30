@@ -56,6 +56,14 @@ extracts the independently coherent `xsl:output` lexical and settings policy
 into a 138-line private owner. The 1,325-line parent continues to own
 single-document/template composition, while output evolution no longer shares
 that source unit and module assembly receives identical default settings.
+Computed-attribute work then raised the instruction compiler above 1,000 lines
+while template invocation already supplied an independent responsibility
+trigger. The resulting
+[instruction-compiler decomposition review](../Evidence/instruction-compiler-template-invocation-decomposition-review-2026-08-29.md)
+extracts a 289-line owner for apply/call invocation, arguments, selections, and
+modes. The 854-line parent retains sequence composition and delegates through
+five narrow entry points; the separate 125-line computed-attribute owner retains
+its static construction policy.
 
 FastXSLT has accepted its staged-modern semantic direction and passes the
 complete XSLT30 `template`, `path`, and `expr/for` test-set denominators. It also
@@ -1009,6 +1017,13 @@ failed, and harness-error cases without an unqualified conformance claim.
     imported named/root templates, import/include composition, and parameters
     outside this slice. The denominator now records 3 passes and 13 visible
     not-run dispositions.
+  - [x] Execute `include-0202` through an integer `xsl:with-param` on
+    `xsl:apply-imports`, lower-precedence template parameter binding, and one
+    leading statically named unnamespaced `xsl:attribute` whose value is a bound
+    atomic variable. Compile that exact attribute shape into the prepared
+    literal-result plan; keep computed names/namespaces, general sequence
+    constructors, late attributes, and broader imported declarations out. The
+    denominator now records 4 passes and 12 visible not-run dispositions.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.

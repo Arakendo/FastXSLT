@@ -213,6 +213,13 @@ from template priority and declaration order. Ordinary dispatch ranks all three;
 before using the built-in rule. The current executable slice proves one sealed
 relative import only; it does not define a public module graph representation.
 
+The prepared instruction representation may fold a statically validated result
+construction into its owning literal element when the operation cannot be
+observed independently. The current bounded example is a leading,
+statically-named `xsl:attribute` with a variable value: compilation retains it
+as a distinct computed-attribute feature, while execution materializes it before
+children without exposing a mutable result-node API.
+
 Compilation may eventually attach required navigation, retention, buffering,
 or evaluation capabilities to normalized expressions and templates. This is a
 reserved ownership seam, not an accepted metadata schema or requirement to

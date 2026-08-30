@@ -706,3 +706,10 @@ case_name = "include-0301"
 selection = "selected"
 execution = "passed"
 rationale = "One sealed relative xsl:import contributes a lower-precedence doc rule; three repeated xsl:apply-imports calls select that rule without confusing import precedence with priority or retaining continuation state between calls."
+
+[[case]]
+set_file = "tests/decl/include/_include-test-set.xml"
+case_name = "include-0202"
+selection = "selected"
+execution = "passed"
+rationale = "The principal doc rule supplies integer parameter 81 through xsl:apply-imports; the lower-precedence imported rule binds it and constructs the unnamespaced magic attribute through a leading static-name, variable-valued xsl:attribute plan."
