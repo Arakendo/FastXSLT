@@ -214,6 +214,13 @@ before using the built-in rule. The current executable slice proves at most two
 sealed sibling imports with no nested dependencies; it does not define a public
 module graph representation.
 
+The bounded include slice also admits one three-module include chain in which a
+simple fragment selects exactly one embedded stylesheet by `xml:id`. Resource
+bytes are acquired under the fragmentless identity before fragment semantics
+are applied, and inherited `xml:base` determines the embedded module's nested
+reference base. General XPointer, DTD-typed IDs, and arbitrary nested or mixed
+module graphs remain outside the slice.
+
 Module assembly resolves statically known cross-module declarations before
 whole-program validation and runtime materialization. Within the bounded
 bounded import slice, a principal global binding shadows an imported binding of

@@ -3,6 +3,7 @@
 use crate::compile::golden_stylesheet_experiment::{
     CompileCategory, CompileFailure, StylesheetDependencyKind, compile_stylesheet,
     compile_stylesheet_with_imports, compile_stylesheet_with_single_include,
+    compile_stylesheet_with_single_include_program_at,
 };
 use crate::resources::{ResolutionFailure, ResolutionLimits, ResourceSnapshot, SnapshotResolver};
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
@@ -12,7 +13,7 @@ use super::stylesheet_dependency_loader::{
 };
 use super::{ExecutionFailure, FailureCategory, failure, failure_at};
 
-const DEPENDENCY_LIMITS: DependencyLimits = DependencyLimits::new(1, 3, 1_048_576);
+const DEPENDENCY_LIMITS: DependencyLimits = DependencyLimits::new(2, 3, 1_048_576);
 
 #[cfg(test)]
 pub(in crate::runtime) fn compile_resource(
@@ -53,6 +54,34 @@ fn compile_resource_with_resolver(
             "the private slice permits at most two stylesheet dependencies".to_owned(),
         ));
     }
+    if let [dependency] = graph.dependencies.as_slice() {
+        if dependency.dependency_kind == Some(StylesheetDependencyKind::Include) {
+            if let [nested] = dependency.dependencies.as_slice() {
+                if nested.dependency_kind == Some(StylesheetDependencyKind::Include)
+                    && nested.dependencies.is_empty()
+                {
+                    let nested_program =
+                        crate::compile::golden_stylesheet_experiment::compile_stylesheet_at(
+                            &nested.document,
+                            nested.root,
+                        )
+                        .map_err(compile_failure)?;
+                    let dependency_program = compile_stylesheet_with_single_include_program_at(
+                        &dependency.document,
+                        dependency.root,
+                        nested_program,
+                    )
+                    .map_err(compile_failure)?;
+                    return compile_stylesheet_with_single_include_program_at(
+                        &graph.document,
+                        graph.root,
+                        dependency_program,
+                    )
+                    .map_err(compile_failure);
+                }
+            }
+        }
+    }
     for dependency in &graph.dependencies {
         if !dependency.dependencies.is_empty() {
             return Err(failure_at(
@@ -73,9 +102,11 @@ fn compile_resource_with_resolver(
         .map(|dependency| dependency.dependency_kind.expect("dependency kind"))
         .collect::<Vec<_>>();
     match dependency_kinds.as_slice() {
-        [StylesheetDependencyKind::Include] => {
-            compile_stylesheet_with_single_include(&graph.document, &graph.dependencies[0].document)
-        }
+        [StylesheetDependencyKind::Include] => compile_stylesheet_with_single_include(
+            &graph.document,
+            &graph.dependencies[0].document,
+            graph.dependencies[0].root,
+        ),
         kinds
             if kinds
                 .iter()
@@ -84,7 +115,7 @@ fn compile_resource_with_resolver(
             let imported = graph
                 .dependencies
                 .iter()
-                .map(|dependency| &dependency.document)
+                .map(|dependency| (&dependency.document, dependency.root))
                 .collect::<Vec<_>>();
             compile_stylesheet_with_imports(&graph.document, &imported)
         }
@@ -105,11 +136,28 @@ fn compile_resource_with_resolver(
 fn dependency_failure(error: DependencyFailure) -> ExecutionFailure {
     match error {
         DependencyFailure::Resolution { error, location } => resolution_failure(error, location),
-        DependencyFailure::Fragment { identity, location } => dependency_failure_at(
+        DependencyFailure::UnsupportedFragment {
+            identity,
+            fragment,
+            location,
+        } => dependency_failure_at(
             "FXRS1001",
             FailureCategory::Unsupported,
             location,
-            format!("fragment selection for stylesheet dependencies is unsupported: {identity}"),
+            format!("unsupported stylesheet fragment syntax: {identity}#{fragment}"),
+        ),
+        DependencyFailure::FragmentSelection {
+            identity,
+            fragment,
+            matches,
+            location,
+        } => dependency_failure_at(
+            "XTSE0165",
+            FailureCategory::Invalid,
+            location,
+            format!(
+                "stylesheet fragment must select exactly one element: {identity}#{fragment} selected {matches}"
+            ),
         ),
         DependencyFailure::ModuleLimit { maximum, location } => dependency_failure_at(
             "FXRS0006",

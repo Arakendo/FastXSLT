@@ -734,3 +734,10 @@ case_name = "include-0501"
 selection = "selected"
 execution = "passed"
 rationale = "Two sealed sibling imports retain declaration-order precedence: the first supplies $first, the later import shadows its $second default, and the principal root rule observes both winning global parameter values."
+
+[[case]]
+set_file = "tests/decl/include/_include-test-set.xml"
+case_name = "include-0103"
+selection = "selected"
+execution = "passed"
+rationale = "The fragment-bearing include acquires one XML resource without its fragment, selects the embedded xsl:stylesheet by xml:id, resolves its child include against xml:base='x/', and links named template x through the sealed three-module graph."

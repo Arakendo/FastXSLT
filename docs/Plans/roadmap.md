@@ -995,7 +995,7 @@ failed, and harness-error cases without an unqualified conformance claim.
       and account independently for reference depth, module occurrences, and
       aggregate dependency bytes. Detect active-path cycles before retention;
       return no graph or compiled program after any limit, resolution, parse, or
-      cycle failure. The private production profile now remains depth 1, three
+      cycle failure. The private production profile now remains depth 2, three
       module occurrences, and 1 MiB rather than selecting public limits.
     - [x] Add a workbench-only explicit dependency/denial input and prove
       `missing-resource` and `denied` remain distinct structured categories
@@ -1044,6 +1044,12 @@ failed, and harness-error cases without an unqualified conformance claim.
     module's unshadowed `$first` default. Keep nested imports, mixed
     include/import assembly, and duplicate named-template precedence out. The
     denominator now records 7 passes and 9 visible not-run dispositions.
+  - [x] Execute `include-0103` through an embedded stylesheet selected by the
+    simple `#embedded` fragment after fragmentless sealed acquisition. Apply
+    inherited `xml:base="x/"` to its one nested include, assemble named template
+    `x`, and retain DTD denial. Keep `include-0102` excluded because its ID
+    typing depends on a DTD; keep general XPointer and arbitrary nested graphs
+    out. The denominator now records 8 passes and 8 visible not-run dispositions.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.

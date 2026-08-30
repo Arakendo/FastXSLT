@@ -1,10 +1,10 @@
 //! Builds one bounded, immutable stylesheet dependency graph from a sealed snapshot.
 
 use crate::compile::golden_stylesheet_experiment::{
-    CompileFailure, StylesheetDependencyKind, discovered_stylesheet_dependencies,
+    CompileFailure, StylesheetDependencyKind, discovered_stylesheet_dependencies_at,
 };
-use crate::resources::{ResolutionFailure, SnapshotResolver};
-use crate::xdm::owned_tree_experiment::{Document, SourceLocation};
+use crate::resources::{ResolutionFailure, SnapshotResolver, resolve_reference};
+use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xml::quick_xml_experiment::parse_document;
 
 use super::XML_LIMITS;
@@ -30,6 +30,7 @@ impl DependencyLimits {
 pub(super) struct LoadedStylesheetModule {
     pub(super) identity: String,
     pub(super) document: Document,
+    pub(super) root: NodeId,
     pub(super) dependency_kind: Option<StylesheetDependencyKind>,
     pub(super) dependencies: Vec<LoadedStylesheetModule>,
 }
@@ -40,8 +41,15 @@ pub(super) enum DependencyFailure {
         error: ResolutionFailure,
         location: Option<SourceLocation>,
     },
-    Fragment {
+    UnsupportedFragment {
         identity: String,
+        fragment: String,
+        location: Option<SourceLocation>,
+    },
+    FragmentSelection {
+        identity: String,
+        fragment: String,
+        matches: usize,
         location: Option<SourceLocation>,
     },
     ModuleLimit {
@@ -120,12 +128,6 @@ fn load_module(
                 error,
                 location: location.clone(),
             })?;
-    if resource.fragment.is_some() {
-        return Err(DependencyFailure::Fragment {
-            identity: resource.identity,
-            location,
-        });
-    }
     if state.active.contains(&resource.identity) {
         return Err(DependencyFailure::Cycle {
             identity: resource.identity,
@@ -168,14 +170,22 @@ fn load_module(
             detail: format!("{error:?}"),
             location: location.clone(),
         })?;
-    let references = discovered_stylesheet_dependencies(&document)
+    let root = select_module_root(
+        &document,
+        &resource.identity,
+        resource.fragment.as_deref(),
+        location.clone(),
+    )?;
+    let module_base =
+        effective_base_identity(&document, root, &resource.identity, location.clone())?;
+    let references = discovered_stylesheet_dependencies_at(&document, root)
         .map_err(DependencyFailure::InvalidDeclaration)?;
     state.active.push(resource.identity.clone());
     let mut dependencies = Vec::with_capacity(references.len());
     for dependency in references {
         dependencies.push(load_module(
             resolver,
-            &resource.identity,
+            &module_base,
             &dependency.href,
             Some(dependency.kind),
             depth + 1,
@@ -187,9 +197,129 @@ fn load_module(
     Ok(LoadedStylesheetModule {
         identity: resource.identity,
         document,
+        root,
         dependency_kind,
         dependencies,
     })
+}
+
+fn effective_base_identity(
+    document: &Document,
+    root: NodeId,
+    resource_identity: &str,
+    location: Option<SourceLocation>,
+) -> Result<String, DependencyFailure> {
+    let mut ancestry = Vec::new();
+    let mut current = Some(root);
+    while let Some(node) = current {
+        ancestry.push(node);
+        current = document.parent(node);
+    }
+    ancestry.reverse();
+    let mut base = resource_identity.to_owned();
+    for element in ancestry {
+        if document.kind(element) != NodeKind::Element {
+            continue;
+        }
+        let xml_base = document.attributes(element).iter().find_map(|attribute| {
+            let name = document.name(*attribute)?;
+            (name.namespace.as_deref() == Some("http://www.w3.org/XML/1998/namespace")
+                && name.local == "base")
+                .then(|| document.value(*attribute).unwrap_or_default())
+        });
+        if let Some(reference) = xml_base {
+            let (resolved, fragment) = resolve_reference(&base, reference).map_err(|error| {
+                DependencyFailure::Resolution {
+                    error,
+                    location: location.clone(),
+                }
+            })?;
+            if let Some(fragment) = fragment {
+                return Err(DependencyFailure::UnsupportedFragment {
+                    identity: resolved,
+                    fragment,
+                    location,
+                });
+            }
+            base = resolved;
+        }
+    }
+    Ok(base)
+}
+
+fn select_module_root(
+    document: &Document,
+    identity: &str,
+    fragment: Option<&str>,
+    location: Option<SourceLocation>,
+) -> Result<NodeId, DependencyFailure> {
+    let Some(fragment) = fragment else {
+        let elements = document
+            .children(document.document_node())
+            .iter()
+            .copied()
+            .filter(|node| document.kind(*node) == NodeKind::Element)
+            .collect::<Vec<_>>();
+        return elements
+            .first()
+            .copied()
+            .ok_or_else(|| DependencyFailure::InvalidXdm {
+                identity: identity.to_owned(),
+                detail: "stylesheet resource has no document element".to_owned(),
+                location,
+            });
+    };
+    if !is_supported_fragment_name(fragment) {
+        return Err(DependencyFailure::UnsupportedFragment {
+            identity: identity.to_owned(),
+            fragment: fragment.to_owned(),
+            location,
+        });
+    }
+    let mut matches = Vec::new();
+    collect_fragment_matches(document, document.document_node(), fragment, &mut matches);
+    match matches.as_slice() {
+        [root] => Ok(*root),
+        _ => Err(DependencyFailure::FragmentSelection {
+            identity: identity.to_owned(),
+            fragment: fragment.to_owned(),
+            matches: matches.len(),
+            location,
+        }),
+    }
+}
+
+fn is_supported_fragment_name(fragment: &str) -> bool {
+    let mut characters = fragment.chars();
+    characters
+        .next()
+        .is_some_and(|character| character.is_ascii_alphabetic() || character == '_')
+        && characters.all(|character| {
+            character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.')
+        })
+}
+
+fn collect_fragment_matches(
+    document: &Document,
+    node: NodeId,
+    fragment: &str,
+    matches: &mut Vec<NodeId>,
+) {
+    if document.kind(node) == NodeKind::Element
+        && document.attributes(node).iter().any(|attribute| {
+            let Some(name) = document.name(*attribute) else {
+                return false;
+            };
+            let is_id = name.namespace.as_deref() == Some("http://www.w3.org/XML/1998/namespace")
+                && name.local == "id";
+            is_id && document.value(*attribute) == Some(fragment)
+        })
+    {
+        matches.push(node);
+    }
+    for child in document.children(node) {
+        collect_fragment_matches(document, *child, fragment, matches);
+    }
 }
 
 #[cfg(test)]

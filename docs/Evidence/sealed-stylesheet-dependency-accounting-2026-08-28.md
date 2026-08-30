@@ -10,10 +10,11 @@
 | Public contract | None selected |
 
 > **2026-08-29 addendum:** the private production ceiling subsequently rose to
-> three module occurrences at the same maximum depth and byte ceiling to admit
-> the two-sibling-import `include-0501` case. The original two-module profile
-> recorded below remains the profile under which this accounting experiment was
-> first run.
+> three module occurrences and depth two at the same byte ceiling. The sibling
+> capacity admits `include-0501`; the depth admits the fragment-selected,
+> `xml:base`-qualified chain in `include-0103`. The original two-module,
+> depth-one profile recorded below remains the profile under which this
+> accounting experiment was first run.
 
 ## Experiment
 

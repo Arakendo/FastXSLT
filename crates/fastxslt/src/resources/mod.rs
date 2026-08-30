@@ -7,7 +7,9 @@ use std::{collections::BTreeMap, sync::Arc};
 
 mod resolution_experiment;
 
-pub(crate) use resolution_experiment::{ResolutionFailure, ResolutionLimits, SnapshotResolver};
+pub(crate) use resolution_experiment::{
+    ResolutionFailure, ResolutionLimits, SnapshotResolver, resolve_reference,
+};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ResourceLimits {

@@ -182,7 +182,11 @@ resolver trait, URI type, catalog representation, live authority, or cache.
   base derivation, `xml:base`, XSLT escaping, and full conformance remain open.
 - [x] Exercise a fragment-bearing same-document reference by acquiring the
   fragment-free resource identity and returning the fragment separately for
-  future language-owned selection. Fragment interpretation remains open.
+  future language-owned selection.
+- [x] Interpret one simple stylesheet fragment through XSLT30 `include-0103`:
+  select exactly one embedded module by `xml:id`, apply inherited `xml:base`,
+  and resolve one nested include from the sealed snapshot. General fragment
+  syntax, DTD-typed IDs, and public resolver policy remain open.
 - [x] Establish private dependency count/depth/byte/cycle accounting and prove
   failed graph preparation returns no partial graph or compiled program and
   cannot mutate the sealed snapshot. Public limits and repeated-module
@@ -239,3 +243,7 @@ resolver trait, URI type, catalog representation, live authority, or cache.
   initialization protocols. Positive include execution and missing/denied
   diagnostics now cross the real transport implementations; arbitrary resource
   collections and live resolution remain unselected.
+- 2026-08-29 -- XSLT30 `include-0103` separated fragmentless acquisition from
+  simple `xml:id` module selection, applied inherited `xml:base` to one nested
+  include, and executed the sealed three-module graph. DTD-backed `include-0102`
+  remains excluded under the current XML security boundary.

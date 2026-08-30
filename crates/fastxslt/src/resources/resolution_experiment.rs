@@ -67,38 +67,18 @@ impl<'a> SnapshotResolver<'a> {
     ) -> Result<ResolvedResource<'a>, ResolutionFailure> {
         self.charge_attempt()?;
 
-        let base_iri = IriAbsoluteStr::new(base).map_err(|_| ResolutionFailure::InvalidBase {
-            base: base.to_owned(),
-        })?;
-        let reference_iri =
-            IriReferenceStr::new(reference).map_err(|_| ResolutionFailure::InvalidReference {
-                reference: reference.to_owned(),
-            })?;
-        let resolved = reference_iri.resolve_against(base_iri);
-        resolved.ensure_rfc3986_normalizable().map_err(|_| {
-            ResolutionFailure::ResolutionFailed {
-                base: base.to_owned(),
-                reference: reference.to_owned(),
-            }
-        })?;
-        let resolved = resolved.to_dedicated_string();
-        let (identity, fragment) = match resolved.as_str().split_once('#') {
-            Some((identity, fragment)) => (identity, Some(fragment.to_owned())),
-            None => (resolved.as_str(), None),
-        };
-        if self.denied.contains(identity) {
-            return Err(ResolutionFailure::Denied {
-                identity: identity.to_owned(),
-            });
+        let (identity, fragment) = resolve_reference(base, reference)?;
+        if self.denied.contains(&identity) {
+            return Err(ResolutionFailure::Denied { identity });
         }
         let bytes = self
             .snapshot
-            .get(identity)
+            .get(&identity)
             .ok_or_else(|| ResolutionFailure::Missing {
-                identity: identity.to_owned(),
+                identity: identity.clone(),
             })?;
         Ok(ResolvedResource {
-            identity: identity.to_owned(),
+            identity,
             fragment,
             bytes,
         })
@@ -113,6 +93,31 @@ impl<'a> SnapshotResolver<'a> {
         self.attempts += 1;
         Ok(())
     }
+}
+
+pub(crate) fn resolve_reference(
+    base: &str,
+    reference: &str,
+) -> Result<(String, Option<String>), ResolutionFailure> {
+    let base_iri = IriAbsoluteStr::new(base).map_err(|_| ResolutionFailure::InvalidBase {
+        base: base.to_owned(),
+    })?;
+    let reference_iri =
+        IriReferenceStr::new(reference).map_err(|_| ResolutionFailure::InvalidReference {
+            reference: reference.to_owned(),
+        })?;
+    let resolved = reference_iri.resolve_against(base_iri);
+    resolved
+        .ensure_rfc3986_normalizable()
+        .map_err(|_| ResolutionFailure::ResolutionFailed {
+            base: base.to_owned(),
+            reference: reference.to_owned(),
+        })?;
+    let resolved = resolved.to_dedicated_string();
+    Ok(match resolved.as_str().split_once('#') {
+        Some((identity, fragment)) => (identity.to_owned(), Some(fragment.to_owned())),
+        None => (resolved.as_str().to_owned(), None),
+    })
 }
 
 #[cfg(test)]

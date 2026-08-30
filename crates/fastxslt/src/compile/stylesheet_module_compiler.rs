@@ -6,10 +6,10 @@ use crate::xslt::golden_semantics_experiment::{
 use super::instruction_compiler::{compile_sequence_excluding, literal_result_namespaces};
 use super::stylesheet_validation::validate_named_template_references;
 use super::{
-    CompileFailure, XSLT_NAMESPACE, compile_stylesheet_excluding_unvalidated,
-    default_output_settings, document_element, ensure_no_meaningful_children,
-    ensure_only_attributes, invalid, is_xslt_element, meaningful_children, require_stylesheet_root,
-    required_attribute, unsupported,
+    CompileFailure, XSLT_NAMESPACE, compile_stylesheet_at_excluding_unvalidated,
+    compile_stylesheet_excluding_unvalidated, default_output_settings, document_element,
+    ensure_no_meaningful_children, ensure_only_attributes, invalid, is_xslt_element,
+    meaningful_children, require_stylesheet_root, required_attribute, unsupported,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,10 +25,10 @@ pub(crate) struct StylesheetDependencyReference {
     pub(crate) location: SourceLocation,
 }
 
-pub(crate) fn discovered_stylesheet_dependencies(
+pub(crate) fn discovered_stylesheet_dependencies_at(
     document: &Document,
+    root: NodeId,
 ) -> Result<Vec<StylesheetDependencyReference>, CompileFailure> {
-    let root = document_element(document)?;
     let is_standard_stylesheet = document.name(root).is_some_and(|name| {
         name.namespace.as_deref() == Some(XSLT_NAMESPACE)
             && matches!(name.local.as_str(), "stylesheet" | "transform")
@@ -36,7 +36,7 @@ pub(crate) fn discovered_stylesheet_dependencies(
     if !is_standard_stylesheet {
         return Ok(Vec::new());
     }
-    dependency_nodes(document)?
+    dependency_nodes_at(document, root)?
         .into_iter()
         .map(|declaration| {
             let kind = if is_xslt_element(document, declaration, "include") {
@@ -62,8 +62,19 @@ pub(crate) fn discovered_stylesheet_dependencies(
 pub(crate) fn compile_stylesheet_with_single_include(
     principal: &Document,
     included: &Document,
+    included_root: NodeId,
 ) -> Result<StylesheetProgram, CompileFailure> {
-    let include_declarations = include_nodes(principal)?;
+    let principal_root = document_element(principal)?;
+    let included_program = compile_dependency_module(included, included_root)?;
+    compile_stylesheet_with_single_include_program_at(principal, principal_root, included_program)
+}
+
+pub(crate) fn compile_stylesheet_with_single_include_program_at(
+    principal: &Document,
+    principal_root: NodeId,
+    included_program: StylesheetProgram,
+) -> Result<StylesheetProgram, CompileFailure> {
+    let include_declarations = include_nodes_at(principal, principal_root)?;
     let [include] = include_declarations.as_slice() else {
         return Err(invalid(
             "FXST0027",
@@ -71,21 +82,21 @@ pub(crate) fn compile_stylesheet_with_single_include(
             principal.location(principal.document_node()),
         ));
     };
-    let mut program = compile_stylesheet_excluding_unvalidated(principal, &[*include])?;
-    let included_program = compile_simplified_stylesheet(included)?;
+    let mut program =
+        compile_stylesheet_at_excluding_unvalidated(principal, principal_root, &[*include])?;
 
     if included_program.output != default_output_settings() {
         return Err(unsupported(
             "FXST1019",
             "included output declarations are outside the single-include slice",
-            included.location(included.document_node()),
+            principal.location(principal_root),
         ));
     }
     if program.root_template.is_some() && included_program.root_template.is_some() {
         return Err(unsupported(
             "FXST1020",
             "template priority across duplicate root matches is outside the single-include slice",
-            included.location(included.document_node()),
+            principal.location(principal_root),
         ));
     }
     if program.root_template.is_none() {
@@ -135,7 +146,7 @@ pub(crate) fn compile_stylesheet_with_single_include(
                     "duplicate global binding across included modules: ${}",
                     binding.name
                 ),
-                included.location(included.document_node()),
+                principal.location(principal_root),
             ));
         }
         program.global_bindings.push(binding);
@@ -146,7 +157,7 @@ pub(crate) fn compile_stylesheet_with_single_include(
 
 pub(crate) fn compile_stylesheet_with_imports(
     principal: &Document,
-    imported: &[&Document],
+    imported: &[(&Document, NodeId)],
 ) -> Result<StylesheetProgram, CompileFailure> {
     let import_declarations = import_nodes(principal)?;
     if import_declarations.is_empty() || import_declarations.len() != imported.len() {
@@ -182,10 +193,10 @@ pub(crate) fn compile_stylesheet_with_imports(
     let mut imported_programs = imported
         .iter()
         .enumerate()
-        .map(|(index, document)| {
+        .map(|(index, (document, root))| {
             let precedence =
                 i32::try_from(index).expect("bounded import index fits i32") - import_count;
-            compile_imported_program(document, precedence)
+            compile_imported_program(document, *root, precedence)
         })
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -205,9 +216,10 @@ pub(crate) fn compile_stylesheet_with_imports(
 
 fn compile_imported_program(
     imported: &Document,
+    imported_root: NodeId,
     import_precedence: i32,
 ) -> Result<StylesheetProgram, CompileFailure> {
-    let mut imported_program = compile_imported_module(imported)?;
+    let mut imported_program = compile_dependency_module(imported, imported_root)?;
     if imported_program.output != default_output_settings() {
         return Err(unsupported(
             "FXST1024",
@@ -233,15 +245,17 @@ fn compile_imported_program(
     Ok(imported_program)
 }
 
-fn compile_imported_module(document: &Document) -> Result<StylesheetProgram, CompileFailure> {
-    let root = document_element(document)?;
+fn compile_dependency_module(
+    document: &Document,
+    root: NodeId,
+) -> Result<StylesheetProgram, CompileFailure> {
     if document
         .name(root)
         .is_some_and(|name| name.namespace.as_deref() == Some(XSLT_NAMESPACE))
     {
-        super::compile_stylesheet(document)
+        super::compile_stylesheet_at(document, root)
     } else {
-        compile_simplified_stylesheet(document)
+        compile_simplified_stylesheet_at(document, root)
     }
 }
 
@@ -280,8 +294,10 @@ fn merge_imported_global_bindings(
     principal.global_bindings = imported;
 }
 
-fn compile_simplified_stylesheet(document: &Document) -> Result<StylesheetProgram, CompileFailure> {
-    let root = document_element(document)?;
+fn compile_simplified_stylesheet_at(
+    document: &Document,
+    root: NodeId,
+) -> Result<StylesheetProgram, CompileFailure> {
     let root_name = document.name(root).expect("element nodes have names");
     if root_name.namespace.as_deref() == Some(XSLT_NAMESPACE) {
         return Err(unsupported(
@@ -326,8 +342,7 @@ fn compile_simplified_stylesheet(document: &Document) -> Result<StylesheetProgra
     })
 }
 
-fn include_nodes(document: &Document) -> Result<Vec<NodeId>, CompileFailure> {
-    let root = document_element(document)?;
+fn include_nodes_at(document: &Document, root: NodeId) -> Result<Vec<NodeId>, CompileFailure> {
     require_stylesheet_root(document, root)?;
     Ok(meaningful_children(document, root)
         .into_iter()
@@ -344,8 +359,7 @@ fn import_nodes(document: &Document) -> Result<Vec<NodeId>, CompileFailure> {
         .collect())
 }
 
-fn dependency_nodes(document: &Document) -> Result<Vec<NodeId>, CompileFailure> {
-    let root = document_element(document)?;
+fn dependency_nodes_at(document: &Document, root: NodeId) -> Result<Vec<NodeId>, CompileFailure> {
     require_stylesheet_root(document, root)?;
     Ok(meaningful_children(document, root)
         .into_iter()

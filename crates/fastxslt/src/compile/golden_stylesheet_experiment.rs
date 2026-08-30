@@ -21,7 +21,8 @@ mod variable_filtered_path_compiler;
 
 pub(crate) use stylesheet_module_compiler::{
     StylesheetDependencyKind, compile_stylesheet_with_imports,
-    compile_stylesheet_with_single_include, discovered_stylesheet_dependencies,
+    compile_stylesheet_with_single_include, compile_stylesheet_with_single_include_program_at,
+    discovered_stylesheet_dependencies_at,
 };
 use stylesheet_validation::validate_named_template_references;
 use template_pattern_compiler::compile_match_pattern;
@@ -50,14 +51,15 @@ pub(crate) struct CompileFailure {
 }
 
 pub(crate) fn compile_stylesheet(document: &Document) -> Result<StylesheetProgram, CompileFailure> {
-    compile_stylesheet_excluding(document, &[])
+    let root = document_element(document)?;
+    compile_stylesheet_at(document, root)
 }
 
-pub(super) fn compile_stylesheet_excluding(
+pub(crate) fn compile_stylesheet_at(
     document: &Document,
-    excluded_top_level: &[NodeId],
+    root: NodeId,
 ) -> Result<StylesheetProgram, CompileFailure> {
-    let program = compile_stylesheet_excluding_unvalidated(document, excluded_top_level)?;
+    let program = compile_stylesheet_at_excluding_unvalidated(document, root, &[])?;
     validate_named_template_references(&program)?;
     Ok(program)
 }
@@ -67,6 +69,14 @@ pub(super) fn compile_stylesheet_excluding_unvalidated(
     excluded_top_level: &[NodeId],
 ) -> Result<StylesheetProgram, CompileFailure> {
     let root = document_element(document)?;
+    compile_stylesheet_at_excluding_unvalidated(document, root, excluded_top_level)
+}
+
+pub(super) fn compile_stylesheet_at_excluding_unvalidated(
+    document: &Document,
+    root: NodeId,
+    excluded_top_level: &[NodeId],
+) -> Result<StylesheetProgram, CompileFailure> {
     require_stylesheet_root(document, root)?;
     let declared_version = required_attribute(document, root, None, "version")?.to_owned();
 
