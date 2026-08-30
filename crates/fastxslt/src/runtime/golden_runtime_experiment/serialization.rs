@@ -45,13 +45,13 @@ pub(in crate::runtime) fn serialize_xml(
         ResultNode::Text(value) => !value.chars().all(char::is_whitespace),
         ResultNode::Element { .. } => true,
     });
-    let inferred_html = settings.method.is_none()
+    let unsupported_adaptive_html = settings.method.is_none()
         && matches!(
             first_significant,
             Some(ResultNode::Element { name, .. })
                 if name.namespace.is_none() && name.local.eq_ignore_ascii_case("html")
         );
-    if inferred_html {
+    if unsupported_adaptive_html {
         return Err(failure(
             "FXSR1001",
             FailureCategory::Unsupported,
@@ -59,6 +59,13 @@ pub(in crate::runtime) fn serialize_xml(
             "the selected output method is outside the private XML serialization slice",
         ));
     }
+    let default_is_xhtml = settings.method.is_none()
+        && matches!(
+            first_significant,
+            Some(ResultNode::Element { name, .. })
+                if name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml")
+                    && name.local.eq_ignore_ascii_case("html")
+        );
     if settings.method.as_deref() == Some("text") {
         let mut output = BudgetedString::new(byte_limit, request_id, control);
         for node in &result.children {
@@ -78,6 +85,7 @@ pub(in crate::runtime) fn serialize_xml(
             "the selected output method is outside the private XML-compatible serialization slice",
         ));
     }
+    let xhtml = settings.method.as_deref() == Some("xhtml") || default_is_xhtml;
     let mut output = BudgetedString::new(byte_limit, request_id, control);
     if !settings.omit_xml_declaration {
         output.push_str("<?xml version=\"")?;
@@ -90,8 +98,7 @@ pub(in crate::runtime) fn serialize_xml(
         }
         output.push_str("?>")?;
     }
-    serialize_xhtml_doctype(result, settings, &mut output)?;
-    let xhtml = settings.method.as_deref() == Some("xhtml");
+    serialize_xhtml_doctype(result, settings, xhtml, &mut output)?;
     let xhtml_media_type = (xhtml && settings.include_content_type != Some(false))
         .then(|| settings.media_type.as_deref().unwrap_or("text/html"));
     let options = SerializationOptions {
@@ -109,12 +116,13 @@ pub(in crate::runtime) fn serialize_xml(
 fn serialize_xhtml_doctype(
     result: &SemanticResult,
     settings: &OutputSettings,
+    xhtml: bool,
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
     let Some(system) = settings.doctype_system.as_deref() else {
         return Ok(());
     };
-    if settings.method.as_deref() != Some("xhtml") || !is_xhtml_html_document(result) {
+    if !xhtml || !is_xhtml_html_document(result) {
         return Err(failure(
             "FXSR1007",
             FailureCategory::Unsupported,

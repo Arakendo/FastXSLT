@@ -533,6 +533,59 @@ fn absent_output_declaration_does_not_silently_apply_html_serialization() {
 }
 
 #[test]
+fn absent_method_selects_xhtml_for_an_xhtml_html_document_element() {
+    let xhtml_name = |local: &str| crate::xml::quick_xml_experiment::ExpandedName {
+        namespace: Some("http://www.w3.org/1999/xhtml".to_owned()),
+        local: local.to_owned(),
+    };
+    let result = SemanticResult {
+        children: vec![ResultNode::Element {
+            name: xhtml_name("html"),
+            namespaces: vec![crate::xml::quick_xml_experiment::NamespaceBinding {
+                prefix: None,
+                namespace: "http://www.w3.org/1999/xhtml".to_owned(),
+            }],
+            attributes: Vec::new(),
+            children: vec![ResultNode::Element {
+                name: xhtml_name("br"),
+                namespaces: Vec::new(),
+                attributes: Vec::new(),
+                children: Vec::new(),
+            }],
+        }],
+    };
+    let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
+        method: None,
+        version: None,
+        encoding: None,
+        media_type: None,
+        doctype_system: None,
+        doctype_public: None,
+        include_content_type: None,
+        byte_order_mark: None,
+        normalization_form: None,
+        standalone: None,
+        cdata_section_elements: Vec::new(),
+        omit_xml_declaration: false,
+        indent: None,
+    };
+
+    let serialized = serialize_xml(
+        &result,
+        &settings,
+        "inferred-xhtml",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("infer XHTML from the expanded name of the document element");
+
+    assert_eq!(
+        serialized,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\"><br /></html>"
+    );
+}
+
+#[test]
 fn requested_indentation_formats_only_element_only_child_sequences() {
     let result = SemanticResult {
         children: vec![ResultNode::Element {

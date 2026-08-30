@@ -395,6 +395,10 @@ Empty XHTML `area`, `base`, `basefont`, `br`, `col`, `frame`, `hr`, `img`,
 empty-element syntax. Other empty XHTML elements retain paired tags, and
 attribute values are never minimized merely because their names resemble HTML
 boolean attributes.
+When no output method is declared, an XHTML-namespaced `html` document element
+selects the XHTML serializer and its content-type behavior. A null-namespace
+`html` selects the still-unsupported HTML method; the two inference rules must
+not be conflated.
 Unnamed output declarations may now merge only when their scalar properties do
 not overlap; repeated scalar properties remain explicitly unsupported until
 precedence and conflict semantics are implemented. `cdata-section-elements`

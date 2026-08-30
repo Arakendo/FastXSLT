@@ -6,20 +6,20 @@
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/decl/output/_output-test-set.xml` |
 | Discovered cases | 232 |
-| Current disposition | 61 passed; 171 harness-unsupported |
+| Current disposition | 63 passed; 169 harness-unsupported |
 
 ## Conserved inventory
 
 The private XSLT30 adapter now parses the complete pinned `decl/output` test
 set and requires all 232 distinct native case identities. A first-party
 set-level overlay applies an explicit default disposition to the immutable
-complete denominator: `harness-unsupported / not-run`. Sixty-one named overrides now
+complete denominator: `harness-unsupported / not-run`. Sixty-three named overrides now
 select a bounded XML-compatible XHTML declaration tranche plus `output-0128`
 and the XML/text cases `output-0129`, `output-0165`, `output-0166`,
 `output-0171`, `output-0172`, `output-0139`, `output-0168`, and
 `output-0170`, and `output-0131` as passed, together with seven standalone
 lexical cases, the XHTML no-normalization control, and two bounded output-merge
-cases. The other 171
+cases. The other 169
 cases remain harness-unsupported,
 not engine-unsupported, because their serialization assertions or execution
 adapter paths have not yet been exercised far enough to distinguish engine
@@ -135,6 +135,14 @@ spaced ` />` form; ordinary empty XHTML elements remain paired. Cases
 values, paired non-void elements, and public-only DOCTYPE inertia. Case
 `output-0120` proves CDATA selection remains expanded-name-specific alongside
 ordinary escaped XHTML text.
+
+Cases `output-0126` and `output-0130` pair explicit and inferred XHTML method
+selection. The explicit case inserts Content-Type metadata using its authored
+`application/xhtml-xml` media type. With no method declared, an
+XHTML-namespaced `html` document element selects the same XHTML serializer,
+retains the XML declaration, and inserts the default `text/html` metadata.
+This does not weaken the explicit unsupported result for a null-namespace
+`html`, which would select the unimplemented HTML method.
 
 Cases `output-0105` and `output-0109` add opposing root-name controls to that
 lane. Explicit `method="xhtml"` serializes a null-namespace `html` without
@@ -276,10 +284,10 @@ assertion engine.
 ## Claim boundary
 
 This checkpoint proves denominator discovery, metadata classification, file
-resolution by the harness, bounded memory admission, and sixty-one exact or
+resolution by the harness, bounded memory admission, and sixty-three exact or
 bounded-comparator upstream executions, including one byte-exact UTF-8 BOM
 XML case and a paired BOM/no-BOM text control. It does not establish the first
-unsupported frontier for the other 171
+unsupported frontier for the other 169
 cases or claim general XML/HTML/XHTML/text serialization
 conformance.
 

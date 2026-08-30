@@ -153,10 +153,22 @@ execution = "passed"
 rationale = "Merges two unnamed output declarations with non-overlapping scalar properties, unions their expanded cdata-section-elements names, and exactly serializes only the selected XHTML-namespaced element text as CDATA."
 
 [[case_override]]
+case_name = "output-0126"
+selection = "selected"
+execution = "passed"
+rationale = "Executes explicit XHTML output with its authored media type and verifies serializer-owned Content-Type metadata is inserted as the first head child."
+
+[[case_override]]
 case_name = "output-0127"
 selection = "selected"
 execution = "passed"
 rationale = "Executes XHTML include-content-type=no and both members of the upstream all-of through the harness's admitted literal-plus-required-whitespace serialization-matches subset."
+
+[[case_override]]
+case_name = "output-0130"
+selection = "selected"
+execution = "passed"
+rationale = "Infers XHTML serialization from an XHTML-namespaced html document element when no output method is declared, retaining the XML declaration and inserting default text/html Content-Type metadata."
 
 [[case_override]]
 case_name = "output-0131"

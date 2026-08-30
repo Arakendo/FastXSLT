@@ -288,6 +288,26 @@ fn executes_xhtml_public_only_and_cdata_controls() {
 }
 
 #[test]
+fn executes_explicit_and_inferred_xhtml_content_type_metadata() {
+    let explicit = execute_output_case("output-0126", None);
+    assert_eq!(explicit.method.as_deref(), Some("xhtml"));
+    assert!(explicit.actual.contains(
+        "<head><meta http-equiv=\"Content-Type\" content=\"application/xhtml-xml; charset=UTF-8\" />"
+    ));
+
+    let inferred = execute_output_case("output-0130", None);
+    assert_eq!(inferred.method, None);
+    assert!(
+        inferred
+            .actual
+            .starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+    );
+    assert!(inferred.actual.contains(
+        "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />"
+    ));
+}
+
+#[test]
 fn executes_explicit_false_lexicals_for_retained_xhtml_declaration() {
     for case_name in ["output-0148", "output-0148a", "output-0148b"] {
         let execution = execute_assert_serialization_case(case_name, "xhtml");
