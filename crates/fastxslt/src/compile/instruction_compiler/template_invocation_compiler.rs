@@ -119,6 +119,9 @@ pub(super) fn parse_apply_selection(
     if let Some(path) = parse_variable_filtered_path(expression) {
         return Ok(ApplySelection::VariableFilteredElementPath(path));
     }
+    if let Some(path) = parse_temporary_path(document, element, expression) {
+        return path;
+    }
     if let Some(variable) = expression
         .strip_prefix('$')
         .filter(|name| is_ascii_ncname(name))
@@ -181,6 +184,55 @@ pub(super) fn parse_apply_selection(
     parse_location_path(expression, location)
         .map(ApplySelection::LocationPath)
         .map_err(map_path_failure)
+}
+
+fn parse_temporary_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Option<Result<ApplySelection, CompileFailure>> {
+    let (variable, path) = expression.strip_prefix('$')?.split_once('/')?;
+    if !is_ascii_ncname(variable) || path.is_empty() || path == "*" {
+        return None;
+    }
+    let steps = path
+        .split('/')
+        .map(|step| parse_temporary_path_step(document, element, step))
+        .collect::<Result<Vec<_>, _>>();
+    Some(steps.map(|steps| ApplySelection::TemporaryPath {
+        variable: variable.to_owned(),
+        steps,
+    }))
+}
+
+fn parse_temporary_path_step(
+    document: &Document,
+    element: NodeId,
+    step: &str,
+) -> Result<crate::xml::quick_xml_experiment::ExpandedName, CompileFailure> {
+    if is_ascii_ncname(step) {
+        return Ok(expanded_name(
+            effective_xpath_default_namespace(document, element),
+            step,
+        ));
+    }
+    let Some((prefix, local)) = step.split_once(':').filter(|(prefix, local)| {
+        is_ascii_ncname(prefix) && is_ascii_ncname(local) && !local.contains(':')
+    }) else {
+        return Err(unsupported(
+            "FXXP1003",
+            format!("unsupported temporary-tree path step: {step}"),
+            document.location(element),
+        ));
+    };
+    let namespace = namespace_for_prefix(document, element, prefix).ok_or_else(|| {
+        invalid(
+            "FXXP0002",
+            format!("unbound prefix in temporary-tree path: {prefix}"),
+            document.location(element),
+        )
+    })?;
+    Ok(expanded_name(Some(namespace), local))
 }
 
 fn expanded_name(

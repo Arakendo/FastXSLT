@@ -182,6 +182,42 @@ fn temporary_tree_builtins_preserve_mixed_text_in_document_order() {
 }
 
 #[test]
+fn qualified_temporary_path_selects_the_exact_deep_element() {
+    const PATH_SOURCE: &str = "urn:fastxslt:temporary-path:source";
+    const PATH_STYLESHEET: &str = "urn:fastxslt:temporary-path:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="2.0"
+        xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+        xmlns:db="http://docbook.org/docbook-ng"
+        xmlns:m="http://docbook.org/xslt/ns/mode"
+        exclude-result-prefixes="db m">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:variable name="dummy"><db:book><db:info><db:title>Book Title</db:title></db:info><db:chapter><db:info><db:title>ChapterTitle</db:title></db:info></db:chapter></db:book></xsl:variable>
+        <xsl:template match="/"><xsl:apply-templates select="$dummy/db:book/db:chapter/db:info/db:title" mode="m:titlepage-mode"/></xsl:template>
+        <xsl:template match="db:title" mode="m:titlepage-mode"><out><xsl:apply-templates/></out></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(PATH_SOURCE, b"<principal/>".to_vec())
+        .expect("admit principal source");
+    resources
+        .admit(PATH_STYLESHEET, stylesheet.to_vec())
+        .expect("admit qualified temporary-path stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, PATH_STYLESHEET)
+        .expect("compile qualified temporary-path stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("temporary-path", "result", PATH_SOURCE))
+        .expect("admit temporary-path request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute qualified temporary path");
+    assert_eq!(
+        results.by_request["temporary-path"].serialized,
+        "<out>ChapterTitle</out>"
+    );
+}
+
+#[test]
 fn context_node_name_refuses_to_fabricate_a_namespaced_lexical_qname() {
     const SOURCE: &str = "urn:fastxslt:name-context:source";
     const STYLESHEET: &str = "urn:fastxslt:name-context:stylesheet";

@@ -59,13 +59,20 @@ This closes only the retained-text representation prerequisite for
 `conflict-resolution-1401`; it does not select that pinned case or change the
 four-case mode denominator.
 
+A second focused prerequisite now compiles the pinned case's exact
+`$dummy/db:book/db:chapter/db:info/db:title` selection into a variable identity
+plus expanded-name steps. Runtime navigation begins at the temporary document's
+roots, visits child elements in stored document order, charges every inspected
+node as XPath work, and dispatches only the selected `db:title`. The focused
+stylesheet produces `ChapterTitle`, excluding the sibling book title.
+
 ## Architectural consequence
 
 Mode identity is semantic QName identity rather than raw prefix spelling. This
 removes one independent blocker from `conflict-resolution-1401`. The added
 temporary-document focus behavior removes another, but does not claim that
-case: its deeper global temporary-tree path, union match pattern, and
-temporary-focus `xsl:next-match` still require dedicated work.
+case: its union match pattern and temporary-focus `xsl:next-match` still require
+dedicated work.
 
 ## Claim boundary
 

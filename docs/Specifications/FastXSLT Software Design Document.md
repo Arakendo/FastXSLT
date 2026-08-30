@@ -241,6 +241,13 @@ order and accounting separately for retained XDM nodes and result text bytes.
 Top-level text, attributes, comments, processing instructions, general
 temporary-tree paths, and continuation selection require separate evidence.
 
+The private temporary selection path also admits an exact child-element path
+whose origin is one temporary-tree variable and whose steps are lexical QNames
+resolved to expanded names during stylesheet compilation. Execution starts at
+the temporary document roots, preserves stored child order, and charges each
+inspected node as XPath work. Wildcards, predicates, descendant axes, mixed
+node tests, and arbitrary expressions are not implied by this bounded path.
+
 The same private path admits `xsl:for-each` only when its selection is one bare
 temporary-tree variable. That form establishes the selected temporary document
 as focus for the instruction body without changing the surrounding current

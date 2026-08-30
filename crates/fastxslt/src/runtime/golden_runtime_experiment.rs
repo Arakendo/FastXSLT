@@ -680,6 +680,23 @@ fn execute_apply_templates(
             })?;
         return apply_temporary_roots(inputs, tree, mode, parameters, control);
     }
+    if let Some(ApplySelection::TemporaryPath { variable, steps }) = select {
+        let tree = variables
+            .temporary_trees
+            .get(variable)
+            .or_else(|| inputs.globals.temporary_trees.get(variable))
+            .ok_or_else(|| {
+                failure(
+                    "FXRT0002",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    format!("unbound temporary tree: ${variable}"),
+                )
+            })?;
+        return temporary_tree_executor::apply_temporary_path(
+            inputs, tree, steps, mode, parameters, control,
+        );
+    }
     if let Some(ApplySelection::GlobalTemporaryChildren(name)) = select {
         let tree = inputs.globals.temporary_trees.get(name).ok_or_else(|| {
             failure(
@@ -1139,7 +1156,9 @@ fn select_apply_nodes(
             inputs.request_id,
             control,
         ),
-        ApplySelection::GlobalTemporaryChildren(_) | ApplySelection::TemporaryRoot(_) => {
+        ApplySelection::GlobalTemporaryChildren(_)
+        | ApplySelection::TemporaryRoot(_)
+        | ApplySelection::TemporaryPath { .. } => {
             unreachable!("temporary-tree selection is dispatched before source selection")
         }
     }

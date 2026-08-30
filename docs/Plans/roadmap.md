@@ -979,6 +979,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   serialization. Treat this as one prerequisite for `conflict-resolution-1401`,
   not admission of its deeper path, union-pattern, or temporary `next-match`
   semantics.
+- [x] Execute the exact qualified temporary path from
+  `conflict-resolution-1401`, retaining its variable identity and expanded-name
+  steps, traversing from temporary document roots in stored order, and charging
+  inspected nodes to XPath work. Keep union-pattern selection and temporary
+  `next-match` as the remaining independent blockers for that pinned case.
 - [x] Execute `conflict-resolution-0802` with one template in named modes plus
   `#default`, explicit unnamed-mode dispatch, inherited `#current`, and a typed
   default-namespaced descendant-name selection. Keep QName modes, mode

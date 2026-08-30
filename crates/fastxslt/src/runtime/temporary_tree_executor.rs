@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
+use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xslt::golden_semantics_experiment::{Instruction, MatchPattern};
 
 use super::result_tree::ResultNode;
@@ -109,6 +110,55 @@ pub(super) fn apply_temporary_roots(
         parameters,
         control,
     )
+}
+
+pub(super) fn apply_temporary_path(
+    inputs: &SequenceInputs<'_>,
+    tree: &TemporaryTree,
+    steps: &[ExpandedName],
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let (first, remaining) = steps
+        .split_first()
+        .expect("compiled temporary paths contain at least one step");
+    let mut selected = Vec::new();
+    for root in &tree.roots {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        if matches!(
+            &tree.nodes[*root].kind,
+            TemporaryNodeKind::Element { name, .. } if name == first
+        ) {
+            selected.push(*root);
+        }
+    }
+    for step in remaining {
+        let mut next = Vec::new();
+        for parent in selected {
+            for child in &tree.nodes[parent].children {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                if matches!(
+                    &tree.nodes[*child].kind,
+                    TemporaryNodeKind::Element { name, .. } if name == step
+                ) {
+                    next.push(*child);
+                }
+            }
+        }
+        selected = next;
+    }
+    let mut result = Vec::new();
+    for node in selected {
+        result.extend(apply_temporary_template(
+            inputs, tree, node, mode, parameters, control,
+        )?);
+    }
+    Ok(result)
 }
 
 pub(super) fn apply_temporary_builtin(

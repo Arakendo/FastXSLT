@@ -172,6 +172,10 @@ pub(crate) enum ApplySelection {
     Attribute(ExpandedName),
     GlobalTemporaryChildren(String),
     TemporaryRoot(String),
+    TemporaryPath {
+        variable: String,
+        steps: Vec<ExpandedName>,
+    },
     VariableFilteredElementPath(VariableFilteredElementPath),
 }
 
