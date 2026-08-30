@@ -154,6 +154,7 @@ pub(crate) enum MatchPattern {
     ElementWithSameNamedChild,
     ElementWithSameNamedParent,
     ElementWithSameNamedParentAtPosition(usize),
+    QualifiedElementPathAlternatives(Vec<Vec<ExpandedName>>),
     Path(LocationPath),
     Attribute(ExpandedName),
     Comment,

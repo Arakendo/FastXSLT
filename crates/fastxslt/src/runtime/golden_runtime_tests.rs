@@ -182,7 +182,7 @@ fn temporary_tree_builtins_preserve_mixed_text_in_document_order() {
 }
 
 #[test]
-fn qualified_temporary_path_selects_the_exact_deep_element() {
+fn qualified_temporary_path_dispatches_a_matching_union_alternative() {
     const PATH_SOURCE: &str = "urn:fastxslt:temporary-path:source";
     const PATH_STYLESHEET: &str = "urn:fastxslt:temporary-path:stylesheet";
     let stylesheet = br#"<xsl:stylesheet version="2.0"
@@ -193,7 +193,8 @@ fn qualified_temporary_path_selects_the_exact_deep_element() {
         <xsl:output method="xml" omit-xml-declaration="yes"/>
         <xsl:variable name="dummy"><db:book><db:info><db:title>Book Title</db:title></db:info><db:chapter><db:info><db:title>ChapterTitle</db:title></db:info></db:chapter></db:book></xsl:variable>
         <xsl:template match="/"><xsl:apply-templates select="$dummy/db:book/db:chapter/db:info/db:title" mode="m:titlepage-mode"/></xsl:template>
-        <xsl:template match="db:title" mode="m:titlepage-mode"><out><xsl:apply-templates/></out></xsl:template>
+        <xsl:template match="db:chapter/db:info/db:title | db:appendix/db:info/db:title | db:preface/db:info/db:title | db:bibliography/db:info/db:title" mode="m:titlepage-mode" priority="100"><high><xsl:apply-templates/></high></xsl:template>
+        <xsl:template match="db:title" mode="m:titlepage-mode"><low/></xsl:template>
     </xsl:stylesheet>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
     resources
@@ -213,7 +214,7 @@ fn qualified_temporary_path_selects_the_exact_deep_element() {
     let results = execute_transform_set(builder.seal()).expect("execute qualified temporary path");
     assert_eq!(
         results.by_request["temporary-path"].serialized,
-        "<out>ChapterTitle</out>"
+        "<high>ChapterTitle</high>"
     );
 }
 

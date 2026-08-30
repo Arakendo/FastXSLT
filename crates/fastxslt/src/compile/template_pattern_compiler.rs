@@ -32,6 +32,14 @@ pub(super) fn compile_match_pattern(
         predicate if parse_any_element_attribute_variable_predicate(predicate).is_some() => {
             compile_any_element_attribute_variable_pattern(predicate)
         }
+        alternatives if alternatives.contains('|') => {
+            MatchPattern::QualifiedElementPathAlternatives(
+                alternatives
+                    .split('|')
+                    .map(|path| compile_qualified_element_path(document, element, path.trim()))
+                    .collect::<Result<Vec<_>, _>>()?,
+            )
+        }
         path if parse_variable_filtered_path(path).is_some() => {
             MatchPattern::VariableFilteredElementPath(
                 parse_variable_filtered_path(path)
@@ -120,6 +128,54 @@ pub(super) fn compile_match_pattern(
     };
     let priority = compile_template_priority(document, element, &pattern)?;
     Ok((pattern, priority))
+}
+
+fn compile_qualified_element_path(
+    document: &Document,
+    element: NodeId,
+    path: &str,
+) -> Result<Vec<crate::xml::quick_xml_experiment::ExpandedName>, CompileFailure> {
+    let steps = path
+        .split('/')
+        .map(str::trim)
+        .map(|step| {
+            if is_ascii_ncname(step) {
+                return Ok(crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: effective_xpath_default_namespace(document, element)
+                        .map(str::to_owned),
+                    local: step.to_owned(),
+                });
+            }
+            let Some((prefix, local)) =
+                parse_qualified_element_test(step).filter(|(_, local)| *local != "*")
+            else {
+                return Err(unsupported(
+                    "FXST1005",
+                    format!("unsupported union-pattern step: {step}"),
+                    document.location(element),
+                ));
+            };
+            let namespace = namespace_for_prefix(document, element, prefix).ok_or_else(|| {
+                invalid(
+                    "FXST0031",
+                    format!("unbound prefix in union match pattern: {prefix}"),
+                    document.location(element),
+                )
+            })?;
+            Ok(crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: Some(namespace.to_owned()),
+                local: local.to_owned(),
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    if steps.len() < 2 {
+        return Err(unsupported(
+            "FXST1005",
+            "the private union-pattern slice requires multi-step element paths",
+            document.location(element),
+        ));
+    }
+    Ok(steps)
 }
 
 fn parse_local_name_wildcard(pattern: &str) -> Option<&str> {
@@ -230,6 +286,7 @@ fn compile_template_priority(
     let Some(lexical) = optional_attribute(document, element, None, "priority") else {
         return Ok(match pattern {
             MatchPattern::Path(_)
+            | MatchPattern::QualifiedElementPathAlternatives(_)
             | MatchPattern::DescendantAnyElement
             | MatchPattern::ElementWithAttribute { .. }
             | MatchPattern::ElementWithAttributeValue { .. }

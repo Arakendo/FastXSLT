@@ -145,14 +145,10 @@ fn matches_pattern(
     selection: &TemplateSelectionContext<'_>,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
-    let TemplateSelectionContext {
-        source,
-        node,
-        variables,
-        request_id,
-        ..
-    } = selection;
-    let node = *node;
+    let source = selection.source;
+    let node = selection.node;
+    let variables = selection.variables;
+    let request_id = selection.request_id;
     match pattern {
         MatchPattern::Document => Ok(source.kind(node) == NodeKind::Document),
         MatchPattern::DocumentElement(required) => {
@@ -233,6 +229,9 @@ fn matches_pattern(
             matches_name_relation(pattern, source, node, request_id, control)
         }
         MatchPattern::Path(path) => match_path_pattern(source, node, path, request_id, control),
+        MatchPattern::QualifiedElementPathAlternatives(alternatives) => {
+            matches_qualified_path_alternatives(selection, alternatives, control)
+        }
         MatchPattern::Attribute(name) => {
             Ok(source.kind(node) == NodeKind::Attribute && source.name(node) == Some(name))
         }
@@ -243,6 +242,41 @@ fn matches_pattern(
         }
         MatchPattern::AnyNode => Ok(matches_any_node(source.kind(node))),
     }
+}
+
+fn matches_qualified_path_alternatives(
+    selection: &TemplateSelectionContext<'_>,
+    alternatives: &[Vec<crate::xml::quick_xml_experiment::ExpandedName>],
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let TemplateSelectionContext {
+        source,
+        node,
+        request_id,
+        ..
+    } = selection;
+    for path in alternatives {
+        let mut current = Some(*node);
+        let mut matches = true;
+        for expected in path.iter().rev() {
+            let Some(candidate) = current else {
+                matches = false;
+                break;
+            };
+            control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            if source.name(candidate) != Some(expected) {
+                matches = false;
+                break;
+            }
+            current = source.parent(candidate);
+        }
+        if matches {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn matches_any_node(kind: NodeKind) -> bool {

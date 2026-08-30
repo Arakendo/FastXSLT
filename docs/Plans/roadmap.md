@@ -984,6 +984,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   steps, traversing from temporary document roots in stored order, and charging
   inspected nodes to XPath work. Keep union-pattern selection and temporary
   `next-match` as the remaining independent blockers for that pinned case.
+- [x] Retain the four qualified path alternatives from
+  `conflict-resolution-1401` as typed expanded-name patterns, preserve private
+  temporary-node parent links, and evaluate the same pattern form for source
+  and temporary trees. Rank temporary matches by import precedence and compiled
+  priority so the explicit-priority union rule wins over a later exact-name
+  fallback. Keep temporary-focus `xsl:next-match` as the final case blocker.
 - [x] Execute `conflict-resolution-0802` with one template in named modes plus
   `#default`, explicit unnamed-mode dispatch, inherited `#current`, and a typed
   default-namespaced descendant-name selection. Keep QName modes, mode

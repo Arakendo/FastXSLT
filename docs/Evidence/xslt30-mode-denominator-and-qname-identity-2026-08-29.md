@@ -66,13 +66,21 @@ roots, visits child elements in stored document order, charges every inspected
 node as XPath work, and dispatches only the selected `db:title`. The focused
 stylesheet produces `ChapterTitle`, excluding the sibling book title.
 
+The same focused stylesheet now retains the pinned four-branch union pattern as
+four typed expanded-name ancestor paths. Temporary nodes retain private parent
+links so the selected title can be tested from leaf to ancestor; every tested
+node is charged as XPath work. The explicit-priority union rule wins over a
+later exact-name fallback, which also corrected the temporary executor to rank
+matching rules by import precedence and compiled priority rather than merely
+taking the last matching declaration. The source-tree selector evaluates the
+same typed union form for semantic parity.
+
 ## Architectural consequence
 
 Mode identity is semantic QName identity rather than raw prefix spelling. This
 removes one independent blocker from `conflict-resolution-1401`. The added
 temporary-document focus behavior removes another, but does not claim that
-case: its union match pattern and temporary-focus `xsl:next-match` still require
-dedicated work.
+case: temporary-focus `xsl:next-match` still requires dedicated work.
 
 ## Claim boundary
 

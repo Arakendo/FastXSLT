@@ -40,6 +40,7 @@ pub(super) struct TemporaryTree {
 #[derive(Debug, Clone)]
 pub(super) struct TemporaryNode {
     pub(super) kind: TemporaryNodeKind,
+    pub(super) parent: Option<usize>,
     pub(super) children: Vec<usize>,
 }
 
@@ -206,7 +207,7 @@ pub(super) fn materialize_temporary_tree(
 ) -> Result<TemporaryTree, ExecutionFailure> {
     let mut tree = TemporaryTree::default();
     for element in elements {
-        let root = materialize_temporary_element(element, &mut tree, request_id, control)?;
+        let root = materialize_temporary_element(element, None, &mut tree, request_id, control)?;
         tree.roots.push(root);
     }
     Ok(tree)
@@ -214,6 +215,7 @@ pub(super) fn materialize_temporary_tree(
 
 fn materialize_temporary_element(
     element: &ConstructedElement,
+    parent: Option<usize>,
     tree: &mut TemporaryTree,
     request_id: &str,
     control: &mut InvocationControl,
@@ -227,10 +229,11 @@ fn materialize_temporary_element(
             name: element.name.clone(),
             namespaces: element.namespaces.clone(),
         },
+        parent,
         children: Vec::new(),
     });
     for child in &element.children {
-        let child = materialize_temporary_node(child, tree, request_id, control)?;
+        let child = materialize_temporary_node(child, Some(node), tree, request_id, control)?;
         tree.nodes[node].children.push(child);
     }
     Ok(node)
@@ -238,13 +241,14 @@ fn materialize_temporary_element(
 
 fn materialize_temporary_node(
     constructed: &ConstructedNode,
+    parent: Option<usize>,
     tree: &mut TemporaryTree,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<usize, ExecutionFailure> {
     match constructed {
         ConstructedNode::Element(element) => {
-            materialize_temporary_element(element, tree, request_id, control)
+            materialize_temporary_element(element, parent, tree, request_id, control)
         }
         ConstructedNode::Text(value) => {
             control
@@ -253,6 +257,7 @@ fn materialize_temporary_node(
             let node = tree.nodes.len();
             tree.nodes.push(TemporaryNode {
                 kind: TemporaryNodeKind::Text(value.clone()),
+                parent,
                 children: Vec::new(),
             });
             Ok(node)

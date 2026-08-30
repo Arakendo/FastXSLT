@@ -2,13 +2,13 @@ use std::collections::BTreeMap;
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xml::quick_xml_experiment::ExpandedName;
-use crate::xslt::golden_semantics_experiment::{Instruction, MatchPattern};
+use crate::xslt::golden_semantics_experiment::{Instruction, MatchPattern, MatchedTemplate};
 
 use super::result_tree::ResultNode;
 use super::runtime_context::{
     InvocationParameter, SequenceInputs, TemporaryNodeKind, TemporaryTree, bind_template_parameters,
 };
-use super::runtime_failure::{ExecutionFailure, control_failure};
+use super::runtime_failure::{ExecutionFailure, FailureCategory, control_failure, failure_at};
 use super::template_selector::accepts_mode as template_accepts_mode;
 use super::{SequenceContext, TemporaryFocus, charge_xslt_instruction, execute_sequence};
 
@@ -22,16 +22,7 @@ pub(super) fn apply_temporary_template(
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     charge_xslt_instruction(control, inputs.request_id)?;
     let temporary = &tree.nodes[node];
-    let template = inputs
-        .program
-        .matched_templates
-        .iter()
-        .enumerate()
-        .rev()
-        .find(|(_, template)| {
-            template_accepts_mode(&template.modes, mode)
-                && temporary_matches(&temporary.kind, &template.pattern)
-        });
+    let template = select_temporary_template(inputs, tree, node, mode, control)?;
     if let Some((template_index, template)) = template {
         if matches!(
             template.template.body.as_slice(),
@@ -68,6 +59,45 @@ pub(super) fn apply_temporary_template(
         )?);
     }
     Ok(result)
+}
+
+fn select_temporary_template<'a>(
+    inputs: &'a SequenceInputs<'_>,
+    tree: &TemporaryTree,
+    node: usize,
+    mode: Option<&str>,
+    control: &mut InvocationControl,
+) -> Result<Option<(usize, &'a MatchedTemplate)>, ExecutionFailure> {
+    let mut selected = None;
+    let mut selected_rank = None;
+    let mut ambiguous = false;
+    for (index, candidate) in inputs.program.matched_templates.iter().enumerate() {
+        if !template_accepts_mode(&candidate.modes, mode)
+            || !temporary_matches(tree, node, &candidate.pattern, inputs.request_id, control)?
+        {
+            continue;
+        }
+        let rank = (candidate.import_precedence, candidate.priority);
+        if selected_rank.is_none_or(|current| rank > current) {
+            selected = Some((index, candidate));
+            selected_rank = Some(rank);
+            ambiguous = false;
+        } else if selected_rank == Some(rank) {
+            selected = Some((index, candidate));
+            ambiguous = true;
+        }
+    }
+    if inputs.multiple_match_policy == super::MultipleMatchPolicy::Error && ambiguous {
+        let (_, selected) = selected.expect("an ambiguous temporary rank has a template");
+        return Err(failure_at(
+            "XTDE0540",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            selected.template.location.clone(),
+            "more than one temporary-tree template rule matches at the highest import precedence and priority",
+        ));
+    }
+    Ok(selected)
 }
 
 pub(super) fn apply_temporary_roots(
@@ -213,8 +243,15 @@ fn copy_temporary_node(
     })
 }
 
-fn temporary_matches(node: &TemporaryNodeKind, pattern: &MatchPattern) -> bool {
-    match (node, pattern) {
+fn temporary_matches(
+    tree: &TemporaryTree,
+    node: usize,
+    pattern: &MatchPattern,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let kind = &tree.nodes[node].kind;
+    let matched = match (kind, pattern) {
         (TemporaryNodeKind::Element { name, .. }, MatchPattern::Element(expected)) => {
             name == expected
         }
@@ -223,8 +260,52 @@ fn temporary_matches(node: &TemporaryNodeKind, pattern: &MatchPattern) -> bool {
         }
         (TemporaryNodeKind::Element { .. }, MatchPattern::AnyElement | MatchPattern::AnyNode)
         | (TemporaryNodeKind::Text(_), MatchPattern::Text | MatchPattern::AnyNode) => true,
+        (_, MatchPattern::QualifiedElementPathAlternatives(alternatives)) => {
+            return matches_temporary_path_alternatives(
+                tree,
+                node,
+                alternatives,
+                request_id,
+                control,
+            );
+        }
         _ => false,
+    };
+    Ok(matched)
+}
+
+fn matches_temporary_path_alternatives(
+    tree: &TemporaryTree,
+    node: usize,
+    alternatives: &[Vec<ExpandedName>],
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    for path in alternatives {
+        let mut current = Some(node);
+        let mut matches = true;
+        for expected in path.iter().rev() {
+            let Some(candidate) = current else {
+                matches = false;
+                break;
+            };
+            control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            if !matches!(
+                &tree.nodes[candidate].kind,
+                TemporaryNodeKind::Element { name, .. } if name == expected
+            ) {
+                matches = false;
+                break;
+            }
+            current = tree.nodes[candidate].parent;
+        }
+        if matches {
+            return Ok(true);
+        }
     }
+    Ok(false)
 }
 
 fn copy_temporary_text(

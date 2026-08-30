@@ -248,6 +248,14 @@ the temporary document roots, preserves stored child order, and charges each
 inspected node as XPath work. Wildcards, predicates, descendant axes, mixed
 node tests, and arbitrary expressions are not implied by this bounded path.
 
+The private pattern slice admits a pipe-separated union of exact
+multi-step element paths. Each branch is compiled to expanded-name steps and
+matched leaf-to-ancestor using representation-owned parent identity. Source and
+temporary trees share the same rule-ranking contract: import precedence and
+compiled priority determine the winning semantic rank, with later declaration
+order used only for tied recovery where policy permits it. Wildcards,
+predicates, axes, and general union operands remain unsupported.
+
 The same private path admits `xsl:for-each` only when its selection is one bare
 temporary-tree variable. That form establishes the selected temporary document
 as focus for the instruction body without changing the surrounding current
