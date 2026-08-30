@@ -796,6 +796,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   requested and otherwise returns the same five `Hello` bytes, without adding
   a general regex comparator or weakening the string lane. The output ledger
   now records 14 passes and 218 visible harness gaps.
+- [x] Execute the six XHTML BOM lexical variants `output-0136` through `0137b`
+  through the same private byte lane and XML-compatible XHTML serializer.
+  Compare the complete BOM/declaration/namespace/body byte sequence for XSLT
+  2.0 `yes`/`no` and XSLT 3.0 `true`/`false`/`1`/`0`, without admitting broader
+  XHTML rules or regex assertions. The output ledger now records 20 passes and
+  212 visible harness gaps.
 - [x] Execute `output-0127` through its upstream `all-of` using a harness-owned
   literal-plus-required-whitespace serialization matcher that rejects every
   unadmitted regex operator. Preserve 221 visible harness gaps and make no broad

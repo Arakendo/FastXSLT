@@ -39,6 +39,42 @@ execution = "passed"
 rationale = "Executes XHTML include-content-type=no and both members of the upstream all-of through the harness's admitted literal-plus-required-whitespace serialization-matches subset."
 
 [[case_override]]
+case_name = "output-0136"
+selection = "selected"
+execution = "passed"
+rationale = "Executes XML-compatible XHTML serialization with XSLT 2.0 byte-order-mark=yes and verifies the exact UTF-8 mark, declaration, namespace, and body bytes."
+
+[[case_override]]
+case_name = "output-0136a"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the XSLT 3.0 true lexical form for the same exact bounded XHTML byte result."
+
+[[case_override]]
+case_name = "output-0136b"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the XSLT 3.0 numeric-one lexical form for the same exact bounded XHTML byte result."
+
+[[case_override]]
+case_name = "output-0137"
+selection = "selected"
+execution = "passed"
+rationale = "Executes XML-compatible XHTML serialization with XSLT 2.0 byte-order-mark=no and verifies the exact declaration, namespace, and body bytes have no leading mark."
+
+[[case_override]]
+case_name = "output-0137a"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the XSLT 3.0 false lexical form for the same exact unmarked XHTML byte result."
+
+[[case_override]]
+case_name = "output-0137b"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the whitespace-normalized XSLT 3.0 numeric-zero lexical form for the same exact unmarked XHTML byte result."
+
+[[case_override]]
 case_name = "output-0148"
 selection = "selected"
 execution = "passed"

@@ -198,6 +198,19 @@ fn executes_text_output_with_and_without_a_utf8_byte_order_mark() {
     assert_eq!(without_mark, b"Hello");
 }
 
+#[test]
+fn executes_xhtml_byte_order_mark_boolean_variants() {
+    let body = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\"><body>Hello</body></html>";
+    for case_name in ["output-0136", "output-0136a", "output-0136b"] {
+        let bytes = execute_output_bytes_case(case_name);
+        assert!(bytes.starts_with(&[0xef, 0xbb, 0xbf]), "{case_name}");
+        assert_eq!(&bytes[3..], body, "{case_name}");
+    }
+    for case_name in ["output-0137", "output-0137a", "output-0137b"] {
+        assert_eq!(execute_output_bytes_case(case_name), body, "{case_name}");
+    }
+}
+
 struct SerializationExecution {
     method: Option<String>,
     encoding: Option<String>,
