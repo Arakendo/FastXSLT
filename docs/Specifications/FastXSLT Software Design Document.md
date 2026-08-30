@@ -390,6 +390,11 @@ The current serializer emits SYSTEM or paired PUBLIC declarations only for an
 XHTML `html` document element; a public identifier alone is inert. An emitted
 identifier containing both quote forms, or any other result shape, remains
 explicitly unsupported. Emitted bytes use the normal serialization budget.
+Empty XHTML `area`, `base`, `basefont`, `br`, `col`, `frame`, `hr`, `img`,
+`input`, `isindex`, `link`, `meta`, and `param` elements use spaced
+empty-element syntax. Other empty XHTML elements retain paired tags, and
+attribute values are never minimized merely because their names resemble HTML
+boolean attributes.
 Unnamed output declarations may now merge only when their scalar properties do
 not overlap; repeated scalar properties remain explicitly unsupported until
 precedence and conflict semantics are implemented. `cdata-section-elements`

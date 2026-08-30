@@ -6,6 +6,14 @@ use super::{
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xslt::golden_semantics_experiment::OutputSettings;
 
+#[derive(Clone, Copy)]
+struct SerializationOptions<'a> {
+    cdata_section_elements: &'a [crate::xml::quick_xml_experiment::ExpandedName],
+    xhtml: bool,
+    xhtml_media_type: Option<&'a str>,
+    indent: bool,
+}
+
 pub(in crate::runtime) fn serialize_xml(
     result: &SemanticResult,
     settings: &OutputSettings,
@@ -83,19 +91,17 @@ pub(in crate::runtime) fn serialize_xml(
         output.push_str("?>")?;
     }
     serialize_xhtml_doctype(result, settings, &mut output)?;
-    let xhtml_media_type = (settings.method.as_deref() == Some("xhtml")
-        && settings.include_content_type != Some(false))
-    .then(|| settings.media_type.as_deref().unwrap_or("text/html"));
+    let xhtml = settings.method.as_deref() == Some("xhtml");
+    let xhtml_media_type = (xhtml && settings.include_content_type != Some(false))
+        .then(|| settings.media_type.as_deref().unwrap_or("text/html"));
+    let options = SerializationOptions {
+        cdata_section_elements: &settings.cdata_section_elements,
+        xhtml,
+        xhtml_media_type,
+        indent: settings.indent == Some(true),
+    };
     for node in &result.children {
-        serialize_node(
-            node,
-            &[],
-            &settings.cdata_section_elements,
-            xhtml_media_type,
-            settings.indent == Some(true),
-            0,
-            &mut output,
-        )?;
+        serialize_node(node, &[], options, 0, &mut output)?;
     }
     Ok(output.finish())
 }
@@ -279,23 +285,15 @@ fn serialize_text_node(
 fn serialize_node(
     node: &ResultNode,
     inherited_namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
-    cdata_section_elements: &[crate::xml::quick_xml_experiment::ExpandedName],
-    xhtml_media_type: Option<&str>,
-    indent: bool,
+    options: SerializationOptions<'_>,
     depth: usize,
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
     match node {
         ResultNode::Text(value) => escape_text(value, output)?,
-        ResultNode::Element { .. } => serialize_element(
-            node,
-            inherited_namespaces,
-            cdata_section_elements,
-            xhtml_media_type,
-            indent,
-            depth,
-            output,
-        )?,
+        ResultNode::Element { .. } => {
+            serialize_element(node, inherited_namespaces, options, depth, output)?;
+        }
     }
     Ok(())
 }
@@ -303,9 +301,7 @@ fn serialize_node(
 fn serialize_element(
     node: &ResultNode,
     inherited_namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
-    cdata_section_elements: &[crate::xml::quick_xml_experiment::ExpandedName],
-    xhtml_media_type: Option<&str>,
-    indent: bool,
+    options: SerializationOptions<'_>,
     depth: usize,
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
@@ -340,9 +336,14 @@ fn serialize_element(
         escape_attribute(&attribute.value, output)?;
         output.push('"')?;
     }
+    if options.xhtml && children.is_empty() && is_xhtml_void_element(name) {
+        return output.push_str(" />");
+    }
     output.push('>')?;
-    let inject_content_type = xhtml_media_type.is_some_and(|_| is_xhtml_head(name));
-    let indent_children = indent
+    let inject_content_type = options
+        .xhtml_media_type
+        .is_some_and(|_| is_xhtml_head(name));
+    let indent_children = options.indent
         && (inject_content_type
             || children
                 .iter()
@@ -351,7 +352,7 @@ fn serialize_element(
             .iter()
             .filter(|child| !is_replaced_content_type_meta(child, inject_content_type))
             .all(|child| matches!(child, ResultNode::Element { .. }));
-    if let Some(media_type) = xhtml_media_type.filter(|_| inject_content_type) {
+    if let Some(media_type) = options.xhtml_media_type.filter(|_| inject_content_type) {
         if indent_children {
             write_indentation(depth + 1, output)?;
         }
@@ -364,21 +365,13 @@ fn serialize_element(
         if indent_children {
             write_indentation(depth + 1, output)?;
         }
-        if cdata_section_elements.contains(name)
+        if options.cdata_section_elements.contains(name)
             && let ResultNode::Text(value) = child
         {
             serialize_cdata(value, output)?;
             continue;
         }
-        serialize_node(
-            child,
-            &in_scope,
-            cdata_section_elements,
-            xhtml_media_type,
-            indent,
-            depth + 1,
-            output,
-        )?;
+        serialize_node(child, &in_scope, options, depth + 1, output)?;
     }
     if indent_children {
         write_indentation(depth, output)?;
@@ -386,6 +379,26 @@ fn serialize_element(
     output.push_str("</")?;
     write_name(prefix, &name.local, output)?;
     output.push('>')
+}
+
+fn is_xhtml_void_element(name: &crate::xml::quick_xml_experiment::ExpandedName) -> bool {
+    name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml")
+        && matches!(
+            name.local.as_str(),
+            "area"
+                | "base"
+                | "basefont"
+                | "br"
+                | "col"
+                | "frame"
+                | "hr"
+                | "img"
+                | "input"
+                | "isindex"
+                | "link"
+                | "meta"
+                | "param"
+        )
 }
 
 fn element_namespace_scope(

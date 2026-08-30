@@ -251,6 +251,43 @@ fn executes_bounded_xhtml_doctype_variants() {
 }
 
 #[test]
+fn executes_xhtml_void_elements_for_false_indentation_lexicals() {
+    for case_name in ["output-0116", "output-0116a", "output-0116b"] {
+        let execution = execute_assert_serialization_case(case_name, "xhtml");
+        assert_eq!(execution.method.as_deref(), Some("xhtml"), "{case_name}");
+        assert_eq!(execution.indent, Some(false), "{case_name}");
+        assert_eq!(
+            execution.expected.as_deref(),
+            Some(execution.actual.as_str()),
+            "{case_name}"
+        );
+    }
+}
+
+#[test]
+fn executes_xhtml_public_only_and_cdata_controls() {
+    let boolean_attribute = execute_output_case("output-0117", None);
+    assert_eq!(
+        boolean_attribute.doctype_public.as_deref(),
+        Some("-//W3C//DTD HTML 4.0 Transitional")
+    );
+    assert_eq!(boolean_attribute.doctype_system, None);
+    assert_eq!(
+        boolean_attribute.actual,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\"><Option selected=\"selected\"></Option></html>"
+    );
+
+    let paired_body = execute_output_case("output-0119", None);
+    assert_eq!(
+        paired_body.actual,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\"><body></body></html>"
+    );
+
+    let cdata = execute_assert_serialization_case("output-0120", "xhtml");
+    assert_eq!(cdata.expected.as_deref(), Some(cdata.actual.as_str()));
+}
+
+#[test]
 fn executes_explicit_false_lexicals_for_retained_xhtml_declaration() {
     for case_name in ["output-0148", "output-0148a", "output-0148b"] {
         let execution = execute_assert_serialization_case(case_name, "xhtml");
@@ -519,6 +556,7 @@ struct SerializationExecution {
     include_content_type: Option<bool>,
     byte_order_mark: Option<bool>,
     omit_xml_declaration: bool,
+    indent: Option<bool>,
     actual: String,
     expected: Option<String>,
 }
@@ -584,14 +622,7 @@ fn execute_output_case(case_name: &str, assertion_method: Option<&str>) -> Seria
         .expect("admit output stylesheet");
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, &stylesheet_id).expect("compile output case");
-    let method = program.output.method.clone();
-    let version = program.output.version.clone();
-    let encoding = program.output.encoding.clone();
-    let doctype_system = program.output.doctype_system.clone();
-    let doctype_public = program.output.doctype_public.clone();
-    let include_content_type = program.output.include_content_type;
-    let byte_order_mark = program.output.byte_order_mark;
-    let omit_xml_declaration = program.output.omit_xml_declaration;
+    let output_settings = program.output.clone();
 
     let mut set = TransformSetBuilder::new(
         snapshot,
@@ -622,14 +653,15 @@ fn execute_output_case(case_name: &str, assertion_method: Option<&str>) -> Seria
             .replace("\r\n", "\n")
     });
     SerializationExecution {
-        method,
-        version,
-        encoding,
-        doctype_system,
-        doctype_public,
-        include_content_type,
-        byte_order_mark,
-        omit_xml_declaration,
+        method: output_settings.method,
+        version: output_settings.version,
+        encoding: output_settings.encoding,
+        doctype_system: output_settings.doctype_system,
+        doctype_public: output_settings.doctype_public,
+        include_content_type: output_settings.include_content_type,
+        byte_order_mark: output_settings.byte_order_mark,
+        omit_xml_declaration: output_settings.omit_xml_declaration,
+        indent: output_settings.indent,
         actual,
         expected,
     }

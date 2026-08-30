@@ -105,6 +105,42 @@ execution = "passed"
 rationale = "Executes XHTML serialization with a selected CDATA element containing the forbidden CDATA terminator and verifies the serializer splits it across adjacent CDATA sections without changing text content."
 
 [[case_override]]
+case_name = "output-0116"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the complete XHTML empty-content element list with indent=no and exactly matches the upstream file-backed serialization, including spaced empty-element syntax."
+
+[[case_override]]
+case_name = "output-0116a"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the same XHTML void-element result with the XSLT 3.0 false lexical for indentation and exactly matches the upstream serialization."
+
+[[case_override]]
+case_name = "output-0116b"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the same XHTML void-element result with the XSLT 3.0 numeric-zero lexical for indentation and exactly matches the upstream serialization."
+
+[[case_override]]
+case_name = "output-0117"
+selection = "selected"
+execution = "passed"
+rationale = "Verifies that an XHTML attribute whose name resembles an HTML boolean attribute remains explicitly valued and that a public-only doctype property remains inert."
+
+[[case_override]]
+case_name = "output-0119"
+selection = "selected"
+execution = "passed"
+rationale = "Verifies indent=no retains the ordinary non-void XHTML body element as a paired start/end tag while a public-only doctype property remains inert."
+
+[[case_override]]
+case_name = "output-0120"
+selection = "selected"
+execution = "passed"
+rationale = "Exactly matches the upstream XHTML CDATA selection result, retaining ordinary escaped text in example while wrapping only the expanded-name-selected test element."
+
+[[case_override]]
 case_name = "output-0121"
 selection = "selected"
 execution = "passed"
