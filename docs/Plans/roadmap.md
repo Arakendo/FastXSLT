@@ -791,6 +791,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   string lane's BOM rejection intact. Preserve byte output as private evidence,
   not a selected public result contract. The output ledger now records 12
   passes and 220 visible harness gaps.
+- [x] Execute adjacent text-method cases `output-0171` and `output-0172` as an
+  exact byte pair. Prove the byte-result lane prepends `EF BB BF` only when
+  requested and otherwise returns the same five `Hello` bytes, without adding
+  a general regex comparator or weakening the string lane. The output ledger
+  now records 14 passes and 218 visible harness gaps.
 - [x] Execute `output-0127` through its upstream `all-of` using a harness-owned
   literal-plus-required-whitespace serialization matcher that rejects every
   unadmitted regex operator. Preserve 221 visible harness gaps and make no broad

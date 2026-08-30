@@ -189,6 +189,15 @@ fn executes_output_0165_as_utf8_bytes_with_a_byte_order_mark() {
     );
 }
 
+#[test]
+fn executes_text_output_with_and_without_a_utf8_byte_order_mark() {
+    let with_mark = execute_output_bytes_case("output-0171");
+    assert_eq!(with_mark, b"\xef\xbb\xbfHello");
+
+    let without_mark = execute_output_bytes_case("output-0172");
+    assert_eq!(without_mark, b"Hello");
+}
+
 struct SerializationExecution {
     method: Option<String>,
     encoding: Option<String>,
@@ -336,7 +345,6 @@ fn execute_output_bytes_case(case_name: &str) -> Vec<u8> {
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, &stylesheet_id).expect("compile byte-output case");
     assert_eq!(program.output.encoding.as_deref(), Some("UTF-8"));
-    assert_eq!(program.output.byte_order_mark, Some(true));
 
     let parsed = parse_document(
         &source_id,
