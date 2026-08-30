@@ -6,20 +6,20 @@
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/decl/output/_output-test-set.xml` |
 | Discovered cases | 232 |
-| Current disposition | 64 passed; 168 harness-unsupported |
+| Current disposition | 66 passed; 166 harness-unsupported |
 
 ## Conserved inventory
 
 The private XSLT30 adapter now parses the complete pinned `decl/output` test
 set and requires all 232 distinct native case identities. A first-party
 set-level overlay applies an explicit default disposition to the immutable
-complete denominator: `harness-unsupported / not-run`. Sixty-four named overrides now
+complete denominator: `harness-unsupported / not-run`. Sixty-six named overrides now
 select a bounded XML-compatible XHTML declaration tranche plus `output-0128`
 and the XML/text cases `output-0129`, `output-0165`, `output-0166`,
 `output-0171`, `output-0172`, `output-0139`, `output-0168`, and
 `output-0170`, and `output-0131` as passed, together with seven standalone
 lexical cases, the XHTML no-normalization control, and two bounded output-merge
-cases. The other 168
+cases. The other 166
 cases remain harness-unsupported,
 not engine-unsupported, because their serialization assertions or execution
 adapter paths have not yet been exercised far enough to distinguish engine
@@ -144,6 +144,14 @@ exact `<?target data?>` form. Processing instructions remain absent from text
 output string values and do not affect inferred output-method or XHTML document
 root selection. Computed names/content and the standards recovery rule for
 forbidden PI terminators remain explicitly unsupported.
+
+Cases `output-0155a` and `output-0155b` make the output adapter honor the
+native case's named initial-mode entry instead of silently using principal
+source entry. Their explicit XML output declaration validates
+`escape-uri-attributes="yes"` but deliberately retains no runtime property:
+the option is defined to be inert for XML, and the authored non-ASCII URI
+attribute character remains literal. XHTML/HTML URI escaping and absent-method
+retention remain outside this bounded slice.
 
 Cases `output-0126` and `output-0130` pair explicit and inferred XHTML method
 selection. The explicit case inserts Content-Type metadata using its authored

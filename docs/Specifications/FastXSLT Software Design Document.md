@@ -368,6 +368,11 @@ The XML-compatible lane also retains canonical standalone `yes`, `no`, and
 `omit` emits none. An explicit serialization version is retained separately
 from the stylesheet language version; the current bounded lane admits and emits
 only XML `1.0`. XHTML-only content-type metadata remains inert for XML output.
+An explicit XML output declaration may also carry a valid
+`escape-uri-attributes` boolean; the current bounded compiler validates and
+then discards it because it has no effect on XML serialization. The property
+remains unsupported for absent, XHTML, or future HTML output methods until the
+compiled representation owns the corresponding URI-escaping semantics.
 Requested indentation currently adds newline plus two-space depth prefixes only
 around non-empty element-only child sequences. Text-only and mixed-content
 elements remain inline so indentation does not alter their string values; wider

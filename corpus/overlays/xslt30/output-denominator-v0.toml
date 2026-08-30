@@ -345,6 +345,18 @@ execution = "passed"
 rationale = "Retains the explicit XML 1.0 serialization version and verifies the complete XML-compatible XHTML declaration, namespace, and empty-element result while leaving other serialization versions unsupported."
 
 [[case_override]]
+case_name = "output-0155a"
+selection = "selected"
+execution = "passed"
+rationale = "Honors the native initial-mode entry and proves escape-uri-attributes=yes is validated but inert for explicit XML output, leaving the non-ASCII URI attribute character unescaped."
+
+[[case_override]]
+case_name = "output-0155b"
+selection = "selected"
+execution = "passed"
+rationale = "Repeats the pinned XML-method inert-property control under its distinct native case identity without collapsing the denominator."
+
+[[case_override]]
 case_name = "output-0156"
 selection = "selected"
 execution = "passed"

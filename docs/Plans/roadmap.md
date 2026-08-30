@@ -806,7 +806,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   static-target, literal-data processing-instruction result while preserving
   public-only DOCTYPE inertia. Explicit and inferred
   XHTML content-type insertion is covered by `output-0126` and `output-0130`.
-  The output ledger now records 64 passes and 168 visible harness gaps.
+  The output adapter now also honors native initial-mode entry for
+  `output-0155a` and `output-0155b`, validating but ignoring
+  `escape-uri-attributes=yes` under explicit XML output as the standard
+  requires. The output ledger now records 66 passes and 166 visible harness
+  gaps.
 - [x] Extend that declaration lane through `output-0110a`, `output-0110b`, and
   `output-0148` through `output-0148b`, accepting whitespace-normalized XSLT
   3.0 boolean lexicals without widening XSLT 2.0 beyond `yes`/`no`.

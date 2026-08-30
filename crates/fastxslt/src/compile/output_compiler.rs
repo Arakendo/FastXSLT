@@ -18,6 +18,7 @@ const OUTPUT_ATTRIBUTES: &[&str] = &[
     "media-type",
     "doctype-system",
     "doctype-public",
+    "escape-uri-attributes",
     "include-content-type",
     "byte-order-mark",
     "normalization-form",
@@ -98,6 +99,7 @@ pub(super) fn compile_output(
             )
         })
         .transpose()?;
+    compile_inert_xml_escape_uri_attributes(document, element, method, declared_version)?;
     let byte_order_mark = optional_attribute(document, element, None, "byte-order-mark")
         .map(|value| {
             parse_output_boolean(
@@ -141,6 +143,31 @@ pub(super) fn compile_output(
         specified,
         location: document.location(element).clone(),
     })
+}
+
+fn compile_inert_xml_escape_uri_attributes(
+    document: &Document,
+    element: NodeId,
+    method: Option<&str>,
+    declared_version: &str,
+) -> Result<(), CompileFailure> {
+    let Some(value) = optional_attribute(document, element, None, "escape-uri-attributes") else {
+        return Ok(());
+    };
+    parse_output_boolean(
+        value,
+        "escape-uri-attributes",
+        declared_version,
+        document.location(element),
+    )?;
+    if method != Some("xml") {
+        return Err(unsupported(
+            "FXST1036",
+            "escape-uri-attributes is currently admitted only as an inert explicit XML property",
+            document.location(element),
+        ));
+    }
+    Ok(())
 }
 
 pub(super) fn merge_output(

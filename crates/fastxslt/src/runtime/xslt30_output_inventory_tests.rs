@@ -520,6 +520,16 @@ fn executes_output_0156_with_inert_xml_content_type_setting() {
 }
 
 #[test]
+fn executes_xml_output_with_inert_escape_uri_attributes_in_an_initial_mode() {
+    for case_name in ["output-0155a", "output-0155b"] {
+        let execution = execute_output_case(case_name, None);
+        assert_eq!(execution.method.as_deref(), Some("xml"), "{case_name}");
+        assert!(execution.actual.contains("href=\"¡\""), "{case_name}");
+        assert!(!execution.actual.contains("%C2%A1"), "{case_name}");
+    }
+}
+
+#[test]
 fn executes_output_0173_with_merged_standalone_and_cdata_settings() {
     let execution = execute_assert_serialization_case("output-0173", "xhtml");
     assert_eq!(execution.method.as_deref(), Some("xml"));
@@ -669,9 +679,7 @@ fn execute_output_case(case_name: &str, assertion_method: Option<&str>) -> Seria
     set.add(TransformRequest {
         identity: case_name.to_owned(),
         result_identity: format!("result:{case_name}"),
-        entry: InvocationEntry::PrincipalSource {
-            resource: source_id,
-        },
+        entry: output_invocation_entry(&test_set, test, source_id),
         parameters: BTreeMap::new(),
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
@@ -696,6 +704,24 @@ fn execute_output_case(case_name: &str, assertion_method: Option<&str>) -> Seria
         indent: output_settings.indent,
         actual,
         expected,
+    }
+}
+
+fn output_invocation_entry(
+    test_set: &Document,
+    test: NodeId,
+    source_id: String,
+) -> InvocationEntry {
+    let initial_mode = child_named(test_set, test, "initial-mode")
+        .and_then(|node| attribute(test_set, node, "name"));
+    match initial_mode {
+        Some(name) => InvocationEntry::InitialMode {
+            resource: source_id,
+            name: name.to_owned(),
+        },
+        None => InvocationEntry::PrincipalSource {
+            resource: source_id,
+        },
     }
 }
 
