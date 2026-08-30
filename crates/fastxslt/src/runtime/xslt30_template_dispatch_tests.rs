@@ -8,7 +8,8 @@ use std::{
 
 use super::{
     ExecutionFailure, ExecutionPolicy, FailureCategory, InvocationEntry, InvocationParameter,
-    TransformRequest, TransformSetBuilder, compile_resource, execute_transform_set,
+    MultipleMatchPolicy, TransformRequest, TransformSetBuilder, compile_resource,
+    execute_transform_set,
 };
 use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
@@ -172,6 +173,24 @@ fn execute_apply_templates_case_with_parameters(
     case_name: &str,
     parameters: BTreeMap<String, InvocationParameter>,
 ) -> (String, String, usize) {
+    let (actual, expected, matched_template_count) =
+        try_execute_apply_templates_case_with_parameters(
+            case_name,
+            parameters,
+            MultipleMatchPolicy::UseLast,
+        );
+    (
+        actual.expect("execute suite case"),
+        expected,
+        matched_template_count,
+    )
+}
+
+fn try_execute_apply_templates_case_with_parameters(
+    case_name: &str,
+    parameters: BTreeMap<String, InvocationParameter>,
+    multiple_match_policy: MultipleMatchPolicy,
+) -> (Result<String, ExecutionFailure>, String, usize) {
     let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
     assert!(overlay.contains(&format!("case_name = \"{case_name}\"")));
     let (test_set, set_path) = apply_templates_test_set();
@@ -208,6 +227,11 @@ fn execute_apply_templates_case_with_parameters(
     let expected = find_element(&test_set, test_case, "assert-xml", None)
         .map(|node| test_set.string_value(node))
         .or_else(|| expected_apply_templates_all_of(case_name))
+        .or_else(|| {
+            find_element(&test_set, test_case, "error", None)
+                .and_then(|node| attribute(&test_set, node, "code"))
+                .map(str::to_owned)
+        })
         .expect("case should provide an admitted result assertion");
     let case_directory = set_path.parent().expect("test set should have a directory");
     let source = if let Some(content) = find_element(&test_set, source_element, "content", None) {
@@ -250,7 +274,8 @@ fn execute_apply_templates_case_with_parameters(
             serialized_byte_limit: 4_096,
             work_limits: WorkLimits::unbounded(),
         },
-    );
+    )
+    .with_multiple_match_policy(multiple_match_policy);
     set.add(TransformRequest {
         identity: case_name.to_owned(),
         result_identity: format!("result:{case_name}"),
@@ -262,12 +287,9 @@ fn execute_apply_templates_case_with_parameters(
         cancellation_fault: None,
     })
     .expect("admit suite request");
-    let results = execute_transform_set(set.seal()).expect("execute suite case");
-    (
-        results.by_request[case_name].serialized.clone(),
-        expected,
-        matched_template_count,
-    )
+    let result = execute_transform_set(set.seal())
+        .map(|results| results.by_request[case_name].serialized.clone());
+    (result, expected, matched_template_count)
 }
 
 fn case_stylesheet_files(test_set: &Document, test_case: NodeId) -> Vec<(&str, Option<&str>)> {
@@ -500,6 +522,50 @@ fn executes_declared_legacy_recovery_variants_without_selecting_legacy_profile()
         assert_eq!(actual_template_count, matched_template_count);
         assert_same_result_element_string(&actual, &expected, result_element);
     }
+}
+
+#[test]
+fn reports_declared_multiple_match_errors() {
+    for (case_name, matched_template_count) in [
+        ("conflict-resolution-0102b", 3),
+        ("conflict-resolution-0104b", 3),
+        ("conflict-resolution-0108b", 6),
+        ("conflict-resolution-0110b", 6),
+        ("conflict-resolution-0401b", 2),
+        ("conflict-resolution-1202b", 7),
+    ] {
+        assert_apply_templates_dependency(case_name, "on-multiple-match", "error");
+        let (result, expected_code_pattern, actual_template_count) =
+            try_execute_apply_templates_case_with_parameters(
+                case_name,
+                BTreeMap::new(),
+                MultipleMatchPolicy::Error,
+            );
+        assert_eq!(actual_template_count, matched_template_count);
+        assert_eq!(expected_code_pattern, "XTRE0540");
+        let failure = result.expect_err("equal top-ranked rules should be rejected");
+        assert_eq!(failure.code, "XTDE0540");
+        assert_eq!(failure.category, FailureCategory::Invalid);
+        assert_eq!(failure.request_id.as_deref(), Some(case_name));
+        assert!(failure.location.is_some());
+    }
+}
+
+#[test]
+fn multiple_match_error_policy_ignores_lower_rank_conflicts() {
+    let case_name = "conflict-resolution-0101";
+    let (result, expected, matched_template_count) =
+        try_execute_apply_templates_case_with_parameters(
+            case_name,
+            BTreeMap::new(),
+            MultipleMatchPolicy::Error,
+        );
+    assert_eq!(matched_template_count, 4);
+    assert_same_result_element_string(
+        &result.expect("a unique highest-ranked rule should execute"),
+        &expected,
+        "out",
+    );
 }
 
 fn assert_apply_templates_dependency(case_name: &str, dependency: &str, expected: &str) {

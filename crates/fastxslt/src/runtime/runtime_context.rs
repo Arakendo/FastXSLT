@@ -12,13 +12,16 @@ use crate::xslt::golden_semantics_experiment::{
     TemplateArgumentValue, TemplateParameterDefault,
 };
 
-use super::{ExecutionFailure, FailureCategory, control_failure, failure, failure_at};
+use super::{
+    ExecutionFailure, FailureCategory, MultipleMatchPolicy, control_failure, failure, failure_at,
+};
 
 pub(super) struct SequenceInputs<'a> {
     pub(super) program: &'a StylesheetProgram,
     pub(super) source: Option<&'a Document>,
     pub(super) request_id: &'a str,
     pub(super) globals: &'a RuntimeGlobals,
+    pub(super) multiple_match_policy: MultipleMatchPolicy,
 }
 
 #[derive(Debug, Default)]

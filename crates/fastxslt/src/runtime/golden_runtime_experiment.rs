@@ -68,6 +68,12 @@ const XML_LIMITS: ParseLimits = ParseLimits {
 };
 const MAX_NAMED_TEMPLATE_CALL_DEPTH: usize = 128;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum MultipleMatchPolicy {
+    UseLast,
+    Error,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct SemanticResult {
     children: Vec<ResultNode>,
@@ -79,13 +85,21 @@ pub(super) fn execute_program(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
-    execute_program_with_parameters(program, source, &BTreeMap::new(), request_id, control)
+    execute_program_with_parameters(
+        program,
+        source,
+        &BTreeMap::new(),
+        MultipleMatchPolicy::UseLast,
+        request_id,
+        control,
+    )
 }
 
 fn execute_program_with_parameters(
     program: &StylesheetProgram,
     source: &Document,
     parameters: &BTreeMap<String, InvocationParameter>,
+    multiple_match_policy: MultipleMatchPolicy,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
@@ -96,6 +110,7 @@ fn execute_program_with_parameters(
         source: Some(source),
         request_id,
         globals: &globals,
+        multiple_match_policy,
     };
     let children = if let Some(root_template) = program
         .root_template
@@ -128,6 +143,7 @@ fn execute_initial_mode(
     source: &Document,
     name: &str,
     parameters: &BTreeMap<String, InvocationParameter>,
+    multiple_match_policy: MultipleMatchPolicy,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
@@ -141,17 +157,18 @@ fn execute_initial_mode(
     }
     let globals =
         materialize_global_defaults(program, Some(source), parameters, request_id, control)?;
+    let inputs = SequenceInputs {
+        program,
+        source: Some(source),
+        request_id,
+        globals: &globals,
+        multiple_match_policy,
+    };
     let children = if program.root_template_modes.iter().any(|mode| mode == name) {
         let template = program
             .root_template
             .as_ref()
             .expect("a compiled root initial mode has a root template");
-        let inputs = SequenceInputs {
-            program,
-            source: Some(source),
-            request_id,
-            globals: &globals,
-        };
         let variables = bind_template_parameters(template, parameters, &globals.atomics);
         execute_sequence(
             &inputs,
@@ -161,52 +178,46 @@ fn execute_initial_mode(
             control,
         )?
     } else {
-        apply_initial_mode_template(
-            program, source, name, parameters, request_id, &globals, control,
-        )?
+        apply_initial_mode_template(&inputs, name, parameters, control)?
     };
     Ok(SemanticResult { children })
 }
 
 #[cfg(test)]
 fn apply_initial_mode_template(
-    program: &StylesheetProgram,
-    source: &Document,
+    inputs: &SequenceInputs<'_>,
     mode: &str,
     parameters: &BTreeMap<String, InvocationParameter>,
-    request_id: &str,
-    globals: &runtime_context::RuntimeGlobals,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let source = inputs
+        .source
+        .expect("initial-mode template dispatch requires a source document");
     let node = source.document_node();
-    let inputs = SequenceInputs {
-        program,
-        source: Some(source),
-        request_id,
-        globals,
-    };
-    charge_xslt_instruction(control, request_id)?;
+    charge_xslt_instruction(control, inputs.request_id)?;
     if let Some((template_index, template)) = select_template_with_index(
-        program,
+        inputs.program,
         &TemplateSelectionContext {
             source,
             node,
             mode: Some(mode),
-            variables: &globals.atomics,
-            request_id,
+            variables: &inputs.globals.atomics,
+            request_id: inputs.request_id,
         },
+        inputs.multiple_match_policy,
         control,
     )? {
-        let variables = bind_template_parameters(&template.template, parameters, &globals.atomics);
+        let variables =
+            bind_template_parameters(&template.template, parameters, &inputs.globals.atomics);
         return execute_sequence(
-            &inputs,
+            inputs,
             &template.template.body,
             SequenceContext::for_template(Some(node), Some(mode), template_index),
             &variables,
             control,
         );
     }
-    apply_builtin_template(&inputs, node, Some(mode), parameters, control)
+    apply_builtin_template(inputs, node, Some(mode), parameters, control)
 }
 
 #[cfg(test)]
@@ -222,6 +233,7 @@ fn program_has_mode(program: &StylesheetProgram, name: &str) -> bool {
 fn execute_initial_template(
     program: &StylesheetProgram,
     name: &str,
+    multiple_match_policy: MultipleMatchPolicy,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
@@ -245,6 +257,7 @@ fn execute_initial_template(
         source: None,
         request_id,
         globals: &globals,
+        multiple_match_policy,
     };
     let children = execute_sequence(
         &inputs,
@@ -681,6 +694,7 @@ fn execute_next_match(
             request_id: inputs.request_id,
         },
         current_index,
+        inputs.multiple_match_policy,
         control,
     )? {
         let parameters = evaluate_template_arguments(arguments, variables, inputs.request_id)?;
@@ -1174,6 +1188,7 @@ fn apply_template(
             variables: &inputs.globals.atomics,
             request_id: inputs.request_id,
         },
+        inputs.multiple_match_policy,
         control,
     )? {
         let variables =

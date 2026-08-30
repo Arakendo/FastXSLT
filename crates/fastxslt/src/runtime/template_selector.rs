@@ -8,7 +8,10 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{MatchPattern, MatchedTemplate, StylesheetProgram};
 
-use super::runtime_failure::{ExecutionFailure, FailureCategory, control_failure, failure};
+use super::MultipleMatchPolicy;
+use super::runtime_failure::{
+    ExecutionFailure, FailureCategory, control_failure, failure, failure_at,
+};
 use super::variable_filtered_path::{attribute_equals_atomic, matches as matches_variable_path};
 
 pub(super) struct TemplateSelectionContext<'a> {
@@ -22,21 +25,37 @@ pub(super) struct TemplateSelectionContext<'a> {
 pub(super) fn select_template_with_index<'a>(
     program: &'a StylesheetProgram,
     selection: &TemplateSelectionContext<'_>,
+    multiple_match_policy: MultipleMatchPolicy,
     control: &mut InvocationControl,
 ) -> Result<Option<(usize, &'a MatchedTemplate)>, ExecutionFailure> {
     let mut selected_template = None;
-    let mut selected_rank = None;
+    let mut selected_semantic_rank = None;
+    let mut top_rank_is_ambiguous = false;
     for (index, template) in program.matched_templates.iter().enumerate() {
         if !accepts_mode(&template.modes, selection.mode)
             || !matches_pattern(&template.pattern, selection, control)?
         {
             continue;
         }
-        let rank = (template.import_precedence, template.priority, index);
-        if selected_rank.is_none_or(|selected| rank >= selected) {
+        let semantic_rank = (template.import_precedence, template.priority);
+        if selected_semantic_rank.is_none_or(|selected| semantic_rank > selected) {
             selected_template = Some((index, template));
-            selected_rank = Some(rank);
+            selected_semantic_rank = Some(semantic_rank);
+            top_rank_is_ambiguous = false;
+        } else if selected_semantic_rank == Some(semantic_rank) {
+            selected_template = Some((index, template));
+            top_rank_is_ambiguous = true;
         }
+    }
+    if multiple_match_policy == MultipleMatchPolicy::Error && top_rank_is_ambiguous {
+        let (_, selected) = selected_template.expect("an ambiguous top rank has a template");
+        return Err(failure_at(
+            "XTDE0540",
+            FailureCategory::Invalid,
+            Some(selection.request_id),
+            selected.template.location.clone(),
+            "more than one template rule matches at the highest import precedence and priority",
+        ));
     }
     Ok(selected_template)
 }
@@ -45,12 +64,14 @@ pub(super) fn select_next_template<'a>(
     program: &'a StylesheetProgram,
     selection: &TemplateSelectionContext<'_>,
     current_index: usize,
+    multiple_match_policy: MultipleMatchPolicy,
     control: &mut InvocationControl,
 ) -> Result<Option<(usize, &'a MatchedTemplate)>, ExecutionFailure> {
     let current = &program.matched_templates[current_index];
     let current_rank = (current.import_precedence, current.priority, current_index);
     let mut selected_template = None;
-    let mut selected_rank = None;
+    let mut selected_semantic_rank = None;
+    let mut top_rank_is_ambiguous = false;
     for (index, template) in program.matched_templates.iter().enumerate() {
         let rank = (template.import_precedence, template.priority, index);
         let lower_rank = rank < current_rank;
@@ -60,10 +81,25 @@ pub(super) fn select_next_template<'a>(
         {
             continue;
         }
-        if selected_rank.is_none_or(|selected| rank >= selected) {
+        let semantic_rank = (template.import_precedence, template.priority);
+        if selected_semantic_rank.is_none_or(|selected| semantic_rank > selected) {
             selected_template = Some((index, template));
-            selected_rank = Some(rank);
+            selected_semantic_rank = Some(semantic_rank);
+            top_rank_is_ambiguous = false;
+        } else if selected_semantic_rank == Some(semantic_rank) {
+            selected_template = Some((index, template));
+            top_rank_is_ambiguous = true;
         }
+    }
+    if multiple_match_policy == MultipleMatchPolicy::Error && top_rank_is_ambiguous {
+        let (_, selected) = selected_template.expect("an ambiguous top rank has a template");
+        return Err(failure_at(
+            "XTDE0540",
+            FailureCategory::Invalid,
+            Some(selection.request_id),
+            selected.template.location.clone(),
+            "more than one next-match template rule matches at the highest eligible import precedence and priority",
+        ));
     }
     Ok(selected_template)
 }

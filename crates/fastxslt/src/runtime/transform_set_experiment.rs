@@ -11,8 +11,8 @@ use crate::xml::quick_xml_experiment::parse_document_controlled;
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
 
 use super::{
-    ExecutionFailure, FailureCategory, InvocationParameter, SemanticResult, XML_LIMITS,
-    control_failure, execute_initial_mode, execute_initial_template,
+    ExecutionFailure, FailureCategory, InvocationParameter, MultipleMatchPolicy, SemanticResult,
+    XML_LIMITS, control_failure, execute_initial_mode, execute_initial_template,
     execute_program_with_parameters, failure, program_has_mode, serialize_xml,
 };
 
@@ -42,6 +42,7 @@ pub(super) struct TransformSetBuilder {
     result_ids: HashSet<String>,
     request_limit: usize,
     policy: ExecutionPolicy,
+    multiple_match_policy: MultipleMatchPolicy,
 }
 
 #[derive(Debug)]
@@ -50,6 +51,7 @@ pub(super) struct TransformSet {
     stylesheet: StylesheetProgram,
     requests: Vec<TransformRequest>,
     policy: ExecutionPolicy,
+    multiple_match_policy: MultipleMatchPolicy,
 }
 
 #[derive(Debug, Clone)]
@@ -87,7 +89,13 @@ impl TransformSetBuilder {
             result_ids: HashSet::new(),
             request_limit,
             policy,
+            multiple_match_policy: MultipleMatchPolicy::UseLast,
         }
+    }
+
+    pub(super) fn with_multiple_match_policy(mut self, policy: MultipleMatchPolicy) -> Self {
+        self.multiple_match_policy = policy;
+        self
     }
 
     pub(super) fn add(&mut self, request: TransformRequest) -> Result<(), ExecutionFailure> {
@@ -196,6 +204,7 @@ impl TransformSetBuilder {
             stylesheet: self.stylesheet,
             requests: self.requests,
             policy: self.policy,
+            multiple_match_policy: self.multiple_match_policy,
         }
     }
 }
@@ -222,6 +231,7 @@ pub(super) fn execute_transform_set(set: TransformSet) -> Result<ResultSet, Exec
                     &set.stylesheet,
                     &source,
                     &request.parameters,
+                    set.multiple_match_policy,
                     &request.identity,
                     &mut control,
                 )?
@@ -238,13 +248,18 @@ pub(super) fn execute_transform_set(set: TransformSet) -> Result<ResultSet, Exec
                     &source,
                     name,
                     &request.parameters,
+                    set.multiple_match_policy,
                     &request.identity,
                     &mut control,
                 )?
             }
-            InvocationEntry::InitialTemplate { name } => {
-                execute_initial_template(&set.stylesheet, name, &request.identity, &mut control)?
-            }
+            InvocationEntry::InitialTemplate { name } => execute_initial_template(
+                &set.stylesheet,
+                name,
+                set.multiple_match_policy,
+                &request.identity,
+                &mut control,
+            )?,
         };
         let serialized = serialize_xml(
             &semantic,

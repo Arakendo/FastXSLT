@@ -211,12 +211,16 @@ from template priority and declaration order. Ordinary dispatch ranks all three;
 `xsl:next-match` continues to a lower-ranked applicable rule, while
 `xsl:apply-imports` considers only applicable rules at lower import precedence
 before using the built-in rule. Equal-ranked ordinary dispatch uses the later
-declaration in the admitted recovery path. Corpus harnesses may verify an
-upstream case's explicit recover dependency before using that path, but the
-engine does not thereby select a legacy compatibility profile or expose a
-configurable multiple-match policy. The current executable slice proves only
-the bounded module topologies below; it does not define a public module graph
-representation.
+declaration in the admitted recovery path. The private transform-set path may
+instead request error-on-multiple-match; it reports concrete dynamic error
+`XTDE0540` when ordinary or `xsl:next-match` selection encounters more than one
+applicable rule at the highest eligible import precedence and priority. A tie
+below a unique higher-ranked rule is not an error unless continuation reaches
+that tied rank. Corpus harnesses verify each upstream recover/error dependency
+before selecting the path, but this does not select a general legacy
+compatibility profile or expose a public or host-configurable policy. The
+current executable slice proves only the bounded module topologies below; it
+does not define a public module graph representation.
 
 The bounded include slice also admits one three-module include chain in which a
 simple fragment selects exactly one embedded stylesheet by `xml:id`. Resource
@@ -238,8 +242,10 @@ order provides use-last recovery for the selected same-precedence conflict;
 each imported leaf remains lower for `xsl:apply-imports`. This is corpus-bound
 evidence, not a general precedence-graph or configurable conflict-policy model.
 The private path admits both the suite's explicit recover request for its
-XSLT 1.0/2.0 variant and its XSLT 3.0+ positive variant. It does not expose a
-host-selectable multiple-match policy or admit the expected-error variant.
+XSLT 1.0/2.0 variant and its XSLT 3.0+ positive variant. The same private
+policy seam now has corpus evidence for error-on-multiple-match in the
+apply-templates set, but it is not exposed as a host-selectable contract; the
+corresponding include-set error case remains a separate admission task.
 
 A second five-module topology admits two leading imports from the principal,
 each with one leaf import. The first leaf, first branch, second leaf, second

@@ -876,6 +876,14 @@ failed, and harness-error cases without an unqualified conformance claim.
   `5 → 4 → 3 → 2` before the imported priority-`25` rule. Generalize only the
   private corpus adapter to catalog-declared secondary stylesheets. The ledger
   now records 41 passes and 9 visible not-run cases.
+- [x] Execute the six explicit error-on-multiple-match variants `0102b`,
+  `0104b`, `0108b`, `0110b`, `0401b`, and `1202b` through an invocation-local
+  private policy. Report concrete dynamic error `XTDE0540` for ambiguity at the
+  highest eligible import precedence and priority, including an ambiguity
+  reached through `xsl:next-match`, while proving lower-ranked ties do not
+  preempt a unique higher rule. Keep policy selection out of the public and
+  host adapters. The apply-templates ledger now records 47 passes and 3 visible
+  not-run cases.
 - [x] Execute `conflict-resolution-1205` with typed non-tunnel integer and
   atomic-variable `xsl:with-param` arguments on `xsl:apply-templates` and
   `xsl:next-match`. Keep values invocation-local, retain result attributes

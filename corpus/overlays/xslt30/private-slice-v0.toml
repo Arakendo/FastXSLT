@@ -664,6 +664,48 @@ set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
 case_name = "conflict-resolution-1202a"
 selection = "selected"
 execution = "passed"
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0102b"
+selection = "selected"
+execution = "passed"
+rationale = "An explicit private transform-set error policy reports XTDE0540 when equal highest-ranked element-wildcard rules match."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0104b"
+selection = "selected"
+execution = "passed"
+rationale = "An explicit private transform-set error policy reports XTDE0540 when equal highest-ranked node-test rules match."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0108b"
+selection = "selected"
+execution = "passed"
+rationale = "An explicit private transform-set error policy reports XTDE0540 for the equal highest-ranked non-simple path rules."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0110b"
+selection = "selected"
+execution = "passed"
+rationale = "An explicit private transform-set error policy reports XTDE0540 for the equal highest-ranked attribute-predicate rules."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-0401b"
+selection = "selected"
+execution = "passed"
+rationale = "An explicit private transform-set error policy reports XTDE0540 for the equal explicitly prioritized namespace-wildcard rules."
+
+[[case]]
+set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
+case_name = "conflict-resolution-1202b"
+selection = "selected"
+execution = "passed"
+rationale = "An explicit private transform-set error policy reports XTDE0540 before entering the ambiguous next-match chain."
 rationale = "The explicit recover variant uses the same admitted use-last entry and equal-rank next-match continuation after its native metadata is verified."
 
 [[case]]

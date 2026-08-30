@@ -32,19 +32,20 @@ evidence exists.
 | `assert-xml` results | 41 |
 | `error` results | 8 |
 | `all-of` results | 1 |
-| Selected/passed overrides | 41 |
-| Default not-run dispositions | 9 |
+| Selected/passed overrides | 47 |
+| Default not-run dispositions | 3 |
 
-The one secondary stylesheet belongs to the now-passing
-`conflict-resolution-1204`. The current 41 passing overrides include 34 earlier
-semantic cases, six explicit recover variants whose native dependency metadata
-is checked before execution, and that imported next-match case. The nine
-not-run cases comprise six expected multiple-match errors plus `1301`, `1401`,
-and schema-aware `1402`.
+The one secondary stylesheet belongs to the passing
+`conflict-resolution-1204`. The current 47 passing overrides include all eight
+native error assertion shapes: two static atomic-focus failures and six
+dynamic multiple-match failures. The latter require their native
+`on-multiple-match=error` dependency and report concrete `XTDE0540`, satisfying
+the suite's `XTRE0540` pattern. The three not-run cases are `1301`, `1401`, and
+schema-aware `1402`.
 
 This revision corrects stale summary values left behind as individual case
 tranches advanced. The executable overlay-count assertion remained the source
-of truth and now agrees with this evidence record: 41 plus 9 conserves the
+of truth and now agrees with this evidence record: 47 plus 3 conserves the
 50-case denominator.
 
 This inventory also corrects the earlier provisional claim that the test set
@@ -54,7 +55,7 @@ executable ordered-name assertion will fail if that denominator changes.
 ## Claim boundary
 
 Inventory is not conformance. The result establishes complete denominator
-visibility and 41 case-specific passes only. The remaining 9 cases are not
+visibility and 47 case-specific passes only. The remaining 3 cases are not
 engine failures, and no aggregate apply-templates conformance percentage is
 claimed. A submodule revision change requires renewed inventory and provenance
 review.

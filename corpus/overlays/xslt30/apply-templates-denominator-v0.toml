@@ -219,3 +219,39 @@ execution = "passed"
 case_name = "conflict-resolution-1102"
 selection = "selected"
 execution = "passed"
+
+[[case_override]]
+case_name = "conflict-resolution-0102b"
+selection = "selected"
+execution = "passed"
+rationale = "The case-declared error policy rejects equal highest-ranked wildcard rules with concrete dynamic error XTDE0540, satisfying the suite's native XTRE0540 error-code pattern."
+
+[[case_override]]
+case_name = "conflict-resolution-0104b"
+selection = "selected"
+execution = "passed"
+rationale = "The case-declared error policy rejects equal highest-ranked node-test rules with concrete dynamic error XTDE0540."
+
+[[case_override]]
+case_name = "conflict-resolution-0108b"
+selection = "selected"
+execution = "passed"
+rationale = "The case-declared error policy rejects equal highest-ranked non-simple path rules with concrete dynamic error XTDE0540."
+
+[[case_override]]
+case_name = "conflict-resolution-0110b"
+selection = "selected"
+execution = "passed"
+rationale = "The case-declared error policy rejects equal highest-ranked attribute-predicate rules with concrete dynamic error XTDE0540."
+
+[[case_override]]
+case_name = "conflict-resolution-0401b"
+selection = "selected"
+execution = "passed"
+rationale = "The case-declared error policy rejects equal explicitly prioritized namespace-wildcard rules with concrete dynamic error XTDE0540."
+
+[[case_override]]
+case_name = "conflict-resolution-1202b"
+selection = "selected"
+execution = "passed"
+rationale = "The case-declared error policy rejects the ambiguous highest-ranked entry into the next-match chain with concrete dynamic error XTDE0540."
