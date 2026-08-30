@@ -372,6 +372,12 @@ Requested indentation currently adds newline plus two-space depth prefixes only
 around non-empty element-only child sequences. Text-only and mixed-content
 elements remain inline so indentation does not alter their string values; wider
 pretty-printing choices remain implementation-defined and unclaimed.
+For XHTML output, `include-content-type` defaults to enabled. An XHTML `head`
+receives one serializer-owned empty `meta` whose content combines the explicit
+media type or `text/html` default with UTF-8; an existing Content-Type meta is
+replaced for serialization rather than mutating the semantic result tree.
+Disabling the property retains authored metadata. This does not extend the
+private lane to general HTML serialization.
 Unnamed output declarations may now merge only when their scalar properties do
 not overlap; repeated scalar properties remain explicitly unsupported until
 precedence and conflict semantics are implemented. `cdata-section-elements`

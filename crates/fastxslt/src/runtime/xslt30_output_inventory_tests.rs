@@ -313,6 +313,53 @@ fn executes_output_0153_with_explicit_xml_10_serialization_version() {
 }
 
 #[test]
+fn executes_xhtml_content_type_insertion_and_replacement_cases() {
+    for (case_name, media_type) in [
+        ("output-0142", "application/xhtml-xml"),
+        ("output-0143", "text/html"),
+        ("output-0144", "text/html"),
+        ("output-0145", "application/postscript"),
+    ] {
+        let execution = execute_output_case(case_name, None);
+        assert_eq!(execution.method.as_deref(), Some("xhtml"), "{case_name}");
+        assert!(
+            execution
+                .actual
+                .contains("<html xmlns=\"http://www.w3.org/1999/xhtml\">"),
+            "{case_name}"
+        );
+        let meta =
+            format!("<meta http-equiv=\"Content-Type\" content=\"{media_type}; charset=UTF-8\" />");
+        assert!(execution.actual.contains(&meta), "{case_name}");
+        assert_eq!(
+            execution
+                .actual
+                .matches("http-equiv=\"Content-Type\"")
+                .count(),
+            1,
+            "{case_name}"
+        );
+        assert!(!execution.actual.contains("media-type="), "{case_name}");
+        let head_start = execution.actual.find("<head>").expect("XHTML head");
+        let meta_start = execution.actual.find(&meta).expect("content-type meta");
+        let head_end = execution.actual.find("</head>").expect("XHTML head end");
+        assert!(
+            head_start < meta_start && meta_start < head_end,
+            "{case_name}"
+        );
+    }
+}
+
+#[test]
+fn executes_output_0151_with_xhtml_empty_element_conventions() {
+    let execution = execute_output_case("output-0151", None);
+    assert!(execution.actual.contains(
+        "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" /><title></title></head>"
+    ));
+    assert!(execution.actual.contains("<body><p></p></body>"));
+}
+
+#[test]
 fn executes_output_0156_with_inert_xml_content_type_setting() {
     let execution = execute_output_case("output-0156", None);
     assert_eq!(execution.method.as_deref(), Some("xml"));

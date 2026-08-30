@@ -6,20 +6,20 @@
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/decl/output/_output-test-set.xml` |
 | Discovered cases | 232 |
-| Current disposition | 42 passed; 190 harness-unsupported |
+| Current disposition | 47 passed; 185 harness-unsupported |
 
 ## Conserved inventory
 
 The private XSLT30 adapter now parses the complete pinned `decl/output` test
 set and requires all 232 distinct native case identities. A first-party
 set-level overlay applies an explicit default disposition to the immutable
-complete denominator: `harness-unsupported / not-run`. Forty-two named overrides now
+complete denominator: `harness-unsupported / not-run`. Forty-seven named overrides now
 select a bounded XML-compatible XHTML declaration tranche plus `output-0128`
 and the XML/text cases `output-0129`, `output-0165`, `output-0166`,
 `output-0171`, `output-0172`, `output-0139`, `output-0168`, and
 `output-0170`, and `output-0131` as passed, together with seven standalone
 lexical cases, the XHTML no-normalization control, and two bounded output-merge
-cases. The other 190
+cases. The other 185
 cases remain harness-unsupported,
 not engine-unsupported, because their serialization assertions or execution
 adapter paths have not yet been exercised far enough to distinguish engine
@@ -112,6 +112,18 @@ element has a non-empty, element-only child sequence. Text-only and mixed
 content remain inline, so formatting cannot manufacture whitespace inside
 their string values. The cases do not claim implementation-defined pretty
 printing choices beyond this conserved shape.
+
+Cases `output-0142` through `output-0145` add serializer-owned XHTML
+Content-Type metadata. When the selected method is XHTML and
+`include-content-type` is not false, an XHTML `head` receives exactly one
+empty-form `meta` with `http-equiv="Content-Type"` and a `content` value formed
+from the explicit media type or default `text/html`, plus UTF-8. An existing
+matching meta is replaced rather than duplicated, including stale or
+parameterized authored variants. `output-0151` composes the default insertion
+with XHTML content-model behavior: injected `meta` uses empty-element syntax,
+while empty `title` and `p` retain paired tags. The semantic result tree is not
+mutated, `include-content-type="no"` retains authored content, and these cases
+do not admit general HTML serialization or arbitrary metadata rewriting.
 
 The declaration tranche also executes `output-0110a`, `output-0110b`,
 `output-0148`, `output-0148a`, and `output-0148b`. XSLT 3.0 stylesheets accept
@@ -226,10 +238,10 @@ assertion engine.
 ## Claim boundary
 
 This checkpoint proves denominator discovery, metadata classification, file
-resolution by the harness, bounded memory admission, and forty-two exact or
+resolution by the harness, bounded memory admission, and forty-seven exact or
 bounded-comparator upstream executions, including one byte-exact UTF-8 BOM
 XML case and a paired BOM/no-BOM text control. It does not establish the first
-unsupported frontier for the other 190
+unsupported frontier for the other 185
 cases or claim general XML/HTML/XHTML/text serialization
 conformance.
 

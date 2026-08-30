@@ -82,11 +82,15 @@ pub(in crate::runtime) fn serialize_xml(
         }
         output.push_str("?>")?;
     }
+    let xhtml_media_type = (settings.method.as_deref() == Some("xhtml")
+        && settings.include_content_type != Some(false))
+    .then(|| settings.media_type.as_deref().unwrap_or("text/html"));
     for node in &result.children {
         serialize_node(
             node,
             &[],
             &settings.cdata_section_elements,
+            xhtml_media_type,
             settings.indent == Some(true),
             0,
             &mut output,
@@ -208,99 +212,179 @@ fn serialize_node(
     node: &ResultNode,
     inherited_namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
     cdata_section_elements: &[crate::xml::quick_xml_experiment::ExpandedName],
+    xhtml_media_type: Option<&str>,
     indent: bool,
     depth: usize,
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
     match node {
         ResultNode::Text(value) => escape_text(value, output)?,
-        ResultNode::Element {
-            name,
-            namespaces,
-            attributes,
-            children,
-        } => {
-            let mut in_scope = inherited_namespaces.to_vec();
-            let mut declarations = Vec::new();
-            for binding in namespaces {
-                let inherited = in_scope.iter().position(|candidate| {
-                    candidate.prefix == binding.prefix && candidate.namespace == binding.namespace
-                });
-                if inherited.is_none() {
-                    declarations.push(binding.clone());
-                }
-                in_scope.retain(|candidate| candidate.prefix != binding.prefix);
-                in_scope.push(binding.clone());
-            }
-            if name.namespace.is_none()
-                && in_scope
-                    .iter()
-                    .any(|binding| binding.prefix.is_none() && !binding.namespace.is_empty())
-            {
-                let undeclaration = crate::xml::quick_xml_experiment::NamespaceBinding {
-                    prefix: None,
-                    namespace: String::new(),
-                };
-                declarations.push(undeclaration.clone());
-                in_scope.retain(|binding| binding.prefix.is_some());
-                in_scope.push(undeclaration);
-            }
-            let prefix = element_prefix(name.namespace.as_deref(), &in_scope, output)?;
-            output.push('<')?;
-            write_name(prefix, &name.local, output)?;
-            for binding in &declarations {
-                output.push_str(" xmlns")?;
-                if let Some(prefix) = &binding.prefix {
-                    output.push(':')?;
-                    output.push_str(prefix)?;
-                }
-                output.push_str("=\"")?;
-                escape_attribute(&binding.namespace, output)?;
-                output.push('"')?;
-            }
-            for attribute in attributes {
-                output.push(' ')?;
-                let prefix =
-                    attribute_prefix(attribute.name.namespace.as_deref(), &in_scope, output)?;
-                write_name(prefix, &attribute.name.local, output)?;
-                output.push_str("=\"")?;
-                escape_attribute(&attribute.value, output)?;
-                output.push('"')?;
-            }
-            output.push('>')?;
-            let indent_children = indent
-                && !children.is_empty()
-                && children
-                    .iter()
-                    .all(|child| matches!(child, ResultNode::Element { .. }));
-            for child in children {
-                if indent_children {
-                    write_indentation(depth + 1, output)?;
-                }
-                if cdata_section_elements.contains(name) {
-                    if let ResultNode::Text(value) = child {
-                        serialize_cdata(value, output)?;
-                        continue;
-                    }
-                }
-                serialize_node(
-                    child,
-                    &in_scope,
-                    cdata_section_elements,
-                    indent,
-                    depth + 1,
-                    output,
-                )?;
-            }
-            if indent_children {
-                write_indentation(depth, output)?;
-            }
-            output.push_str("</")?;
-            write_name(prefix, &name.local, output)?;
-            output.push('>')?;
-        }
+        ResultNode::Element { .. } => serialize_element(
+            node,
+            inherited_namespaces,
+            cdata_section_elements,
+            xhtml_media_type,
+            indent,
+            depth,
+            output,
+        )?,
     }
     Ok(())
+}
+
+fn serialize_element(
+    node: &ResultNode,
+    inherited_namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
+    cdata_section_elements: &[crate::xml::quick_xml_experiment::ExpandedName],
+    xhtml_media_type: Option<&str>,
+    indent: bool,
+    depth: usize,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    let ResultNode::Element {
+        name,
+        namespaces,
+        attributes,
+        children,
+    } = node
+    else {
+        unreachable!("serialize_element receives an element")
+    };
+    let (in_scope, declarations) = element_namespace_scope(name, namespaces, inherited_namespaces);
+    let prefix = element_prefix(name.namespace.as_deref(), &in_scope, output)?;
+    output.push('<')?;
+    write_name(prefix, &name.local, output)?;
+    for binding in &declarations {
+        output.push_str(" xmlns")?;
+        if let Some(prefix) = &binding.prefix {
+            output.push(':')?;
+            output.push_str(prefix)?;
+        }
+        output.push_str("=\"")?;
+        escape_attribute(&binding.namespace, output)?;
+        output.push('"')?;
+    }
+    for attribute in attributes {
+        output.push(' ')?;
+        let prefix = attribute_prefix(attribute.name.namespace.as_deref(), &in_scope, output)?;
+        write_name(prefix, &attribute.name.local, output)?;
+        output.push_str("=\"")?;
+        escape_attribute(&attribute.value, output)?;
+        output.push('"')?;
+    }
+    output.push('>')?;
+    let inject_content_type = xhtml_media_type.is_some_and(|_| is_xhtml_head(name));
+    let indent_children = indent
+        && (inject_content_type
+            || children
+                .iter()
+                .any(|child| !is_replaced_content_type_meta(child, inject_content_type)))
+        && children
+            .iter()
+            .filter(|child| !is_replaced_content_type_meta(child, inject_content_type))
+            .all(|child| matches!(child, ResultNode::Element { .. }));
+    if let Some(media_type) = xhtml_media_type.filter(|_| inject_content_type) {
+        if indent_children {
+            write_indentation(depth + 1, output)?;
+        }
+        serialize_xhtml_content_type_meta(media_type, output)?;
+    }
+    for child in children {
+        if is_replaced_content_type_meta(child, inject_content_type) {
+            continue;
+        }
+        if indent_children {
+            write_indentation(depth + 1, output)?;
+        }
+        if cdata_section_elements.contains(name)
+            && let ResultNode::Text(value) = child
+        {
+            serialize_cdata(value, output)?;
+            continue;
+        }
+        serialize_node(
+            child,
+            &in_scope,
+            cdata_section_elements,
+            xhtml_media_type,
+            indent,
+            depth + 1,
+            output,
+        )?;
+    }
+    if indent_children {
+        write_indentation(depth, output)?;
+    }
+    output.push_str("</")?;
+    write_name(prefix, &name.local, output)?;
+    output.push('>')
+}
+
+fn element_namespace_scope(
+    name: &crate::xml::quick_xml_experiment::ExpandedName,
+    namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
+    inherited_namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
+) -> (
+    Vec<crate::xml::quick_xml_experiment::NamespaceBinding>,
+    Vec<crate::xml::quick_xml_experiment::NamespaceBinding>,
+) {
+    let mut in_scope = inherited_namespaces.to_vec();
+    let mut declarations = Vec::new();
+    for binding in namespaces {
+        let inherited = in_scope.iter().position(|candidate| {
+            candidate.prefix == binding.prefix && candidate.namespace == binding.namespace
+        });
+        if inherited.is_none() {
+            declarations.push(binding.clone());
+        }
+        in_scope.retain(|candidate| candidate.prefix != binding.prefix);
+        in_scope.push(binding.clone());
+    }
+    if name.namespace.is_none()
+        && in_scope
+            .iter()
+            .any(|binding| binding.prefix.is_none() && !binding.namespace.is_empty())
+    {
+        let undeclaration = crate::xml::quick_xml_experiment::NamespaceBinding {
+            prefix: None,
+            namespace: String::new(),
+        };
+        declarations.push(undeclaration.clone());
+        in_scope.retain(|binding| binding.prefix.is_some());
+        in_scope.push(undeclaration);
+    }
+    (in_scope, declarations)
+}
+
+fn is_xhtml_head(name: &crate::xml::quick_xml_experiment::ExpandedName) -> bool {
+    name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml") && name.local == "head"
+}
+
+fn is_replaced_content_type_meta(node: &ResultNode, replace: bool) -> bool {
+    replace
+        && matches!(
+            node,
+            ResultNode::Element {
+                name,
+                attributes,
+                ..
+            } if name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml")
+                && name.local == "meta"
+                && attributes.iter().any(|attribute| {
+                    attribute.name.namespace.is_none()
+                        && attribute.name.local.eq_ignore_ascii_case("http-equiv")
+                        && attribute.value.eq_ignore_ascii_case("Content-Type")
+                })
+        )
+}
+
+fn serialize_xhtml_content_type_meta(
+    media_type: &str,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    output.push_str("<meta http-equiv=\"Content-Type\" content=\"")?;
+    escape_attribute(media_type, output)?;
+    output.push_str("; charset=UTF-8\" />")
 }
 
 fn write_indentation(depth: usize, output: &mut BudgetedString) -> Result<(), ExecutionFailure> {

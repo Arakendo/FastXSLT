@@ -129,6 +129,30 @@ execution = "passed"
 rationale = "Executes XML-compatible XHTML serialization with explicit UTF-8 and verifies the exact declaration, namespace, and multibyte encoding of the non-ASCII result text."
 
 [[case_override]]
+case_name = "output-0142"
+selection = "selected"
+execution = "passed"
+rationale = "Injects one XHTML Content-Type meta inside head using the explicit application/xhtml-xml media type and UTF-8 encoding."
+
+[[case_override]]
+case_name = "output-0143"
+selection = "selected"
+execution = "passed"
+rationale = "Replaces an existing XHTML Content-Type meta with one serializer-owned default text/html UTF-8 declaration."
+
+[[case_override]]
+case_name = "output-0144"
+selection = "selected"
+execution = "passed"
+rationale = "Replaces an existing XHTML Content-Type meta carrying stale media parameters with one canonical default text/html UTF-8 declaration."
+
+[[case_override]]
+case_name = "output-0145"
+selection = "selected"
+execution = "passed"
+rationale = "Injects one XHTML Content-Type meta using the explicit application/postscript media type and UTF-8 encoding."
+
+[[case_override]]
 case_name = "output-0147"
 selection = "selected"
 execution = "passed"
@@ -199,6 +223,12 @@ case_name = "output-0150b"
 selection = "selected"
 execution = "passed"
 rationale = "Canonicalizes the XSLT 3.0 numeric-zero standalone lexical to no and emits the same exact XHTML result."
+
+[[case_override]]
+case_name = "output-0151"
+selection = "selected"
+execution = "passed"
+rationale = "Injects the default XHTML Content-Type meta in empty-element form while preserving paired tags for empty title and paragraph elements whose XHTML content models are not empty."
 
 [[case_override]]
 case_name = "output-0152"

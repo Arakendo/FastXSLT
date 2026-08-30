@@ -9,9 +9,9 @@ use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::atomic_value_experiment::AtomicValue;
 
 use super::{
-    ExecutionPolicy, FailureCategory, InvocationEntry, InvocationParameter, ResultNode,
-    SemanticResult, TransformRequest, TransformSetBuilder, compile_resource, execute_transform_set,
-    materialize_integer_range, serialize_xml, serialize_xml_bytes,
+    ExecutionPolicy, FailureCategory, InvocationEntry, InvocationParameter, ResultAttribute,
+    ResultNode, SemanticResult, TransformRequest, TransformSetBuilder, compile_resource,
+    execute_transform_set, materialize_integer_range, serialize_xml, serialize_xml_bytes,
 };
 
 const SOURCE_ID: &str = "urn:fastxslt:golden:hello:source";
@@ -604,6 +604,81 @@ fn requested_indentation_formats_only_element_only_child_sequences() {
         serialized,
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>\n  <group>\n    <item>value</item>\n  </group>\n  <mixed>left<em></em>right</mixed>\n</out>"
     );
+}
+
+#[test]
+fn xhtml_content_type_replaces_an_existing_meta_without_mutating_result_content() {
+    let xhtml_name = |local: &str| crate::xml::quick_xml_experiment::ExpandedName {
+        namespace: Some("http://www.w3.org/1999/xhtml".to_owned()),
+        local: local.to_owned(),
+    };
+    let attribute = |local: &str, value: &str| ResultAttribute {
+        name: crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: None,
+            local: local.to_owned(),
+        },
+        value: value.to_owned(),
+    };
+    let result = SemanticResult {
+        children: vec![ResultNode::Element {
+            name: xhtml_name("head"),
+            namespaces: vec![crate::xml::quick_xml_experiment::NamespaceBinding {
+                prefix: None,
+                namespace: "http://www.w3.org/1999/xhtml".to_owned(),
+            }],
+            attributes: Vec::new(),
+            children: vec![
+                ResultNode::Element {
+                    name: xhtml_name("meta"),
+                    namespaces: Vec::new(),
+                    attributes: vec![
+                        attribute("http-equiv", "Content-Type"),
+                        attribute("media-type", "stale/type"),
+                    ],
+                    children: Vec::new(),
+                },
+                ResultNode::Text("authored head text".to_owned()),
+            ],
+        }],
+    };
+    let mut settings = crate::xslt::golden_semantics_experiment::OutputSettings {
+        method: Some("xhtml".to_owned()),
+        version: None,
+        encoding: Some("UTF-8".to_owned()),
+        media_type: Some("application/example+xml".to_owned()),
+        include_content_type: Some(true),
+        byte_order_mark: None,
+        normalization_form: None,
+        standalone: None,
+        cdata_section_elements: Vec::new(),
+        omit_xml_declaration: true,
+        indent: Some(false),
+    };
+
+    let serialized = serialize_xml(
+        &result,
+        &settings,
+        "xhtml-content-type",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("replace XHTML content-type metadata");
+    assert_eq!(
+        serialized,
+        "<head xmlns=\"http://www.w3.org/1999/xhtml\"><meta http-equiv=\"Content-Type\" content=\"application/example+xml; charset=UTF-8\" />authored head text</head>"
+    );
+
+    settings.include_content_type = Some(false);
+    let retained = serialize_xml(
+        &result,
+        &settings,
+        "xhtml-content-type-disabled",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("retain authored metadata when content-type handling is disabled");
+    assert!(retained.contains("media-type=\"stale/type\""));
+    assert!(!retained.contains("content=\"application/example+xml"));
 }
 
 #[test]

@@ -788,6 +788,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   3.0 true lexicals. Preserve text-only and mixed content without injected
   whitespace. The output ledger now records 42 passes and 190 visible harness
   gaps.
+- [x] Execute `output-0142` through `output-0145` and `output-0151` through
+  serializer-owned XHTML Content-Type insertion/replacement. Use explicit or
+  default media type, emit UTF-8, replace one existing matching meta without
+  mutating the semantic result, and preserve paired tags for non-empty-content
+  XHTML elements. The output ledger now records 47 passes and 185 visible
+  harness gaps.
 - [x] Extend that declaration lane through `output-0110a`, `output-0110b`, and
   `output-0148` through `output-0148b`, accepting whitespace-normalized XSLT
   3.0 boolean lexicals without widening XSLT 2.0 beyond `yes`/`no`.
