@@ -378,20 +378,160 @@ each inspected node and preserves document order. It does not widen general
 default-namespaced path support.
 The complete pinned apply-templates test set is now conserved as an ordered
 50-case denominator with 50 principal stylesheets, one secondary stylesheet,
-41 XML assertions, eight error assertions, and one compound assertion. Forty-eight
-cases have explicit passing overrides; the other two remain visibly not run and
-are not mislabeled as engine failures. This corrects the earlier provisional
-52-case count without turning inventory into a conformance percentage.
+41 XML assertions, eight error assertions, and one compound assertion.
+Forty-nine cases have explicit passing overrides; one remains visibly not run
+and is not mislabeled as an engine failure. This corrects both the earlier
+provisional 52-case count and the later stale 48/2 summary without turning
+inventory into a conformance percentage.
+
+## Corpus audit -- 2026-08-30
+
+This audit reconciles the pinned suite catalogs, first-party overlays,
+executable Rust adapters, golden fixtures, corpus plans, and retained evidence.
+Counts below are repository facts at the pinned revisions; they are not a
+conformance percentage or a promise about unselected cases.
+
+### Corpus assets and authority
+
+| Family | Current authority | Current state |
+| --- | --- | --- |
+| First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
+| QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 333 explicitly selected cases execute through two suite-specific XPath adapters. |
+| XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 11 complete test-set denominators plus one separate AVT pressure case have first-party records. |
+| W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
+| First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
+| Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
+
+The QT3 and XSLT30 submodules remain development/test inputs outside the MIT
+library artifact. Verification checks their exact revisions and clean state,
+and suite adapters copy only explicitly required bytes into bounded sealed
+snapshots before engine compilation or execution. Upstream files and expected
+results remain immutable; selection, corrections, and classifications stay in
+first-party overlays.
+
+### Executable standards accounting
+
+The XSLT30 work currently conserves these complete native denominators:
+
+| XSLT30 test set | Total | Passed comparison | Engine unsupported | Excluded by profile | Visible default not run |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `decl/template` | 6 | 6 | 0 | 0 | 0 |
+| `expr/path` | 10 | 10 | 0 | 0 | 0 |
+| `expr/for` | 4 | 4 | 0 | 0 | 0 |
+| `expr/castable` | 9 | 4 | 3 | 2 | 0 |
+| `expr/data-manipulation` | 28 | 28 | 0 | 0 | 0 |
+| `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
+| `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
+| `insn/apply-templates` | 50 | 49 | 0 | 0 | 1 |
+| `attr/mode` | 169 | 4 | 0 | 0 | 165 |
+| `decl/include` | 16 | 14 | 0 | 0 | 2 |
+| `decl/output` | 232 | 72 | 0 | 0 | 160 |
+| **Conserved total** | **531** | **198** | **3** | **2** | **328** |
+
+One additional selected `attr/avt` case remains visibly harness-unsupported
+because its compound message/equality assertion is not owned by a comparator.
+Across the full XSLT30 suite, 14,068 other cases are catalog-inventoried but do
+not yet have individual first-party dispositions. This distinction matters:
+catalog discovery conserves the source inventory, while only a complete
+test-set overlay conserves a reportable case denominator.
+
+QT3 currently has passing selected-case records rather than complete parent
+test-set overlays:
+
+| QT3 test set | Native cases | Selected and passed | Not individually classified |
+| --- | ---: | ---: | ---: |
+| `prod/AxisStep.xml` | 349 | 182 | 167 |
+| `fn/deep-equal.xml` | 263 | 151 | 112 |
+| **Audited subtotal** | **612** | **333** | **279** |
+
+The other 31,209 QT3 cases remain structural catalog inventory only. The 333
+passes are useful XPath evidence, but they are not yet a conserved QT3
+denominator because the 279 sibling cases in those two test sets and the rest
+of the suite lack per-case selection dispositions.
+
+### Verification capabilities already established
+
+- [x] Pin, initialize, integrity-check, and deterministically inventory both
+  external Git suites with no missing or duplicate root test-set references.
+- [x] Preserve native suite revision, test-set path, case identity,
+  dependencies, environments, stylesheets, sources, entry mode/template, and
+  assertion shape in suite-specific adapters.
+- [x] Keep engine execution memory-resident by importing case resources into
+  bounded snapshots and closing harness-owned files before execution.
+- [x] Maintain first-party overlays outside immutable upstream content, with
+  explicit selection and execution dispositions for admitted slices.
+- [x] Compare bounded examples of exact serialized text/bytes, parsed XML,
+  assertion fragments, QT3 scalar/node counts, expected static/dynamic errors,
+  and permitted alternatives without treating every assertion as byte equality.
+- [x] Preserve structured diagnostic identity and location for admitted
+  negative cases, including standard errors such as `XTSE0020`, `XTTE0510`,
+  and `XTDE0540` where the native case requires them.
+- [x] Mechanically conserve private ledger totals across filtering, sharding,
+  interruption, retry, merge order, and conflicting observations.
+- [x] Keep conformance, adversarial, differential, integration, and performance
+  evidence conceptually separate even when one fixture informs another.
+
+### Remaining corpus work
+
+The next work is ordered to improve explainability before maximizing raw pass
+count:
+
+1. [ ] Close the nearest complete XSLT30 denominators: classify and, where the
+   admitted profile permits, execute the one remaining `apply-templates` case
+   and two remaining `include` cases. Do not force a pass where the native
+   dependency or assertion exposes a real unsupported boundary.
+2. [ ] Continue coherent semantic slices through the 160 visible `output`
+   gaps and 165 visible `mode` gaps. Each promotion still requires native
+   metadata validation, a focused control, and an owned comparator or exact
+   diagnostic—not merely successful stylesheet execution.
+3. [ ] Give `AxisStep.xml` and `fn/deep-equal.xml` complete QT3 overlays so all
+   612 parent-set cases receive a selection disposition. Only after that should
+   aggregate QT3 progress be described as a conserved denominator.
+4. [ ] Add complete denominators deliberately, selected by standards and
+   implementation pressure rather than easy-case sampling. The remaining
+   14,068 XSLT30 and 31,209 QT3 catalog-only cases must stay outside pass/fail
+   totals until individually classified.
+5. [ ] Replace string-scanned experimental overlays with a validated internal
+   loader and derive one immutable run report carrying suite/engine/harness
+   revisions, profile, target/toolchain/features, selection reasons, outcomes,
+   and conservation totals. Do not stabilize it as a public API prematurely.
+6. [ ] Define fast pull-request, focused semantic, and reproducible full-corpus
+   CI tiers. A shard, retry, feature flag, or unavailable corpus must never
+   silently shrink the denominator.
+7. [ ] Resolve W3C XML suite rights and choose local-only hash-verified
+   acquisition or reviewed redistribution; then implement edition/namespace/
+   entity classification and execute one nonvalidating XML/Namespaces subset.
+8. [ ] Create a first-party adversarial corpus with exact bytes or generators,
+   named expected work/structural limits, cancellation points, and no
+   conformance or production-budget implication.
+9. [ ] Create correctness-gated performance manifests for cold compilation,
+   prepared reuse, serialization, concurrency, allocation/retention, and host
+   transfer. Existing workbench numbers remain evidence, not benchmark corpus
+   defaults.
+10. [ ] Reconcile stale corpus summaries in `corpus/README.md`,
+    `docs/testing-strategy.md`, and AR-0011 with the executable ledgers before
+    using those pages for release reporting.
+11. [ ] Review W3C license/trademark terms, subset rules, report language, and
+    exact distribution contents before publishing a conformance or
+    standards-performance claim.
+
+No full-suite percentage is currently warranted. The next credible reporting
+milestone is an immutable internal report in which every case in each claimed
+denominator has one explainable selection disposition and every selected case
+has one explainable execution/comparison outcome.
 
 The current order of work is:
 
-1. obtain representative consumer transforms, input/result distributions,
-   concurrency, deployment targets, trust model, and latency/throughput budgets;
-2. execute those workloads through both candidates and add dedicated cold-load,
-   native-retention, transport-attribution, and sustained-load evidence;
-3. decide whether the measured low-latency and containment candidates become
-   supported profiles, then stabilize only their shared lifecycle plus any
-   deliberately distinct guarantee surfaces.
+1. close or explicitly classify the three remaining cases in the nearly
+   complete apply-templates/include denominators;
+2. continue standards-driven output, mode, XPath, and expression slices while
+   keeping their denominators conserved;
+3. complete the two QT3 parent-set overlays and introduce a validated internal
+   ledger/report loader when duplicated overlay mechanics justify it;
+4. resolve XML-corpus acquisition and begin a distinct adversarial family;
+5. obtain representative consumer transforms and budgets, then use them to
+   prioritize optional compatibility, formal performance workloads, and the
+   supported native/isolated host profiles.
 
 Representative consumer transforms are not a prerequisite for a testable
 standards-driven preview. The pinned W3C suites provide executable stylesheets,
