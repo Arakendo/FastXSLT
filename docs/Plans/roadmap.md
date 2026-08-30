@@ -809,8 +809,10 @@ failed, and harness-error cases without an unqualified conformance claim.
   The output adapter now also honors native initial-mode entry for
   `output-0155a` and `output-0155b`, validating but ignoring
   `escape-uri-attributes=yes` under explicit XML output as the standard
-  requires. The output ledger now records 66 passes and 166 visible harness
-  gaps.
+  requires. Six invalid boolean controls, `output-0197` through
+  `output-0199a`, now preserve their exact native `XTSE0020` alternative,
+  invalid category, and source location. The output ledger now records 72
+  passes and 160 visible harness gaps.
 - [x] Extend that declaration lane through `output-0110a`, `output-0110b`, and
   `output-0148` through `output-0148b`, accepting whitespace-normalized XSLT
   3.0 boolean lexicals without widening XSLT 2.0 beyond `yes`/`no`.

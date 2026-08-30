@@ -358,13 +358,13 @@ fn parse_standalone(
             "true" | "1" => Ok("yes".to_owned()),
             "false" | "0" => Ok("no".to_owned()),
             _ => Err(invalid(
-                "FXST0005",
+                "XTSE0020",
                 "standalone has an invalid XSLT 3.0 value",
                 location,
             )),
         },
         _ => Err(invalid(
-            "FXST0005",
+            "XTSE0020",
             "standalone must be 'yes', 'no', or 'omit'",
             location,
         )),
@@ -384,13 +384,13 @@ fn parse_output_boolean(
             "true" | "1" => Ok(true),
             "false" | "0" => Ok(false),
             _ => Err(invalid(
-                "FXST0005",
+                "XTSE0020",
                 format!("{attribute} has an invalid XSLT 3.0 boolean value"),
                 location,
             )),
         },
         _ => Err(invalid(
-            "FXST0005",
+            "XTSE0020",
             format!("{attribute} must be 'yes' or 'no'"),
             location,
         )),

@@ -404,6 +404,42 @@ selection = "selected"
 execution = "passed"
 rationale = "Retains normalization-form=none for text output and verifies the exact decomposed A plus combining-acute UTF-8 bytes without markup or normalization."
 
+[[case_override]]
+case_name = "output-0197"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native XSLT 2.0 any-of through compile-time XTSE0020 for the invalid byte-order-mark=true lexical."
+
+[[case_override]]
+case_name = "output-0197a"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native XSLT 3.0 any-of through compile-time XTSE0020 for the case-sensitive invalid byte-order-mark=TRUE lexical."
+
+[[case_override]]
+case_name = "output-0198"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native XSLT 2.0 any-of through compile-time XTSE0020 for the invalid escape-uri-attributes=true lexical."
+
+[[case_override]]
+case_name = "output-0198a"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native XSLT 3.0 any-of through compile-time XTSE0020 for the case-sensitive invalid escape-uri-attributes=YES lexical."
+
+[[case_override]]
+case_name = "output-0199"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native XSLT 2.0 any-of through compile-time XTSE0020 for the invalid include-content-type=true lexical."
+
+[[case_override]]
+case_name = "output-0199a"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native XSLT 3.0 any-of through compile-time XTSE0020 for the case-sensitive invalid include-content-type=TRUE lexical."
+
 [[assertion_family]]
 name = "all-of"
 count = 89

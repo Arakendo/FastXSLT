@@ -373,6 +373,11 @@ An explicit XML output declaration may also carry a valid
 then discards it because it has no effect on XML serialization. The property
 remains unsupported for absent, XHTML, or future HTML output methods until the
 compiled representation owns the corresponding URI-escaping semantics.
+Invalid boolean values on admitted `xsl:output` properties are static
+stylesheet errors reported as `XTSE0020`, with the structured invalid category
+and stylesheet source location preserved. XSLT 2.0 accepts only `yes`/`no`;
+XSLT 3.0 additionally accepts the exact lower-case `true`/`false` and numeric
+`1`/`0` forms after whitespace normalization.
 Requested indentation currently adds newline plus two-space depth prefixes only
 around non-empty element-only child sequences. Text-only and mixed-content
 elements remain inline so indentation does not alter their string values; wider

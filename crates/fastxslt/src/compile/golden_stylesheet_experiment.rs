@@ -1012,7 +1012,7 @@ mod tests {
         let failure = compile_stylesheet(&xslt20).expect_err("XSLT 2.0 requires yes or no");
 
         assert!(program.output.omit_xml_declaration);
-        assert_eq!(failure.code, "FXST0005");
+        assert_eq!(failure.code, "XTSE0020");
         assert_eq!(failure.category, CompileCategory::Invalid);
     }
 
@@ -1037,7 +1037,7 @@ mod tests {
             br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" escape-uri-attributes="true"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
         );
         let failure = compile_stylesheet(&invalid).expect_err("XSLT 2.0 requires yes or no");
-        assert_eq!(failure.code, "FXST0005");
+        assert_eq!(failure.code, "XTSE0020");
         assert_eq!(failure.category, CompileCategory::Invalid);
     }
 

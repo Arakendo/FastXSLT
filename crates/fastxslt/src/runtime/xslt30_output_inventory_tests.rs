@@ -7,8 +7,8 @@ use std::{
 };
 
 use super::{
-    ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, compile_resource,
-    execute_program, execute_transform_set, serialize_xml_bytes,
+    ExecutionPolicy, FailureCategory, InvocationEntry, TransformRequest, TransformSetBuilder,
+    compile_resource, execute_program, execute_transform_set, serialize_xml_bytes,
 };
 use crate::execution_control_experiment::{CancellationToken, InvocationControl, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
@@ -530,6 +530,30 @@ fn executes_xml_output_with_inert_escape_uri_attributes_in_an_initial_mode() {
 }
 
 #[test]
+fn reports_native_invalid_output_boolean_cases_with_the_standard_static_error() {
+    for case_name in [
+        "output-0197",
+        "output-0197a",
+        "output-0198",
+        "output-0198a",
+        "output-0199",
+        "output-0199a",
+    ] {
+        let failure = compile_output_case_failure(case_name);
+        assert_eq!(failure.code, "XTSE0020", "{case_name}");
+        assert_eq!(failure.category, FailureCategory::Invalid, "{case_name}");
+        assert_eq!(
+            failure
+                .location
+                .as_ref()
+                .map(|location| location.resource.as_str()),
+            Some(format!("urn:w3c:xslt30:{case_name}:stylesheet").as_str()),
+            "{case_name}"
+        );
+    }
+}
+
+#[test]
 fn executes_output_0173_with_merged_standalone_and_cdata_settings() {
     let execution = execute_assert_serialization_case("output-0173", "xhtml");
     assert_eq!(execution.method.as_deref(), Some("xml"));
@@ -723,6 +747,36 @@ fn output_invocation_entry(
             resource: source_id,
         },
     }
+}
+
+fn compile_output_case_failure(case_name: &str) -> super::ExecutionFailure {
+    assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
+    let (test_set, set_path) = load_test_set();
+    let root = document_element(&test_set);
+    let case = element_children(&test_set, root)
+        .into_iter()
+        .find(|node| attribute(&test_set, *node, "name") == Some(case_name))
+        .expect("pinned invalid output case");
+    let result = child_named(&test_set, case, "result").expect("output result");
+    assert!(descendants(result, &test_set).into_iter().any(|node| {
+        local_name(&test_set, node) == "error"
+            && attribute(&test_set, node, "code") == Some("XTSE0020")
+    }));
+    let test = child_named(&test_set, case, "test").expect("output test");
+    let file = child_named(&test_set, test, "stylesheet")
+        .and_then(|node| attribute(&test_set, node, "file"))
+        .expect("output stylesheet file");
+    let stylesheet_id = format!("urn:w3c:xslt30:{case_name}:stylesheet");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, 65_536, 65_536));
+    resources
+        .admit(
+            stylesheet_id.clone(),
+            fs::read(set_path.parent().expect("test-set directory").join(file))
+                .expect("read stylesheet and close handle"),
+        )
+        .expect("admit invalid output stylesheet");
+    compile_resource(&resources.seal(), &stylesheet_id)
+        .expect_err("invalid output property must fail compilation")
 }
 
 fn execute_output_bytes_case(case_name: &str) -> Vec<u8> {
