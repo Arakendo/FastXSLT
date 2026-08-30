@@ -9,6 +9,18 @@ execution = "not-run"
 rationale = "The private compiler implements only the explicitly selected bounded include/import slices below. Remaining module graphs, precedence combinations, and related semantics stay visible as harness gaps; no case is silently omitted or treated as an engine failure."
 
 [[case_override]]
+case_name = "include-0101"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The included module depends on an external DTD and general entity expansion to supply declarations. The current XML profile deliberately denies DTD and external-entity processing without explicit host authority; the case remains conserved without preprocessing its bytes."
+
+[[case_override]]
+case_name = "include-0102"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The embedded stylesheet fragment identifies its target through a DTD-declared ID attribute. The current XML profile denies DTD processing and the bounded fragment slice admits xml:id only, so the case remains conserved without inventing ID typing in the harness."
+
+[[case_override]]
 case_name = "include-0401"
 selection = "selected"
 execution = "passed"

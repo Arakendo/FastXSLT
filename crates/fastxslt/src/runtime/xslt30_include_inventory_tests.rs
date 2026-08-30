@@ -49,6 +49,7 @@ const PASSED_CASES: [&str; 14] = [
     "include-0702c",
     "include-0801",
 ];
+const EXCLUDED_CASES: [&str; 2] = ["include-0101", "include-0102"];
 const OVERLAY: &str =
     include_str!("../../../../corpus/overlays/xslt30/include-denominator-v0.toml");
 const PRINCIPAL_ID: &str = "https://example.invalid/xslt30/decl/include/include-0401.xsl";
@@ -709,9 +710,61 @@ fn inventories_complete_include_denominator_with_explicit_dispositions() {
         assert!(case_override.contains("selection = \"selected\""));
         assert!(case_override.contains("execution = \"passed\""));
     }
+    assert_eq!(
+        OVERLAY.matches("[[case_override]]").count(),
+        PASSED_CASES.len() + EXCLUDED_CASES.len()
+    );
+    for case_name in EXCLUDED_CASES {
+        let case_override = OVERLAY
+            .split("[[case_override]]")
+            .find(|section| section.contains(&format!("case_name = \"{case_name}\"")))
+            .expect("excluded case overlay override");
+        assert!(case_override.contains("selection = \"excluded-by-profile\""));
+        assert!(case_override.contains("execution = \"not-run\""));
+    }
     for case_name in CASE_NAMES {
         assert!(names.contains(&case_name));
     }
+}
+
+#[test]
+fn preserves_native_dtd_dependencies_behind_profile_exclusions() {
+    let document = load_test_set();
+    let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../vendor/xslt30-test/tests/decl/include");
+
+    let entity_case = case_named(&document, "include-0101");
+    let entity_test = child_named(&document, entity_case, "test").expect("include-0101 test");
+    let entity_files = element_children(&document, entity_test)
+        .into_iter()
+        .filter(|node| local_name(&document, *node) == "stylesheet")
+        .map(|node| attribute(&document, node, "file").expect("stylesheet file"))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        entity_files,
+        ["include-0101.xsl", "include-0101a.xsl", "include-0101b.xsl"]
+    );
+    let included = fs::read_to_string(directory.join(entity_files[2]))
+        .expect("read DTD-dependent included stylesheet");
+    assert!(included.contains("<!DOCTYPE xsl:stylesheet SYSTEM \"x/xinc01b.dtd\">"));
+    assert!(included.contains("&child;"));
+
+    let typed_id_case = case_named(&document, "include-0102");
+    let typed_id_test = child_named(&document, typed_id_case, "test").expect("include-0102 test");
+    let typed_id_files = element_children(&document, typed_id_test)
+        .into_iter()
+        .filter(|node| local_name(&document, *node) == "stylesheet")
+        .map(|node| attribute(&document, node, "file").expect("stylesheet file"))
+        .collect::<Vec<_>>();
+    assert_eq!(typed_id_files, ["include-0102.xsl", "include-0102a.xml"]);
+    let principal = fs::read_to_string(directory.join(typed_id_files[0]))
+        .expect("read DTD-ID principal stylesheet");
+    let embedded = fs::read_to_string(directory.join(typed_id_files[1]))
+        .expect("read DTD-ID embedded stylesheet");
+    assert!(principal.contains("include-0102a.xml#embedded"));
+    assert!(embedded.contains("<!ATTLIST xsl:stylesheet id ID #REQUIRED>"));
+    assert!(embedded.contains("id=\"embedded\""));
+    assert!(!embedded.contains("xml:id=\"embedded\""));
 }
 
 fn load_test_set() -> Document {

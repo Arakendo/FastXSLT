@@ -379,10 +379,16 @@ default-namespaced path support.
 The complete pinned apply-templates test set is now conserved as an ordered
 50-case denominator with 50 principal stylesheets, one secondary stylesheet,
 41 XML assertions, eight error assertions, and one compound assertion.
-Forty-nine cases have explicit passing overrides; one remains visibly not run
-and is not mislabeled as an engine failure. This corrects both the earlier
-provisional 52-case count and the later stale 48/2 summary without turning
-inventory into a conformance percentage.
+Forty-nine cases have explicit passing overrides. The sole remainder,
+`conflict-resolution-1402`, retains its native `schema_aware` dependency and is
+excluded by ADR-0007 rather than mislabeled as an engine failure. The adjacent
+16-case include denominator likewise retains 14 passes and explicitly excludes
+`include-0101` and `include-0102`: their immutable upstream bytes require
+external DTD/entity processing and DTD-typed ID selection, respectively, while
+the current XML boundary denies those capabilities. Both denominators now have
+complete explicit dispositions with no default not-run cases. This corrects
+the earlier provisional counts without turning inventory into a conformance
+percentage or preprocessing upstream bytes in the harness.
 
 ## Corpus audit -- 2026-08-30
 
@@ -422,11 +428,11 @@ The XSLT30 work currently conserves these complete native denominators:
 | `expr/data-manipulation` | 28 | 28 | 0 | 0 | 0 |
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
-| `insn/apply-templates` | 50 | 49 | 0 | 0 | 1 |
+| `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 4 | 0 | 0 | 165 |
-| `decl/include` | 16 | 14 | 0 | 0 | 2 |
+| `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **198** | **3** | **2** | **328** |
+| **Conserved total** | **531** | **198** | **3** | **5** | **325** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -476,10 +482,10 @@ of the suite lack per-case selection dispositions.
 The next work is ordered to improve explainability before maximizing raw pass
 count:
 
-1. [ ] Close the nearest complete XSLT30 denominators: classify and, where the
-   admitted profile permits, execute the one remaining `apply-templates` case
-   and two remaining `include` cases. Do not force a pass where the native
-   dependency or assertion exposes a real unsupported boundary.
+1. [x] Close the nearest complete XSLT30 denominators. The sole remaining
+   `apply-templates` case is schema-aware and the two remaining `include` cases
+   require denied DTD/entity behavior, so all three retain native evidence and
+   explicit profile exclusions rather than forced execution.
 2. [ ] Continue coherent semantic slices through the 160 visible `output`
    gaps and 165 visible `mode` gaps. Each promotion still requires native
    metadata validation, a focused control, and an owned comparator or exact
@@ -522,14 +528,12 @@ has one explainable execution/comparison outcome.
 
 The current order of work is:
 
-1. close or explicitly classify the three remaining cases in the nearly
-   complete apply-templates/include denominators;
-2. continue standards-driven output, mode, XPath, and expression slices while
+1. continue standards-driven output, mode, XPath, and expression slices while
    keeping their denominators conserved;
-3. complete the two QT3 parent-set overlays and introduce a validated internal
+2. complete the two QT3 parent-set overlays and introduce a validated internal
    ledger/report loader when duplicated overlay mechanics justify it;
-4. resolve XML-corpus acquisition and begin a distinct adversarial family;
-5. obtain representative consumer transforms and budgets, then use them to
+3. resolve XML-corpus acquisition and begin a distinct adversarial family;
+4. obtain representative consumer transforms and budgets, then use them to
    prioritize optional compatibility, formal performance workloads, and the
    supported native/isolated host profiles.
 
@@ -1247,6 +1251,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   non-ASCII output explicitly rather than replacing or mislabeling it. The
   complete apply-templates ledger now records 49 passes and one visible
   schema-aware not-run case.
+- [x] Close the complete apply-templates denominator by preserving
+  `conflict-resolution-1402`'s native `schema_aware` feature dependency and
+  classifying it `excluded-by-profile` under ADR-0007. Do not erase its typed
+  attribute-pattern semantics, execute an untyped approximation, or call the
+  absence of schema awareness an engine failure. The denominator now records
+  49 passes, one profile exclusion, and no default not-run cases.
 - [x] Execute `conflict-resolution-0802` with one template in named modes plus
   `#default`, explicit unnamed-mode dispatch, inherited `#current`, and a typed
   default-namespaced descendant-name selection. Keep QName modes, mode
@@ -1397,6 +1407,12 @@ failed, and harness-error cases without an unqualified conformance claim.
     principal-precedence `title` rules while retaining the graph's four lower-
     and six principal-precedence rules. The denominator now records 14 passes
     and 2 explicit DTD-dependent non-passes.
+  - [x] Close the complete include denominator by classifying `include-0101`
+    and `include-0102` `excluded-by-profile`. Preserve the first case's external
+    DTD and entity reference and the second case's DTD-declared ID fragment
+    target as executable metadata guards; do not expand, rewrite, or copy their
+    upstream bytes into a harness-owned approximation. The denominator now
+    records 14 passes, two profile exclusions, and no default not-run cases.
 - [x] Execute a private batch of independent requests with shared compiled stylesheets
   and isolated dynamic contexts; randomize scheduling, correlate results by
   identity, and prove a batch of one matches the convenience API.

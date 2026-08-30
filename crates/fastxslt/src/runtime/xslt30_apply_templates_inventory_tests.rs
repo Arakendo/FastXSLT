@@ -109,6 +109,7 @@ const PASSED_CASES: [&str; 49] = [
     "conflict-resolution-1701",
     "conflict-resolution-1801",
 ];
+const EXCLUDED_CASES: [&str; 1] = ["conflict-resolution-1402"];
 
 const OVERLAY: &str =
     include_str!("../../../../corpus/overlays/xslt30/apply-templates-denominator-v0.toml");
@@ -166,7 +167,7 @@ fn inventories_complete_apply_templates_denominator_with_explicit_dispositions()
     assert!(OVERLAY.contains("execution = \"not-run\""));
     assert_eq!(
         OVERLAY.matches("[[case_override]]").count(),
-        PASSED_CASES.len()
+        PASSED_CASES.len() + EXCLUDED_CASES.len()
     );
     for case_name in PASSED_CASES {
         assert!(names.contains(&case_name));
@@ -177,6 +178,26 @@ fn inventories_complete_apply_templates_denominator_with_explicit_dispositions()
         assert!(override_record.contains("selection = \"selected\""));
         assert!(override_record.contains("execution = \"passed\""));
     }
+    for case_name in EXCLUDED_CASES {
+        assert!(names.contains(&case_name));
+        let override_record = OVERLAY
+            .split("[[case_override]]")
+            .find(|section| section.contains(&format!("case_name = \"{case_name}\"")))
+            .expect("excluded case override");
+        assert!(override_record.contains("selection = \"excluded-by-profile\""));
+        assert!(override_record.contains("execution = \"not-run\""));
+    }
+
+    let schema_aware = cases
+        .iter()
+        .copied()
+        .find(|case| attribute(&document, *case, "name") == Some("conflict-resolution-1402"))
+        .expect("schema-aware case identity");
+    let dependencies = child_named(&document, schema_aware, "dependencies")
+        .expect("schema-aware case dependencies");
+    let feature =
+        child_named(&document, dependencies, "feature").expect("schema-aware feature dependency");
+    assert_eq!(attribute(&document, feature, "value"), Some("schema_aware"));
 }
 
 fn load_test_set() -> Document {

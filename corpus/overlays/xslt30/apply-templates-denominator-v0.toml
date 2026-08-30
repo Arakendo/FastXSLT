@@ -192,6 +192,12 @@ execution = "passed"
 rationale = "A qualified path selects one title from an invocation-owned temporary tree; the explicit-priority qualified union rule creates the XHTML heading and temporary-focus next-match continues to the lower-ranked exact-name fallback."
 
 [[case_override]]
+case_name = "conflict-resolution-1402"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case requires schema awareness so attribute(x,xs:integer) can distinguish constructed typed attributes. ADR-0007 deliberately excludes schema-awareness claims; the case and dependency remain conserved without execution."
+
+[[case_override]]
 case_name = "conflict-resolution-1301"
 selection = "selected"
 execution = "passed"
