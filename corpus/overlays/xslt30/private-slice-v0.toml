@@ -1329,3 +1329,17 @@ case_name = "mode-1617"
 selection = "selected"
 execution = "passed"
 rationale = "An included module retains its own default-mode=a template identity while a principal literal result element independently supplies mode a to apply-templates."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1618"
+selection = "selected"
+execution = "passed"
+rationale = "Instruction-level mode a selects the element rule whose own default mode carries mode a into named-attribute selection and wildcard attribute dispatch."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1619"
+selection = "selected"
+execution = "passed"
+rationale = "The selected element rule's explicit descendant default-mode=b overrides its template default and dispatches the selected attribute through the wildcard mode-b rule."

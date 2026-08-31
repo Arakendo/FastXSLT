@@ -306,6 +306,7 @@ fn matches_pattern(
         MatchPattern::Attribute(name) => {
             Ok(source.kind(node) == NodeKind::Attribute && source.name(node) == Some(name))
         }
+        MatchPattern::AnyAttribute => Ok(source.kind(node) == NodeKind::Attribute),
         MatchPattern::Comment => Ok(source.kind(node) == NodeKind::Comment),
         MatchPattern::Text => Ok(source.kind(node) == NodeKind::Text),
         MatchPattern::ProcessingInstruction => {

@@ -79,6 +79,7 @@ pub(super) fn compile_match_pattern(
                 },
             }
         }
+        "@*" | "attribute()" => MatchPattern::AnyAttribute,
         attribute if attribute.starts_with('@') && is_ascii_ncname(&attribute[1..]) => {
             MatchPattern::Attribute(crate::xml::quick_xml_experiment::ExpandedName {
                 namespace: None,
@@ -337,7 +338,8 @@ fn compile_template_priority(
             | MatchPattern::Text
             | MatchPattern::ProcessingInstruction
             | MatchPattern::AnyNode
-            | MatchPattern::AnyElement => TemplatePriority::NODE_TEST_DEFAULT,
+            | MatchPattern::AnyElement
+            | MatchPattern::AnyAttribute => TemplatePriority::NODE_TEST_DEFAULT,
         });
     };
     let lexical = lexical.trim();

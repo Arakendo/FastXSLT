@@ -202,6 +202,7 @@ pub(crate) enum MatchPattern {
     QualifiedElementPathAlternatives(Vec<Vec<ExpandedName>>),
     Path(LocationPath),
     Attribute(ExpandedName),
+    AnyAttribute,
     Comment,
     Text,
     ProcessingInstruction,
