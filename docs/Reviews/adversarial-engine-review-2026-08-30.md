@@ -1,10 +1,39 @@
 # FastXSLT Adversarial Engineering Review
 
 Date: 2026-08-30  
+Remediation updated: 2026-08-30
 Scope: current repository state on the reviewed worktree  
 Method: read-only source, decision-record, evidence, corpus, Rust, native ABI,
 worker, and managed-host inspection; full workspace test execution; targeted
 static counterexamples; TOML parser validation. No engine code was changed.
+
+## Remediation status
+
+This table tracks repository work performed after the read-only review. The
+original findings remain below as reviewed; a completed status does not rewrite
+their original evidence. Implementation details and validation are recorded in
+[the first correctness-tranche evidence](../Evidence/adversarial-review-first-correctness-tranche-2026-08-30.md).
+
+| Finding | Status | Current disposition |
+| ---: | --- | --- |
+| 1 | **Completed** | Both XSLT30 overlays are parsed as strict typed records. Duplicate/missing fields, duplicate case identities, incoherent dispositions, and cross-record pass assertions fail. The malformed rationale records were corrected. |
+| 2 | **Completed** | Every admitted location-path step now normalizes repeated `NodeId` values into document order. Direct `/r/a/..` and template-dispatch regressions pass. |
+| 3 | **Completed** | Temporary-tree `xsl:copy` now uses the compiled shallow-copy instruction path, including constructed attributes and body execution. The unconditional deep-copy shortcut was removed. |
+| 4 | **Boundary closed** | FastXSLT now reports `FXRT1014 / unsupported` before strip-all execution when the source contains any `xml:space` declaration. Full inherited `preserve`/`default` semantics remain deliberately unimplemented under ADR-0012. |
+| 5 | **Completed** | Source element copies retain effective in-scope namespace bindings assembled from their ancestor lineage. Isolated descendant `xsl:copy-of` and `xsl:copy` regressions pass. |
+| 6 | **Open -- review required** | Measure registry abandonment and failure-envelope retention, then review a process-wide quota/ownership policy against ADR-0008 and AR-0010 before changing ABI behavior. |
+| 7 | **Open -- measurement required** | Instrument template candidates considered and maximum cancellation-observation delay. No budget unit or template index is selected yet. |
+| 8 | **Completed** | Temporary path and built-in selections carry real focus position/size through template and `next-match` execution. Two-node `1/2`, `2/2` regression evidence passes. |
+| 9 | **Boundary closed** | Same-module forward and cyclic global defaults fail at compilation as `FXST1044 / unsupported`; admitted backward dependencies continue to compile. A general dependency graph remains deferred. |
+| 10 | **Open** | Serialize worker control-frame writes and add partial/concurrent write stress evidence. |
+| 11 | **Open performance hypothesis** | Measure document-rooted match-path reevaluation before considering invocation-owned membership or indexing. |
+| 12 | **Open performance hypothesis** | Attribute global-frame cloning and prepared-XDM storage costs before changing representations under AR-0013. |
+
+Current total: **7 findings handled**, comprising five semantic/evidence repairs
+and two explicit unsupported boundaries. **Five findings remain open**: three
+operational/resource items and two performance hypotheses requiring
+measurement. The completed tranche is commit `95aa31a` and passed the complete
+FastXSLT verification gate.
 
 ## Review posture and limits
 
