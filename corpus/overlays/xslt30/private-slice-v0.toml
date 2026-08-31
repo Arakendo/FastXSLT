@@ -115,6 +115,13 @@ rationale = "A native supplied string parameter overrides its global default dur
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1105"
+selection = "selected"
+execution = "passed"
+rationale = "The exact inline /doc environment selection establishes element initial context for mode X without fabricating another source document."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-1201"
 selection = "selected"
 execution = "passed"

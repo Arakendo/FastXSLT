@@ -7,6 +7,7 @@ use crate::execution_control_experiment::{
 };
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::atomic_value_experiment::AtomicValue;
+use crate::xml::quick_xml_experiment::ExpandedName;
 
 use super::{
     ExecutionPolicy, FailureCategory, InvocationEntry, InvocationParameter, ResultAttribute,
@@ -407,12 +408,36 @@ fn initial_mode_uses_a_source_and_rejects_unknown_compiled_identity() {
     resources
         .admit(
             MODE_STYLESHEET,
-            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/" mode="audit"><out>mode</out></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/" mode="audit"><out>mode</out></xsl:template><xsl:template match="doc" mode="audit"><out>element</out></xsl:template></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit initial-mode stylesheet");
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, MODE_STYLESHEET).expect("compile initial mode");
-    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    let mut missing = TransformSetBuilder::new(snapshot.clone(), program.clone(), 1, policy(4_096));
+    missing
+        .add(TransformRequest {
+            identity: "missing-element".to_owned(),
+            result_identity: "missing-element-result".to_owned(),
+            entry: InvocationEntry::InitialModeElement {
+                resource: SOURCE_ID.to_owned(),
+                name: "audit".to_owned(),
+                element: ExpandedName {
+                    namespace: None,
+                    local: "missing".to_owned(),
+                },
+            },
+            parameters: BTreeMap::new(),
+            cancellation: CancellationToken::new(),
+            cancellation_fault: None,
+        })
+        .expect("known mode and admitted source should pass admission");
+    let failure = execute_transform_set(missing.seal())
+        .expect_err("missing initial context element should fail execution");
+    assert_eq!(failure.code, "FXRT0005");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+    assert_eq!(failure.request_id.as_deref(), Some("missing-element"));
+
+    let mut builder = TransformSetBuilder::new(snapshot, program, 2, policy(4_096));
 
     let failure = builder
         .add(TransformRequest {
@@ -443,10 +468,31 @@ fn initial_mode_uses_a_source_and_rejects_unknown_compiled_identity() {
             cancellation_fault: None,
         })
         .expect("failed admission must not poison the builder");
+    builder
+        .add(TransformRequest {
+            identity: "element-mode".to_owned(),
+            result_identity: "element-mode-result".to_owned(),
+            entry: InvocationEntry::InitialModeElement {
+                resource: SOURCE_ID.to_owned(),
+                name: "audit".to_owned(),
+                element: ExpandedName {
+                    namespace: None,
+                    local: "doc".to_owned(),
+                },
+            },
+            parameters: BTreeMap::new(),
+            cancellation: CancellationToken::new(),
+            cancellation_fault: None,
+        })
+        .expect("admit element initial context");
     let results = execute_transform_set(builder.seal()).expect("execute initial mode");
     assert_eq!(
         results.by_request["known-mode"].serialized,
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>mode</out>"
+    );
+    assert_eq!(
+        results.by_request["element-mode"].serialized,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>element</out>"
     );
 }
 

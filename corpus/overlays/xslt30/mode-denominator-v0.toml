@@ -105,6 +105,12 @@ execution = "passed"
 rationale = "The native string parameter overrides its compiled global default for an initial-mode X document rule, while #current reaches a #all child rule and explicit X continuation."
 
 [[case_override]]
+case_name = "mode-1105"
+selection = "selected"
+execution = "passed"
+rationale = "The inline environment's exact /doc selection establishes element initial context for native mode X before explicit mode a and named-template #current continuation."
+
+[[case_override]]
 case_name = "mode-1201"
 selection = "selected"
 execution = "passed"

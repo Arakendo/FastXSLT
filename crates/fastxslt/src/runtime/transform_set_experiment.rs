@@ -7,7 +7,7 @@ use crate::execution_control_experiment::{
 };
 use crate::resources::ResourceSnapshot;
 use crate::xdm::owned_tree_experiment::{BuildFailure, Document};
-use crate::xml::quick_xml_experiment::parse_document_controlled;
+use crate::xml::quick_xml_experiment::{ExpandedName, parse_document_controlled};
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
 
 use super::{
@@ -18,9 +18,21 @@ use super::{
 
 #[derive(Debug)]
 pub(super) enum InvocationEntry {
-    PrincipalSource { resource: String },
-    InitialMode { resource: String, name: String },
-    InitialTemplate { name: String },
+    PrincipalSource {
+        resource: String,
+    },
+    InitialMode {
+        resource: String,
+        name: String,
+    },
+    InitialModeElement {
+        resource: String,
+        name: String,
+        element: ExpandedName,
+    },
+    InitialTemplate {
+        name: String,
+    },
 }
 
 #[derive(Debug)]
@@ -153,7 +165,8 @@ impl TransformSetBuilder {
                     ));
                 }
             }
-            InvocationEntry::InitialMode { resource, name } => {
+            InvocationEntry::InitialMode { resource, name }
+            | InvocationEntry::InitialModeElement { resource, name, .. } => {
                 if self.policy.denied_sources.contains(resource) {
                     return Some(failure(
                         "FXRS0003",
@@ -214,73 +227,114 @@ pub(super) fn execute_transform_set(set: TransformSet) -> Result<ResultSet, Exec
     let mut completion_order = Vec::new();
 
     for request in set.requests.into_iter().rev() {
-        let mut control =
-            InvocationControl::new(request.cancellation.clone(), set.policy.work_limits);
-        if let Some((domain, accepted_charges_before_signal)) = request.cancellation_fault {
-            control = control.cancelling_on_charge(domain, accepted_charges_before_signal);
-        }
-        let semantic = match &request.entry {
-            InvocationEntry::PrincipalSource { resource } => {
-                let source = prepare_request_source(
-                    &set.snapshot,
-                    resource,
-                    &request.identity,
-                    &mut control,
-                )?;
-                execute_program_with_parameters(
-                    &set.stylesheet,
-                    &source,
-                    &request.parameters,
-                    set.multiple_match_policy,
-                    &request.identity,
-                    &mut control,
-                )?
-            }
-            InvocationEntry::InitialMode { resource, name } => {
-                let source = prepare_request_source(
-                    &set.snapshot,
-                    resource,
-                    &request.identity,
-                    &mut control,
-                )?;
-                execute_initial_mode(
-                    &set.stylesheet,
-                    &source,
-                    name,
-                    &request.parameters,
-                    set.multiple_match_policy,
-                    &request.identity,
-                    &mut control,
-                )?
-            }
-            InvocationEntry::InitialTemplate { name } => execute_initial_template(
-                &set.stylesheet,
-                name,
-                set.multiple_match_policy,
-                &request.identity,
-                &mut control,
-            )?,
-        };
-        let serialized = serialize_xml(
-            &semantic,
-            &set.stylesheet.output,
-            &request.identity,
-            set.policy.serialized_byte_limit,
-            &mut control,
+        let result = execute_request(
+            &set.snapshot,
+            &set.stylesheet,
+            &set.policy,
+            set.multiple_match_policy,
+            &request,
         )?;
         completion_order.push(request.identity.clone());
-        by_request.insert(
-            request.identity,
-            ResultEntry {
-                result_id: request.result_identity,
-                semantic,
-                serialized,
-            },
-        );
+        by_request.insert(request.identity, result);
     }
     Ok(ResultSet {
         by_request,
         completion_order,
+    })
+}
+
+fn execute_request(
+    snapshot: &ResourceSnapshot,
+    stylesheet: &StylesheetProgram,
+    policy: &ExecutionPolicy,
+    multiple_match_policy: MultipleMatchPolicy,
+    request: &TransformRequest,
+) -> Result<ResultEntry, ExecutionFailure> {
+    let mut control = InvocationControl::new(request.cancellation.clone(), policy.work_limits);
+    if let Some((domain, accepted_charges_before_signal)) = request.cancellation_fault {
+        control = control.cancelling_on_charge(domain, accepted_charges_before_signal);
+    }
+    let semantic = match &request.entry {
+        InvocationEntry::PrincipalSource { resource } => {
+            let source =
+                prepare_request_source(snapshot, resource, &request.identity, &mut control)?;
+            execute_program_with_parameters(
+                stylesheet,
+                &source,
+                &request.parameters,
+                multiple_match_policy,
+                &request.identity,
+                &mut control,
+            )?
+        }
+        InvocationEntry::InitialMode { resource, name } => {
+            let source =
+                prepare_request_source(snapshot, resource, &request.identity, &mut control)?;
+            execute_initial_mode(
+                super::InitialModeInvocation {
+                    program: stylesheet,
+                    source: &source,
+                    initial_node: source.document_node(),
+                    name,
+                    parameters: &request.parameters,
+                    multiple_match_policy,
+                    request_id: &request.identity,
+                },
+                &mut control,
+            )?
+        }
+        InvocationEntry::InitialModeElement {
+            resource,
+            name,
+            element,
+        } => {
+            let source =
+                prepare_request_source(snapshot, resource, &request.identity, &mut control)?;
+            let node = source
+                .children(source.document_node())
+                .iter()
+                .copied()
+                .find(|node| source.name(*node) == Some(element))
+                .ok_or_else(|| {
+                    failure(
+                        "FXRT0005",
+                        FailureCategory::Invalid,
+                        Some(&request.identity),
+                        format!("initial context element is absent: {}", element.local),
+                    )
+                })?;
+            execute_initial_mode(
+                super::InitialModeInvocation {
+                    program: stylesheet,
+                    source: &source,
+                    initial_node: node,
+                    name,
+                    parameters: &request.parameters,
+                    multiple_match_policy,
+                    request_id: &request.identity,
+                },
+                &mut control,
+            )?
+        }
+        InvocationEntry::InitialTemplate { name } => execute_initial_template(
+            stylesheet,
+            name,
+            multiple_match_policy,
+            &request.identity,
+            &mut control,
+        )?,
+    };
+    let serialized = serialize_xml(
+        &semantic,
+        &stylesheet.output,
+        &request.identity,
+        policy.serialized_byte_limit,
+        &mut control,
+    )?;
+    Ok(ResultEntry {
+        result_id: request.result_identity.clone(),
+        semantic,
+        serialized,
     })
 }
 

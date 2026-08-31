@@ -14,10 +14,10 @@ use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
-use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 24] = [
+const SELECTED_CASES: [&str; 25] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -38,6 +38,7 @@ const SELECTED_CASES: [&str; 24] = [
     "mode-1102",
     "mode-1103",
     "mode-1104",
+    "mode-1105",
     "mode-1201",
     "mode-1202",
     "mode-1203",
@@ -138,7 +139,13 @@ fn executes_equivalent_prefixed_and_punctuated_mode_names() {
 
 #[test]
 fn executes_native_initial_mode_and_current_mode_continuation() {
-    for case_name in ["mode-1101", "mode-1102", "mode-1103", "mode-1104"] {
+    for case_name in [
+        "mode-1101",
+        "mode-1102",
+        "mode-1103",
+        "mode-1104",
+        "mode-1105",
+    ] {
         let (actual, expected) = execute_case(case_name);
         assert_xml_equivalent(&actual, &expected);
     }
@@ -160,22 +167,9 @@ fn execute_case(case_name: &str) -> (String, String) {
         .into_iter()
         .find(|node| attribute(&document, *node, "name") == Some(case_name))
         .expect("selected mode case");
-    let environment_ref = child_named(&document, case, "environment")
-        .and_then(|node| attribute(&document, node, "ref"))
-        .expect("environment reference");
-    let environment = element_children(&document, document_element(&document))
-        .into_iter()
-        .find(|node| {
-            local_name(&document, *node) == "environment"
-                && attribute(&document, *node, "name") == Some(environment_ref)
-        })
-        .expect("referenced environment");
-    let content = child_named(
-        &document,
-        child_named(&document, environment, "source").expect("principal source"),
-        "content",
-    )
-    .expect("inline source content");
+    let environment = case_environment(&document, case);
+    let source = child_named(&document, environment, "source").expect("principal source");
+    let content = child_named(&document, source, "content").expect("inline source content");
     let test = child_named(&document, case, "test").expect("test metadata");
     let stylesheet_file = child_named(&document, test, "stylesheet")
         .and_then(|node| attribute(&document, node, "file"))
@@ -228,7 +222,7 @@ fn execute_case(case_name: &str) -> (String, String) {
             work_limits: WorkLimits::unbounded(),
         },
     );
-    let entry = case_entry(&document, test, &source_id);
+    let entry = case_entry(&document, test, source, &source_id);
     let parameters = case_parameters(&document, test);
     set.add(TransformRequest {
         identity: case_name.to_owned(),
@@ -243,18 +237,50 @@ fn execute_case(case_name: &str) -> (String, String) {
     (results.by_request[case_name].serialized.clone(), expected)
 }
 
-fn case_entry(document: &Document, test: NodeId, source_id: &str) -> InvocationEntry {
+fn case_entry(
+    document: &Document,
+    test: NodeId,
+    source: NodeId,
+    source_id: &str,
+) -> InvocationEntry {
     child_named(document, test, "initial-mode").map_or_else(
         || InvocationEntry::PrincipalSource {
             resource: source_id.to_owned(),
         },
-        |initial_mode| InvocationEntry::InitialMode {
-            resource: source_id.to_owned(),
-            name: attribute(document, initial_mode, "name")
+        |initial_mode| {
+            let name = attribute(document, initial_mode, "name")
                 .expect("initial mode name")
-                .to_owned(),
+                .to_owned();
+            match attribute(document, source, "select") {
+                None => InvocationEntry::InitialMode {
+                    resource: source_id.to_owned(),
+                    name,
+                },
+                Some("/doc") => InvocationEntry::InitialModeElement {
+                    resource: source_id.to_owned(),
+                    name,
+                    element: ExpandedName {
+                        namespace: None,
+                        local: "doc".to_owned(),
+                    },
+                },
+                Some(select) => panic!("unsupported initial context selection: {select}"),
+            }
         },
     )
+}
+
+fn case_environment(document: &Document, case: NodeId) -> NodeId {
+    let declaration = child_named(document, case, "environment").expect("case environment");
+    attribute(document, declaration, "ref").map_or(declaration, |reference| {
+        element_children(document, document_element(document))
+            .into_iter()
+            .find(|node| {
+                local_name(document, *node) == "environment"
+                    && attribute(document, *node, "name") == Some(reference)
+            })
+            .expect("referenced environment")
+    })
 }
 
 fn case_parameters(document: &Document, test: NodeId) -> BTreeMap<String, InvocationParameter> {

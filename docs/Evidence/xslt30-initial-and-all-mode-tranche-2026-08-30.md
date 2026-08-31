@@ -5,8 +5,8 @@
 | Date | 2026-08-30 |
 | Suite revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
 | Test set | `tests/attr/mode/_mode-test-set.xml` |
-| Added cases | `mode-1101` through `mode-1104`, `mode-1201` through `mode-1204` |
-| Result | 24 selected native passes; 145 visible default not-run cases |
+| Added cases | `mode-1101` through `mode-1105`, `mode-1201` through `mode-1204` |
+| Result | 25 selected native passes; 144 visible default not-run cases |
 
 ## Initial-mode evidence
 
@@ -22,12 +22,13 @@ default without mutating the reusable stylesheet. The adapter admits only this
 observed scalar form; it is not a general QT3/XSLT30 parameter-expression
 evaluator.
 
-Case 1105 is intentionally not selected. Its inline environment requests
-`select="/doc"`, making the document element rather than the document node the
-initial context. The current private initial-mode entry accepts an admitted
-resource and establishes document focus. The harness does not manufacture an
-element-selection convention that would settle a future engine lifecycle
-boundary.
+Case 1105 supplies an inline environment with `select="/doc"`, making the
+document element rather than the document node the initial context. A narrow
+private invocation entry now carries that expanded element name. Resolution
+occurs only after bounded preparation of the explicitly admitted source, then
+normal initial-mode selection starts at the resolved node. Missing elements are
+structured invalid invocations. This does not select a public context selector,
+general XPath entry expression, borrowed node handle, or prepared-input API.
 
 ## `#all` evidence
 
@@ -36,5 +37,6 @@ Mode-specific and `#all` rules compete through import precedence, explicit
 priority, and declaration order. `xsl:next-match` from a winning `#all` rule
 retains the active explicit mode and reaches only that mode's lower-ranked rule.
 
-This tranche does not admit `xsl:mode` declarations, warning policy, element
-initial-context entry, accumulators, streaming, packages, or mode visibility.
+This tranche does not admit `xsl:mode` declarations, warning policy, general
+initial-context expressions, accumulators, streaming, packages, or mode
+visibility.

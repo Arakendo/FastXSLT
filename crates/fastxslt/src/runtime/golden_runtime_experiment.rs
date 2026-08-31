@@ -140,15 +140,31 @@ fn execute_program_with_parameters(
 }
 
 #[cfg(test)]
-fn execute_initial_mode(
-    program: &StylesheetProgram,
-    source: &Document,
-    name: &str,
-    parameters: &BTreeMap<String, InvocationParameter>,
+#[derive(Clone, Copy)]
+struct InitialModeInvocation<'a> {
+    program: &'a StylesheetProgram,
+    source: &'a Document,
+    initial_node: NodeId,
+    name: &'a str,
+    parameters: &'a BTreeMap<String, InvocationParameter>,
     multiple_match_policy: MultipleMatchPolicy,
-    request_id: &str,
+    request_id: &'a str,
+}
+
+#[cfg(test)]
+fn execute_initial_mode(
+    invocation: InitialModeInvocation<'_>,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
+    let InitialModeInvocation {
+        program,
+        source,
+        initial_node,
+        name,
+        parameters,
+        multiple_match_policy,
+        request_id,
+    } = invocation;
     if !program_has_mode(program, name) {
         return Err(failure(
             "XTDE0045",
@@ -166,7 +182,9 @@ fn execute_initial_mode(
         globals: &globals,
         multiple_match_policy,
     };
-    let children = if program.root_template_modes.iter().any(|mode| mode == name) {
+    let children = if initial_node == source.document_node()
+        && program.root_template_modes.iter().any(|mode| mode == name)
+    {
         let template = program
             .root_template
             .as_ref()
@@ -175,12 +193,12 @@ fn execute_initial_mode(
         execute_sequence(
             &inputs,
             &template.body,
-            SequenceContext::new(Some(source.document_node()), Some(name)),
+            SequenceContext::new(Some(initial_node), Some(name)),
             &variables,
             control,
         )?
     } else {
-        apply_initial_mode_template(&inputs, name, parameters, control)?
+        apply_initial_mode_template(&inputs, initial_node, name, parameters, control)?
     };
     Ok(SemanticResult { children })
 }
@@ -188,6 +206,7 @@ fn execute_initial_mode(
 #[cfg(test)]
 fn apply_initial_mode_template(
     inputs: &SequenceInputs<'_>,
+    node: NodeId,
     mode: &str,
     parameters: &BTreeMap<String, InvocationParameter>,
     control: &mut InvocationControl,
@@ -195,7 +214,6 @@ fn apply_initial_mode_template(
     let source = inputs
         .source
         .expect("initial-mode template dispatch requires a source document");
-    let node = source.document_node();
     charge_xslt_instruction(control, inputs.request_id)?;
     if let Some((template_index, template)) = select_template_with_index(
         inputs.program,

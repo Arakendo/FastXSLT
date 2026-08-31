@@ -105,6 +105,11 @@ open:
   invocation must not acquire a fabricated source document or context item;
   the selected entry remains invocation state while template definitions remain
   immutable compiled state.
+- The private initial-mode evidence supports both admitted-document focus and
+  one explicitly supplied expanded-name document-element focus. Element
+  resolution occurs after bounded source preparation and remains invocation
+  state. This exact corpus-driven seam does not select a public context-node,
+  selector-expression, borrowing, or prepared-input contract.
 - Engine-visible nodes provide stable identity and document order for the
   lifetime required by the accepted standards profile. Neither property may be
   inferred accidentally from Rust object identity or allocation order.
