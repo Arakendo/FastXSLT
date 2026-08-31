@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 61] = [
+const SELECTED_CASES: [&str; 63] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -79,6 +79,8 @@ const SELECTED_CASES: [&str; 61] = [
     "mode-1613",
     "mode-1614",
     "mode-1615",
+    "mode-1616",
+    "mode-1617",
     "mode-1904",
 ];
 const STREAMING_EXCLUDED_CASES: [&str; 26] = [
@@ -183,7 +185,7 @@ fn inventories_the_complete_mode_denominator_before_selection() {
         );
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
-    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 61);
+    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 63);
     assert_eq!(
         OVERLAY
             .matches("selection = \"excluded-by-profile\"")
@@ -289,6 +291,14 @@ fn executes_inherited_default_mode_on_if_and_nested_elements() {
 #[test]
 fn executes_inherited_default_mode_with_for_each_focus() {
     for case_name in ["mode-1607", "mode-1608", "mode-1609"] {
+        let (actual, expected) = execute_case(case_name);
+        assert_xml_equivalent(&actual, &expected);
+    }
+}
+
+#[test]
+fn executes_included_module_default_mode_in_its_native_static_context() {
+    for case_name in ["mode-1616", "mode-1617"] {
         let (actual, expected) = execute_case(case_name);
         assert_xml_equivalent(&actual, &expected);
     }
@@ -586,9 +596,12 @@ fn execute_case_with_policy(
     let environment = case_environment(&document, case);
     let source = child_named(&document, environment, "source").expect("principal source");
     let test = child_named(&document, case, "test").expect("test metadata");
-    let stylesheet_file = child_named(&document, test, "stylesheet")
-        .and_then(|node| attribute(&document, node, "file"))
-        .expect("stylesheet file");
+    let stylesheet_files = element_children(&document, test)
+        .into_iter()
+        .filter(|node| local_name(&document, *node) == "stylesheet")
+        .map(|node| attribute(&document, node, "file").expect("stylesheet file"))
+        .collect::<Vec<_>>();
+    let stylesheet_file = *stylesheet_files.first().expect("principal stylesheet file");
     let directory =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../vendor/xslt30-test/tests/attr/mode");
     let assertion = child_named(
@@ -612,7 +625,7 @@ fn execute_case_with_policy(
         },
         |content| document.string_value(content).into_bytes(),
     );
-    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 16_384, 24_576));
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(4, 32_768, 65_536));
     resources
         .admit(source_id.clone(), source_bytes)
         .expect("admit source");
@@ -622,6 +635,15 @@ fn execute_case_with_policy(
             fs::read(directory.join(stylesheet_file)).expect("read stylesheet and close handle"),
         )
         .expect("admit stylesheet");
+    for secondary_file in stylesheet_files.iter().skip(1) {
+        resources
+            .admit(
+                format!("https://example.invalid/xslt30/attr/mode/{secondary_file}"),
+                fs::read(directory.join(secondary_file))
+                    .expect("read secondary stylesheet and close handle"),
+            )
+            .expect("admit secondary stylesheet");
+    }
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, &stylesheet_id).expect("compile selected mode case");
     if matches!(case_name, "mode-0105" | "mode-0106") {

@@ -351,6 +351,18 @@ execution = "passed"
 rationale = "The stylesheet default-mode supplies the default initial mode and its literal-result descendant inherits mode a."
 
 [[case_override]]
+case_name = "mode-1616"
+selection = "selected"
+execution = "passed"
+rationale = "An included module compiles its unmoded template under its own default-mode=a static context, and the principal explicitly applies mode a."
+
+[[case_override]]
+case_name = "mode-1617"
+selection = "selected"
+execution = "passed"
+rationale = "An included module retains its own default-mode=a template identity while a principal literal result element independently supplies mode a to apply-templates."
+
+[[case_override]]
 case_name = "mode-0105"
 selection = "selected"
 execution = "passed"

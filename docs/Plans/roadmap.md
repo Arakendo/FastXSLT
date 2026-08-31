@@ -710,6 +710,15 @@ mode denominator advances to 61 passes, 44 profile exclusions, and 64 visible
 default not-run cases.
 [Evidence](../Evidence/xslt30-mode-1607-1609-source-for-each-default-mode-2026-08-31.md)
 
+The unchanged `mode-1616` and `mode-1617` cases now preserve each stylesheet
+module's own `default-mode` static context across `xsl:include`. The suite
+adapter admits the catalog's principal and secondary stylesheet resources into
+one sealed snapshot; the included module compiles before composition, so its
+unmoded template retains mode `a` without inheriting the principal module's
+root settings. Both native assertions pass. The mode denominator advances to
+63 passes, 44 profile exclusions, and 62 visible default not-run cases.
+[Evidence](../Evidence/xslt30-mode-1616-1617-included-default-mode-2026-08-31.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -749,10 +758,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 61 | 0 | 44 | 64 |
+| `attr/mode` | 169 | 63 | 0 | 44 | 62 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **255** | **3** | **49** | **224** |
+| **Conserved total** | **531** | **257** | **3** | **49** | **222** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -807,7 +816,7 @@ count:
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
 2. [ ] Continue coherent semantic slices through the 160 visible `output`
-   gaps and 64 visible `mode` gaps. Each promotion still requires native
+   gaps and 62 visible `mode` gaps. Each promotion still requires native
    metadata validation, a focused control, and an owned comparator or exact
    diagnostic—not merely successful stylesheet execution.
 3. [ ] Give `AxisStep.xml` and `fn/deep-equal.xml` complete QT3 overlays so all
