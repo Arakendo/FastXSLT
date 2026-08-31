@@ -21,7 +21,7 @@ their original evidence. Implementation details and validation are recorded in
 | 3 | **Completed** | Temporary-tree `xsl:copy` now uses the compiled shallow-copy instruction path, including constructed attributes and body execution. The unconditional deep-copy shortcut was removed. |
 | 4 | **Boundary closed** | FastXSLT now reports `FXRT1014 / unsupported` before strip-all execution when the source contains any `xml:space` declaration. Full inherited `preserve`/`default` semantics remain deliberately unimplemented under ADR-0012. |
 | 5 | **Completed** | Source element copies retain effective in-scope namespace bindings assembled from their ancestor lineage. Isolated descendant `xsl:copy-of` and `xsl:copy` regressions pass. |
-| 6 | **Partially repaired -- policy decision required** | Outcomes are bounded and creation publication is atomic. Probes cover 100,000-handle abandonment; control/failure/900 KB result pressure; sustained promotion; and three ×16 engines over a 5,000-item input. Exact ownership returned to baseline. The large shape varied from the tiny probe by roughly 60× private bytes per engine, rejecting count or raw input bytes as general memory accounting. Count plus exact outcome bytes and tagged scalar exhaustion remain nominated, not admitted; more large shapes, consumer headroom, and an engine estimate remain. |
+| 6 | **Completed** | ADR-0016 admits explicit immutable host-supplied count, exact outcome-byte, known prepared-engine-capacity, and aggregate accounted-byte limits. Admission is atomic and non-evicting; release restores capacity; versioned tagged scalar statuses report exhaustion without consuming an outcome slot. No production thresholds are invented, and native accounting is not presented as a hard process-memory cap. |
 | 7 | **Completed** | Every source and temporary matched-template scan charges a distinct `xslt-template-candidate` unit before testing each candidate. Zero-limit and deterministic-cancellation regressions retain structured domain/request identity and reduce the candidate observation gap to one. A paired 33,024-candidate probe measured 240.9 us uncharged versus 284.2 us charged locally; a dispatch index remains optional AR-0013 work. |
 | 8 | **Completed** | Temporary path and built-in selections carry real focus position/size through template and `next-match` execution. Two-node `1/2`, `2/2` regression evidence passes. |
 | 9 | **Boundary closed** | Same-module forward and cyclic global defaults fail at compilation as `FXST1044 / unsupported`; admitted backward dependencies continue to compile. A general dependency graph remains deferred. |
@@ -29,10 +29,9 @@ their original evidence. Implementation details and validation are recorded in
 | 11 | **Completed** | ADR-0013 admits a safe, bounded invocation-owned word-bitset membership for activated document-rooted match paths. At width 256 it reduces evaluations from 256 to 1, visits from 66,049 to 514, requested bytes from 2,851,120 to 236,160, and local median from 991.8 us to 88.1 us. One-less construction budgets, concurrent ownership, both cache ceilings, and uncached differential parity pass. |
 | 12 | **Completed** | ADR-0014 replaces complete atomic-map copies with private invocation-owned safe copy-on-write frames while retaining the clone path as a differential oracle. At 256 globals/eight calls it removes all eight full clones, 552 allocation requests, 26,836 requested/peak-live bytes, and 70.1 us local median. A 3,002-node XDM anatomy attributes 83.0% of estimated capacity to node records, 7.6% to repeated resource identities, 5.9% to relationships, and 3.4% to name/namespace/value strings; it nominates later AR-0013 candidates but admits no XDM change. |
 
-Current total: **11 findings handled**, comprising nine semantic, evidence,
+Current total: **all 12 findings handled**, comprising ten semantic, evidence,
 operational, or measured representation repairs and two explicit unsupported
-boundaries. **One finding remains open**: the registry-policy decision in
-Finding 6. The
+boundaries. The
 first completed tranche is commit `95aa31a`; the
 subsequent [worker control-frame evidence](../Evidence/aspnet-worker-control-frame-serialization-2026-08-31.md)
 records Finding 10's stress and operational validation. The
@@ -55,8 +54,11 @@ separate exact native ownership from managed and allocator retention and explain
 why outcome cardinality alone cannot be a deterministic memory ceiling.
 The subsequent
 [exhaustion-delivery comparison](../Evidence/native-registry-exhaustion-delivery-comparison-2026-08-31.md)
-nominates a disjoint tagged scalar status without admitting ABI behavior before
-the aggregate policy is selected.
+nominated the disjoint tagged scalar status later accepted by
+[ADR-0016](../ADR/ADR-0016-host-configured-native-registry-admission.md). The
+[host-configured admission evidence](../Evidence/native-host-configured-registry-admission-2026-08-31.md)
+records quota enforcement, release recovery, concurrent last-slot admission,
+and the managed boundary smoke that closes Finding 6.
 
 ## Review posture and limits
 
@@ -346,8 +348,14 @@ Validation performed:
     workload and seven generated shapes at 90.94%–99.97% of production-like live
     requested bytes. A 30-second natural-settlement run then returned process
     memory near baseline, with the peak-to-half transition occurring before the
-    first post-disposal sample. The estimate remains unenforced; consumer
-    headroom and the aggregate policy decision are still open.
+    first post-disposal sample.
+  - **Closed by ADR-0016.** FastXSLT now enforces one explicit immutable
+    process-wide host policy over registry counts, exact outcome payload bytes,
+    known prepared-engine capacity, and aggregate accounted bytes. Admission is
+    atomic and non-evicting, release restores capacity, and quota exhaustion is
+    delivered as a versioned tagged scalar that requires no registry slot. The
+    host owns the values; isolated execution remains the boundary for a hard
+    process-memory cap and hard abandonment reclamation.
 
 ### Finding 7: Template-candidate scans are not represented in work budgets
 

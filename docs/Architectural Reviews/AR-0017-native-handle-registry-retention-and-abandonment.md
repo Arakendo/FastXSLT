@@ -2,14 +2,14 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Incubating |
+| Status | Accepted |
 | Opened | 2026-08-31 |
 | Last reviewed | 2026-08-31 |
 | Scope | Unpublished native .NET workbench handle registries and process-memory ownership |
 | Trigger | Adversarial review Finding 6 confirmed that foreign callers can retain engines, controls, and outcomes without an aggregate ceiling |
-| Related ADRs | ADR-0002, ADR-0003, ADR-0008, ADR-0015 |
+| Related ADRs | ADR-0002, ADR-0003, ADR-0008, ADR-0015, ADR-0016 |
 | Related reviews | AR-0002, AR-0009, AR-0010, AR-0012 |
-| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; `../Evidence/native-registry-live-use-high-water-2026-08-31.md`; `../Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`; `../Evidence/aspnet-native-registry-burst-pressure-2026-08-31.md`; `../Evidence/native-registry-candidate-policy-replay-2026-08-31.md`; `../Evidence/aspnet-native-sustained-generation-replacement-2026-08-31.md`; `../Evidence/native-registry-exhaustion-delivery-comparison-2026-08-31.md`; `../Evidence/aspnet-native-large-prepared-engine-pressure-2026-08-31.md`; `../Evidence/prepared-engine-retention-estimator-calibration-2026-08-31.md`; `../Evidence/aspnet-native-extended-reclamation-observation-2026-08-31.md`; future consumer requirements |
+| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; `../Evidence/native-registry-live-use-high-water-2026-08-31.md`; `../Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`; `../Evidence/aspnet-native-registry-burst-pressure-2026-08-31.md`; `../Evidence/native-registry-candidate-policy-replay-2026-08-31.md`; `../Evidence/aspnet-native-sustained-generation-replacement-2026-08-31.md`; `../Evidence/native-registry-exhaustion-delivery-comparison-2026-08-31.md`; `../Evidence/aspnet-native-large-prepared-engine-pressure-2026-08-31.md`; `../Evidence/prepared-engine-retention-estimator-calibration-2026-08-31.md`; `../Evidence/aspnet-native-extended-reclamation-observation-2026-08-31.md`; `../Evidence/native-host-configured-registry-admission-2026-08-31.md` |
 
 ## Architectural question
 
@@ -26,11 +26,12 @@ Handles remain until explicit release, and allocation is limited only by the
 normal-path ownership but cannot bound a buggy direct ABI caller, delayed
 finalization, or abandonment.
 
-Two narrower defects do not depend on the aggregate policy: structured failure
-encoding currently has no enforced `MAX_OUTCOME_BYTES` check, and successful
-engine creation inserts the engine before it knows that the creation outcome
-can be retained. Those must be corrected under ADR-0008's existing bounded
-envelope and ownership contract. No measurement yet establishes a useful
+At opening, two narrower defects did not depend on the aggregate policy:
+structured failure encoding had no enforced `MAX_OUTCOME_BYTES` check, and
+successful engine creation inserted the engine before knowing that its creation
+outcome could be retained. Those defects were corrected under ADR-0008's
+existing bounded-envelope and ownership contract before aggregate policy was
+selected. The subsequent experiments deliberately did not infer one universal
 process-wide count or byte threshold.
 
 ## Ownership and constraints
@@ -289,10 +290,18 @@ metrics contract.
 
 ## Disposition
 
-**Incubating.** Repair individual envelope bounds and insertion rollback under
-ADR-0008, then measure abandonment. Do not select a fixed ceiling, eviction,
-tenant model, or public failure contract until the measurements and a
-representative host policy are reviewed.
+**Accepted through ADR-0016.** The native adapter supplies one immutable,
+host-configured process-wide hybrid admission policy: separate family counts,
+exact aggregate outcome bytes, private known prepared-engine capacity, and an
+aggregate accounted-byte ceiling. The host owns every numeric limit and must
+configure explicitly before handle admission; no production default is inferred
+from the calibration traces. Capacity-independent exhaustion uses a versioned
+tagged scalar status. Existing handles are never evicted, and isolated workers
+remain the profile for hard memory ceilings or abandonment reclamation.
+
+The accepted mechanism bounds FastXSLT-accounted retained ownership. It does
+not claim allocator-exact accounting, a construction-peak bound, or a total
+ASP.NET process-memory ceiling.
 
 ## Required follow-up
 
@@ -311,8 +320,9 @@ representative host policy are reviewed.
   whether raw admitted bytes or engine count explain its process pressure.
 - [x] Calibrate a private compositional prepared-engine retention estimate over
   source-heavy and stylesheet-heavy shapes without exporting or enforcing it.
-- [ ] Compare fixed count, estimated-byte, host-domain, and isolated-process
-  policies against an ASP.NET consumer's concurrency and recovery requirements.
+- [x] Compare fixed count, estimated-byte, host-domain, and isolated-process
+  policies against the current ASP.NET consumer evidence; select host-supplied
+  hybrid admission without inventing production thresholds.
 - [x] Run the corpus-backed ASP.NET pressure matrix with generation overlap,
   delayed disposal, failure/result bursts, semantic sentinels, and separate
   legitimate versus abandoned high-water accounting.
@@ -334,16 +344,17 @@ representative host policy are reviewed.
   candidates without enforcing either in the production path.
 - [x] Compare reserved static/sentinel failure delivery with out-of-band scalar
   admission status before changing the ABI.
-- [ ] If a quota is selected, specify atomic admission, reserved failure
+- [x] If a quota is selected, specify atomic admission, reserved failure
   delivery, concurrency races, release recovery, and host-visible diagnostics
   in an accepted ADR revision or superseding decision.
 
 ## Reopening triggers
 
-Revisit when abandonment measurements exist, a host supplies simultaneous
-generation and failure-burst requirements, native execution becomes a supported
-profile candidate, or registry domains are needed for multiple in-process
-consumers.
+Revisit if one process must isolate quota ownership between mutually untrusted
+in-process consumers, measured estimator error makes the admitted accounting
+unsafe or unusably conservative, a supported native profile requires a
+production preset, or a real host requires policy replacement without starting
+a fresh process.
 
 ## Review history
 
@@ -396,3 +407,8 @@ consumers.
   seconds. More than 98% of the peak deltas were gone before the first sample;
   process memory was near baseline by ten seconds, without supporting a
   portable reclamation-time guarantee.
+- 2026-08-31 -- Accepted through ADR-0016. The host now owns explicit immutable
+  limits over count, exact outcome bytes, known prepared-engine capacity, and
+  aggregate accounted bytes. Tagged scalar exhaustion is capacity-independent;
+  isolated execution remains the hard-reclamation boundary. No production
+  thresholds were selected.

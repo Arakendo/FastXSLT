@@ -16,7 +16,16 @@ use fastxslt::workbench::{
     WorkbenchLocation, WorkbenchResource, WorkbenchStylesheetResources,
 };
 
-const ABI_VERSION: u32 = 2;
+mod registry_admission;
+
+use registry_admission::{
+    ADMISSION_CONTROL_COUNT_EXHAUSTED, ADMISSION_ENGINE_BYTES_EXHAUSTED,
+    ADMISSION_ENGINE_COUNT_EXHAUSTED, ADMISSION_OUTCOME_BYTES_EXHAUSTED,
+    ADMISSION_OUTCOME_COUNT_EXHAUSTED, ADMISSION_POLICY_REQUIRED, ADMISSION_TOTAL_BYTES_EXHAUSTED,
+    MAX_HANDLE, RegistryAccounting, RegistryPolicy, admission_status, decode_policy_limit,
+};
+
+const ABI_VERSION: u32 = 3;
 const MAX_IDENTITY_BYTES: usize = 4_096;
 const MAX_RESOURCE_BYTES: usize = 1_048_576;
 const MAX_OUTCOME_BYTES: usize = 1_048_576;
@@ -29,9 +38,16 @@ static STATE: OnceLock<State> = OnceLock::new();
 struct State {
     next_handle: AtomicU64,
     quarantined: AtomicBool,
-    engines: Mutex<HashMap<u64, Arc<ExperimentalEngine>>>,
+    policy: OnceLock<RegistryPolicy>,
+    accounting: Mutex<RegistryAccounting>,
+    engines: Mutex<HashMap<u64, EngineEntry>>,
     controls: Mutex<HashMap<u64, WorkbenchCancellation>>,
     outcomes: Mutex<HashMap<u64, Outcome>>,
+}
+
+struct EngineEntry {
+    engine: Arc<ExperimentalEngine>,
+    known_capacity_bytes: usize,
 }
 
 enum Outcome {
@@ -39,11 +55,22 @@ enum Outcome {
     Bytes { kind: u32, value: Vec<u8> },
 }
 
+impl Outcome {
+    fn payload_bytes(&self) -> usize {
+        match self {
+            Self::Engine(_) => 0,
+            Self::Bytes { value, .. } => value.len(),
+        }
+    }
+}
+
 impl State {
     fn new() -> Self {
         Self {
             next_handle: AtomicU64::new(1),
             quarantined: AtomicBool::new(false),
+            policy: OnceLock::new(),
+            accounting: Mutex::new(RegistryAccounting::default()),
             engines: Mutex::new(HashMap::new()),
             controls: Mutex::new(HashMap::new()),
             outcomes: Mutex::new(HashMap::new()),
@@ -52,7 +79,7 @@ impl State {
 
     fn next_handle(&self) -> Result<u64, BoundaryFailure> {
         let handle = self.next_handle.fetch_add(1, Ordering::Relaxed);
-        if handle == 0 || handle == u64::MAX {
+        if handle == 0 || handle > MAX_HANDLE {
             self.quarantine();
             return Err(BoundaryFailure::new(
                 "FXFFI0007",
@@ -62,12 +89,42 @@ impl State {
         Ok(handle)
     }
 
-    fn engines(
-        &self,
-    ) -> Result<MutexGuard<'_, HashMap<u64, Arc<ExperimentalEngine>>>, BoundaryFailure> {
+    fn configure_policy(&self, policy: RegistryPolicy) -> u32 {
+        match self.policy.set(policy) {
+            Ok(()) => 0,
+            Err(conflicting) if self.policy.get() == Some(&conflicting) => 0,
+            Err(_) => 1,
+        }
+    }
+
+    fn insert_control(&self, control: WorkbenchCancellation) -> u64 {
+        let Some(policy) = self.policy.get() else {
+            return admission_status(ADMISSION_POLICY_REQUIRED);
+        };
+        let Ok(mut controls) = self.controls() else {
+            return 0;
+        };
+        if controls.len() >= policy.control_limit {
+            return admission_status(ADMISSION_CONTROL_COUNT_EXHAUSTED);
+        }
+        let Ok(handle) = self.next_handle() else {
+            return 0;
+        };
+        controls.insert(handle, control);
+        handle
+    }
+
+    fn engines(&self) -> Result<MutexGuard<'_, HashMap<u64, EngineEntry>>, BoundaryFailure> {
         self.engines.lock().map_err(|_| {
             self.quarantine();
             BoundaryFailure::new("FXFFI0008", "native engine registry is poisoned")
+        })
+    }
+
+    fn accounting(&self) -> Result<MutexGuard<'_, RegistryAccounting>, BoundaryFailure> {
+        self.accounting.lock().map_err(|_| {
+            self.quarantine();
+            BoundaryFailure::new("FXFFI0008", "native registry accounting is poisoned")
         })
     }
 
@@ -98,13 +155,40 @@ impl State {
             ),
             outcome => outcome,
         };
-        let Ok(handle) = self.next_handle() else {
+        let Some(policy) = self.policy.get().copied() else {
+            return admission_status(ADMISSION_POLICY_REQUIRED);
+        };
+        let payload_bytes = outcome.payload_bytes();
+        let Ok(mut accounting) = self.accounting() else {
             return 0;
         };
         let Ok(mut outcomes) = self.outcomes() else {
             return 0;
         };
+        if outcomes.len() >= policy.outcome_limit {
+            return admission_status(ADMISSION_OUTCOME_COUNT_EXHAUSTED);
+        }
+        let Some(next_outcome_bytes) = accounting.outcome_payload_bytes.checked_add(payload_bytes)
+        else {
+            return admission_status(ADMISSION_OUTCOME_BYTES_EXHAUSTED);
+        };
+        if next_outcome_bytes > policy.outcome_payload_byte_limit {
+            return admission_status(ADMISSION_OUTCOME_BYTES_EXHAUSTED);
+        }
+        let Some(next_accounted_bytes) = accounting
+            .engine_known_capacity_bytes
+            .checked_add(next_outcome_bytes)
+        else {
+            return admission_status(ADMISSION_TOTAL_BYTES_EXHAUSTED);
+        };
+        if next_accounted_bytes > policy.accounted_byte_limit {
+            return admission_status(ADMISSION_TOTAL_BYTES_EXHAUSTED);
+        }
+        let Ok(handle) = self.next_handle() else {
+            return 0;
+        };
         outcomes.insert(handle, outcome);
+        accounting.outcome_payload_bytes = next_outcome_bytes;
         handle
     }
 
@@ -119,10 +203,11 @@ impl State {
     }
 
     fn insert_created_engine(&self, engine: ExperimentalEngine) -> u64 {
-        let Ok(engine_handle) = self.next_handle() else {
-            return 0;
+        let Some(policy) = self.policy.get().copied() else {
+            return admission_status(ADMISSION_POLICY_REQUIRED);
         };
-        let Ok(outcome_handle) = self.next_handle() else {
+        let known_capacity_bytes = engine.retention_estimate().known_retained_capacity_bytes;
+        let Ok(mut accounting) = self.accounting() else {
             return 0;
         };
         let Ok(mut engines) = self.engines() else {
@@ -131,9 +216,79 @@ impl State {
         let Ok(mut outcomes) = self.outcomes() else {
             return 0;
         };
-        engines.insert(engine_handle, Arc::new(engine));
+        if engines.len() >= policy.engine_limit {
+            return admission_status(ADMISSION_ENGINE_COUNT_EXHAUSTED);
+        }
+        if outcomes.len() >= policy.outcome_limit {
+            return admission_status(ADMISSION_OUTCOME_COUNT_EXHAUSTED);
+        }
+        let Some(next_engine_bytes) = accounting
+            .engine_known_capacity_bytes
+            .checked_add(known_capacity_bytes)
+        else {
+            return admission_status(ADMISSION_ENGINE_BYTES_EXHAUSTED);
+        };
+        if next_engine_bytes > policy.engine_known_capacity_byte_limit {
+            return admission_status(ADMISSION_ENGINE_BYTES_EXHAUSTED);
+        }
+        let Some(next_accounted_bytes) =
+            next_engine_bytes.checked_add(accounting.outcome_payload_bytes)
+        else {
+            return admission_status(ADMISSION_TOTAL_BYTES_EXHAUSTED);
+        };
+        if next_accounted_bytes > policy.accounted_byte_limit {
+            return admission_status(ADMISSION_TOTAL_BYTES_EXHAUSTED);
+        }
+        let Ok(engine_handle) = self.next_handle() else {
+            return 0;
+        };
+        let Ok(outcome_handle) = self.next_handle() else {
+            return 0;
+        };
+        engines.insert(
+            engine_handle,
+            EngineEntry {
+                engine: Arc::new(engine),
+                known_capacity_bytes,
+            },
+        );
         outcomes.insert(outcome_handle, Outcome::Engine(engine_handle));
+        accounting.engine_known_capacity_bytes = next_engine_bytes;
         outcome_handle
+    }
+
+    fn release_outcome(&self, outcome_handle: u64) -> bool {
+        let Ok(mut accounting) = self.accounting() else {
+            return false;
+        };
+        let Ok(mut outcomes) = self.outcomes() else {
+            return false;
+        };
+        let Some(outcome) = outcomes.remove(&outcome_handle) else {
+            return false;
+        };
+        accounting.outcome_payload_bytes = accounting
+            .outcome_payload_bytes
+            .checked_sub(outcome.payload_bytes())
+            .expect("registered outcome charge must be conserved");
+        true
+    }
+
+    fn release_engine(&self, engine_handle: u64) -> bool {
+        let Ok(mut accounting) = self.accounting() else {
+            return false;
+        };
+        let Ok(mut engines) = self.engines() else {
+            return false;
+        };
+        let Some(engine) = engines.remove(&engine_handle) else {
+            return false;
+        };
+        accounting.engine_known_capacity_bytes = accounting
+            .engine_known_capacity_bytes
+            .checked_sub(engine.known_capacity_bytes)
+            .expect("registered engine charge must be conserved");
+        true
     }
 
     fn quarantine(&self) {
@@ -196,6 +351,34 @@ impl BoundaryFailure {
 
 fn state() -> &'static State {
     STATE.get_or_init(State::new)
+}
+
+#[cfg(test)]
+fn unlimited_test_policy() -> RegistryPolicy {
+    RegistryPolicy {
+        engine_limit: usize::MAX,
+        control_limit: usize::MAX,
+        outcome_limit: usize::MAX,
+        outcome_payload_byte_limit: usize::MAX,
+        engine_known_capacity_byte_limit: usize::MAX,
+        accounted_byte_limit: usize::MAX,
+    }
+}
+
+#[cfg(test)]
+fn configured_test_state() -> State {
+    let state = State::new();
+    state
+        .policy
+        .set(unlimited_test_policy())
+        .expect("fresh test state accepts policy");
+    state
+}
+
+#[cfg(test)]
+fn configure_global_test_policy() {
+    let configured = state().policy.set(unlimited_test_policy());
+    assert!(configured.is_ok() || state().policy.get() == Some(&unlimited_test_policy()));
 }
 
 fn guarded<T>(fallback: T, operation: impl FnOnce(&State) -> T) -> T {
@@ -370,6 +553,39 @@ pub extern "C" fn fastxslt_workbench_v0_abi_version() -> u32 {
     guarded(u32::MAX, |_| ABI_VERSION)
 }
 
+/// Configures the immutable process-wide registry admission policy.
+///
+/// Zero means success, one means a conflicting policy was already configured,
+/// and two means at least one limit cannot be represented on this platform.
+#[allow(unsafe_code, clippy::too_many_arguments)]
+#[unsafe(no_mangle)]
+pub extern "C" fn fastxslt_workbench_v0_configure_registry_policy(
+    max_engines: u64,
+    max_controls: u64,
+    max_outcomes: u64,
+    max_outcome_payload_bytes: u64,
+    max_engine_known_capacity_bytes: u64,
+    max_accounted_bytes: u64,
+) -> u32 {
+    guarded(3, |state| {
+        let Some(policy) = (|| {
+            Some(RegistryPolicy {
+                engine_limit: decode_policy_limit(max_engines)?,
+                control_limit: decode_policy_limit(max_controls)?,
+                outcome_limit: decode_policy_limit(max_outcomes)?,
+                outcome_payload_byte_limit: decode_policy_limit(max_outcome_payload_bytes)?,
+                engine_known_capacity_byte_limit: decode_policy_limit(
+                    max_engine_known_capacity_bytes,
+                )?,
+                accounted_byte_limit: decode_policy_limit(max_accounted_bytes)?,
+            })
+        })() else {
+            return 2;
+        };
+        state.configure_policy(policy)
+    })
+}
+
 /// Copies resources and creates one retained experimental engine.
 #[allow(unsafe_code, clippy::too_many_arguments)]
 #[unsafe(no_mangle)]
@@ -384,6 +600,9 @@ pub extern "C" fn fastxslt_workbench_v0_create(
     stylesheet_length: usize,
 ) -> u64 {
     guarded(0, |state| {
+        if state.policy.get().is_none() {
+            return admission_status(ADMISSION_POLICY_REQUIRED);
+        }
         let result = (|| {
             let source_identity = decode_identity(
                 copy_input(
@@ -437,6 +656,9 @@ pub extern "C" fn fastxslt_workbench_v0_create_with_stylesheet_dependency(
     deny_dependency: u32,
 ) -> u64 {
     guarded(0, |state| {
+        if state.policy.get().is_none() {
+            return admission_status(ADMISSION_POLICY_REQUIRED);
+        }
         let result = (|| {
             let admitted = decode_flag(admit_dependency, "dependency admission")?;
             let denied = decode_flag(deny_dependency, "dependency denial")?;
@@ -531,7 +753,10 @@ pub extern "C" fn fastxslt_workbench_v0_transform(
             let Ok(engines) = state.engines() else {
                 return 0;
             };
-            let Some(engine) = engines.get(&engine_handle).cloned() else {
+            let Some(engine) = engines
+                .get(&engine_handle)
+                .map(|entry| Arc::clone(&entry.engine))
+            else {
                 drop(engines);
                 return state.insert_boundary_failure(&BoundaryFailure::new(
                     "FXFFI0004",
@@ -585,7 +810,10 @@ pub extern "C" fn fastxslt_workbench_v0_transform_controlled(
             let Ok(engines) = state.engines() else {
                 return 0;
             };
-            let Some(engine) = engines.get(&engine_handle).cloned() else {
+            let Some(engine) = engines
+                .get(&engine_handle)
+                .map(|entry| Arc::clone(&entry.engine))
+            else {
                 drop(engines);
                 return state.insert_boundary_failure(&BoundaryFailure::new(
                     "FXFFI0004",
@@ -622,14 +850,7 @@ pub extern "C" fn fastxslt_workbench_v0_control_create(first_charge_barrier: u32
             1 => WorkbenchCancellation::with_first_charge_barrier(),
             _ => return 0,
         };
-        let Ok(handle) = state.next_handle() else {
-            return 0;
-        };
-        let Ok(mut controls) = state.controls() else {
-            return 0;
-        };
-        controls.insert(handle, control);
-        handle
+        state.insert_control(control)
     })
 }
 
@@ -664,7 +885,10 @@ pub extern "C" fn fastxslt_workbench_v0_transform_with_control(
             let Ok(engines) = state.engines() else {
                 return 0;
             };
-            let Some(engine) = engines.get(&engine_handle).cloned() else {
+            let Some(engine) = engines
+                .get(&engine_handle)
+                .map(|entry| Arc::clone(&entry.engine))
+            else {
                 drop(engines);
                 return state.insert_boundary_failure(&BoundaryFailure::new(
                     "FXFFI0004",
@@ -834,26 +1058,14 @@ pub extern "C" fn fastxslt_workbench_v0_outcome_take_engine(outcome_handle: u64)
 #[allow(unsafe_code)]
 #[unsafe(no_mangle)]
 pub extern "C" fn fastxslt_workbench_v0_outcome_release(outcome_handle: u64) -> u32 {
-    guarded(0, |state| {
-        state
-            .outcomes()
-            .ok()
-            .and_then(|mut outcomes| outcomes.remove(&outcome_handle))
-            .map_or(0, |_| 1)
-    })
+    guarded(0, |state| u32::from(state.release_outcome(outcome_handle)))
 }
 
 /// Releases an engine handle. Returns one only when a handle was removed.
 #[allow(unsafe_code)]
 #[unsafe(no_mangle)]
 pub extern "C" fn fastxslt_workbench_v0_engine_release(engine_handle: u64) -> u32 {
-    guarded(0, |state| {
-        state
-            .engines()
-            .ok()
-            .and_then(|mut engines| engines.remove(&engine_handle))
-            .map_or(0, |_| 1)
-    })
+    guarded(0, |state| u32::from(state.release_engine(engine_handle)))
 }
 
 /// Observes the current engine-handle cardinality for host-pressure experiments.
@@ -911,12 +1123,20 @@ mod diagnostic_tests;
 
 #[cfg(test)]
 mod tests {
-    use std::process::Command;
+    use std::{
+        process::Command,
+        sync::{Arc, Barrier},
+        thread,
+    };
 
     use super::{
-        BoundaryFailure, ExperimentalEngine, MAX_OUTCOME_BYTES, OUTCOME_FAILURE, OUTCOME_RESULT,
-        Outcome, State, WorkbenchCancellation, WorkbenchLimits, copy_input, copy_output,
-        failure_outcome, fastxslt_workbench_v0_control_cancel,
+        ADMISSION_CONTROL_COUNT_EXHAUSTED, ADMISSION_ENGINE_BYTES_EXHAUSTED,
+        ADMISSION_ENGINE_COUNT_EXHAUSTED, ADMISSION_OUTCOME_BYTES_EXHAUSTED,
+        ADMISSION_OUTCOME_COUNT_EXHAUSTED, ADMISSION_POLICY_REQUIRED,
+        ADMISSION_TOTAL_BYTES_EXHAUSTED, BoundaryFailure, ExperimentalEngine, MAX_OUTCOME_BYTES,
+        OUTCOME_FAILURE, OUTCOME_RESULT, Outcome, RegistryPolicy, State, WorkbenchCancellation,
+        WorkbenchLimits, admission_status, configure_global_test_policy, configured_test_state,
+        copy_input, copy_output, failure_outcome, fastxslt_workbench_v0_control_cancel,
         fastxslt_workbench_v0_control_create, fastxslt_workbench_v0_control_first_charge_observed,
         fastxslt_workbench_v0_control_release, fastxslt_workbench_v0_create,
         fastxslt_workbench_v0_engine_release, fastxslt_workbench_v0_outcome_copy,
@@ -962,6 +1182,7 @@ mod tests {
     }
 
     fn create_reference_engine() -> u64 {
+        configure_global_test_policy();
         let source_identity = b"urn:w3c:xslt30:for-004:source";
         let source = include_bytes!("../../../vendor/xslt30-test/tests/expr/for/for03.xml");
         let stylesheet_identity = b"urn:w3c:xslt30:for-004:stylesheet";
@@ -1051,9 +1272,225 @@ mod tests {
         );
     }
 
+    fn policy_with(
+        max_engines: usize,
+        max_controls: usize,
+        max_outcomes: usize,
+        max_outcome_payload_bytes: usize,
+        max_engine_known_capacity_bytes: usize,
+        max_accounted_bytes: usize,
+    ) -> RegistryPolicy {
+        RegistryPolicy {
+            engine_limit: max_engines,
+            control_limit: max_controls,
+            outcome_limit: max_outcomes,
+            outcome_payload_byte_limit: max_outcome_payload_bytes,
+            engine_known_capacity_byte_limit: max_engine_known_capacity_bytes,
+            accounted_byte_limit: max_accounted_bytes,
+        }
+    }
+
+    #[test]
+    fn registry_policy_is_required_one_shot_and_idempotent_only_when_identical() {
+        let state = State::new();
+        let missing_policy = state.insert_outcome(Outcome::Bytes {
+            kind: OUTCOME_RESULT,
+            value: Vec::new(),
+        });
+        assert_eq!(missing_policy, admission_status(ADMISSION_POLICY_REQUIRED));
+        assert!(!state.release_outcome(missing_policy));
+        assert!(!state.release_engine(missing_policy));
+        assert!(state.outcomes().expect("inspect outcomes").is_empty());
+
+        let policy = policy_with(1, 1, 1, 4, 8, 12);
+        assert_eq!(state.configure_policy(policy), 0);
+        assert_eq!(state.configure_policy(policy), 0);
+        assert_eq!(state.configure_policy(policy_with(2, 1, 1, 4, 8, 12)), 1);
+        assert_eq!(state.policy.get(), Some(&policy));
+    }
+
+    #[test]
+    fn count_and_byte_exhaustion_are_tagged_and_release_restores_capacity() {
+        let state = State::new();
+        assert_eq!(
+            state.configure_policy(policy_with(usize::MAX, 1, 2, 4, usize::MAX, usize::MAX)),
+            0
+        );
+
+        let control = state.insert_control(WorkbenchCancellation::new());
+        assert_ne!(
+            control & super::registry_admission::ADMISSION_STATUS_TAG,
+            super::registry_admission::ADMISSION_STATUS_TAG
+        );
+        assert_eq!(
+            state.insert_control(WorkbenchCancellation::new()),
+            admission_status(ADMISSION_CONTROL_COUNT_EXHAUSTED)
+        );
+
+        let exact = state.insert_outcome(Outcome::Bytes {
+            kind: OUTCOME_RESULT,
+            value: vec![1; 4],
+        });
+        assert_eq!(
+            state.insert_outcome(Outcome::Bytes {
+                kind: OUTCOME_RESULT,
+                value: vec![2],
+            }),
+            admission_status(ADMISSION_OUTCOME_BYTES_EXHAUSTED)
+        );
+        assert!(state.release_outcome(exact));
+        let recovered = state.insert_outcome(Outcome::Bytes {
+            kind: OUTCOME_RESULT,
+            value: vec![3],
+        });
+        assert_ne!(
+            recovered & super::registry_admission::ADMISSION_STATUS_TAG,
+            super::registry_admission::ADMISSION_STATUS_TAG
+        );
+
+        let count_state = State::new();
+        assert_eq!(
+            count_state.configure_policy(policy_with(
+                usize::MAX,
+                usize::MAX,
+                1,
+                usize::MAX,
+                usize::MAX,
+                usize::MAX,
+            )),
+            0
+        );
+        let retained = count_state.insert_outcome(Outcome::Bytes {
+            kind: OUTCOME_RESULT,
+            value: Vec::new(),
+        });
+        assert_eq!(
+            count_state.insert_outcome(Outcome::Bytes {
+                kind: OUTCOME_RESULT,
+                value: Vec::new(),
+            }),
+            admission_status(ADMISSION_OUTCOME_COUNT_EXHAUSTED)
+        );
+        assert!(count_state.release_outcome(retained));
+        assert_ne!(
+            count_state.insert_outcome(Outcome::Bytes {
+                kind: OUTCOME_RESULT,
+                value: Vec::new(),
+            }),
+            admission_status(ADMISSION_OUTCOME_COUNT_EXHAUSTED)
+        );
+    }
+
+    #[test]
+    fn engine_known_capacity_and_total_accounted_bytes_have_distinct_statuses() {
+        let reference = reference_engine_value();
+        let charge = reference.retention_estimate().known_retained_capacity_bytes;
+
+        let engine_bytes = State::new();
+        assert_eq!(
+            engine_bytes.configure_policy(policy_with(
+                1,
+                usize::MAX,
+                1,
+                usize::MAX,
+                charge - 1,
+                usize::MAX,
+            )),
+            0
+        );
+        assert_eq!(
+            engine_bytes.insert_created_engine(reference),
+            admission_status(ADMISSION_ENGINE_BYTES_EXHAUSTED)
+        );
+        assert!(engine_bytes.engines().expect("inspect engines").is_empty());
+        assert!(
+            engine_bytes
+                .outcomes()
+                .expect("inspect outcomes")
+                .is_empty()
+        );
+
+        let total = State::new();
+        assert_eq!(
+            total.configure_policy(policy_with(
+                1,
+                usize::MAX,
+                1,
+                usize::MAX,
+                usize::MAX,
+                charge - 1,
+            )),
+            0
+        );
+        assert_eq!(
+            total.insert_created_engine(reference_engine_value()),
+            admission_status(ADMISSION_TOTAL_BYTES_EXHAUSTED)
+        );
+
+        let count = State::new();
+        assert_eq!(
+            count.configure_policy(policy_with(
+                0,
+                usize::MAX,
+                1,
+                usize::MAX,
+                usize::MAX,
+                usize::MAX,
+            )),
+            0
+        );
+        assert_eq!(
+            count.insert_created_engine(reference_engine_value()),
+            admission_status(ADMISSION_ENGINE_COUNT_EXHAUSTED)
+        );
+    }
+
+    #[test]
+    fn concurrent_last_outcome_slot_has_exactly_one_winner() {
+        let state = Arc::new(State::new());
+        assert_eq!(
+            state.configure_policy(policy_with(
+                usize::MAX,
+                usize::MAX,
+                1,
+                usize::MAX,
+                usize::MAX,
+                usize::MAX,
+            )),
+            0
+        );
+        let barrier = Arc::new(Barrier::new(3));
+        let workers = (0..2)
+            .map(|_| {
+                let state = Arc::clone(&state);
+                let barrier = Arc::clone(&barrier);
+                thread::spawn(move || {
+                    barrier.wait();
+                    state.insert_outcome(Outcome::Bytes {
+                        kind: OUTCOME_RESULT,
+                        value: Vec::new(),
+                    })
+                })
+            })
+            .collect::<Vec<_>>();
+        barrier.wait();
+        let results = workers
+            .into_iter()
+            .map(|worker| worker.join().expect("quota worker"))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            results
+                .iter()
+                .filter(|result| **result == admission_status(ADMISSION_OUTCOME_COUNT_EXHAUSTED))
+                .count(),
+            1
+        );
+        assert_eq!(state.outcomes().expect("inspect winner").len(), 1);
+    }
+
     #[test]
     fn panic_quarantine_is_permanent_for_the_state() {
-        let state = State::new();
+        let state = configured_test_state();
         assert_eq!(
             guarded_on(&state, 41, |_| panic!(
                 "deliberate native workbench panic probe"
@@ -1096,7 +1533,7 @@ mod tests {
         assert_eq!(fields[0], "FXFFI0014");
         assert_eq!(fields[1], "boundary");
 
-        let state = State::new();
+        let state = configured_test_state();
         let handle = state.insert_outcome(Outcome::Bytes {
             kind: OUTCOME_RESULT,
             value: vec![0; MAX_OUTCOME_BYTES + 1],
@@ -1113,7 +1550,7 @@ mod tests {
 
     #[test]
     fn creation_does_not_publish_an_engine_when_its_outcome_cannot_be_inserted() {
-        let state = State::new();
+        let state = configured_test_state();
         let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             let _outcomes = state.outcomes.lock().expect("lock local outcomes");
             panic!("poison outcome registry for atomic-publication probe");
@@ -1130,7 +1567,7 @@ mod tests {
         const OPERATIONS: usize = 100_000;
         let baseline_rss = process_working_set_bytes();
 
-        let controls_state = State::new();
+        let controls_state = configured_test_state();
         let mut control_handles = Vec::with_capacity(OPERATIONS);
         for _ in 0..OPERATIONS {
             let handle = controls_state.next_handle().expect("control handle");
@@ -1151,7 +1588,7 @@ mod tests {
         let controls_released = controls_state.registry_observation();
         let controls_released_rss = process_working_set_bytes();
 
-        let outcomes_state = State::new();
+        let outcomes_state = configured_test_state();
         let mut outcome_handles = Vec::with_capacity(OPERATIONS);
         for _ in 0..OPERATIONS {
             outcome_handles.push(
@@ -1163,11 +1600,8 @@ mod tests {
         }
         let outcomes_retained = outcomes_state.registry_observation();
         let outcomes_rss = process_working_set_bytes();
-        {
-            let mut outcomes = outcomes_state.outcomes().expect("release outcomes");
-            for handle in outcome_handles {
-                assert!(outcomes.remove(&handle).is_some());
-            }
+        for handle in outcome_handles {
+            assert!(outcomes_state.release_outcome(handle));
         }
         let outcomes_released = outcomes_state.registry_observation();
         let released_rss = process_working_set_bytes();
@@ -1201,7 +1635,7 @@ mod tests {
         const RESULT_BURST: usize = 64;
         const DIAGNOSTIC_BURST: usize = 64;
 
-        let state = State::new();
+        let state = configured_test_state();
         let baseline_rss = process_working_set_bytes();
         let mut old_generation = Vec::with_capacity(ENGINES_PER_GENERATION);
         let mut current_generation = Vec::with_capacity(ENGINES_PER_GENERATION);
@@ -1241,11 +1675,8 @@ mod tests {
         let burst_live = state.registry_observation();
         let burst_rss = process_working_set_bytes();
 
-        {
-            let mut registry = state.outcomes().expect("release live outcomes");
-            for handle in outcomes {
-                assert!(registry.remove(&handle).is_some());
-            }
+        for handle in outcomes {
+            assert!(state.release_outcome(handle));
         }
         {
             let mut registry = state.controls().expect("release live controls");
@@ -1253,19 +1684,13 @@ mod tests {
                 assert!(registry.remove(&handle).is_some());
             }
         }
-        {
-            let mut registry = state.engines().expect("retire old generation");
-            for handle in old_generation {
-                assert!(registry.remove(&handle).is_some());
-            }
+        for handle in old_generation {
+            assert!(state.release_engine(handle));
         }
         let current_only = state.registry_observation();
         let current_only_rss = process_working_set_bytes();
-        {
-            let mut registry = state.engines().expect("release current generation");
-            for handle in current_generation {
-                assert!(registry.remove(&handle).is_some());
-            }
+        for handle in current_generation {
+            assert!(state.release_engine(handle));
         }
         let released = state.registry_observation();
         let released_rss = process_working_set_bytes();

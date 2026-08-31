@@ -1,5 +1,28 @@
 using System.Diagnostics;
 
+if (args.Contains("--native-quota-smoke", StringComparer.Ordinal))
+{
+    NativeFastXsltClient.ConfigureRegistryPolicy(new NativeRegistryPolicy(
+        MaxEngines: ulong.MaxValue,
+        MaxControls: 0,
+        MaxOutcomes: ulong.MaxValue,
+        MaxOutcomePayloadBytes: ulong.MaxValue,
+        MaxEngineKnownCapacityBytes: ulong.MaxValue,
+        MaxAccountedBytes: ulong.MaxValue));
+    try
+    {
+        using var unexpected = NativeFastXsltClient.NativeControlHandle.Create(
+            firstChargeBarrier: false);
+        throw new InvalidOperationException("Zero control quota admitted a native handle.");
+    }
+    catch (NativeFastXsltException failure) when (
+        failure.Code == "FXFFI0103" && failure.Category == "resource-exhausted")
+    {
+        Console.WriteLine("native-quota-smoke: FXFFI0103 resource-exhausted");
+        return;
+    }
+}
+
 var builder = WebApplication.CreateBuilder(args);
 var repositoryRoot = FindRepositoryRoot(builder.Environment.ContentRootPath);
 var executableName = OperatingSystem.IsWindows() ? "fastxslt-worker.exe" : "fastxslt-worker";
@@ -15,6 +38,11 @@ var dotNetStylesheet = await File.ReadAllBytesAsync(dotNetStylesheetPath);
 
 var source = await File.ReadAllBytesAsync(sourcePath);
 var stylesheet = await File.ReadAllBytesAsync(stylesheetPath);
+
+// This unpublished comparison host opts out explicitly so its historical
+// pressure experiments remain comparable. Product hosts must supply their own
+// count and accounted-byte envelope before creating native handles.
+NativeFastXsltClient.ConfigureRegistryPolicy(NativeRegistryPolicy.Unlimited);
 
 var worker = await FastXsltWorkerClient.StartAsync(
     workerPath,

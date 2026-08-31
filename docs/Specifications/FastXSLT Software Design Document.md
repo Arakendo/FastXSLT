@@ -657,13 +657,31 @@ ADR-0015 adds only four read-only scalar registry-pressure observations to that
 unpublished surface. They expose counts and exact outcome bytes without
 exporting handles, maps, layouts, prepared-engine estimates, or mutation.
 
+ADR-0016 establishes the default that FastXSLT owns semantics, accounting, and
+enforcement while hosts own environment-dependent operational numbers. Fixed
+standard semantics, safety invariants, ABI constraints, and representation
+ceilings remain engine-owned and cannot be weakened by configuration.
+
+As its first concrete application, ADR-0016 requires the native adapter to use
+one explicit host-configured,
+process-wide admission policy before producing handles. Separate engine,
+control, and outcome counts compose with exact aggregate outcome bytes, private
+known prepared-engine capacity, and aggregate accounted bytes. Configuration is
+immutable for the process, admission and charge release are atomic, and no live
+handle is silently evicted. Quota exhaustion is a versioned tagged scalar that
+requires no outcome slot. These limits bound FastXSLT-accounted retained
+ownership; they are not a CLR, allocator, construction-peak, or whole-process
+memory guarantee. Hard memory ceilings and abandonment reclamation require an
+externally limited isolated worker.
+
 ADR-0003 defines the exception policy: tests are necessary but cannot prove an
 unsafe invariant. Any first-party unsafe implementation requires its own narrow
 ADR, a measured need that safe Rust cannot reasonably meet, a written safety
 contract, minimized and reviewable surface, safe reference behavior whenever
 practical, specialized verification appropriate to the risk, and explicit
 removal criteria. ADR-0008, as narrowly extended by ADR-0015's scalar-only
-observation exports, is the only current exception.
+observation exports and ADR-0016's scalar-only policy configuration and status
+surface, is the only current exception.
 
 For embedded consumers, measurements include parsing or marshaling, interop,
 stylesheet lookup/compilation policy, execution, result transfer, diagnostics,

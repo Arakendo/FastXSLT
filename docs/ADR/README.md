@@ -72,3 +72,7 @@ but supersede a materially changed decision instead of rewriting its history.
   -- Accepted; add four scalar-only measurement exports for current native
   registry counts and exact outcome bytes without adding an unsafe block or
   exposing representation layout.
+- [ADR-0016: Host-Owned Operational Policy and Native Registry Admission](ADR-0016-host-configured-native-registry-admission.md)
+  -- Accepted; hosts own environment-dependent operational numbers by default,
+  while FastXSLT owns semantics and enforcement; apply that principle through
+  immutable native registry admission and tagged exhaustion statuses.

@@ -112,6 +112,17 @@ carries already-signalled cooperative cancellation and an invocation-local
 XSLT-instruction budget as scalar values. That scalar operation alone has no
 active mid-execution signal.
 
+ADR-0016 requires the managed host to configure the process-wide native
+registry policy before creating any handle. `NativeRegistryPolicy` supplies
+engine, control, and outcome counts; exact retained outcome bytes; known
+prepared-engine capacity; and aggregate accounted bytes. Configuration is
+one-shot, repeated identical values are idempotent, and quota exhaustion maps
+from a capacity-independent tagged scalar to a machine-readable
+`NativeFastXsltException`. This comparison host explicitly selects
+`NativeRegistryPolicy.Unlimited` so historical pressure measurements remain
+comparable; that opt-out is not a production default or a whole-process memory
+guarantee.
+
 ADR-0010 adds active cooperative cancellation through Rust-owned numeric
 control handles. The managed adapter retains them with `SafeHandle`, may adapt
 a `CancellationToken`, and runs the blocking controlled P/Invoke on a task. The

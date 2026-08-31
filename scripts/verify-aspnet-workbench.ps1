@@ -60,6 +60,12 @@ try {
     $nativeLibrary = Join-Path $repositoryRoot "target/release/$nativeLibraryName"
     $managedOutput = Join-Path $repositoryRoot 'workbenches/FastXSLT.AspNet.Workbench/bin/Release/net8.0'
     Copy-Item -LiteralPath $nativeLibrary -Destination $managedOutput -Force
+    $managedAssembly = Join-Path $managedOutput 'FastXSLT.AspNet.Workbench.dll'
+    $quotaSmoke = dotnet $managedAssembly --native-quota-smoke
+    if ($LASTEXITCODE -ne 0 -or
+        $quotaSmoke -cne 'native-quota-smoke: FXFFI0103 resource-exhausted') {
+        throw "Native quota smoke failed: $quotaSmoke"
+    }
 
     $server = Start-Process -FilePath 'dotnet' `
         -ArgumentList @('run', '--no-build', '--configuration', 'Release', '--project', $project, '--urls', $baseAddress) `

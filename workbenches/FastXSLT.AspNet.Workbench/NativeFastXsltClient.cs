@@ -5,6 +5,8 @@ using Microsoft.Win32.SafeHandles;
 
 public sealed class NativeFastXsltClient : IDisposable
 {
+    private const ulong AdmissionStatusTag = 1UL << 63;
+    private const ulong AdmissionStatusCodeMask = (1UL << 56) - 1;
     private readonly NativeEngineHandle _engine;
     private readonly object _gate = new();
 
@@ -69,9 +71,36 @@ public sealed class NativeFastXsltClient : IDisposable
 
     private static void AssertAbiVersion()
     {
-        if (NativeMethods.AbiVersion() != 2)
+        if (NativeMethods.AbiVersion() != 3)
         {
             throw new InvalidOperationException("Unexpected native FastXSLT workbench ABI version.");
+        }
+    }
+
+    public static void ConfigureRegistryPolicy(NativeRegistryPolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+        AssertAbiVersion();
+        var status = NativeMethods.ConfigureRegistryPolicy(
+            policy.MaxEngines,
+            policy.MaxControls,
+            policy.MaxOutcomes,
+            policy.MaxOutcomePayloadBytes,
+            policy.MaxEngineKnownCapacityBytes,
+            policy.MaxAccountedBytes);
+        switch (status)
+        {
+            case 0:
+                return;
+            case 1:
+                throw new InvalidOperationException(
+                    "A different native registry policy is already active for this process.");
+            case 2:
+                throw new ArgumentOutOfRangeException(
+                    nameof(policy),
+                    "A native registry policy limit does not fit this platform.");
+            default:
+                throw new InvalidOperationException("Native registry policy configuration failed.");
         }
     }
 
@@ -97,6 +126,7 @@ public sealed class NativeFastXsltClient : IDisposable
 
     private static NativeFastXsltClient FromCreationOutcome(ulong outcome)
     {
+        ThrowIfAdmissionStatus(outcome);
         if (NativeMethods.OutcomeKind(outcome) != 1)
         {
             throw ReadFailureAndRelease(outcome);
@@ -127,6 +157,7 @@ public sealed class NativeFastXsltClient : IDisposable
             ObjectDisposedException.ThrowIf(_engine.IsClosed, this);
             var request = Encoding.UTF8.GetBytes(requestIdentity);
             var outcome = NativeMethods.Transform(_engine.Value, request, (nuint)request.Length);
+            ThrowIfAdmissionStatus(outcome);
             if (outcome == 0)
             {
                 throw new InvalidOperationException("Native transform could not retain its outcome.");
@@ -266,6 +297,7 @@ public sealed class NativeFastXsltClient : IDisposable
 
     private static string ReadTransformOutcome(ulong outcome)
     {
+        ThrowIfAdmissionStatus(outcome);
         var kind = NativeMethods.OutcomeKind(outcome);
         if (kind == 3)
         {
@@ -324,6 +356,39 @@ public sealed class NativeFastXsltClient : IDisposable
                     resource,
                     ulong.Parse(start),
                     ulong.Parse(end)),
+            detail);
+    }
+
+    private static void ThrowIfAdmissionStatus(ulong value)
+    {
+        if ((value & AdmissionStatusTag) == 0)
+        {
+            return;
+        }
+        var version = (value >> 56) & 0x7f;
+        var status = value & AdmissionStatusCodeMask;
+        if (version != 0)
+        {
+            throw new InvalidDataException(
+                $"Unknown native admission-status version {version}.");
+        }
+        var (code, detail) = status switch
+        {
+            1 => ("FXFFI0101", "Native registry policy has not been configured."),
+            2 => ("FXFFI0102", "Native engine-handle quota is exhausted."),
+            3 => ("FXFFI0103", "Native active-control quota is exhausted."),
+            4 => ("FXFFI0104", "Native outcome-handle quota is exhausted."),
+            5 => ("FXFFI0105", "Native outcome-payload-byte quota is exhausted."),
+            6 => ("FXFFI0106", "Native known prepared-engine-capacity quota is exhausted."),
+            7 => ("FXFFI0107", "Native aggregate accounted-byte quota is exhausted."),
+            _ => throw new InvalidDataException(
+                $"Unknown native admission-status code {status}.")
+        };
+        throw new NativeFastXsltException(
+            code,
+            "resource-exhausted",
+            requestId: null,
+            location: null,
             detail);
     }
 
@@ -421,6 +486,7 @@ public sealed class NativeFastXsltClient : IDisposable
         public static NativeControlHandle Create(bool firstChargeBarrier)
         {
             var value = NativeMethods.ControlCreate(firstChargeBarrier ? 1u : 0u);
+            ThrowIfAdmissionStatus(value);
             if (value == 0)
             {
                 throw new InvalidOperationException("Native invocation control creation failed.");
@@ -484,6 +550,15 @@ public sealed class NativeFastXsltClient : IDisposable
 
         [DllImport(Library, EntryPoint = "fastxslt_workbench_v0_abi_version")]
         internal static extern uint AbiVersion();
+
+        [DllImport(Library, EntryPoint = "fastxslt_workbench_v0_configure_registry_policy")]
+        internal static extern uint ConfigureRegistryPolicy(
+            ulong maxEngines,
+            ulong maxControls,
+            ulong maxOutcomes,
+            ulong maxOutcomePayloadBytes,
+            ulong maxEngineKnownCapacityBytes,
+            ulong maxAccountedBytes);
 
         [DllImport(Library, EntryPoint = "fastxslt_workbench_v0_create")]
         internal static extern ulong Create(
@@ -589,6 +664,23 @@ public sealed record NativeRegistryObservation(
     ulong ControlHandles,
     ulong OutcomeHandles,
     ulong OutcomePayloadBytes);
+
+public sealed record NativeRegistryPolicy(
+    ulong MaxEngines,
+    ulong MaxControls,
+    ulong MaxOutcomes,
+    ulong MaxOutcomePayloadBytes,
+    ulong MaxEngineKnownCapacityBytes,
+    ulong MaxAccountedBytes)
+{
+    public static NativeRegistryPolicy Unlimited { get; } = new(
+        ulong.MaxValue,
+        ulong.MaxValue,
+        ulong.MaxValue,
+        ulong.MaxValue,
+        ulong.MaxValue,
+        ulong.MaxValue);
+}
 
 public sealed record NativeActiveCancellationObservation(
     NativeFastXsltException Failure,

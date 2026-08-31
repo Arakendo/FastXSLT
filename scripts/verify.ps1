@@ -25,7 +25,7 @@ $nativeSource = Get-Content -LiteralPath $nativeBoundary -Raw
 $unsafeBlocks = [regex]::Matches($nativeSource, '\bunsafe\s*\{').Count
 $unsafeExports = [regex]::Matches($nativeSource, '#\[unsafe\(no_mangle\)\]').Count
 $unsafeAllowances = [regex]::Matches($nativeSource, '#\[allow\(unsafe_code').Count
-if ($unsafeBlocks -ne 2 -or $unsafeExports -ne 20 -or $unsafeAllowances -ne 22) {
+if ($unsafeBlocks -ne 2 -or $unsafeExports -ne 21 -or $unsafeAllowances -ne 23) {
     throw "ADR-0008 through ADR-0015 unsafe surface changed: blocks=$unsafeBlocks exports=$unsafeExports allowances=$unsafeAllowances"
 }
 $otherUnsafe = Get-ChildItem (Join-Path $PSScriptRoot '../crates') -Recurse -Filter '*.rs' |

@@ -76,13 +76,18 @@ ABI or claiming allocator-exact accounting. A
 then found more than 98% of the peak process-memory deltas gone before its first
 post-disposal sample and process memory near baseline at ten seconds. It closes
 the longer-window observation without inventing a portable half-life.
-Candidate replay using the engine estimate is complete. AR-0017 is now
-experimentally mature but policy-incomplete: representative consumer
-concurrency, memory headroom, trust, and exhaustion-recovery requirements must
-select the supported native envelope. If that selection admits a quota, an
-accepted ADR revision or superseding decision must define the tagged scalar
-status space, atomic admission, release recovery, concurrency races,
-host-visible diagnostics, and managed-wrapper behavior. The
+Candidate replay using the engine estimate is complete.
+[ADR-0016](../ADR/ADR-0016-host-configured-native-registry-admission.md) now
+accepts AR-0017's mechanism without inventing production thresholds: the host
+must supply one immutable process-wide hybrid count/accounted-byte policy before
+native handle admission. Versioned tagged scalar statuses report exhaustion
+without consuming outcome capacity, no valid handle is evicted, and the limits
+explicitly do not claim a whole-process memory cap. The
+[native admission implementation](../Evidence/native-host-configured-registry-admission-2026-08-31.md)
+now proves exact boundary/release behavior, concurrent last-slot admission, and
+real managed tagged-status mapping through ABI version 3. Consumer-selected
+production values and deployment guidance remain future host evidence; isolated
+workers remain the hard-reclamation profile. The
 [template-candidate fanout probe](../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
 has already confirmed exact `nodes × templates` growth, including 33,024
 candidate checks in the largest local sweep. A distinct candidate domain now
@@ -103,8 +108,8 @@ all eight complete clones in that workload, while preserving the complete-clone
 oracle. The [prepared-XDM anatomy](../Evidence/prepared-xdm-byte-anatomy-2026-08-31.md)
 also closes Finding 12's measurement half: node records dominate its repetitive
 3,002-node shape, followed by resource identities and relationships, so no XDM
-representation change is yet justified. Finding 6's registry-policy decision is
-the adversarial review's sole open item.
+representation change is yet justified. Finding 6 is now closed through the
+accepted policy, focused implementation evidence, and managed-boundary smoke.
 
 Completing the 31-case QT3 mixed deep-equal group raised
 `deep_equal_experiment.rs` to 1,054 lines and exposed independent atomic and

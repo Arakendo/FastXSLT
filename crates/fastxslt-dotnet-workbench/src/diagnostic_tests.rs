@@ -1,5 +1,5 @@
 use super::{
-    OUTCOME_FAILURE, OUTCOME_RESULT, fastxslt_workbench_v0_create,
+    OUTCOME_FAILURE, OUTCOME_RESULT, configure_global_test_policy, fastxslt_workbench_v0_create,
     fastxslt_workbench_v0_create_with_stylesheet_dependency, fastxslt_workbench_v0_engine_release,
     fastxslt_workbench_v0_outcome_copy, fastxslt_workbench_v0_outcome_kind,
     fastxslt_workbench_v0_outcome_length, fastxslt_workbench_v0_outcome_release,
@@ -34,6 +34,7 @@ fn failure_fields(outcome: u64) -> Vec<String> {
 
 #[test]
 fn native_failure_envelope_preserves_structured_location() {
+    configure_global_test_policy();
     let source_identity = b"urn:fastxslt:diagnostic:source";
     let source = b"<order/>";
     let stylesheet_identity = b"urn:fastxslt:diagnostic:unsupported-stylesheet";
@@ -69,6 +70,7 @@ fn native_failure_envelope_preserves_resource_authority_categories() {
     const SOURCE_ID: &str = "urn:fastxslt:native-resource-diagnostic:source";
     const STYLESHEET_ID: &str = "https://example.invalid/styles/main.xsl";
     const DEPENDENCY_ID: &str = "https://example.invalid/styles/dependency.xsl";
+    configure_global_test_policy();
     let stylesheet = br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="dependency.xsl"/></xsl:stylesheet>"#;
 
     for (deny, expected_code, expected_category) in [
@@ -106,6 +108,7 @@ fn native_dependency_initialization_executes_admitted_module() {
     const SOURCE_ID: &str = "urn:fastxslt:native-dependency:source";
     const STYLESHEET_ID: &str = "https://example.invalid/styles/main.xsl";
     const DEPENDENCY_ID: &str = "https://example.invalid/styles/dependency.xsl";
+    configure_global_test_policy();
     let source = b"<source/>";
     let stylesheet = br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="dependency.xsl"/><xsl:variable name="greeting">hello</xsl:variable></xsl:stylesheet>"#;
     let dependency = br#"<out xsl:version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:value-of select="$greeting"/></out>"#;
@@ -146,6 +149,7 @@ fn native_dependency_initialization_executes_admitted_module() {
 
 #[test]
 fn native_dependency_initialization_rejects_invalid_framing() {
+    configure_global_test_policy();
     let source = b"<source/>";
     let stylesheet = b"<out/>";
     let dependency_id = b"urn:fastxslt:invalid-framing:dependency";
