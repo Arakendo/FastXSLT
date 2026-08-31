@@ -560,6 +560,15 @@ unsupported. The mode denominator advances to 43 passes, 44 profile
 exclusions, and 82 visible default not-run cases.
 [Evidence](../Evidence/xslt30-mode-1431-fail-on-no-match-error-2026-08-30.md)
 
+The companion unchanged `mode-1423` case now supplies the positive control for
+that policy: explicit document, element, and text rules cover every visited
+node, so fail-on-no-match remains dormant and the complete result is produced.
+Its roughly 9 KiB expected document is admitted through a case-specific 16 KiB
+serialization ceiling rather than weakening the engine's bounded-output
+contract. The mode denominator advances to 44 passes, 44 profile exclusions,
+and 81 visible default not-run cases.
+[Evidence](../Evidence/xslt30-mode-1423-fail-on-no-match-success-control-2026-08-30.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -599,10 +608,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 43 | 0 | 44 | 82 |
+| `attr/mode` | 169 | 44 | 0 | 44 | 81 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **237** | **3** | **49** | **242** |
+| **Conserved total** | **531** | **238** | **3** | **49** | **241** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1449,6 +1458,9 @@ failed, and harness-error cases without an unqualified conformance claim.
   native dynamic error `XTDE0555` at the mode declaration when no rule matches,
   and leave every other built-in policy unsupported pending its own semantic
   slice.
+- [x] Execute `mode-1423` as the positive fail-on-no-match control. Prove the
+  policy does not preempt matching document, element, or text templates and
+  retain a bounded case-specific output ceiling for the native result.
 - [x] Execute `mode-1507` through `mode-1509` by validating mode name and
   visibility constraints before unrelated unsupported template expressions.
   Preserve native `XTSE0020` and keep valid visibility behavior private and

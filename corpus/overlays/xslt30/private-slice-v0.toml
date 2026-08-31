@@ -122,6 +122,13 @@ rationale = "An invocation-owned safe derived document applies exact strip-all e
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1423"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged positive result proves fail-on-no-match remains dormant while explicit document, element, and text templates cover all visited nodes."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-1431"
 selection = "selected"
 execution = "passed"

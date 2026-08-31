@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 43] = [
+const SELECTED_CASES: [&str; 44] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -52,6 +52,7 @@ const SELECTED_CASES: [&str; 43] = [
     "mode-1203",
     "mode-1204",
     "mode-1301",
+    "mode-1423",
     "mode-1431",
     "mode-1439",
     "mode-1444",
@@ -165,7 +166,7 @@ fn inventories_the_complete_mode_denominator_before_selection() {
         );
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
-    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 43);
+    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 44);
     assert_eq!(
         OVERLAY
             .matches("selection = \"excluded-by-profile\"")
@@ -379,6 +380,12 @@ fn reports_fail_on_no_match_for_the_native_unmatched_text_node() {
 }
 
 #[test]
+fn executes_fail_on_no_match_when_every_visited_node_has_a_rule() {
+    let (actual, expected) = execute_case("mode-1423");
+    assert_xml_equivalent(&actual, &expected);
+}
+
+#[test]
 fn rejects_nonempty_mode_declaration_with_native_static_error() {
     let document = load_test_set();
     let case = find_case(&document, "mode-1108");
@@ -568,7 +575,11 @@ fn execute_case_with_policy(
         1,
         ExecutionPolicy {
             denied_sources: HashSet::new(),
-            serialized_byte_limit: 4_096,
+            serialized_byte_limit: if case_name == "mode-1423" {
+                16_384
+            } else {
+                4_096
+            },
             work_limits: WorkLimits::unbounded(),
         },
     )
@@ -747,7 +758,7 @@ fn without_xml_declaration(xml: &str) -> &str {
 
 fn assert_xml_equivalent(actual: &str, expected: &str) {
     let limits = ParseLimits {
-        max_events: 64,
+        max_events: 4_096,
         max_depth: 16,
     };
     let actual = Document::from_parsed(

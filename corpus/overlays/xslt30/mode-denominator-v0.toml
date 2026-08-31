@@ -183,6 +183,12 @@ execution = "passed"
 rationale = "The exact xsl:strip-space elements='*' policy composes an invocation-owned safe derived document whose filtered relationships and string values are shared by built-in traversal and template selection while visible NodeIds retain prepared-source identity."
 
 [[case_override]]
+case_name = "mode-1423"
+selection = "selected"
+execution = "passed"
+rationale = "The unnamed fail-on-no-match mode completes successfully because explicit document, element, and text rules cover every visited source node; the policy does not preempt normal template selection."
+
+[[case_override]]
 case_name = "mode-1431"
 selection = "selected"
 execution = "passed"
