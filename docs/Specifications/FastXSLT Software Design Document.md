@@ -240,6 +240,14 @@ relative patterns retain their candidate-relative matching behavior. This does
 not admit leading descendant patterns such as `//name`, warning delivery, or a
 general pattern grammar.
 
+The private compiler admits named `xsl:mode` declarations only when
+`warning-on-multiple-match` is absent or uses a warning-disabled lexical. The
+declaration is validated but adds no runtime state because the property is
+semantically inert in that form. Invalid boolean lexicals report `XTSE0020`;
+warning-enabled values remain explicitly unsupported until warnings have an
+owned, bounded delivery channel. This does not admit other mode properties or
+define a public diagnostic event representation.
+
 Each source-node template invocation retains its position and size within the
 sequence selected by the applying instruction, including non-element child
 nodes. The bounded positional-pattern slice evaluates `position()` against the

@@ -87,6 +87,24 @@ execution = "passed"
 rationale = "The XSLT 3.0 default recovery path selects the later equal-ranked matching rule without importing a legacy compatibility mode."
 
 [[case_override]]
+case_name = "mode-0803"
+selection = "selected"
+execution = "passed"
+rationale = "Named xsl:mode declarations validate warning-on-multiple-match=no as an inert warning-disabled property before ordinary use-last recovery."
+
+[[case_override]]
+case_name = "mode-0805"
+selection = "selected"
+execution = "passed"
+rationale = "XSLT 3.0 false and numeric-zero warning lexicals validate as warning-disabled properties without inventing diagnostic events."
+
+[[case_override]]
+case_name = "mode-0806"
+selection = "selected"
+execution = "passed"
+rationale = "The mixed-case Yes lexical is rejected during stylesheet compilation with the native XTSE0020 static error."
+
+[[case_override]]
 case_name = "mode-0901"
 selection = "selected"
 execution = "passed"

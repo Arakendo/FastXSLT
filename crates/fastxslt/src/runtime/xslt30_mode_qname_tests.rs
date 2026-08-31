@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 28] = [
+const SELECTED_CASES: [&str; 31] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -36,6 +36,9 @@ const SELECTED_CASES: [&str; 28] = [
     "mode-0801a",
     "mode-0801b",
     "mode-0801c",
+    "mode-0803",
+    "mode-0805",
+    "mode-0806",
     "mode-0901",
     "mode-1001",
     "mode-1101",
@@ -183,6 +186,33 @@ fn executes_native_multiple_match_recovery_and_error_policies() {
 }
 
 #[test]
+fn executes_warning_disabled_mode_declarations() {
+    for case_name in ["mode-0803", "mode-0805"] {
+        let (actual, expected) = execute_case(case_name);
+        assert_xml_equivalent(&actual, &expected);
+    }
+}
+
+#[test]
+fn rejects_invalid_warning_on_multiple_match_boolean() {
+    let document = load_test_set();
+    let case = find_case(&document, "mode-0806");
+    let expected_error = child_named(
+        &document,
+        child_named(&document, case, "result").expect("result metadata"),
+        "error",
+    )
+    .and_then(|error| attribute(&document, error, "code"));
+    assert_eq!(expected_error, Some("XTSE0020"));
+
+    let failure = compile_case_only("mode-0806")
+        .expect_err("mixed-case boolean should fail stylesheet compilation");
+    assert_eq!(failure.code, "XTSE0020");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+    assert!(failure.location.is_some());
+}
+
+#[test]
 fn executes_native_initial_mode_and_current_mode_continuation() {
     for case_name in [
         "mode-1101",
@@ -298,6 +328,26 @@ fn find_case(document: &Document, case_name: &str) -> NodeId {
         .into_iter()
         .find(|node| attribute(document, *node, "name") == Some(case_name))
         .expect("selected mode case")
+}
+
+fn compile_case_only(case_name: &str) -> Result<(), ExecutionFailure> {
+    let document = load_test_set();
+    let case = find_case(&document, case_name);
+    let test = child_named(&document, case, "test").expect("test metadata");
+    let stylesheet_file = child_named(&document, test, "stylesheet")
+        .and_then(|node| attribute(&document, node, "file"))
+        .expect("stylesheet file");
+    let directory =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../vendor/xslt30-test/tests/attr/mode");
+    let stylesheet_id = format!("https://example.invalid/xslt30/attr/mode/{stylesheet_file}");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, 8_192, 8_192));
+    resources
+        .admit(
+            stylesheet_id.clone(),
+            fs::read(directory.join(stylesheet_file)).expect("read stylesheet and close handle"),
+        )
+        .expect("admit stylesheet");
+    compile_resource(&resources.seal(), &stylesheet_id).map(|_| ())
 }
 
 fn case_dependency<'a>(document: &'a Document, case: NodeId, name: &str) -> Option<&'a str> {

@@ -8,6 +8,8 @@ use crate::xslt::golden_semantics_experiment::{
 
 #[path = "instruction_compiler.rs"]
 mod instruction_compiler;
+#[path = "mode_declaration_compiler.rs"]
+mod mode_declaration_compiler;
 #[path = "output_compiler.rs"]
 mod output_compiler;
 #[path = "stylesheet_module_compiler.rs"]
@@ -32,6 +34,7 @@ use template_pattern_compiler::compile_match_pattern;
 use instruction_compiler::{
     compile_sequence_excluding, literal_result_namespaces, parse_template_modes,
 };
+use mode_declaration_compiler::validate_mode_declaration;
 pub(super) use output_compiler::default_output_settings;
 use output_compiler::{compile_output, merge_output};
 
@@ -112,6 +115,9 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                     &mut matched_templates,
                     &mut named_templates,
                 )?;
+            }
+            (Some(XSLT_NAMESPACE), "mode") => {
+                validate_mode_declaration(document, child, &declared_version)?;
             }
             (Some(XSLT_NAMESPACE), "variable" | "param") => {
                 let kind = if name.local == "variable" {

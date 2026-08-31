@@ -94,6 +94,27 @@ rationale = "The XSLT 3.0 default recovery behavior selects the later equal-rank
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0803"
+selection = "selected"
+execution = "passed"
+rationale = "The exact no lexical validates as warning-disabled and leaves ordinary recovery semantics unchanged."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0805"
+selection = "selected"
+execution = "passed"
+rationale = "The exact false and numeric-zero XSLT 3.0 lexicals validate as warning-disabled without fabricating warnings."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0806"
+selection = "selected"
+execution = "passed"
+rationale = "The native XTSE0020 assertion matches the structured static error for the invalid mixed-case Yes lexical."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-0901"
 selection = "selected"
 execution = "passed"
