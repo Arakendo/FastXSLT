@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
-use crate::xslt::golden_semantics_experiment::TypedModeRequirement;
+use crate::xslt::golden_semantics_experiment::{FailOnNoMatchMode, TypedModeRequirement};
 
 use super::{
     CompileFailure, ensure_no_meaningful_children, ensure_only_attributes, invalid,
@@ -86,11 +86,16 @@ fn validate_on_no_match(
     }
 }
 
+pub(super) struct CompiledModeDeclaration {
+    pub(super) typed_requirement: Option<TypedModeRequirement>,
+    pub(super) fail_on_no_match: Option<FailOnNoMatchMode>,
+}
+
 pub(super) fn validate_mode_declaration(
     document: &Document,
     element: NodeId,
     declared_version: &str,
-) -> Result<Option<TypedModeRequirement>, CompileFailure> {
+) -> Result<CompiledModeDeclaration, CompileFailure> {
     ensure_only_attributes(
         document,
         element,
@@ -118,7 +123,7 @@ pub(super) fn validate_mode_declaration(
     )?;
     if names
         .as_ref()
-        .is_none_or(|names| names.len() != 1 || names[0].starts_with('#'))
+        .is_some_and(|names| names.len() != 1 || names[0].starts_with('#'))
     {
         return Err(unsupported(
             "FXST1037",
@@ -151,24 +156,63 @@ pub(super) fn validate_mode_declaration(
             document.location(element),
         ));
     }
+    compile_mode_semantics(
+        document,
+        element,
+        names.and_then(|names| names.into_iter().next()),
+        typed,
+    )
+}
+
+fn compile_mode_semantics(
+    document: &Document,
+    element: NodeId,
+    mode_name: Option<String>,
+    typed: Option<bool>,
+) -> Result<CompiledModeDeclaration, CompileFailure> {
     if typed == Some(true) {
-        return Ok(Some(TypedModeRequirement {
-            name: names
-                .expect("the admitted declaration has exactly one named mode")
-                .into_iter()
-                .next()
-                .expect("the admitted declaration has one mode"),
-            location: document.location(element).clone(),
-        }));
+        let Some(name) = mode_name else {
+            return Err(unsupported(
+                "FXST1037",
+                "typed semantics for the unnamed mode are outside the private declaration slice",
+                document.location(element),
+            ));
+        };
+        return Ok(CompiledModeDeclaration {
+            typed_requirement: Some(TypedModeRequirement {
+                name,
+                location: document.location(element).clone(),
+            }),
+            fail_on_no_match: None,
+        });
     }
-    if optional_attribute(document, element, None, "on-no-match").is_some() {
+    if let Some(on_no_match) = optional_attribute(document, element, None, "on-no-match") {
+        if on_no_match == "fail" {
+            return Ok(CompiledModeDeclaration {
+                typed_requirement: None,
+                fail_on_no_match: Some(FailOnNoMatchMode {
+                    name: mode_name,
+                    location: document.location(element).clone(),
+                }),
+            });
+        }
         return Err(unsupported(
             "FXST1041",
-            "explicit on-no-match semantics are outside the private mode declaration slice",
+            "this explicit on-no-match policy is outside the private mode declaration slice",
             document.location(element),
         ));
     }
-    Ok(None)
+    if mode_name.is_none() {
+        return Err(unsupported(
+            "FXST1037",
+            "the private xsl:mode declaration slice requires a named mode or on-no-match='fail'",
+            document.location(element),
+        ));
+    }
+    Ok(CompiledModeDeclaration {
+        typed_requirement: None,
+        fail_on_no_match: None,
+    })
 }
 
 fn validate_visibility(
@@ -307,6 +351,14 @@ mod tests {
             program.typed_mode_requirements[0].location.resource,
             "memory:mode-declaration.xsl"
         );
+    }
+
+    #[test]
+    fn retains_named_fail_on_no_match_policy() {
+        let program = compile("on-no-match", "fail")
+            .expect("named fail-on-no-match declaration should compile");
+        assert_eq!(program.fail_on_no_match_modes.len(), 1);
+        assert_eq!(program.fail_on_no_match_modes[0].name.as_deref(), Some("m"));
     }
 
     #[test]

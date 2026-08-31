@@ -183,6 +183,12 @@ execution = "passed"
 rationale = "The exact xsl:strip-space elements='*' policy composes an invocation-owned safe derived document whose filtered relationships and string values are shared by built-in traversal and template selection while visible NodeIds retain prepared-source identity."
 
 [[case_override]]
+case_name = "mode-1431"
+selection = "selected"
+execution = "passed"
+rationale = "The unnamed mode's on-no-match='fail' policy reports native dynamic error XTDE0555 when built-in dispatch reaches the first unmatched text node."
+
+[[case_override]]
 case_name = "mode-1439"
 selection = "selected"
 execution = "passed"

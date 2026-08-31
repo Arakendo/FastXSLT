@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 42] = [
+const SELECTED_CASES: [&str; 43] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -52,6 +52,7 @@ const SELECTED_CASES: [&str; 42] = [
     "mode-1203",
     "mode-1204",
     "mode-1301",
+    "mode-1431",
     "mode-1439",
     "mode-1444",
     "mode-1447",
@@ -164,7 +165,7 @@ fn inventories_the_complete_mode_denominator_before_selection() {
         );
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
-    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 42);
+    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 43);
     assert_eq!(
         OVERLAY
             .matches("selection = \"excluded-by-profile\"")
@@ -348,6 +349,32 @@ fn reports_typed_mode_requirement_for_the_native_untyped_source() {
             .as_ref()
             .map(|location| location.resource.as_str()),
         Some("https://example.invalid/xslt30/attr/mode/mode-1439.xsl")
+    );
+}
+
+#[test]
+fn reports_fail_on_no_match_for_the_native_unmatched_text_node() {
+    let document = load_test_set();
+    let case = find_case(&document, "mode-1431");
+    let expected_error = child_named(
+        &document,
+        child_named(&document, case, "result").expect("result metadata"),
+        "error",
+    )
+    .and_then(|error| attribute(&document, error, "code"));
+    assert_eq!(expected_error, Some("XTDE0555"));
+
+    let failure = execute_case_with_policy("mode-1431", MultipleMatchPolicy::UseLast)
+        .expect_err("fail-on-no-match mode should reject the first unmatched text node");
+    assert_eq!(failure.code, "XTDE0555");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+    assert_eq!(failure.request_id.as_deref(), Some("mode-1431"));
+    assert_eq!(
+        failure
+            .location
+            .as_ref()
+            .map(|location| location.resource.as_str()),
+        Some("https://example.invalid/xslt30/attr/mode/mode-1431.xsl")
     );
 }
 

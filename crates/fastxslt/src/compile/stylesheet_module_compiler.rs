@@ -108,6 +108,9 @@ fn merge_included_program(
     program
         .typed_mode_requirements
         .append(&mut included_program.typed_mode_requirements);
+    program
+        .fail_on_no_match_modes
+        .append(&mut included_program.fail_on_no_match_modes);
     if included_program.output != default_output_settings() {
         return Err(unsupported(
             "FXST1019",
@@ -522,6 +525,7 @@ fn compile_simplified_stylesheet_at(
         declared_version: declared_version.to_owned(),
         source_whitespace: SourceWhitespacePolicy::Preserve,
         typed_mode_requirements: Vec::new(),
+        fail_on_no_match_modes: Vec::new(),
         output: default_output_settings(),
         root_template: Some(root_template),
         root_template_modes: Vec::new(),

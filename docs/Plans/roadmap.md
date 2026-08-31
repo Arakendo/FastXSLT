@@ -550,6 +550,16 @@ denominator advances to 42 passes, 44 profile exclusions, and 83 visible
 default not-run cases.
 [Evidence](../Evidence/xslt30-mode-1439-typed-untyped-error-2026-08-30.md)
 
+The unchanged `mode-1431` case now retains the unnamed mode's
+`on-no-match="fail"` policy in compiled state and reports dynamic `XTDE0555`
+when dispatch reaches the first unmatched source text node. The policy is
+checked only after normal template selection fails, so matching document and
+element templates remain authoritative. The diagnostic retains request identity
+and the mode-declaration location. Other `on-no-match` policies remain
+unsupported. The mode denominator advances to 43 passes, 44 profile
+exclusions, and 82 visible default not-run cases.
+[Evidence](../Evidence/xslt30-mode-1431-fail-on-no-match-error-2026-08-30.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -589,10 +599,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 42 | 0 | 44 | 83 |
+| `attr/mode` | 169 | 43 | 0 | 44 | 82 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **236** | **3** | **49** | **243** |
+| **Conserved total** | **531** | **237** | **3** | **49** | **242** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1434,6 +1444,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   source before unrelated shallow-copy fallback. Preserve the stylesheet
   declaration location, keep streaming-dependent `mode-1438` excluded, and do
   not infer schema-aware execution.
+- [x] Execute `mode-1431` through the unnamed mode's
+  `on-no-match="fail"` policy. Apply normal template selection first, report
+  native dynamic error `XTDE0555` at the mode declaration when no rule matches,
+  and leave every other built-in policy unsupported pending its own semantic
+  slice.
 - [x] Execute `mode-1507` through `mode-1509` by validating mode name and
   visibility constraints before unrelated unsupported template expressions.
   Preserve native `XTSE0020` and keep valid visibility behavior private and

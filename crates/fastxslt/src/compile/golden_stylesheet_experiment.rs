@@ -95,7 +95,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
 
     let mut output = None;
     let mut source_whitespace = SourceWhitespacePolicy::Preserve;
-    let mut typed_mode_requirements = Vec::new();
+    let mut modes = CompiledModes::default();
     let mut root_template = None;
     let mut root_template_modes = Vec::new();
     let mut matched_templates = Vec::new();
@@ -124,7 +124,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                 )?;
             }
             (Some(XSLT_NAMESPACE), "mode") => {
-                typed_mode_requirements.extend(validate_mode(document, child, &declared_version)?);
+                modes.push(validate_mode(document, child, &declared_version)?);
             }
             (Some(XSLT_NAMESPACE), "strip-space") => {
                 ensure_only_attributes(document, child, &["elements"], "xsl:strip-space")?;
@@ -178,7 +178,8 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     Ok(StylesheetProgram {
         declared_version,
         source_whitespace,
-        typed_mode_requirements,
+        typed_mode_requirements: modes.typed,
+        fail_on_no_match_modes: modes.fail,
         output: output.map_or_else(default_output_settings, |declaration| declaration.settings),
         root_template,
         root_template_modes,
@@ -186,6 +187,19 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         named_templates,
         global_bindings,
     })
+}
+
+#[derive(Default)]
+struct CompiledModes {
+    typed: Vec<crate::xslt::golden_semantics_experiment::TypedModeRequirement>,
+    fail: Vec<crate::xslt::golden_semantics_experiment::FailOnNoMatchMode>,
+}
+
+impl CompiledModes {
+    fn push(&mut self, declaration: mode_declaration_compiler::CompiledModeDeclaration) {
+        self.typed.extend(declaration.typed_requirement);
+        self.fail.extend(declaration.fail_on_no_match);
+    }
 }
 
 pub(super) fn require_stylesheet_root(

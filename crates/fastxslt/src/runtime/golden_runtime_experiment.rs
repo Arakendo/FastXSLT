@@ -1475,6 +1475,20 @@ fn apply_builtin_template(
     parameters: &BTreeMap<String, InvocationParameter>,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    if let Some(policy) = inputs
+        .program
+        .fail_on_no_match_modes
+        .iter()
+        .find(|policy| policy.name.as_deref() == mode)
+    {
+        return Err(failure_at(
+            "XTDE0555",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            policy.location.clone(),
+            "the active mode's on-no-match='fail' policy rejected an unmatched node",
+        ));
+    }
     let source = inputs
         .source
         .expect("built-in source templates require a source document");
