@@ -41,9 +41,18 @@ policies. The first
 adds read-only scalar observation and real `SafeHandle` retention across
 concurrency 1/4/8/16/32, two/three generations, and 16–256 delayed valid
 `for-004` results. All rows reclaimed logical handles immediately; process
-memory remained noisy after release. Active controls, failure/large-result
-bursts, larger prepared shapes, sustained replacement, latency, candidate
-replay, and exhaustion delivery remain before AR-0017 can select policy. The
+memory remained noisy after release. The companion
+[registry-burst trace](../Evidence/aspnet-native-registry-burst-pressure-2026-08-31.md)
+now holds eight transforms at a real first-charge barrier, retains and validates
+128 structured failures, and retains eight 900 KB semantic results. All native
+ownership returns immediately to baseline, while decoded managed strings and
+allocator/OS pages reclaim independently. The first
+[candidate-policy replay](../Evidence/native-registry-candidate-policy-replay-2026-08-31.md)
+keeps count ceilings as cheap abuse protection but shows exact aggregate
+outcome bytes are needed to distinguish tiny diagnostic bursts from bounded
+near-limit results. Larger prepared shapes, sustained replacement, latency,
+engine-retention estimates, and exhaustion delivery remain before AR-0017 can
+select policy. The
 [template-candidate fanout probe](../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
 has already confirmed exact `nodes × templates` growth, including 33,024
 candidate checks in the largest local sweep. A distinct candidate domain now

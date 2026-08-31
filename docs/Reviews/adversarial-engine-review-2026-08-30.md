@@ -21,7 +21,7 @@ their original evidence. Implementation details and validation are recorded in
 | 3 | **Completed** | Temporary-tree `xsl:copy` now uses the compiled shallow-copy instruction path, including constructed attributes and body execution. The unconditional deep-copy shortcut was removed. |
 | 4 | **Boundary closed** | FastXSLT now reports `FXRT1014 / unsupported` before strip-all execution when the source contains any `xml:space` declaration. Full inherited `preserve`/`default` semantics remain deliberately unimplemented under ADR-0012. |
 | 5 | **Completed** | Source element copies retain effective in-scope namespace bindings assembled from their ancestor lineage. Isolated descendant `xsl:copy-of` and `xsl:copy` regressions pass. |
-| 6 | **Partially repaired -- policy decision required** | Outcomes are bounded and creation publication is atomic. Separate probes cover 100,000-handle abandonment, a 144-handle Rust host shape, and an ASP.NET matrix through 96 experiment engines plus 256 delayed valid outcomes. Every ASP.NET row returned logical ownership to baseline, while process memory settled non-monotonically. AR-0017 still requires control/failure/large-result pressure, sustained replacement, policy replay, and exhaustion-delivery comparison before selecting count, byte, domain, shrink, or isolation behavior. |
+| 6 | **Partially repaired -- policy decision required** | Outcomes are bounded and creation publication is atomic. Separate probes cover 100,000-handle abandonment, a 144-handle Rust host shape, an ASP.NET matrix through 96 experiment engines plus 256 delayed valid outcomes, and a burst with eight active controls, 128 structured failures, and eight 900 KB results. Exact ownership returned to baseline in every ASP.NET trace. Candidate replay shows that count ceilings need an aggregate outcome-byte companion, but no threshold is selected. AR-0017 still requires sustained replacement, larger prepared shapes, latency/engine-retention evidence, and exhaustion-delivery comparison before selecting policy. |
 | 7 | **Completed** | Every source and temporary matched-template scan charges a distinct `xslt-template-candidate` unit before testing each candidate. Zero-limit and deterministic-cancellation regressions retain structured domain/request identity and reduce the candidate observation gap to one. A paired 33,024-candidate probe measured 240.9 us uncharged versus 284.2 us charged locally; a dispatch index remains optional AR-0013 work. |
 | 8 | **Completed** | Temporary path and built-in selections carry real focus position/size through template and `next-match` execution. Two-node `1/2`, `2/2` regression evidence passes. |
 | 9 | **Boundary closed** | Same-module forward and cyclic global defaults fail at compilation as `FXST1044 / unsupported`; admitted backward dependencies continue to compile. A general dependency graph remains deferred. |
@@ -48,6 +48,11 @@ confirms Finding 12's warm frame pressure and the admitted safe copy-on-write
 replacement. The separate
 [prepared-XDM anatomy](../Evidence/prepared-xdm-byte-anatomy-2026-08-31.md)
 measures the other hypothesis without selecting another representation.
+Finding 6's latest
+[ASP.NET burst evidence](../Evidence/aspnet-native-registry-burst-pressure-2026-08-31.md)
+and [candidate replay](../Evidence/native-registry-candidate-policy-replay-2026-08-31.md)
+separate exact native ownership from managed and allocator retention and explain
+why outcome cardinality alone cannot be a deterministic memory ceiling.
 
 ## Review posture and limits
 

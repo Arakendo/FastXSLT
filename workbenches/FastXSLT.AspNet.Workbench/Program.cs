@@ -318,6 +318,27 @@ app.MapPost("/experiment/native-registry-pressure", async (
         operationalExperimentGate.Release();
     }
 });
+app.MapPost("/experiment/native-registry-bursts", async (
+    int? concurrency,
+    int? delayedFailures,
+    int? largeOutcomes,
+    int? largePayloadBytes) =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await NativeRegistryBurstExperiment.RunAsync(
+            stylesheet,
+            concurrency ?? 8,
+            delayedFailures ?? 128,
+            largeOutcomes ?? 8,
+            largePayloadBytes ?? 900_000));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
 app.MapPost("/experiment/native-active-cancellation", async () =>
 {
     await operationalExperimentGate.WaitAsync();

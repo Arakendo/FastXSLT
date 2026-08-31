@@ -9,12 +9,17 @@ param(
     [switch]$OperationalExperiments,
     [switch]$NativeRegistryPressure,
     [switch]$RegistrySummaryOnly,
+    [switch]$NativeRegistryBursts,
     [int]$TieredRequests = 250,
     [int]$TieredConcurrency = 4,
     [int]$RegistryItems = 500,
     [int]$RegistryConcurrency = 4,
     [int]$RegistryGenerations = 2,
-    [int]$RegistryDelayedOutcomes = 64
+    [int]$RegistryDelayedOutcomes = 64,
+    [int]$BurstConcurrency = 8,
+    [int]$BurstDelayedFailures = 128,
+    [int]$BurstLargeOutcomes = 8,
+    [int]$BurstLargePayloadBytes = 900000
 )
 
 $ErrorActionPreference = 'Stop'
@@ -462,6 +467,40 @@ try {
             }
             else {
                 $registryPressure | ConvertTo-Json -Depth 8
+            }
+        }
+        if ($NativeRegistryBursts) {
+            $registryBurstUri = "$baseAddress/experiment/native-registry-bursts?concurrency=$BurstConcurrency&delayedFailures=$BurstDelayedFailures&largeOutcomes=$BurstLargeOutcomes&largePayloadBytes=$BurstLargePayloadBytes"
+            $registryBurst = Invoke-RestMethod -Method Post -Uri $registryBurstUri
+            $burstBaseline = $registryBurst.checkpoints[0].registry
+            $expectedBurstEngineHighWater = $burstBaseline.engineHandles + $BurstConcurrency + [Math]::Min($BurstConcurrency, 8)
+            if (-not $registryBurst.logicalRegistryReturnedToBaseline -or
+                $registryBurst.legitimateHighWater.engineHandles -ne $expectedBurstEngineHighWater -or
+                $registryBurst.legitimateHighWater.controlHandles -ne ($burstBaseline.controlHandles + $BurstConcurrency) -or
+                $registryBurst.legitimateHighWater.outcomeHandles -ne ($burstBaseline.outcomeHandles + $BurstDelayedFailures + $BurstLargeOutcomes) -or
+                $registryBurst.legitimateHighWater.outcomePayloadBytes -le ($BurstLargeOutcomes * $BurstLargePayloadBytes) -or
+                $registryBurst.settlement.Count -ne 6) {
+                throw "Native registry-burst experiment violated ownership, payload, or reclamation accounting: $($registryBurst | ConvertTo-Json -Depth 8)"
+            }
+            if ($RegistrySummaryOnly) {
+                [pscustomobject]@{
+                    Experiment = 'NativeRegistryBursts'
+                    Concurrency = $registryBurst.concurrency
+                    DelayedFailures = $registryBurst.delayedFailures
+                    LargeOutcomes = $registryBurst.largeOutcomes
+                    LargePayloadBytes = $registryBurst.largePayloadBytes
+                    EngineHighWater = $registryBurst.legitimateHighWater.engineHandles
+                    ControlHighWater = $registryBurst.legitimateHighWater.controlHandles
+                    OutcomeHighWater = $registryBurst.legitimateHighWater.outcomeHandles
+                    OutcomePayloadHighWater = $registryBurst.legitimateHighWater.outcomePayloadBytes
+                    ActiveControlBurstMilliseconds = $registryBurst.activeControlBurstMilliseconds
+                    FailureBurstMilliseconds = $registryBurst.failureBurstMilliseconds
+                    LargeResultBurstMilliseconds = $registryBurst.largeResultBurstMilliseconds
+                    LogicalRegistryReturnedToBaseline = $registryBurst.logicalRegistryReturnedToBaseline
+                }
+            }
+            else {
+                $registryBurst | ConvertTo-Json -Depth 8
             }
         }
         for ($run = 1; $run -le $MeasurementRuns; $run++) {

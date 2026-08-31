@@ -31,6 +31,7 @@ offers:
 - `POST /experiment/instruction-budget`
 - `POST /experiment/native-boundary`
 - `POST /experiment/native-registry-pressure?items=500&concurrency=4&generations=2&delayedOutcomes=64`
+- `POST /experiment/native-registry-bursts?concurrency=8&delayedFailures=128&largeOutcomes=8&largePayloadBytes=900000`
 - `POST /experiment/generation-replacement`
 - `POST /experiment/host-file-replacement`
 - `POST /transform/saxoncs`
@@ -138,6 +139,18 @@ Run one trace with:
   -RegistryConcurrency 32 `
   -RegistryGenerations 3 `
   -RegistryDelayedOutcomes 256
+```
+
+The companion registry-burst endpoint pauses real transforms at their first
+charge to observe live control handles, retains structured invalid-request
+diagnostics, and retains bounded 900 KB semantic results. It reports exact
+outcome bytes and releases every ownership class before sampling process-memory
+settlement. Run it with:
+
+```powershell
+./scripts/verify-aspnet-workbench.ps1 `
+  -NativeRegistryBursts `
+  -RegistrySummaryOnly
 ```
 
 The host-file variant imports source and stylesheet files into owned bytes,

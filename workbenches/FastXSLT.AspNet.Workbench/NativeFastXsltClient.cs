@@ -225,6 +225,26 @@ public sealed class NativeFastXsltClient : IDisposable
             ControlDoubleDisposeWasIdempotent: true);
     }
 
+    internal NativeActiveTransform StartBarrierTransform(string requestIdentity)
+    {
+        ObjectDisposedException.ThrowIf(_engine.IsClosed, this);
+        var control = NativeControlHandle.Create(firstChargeBarrier: true);
+        try
+        {
+            return new NativeActiveTransform(
+                control,
+                Task.Run(() => TransformWithControl(
+                    requestIdentity,
+                    control,
+                    maximumXsltInstructions: 1_000_000)));
+        }
+        catch
+        {
+            control.Dispose();
+            throw;
+        }
+    }
+
     private string TransformWithControl(
         string requestIdentity,
         NativeControlHandle control,
@@ -272,35 +292,39 @@ public sealed class NativeFastXsltClient : IDisposable
     {
         try
         {
-            var bytes = ReadOutcome(outcome);
-            var offset = 0;
-            var code = ReadField(bytes, ref offset);
-            var category = ReadField(bytes, ref offset);
-            var requestId = ReadField(bytes, ref offset);
-            var resource = ReadField(bytes, ref offset);
-            var start = ReadField(bytes, ref offset);
-            var end = ReadField(bytes, ref offset);
-            var detail = ReadField(bytes, ref offset);
-            if (offset != bytes.Length)
-            {
-                throw new InvalidDataException("Native failure envelope has trailing bytes.");
-            }
-            return new NativeFastXsltException(
-                code,
-                category,
-                requestId.Length == 0 ? null : requestId,
-                resource.Length == 0
-                    ? null
-                    : new FastXsltDiagnosticLocation(
-                        resource,
-                        ulong.Parse(start),
-                        ulong.Parse(end)),
-                detail);
+            return DecodeFailure(ReadOutcome(outcome));
         }
         finally
         {
             NativeMethods.OutcomeRelease(outcome);
         }
+    }
+
+    private static NativeFastXsltException DecodeFailure(byte[] bytes)
+    {
+        var offset = 0;
+        var code = ReadField(bytes, ref offset);
+        var category = ReadField(bytes, ref offset);
+        var requestId = ReadField(bytes, ref offset);
+        var resource = ReadField(bytes, ref offset);
+        var start = ReadField(bytes, ref offset);
+        var end = ReadField(bytes, ref offset);
+        var detail = ReadField(bytes, ref offset);
+        if (offset != bytes.Length)
+        {
+            throw new InvalidDataException("Native failure envelope has trailing bytes.");
+        }
+        return new NativeFastXsltException(
+            code,
+            category,
+            requestId.Length == 0 ? null : requestId,
+            resource.Length == 0
+                ? null
+                : new FastXsltDiagnosticLocation(
+                    resource,
+                    ulong.Parse(start),
+                    ulong.Parse(end)),
+            detail);
     }
 
     private static byte[] ReadOutcome(ulong outcome)
@@ -362,6 +386,16 @@ public sealed class NativeFastXsltClient : IDisposable
             return Encoding.UTF8.GetString(ReadOutcome(_outcome.Value));
         }
 
+        public NativeFastXsltException ReadFailure()
+        {
+            ObjectDisposedException.ThrowIf(_outcome.IsClosed, this);
+            if (NativeMethods.OutcomeKind(_outcome.Value) != 3)
+            {
+                throw new InvalidDataException("Retained native outcome is not a failure.");
+            }
+            return DecodeFailure(ReadOutcome(_outcome.Value));
+        }
+
         public void Dispose() => _outcome.Dispose();
     }
 
@@ -375,7 +409,7 @@ public sealed class NativeFastXsltClient : IDisposable
         protected override bool ReleaseHandle() => NativeMethods.OutcomeRelease(Value) == 1;
     }
 
-    private sealed class NativeControlHandle : SafeHandleZeroOrMinusOneIsInvalid
+    internal sealed class NativeControlHandle : SafeHandleZeroOrMinusOneIsInvalid
     {
         private NativeControlHandle(ulong value) : base(ownsHandle: true) =>
             SetHandle(unchecked((nint)value));
@@ -403,6 +437,45 @@ public sealed class NativeFastXsltClient : IDisposable
         }
 
         protected override bool ReleaseHandle() => NativeMethods.ControlRelease(Value) == 1;
+    }
+
+    internal sealed class NativeActiveTransform(
+        NativeControlHandle control,
+        Task<string> completion) : IDisposable
+    {
+        public bool FirstChargeObserved => control.FirstChargeObserved;
+        public bool IsCompleted => completion.IsCompleted;
+
+        public void Cancel() => control.Cancel();
+
+        public async Task<NativeFastXsltException> ObserveCancellationAsync()
+        {
+            try
+            {
+                _ = await completion;
+                throw new InvalidOperationException(
+                    "Barrier-controlled native transform unexpectedly completed.");
+            }
+            catch (NativeFastXsltException failure)
+            {
+                return failure;
+            }
+        }
+
+        public async Task AwaitCompletionIgnoringFailureAsync()
+        {
+            try
+            {
+                _ = await completion;
+            }
+            catch
+            {
+                // Cleanup waits for native use of the numeric control to end;
+                // the caller validates the operation failure separately.
+            }
+        }
+
+        public void Dispose() => control.Dispose();
     }
 
     private static class NativeMethods

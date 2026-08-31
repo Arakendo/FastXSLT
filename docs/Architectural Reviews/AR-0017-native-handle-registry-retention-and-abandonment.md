@@ -9,7 +9,7 @@
 | Trigger | Adversarial review Finding 6 confirmed that foreign callers can retain engines, controls, and outcomes without an aggregate ceiling |
 | Related ADRs | ADR-0002, ADR-0003, ADR-0008, ADR-0015 |
 | Related reviews | AR-0002, AR-0009, AR-0010, AR-0012 |
-| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; `../Evidence/native-registry-live-use-high-water-2026-08-31.md`; `../Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`; future consumer requirements |
+| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; `../Evidence/native-registry-live-use-high-water-2026-08-31.md`; `../Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`; `../Evidence/aspnet-native-registry-burst-pressure-2026-08-31.md`; `../Evidence/native-registry-candidate-policy-replay-2026-08-31.md`; future consumer requirements |
 
 ## Architectural question
 
@@ -127,6 +127,24 @@ rose about 828 KiB over baseline. The engine-only checkpoint attributed about
 engines. This is one host-shaped calibration point, not a supported maximum;
 larger prepared workloads and real consumer bursts remain pressure.
 
+The first ASP.NET burst tranche then held eight real transforms at their first
+charge, retained 128 decoded structured failures, and retained eight validated
+900,049-byte results. Its component high-water was 17 engines, eight controls,
+136 outcomes, and exactly 7,210,248 outcome bytes. Every native ownership
+dimension returned immediately to baseline after release. Process memory did
+not: managed strings decoded from the large results remained eligible for later
+collection, independently of native registry ownership and allocator/OS page
+retention. This completes the first active-control, diagnostic, and near-limit
+result pressure slice without making RSS a quota oracle.
+
+Arithmetic replay against the generation and burst traces shows why outcome
+count is useful but insufficient as a memory boundary. A 256-outcome count
+ceiling alone can admit up to 256 MiB of bounded envelopes, whereas the observed
+mixed burst occupied about 7.2 MiB and the earlier 256-result trace occupied
+only 14,080 bytes. Exact aggregate outcome bytes therefore remain part of the
+leading hybrid candidate. No threshold, safety margin, engine-byte estimate, or
+exhaustion response is selected by that replay.
+
 ## Planned decision experiment
 
 Policy calibration and policy correctness are separate evidence jobs:
@@ -201,16 +219,22 @@ delivery, creation rollback, deterministic transform/cancel/release races, and
 that no valid handle is silently evicted. The host soak cannot prove those
 properties.
 
-The first ASP.NET trace now covers the planned 1/4/8/16/32 concurrency points,
-two- and three-generation overlap, and 16 through 256 deliberately delayed
-valid outcomes over unchanged XSLT30 `for-004`. At the largest point, 96
+The first ASP.NET generation trace now covers the planned 1/4/8/16/32
+concurrency points, two- and three-generation overlap, and 16 through 256
+deliberately delayed valid outcomes over unchanged XSLT30 `for-004`. At the
+largest point, 96
 experiment engines plus the ordinary singleton and 256 outcomes returned
 logically to baseline immediately after explicit release. Working set and
 private bytes remained above fresh-process baseline and fluctuated during the
 one-second settlement window, validating the need for separate ownership and
-process-memory observations. Active controls, failure bursts, large outcomes,
-larger prepared corpus shapes, sustained replacement, latency, and policy replay
-remain open.
+process-memory observations. A second trace now covers eight active first-charge
+controls, 128 retained structured failures, and eight retained 900 KB results;
+exact native ownership again returned to baseline while managed and process
+memory followed independent reclamation timelines. The captured observations
+have also been replayed arithmetically against count-only and
+count-plus-exact-outcome-byte candidates. Larger prepared corpus shapes,
+sustained replacement, latency distributions, engine-retention estimates, and
+exhaustion delivery remain open.
 
 ADR-0015 admits the four scalar observation exports used by this trace. It adds
 no unsafe block, quota behavior, registry mutation, layout exposure, or public
@@ -244,9 +268,12 @@ representative host policy are reviewed.
 - [x] Establish the first ASP.NET registry-observation and valid-retention trace
   across concurrency 1/4/8/16/32, two/three generations, and exact outcome-byte
   accounting while preserving the unchanged `for-004` result.
+- [x] Exercise and separately account for real active controls, retained
+  structured failures, and retained near-limit semantic results through the
+  ASP.NET/native boundary.
 - [ ] Measure logical release and process-memory reclamation half-life
   separately after each bounded burst.
-- [ ] Replay the captured trace against count-only and hybrid count/byte
+- [x] Replay the captured trace against count-only and hybrid count/byte
   candidates without enforcing either in the production path.
 - [ ] Compare reserved static/sentinel failure delivery with out-of-band scalar
   admission status before changing the ABI.
@@ -287,3 +314,8 @@ consumers.
   ASP.NET matrix through concurrency 32, three generations, and 256 delayed
   valid outcomes. Every row returned logical ownership to baseline; process
   memory remained non-monotonic during the one-second settlement trace.
+- 2026-08-31 -- Added the first active-control, structured-failure, and
+  near-limit-result ASP.NET burst. Eight live controls, 128 failures, and eight
+  900 KB results returned exact registry ownership to baseline. Candidate replay
+  retained count ceilings as abuse protection and nominated exact aggregate
+  outcome bytes as a necessary hybrid dimension without selecting thresholds.
