@@ -11,7 +11,7 @@ use crate::xpath::for_distinct_values_experiment::{
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, BooleanExpression, Instruction, NodeTest, SequenceItemExpression,
-    StylesheetProgram, TemplateArgument,
+    SourceWhitespacePolicy, StylesheetProgram, TemplateArgument,
 };
 
 #[path = "resource_compiler.rs"]
@@ -105,6 +105,15 @@ fn execute_program_with_parameters(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
+    let effective_source = match program.source_whitespace {
+        SourceWhitespacePolicy::Preserve => None,
+        SourceWhitespacePolicy::StripAllElementWhitespace => Some(
+            source
+                .derive_stripping_all_element_whitespace(control)
+                .map_err(|failure| control_failure(failure, request_id))?,
+        ),
+    };
+    let source = effective_source.as_ref().unwrap_or(source);
     let globals =
         materialize_global_defaults(program, Some(source), parameters, request_id, control)?;
     let inputs = SequenceInputs {
@@ -173,6 +182,15 @@ fn execute_initial_mode(
             format!("unknown initial mode: {name}"),
         ));
     }
+    let effective_source = match program.source_whitespace {
+        SourceWhitespacePolicy::Preserve => None,
+        SourceWhitespacePolicy::StripAllElementWhitespace => Some(
+            source
+                .derive_stripping_all_element_whitespace(control)
+                .map_err(|failure| control_failure(failure, request_id))?,
+        ),
+    };
+    let source = effective_source.as_ref().unwrap_or(source);
     let globals =
         materialize_global_defaults(program, Some(source), parameters, request_id, control)?;
     let inputs = SequenceInputs {

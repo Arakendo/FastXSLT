@@ -1,6 +1,7 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
 use crate::xslt::golden_semantics_experiment::{
-    Instruction, MatchPattern, MatchedTemplate, StylesheetProgram, Template, TemplatePriority,
+    Instruction, MatchPattern, MatchedTemplate, SourceWhitespacePolicy, StylesheetProgram,
+    Template, TemplatePriority,
 };
 
 use super::instruction_compiler::{compile_sequence_excluding, literal_result_namespaces};
@@ -101,6 +102,9 @@ fn merge_included_program(
     location: &SourceLocation,
     allow_duplicate_matches: bool,
 ) -> Result<(), CompileFailure> {
+    if included_program.source_whitespace == SourceWhitespacePolicy::StripAllElementWhitespace {
+        program.source_whitespace = SourceWhitespacePolicy::StripAllElementWhitespace;
+    }
     if included_program.output != default_output_settings() {
         return Err(unsupported(
             "FXST1019",
@@ -513,6 +517,7 @@ fn compile_simplified_stylesheet_at(
     };
     Ok(StylesheetProgram {
         declared_version: declared_version.to_owned(),
+        source_whitespace: SourceWhitespacePolicy::Preserve,
         output: default_output_settings(),
         root_template: Some(root_template),
         root_template_modes: Vec::new(),

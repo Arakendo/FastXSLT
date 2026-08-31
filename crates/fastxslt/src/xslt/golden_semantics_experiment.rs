@@ -15,12 +15,19 @@ pub(crate) const STANDARD_INITIAL_TEMPLATE_NAME: &str =
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StylesheetProgram {
     pub(crate) declared_version: String,
+    pub(crate) source_whitespace: SourceWhitespacePolicy,
     pub(crate) output: OutputSettings,
     pub(crate) root_template: Option<Template>,
     pub(crate) root_template_modes: Vec<String>,
     pub(crate) matched_templates: Vec<MatchedTemplate>,
     pub(crate) named_templates: Vec<NamedTemplate>,
     pub(crate) global_bindings: Vec<GlobalBinding>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SourceWhitespacePolicy {
+    Preserve,
+    StripAllElementWhitespace,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

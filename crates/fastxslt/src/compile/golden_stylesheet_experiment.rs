@@ -93,6 +93,8 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     validate_same_precedence_mode_declaration_conflicts(document, &top_level_children)?;
 
     let mut output = None;
+    let mut source_whitespace =
+        crate::xslt::golden_semantics_experiment::SourceWhitespacePolicy::Preserve;
     let mut root_template = None;
     let mut root_template_modes = Vec::new();
     let mut matched_templates = Vec::new();
@@ -122,6 +124,19 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
             }
             (Some(XSLT_NAMESPACE), "mode") => {
                 validate_mode_declaration(document, child, &declared_version)?;
+            }
+            (Some(XSLT_NAMESPACE), "strip-space") => {
+                ensure_only_attributes(document, child, &["elements"], "xsl:strip-space")?;
+                ensure_no_meaningful_children(document, child, "xsl:strip-space")?;
+                let elements = required_attribute(document, child, None, "elements")?;
+                if elements != "*" {
+                    return Err(unsupported(
+                        "FXST1043",
+                        "the private whitespace-policy reference supports only xsl:strip-space elements='*'",
+                        document.location(child),
+                    ));
+                }
+                source_whitespace = crate::xslt::golden_semantics_experiment::SourceWhitespacePolicy::StripAllElementWhitespace;
             }
             (Some(XSLT_NAMESPACE), "variable" | "param") => {
                 let kind = if name.local == "variable" {
@@ -161,6 +176,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
 
     Ok(StylesheetProgram {
         declared_version,
+        source_whitespace,
         output: output.map_or_else(default_output_settings, |declaration| declaration.settings),
         root_template,
         root_template_modes,
@@ -1519,6 +1535,29 @@ mod tests {
         assert_eq!(failure.category, CompileCategory::Unsupported);
         assert_eq!(failure.code, "FXXP1001");
         assert_eq!(failure.location.resource, "memory:path.xsl");
+    }
+
+    #[test]
+    fn compiles_only_the_exact_strip_all_whitespace_reference_policy() {
+        let stylesheet = parse_stylesheet(
+            "memory:strip-all.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:strip-space elements="*"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+        );
+        let program =
+            compile_stylesheet(&stylesheet).expect("exact strip-all policy should compile");
+        assert_eq!(
+            program.source_whitespace,
+            crate::xslt::golden_semantics_experiment::SourceWhitespacePolicy::StripAllElementWhitespace
+        );
+
+        let unsupported = parse_stylesheet(
+            "memory:selective-strip.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:strip-space elements="item"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&unsupported)
+            .expect_err("selective whitespace rules remain outside the reference slice");
+        assert_eq!(failure.code, "FXST1043");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
     }
 
     #[test]

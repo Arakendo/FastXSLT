@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 40] = [
+const SELECTED_CASES: [&str; 41] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -51,6 +51,7 @@ const SELECTED_CASES: [&str; 40] = [
     "mode-1202",
     "mode-1203",
     "mode-1204",
+    "mode-1301",
     "mode-1444",
     "mode-1447",
     "mode-1501",
@@ -162,7 +163,7 @@ fn inventories_the_complete_mode_denominator_before_selection() {
         );
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
-    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 40);
+    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 41);
     assert_eq!(
         OVERLAY
             .matches("selection = \"excluded-by-profile\"")
@@ -427,6 +428,12 @@ fn executes_all_mode_priority_and_next_match() {
         let (actual, expected) = execute_case(case_name);
         assert_xml_equivalent(&actual, &expected);
     }
+}
+
+#[test]
+fn executes_mode_1301_with_stylesheet_dependent_whitespace_reference() {
+    let (actual, expected) = execute_case("mode-1301");
+    assert_xml_equivalent(&actual, &expected);
 }
 
 #[test]

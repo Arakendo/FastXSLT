@@ -177,6 +177,12 @@ execution = "passed"
 rationale = "Next-match from the winning #all rule retains the active explicit mode and selects that mode's lower-ranked specific rule."
 
 [[case_override]]
+case_name = "mode-1301"
+selection = "selected"
+execution = "passed"
+rationale = "The exact xsl:strip-space elements='*' policy composes an invocation-owned safe derived document whose filtered relationships and string values are shared by built-in traversal and template selection while visible NodeIds retain prepared-source identity."
+
+[[case_override]]
 case_name = "mode-1444"
 selection = "selected"
 execution = "passed"

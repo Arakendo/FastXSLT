@@ -24,7 +24,7 @@ pub(crate) struct SourceLocation {
     pub(crate) span: Range<usize>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Node {
     kind: NodeKind,
     parent: Option<NodeId>,
@@ -283,6 +283,32 @@ impl Document {
         self.document
     }
 
+    pub(crate) fn derive_stripping_all_element_whitespace(
+        &self,
+        control: &mut InvocationControl,
+    ) -> Result<Self, ControlFailure> {
+        let mut nodes = Vec::new();
+        for node in &self.nodes {
+            control.charge(WorkDomain::XdmNode, 1)?;
+            nodes.push(node.clone());
+        }
+        let mut derived = Self {
+            nodes,
+            document: self.document,
+        };
+        for index in 0..self.nodes.len() {
+            if self.nodes[index].kind != NodeKind::Element {
+                continue;
+            }
+            derived.nodes[index].children.retain(|child| {
+                let child = &self.nodes[child.0];
+                child.kind != NodeKind::Text
+                    || !child.value.as_deref().is_some_and(is_xml_whitespace_only)
+            });
+        }
+        Ok(derived)
+    }
+
     #[cfg(test)]
     pub(crate) fn node_count(&self) -> usize {
         self.nodes.len()
@@ -413,6 +439,12 @@ impl Document {
         }
         Ok(())
     }
+}
+
+fn is_xml_whitespace_only(value: &str) -> bool {
+    value
+        .bytes()
+        .all(|byte| matches!(byte, b' ' | b'\t' | b'\r' | b'\n'))
 }
 
 fn event_span(event: &OwnedXmlEvent) -> Range<usize> {
@@ -579,5 +611,80 @@ mod tests {
 
         assert_eq!(fragments, ["one", "two", "three"]);
         assert_eq!(fragments.concat(), document.string_value(root));
+    }
+
+    #[test]
+    fn derived_strip_all_reference_preserves_visible_identity_and_filters_relationships() {
+        let parsed = parse_document(
+            "memory:strip-reference.xml",
+            b"<root>  <kept> value </kept>\n<empty/>tail</root>",
+            LIMITS,
+        )
+        .expect("strip reference fixture should parse");
+        let document = Document::from_parsed(parsed).expect("owned XDM should build");
+        let root = document.children(document.document_node())[0];
+        let original_children = document.children(root).to_vec();
+        let kept = original_children
+            .iter()
+            .copied()
+            .find(|node| {
+                document
+                    .name(*node)
+                    .is_some_and(|name| name.local == "kept")
+            })
+            .expect("visible kept element");
+        let mut control = crate::execution_control_experiment::InvocationControl::unbounded();
+
+        let derived = document
+            .derive_stripping_all_element_whitespace(&mut control)
+            .expect("safe reference derivation should succeed");
+
+        assert_eq!(derived.children(derived.document_node())[0], root);
+        assert!(derived.children(root).contains(&kept));
+        assert_eq!(derived.location(kept), document.location(kept));
+        assert_eq!(document.children(root).len(), 5);
+        assert_eq!(derived.children(root).len(), 3);
+        assert_eq!(document.string_value(root), "   value \ntail");
+        assert_eq!(derived.string_value(root), " value tail");
+    }
+
+    #[test]
+    fn derived_strip_all_reference_is_bounded_and_cancellable() {
+        let parsed = parse_document(
+            "memory:strip-control.xml",
+            b"<root>  <child/>  </root>",
+            LIMITS,
+        )
+        .expect("strip control fixture should parse");
+        let document = Document::from_parsed(parsed).expect("owned XDM should build");
+
+        let mut limits = crate::execution_control_experiment::WorkLimits::unbounded();
+        limits.xdm_nodes = 0;
+        let mut bounded = crate::execution_control_experiment::InvocationControl::new(
+            crate::execution_control_experiment::CancellationToken::new(),
+            limits,
+        );
+        let failure = document
+            .derive_stripping_all_element_whitespace(&mut bounded)
+            .expect_err("zero XDM-node budget should stop reference construction");
+        assert!(matches!(
+            failure,
+            crate::execution_control_experiment::ControlFailure::BudgetExhausted {
+                domain: crate::execution_control_experiment::WorkDomain::XdmNode,
+                ..
+            }
+        ));
+
+        let mut cancelling = crate::execution_control_experiment::InvocationControl::unbounded()
+            .cancelling_on_charge(crate::execution_control_experiment::WorkDomain::XdmNode, 0);
+        let failure = document
+            .derive_stripping_all_element_whitespace(&mut cancelling)
+            .expect_err("cancellation should stop reference construction");
+        assert_eq!(
+            failure,
+            crate::execution_control_experiment::ControlFailure::Cancelled {
+                domain: crate::execution_control_experiment::WorkDomain::XdmNode,
+            }
+        );
     }
 }

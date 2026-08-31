@@ -115,6 +115,13 @@ rationale = "The native XTSE0020 assertion matches the structured static error f
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1301"
+selection = "selected"
+execution = "passed"
+rationale = "An invocation-owned safe derived document applies exact strip-all element whitespace semantics before every current source consumer; unchanged visible NodeIds support the existing #all, explicit-mode, and built-in dispatch paths."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-1444"
 selection = "selected"
 execution = "passed"

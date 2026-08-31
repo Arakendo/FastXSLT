@@ -7,12 +7,14 @@ use crate::execution_control_experiment::{
 };
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::atomic_value_experiment::AtomicValue;
-use crate::xml::quick_xml_experiment::ExpandedName;
+use crate::xdm::owned_tree_experiment::Document;
+use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 use super::{
     ExecutionPolicy, FailureCategory, InvocationEntry, InvocationParameter, ResultAttribute,
     ResultNode, SemanticResult, TransformRequest, TransformSetBuilder, compile_resource,
-    execute_transform_set, materialize_integer_range, serialize_xml, serialize_xml_bytes,
+    execute_program, execute_transform_set, materialize_integer_range, serialize_xml,
+    serialize_xml_bytes,
 };
 
 const SOURCE_ID: &str = "urn:fastxslt:golden:hello:source";
@@ -111,6 +113,74 @@ fn golden_transform_executes_through_an_unordered_identified_set() {
         include_str!("../../../../corpus/golden/hello/expected.xml")
     );
     assert_eq!(results.by_request["request-b"].semantic, first.semantic);
+}
+
+#[test]
+fn one_prepared_source_supports_preserving_and_stripping_stylesheets_without_mutation() {
+    let parsed_source = parse_document(
+        "memory:shared-source.xml",
+        b"<root>  <a>A</a>\n  <b>B</b>  </root>",
+        ParseLimits {
+            max_events: 64,
+            max_depth: 8,
+        },
+    )
+    .expect("shared source should parse");
+    let source = Document::from_parsed(parsed_source).expect("shared source should prepare");
+    let compile = |identity: &str, declaration: &str| {
+        let xml = format!(
+            r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0">{declaration}<xsl:template match="/"><out><xsl:value-of select="."/></out></xsl:template></xsl:stylesheet>"#
+        );
+        let parsed = parse_document(
+            identity,
+            xml.as_bytes(),
+            ParseLimits {
+                max_events: 64,
+                max_depth: 8,
+            },
+        )
+        .expect("stylesheet should parse");
+        let document = Document::from_parsed(parsed).expect("stylesheet XDM should build");
+        crate::compile::golden_stylesheet_experiment::compile_stylesheet(&document)
+            .expect("stylesheet should compile")
+    };
+    let preserving = compile("memory:preserving.xsl", "");
+    let stripping = compile("memory:stripping.xsl", r#"<xsl:strip-space elements="*"/>"#);
+
+    let execute = |program: &crate::xslt::golden_semantics_experiment::StylesheetProgram,
+                   request_id: &str| {
+        let mut control = InvocationControl::unbounded();
+        execute_program(program, &source, request_id, &mut control)
+            .expect("shared prepared source should execute")
+    };
+    let preserved = execute(&preserving, "preserving-request");
+    let stripped = execute(&stripping, "stripping-request");
+
+    assert_eq!(
+        preserved.children,
+        [ResultNode::Element {
+            name: ExpandedName {
+                namespace: None,
+                local: "out".to_owned(),
+            },
+            namespaces: Vec::new(),
+            attributes: Vec::new(),
+            children: vec![ResultNode::Text("  A\n  B  ".to_owned())],
+        }]
+    );
+    assert_eq!(
+        stripped.children,
+        [ResultNode::Element {
+            name: ExpandedName {
+                namespace: None,
+                local: "out".to_owned(),
+            },
+            namespaces: Vec::new(),
+            attributes: Vec::new(),
+            children: vec![ResultNode::Text("AB".to_owned())],
+        }]
+    );
+    assert_eq!(source.string_value(source.document_node()), "  A\n  B  ");
 }
 
 #[test]

@@ -9,7 +9,7 @@
 | Trigger | XSLT30 `mode-1301` requires `xsl:strip-space` over a reusable prepared source |
 | Related ADRs | ADR-0001, ADR-0002, ADR-0004, ADR-0007 |
 | Related reviews | AR-0007, AR-0008, AR-0009, AR-0013 |
-| Related evidence | `../Evidence/xslt30-mode-denominator-and-qname-identity-2026-08-29.md`, `../Evidence/peer-ar-0016-review-monday-2026-08-30.md`, and the pinned XSLT30 `mode-1301` case |
+| Related evidence | `../Evidence/xslt30-mode-denominator-and-qname-identity-2026-08-29.md`, `../Evidence/peer-ar-0016-review-monday-2026-08-30.md`, `../Evidence/ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md`, and the pinned XSLT30 `mode-1301` case |
 
 ## Architectural question
 
@@ -39,9 +39,10 @@ appear to pass while XPath axes, explicit selections, string-value operations,
 copying, and other consumers could still observe the stripped nodes. That is a
 semantic split, not an admissible incremental implementation.
 
-No current measurement compares a derived tree, a visibility overlay, or
-stylesheet-specialized preparation. No current review selects a navigation
-interface for carrying such a view through all semantic consumers.
+The first safe complete-derived-document reference now executes the pinned
+case. No current measurement compares it with a visibility overlay or
+stylesheet-specialized preparation, and no review selects a retained optimized
+representation.
 
 ## Ownership and constraints
 
@@ -148,6 +149,17 @@ conformance shortcut.
   cloning and repeated policy checks in hot navigation loops. Its construction
   cost, memory, clearing, and break-even point remain unmeasured; retention
   beyond an invocation would reopen AR-0009.
+- The current source-access inventory confirms that every implemented source
+  semantic is downstream of the private `Document` supplied at the execution
+  entry. An invocation-owned full clone with filtered child relationships can
+  therefore serve as a complete reference without introducing a public
+  navigation trait.
+- The safe reference retains every physical node slot and original `NodeId`,
+  but removes strip-eligible text from cloned element-child relationships.
+  Visible identity, locations, names, and payload remain stable; effective
+  navigation and containing string values follow the filtered relationships.
+- Exact `elements="*"` policy compilation and unchanged `mode-1301` execution
+  are now evidenced. General matching and an optimized view remain open.
 - General `xsl:strip-space` and `xsl:preserve-space` matching, import
   precedence, conflicts, schema-aware whitespace, and interaction with
   `xml:space` remain outside the first exact `elements="*"` experiment unless
@@ -171,12 +183,12 @@ guarantee follows from this disposition.
 
 ## Required follow-up
 
-- [ ] Inventory every current source-document navigation and string-value entry
+- [x] Inventory every current source-document navigation and string-value entry
   point used by XPath, XSLT template dispatch, built-in rules, copying,
   comparison, diagnostics, and result construction.
-- [ ] Compile the exact `elements="*"` declaration into stylesheet-owned static
+- [x] Compile the exact `elements="*"` declaration into stylesheet-owned static
   policy without changing parser or prepared-input behavior.
-- [ ] Implement a safe complete-derived-document reference for the exact
+- [x] Implement a safe complete-derived-document reference for the exact
   `mode-1301` semantics, including cancellation, work charges, provenance, and
   visible-node identity mapping. Prove that a node visible under stripping and
   preserving policies retains the prepared document's semantic identity.
@@ -190,13 +202,13 @@ guarantee follows from this disposition.
 - [ ] Add positional controls proving effective child/descendant sequences,
   sibling relations where implemented, `position()`, and `last()` exclude
   stripped nodes rather than merely filtering a final result.
-- [ ] Add an indirect string-value control where no expression selects the
+- [x] Add an indirect string-value control where no expression selects the
   stripped text node but its removal changes an enclosing element or document
   value used by a comparison, predicate, or `xsl:value-of`.
 - [ ] Repeatedly execute one prepared source concurrently under stripping and
   preserving stylesheets, then overlap generation replacement. Prove there is
   no visibility, identity, relationship, or retained-state cross-talk.
-- [ ] Execute pinned `mode-1301` without modifying its source, stylesheet, or
+- [x] Execute pinned `mode-1301` without modifying its source, stylesheet, or
   expected result, then update the conserved mode ledger.
 - [ ] Measure preparation/execution latency, retained and peak memory, warm
   throughput, and break-even reuse for the reference and view candidates before
@@ -221,3 +233,9 @@ needs an explicit effective-document inspection contract.
   strengthened visible-node identity, effective relationship/position,
   indirect string-value, concurrent strip/preserve, and precomputed-versus-lazy
   representation proof obligations.
+- 2026-08-30 -- Completed the production source-access inventory, compiled the
+  exact strip-all policy, added the invocation-owned safe complete-document
+  reference with identity/budget/cancellation controls, proved one prepared
+  source remains reusable under preserving and stripping stylesheets, and
+  executed unchanged `mode-1301`. The optimized visibility view, broader parity
+  controls, concurrency/generation evidence, and measurements remain open.
