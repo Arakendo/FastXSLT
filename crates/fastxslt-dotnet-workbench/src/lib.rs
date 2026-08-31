@@ -874,7 +874,8 @@ mod tests {
         fastxslt_workbench_v0_outcome_kind, fastxslt_workbench_v0_outcome_length,
         fastxslt_workbench_v0_outcome_release, fastxslt_workbench_v0_outcome_take_engine,
         fastxslt_workbench_v0_transform, fastxslt_workbench_v0_transform_controlled,
-        fastxslt_workbench_v0_transform_with_control, guarded_on, try_encode_failure,
+        fastxslt_workbench_v0_transform_with_control, guarded_on, insert_transform_outcome,
+        try_encode_failure,
     };
 
     fn outcome_bytes(outcome: u64) -> Vec<u8> {
@@ -954,6 +955,17 @@ mod tests {
             return String::from_utf8(output.stdout).ok()?.trim().parse().ok();
         }
         None
+    }
+
+    fn take_local_engine(state: &State, creation_outcome: u64) -> u64 {
+        let Some(Outcome::Engine(engine_handle)) = state
+            .outcomes()
+            .expect("take local creation outcome")
+            .remove(&creation_outcome)
+        else {
+            panic!("creation outcome must carry an engine handle");
+        };
+        engine_handle
     }
 
     #[test]
@@ -1129,6 +1141,96 @@ mod tests {
         assert!(outcomes_released.outcome_capacity > 0);
         println!(
             "operations={OPERATIONS} baseline_rss={baseline_rss:?} controls_retained={controls_retained:?} controls_rss={controls_rss:?} controls_released={controls_released:?} controls_released_rss={controls_released_rss:?} outcomes_retained={outcomes_retained:?} outcomes_rss={outcomes_rss:?} outcomes_released={outcomes_released:?} released_rss={released_rss:?}"
+        );
+    }
+
+    #[test]
+    #[ignore = "release-mode host-shaped native registry high-water measurement"]
+    fn measure_host_shaped_registry_high_water() {
+        const ENGINES_PER_GENERATION: usize = 4;
+        const ACTIVE_CONTROLS: usize = 8;
+        const RESULT_BURST: usize = 64;
+        const DIAGNOSTIC_BURST: usize = 64;
+
+        let state = State::new();
+        let baseline_rss = process_working_set_bytes();
+        let mut old_generation = Vec::with_capacity(ENGINES_PER_GENERATION);
+        let mut current_generation = Vec::with_capacity(ENGINES_PER_GENERATION);
+        for generation in [&mut old_generation, &mut current_generation] {
+            for _ in 0..ENGINES_PER_GENERATION {
+                let creation = state.insert_created_engine(reference_engine_value());
+                generation.push(take_local_engine(&state, creation));
+            }
+        }
+        let engines_live = state.registry_observation();
+        let engines_rss = process_working_set_bytes();
+
+        let mut controls = Vec::with_capacity(ACTIVE_CONTROLS);
+        for _ in 0..ACTIVE_CONTROLS {
+            let handle = state.next_handle().expect("live control handle");
+            state
+                .controls()
+                .expect("live control registry")
+                .insert(handle, WorkbenchCancellation::new());
+            controls.push(handle);
+        }
+        let controls_live = state.registry_observation();
+
+        let mut outcomes = Vec::with_capacity(RESULT_BURST + DIAGNOSTIC_BURST);
+        for _ in 0..RESULT_BURST {
+            outcomes.push(insert_transform_outcome(
+                &state,
+                Ok("<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>36.02</out>".to_owned()),
+            ));
+        }
+        for _ in 0..DIAGNOSTIC_BURST {
+            outcomes.push(state.insert_boundary_failure(&BoundaryFailure::new(
+                "FXFFI-LIVE",
+                "bounded delayed-disposal diagnostic",
+            )));
+        }
+        let burst_live = state.registry_observation();
+        let burst_rss = process_working_set_bytes();
+
+        {
+            let mut registry = state.outcomes().expect("release live outcomes");
+            for handle in outcomes {
+                assert!(registry.remove(&handle).is_some());
+            }
+        }
+        {
+            let mut registry = state.controls().expect("release live controls");
+            for handle in controls {
+                assert!(registry.remove(&handle).is_some());
+            }
+        }
+        {
+            let mut registry = state.engines().expect("retire old generation");
+            for handle in old_generation {
+                assert!(registry.remove(&handle).is_some());
+            }
+        }
+        let current_only = state.registry_observation();
+        let current_only_rss = process_working_set_bytes();
+        {
+            let mut registry = state.engines().expect("release current generation");
+            for handle in current_generation {
+                assert!(registry.remove(&handle).is_some());
+            }
+        }
+        let released = state.registry_observation();
+        let released_rss = process_working_set_bytes();
+
+        assert_eq!(engines_live.engine_count, ENGINES_PER_GENERATION * 2);
+        assert_eq!(controls_live.control_count, ACTIVE_CONTROLS);
+        assert_eq!(burst_live.outcome_count, RESULT_BURST + DIAGNOSTIC_BURST);
+        assert!(burst_live.outcome_payload_bytes > 0);
+        assert_eq!(current_only.engine_count, ENGINES_PER_GENERATION);
+        assert_eq!(current_only.control_count, 0);
+        assert_eq!(current_only.outcome_count, 0);
+        assert_eq!(released.engine_count, 0);
+        println!(
+            "engines_per_generation={ENGINES_PER_GENERATION} active_controls={ACTIVE_CONTROLS} result_burst={RESULT_BURST} diagnostic_burst={DIAGNOSTIC_BURST} baseline_rss={baseline_rss:?} engines_live={engines_live:?} engines_rss={engines_rss:?} controls_live={controls_live:?} burst_live={burst_live:?} burst_rss={burst_rss:?} current_only={current_only:?} current_only_rss={current_only_rss:?} released={released:?} released_rss={released_rss:?}"
         );
     }
 

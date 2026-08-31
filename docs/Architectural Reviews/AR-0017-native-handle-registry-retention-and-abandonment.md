@@ -9,7 +9,7 @@
 | Trigger | Adversarial review Finding 6 confirmed that foreign callers can retain engines, controls, and outcomes without an aggregate ceiling |
 | Related ADRs | ADR-0002, ADR-0003, ADR-0008 |
 | Related reviews | AR-0002, AR-0009, AR-0010, AR-0012 |
-| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; future live-use and engine-retention measurements |
+| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; `../Evidence/native-registry-live-use-high-water-2026-08-31.md`; future consumer requirements |
 
 ## Architectural question
 
@@ -119,6 +119,14 @@ post-control-release point. Releasing them removed all logical entries and
 payload but again retained map/allocator memory. This confirms abuse pressure
 and release semantics; it does not select a ceiling or establish live-use need.
 
+The first separate live-use probe retained two overlapping four-engine
+generations, eight controls, and a delayed 128-outcome burst. Its high-water
+cardinality was 144 handles, outcome payload was 8,640 bytes, and working set
+rose about 828 KiB over baseline. The engine-only checkpoint attributed about
+784 KiB of that process delta to eight tiny compiled/prepared `for-004`
+engines. This is one host-shaped calibration point, not a supported maximum;
+larger prepared workloads and real consumer bursts remain pressure.
+
 ## Disposition
 
 **Incubating.** Repair individual envelope bounds and insertion rollback under
@@ -134,11 +142,11 @@ representative host policy are reviewed.
 - [x] Add test-only registry cardinality, payload-byte, and capacity accounting.
 - [x] Run 100,000-operation control and outcome abandonment/release probes in a
   sacrificial process and record whole-process memory.
-- [ ] Record legitimate live-use high-water marks separately for overlapping
+- [x] Record an initial legitimate live-use high-water separately for overlapping
   generations, active controls, result/diagnostic bursts, and delayed valid
   disposal; do not calibrate policy from abandonment pressure alone.
-- [ ] Measure representative prepared-engine retention separately from scalar
-  controls and bounded outcome bytes.
+- [x] Measure the current tiny representative prepared-engine retention
+  separately from scalar controls and bounded outcome bytes.
 - [ ] Compare fixed count, estimated-byte, host-domain, and isolated-process
   policies against an ASP.NET consumer's concurrency and recovery requirements.
 - [ ] If a quota is selected, specify atomic admission, reserved failure
@@ -166,3 +174,6 @@ consumers.
 - 2026-08-31 -- Measured 100,000 abandoned/released controls and outcomes with
   test-only cardinality, capacity, payload, and process working-set evidence.
   Empty maps retained capacity; live-use and prepared-engine measurements remain.
+- 2026-08-31 -- Measured a separate 144-handle live-use high-water with two ×4
+  generations, eight controls, and 128 delayed outcomes. The engine-only phase
+  retained eight tiny prepared engines before scalar pressure was added.

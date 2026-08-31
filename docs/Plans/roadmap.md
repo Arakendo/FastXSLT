@@ -21,7 +21,7 @@ execution. The subsequent
 serializes each bounded cancellation command across write and flush; a
 byte-fragmenting 10,000-pair stress recovered all 20,000 frames exactly once,
 while the live worker retained correlated cancellation and process reuse. The
-The native boundary now preflights every result/failure envelope against its
+native boundary now preflights every result/failure envelope against its
 existing 1 MiB bound and publishes engine plus creation outcome atomically, as
 recorded in the
 [native ownership repair](../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md).
@@ -30,9 +30,13 @@ The next adversarial tranche measures registry retention under
 without prematurely selecting an aggregate quota. The
 [first abandonment measurement](../Evidence/native-registry-abandonment-measurement-2026-08-31.md)
 now covers 100,000 controls and bounded outcomes: all logical releases succeed,
-but empty maps and the allocator retain material capacity/working set. The next
-AR-0017 evidence must measure legitimate host-shaped high-water marks and
-prepared-engine retention separately before policy comparison. The
+but empty maps and the allocator retain material capacity/working set. The
+[first live-use probe](../Evidence/native-registry-live-use-high-water-2026-08-31.md)
+separately covers two overlapping ×4 `for-004` generations plus eight controls
+and 128 delayed outcomes, reaching 144 handles and roughly 828 KiB above
+baseline. Broader consumer requirements, rather than the 100,000-handle abuse
+shape, must now drive comparison of count, byte, host-domain, and isolation
+policies. The
 [template-candidate fanout probe](../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
 has already confirmed exact `nodes × templates` growth, including 33,024
 candidate checks in the largest local sweep and a 128-candidate delay after a
