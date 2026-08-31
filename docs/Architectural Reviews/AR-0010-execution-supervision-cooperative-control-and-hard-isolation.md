@@ -9,7 +9,7 @@
 | Trigger | A dispatcher was proposed as a security layer capable of detecting and recovering a rogue parser worker |
 | Related ADRs | ADR-0002, ADR-0005 |
 | Related reviews | AR-0002, AR-0003, AR-0004, AR-0008, AR-0009 |
-| Related evidence | `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-ar-0010-review-monday-2026-08-25.md`; `docs/Evidence/private-invocation-control-charge-points-2026-08-25.md`; `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`; `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`; `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`; `docs/Evidence/aspnet-natural-cancellation-races-2026-08-26.md`; `docs/Evidence/aspnet-deterministic-instruction-budget-2026-08-26.md`; future fault-injection and host-boundary measurements |
+| Related evidence | `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-ar-0010-review-monday-2026-08-25.md`; `docs/Evidence/private-invocation-control-charge-points-2026-08-25.md`; `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`; `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`; `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`; `docs/Evidence/aspnet-natural-cancellation-races-2026-08-26.md`; `docs/Evidence/aspnet-deterministic-instruction-budget-2026-08-26.md`; `docs/Evidence/aspnet-worker-control-frame-serialization-2026-08-31.md`; future fault-injection and host-boundary measurements |
 
 ## Architectural question
 
@@ -231,6 +231,10 @@ or mutate semantic state.
 - [ ] Define distinct boundary categories for deadline, panic/internal failure,
   and supervisor/transport failure through AR-0004; limit exhaustion,
   cancellation, and worker termination now have private executable evidence.
+- Concurrent cancellation producers now pass through a dedicated outbound
+  frame serializer. A byte-fragmenting 10,000-pair stress recovered all 20,000
+  bounded cancel frames exactly once; existing live-worker evidence separately
+  preserves unrelated-signal rejection, correlated cancellation, and reuse.
 - [ ] Prototype the leading in-process and isolated modes through the ASP.NET
   workbench in AR-0002 and measure cold start, warm reuse, transfer, throughput,
   tail latency, and peak memory.
@@ -258,6 +262,10 @@ is measured, or a stronger sandbox such as WASM becomes a viable host boundary.
   atomic cancellation token and six layer-owned work domains. Retained
   Incubating because observation latency, weights, overhead, deadlines, panic,
   dispatch, and hard isolation remain untested.
+- 2026-08-31 -- Serialized private worker cancellation frames and retained a
+  20,000-frame concurrent byte-fragmenting stress probe. This closes transport
+  write atomicity evidence without changing cancellation ordering or making a
+  public concurrency guarantee.
 - 2026-08-25 -- Injected deterministic cancellation after partial work in every
   implemented charge domain and retained request/domain identity. The private
   set returns no partial results, but public batch collection remains open.

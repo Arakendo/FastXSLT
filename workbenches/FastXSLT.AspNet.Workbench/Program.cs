@@ -353,6 +353,18 @@ app.MapPost("/experiment/host-file-replacement", async () =>
         operationalExperimentGate.Release();
     }
 });
+app.MapPost("/experiment/worker-control-frame-serialization", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await WorkerControlFrameExperiment.ExerciseAsync());
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
 #if SAXONCS_LOCAL
 app.MapPost("/measure/saxoncs", (int? requests, SaxonCsBaseline baseline) =>
 {

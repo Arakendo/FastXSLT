@@ -261,6 +261,15 @@ try {
                 $nativeNaturalCancellation.hardTerminationGuaranteed) {
                 throw "Native natural cancellation races violated conservation or reuse: $($nativeNaturalCancellation | ConvertTo-Json -Depth 5)"
             }
+            $controlFrames = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/worker-control-frame-serialization"
+            if ($controlFrames.pairs -ne 10000 -or
+                $controlFrames.framesExpected -ne 20000 -or
+                $controlFrames.framesObserved -ne 20000 -or
+                -not $controlFrames.framesIntact -or
+                -not $controlFrames.writesWereFragmentedAfterEveryByte -or
+                -not $controlFrames.outboundControlFramesSerialized) {
+                throw "Worker control-frame serialization stress failed: $($controlFrames | ConvertTo-Json -Depth 5)"
+            }
             $recovery = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/worker-recovery"
             if ($recovery.recovery.failureCode -ne 'FXWB2001' -or
                 $recovery.recovery.failureCategory -ne 'worker-terminated' -or

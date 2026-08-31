@@ -25,15 +25,16 @@ their original evidence. Implementation details and validation are recorded in
 | 7 | **Open -- measurement required** | Instrument template candidates considered and maximum cancellation-observation delay. No budget unit or template index is selected yet. |
 | 8 | **Completed** | Temporary path and built-in selections carry real focus position/size through template and `next-match` execution. Two-node `1/2`, `2/2` regression evidence passes. |
 | 9 | **Boundary closed** | Same-module forward and cyclic global defaults fail at compilation as `FXST1044 / unsupported`; admitted backward dependencies continue to compile. A general dependency graph remains deferred. |
-| 10 | **Open** | Serialize worker control-frame writes and add partial/concurrent write stress evidence. |
+| 10 | **Completed** | Cancellation commands are assembled and serialized as complete bounded frames. A 10,000-pair byte-fragmenting stress probe recovered all 20,000 unique frames exactly once; the existing live-worker probe retains cancellation correlation and same-process recovery. |
 | 11 | **Open performance hypothesis** | Measure document-rooted match-path reevaluation before considering invocation-owned membership or indexing. |
 | 12 | **Open performance hypothesis** | Attribute global-frame cloning and prepared-XDM storage costs before changing representations under AR-0013. |
 
-Current total: **7 findings handled**, comprising five semantic/evidence repairs
-and two explicit unsupported boundaries. **Five findings remain open**: three
-operational/resource items and two performance hypotheses requiring
-measurement. The completed tranche is commit `95aa31a` and passed the complete
-FastXSLT verification gate.
+Current total: **8 findings handled**, comprising six semantic, evidence, or
+operational repairs and two explicit unsupported boundaries. **Four findings
+remain open**: two resource/accounting items and two performance hypotheses
+requiring measurement. The first completed tranche is commit `95aa31a`; the
+subsequent [worker control-frame evidence](../Evidence/aspnet-worker-control-frame-serialization-2026-08-31.md)
+records Finding 10's stress and operational validation.
 
 ## Review posture and limits
 

@@ -26,6 +26,7 @@ public sealed class FastXsltWorkerClient : IDisposable
     private readonly Stream _input;
     private readonly Stream _output;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly SerializedWorkerControlWriter _controlWriter;
     private bool _disposed;
 
     private FastXsltWorkerClient(Process process)
@@ -33,6 +34,7 @@ public sealed class FastXsltWorkerClient : IDisposable
         _process = process;
         _input = process.StandardInput.BaseStream;
         _output = process.StandardOutput.BaseStream;
+        _controlWriter = new SerializedWorkerControlWriter(_input, MaximumFrameBytes);
         process.BeginErrorReadLine();
     }
 
@@ -449,9 +451,7 @@ public sealed class FastXsltWorkerClient : IDisposable
     private async Task SendCancellationAsync(string requestIdentity)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        await WriteByteAsync(Cancel);
-        await WriteStringAsync(requestIdentity);
-        await _input.FlushAsync();
+        await _controlWriter.WriteCancellationAsync(Cancel, requestIdentity);
     }
 
     private async Task WriteByteAsync(byte value) =>
@@ -501,6 +501,35 @@ public sealed class FastXsltWorkerClient : IDisposable
     }
 
     private static string? NullIfEmpty(string value) => value.Length == 0 ? null : value;
+}
+
+internal sealed class SerializedWorkerControlWriter(Stream output, int maximumFrameBytes)
+{
+    private readonly SemaphoreSlim _gate = new(1, 1);
+
+    public async Task WriteCancellationAsync(byte operation, string requestIdentity)
+    {
+        var identity = Encoding.UTF8.GetBytes(requestIdentity);
+        if (identity.Length > maximumFrameBytes)
+        {
+            throw new InvalidDataException($"Frame exceeds {maximumFrameBytes} bytes.");
+        }
+        var frame = new byte[1 + sizeof(int) + identity.Length];
+        frame[0] = operation;
+        BinaryPrimitives.WriteInt32LittleEndian(frame.AsSpan(1, sizeof(int)), identity.Length);
+        identity.CopyTo(frame.AsSpan(1 + sizeof(int)));
+
+        await _gate.WaitAsync();
+        try
+        {
+            await output.WriteAsync(frame);
+            await output.FlushAsync();
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
 }
 
 public sealed class ControlledTransformHandle(

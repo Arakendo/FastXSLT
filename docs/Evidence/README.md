@@ -136,6 +136,7 @@ pressure architecture but does not silently create a public guarantee.
 - [ASP.NET Pre-Dispatch Cooperative Cancellation](aspnet-predispatch-cooperative-cancellation-2026-08-26.md)
 - [ASP.NET Active Cooperative Cancellation](aspnet-active-cooperative-cancellation-2026-08-26.md)
 - [ASP.NET Natural Cancellation Races](aspnet-natural-cancellation-races-2026-08-26.md)
+- [ASP.NET Worker Control-Frame Serialization](aspnet-worker-control-frame-serialization-2026-08-31.md)
 - [ASP.NET Managed Cancellation and Diagnostic Parity](aspnet-managed-cancellation-and-diagnostic-parity-2026-08-26.md)
 - [ASP.NET Deterministic Instruction-Budget Exhaustion](aspnet-deterministic-instruction-budget-2026-08-26.md)
 - [ASP.NET In-Process Native Workbench Baseline](aspnet-in-process-native-workbench-baseline-2026-08-26.md)
