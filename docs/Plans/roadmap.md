@@ -28,6 +28,11 @@ recorded in the
 The next adversarial tranche measures registry retention under
 [AR-0017](../Architectural%20Reviews/AR-0017-native-handle-registry-retention-and-abandonment.md)
 without prematurely selecting an aggregate quota. The
+[first abandonment measurement](../Evidence/native-registry-abandonment-measurement-2026-08-31.md)
+now covers 100,000 controls and bounded outcomes: all logical releases succeed,
+but empty maps and the allocator retain material capacity/working set. The next
+AR-0017 evidence must measure legitimate host-shaped high-water marks and
+prepared-engine retention separately before policy comparison. The
 [template-candidate fanout probe](../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
 has already confirmed exact `nodes × templates` growth, including 33,024
 candidate checks in the largest local sweep and a 128-candidate delay after a

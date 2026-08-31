@@ -9,7 +9,7 @@
 | Trigger | Adversarial review Finding 6 confirmed that foreign callers can retain engines, controls, and outcomes without an aggregate ceiling |
 | Related ADRs | ADR-0002, ADR-0003, ADR-0008 |
 | Related reviews | AR-0002, AR-0009, AR-0010, AR-0012 |
-| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; future live-use and abandonment measurements |
+| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; future live-use and engine-retention measurements |
 
 ## Architectural question
 
@@ -110,6 +110,15 @@ generations, active controls, result and diagnostic bursts, and delayed but
 valid disposal. Any proposed policy must admit those observed live peaks while
 still bounding abandoned state.
 
+The first optimized abandonment run retained 100,000 controls at roughly
+9.5 MiB above baseline. After releasing them all, cardinality returned to zero
+but the map retained 69,777 effective capacity and working set remained about
+5.3 MiB above baseline. A subsequent 100,000 bounded 80-byte failure outcomes
+owned exactly 8 MiB of payload and added about 15.3 MiB working set above the
+post-control-release point. Releasing them removed all logical entries and
+payload but again retained map/allocator memory. This confirms abuse pressure
+and release semantics; it does not select a ceiling or establish live-use need.
+
 ## Disposition
 
 **Incubating.** Repair individual envelope bounds and insertion rollback under
@@ -122,8 +131,8 @@ representative host policy are reviewed.
 - [x] Bound every encoded success and failure outcome before registry insertion.
 - [x] Make engine plus creation-outcome insertion atomic or roll back the engine
   if the outcome cannot be delivered.
-- [ ] Add test-only registry cardinality, payload-byte, and capacity accounting.
-- [ ] Run 100,000-operation control and outcome abandonment/release probes in a
+- [x] Add test-only registry cardinality, payload-byte, and capacity accounting.
+- [x] Run 100,000-operation control and outcome abandonment/release probes in a
   sacrificial process and record whole-process memory.
 - [ ] Record legitimate live-use high-water marks separately for overlapping
   generations, active controls, result/diagnostic bursts, and delayed valid
@@ -154,3 +163,6 @@ consumers.
   abandonment policy remains open.
 - 2026-08-31 -- Peer review retained Incubating and required separate live-use
   and abandonment high-water measurements before any ceiling is proposed.
+- 2026-08-31 -- Measured 100,000 abandoned/released controls and outcomes with
+  test-only cardinality, capacity, payload, and process working-set evidence.
+  Empty maps retained capacity; live-use and prepared-engine measurements remain.

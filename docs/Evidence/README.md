@@ -140,6 +140,7 @@ pressure architecture but does not silently create a public guarantee.
 - [Template-Candidate Fanout and Cancellation Gap](template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
 - [Native Outcome Bounds and Atomic Creation Publication](native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md)
 - [Peer AR-0017 Review: Monday](peer-ar-0017-review-monday-2026-08-31.md)
+- [Native Registry Abandonment Measurement](native-registry-abandonment-measurement-2026-08-31.md)
 - [ASP.NET Managed Cancellation and Diagnostic Parity](aspnet-managed-cancellation-and-diagnostic-parity-2026-08-26.md)
 - [ASP.NET Deterministic Instruction-Budget Exhaustion](aspnet-deterministic-instruction-budget-2026-08-26.md)
 - [ASP.NET In-Process Native Workbench Baseline](aspnet-in-process-native-workbench-baseline-2026-08-26.md)

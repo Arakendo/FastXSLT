@@ -143,6 +143,40 @@ impl State {
     fn is_quarantined(&self) -> bool {
         self.quarantined.load(Ordering::Acquire)
     }
+
+    #[cfg(test)]
+    fn registry_observation(&self) -> RegistryObservation {
+        let engines = self.engines.lock().expect("observe engine registry");
+        let controls = self.controls.lock().expect("observe control registry");
+        let outcomes = self.outcomes.lock().expect("observe outcome registry");
+        RegistryObservation {
+            engine_count: engines.len(),
+            engine_capacity: engines.capacity(),
+            control_count: controls.len(),
+            control_capacity: controls.capacity(),
+            outcome_count: outcomes.len(),
+            outcome_capacity: outcomes.capacity(),
+            outcome_payload_bytes: outcomes
+                .values()
+                .map(|outcome| match outcome {
+                    Outcome::Engine(_) => 0,
+                    Outcome::Bytes { value, .. } => value.len(),
+                })
+                .sum(),
+        }
+    }
+}
+
+#[cfg(test)]
+#[derive(Debug, Clone, Copy)]
+struct RegistryObservation {
+    engine_count: usize,
+    engine_capacity: usize,
+    control_count: usize,
+    control_capacity: usize,
+    outcome_count: usize,
+    outcome_capacity: usize,
+    outcome_payload_bytes: usize,
 }
 
 #[derive(Debug)]
@@ -828,17 +862,19 @@ mod diagnostic_tests;
 
 #[cfg(test)]
 mod tests {
+    use std::process::Command;
+
     use super::{
         BoundaryFailure, ExperimentalEngine, MAX_OUTCOME_BYTES, OUTCOME_FAILURE, OUTCOME_RESULT,
-        Outcome, State, WorkbenchLimits, copy_input, copy_output, failure_outcome,
-        fastxslt_workbench_v0_control_cancel, fastxslt_workbench_v0_control_create,
-        fastxslt_workbench_v0_control_first_charge_observed, fastxslt_workbench_v0_control_release,
-        fastxslt_workbench_v0_create, fastxslt_workbench_v0_engine_release,
-        fastxslt_workbench_v0_outcome_copy, fastxslt_workbench_v0_outcome_kind,
-        fastxslt_workbench_v0_outcome_length, fastxslt_workbench_v0_outcome_release,
-        fastxslt_workbench_v0_outcome_take_engine, fastxslt_workbench_v0_transform,
-        fastxslt_workbench_v0_transform_controlled, fastxslt_workbench_v0_transform_with_control,
-        guarded_on, try_encode_failure,
+        Outcome, State, WorkbenchCancellation, WorkbenchLimits, copy_input, copy_output,
+        failure_outcome, fastxslt_workbench_v0_control_cancel,
+        fastxslt_workbench_v0_control_create, fastxslt_workbench_v0_control_first_charge_observed,
+        fastxslt_workbench_v0_control_release, fastxslt_workbench_v0_create,
+        fastxslt_workbench_v0_engine_release, fastxslt_workbench_v0_outcome_copy,
+        fastxslt_workbench_v0_outcome_kind, fastxslt_workbench_v0_outcome_length,
+        fastxslt_workbench_v0_outcome_release, fastxslt_workbench_v0_outcome_take_engine,
+        fastxslt_workbench_v0_transform, fastxslt_workbench_v0_transform_controlled,
+        fastxslt_workbench_v0_transform_with_control, guarded_on, try_encode_failure,
     };
 
     fn outcome_bytes(outcome: u64) -> Vec<u8> {
@@ -906,6 +942,18 @@ mod tests {
             WorkbenchLimits::default(),
         )
         .expect("create local reference engine")
+    }
+
+    fn process_working_set_bytes() -> Option<u64> {
+        if cfg!(windows) {
+            let script = format!("(Get-Process -Id {}).WorkingSet64", std::process::id());
+            let output = Command::new("powershell")
+                .args(["-NoProfile", "-Command", &script])
+                .output()
+                .ok()?;
+            return String::from_utf8(output.stdout).ok()?.trim().parse().ok();
+        }
+        None
     }
 
     #[test]
@@ -1013,6 +1061,75 @@ mod tests {
         assert_eq!(state.insert_created_engine(reference_engine_value()), 0);
         assert!(state.engines.lock().expect("inspect engines").is_empty());
         assert!(state.is_quarantined());
+    }
+
+    #[test]
+    #[ignore = "release-mode sacrificial registry-abandonment measurement"]
+    fn measure_control_and_outcome_registry_abandonment() {
+        const OPERATIONS: usize = 100_000;
+        let baseline_rss = process_working_set_bytes();
+
+        let controls_state = State::new();
+        let mut control_handles = Vec::with_capacity(OPERATIONS);
+        for _ in 0..OPERATIONS {
+            let handle = controls_state.next_handle().expect("control handle");
+            controls_state
+                .controls()
+                .expect("control registry")
+                .insert(handle, WorkbenchCancellation::new());
+            control_handles.push(handle);
+        }
+        let controls_retained = controls_state.registry_observation();
+        let controls_rss = process_working_set_bytes();
+        {
+            let mut controls = controls_state.controls().expect("release controls");
+            for handle in control_handles {
+                assert!(controls.remove(&handle).is_some());
+            }
+        }
+        let controls_released = controls_state.registry_observation();
+        let controls_released_rss = process_working_set_bytes();
+
+        let outcomes_state = State::new();
+        let mut outcome_handles = Vec::with_capacity(OPERATIONS);
+        for _ in 0..OPERATIONS {
+            outcome_handles.push(
+                outcomes_state.insert_boundary_failure(&BoundaryFailure::new(
+                    "FXFFI-MEASURE",
+                    "bounded abandonment measurement",
+                )),
+            );
+        }
+        let outcomes_retained = outcomes_state.registry_observation();
+        let outcomes_rss = process_working_set_bytes();
+        {
+            let mut outcomes = outcomes_state.outcomes().expect("release outcomes");
+            for handle in outcome_handles {
+                assert!(outcomes.remove(&handle).is_some());
+            }
+        }
+        let outcomes_released = outcomes_state.registry_observation();
+        let released_rss = process_working_set_bytes();
+
+        assert_eq!(controls_retained.control_count, OPERATIONS);
+        assert!(controls_retained.control_capacity >= OPERATIONS);
+        assert_eq!(controls_retained.engine_count, 0);
+        assert_eq!(controls_retained.engine_capacity, 0);
+        assert_eq!(controls_retained.outcome_count, 0);
+        assert_eq!(controls_retained.outcome_capacity, 0);
+        assert_eq!(controls_retained.outcome_payload_bytes, 0);
+        assert_eq!(controls_released.control_count, 0);
+        assert!(controls_released.control_capacity > 0);
+        assert_eq!(outcomes_retained.outcome_count, OPERATIONS);
+        assert!(outcomes_retained.outcome_capacity >= OPERATIONS);
+        assert_eq!(outcomes_retained.engine_count, 0);
+        assert_eq!(outcomes_retained.control_count, 0);
+        assert!(outcomes_retained.outcome_payload_bytes > 0);
+        assert_eq!(outcomes_released.outcome_count, 0);
+        assert!(outcomes_released.outcome_capacity > 0);
+        println!(
+            "operations={OPERATIONS} baseline_rss={baseline_rss:?} controls_retained={controls_retained:?} controls_rss={controls_rss:?} controls_released={controls_released:?} controls_released_rss={controls_released_rss:?} outcomes_retained={outcomes_retained:?} outcomes_rss={outcomes_rss:?} outcomes_released={outcomes_released:?} released_rss={released_rss:?}"
+        );
     }
 
     #[test]
