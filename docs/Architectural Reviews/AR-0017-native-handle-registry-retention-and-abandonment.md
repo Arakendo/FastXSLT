@@ -9,7 +9,7 @@
 | Trigger | Adversarial review Finding 6 confirmed that foreign callers can retain engines, controls, and outcomes without an aggregate ceiling |
 | Related ADRs | ADR-0002, ADR-0003, ADR-0008, ADR-0015 |
 | Related reviews | AR-0002, AR-0009, AR-0010, AR-0012 |
-| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; `../Evidence/native-registry-live-use-high-water-2026-08-31.md`; `../Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`; `../Evidence/aspnet-native-registry-burst-pressure-2026-08-31.md`; `../Evidence/native-registry-candidate-policy-replay-2026-08-31.md`; `../Evidence/aspnet-native-sustained-generation-replacement-2026-08-31.md`; future consumer requirements |
+| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; `../Evidence/native-registry-live-use-high-water-2026-08-31.md`; `../Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`; `../Evidence/aspnet-native-registry-burst-pressure-2026-08-31.md`; `../Evidence/native-registry-candidate-policy-replay-2026-08-31.md`; `../Evidence/aspnet-native-sustained-generation-replacement-2026-08-31.md`; `../Evidence/native-registry-exhaustion-delivery-comparison-2026-08-31.md`; future consumer requirements |
 
 ## Architectural question
 
@@ -211,7 +211,16 @@ decision:
 
 The first retains uniform structured outcomes at the cost of special handle
 semantics. The second makes admission failure explicit but changes the otherwise
-uniform outcome contract. Neither is selected by this review.
+uniform outcome contract.
+
+The completed comparison also considered writing a scalar status beside an
+output handle. It nominates a versioned **tagged scalar admission result**
+instead: valid handles occupy one nonzero range and fixed admission statuses
+occupy a disjoint tagged range in the existing `u64` return. This retains call
+correlation without an ordinary outcome slot, writable foreign pointer,
+thread-local error, or sentinel that pretends to be releasable. The shape
+remains unaccepted until a quota decision defines its exact encoding, status
+table, atomic admission semantics, and wrapper behavior.
 
 Once a candidate is calibrated, focused Rust/ABI tests must prove concurrent
 atomic admission, immediate capacity recovery after release, bounded failure
@@ -288,7 +297,7 @@ representative host policy are reviewed.
   separately after each bounded burst.
 - [x] Replay the captured trace against count-only and hybrid count/byte
   candidates without enforcing either in the production path.
-- [ ] Compare reserved static/sentinel failure delivery with out-of-band scalar
+- [x] Compare reserved static/sentinel failure delivery with out-of-band scalar
   admission status before changing the ABI.
 - [ ] If a quota is selected, specify atomic admission, reserved failure
   delivery, concurrency races, release recovery, and host-visible diagnostics
@@ -336,3 +345,7 @@ consumers.
   leases. Engine ownership remained at the predicted 25-handle high-water after
   overlap filled, all 544 semantic observations passed, and exact ownership
   returned to baseline. Latency remains evidence, not a guarantee.
+- 2026-08-31 -- Compared capacity-independent exhaustion delivery. A versioned
+  tagged scalar admission result is nominated over a structured sentinel or
+  writable output pointer, but no encoding or ABI behavior is accepted before
+  quota policy is selected.

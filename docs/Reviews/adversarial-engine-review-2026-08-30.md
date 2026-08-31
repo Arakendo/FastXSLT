@@ -21,7 +21,7 @@ their original evidence. Implementation details and validation are recorded in
 | 3 | **Completed** | Temporary-tree `xsl:copy` now uses the compiled shallow-copy instruction path, including constructed attributes and body execution. The unconditional deep-copy shortcut was removed. |
 | 4 | **Boundary closed** | FastXSLT now reports `FXRT1014 / unsupported` before strip-all execution when the source contains any `xml:space` declaration. Full inherited `preserve`/`default` semantics remain deliberately unimplemented under ADR-0012. |
 | 5 | **Completed** | Source element copies retain effective in-scope namespace bindings assembled from their ancestor lineage. Isolated descendant `xsl:copy-of` and `xsl:copy` regressions pass. |
-| 6 | **Partially repaired -- policy decision required** | Outcomes are bounded and creation publication is atomic. Probes cover 100,000-handle abandonment; host-shaped generation/outcome and control/failure/900 KB result pressure; and 32 sustained eight-engine promotions with two retained old generations. Exact ownership returned to baseline. Candidate replay shows count ceilings need an aggregate outcome-byte companion. AR-0017 still requires larger prepared shapes, longer soak/reclamation and engine-retention evidence, and exhaustion-delivery comparison before selecting policy. |
+| 6 | **Partially repaired -- policy decision required** | Outcomes are bounded and creation publication is atomic. Probes cover 100,000-handle abandonment; host-shaped generation/outcome and control/failure/900 KB result pressure; and 32 sustained eight-engine promotions with two retained old generations. Exact ownership returned to baseline. Candidate replay shows count ceilings need aggregate outcome bytes; a capacity-independent tagged scalar exhaustion result is nominated but not admitted. Larger prepared shapes, longer soak/reclamation, engine-retention evidence, and thresholds remain before policy selection. |
 | 7 | **Completed** | Every source and temporary matched-template scan charges a distinct `xslt-template-candidate` unit before testing each candidate. Zero-limit and deterministic-cancellation regressions retain structured domain/request identity and reduce the candidate observation gap to one. A paired 33,024-candidate probe measured 240.9 us uncharged versus 284.2 us charged locally; a dispatch index remains optional AR-0013 work. |
 | 8 | **Completed** | Temporary path and built-in selections carry real focus position/size through template and `next-match` execution. Two-node `1/2`, `2/2` regression evidence passes. |
 | 9 | **Boundary closed** | Same-module forward and cyclic global defaults fail at compilation as `FXST1044 / unsupported`; admitted backward dependencies continue to compile. A general dependency graph remains deferred. |
@@ -53,6 +53,10 @@ Finding 6's latest
 and [candidate replay](../Evidence/native-registry-candidate-policy-replay-2026-08-31.md)
 separate exact native ownership from managed and allocator retention and explain
 why outcome cardinality alone cannot be a deterministic memory ceiling.
+The subsequent
+[exhaustion-delivery comparison](../Evidence/native-registry-exhaustion-delivery-comparison-2026-08-31.md)
+nominates a disjoint tagged scalar status without admitting ABI behavior before
+the aggregate policy is selected.
 
 ## Review posture and limits
 

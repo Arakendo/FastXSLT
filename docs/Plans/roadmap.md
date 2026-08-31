@@ -55,9 +55,13 @@ near-limit results. A
 now keeps two old eight-engine generations live while new requests begin,
 preserves both retired and promoted semantics, holds the predicted 25-engine
 high-water after overlap fills, and records replacement/request p50/p95/p99.
-Larger prepared shapes, a longer-duration soak, engine-retention estimates,
-reclamation calibration, and exhaustion delivery remain before AR-0017 can
-select policy. The
+The
+[exhaustion-delivery comparison](../Evidence/native-registry-exhaustion-delivery-comparison-2026-08-31.md)
+nominates a versioned tagged scalar result over a special structured sentinel:
+it consumes no registry capacity, preserves the normal handle namespace, and
+adds no foreign writable pointer. No tag or ABI behavior is admitted yet.
+Larger prepared shapes, a longer-duration soak, engine-retention estimates, and
+reclamation calibration remain before AR-0017 can select policy. The
 [template-candidate fanout probe](../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
 has already confirmed exact `nodes × templates` growth, including 33,024
 candidate checks in the largest local sweep. A distinct candidate domain now
