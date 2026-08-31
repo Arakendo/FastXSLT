@@ -1,6 +1,6 @@
 //! Private compiled-template selection and source-pattern evaluation.
 
-use std::collections::BTreeMap;
+use std::{cell::RefCell, collections::BTreeMap, mem::size_of};
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::AtomicValue;
@@ -22,6 +22,50 @@ pub(super) struct TemplateSelectionContext<'a> {
     pub(super) mode: Option<&'a str>,
     pub(super) variables: &'a BTreeMap<String, AtomicValue>,
     pub(super) request_id: &'a str,
+    pub(super) document_rooted_matches: &'a RefCell<DocumentRootedMatchCache>,
+}
+
+const MAX_DOCUMENT_ROOTED_MATCH_CACHE_BYTES: usize = 1_048_576;
+const MAX_DOCUMENT_ROOTED_MATCH_CACHE_ENTRIES: usize = 1_024;
+
+#[derive(Debug, Default)]
+pub(super) struct DocumentRootedMatchCache {
+    memberships: BTreeMap<usize, Box<[u64]>>,
+    retained_membership_bytes: usize,
+}
+
+impl DocumentRootedMatchCache {
+    fn lookup(&self, template_index: usize, node: NodeId) -> Option<bool> {
+        self.memberships.get(&template_index).map(|membership| {
+            let index = node.index();
+            membership[index / u64::BITS as usize] & (1_u64 << (index % u64::BITS as usize)) != 0
+        })
+    }
+
+    fn insert(
+        &mut self,
+        template_index: usize,
+        node_count: usize,
+        selected: &[NodeId],
+    ) -> Option<usize> {
+        let word_count = node_count.div_ceil(u64::BITS as usize);
+        let retained_bytes = word_count * size_of::<u64>();
+        if self.memberships.len() >= MAX_DOCUMENT_ROOTED_MATCH_CACHE_ENTRIES
+            || retained_bytes
+                > MAX_DOCUMENT_ROOTED_MATCH_CACHE_BYTES
+                    .saturating_sub(self.retained_membership_bytes)
+        {
+            return None;
+        }
+        let mut membership = vec![0_u64; word_count].into_boxed_slice();
+        for node in selected {
+            let index = node.index();
+            membership[index / u64::BITS as usize] |= 1_u64 << (index % u64::BITS as usize);
+        }
+        self.memberships.insert(template_index, membership);
+        self.retained_membership_bytes += retained_bytes;
+        Some(retained_bytes)
+    }
 }
 
 pub(super) fn select_template_with_index<'a>(
@@ -38,7 +82,7 @@ pub(super) fn select_template_with_index<'a>(
             .charge_template_candidate()
             .map_err(|failure| control_failure(failure, selection.request_id))?;
         if !accepts_mode(&template.modes, selection.mode)
-            || !matches_pattern(&template.pattern, selection, control)?
+            || !matches_pattern(index, &template.pattern, selection, control)?
         {
             continue;
         }
@@ -85,7 +129,7 @@ pub(super) fn select_next_template<'a>(
         let lower_rank = rank < current_rank;
         if !lower_rank
             || !accepts_mode(&template.modes, selection.mode)
-            || !matches_pattern(&template.pattern, selection, control)?
+            || !matches_pattern(index, &template.pattern, selection, control)?
         {
             continue;
         }
@@ -127,7 +171,7 @@ pub(super) fn select_imported_template<'a>(
             .map_err(|failure| control_failure(failure, selection.request_id))?;
         if template.import_precedence >= current_precedence
             || !accepts_mode(&template.modes, selection.mode)
-            || !matches_pattern(&template.pattern, selection, control)?
+            || !matches_pattern(index, &template.pattern, selection, control)?
         {
             continue;
         }
@@ -151,7 +195,12 @@ pub(super) fn accepts_mode(modes: &[String], mode: Option<&str>) -> bool {
     })
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "the exhaustive private pattern dispatch remains one semantic ownership point"
+)]
 fn matches_pattern(
+    template_index: usize,
     pattern: &MatchPattern,
     selection: &TemplateSelectionContext<'_>,
     control: &mut InvocationControl,
@@ -242,7 +291,15 @@ fn matches_pattern(
         MatchPattern::ElementAtNamedSiblingBoundary { element, boundary } => {
             matches_named_sibling_boundary(source, node, element, *boundary, request_id, control)
         }
-        MatchPattern::Path(path) => match_path_pattern(source, node, path, request_id, control),
+        MatchPattern::Path(path) => match_path_pattern(
+            source,
+            node,
+            template_index,
+            path,
+            selection.document_rooted_matches,
+            request_id,
+            control,
+        ),
         MatchPattern::QualifiedElementPathAlternatives(alternatives) => {
             matches_qualified_path_alternatives(selection, alternatives, control)
         }
@@ -484,15 +541,36 @@ fn matches_document_element(
 fn match_path_pattern(
     source: &Document,
     node: NodeId,
+    template_index: usize,
     path: &crate::xpath::path_experiment::LocationPath,
+    document_rooted_matches: &RefCell<DocumentRootedMatchCache>,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
     if path.starts_at_document_node() {
+        if control.document_rooted_match_cache_enabled()
+            && let Some(matches) = document_rooted_matches
+                .borrow()
+                .lookup(template_index, node)
+        {
+            control.observe_document_rooted_match_cache_hit();
+            return Ok(matches);
+        }
         control.observe_document_rooted_match_evaluation();
-        return evaluate_location_path_controlled(source, source.document_node(), path, control)
-            .map(|selected| selected.contains(&node))
-            .map_err(|failure| control_failure(failure, request_id));
+        let selected =
+            evaluate_location_path_controlled(source, source.document_node(), path, control)
+                .map_err(|failure| control_failure(failure, request_id))?;
+        let matches = selected.contains(&node);
+        if control.document_rooted_match_cache_enabled()
+            && let Some(retained_bytes) = document_rooted_matches.borrow_mut().insert(
+                template_index,
+                source.node_count(),
+                &selected,
+            )
+        {
+            control.observe_document_rooted_match_cache_build(retained_bytes);
+        }
+        return Ok(matches);
     }
     let mut first_step = node;
     for _ in 1..path.steps.len() {
@@ -513,4 +591,40 @@ fn match_path_pattern(
     evaluate_location_path_controlled(source, context, path, control)
         .map(|selected| selected.contains(&node))
         .map_err(|failure| control_failure(failure, request_id))
+}
+
+#[cfg(test)]
+mod cache_tests {
+    use super::{
+        DocumentRootedMatchCache, MAX_DOCUMENT_ROOTED_MATCH_CACHE_BYTES,
+        MAX_DOCUMENT_ROOTED_MATCH_CACHE_ENTRIES,
+    };
+
+    #[test]
+    fn cache_refuses_membership_beyond_its_byte_ceiling_without_mutation() {
+        let mut cache = DocumentRootedMatchCache::default();
+        let oversized_nodes =
+            (MAX_DOCUMENT_ROOTED_MATCH_CACHE_BYTES / size_of::<u64>() + 1) * u64::BITS as usize;
+
+        assert_eq!(cache.insert(0, oversized_nodes, &[]), None);
+        assert!(cache.memberships.is_empty());
+        assert_eq!(cache.retained_membership_bytes, 0);
+    }
+
+    #[test]
+    fn cache_refuses_entries_beyond_its_count_ceiling() {
+        let mut cache = DocumentRootedMatchCache::default();
+        for index in 0..MAX_DOCUMENT_ROOTED_MATCH_CACHE_ENTRIES {
+            assert_eq!(cache.insert(index, 0, &[]), Some(0));
+        }
+
+        assert_eq!(
+            cache.insert(MAX_DOCUMENT_ROOTED_MATCH_CACHE_ENTRIES, 0, &[]),
+            None
+        );
+        assert_eq!(
+            cache.memberships.len(),
+            MAX_DOCUMENT_ROOTED_MATCH_CACHE_ENTRIES
+        );
+    }
 }

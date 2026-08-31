@@ -13,6 +13,12 @@ mod whitespace_view;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct NodeId(usize);
 
+impl NodeId {
+    pub(crate) const fn index(self) -> usize {
+        self.0
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum NodeKind {
     Document,
@@ -322,7 +328,6 @@ impl Document {
         Ok(derived)
     }
 
-    #[cfg(test)]
     pub(crate) fn node_count(&self) -> usize {
         self.nodes.len()
     }

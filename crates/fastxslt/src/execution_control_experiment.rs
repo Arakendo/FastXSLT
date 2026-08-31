@@ -199,6 +199,10 @@ struct InvocationObservations {
     document_rooted_match_evaluations: usize,
     global_atomic_frames_cloned: usize,
     global_atomic_entries_cloned: usize,
+    skip_document_rooted_match_cache: bool,
+    document_rooted_match_cache_builds: usize,
+    document_rooted_match_cache_hits: usize,
+    document_rooted_match_cache_bytes: usize,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -344,6 +348,50 @@ impl InvocationControl {
         (
             self.observations.global_atomic_frames_cloned,
             self.observations.global_atomic_entries_cloned,
+        )
+    }
+
+    pub(crate) fn document_rooted_match_cache_enabled(&self) -> bool {
+        #[cfg(not(test))]
+        let _ = self;
+        #[cfg(test)]
+        if self.observations.skip_document_rooted_match_cache {
+            return false;
+        }
+        true
+    }
+
+    pub(crate) fn observe_document_rooted_match_cache_build(&mut self, retained_bytes: usize) {
+        #[cfg(not(test))]
+        let _ = (self, retained_bytes);
+        #[cfg(test)]
+        {
+            self.observations.document_rooted_match_cache_builds += 1;
+            self.observations.document_rooted_match_cache_bytes += retained_bytes;
+        }
+    }
+
+    pub(crate) fn observe_document_rooted_match_cache_hit(&mut self) {
+        #[cfg(not(test))]
+        let _ = self;
+        #[cfg(test)]
+        {
+            self.observations.document_rooted_match_cache_hits += 1;
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn without_document_rooted_match_cache(mut self) -> Self {
+        self.observations.skip_document_rooted_match_cache = true;
+        self
+    }
+
+    #[cfg(test)]
+    pub(crate) fn document_rooted_match_cache_observation(&self) -> (usize, usize, usize) {
+        (
+            self.observations.document_rooted_match_cache_builds,
+            self.observations.document_rooted_match_cache_hits,
+            self.observations.document_rooted_match_cache_bytes,
         )
     }
 

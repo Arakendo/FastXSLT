@@ -1,6 +1,6 @@
 //! Invocation-local globals, variable frames, and temporary-tree preparation.
 
-use std::collections::BTreeMap;
+use std::{cell::RefCell, collections::BTreeMap};
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
@@ -12,6 +12,7 @@ use crate::xslt::golden_semantics_experiment::{
     TemplateArgument, TemplateArgumentValue, TemplateParameterDefault,
 };
 
+use super::template_selector::DocumentRootedMatchCache;
 use super::{
     ExecutionFailure, FailureCategory, MultipleMatchPolicy, control_failure, failure, failure_at,
 };
@@ -22,6 +23,7 @@ pub(super) struct SequenceInputs<'a> {
     pub(super) request_id: &'a str,
     pub(super) globals: &'a RuntimeGlobals,
     pub(super) multiple_match_policy: MultipleMatchPolicy,
+    pub(super) document_rooted_matches: RefCell<DocumentRootedMatchCache>,
 }
 
 #[derive(Debug, Default)]

@@ -26,13 +26,13 @@ their original evidence. Implementation details and validation are recorded in
 | 8 | **Completed** | Temporary path and built-in selections carry real focus position/size through template and `next-match` execution. Two-node `1/2`, `2/2` regression evidence passes. |
 | 9 | **Boundary closed** | Same-module forward and cyclic global defaults fail at compilation as `FXST1044 / unsupported`; admitted backward dependencies continue to compile. A general dependency graph remains deferred. |
 | 10 | **Completed** | Cancellation commands are assembled and serialized as complete bounded frames. A 10,000-pair byte-fragmenting stress probe recovered all 20,000 unique frames exactly once; the existing live-worker probe retains cancellation correlation and same-process recovery. |
-| 11 | **Confirmed -- representation comparison required** | Widths 8/32/128/256 performed 8/32/128/256 full document-rooted path evaluations and exactly 81/1,089/16,641/66,049 charged node visits. One-less visit limits fail correctly, so accounting is honest; AR-0013 must compare a safe invocation-owned membership view before any optimization is admitted. |
+| 11 | **Completed** | ADR-0013 admits a safe, bounded invocation-owned word-bitset membership for activated document-rooted match paths. At width 256 it reduces evaluations from 256 to 1, visits from 66,049 to 514, requested bytes from 2,851,120 to 236,160, and local median from 991.8 us to 88.1 us. One-less construction budgets, concurrent ownership, both cache ceilings, and uncached differential parity pass. |
 | 12 | **Partially confirmed -- representation comparison required** | An eight-call chain with 256 globals clones 2,048 global entries and adds 8,824 allocation requests, 432,576 requested bytes, about 419 KiB peak live requested memory, and 598.3 us median over the same-global depth-zero control. AR-0013 may compare a safe overlay frame; prepared-XDM field duplication remains unmeasured. |
 
-Current total: **9 findings handled**, comprising seven semantic, evidence, or
-operational repairs and two explicit unsupported boundaries. **Three findings
-remain open**: one registry-policy decision, one confirmed representation
-comparison, and one partially confirmed compound representation finding. The
+Current total: **10 findings handled**, comprising eight semantic, evidence, or
+operational repairs and two explicit unsupported boundaries. **Two findings
+remain open**: one registry-policy decision and one partially confirmed compound
+representation finding. The
 first completed tranche is commit `95aa31a`; the
 subsequent [worker control-frame evidence](../Evidence/aspnet-worker-control-frame-serialization-2026-08-31.md)
 records Finding 10's stress and operational validation. The

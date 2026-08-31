@@ -264,6 +264,10 @@ budget probes failed in the advertised XPath domain. A safe invocation-owned
 membership view is now a concrete comparison candidate, but no cache or index
 is admitted until its construction, memory, break-even reuse, cancellation,
 semantic parity, and generation ownership are measured against this reference.
+Those measurements are now complete for the narrow absolute-pattern case.
+[ADR-0013](../ADR/ADR-0013-invocation-owned-document-rooted-match-membership.md)
+admits a bounded invocation-owned word-bitset membership with deterministic
+fallback while leaving every broader index under this incubating review.
 
 The first global-frame matrix also confirms that named calls repeatedly clone
 all atomic globals. Against a same-global depth-zero control, an eight-call,
@@ -293,6 +297,8 @@ provide a concrete hypothesis to test.
   index, capacity-slack, and ownership overhead.
 - [x] Add focused template-candidate and document-rooted match-path fan-out
   probes nominated by the adversarial review.
+- [x] Compare and admit the narrow safe invocation-owned document-rooted match
+  membership against its complete charged reference.
 - [ ] Add duplication, reference-count/synchronization, and scratch-capacity
   probes only where profiles or representative workloads nominate them.
 - [ ] Verify each experiment preserves deterministic retained/peak attribution
@@ -335,6 +341,9 @@ provide a concrete hypothesis to test.
 - 2026-08-31 -- Confirmed `(items + 1)^2` charged node visits for one repeated
   document-rooted match path and nominated a safe invocation-owned membership
   view for comparison without admitting it.
+- 2026-08-31 -- Accepted ADR-0013 after the safe membership view reduced the
+  width-256 reference from 66,049 to 514 charged visits with bounded memory,
+  fallback, differential, cancellation, and concurrent-ownership evidence.
 - 2026-08-31 -- Confirmed complete atomic-global cloning across named-template
   calls with allocator-requested and latency deltas against a same-global
   control; nominated a safe private overlay-frame comparison.

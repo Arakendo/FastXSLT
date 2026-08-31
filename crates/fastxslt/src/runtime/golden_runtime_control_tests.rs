@@ -3,6 +3,8 @@
 use std::{
     collections::{BTreeMap, HashSet},
     fmt::Write as _,
+    mem::size_of,
+    sync::Arc,
     time::Instant,
 };
 
@@ -428,7 +430,7 @@ fn measure_named_template_global_frame_cloning() {
 }
 
 #[test]
-fn document_rooted_match_path_reevaluates_for_each_dispatch_candidate() {
+fn document_rooted_match_cache_builds_once_for_the_invocation() {
     let source_nodes = 16;
     let (program, source) = document_rooted_match_workload(source_nodes);
     let mut control = InvocationControl::unbounded();
@@ -437,8 +439,58 @@ fn document_rooted_match_path_reevaluates_for_each_dispatch_candidate() {
         .expect("execute rooted-match workload");
 
     assert_eq!(result.children.len(), source_nodes);
-    assert_eq!(control.document_rooted_match_evaluations(), source_nodes);
-    assert!(control.consumed(WorkDomain::XPathNodeVisit) > source_nodes * source_nodes);
+    assert_eq!(control.document_rooted_match_evaluations(), 1);
+    assert_eq!(
+        control.document_rooted_match_cache_observation(),
+        (
+            1,
+            source_nodes - 1,
+            source.node_count().div_ceil(u64::BITS as usize) * size_of::<u64>()
+        )
+    );
+    assert_eq!(
+        control.consumed(WorkDomain::XPathNodeVisit),
+        (source_nodes + 1) * 2
+    );
+}
+
+#[test]
+fn concurrent_rooted_match_caches_remain_invocation_owned() {
+    let source_nodes = 32;
+    let (program, source) = document_rooted_match_workload(source_nodes);
+    let program = Arc::new(program);
+    let source = Arc::new(source);
+
+    let observations = std::thread::scope(|scope| {
+        let workers: Vec<_> = (0..4)
+            .map(|worker| {
+                let program = Arc::clone(&program);
+                let source = Arc::clone(&source);
+                scope.spawn(move || {
+                    let mut control = InvocationControl::unbounded();
+                    let result = super::execute_program(
+                        &program,
+                        &source,
+                        &format!("rooted-match-concurrent-{worker}"),
+                        &mut control,
+                    )
+                    .expect("execute concurrent rooted-match workload");
+                    assert_eq!(result.children.len(), source_nodes);
+                    control.document_rooted_match_cache_observation()
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .map(|worker| worker.join().expect("rooted-match worker completes"))
+            .collect::<Vec<_>>()
+    });
+
+    assert!(
+        observations
+            .iter()
+            .all(|&(builds, hits, _)| builds == 1 && hits == source_nodes - 1)
+    );
 }
 
 #[test]
@@ -446,37 +498,95 @@ fn document_rooted_match_path_reevaluates_for_each_dispatch_candidate() {
 fn measure_document_rooted_match_path_reevaluation() {
     for source_nodes in [8, 32, 128, 256] {
         let (program, source) = document_rooted_match_workload(source_nodes);
-        let mut samples = Vec::with_capacity(5);
-        let mut observed = None;
+        let mut reference_samples = Vec::with_capacity(5);
+        let mut cached_samples = Vec::with_capacity(5);
+        let mut reference_observed = None;
+        let mut cached_observed = None;
         for _ in 0..5 {
-            let mut control = InvocationControl::unbounded();
-            let started = Instant::now();
-            let result =
-                super::execute_program(&program, &source, "rooted-match-measurement", &mut control)
-                    .expect("execute measured rooted-match workload");
-            assert_eq!(result.children.len(), source_nodes);
-            samples.push(started.elapsed().as_secs_f64() * 1_000_000.0);
-            observed = Some((
-                control.document_rooted_match_evaluations(),
-                control.consumed(WorkDomain::XPathNodeVisit),
+            let mut reference_control =
+                InvocationControl::unbounded().without_document_rooted_match_cache();
+            let reference_started = Instant::now();
+            let reference = super::execute_program(
+                &program,
+                &source,
+                "rooted-match-reference",
+                &mut reference_control,
+            )
+            .expect("execute rooted-match reference");
+            reference_samples.push(reference_started.elapsed().as_secs_f64() * 1_000_000.0);
+            reference_observed = Some((
+                reference_control.document_rooted_match_evaluations(),
+                reference_control.consumed(WorkDomain::XPathNodeVisit),
             ));
+
+            let mut cached_control = InvocationControl::unbounded();
+            let cached_started = Instant::now();
+            let cached = super::execute_program(
+                &program,
+                &source,
+                "rooted-match-cached",
+                &mut cached_control,
+            )
+            .expect("execute cached rooted-match workload");
+            cached_samples.push(cached_started.elapsed().as_secs_f64() * 1_000_000.0);
+            cached_observed = Some((
+                cached_control.document_rooted_match_evaluations(),
+                cached_control.consumed(WorkDomain::XPathNodeVisit),
+                cached_control.document_rooted_match_cache_observation(),
+            ));
+            assert_eq!(reference, cached);
         }
-        samples.sort_by(f64::total_cmp);
-        let (evaluations, node_visits) = observed.expect("one rooted-match observation");
+        reference_samples.sort_by(f64::total_cmp);
+        cached_samples.sort_by(f64::total_cmp);
+        let (reference_evaluations, reference_visits) =
+            reference_observed.expect("one reference observation");
+        let (cached_evaluations, cached_visits, cache) =
+            cached_observed.expect("one cache observation");
 
         let mut limits = WorkLimits::unbounded();
-        limits.xpath_node_visits = node_visits - 1;
+        limits.xpath_node_visits = cached_visits - 1;
         let mut limited = InvocationControl::new(CancellationToken::new(), limits);
         let failure =
             super::execute_program(&program, &source, "rooted-match-budget", &mut limited)
-                .expect_err("one fewer node visit must exhaust the rooted-match workload");
+                .expect_err("one fewer node visit must exhaust cached construction");
         assert_eq!(failure.category, FailureCategory::Limit);
         assert_eq!(failure.work_domain, Some(WorkDomain::XPathNodeVisit));
 
+        #[cfg(feature = "allocation-observation")]
+        let allocation_summary = {
+            let mut reference_control =
+                InvocationControl::unbounded().without_document_rooted_match_cache();
+            let reference_allocations = allocation_counter::measure(|| {
+                super::execute_program(
+                    &program,
+                    &source,
+                    "rooted-match-reference-allocation",
+                    &mut reference_control,
+                )
+                .expect("execute allocation-observed rooted-match reference");
+            });
+            let mut cached_control = InvocationControl::unbounded();
+            let cached_allocations = allocation_counter::measure(|| {
+                super::execute_program(
+                    &program,
+                    &source,
+                    "rooted-match-cache-allocation",
+                    &mut cached_control,
+                )
+                .expect("execute allocation-observed rooted-match cache");
+            });
+            format!(
+                " reference_allocations={reference_allocations:?} cached_allocations={cached_allocations:?}"
+            )
+        };
+        #[cfg(not(feature = "allocation-observation"))]
+        let allocation_summary = String::new();
+
         println!(
-            "source_nodes={source_nodes} evaluations={evaluations} node_visits={node_visits} budget_exhaustion_limit={} median_us={:.3}",
-            node_visits - 1,
-            samples[samples.len() / 2]
+            "source_nodes={source_nodes} reference_evaluations={reference_evaluations} reference_visits={reference_visits} cached_evaluations={cached_evaluations} cached_visits={cached_visits} cache={cache:?} budget_exhaustion_limit={} reference_median_us={:.3} cached_median_us={:.3}{allocation_summary}",
+            cached_visits - 1,
+            reference_samples[reference_samples.len() / 2],
+            cached_samples[cached_samples.len() / 2]
         );
     }
 }

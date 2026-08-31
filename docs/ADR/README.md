@@ -60,3 +60,7 @@ but supersede a materially changed decision instead of rewriting its history.
   -- Accepted; compose exact strip-all stylesheet semantics with a private
   invocation-owned view over immutable prepared XDM while retaining visible
   identity and a complete safe differential oracle.
+- [ADR-0013: Invocation-Owned Document-Rooted Match Membership](ADR-0013-invocation-owned-document-rooted-match-membership.md)
+  -- Accepted; lazily retain bounded per-invocation membership for activated
+  absolute match paths while preserving the complete charged evaluator as a
+  fallback and differential oracle.

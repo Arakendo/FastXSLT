@@ -66,6 +66,11 @@ contract.
   effective relationships, retain the complete safe derivation as a test
   oracle, and do not infer broader whitespace rules, a public provider trait,
   or cross-invocation view retention.
+- Follow ADR-0013 for document-rooted match paths: lazily build only bounded
+  invocation-owned membership keyed by the current compiled template, preserve
+  the complete charged evaluator as fallback and differential oracle, and do
+  not share membership across invocations, sources, snapshots, workers, or
+  generations.
 - Preserve source locations and structured diagnostics across XML parsing,
   XPath parsing/evaluation, stylesheet compilation, lowering, optimization, and
   execution.

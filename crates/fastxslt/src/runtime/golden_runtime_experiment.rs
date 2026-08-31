@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{cell::RefCell, collections::BTreeMap};
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
@@ -187,6 +187,7 @@ fn execute_program_with_parameters_using(
         request_id,
         globals: &globals,
         multiple_match_policy,
+        document_rooted_matches: RefCell::default(),
     };
     let children = if let Some(root_template) = program
         .root_template
@@ -278,6 +279,7 @@ fn execute_initial_mode(
         request_id,
         globals: &globals,
         multiple_match_policy,
+        document_rooted_matches: RefCell::default(),
     };
     let children = if initial_node == source.document_node()
         && program.root_template_modes.iter().any(|mode| mode == name)
@@ -320,6 +322,7 @@ fn apply_initial_mode_template(
             mode: Some(mode),
             variables: &inputs.globals.atomics,
             request_id: inputs.request_id,
+            document_rooted_matches: &inputs.document_rooted_matches,
         },
         inputs.multiple_match_policy,
         control,
@@ -383,6 +386,7 @@ fn execute_initial_template(
         request_id,
         globals: &globals,
         multiple_match_policy,
+        document_rooted_matches: RefCell::default(),
     };
     let children = execute_sequence(
         &inputs,
@@ -986,6 +990,7 @@ fn execute_next_match(
             mode: execution.current_mode,
             variables: &inputs.globals.atomics,
             request_id: inputs.request_id,
+            document_rooted_matches: &inputs.document_rooted_matches,
         },
         current_index,
         inputs.multiple_match_policy,
@@ -1041,6 +1046,7 @@ fn execute_apply_imports(
             mode: execution.current_mode,
             variables: &inputs.globals.atomics,
             request_id: inputs.request_id,
+            document_rooted_matches: &inputs.document_rooted_matches,
         },
         current_index,
         control,
@@ -1500,6 +1506,7 @@ fn apply_template_at(
             mode,
             variables: &inputs.globals.atomics,
             request_id: inputs.request_id,
+            document_rooted_matches: &inputs.document_rooted_matches,
         },
         inputs.multiple_match_policy,
         control,
@@ -1662,6 +1669,7 @@ fn shallow_copy_attributes(
                 mode,
                 variables: &inputs.globals.atomics,
                 request_id: inputs.request_id,
+                document_rooted_matches: &inputs.document_rooted_matches,
             },
             inputs.multiple_match_policy,
             control,

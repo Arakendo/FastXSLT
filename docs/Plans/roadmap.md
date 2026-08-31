@@ -43,10 +43,12 @@ candidate checks in the largest local sweep. A distinct candidate domain now
 charges and observes cancellation before every source and temporary-tree
 candidate, closing Finding 7 while retaining an uncharged test oracle. The
 [document-rooted match-path probe](../Evidence/document-rooted-match-path-reevaluation-2026-08-31.md)
-also confirms exact `(items + 1)^2` charged visits through width 256. AR-0013
-must compare a safe invocation-owned membership view against that reference and
-keeps both possible indexes private and experimental until preparation, memory,
-parity, and consumer-visible evidence justify representation changes. The
+also confirms exact `(items + 1)^2` reference visits through width 256.
+[ADR-0013](../ADR/ADR-0013-invocation-owned-document-rooted-match-membership.md)
+now admits the safe bounded invocation-owned membership after reducing that
+width from 66,049 to 514 charged visits with differential, fallback, memory,
+cancellation, and concurrent-ownership evidence. Broader indexes remain private
+AR-0013 experiments. The
 [global-frame clone probe](../Evidence/named-template-global-frame-cloning-2026-08-31.md)
 now also confirms material allocation and latency growth through 256 globals
 and eight named calls. AR-0013 may compare a safe private overlay frame against
