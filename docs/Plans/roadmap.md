@@ -76,8 +76,13 @@ ABI or claiming allocator-exact accounting. A
 then found more than 98% of the peak process-memory deltas gone before its first
 post-disposal sample and process memory near baseline at ten seconds. It closes
 the longer-window observation without inventing a portable half-life.
-Candidate replay using the engine estimate and real consumer headroom remain
-before AR-0017 can select policy. The
+Candidate replay using the engine estimate is complete. AR-0017 is now
+experimentally mature but policy-incomplete: representative consumer
+concurrency, memory headroom, trust, and exhaustion-recovery requirements must
+select the supported native envelope. If that selection admits a quota, an
+accepted ADR revision or superseding decision must define the tagged scalar
+status space, atomic admission, release recovery, concurrency races,
+host-visible diagnostics, and managed-wrapper behavior. The
 [template-candidate fanout probe](../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
 has already confirmed exact `nodes × templates` growth, including 33,024
 candidate checks in the largest local sweep. A distinct candidate domain now
