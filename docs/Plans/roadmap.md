@@ -60,8 +60,14 @@ The
 nominates a versioned tagged scalar result over a special structured sentinel:
 it consumes no registry capacity, preserves the normal handle namespace, and
 adds no foreign writable pointer. No tag or ABI behavior is admitted yet.
-Larger prepared shapes, a longer-duration soak, engine-retention estimates, and
-reclamation calibration remain before AR-0017 can select policy. The
+The first
+[large prepared-engine trace](../Evidence/aspnet-native-large-prepared-engine-pressure-2026-08-31.md)
+now retains three ×16 generations over a 5,000-item input. Its stable roughly
+6 MB private-byte delta per engine for that shape—versus roughly 98 KiB in the
+tiny probe—falsifies both raw input bytes and handle count as general memory
+estimates. A longer-duration soak, additional large shapes, a defensible
+engine-retention model, and consumer headroom remain before AR-0017 can select
+policy. The
 [template-candidate fanout probe](../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
 has already confirmed exact `nodes × templates` growth, including 33,024
 candidate checks in the largest local sweep. A distinct candidate domain now

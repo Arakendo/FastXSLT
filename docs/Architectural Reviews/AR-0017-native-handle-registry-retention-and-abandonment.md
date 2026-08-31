@@ -9,7 +9,7 @@
 | Trigger | Adversarial review Finding 6 confirmed that foreign callers can retain engines, controls, and outcomes without an aggregate ceiling |
 | Related ADRs | ADR-0002, ADR-0003, ADR-0008, ADR-0015 |
 | Related reviews | AR-0002, AR-0009, AR-0010, AR-0012 |
-| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; `../Evidence/native-registry-live-use-high-water-2026-08-31.md`; `../Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`; `../Evidence/aspnet-native-registry-burst-pressure-2026-08-31.md`; `../Evidence/native-registry-candidate-policy-replay-2026-08-31.md`; `../Evidence/aspnet-native-sustained-generation-replacement-2026-08-31.md`; `../Evidence/native-registry-exhaustion-delivery-comparison-2026-08-31.md`; future consumer requirements |
+| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; `../Evidence/native-registry-live-use-high-water-2026-08-31.md`; `../Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`; `../Evidence/aspnet-native-registry-burst-pressure-2026-08-31.md`; `../Evidence/native-registry-candidate-policy-replay-2026-08-31.md`; `../Evidence/aspnet-native-sustained-generation-replacement-2026-08-31.md`; `../Evidence/native-registry-exhaustion-delivery-comparison-2026-08-31.md`; `../Evidence/aspnet-native-large-prepared-engine-pressure-2026-08-31.md`; future consumer requirements |
 
 ## Architectural question
 
@@ -125,7 +125,7 @@ cardinality was 144 handles, outcome payload was 8,640 bytes, and working set
 rose about 828 KiB over baseline. The engine-only checkpoint attributed about
 784 KiB of that process delta to eight tiny compiled/prepared `for-004`
 engines. This is one host-shaped calibration point, not a supported maximum;
-larger prepared workloads and real consumer bursts remain pressure.
+additional prepared workloads and real consumer bursts remain pressure.
 
 The first ASP.NET burst tranche then held eight real transforms at their first
 charge, retained 128 decoded structured failures, and retained eight validated
@@ -241,7 +241,7 @@ controls, 128 retained structured failures, and eight retained 900 KB results;
 exact native ownership again returned to baseline while managed and process
 memory followed independent reclamation timelines. The captured observations
 have also been replayed arithmetically against count-only and
-count-plus-exact-outcome-byte candidates. Larger prepared corpus shapes, a
+count-plus-exact-outcome-byte candidates. Additional prepared corpus shapes, a
 longer-duration replacement soak, engine-retention estimates, reclamation
 calibration, and exhaustion delivery remain open.
 
@@ -254,6 +254,16 @@ sentinels preserved generation identity and results. Observed replacement
 latency was 4.63/6.54/7.81 ms at p50/p95/p99; request latency was
 151.7/237.4/935.1 us. These are one-host calibration observations, not supported
 latency or overlap guarantees.
+
+The first large prepared-engine trace raised `for-004` to a generated 5,000-item
+source and retained three ×16 generations. Each added generation contributed a
+stable approximately 90 MB working set and 96 MB private bytes, or about
+5.6/6.0 MB per engine for this shape. The 48 engines admitted only 8.18 MB of
+raw source/stylesheet bytes but added about 289.4 MB private memory at peak.
+This falsifies raw admitted bytes as a conservative prepared-engine estimate and
+shows why count alone cannot describe memory. Exact logical ownership returned
+to baseline; process memory remained above baseline after the one-second
+settlement window.
 
 ADR-0015 admits the four scalar observation exports used by this trace. It adds
 no unsafe block, quota behavior, registry mutation, layout exposure, or public
@@ -279,6 +289,8 @@ representative host policy are reviewed.
   disposal; do not calibrate policy from abandonment pressure alone.
 - [x] Measure the current tiny representative prepared-engine retention
   separately from scalar controls and bounded outcome bytes.
+- [x] Measure one materially larger prepared-input shape separately and test
+  whether raw admitted bytes or engine count explain its process pressure.
 - [ ] Compare fixed count, estimated-byte, host-domain, and isolated-process
   policies against an ASP.NET consumer's concurrency and recovery requirements.
 - [ ] Run the corpus-backed ASP.NET pressure matrix with generation overlap,
@@ -293,8 +305,10 @@ representative host policy are reviewed.
 - [x] Run the first sustained bounded generation-replacement trace with
   promoted and retired semantic sentinels plus replacement/request latency
   distributions.
-- [ ] Measure logical release and process-memory reclamation half-life
-  separately after each bounded burst.
+- [x] Sample logical release and process-memory settlement separately after
+  bounded result and prepared-engine bursts.
+- [ ] Extend natural reclamation observation beyond the current right-censored
+  one-second window before claiming a process-memory half-life.
 - [x] Replay the captured trace against count-only and hybrid count/byte
   candidates without enforcing either in the production path.
 - [x] Compare reserved static/sentinel failure delivery with out-of-band scalar
@@ -349,3 +363,7 @@ consumers.
   tagged scalar admission result is nominated over a structured sentinel or
   writable output pointer, but no encoding or ABI behavior is accepted before
   quota policy is selected.
+- 2026-08-31 -- Measured three ×16 engines over a 5,000-item prepared source.
+  Each generation added about 96 MB private memory while aggregate admitted
+  bytes remained only 8.18 MB. Logical ownership returned exactly to baseline;
+  no general engine-byte estimator was inferred.
