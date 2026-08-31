@@ -171,6 +171,18 @@ execution = "passed"
 rationale = "Next-match from the winning #all rule retains the active explicit mode and selects that mode's lower-ranked specific rule."
 
 [[case_override]]
+case_name = "mode-1444"
+selection = "selected"
+execution = "passed"
+rationale = "The invalid mixed-case warning-on-no-match boolean reports native static error XTSE0020 before unsupported on-no-match execution semantics are considered."
+
+[[case_override]]
+case_name = "mode-1447"
+selection = "selected"
+execution = "passed"
+rationale = "The invalid mixed-case typed boolean reports native static error XTSE0020 before unsupported shallow-copy or schema-aware mode semantics are considered."
+
+[[case_override]]
 case_name = "mode-0105"
 selection = "selected"
 execution = "passed"

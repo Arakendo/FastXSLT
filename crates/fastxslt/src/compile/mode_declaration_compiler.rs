@@ -15,7 +15,13 @@ pub(super) fn validate_mode_declaration(
     ensure_only_attributes(
         document,
         element,
-        &["name", "warning-on-multiple-match"],
+        &[
+            "name",
+            "on-no-match",
+            "typed",
+            "warning-on-multiple-match",
+            "warning-on-no-match",
+        ],
         "xsl:mode",
     )?;
     ensure_no_meaningful_children(document, element, "xsl:mode")?;
@@ -30,23 +36,62 @@ pub(super) fn validate_mode_declaration(
         ));
     }
 
-    let warning_enabled = optional_attribute(document, element, None, "warning-on-multiple-match")
-        .map(|value| parse_boolean(value, declared_version, document, element))
-        .transpose()?
-        .unwrap_or(false);
-    if warning_enabled {
+    let warning_on_multiple_match = parse_optional_boolean(
+        document,
+        element,
+        declared_version,
+        "warning-on-multiple-match",
+    )?;
+    let warning_on_no_match =
+        parse_optional_boolean(document, element, declared_version, "warning-on-no-match")?;
+    let typed = parse_optional_boolean(document, element, declared_version, "typed")?;
+
+    if warning_on_multiple_match == Some(true) {
         return Err(unsupported(
             "FXST1038",
             "warning-on-multiple-match requires an owned warning delivery channel",
             document.location(element),
         ));
     }
+    if warning_on_no_match == Some(true) {
+        return Err(unsupported(
+            "FXST1038",
+            "warning-on-no-match requires an owned warning delivery channel",
+            document.location(element),
+        ));
+    }
+    if typed == Some(true) {
+        return Err(unsupported(
+            "FXST1040",
+            "typed mode semantics require schema-aware source support",
+            document.location(element),
+        ));
+    }
+    if optional_attribute(document, element, None, "on-no-match").is_some() {
+        return Err(unsupported(
+            "FXST1041",
+            "explicit on-no-match semantics are outside the private mode declaration slice",
+            document.location(element),
+        ));
+    }
     Ok(())
+}
+
+fn parse_optional_boolean(
+    document: &Document,
+    element: NodeId,
+    declared_version: &str,
+    attribute: &str,
+) -> Result<Option<bool>, CompileFailure> {
+    optional_attribute(document, element, None, attribute)
+        .map(|value| parse_boolean(value, declared_version, attribute, document, element))
+        .transpose()
 }
 
 fn parse_boolean(
     value: &str,
     declared_version: &str,
+    attribute: &str,
     document: &Document,
     element: NodeId,
 ) -> Result<bool, CompileFailure> {
@@ -58,13 +103,13 @@ fn parse_boolean(
             "false" | "0" => Ok(false),
             _ => Err(invalid(
                 "XTSE0020",
-                "warning-on-multiple-match has an invalid XSLT 3.0 boolean value",
+                format!("{attribute} has an invalid XSLT 3.0 boolean value"),
                 document.location(element),
             )),
         },
         _ => Err(invalid(
             "XTSE0020",
-            "warning-on-multiple-match must be 'yes' or 'no'",
+            format!("{attribute} must be 'yes' or 'no'"),
             document.location(element),
         )),
     }
@@ -76,9 +121,9 @@ mod tests {
     use crate::xdm::owned_tree_experiment::Document;
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
-    fn compile(value: &str) -> Result<(), super::CompileFailure> {
+    fn compile(attribute: &str, value: &str) -> Result<(), super::CompileFailure> {
         let xml = format!(
-            r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:mode name="m" warning-on-multiple-match="{value}"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#
+            r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:mode name="m" {attribute}="{value}"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#
         );
         let parsed = parse_document(
             "memory:mode-declaration.xsl",
@@ -96,17 +141,36 @@ mod tests {
     #[test]
     fn admits_only_warning_disabled_lexicals_without_a_warning_channel() {
         for value in ["no", "false", " 0 "] {
-            compile(value).expect("warning-disabled declaration should be inert");
+            compile("warning-on-multiple-match", value)
+                .expect("warning-disabled declaration should be inert");
         }
 
         for value in ["yes", "true", " 1 "] {
-            let failure = compile(value).expect_err("warning delivery is not yet owned");
+            let failure = compile("warning-on-multiple-match", value)
+                .expect_err("warning delivery is not yet owned");
             assert_eq!(failure.code, "FXST1038");
             assert_eq!(failure.category, CompileCategory::Unsupported);
         }
 
-        let failure = compile("Yes").expect_err("boolean lexicals are case-sensitive");
+        let failure = compile("warning-on-multiple-match", "Yes")
+            .expect_err("boolean lexicals are case-sensitive");
         assert_eq!(failure.code, "XTSE0020");
         assert_eq!(failure.category, CompileCategory::Invalid);
+    }
+
+    #[test]
+    fn validates_all_mode_boolean_attributes_before_unsupported_semantics() {
+        for attribute in ["warning-on-no-match", "typed"] {
+            let failure = compile(attribute, "No")
+                .expect_err("mixed-case boolean must fail before runtime semantics");
+            assert_eq!(failure.code, "XTSE0020");
+            assert_eq!(failure.category, CompileCategory::Invalid);
+            assert!(failure.detail.contains(attribute));
+        }
+
+        compile("typed", "false").expect("typed=false is semantically inert");
+        let failure = compile("typed", "true").expect_err("typed input is schema-aware");
+        assert_eq!(failure.code, "FXST1040");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
     }
 }

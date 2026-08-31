@@ -115,6 +115,20 @@ rationale = "The native XTSE0020 assertion matches the structured static error f
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1444"
+selection = "selected"
+execution = "passed"
+rationale = "The native XTSE0020 assertion matches the structured static error for invalid mixed-case warning-on-no-match='Yes' before the unrelated on-no-match execution policy is considered."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1447"
+selection = "selected"
+execution = "passed"
+rationale = "The native XTSE0020 assertion matches the structured static error for invalid mixed-case typed='No' before shallow-copy or typed-mode execution is considered."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-0901"
 selection = "selected"
 execution = "passed"

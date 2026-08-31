@@ -436,10 +436,19 @@ would violate AR-0008, prepared-tree mutation would violate AR-0009, and
 filtering only built-in template traversal would let XPath and other semantic
 consumers observe a different tree. [AR-0016](../Architectural%20Reviews/AR-0016-stylesheet-dependent-source-views-and-whitespace-stripping.md)
 therefore incubates a complete safe derived-document reference and a private
-immutable visibility-view experiment. The mode denominator remains 31 passes
-and 138 visible default not-run cases until one approach preserves semantic
-parity, node identity, budgets, cancellation, prepared reuse, and attributable
-memory across all access paths exercised by the case.
+immutable visibility-view experiment. At this checkpoint the mode denominator
+records 31 passes and 138 visible default not-run cases. `mode-1301` remains
+not run until one approach preserves semantic parity, node identity, budgets,
+cancellation, prepared reuse, and attributable memory across all access paths
+exercised by the case.
+
+Independent of that view decision, the static mode-validation tranche selects
+`mode-1444` and `mode-1447`. The dedicated declaration compiler validates
+invalid mixed-case `warning-on-no-match="Yes"` and `typed="No"` as native
+`XTSE0020` before unrelated unsupported `on-no-match`, warning-delivery, or
+schema-aware behavior is considered. The mode denominator now records 33
+passes and 136 visible default not-run cases; `mode-1301` remains among the
+latter. [Evidence](../Evidence/xslt30-mode-static-boolean-validation-tranche-2026-08-30.md)
 
 ## Corpus audit -- 2026-08-30
 
@@ -480,10 +489,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 31 | 0 | 0 | 138 |
+| `attr/mode` | 169 | 33 | 0 | 0 | 136 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **225** | **3** | **5** | **298** |
+| **Conserved total** | **531** | **227** | **3** | **5** | **296** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1309,6 +1318,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   source view. Preserve the reusable source-derived prepared document, make
   XPath and XSLT consumers observe identical stripped-node semantics, and
   measure the safe reference before retaining a specialized representation.
+- [x] Execute the independent static-error cases `mode-1444` and `mode-1447` by
+  validating `warning-on-no-match` and `typed` through the existing XSLT 3.0
+  boolean policy before unsupported runtime semantics. Preserve native
+  `XTSE0020`, structured invalid classification, and stylesheet location. The
+  mode ledger now records 33 passes and 136 visible default not-run cases.
 - [x] Retain non-whitespace text children in the private attribute-free
   temporary-tree representation and preserve mixed element/text order through
   invocation-owned materialization, built-in traversal, result accounting, and
