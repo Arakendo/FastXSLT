@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-26
 - Related reviews: AR-0002, AR-0004, AR-0010
-- Related evidence: `docs/Evidence/aspnet-in-process-native-workbench-baseline-2026-08-26.md`
+- Related evidence: `docs/Evidence/aspnet-in-process-native-workbench-baseline-2026-08-26.md`; `docs/Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`
 - Supersedes: None
 
 ## Context

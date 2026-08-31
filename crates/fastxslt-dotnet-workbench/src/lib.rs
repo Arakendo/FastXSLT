@@ -2,6 +2,7 @@
 
 use std::{
     collections::HashMap,
+    mem::size_of,
     panic::{AssertUnwindSafe, catch_unwind},
     ptr, slice,
     sync::{
@@ -87,6 +88,16 @@ impl State {
     }
 
     fn insert_outcome(&self, outcome: Outcome) -> u64 {
+        let outcome = match outcome {
+            Outcome::Bytes { value, .. } if value.len() > MAX_OUTCOME_BYTES => failure_outcome(
+                "FXFFI0014",
+                "boundary",
+                None,
+                None,
+                "native outcome envelope exceeds the configured byte limit",
+            ),
+            outcome => outcome,
+        };
         let Ok(handle) = self.next_handle() else {
             return 0;
         };
@@ -98,10 +109,31 @@ impl State {
     }
 
     fn insert_boundary_failure(&self, failure: &BoundaryFailure) -> u64 {
-        self.insert_outcome(Outcome::Bytes {
-            kind: OUTCOME_FAILURE,
-            value: encode_failure(failure.code, "boundary", None, None, &failure.detail),
-        })
+        self.insert_outcome(failure_outcome(
+            failure.code,
+            "boundary",
+            None,
+            None,
+            &failure.detail,
+        ))
+    }
+
+    fn insert_created_engine(&self, engine: ExperimentalEngine) -> u64 {
+        let Ok(engine_handle) = self.next_handle() else {
+            return 0;
+        };
+        let Ok(outcome_handle) = self.next_handle() else {
+            return 0;
+        };
+        let Ok(mut engines) = self.engines() else {
+            return 0;
+        };
+        let Ok(mut outcomes) = self.outcomes() else {
+            return 0;
+        };
+        engines.insert(engine_handle, Arc::new(engine));
+        outcomes.insert(outcome_handle, Outcome::Engine(engine_handle));
+        outcome_handle
     }
 
     fn quarantine(&self) {
@@ -204,21 +236,20 @@ fn decode_identity(value: Vec<u8>, field: &str) -> Result<String, BoundaryFailur
         .map_err(|_| BoundaryFailure::new("FXFFI0003", format!("{field} is not valid UTF-8")))
 }
 
-fn encode_failure(
+fn try_encode_failure(
     code: &str,
     category: &str,
     request_id: Option<&str>,
     location: Option<&WorkbenchLocation>,
     detail: &str,
-) -> Vec<u8> {
-    let mut encoded = Vec::new();
+) -> Option<Vec<u8>> {
     let start = location
         .map(|value| value.start.to_string())
         .unwrap_or_default();
     let end = location
         .map(|value| value.end.to_string())
         .unwrap_or_default();
-    for field in [
+    let fields = [
         code,
         category,
         request_id.unwrap_or_default(),
@@ -226,25 +257,57 @@ fn encode_failure(
         &start,
         &end,
         detail,
-    ] {
-        let length = u32::try_from(field.len()).expect("bounded failure field fits u32");
+    ];
+    let encoded_length = fields.iter().try_fold(0_usize, |total, field| {
+        u32::try_from(field.len()).ok()?;
+        total
+            .checked_add(size_of::<u32>())?
+            .checked_add(field.len())
+    })?;
+    if encoded_length > MAX_OUTCOME_BYTES {
+        return None;
+    }
+    let mut encoded = Vec::with_capacity(encoded_length);
+    for field in fields {
+        let length = u32::try_from(field.len()).ok()?;
         encoded.extend_from_slice(&length.to_le_bytes());
         encoded.extend_from_slice(field.as_bytes());
     }
-    encoded
+    Some(encoded)
+}
+
+fn failure_outcome(
+    code: &str,
+    category: &str,
+    request_id: Option<&str>,
+    location: Option<&WorkbenchLocation>,
+    detail: &str,
+) -> Outcome {
+    let value =
+        try_encode_failure(code, category, request_id, location, detail).unwrap_or_else(|| {
+            try_encode_failure(
+                "FXFFI0014",
+                "boundary",
+                None,
+                None,
+                "native failure envelope exceeds the configured byte limit",
+            )
+            .expect("static bounded-envelope failure must fit")
+        });
+    Outcome::Bytes {
+        kind: OUTCOME_FAILURE,
+        value,
+    }
 }
 
 fn engine_failure(failure: &WorkbenchFailure) -> Outcome {
-    Outcome::Bytes {
-        kind: OUTCOME_FAILURE,
-        value: encode_failure(
-            &failure.code,
-            &failure.category,
-            failure.request_id.as_deref(),
-            failure.location.as_deref(),
-            &failure.detail,
-        ),
-    }
+    failure_outcome(
+        &failure.code,
+        &failure.category,
+        failure.request_id.as_deref(),
+        failure.location.as_deref(),
+        &failure.detail,
+    )
 }
 
 fn decode_flag(value: u32, field: &str) -> Result<bool, BoundaryFailure> {
@@ -260,17 +323,7 @@ fn decode_flag(value: u32, field: &str) -> Result<bool, BoundaryFailure> {
 
 fn insert_created_engine(state: &State, result: Result<ExperimentalEngine, CreateFailure>) -> u64 {
     match result {
-        Ok(engine) => {
-            let Ok(engine_handle) = state.next_handle() else {
-                return 0;
-            };
-            let Ok(mut engines) = state.engines() else {
-                return 0;
-            };
-            engines.insert(engine_handle, Arc::new(engine));
-            drop(engines);
-            state.insert_outcome(Outcome::Engine(engine_handle))
-        }
+        Ok(engine) => state.insert_created_engine(engine),
         Err(CreateFailure::Boundary(failure)) => state.insert_boundary_failure(&failure),
         Err(CreateFailure::Engine(failure)) => state.insert_outcome(engine_failure(&failure)),
     }
@@ -776,7 +829,8 @@ mod diagnostic_tests;
 #[cfg(test)]
 mod tests {
     use super::{
-        BoundaryFailure, OUTCOME_FAILURE, OUTCOME_RESULT, State, copy_input, copy_output,
+        BoundaryFailure, ExperimentalEngine, MAX_OUTCOME_BYTES, OUTCOME_FAILURE, OUTCOME_RESULT,
+        Outcome, State, WorkbenchLimits, copy_input, copy_output, failure_outcome,
         fastxslt_workbench_v0_control_cancel, fastxslt_workbench_v0_control_create,
         fastxslt_workbench_v0_control_first_charge_observed, fastxslt_workbench_v0_control_release,
         fastxslt_workbench_v0_create, fastxslt_workbench_v0_engine_release,
@@ -784,7 +838,7 @@ mod tests {
         fastxslt_workbench_v0_outcome_length, fastxslt_workbench_v0_outcome_release,
         fastxslt_workbench_v0_outcome_take_engine, fastxslt_workbench_v0_transform,
         fastxslt_workbench_v0_transform_controlled, fastxslt_workbench_v0_transform_with_control,
-        guarded_on,
+        guarded_on, try_encode_failure,
     };
 
     fn outcome_bytes(outcome: u64) -> Vec<u8> {
@@ -798,7 +852,10 @@ mod tests {
     }
 
     fn failure_fields(outcome: u64) -> Vec<String> {
-        let bytes = outcome_bytes(outcome);
+        decode_failure_fields(&outcome_bytes(outcome))
+    }
+
+    fn decode_failure_fields(bytes: &[u8]) -> Vec<String> {
         let mut offset = 0;
         let mut fields = Vec::new();
         for _ in 0..7 {
@@ -838,6 +895,17 @@ mod tests {
         assert_ne!(engine, 0);
         assert_eq!(fastxslt_workbench_v0_outcome_kind(creation), 0);
         engine
+    }
+
+    fn reference_engine_value() -> ExperimentalEngine {
+        ExperimentalEngine::new(
+            "urn:w3c:xslt30:for-004:source".to_owned(),
+            include_bytes!("../../../vendor/xslt30-test/tests/expr/for/for03.xml").to_vec(),
+            "urn:w3c:xslt30:for-004:stylesheet".to_owned(),
+            include_bytes!("../../../vendor/xslt30-test/tests/expr/for/for-004.xsl").to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("create local reference engine")
     }
 
     #[test]
@@ -893,6 +961,58 @@ mod tests {
         let failure = BoundaryFailure::new("FXFFI0004", "unknown engine handle");
         assert_eq!(failure.code, "FXFFI0004");
         assert_eq!(failure.detail, "unknown engine handle");
+    }
+
+    #[test]
+    fn every_failure_envelope_is_preflighted_and_defensively_bounded() {
+        let fixed_field_bytes = 7 * size_of::<u32>() + "C".len() + "c".len();
+        let exact_detail = "x".repeat(MAX_OUTCOME_BYTES - fixed_field_bytes);
+        let exact = try_encode_failure("C", "c", None, None, &exact_detail)
+            .expect("exactly bounded failure envelope");
+        assert_eq!(exact.len(), MAX_OUTCOME_BYTES);
+        assert!(try_encode_failure("C", "c", None, None, &format!("{exact_detail}x")).is_none());
+
+        let Outcome::Bytes { kind, value } = failure_outcome(
+            "ENGINE",
+            "invalid",
+            Some("request"),
+            None,
+            &"y".repeat(MAX_OUTCOME_BYTES),
+        ) else {
+            panic!("failure must remain a byte outcome");
+        };
+        assert_eq!(kind, OUTCOME_FAILURE);
+        assert!(value.len() <= MAX_OUTCOME_BYTES);
+        let fields = decode_failure_fields(&value);
+        assert_eq!(fields[0], "FXFFI0014");
+        assert_eq!(fields[1], "boundary");
+
+        let state = State::new();
+        let handle = state.insert_outcome(Outcome::Bytes {
+            kind: OUTCOME_RESULT,
+            value: vec![0; MAX_OUTCOME_BYTES + 1],
+        });
+        let outcomes = state.outcomes().expect("inspect local outcomes");
+        let Outcome::Bytes { kind, value } = outcomes.get(&handle).expect("bounded replacement")
+        else {
+            panic!("oversized outcome must become a failure");
+        };
+        assert_eq!(*kind, OUTCOME_FAILURE);
+        assert!(value.len() <= MAX_OUTCOME_BYTES);
+        assert_eq!(decode_failure_fields(value)[0], "FXFFI0014");
+    }
+
+    #[test]
+    fn creation_does_not_publish_an_engine_when_its_outcome_cannot_be_inserted() {
+        let state = State::new();
+        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _outcomes = state.outcomes.lock().expect("lock local outcomes");
+            panic!("poison outcome registry for atomic-publication probe");
+        }));
+
+        assert_eq!(state.insert_created_engine(reference_engine_value()), 0);
+        assert!(state.engines.lock().expect("inspect engines").is_empty());
+        assert!(state.is_quarantined());
     }
 
     #[test]

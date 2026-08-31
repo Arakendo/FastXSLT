@@ -9,7 +9,7 @@
 | Trigger | Adversarial review Finding 6 confirmed that foreign callers can retain engines, controls, and outcomes without an aggregate ceiling |
 | Related ADRs | ADR-0002, ADR-0003, ADR-0008 |
 | Related reviews | AR-0002, AR-0009, AR-0010, AR-0012 |
-| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; future abandonment and failure-envelope measurements |
+| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; future live-use and abandonment measurements |
 
 ## Architectural question
 
@@ -91,7 +91,10 @@ unbounded accidental growth in a long-lived trusted ASP.NET process.
 ## Findings and uncertainties
 
 Per-object envelope bounds and atomic insertion rollback are existing ADR-0008
-obligations, not optional quota policy. Aggregate abandonment remains a product
+obligations, not optional quota policy. They are now executable: all failure
+frames are preflighted against 1 MiB with a bounded replacement diagnostic, and
+engine/outcome publication reserves both handles and locks before either map is
+changed. Aggregate abandonment remains a product
 decision. Unknowns include representative simultaneous engine generations,
 normal control/outcome concurrency, prepared-engine retained bytes, failure
 burst size, whether a native host needs multiple trust domains, and what
@@ -101,6 +104,11 @@ The leading experiment is separate count and retained-byte accounting with no
 production ceiling. It should run 100,000 abandoned controls and outcomes in a
 sacrificial process, then representative prepared engines, while recording RSS,
 registry cardinality, payload bytes, map capacity, and release recovery.
+Abandonment results must not be used as a proxy for legitimate live pressure.
+A separate host-shaped probe must record high-water marks for overlapping
+generations, active controls, result and diagnostic bursts, and delayed but
+valid disposal. Any proposed policy must admit those observed live peaks while
+still bounding abandoned state.
 
 ## Disposition
 
@@ -111,12 +119,15 @@ representative host policy are reviewed.
 
 ## Required follow-up
 
-- [ ] Bound every encoded success and failure outcome before registry insertion.
-- [ ] Make engine plus creation-outcome insertion atomic or roll back the engine
+- [x] Bound every encoded success and failure outcome before registry insertion.
+- [x] Make engine plus creation-outcome insertion atomic or roll back the engine
   if the outcome cannot be delivered.
 - [ ] Add test-only registry cardinality, payload-byte, and capacity accounting.
 - [ ] Run 100,000-operation control and outcome abandonment/release probes in a
   sacrificial process and record whole-process memory.
+- [ ] Record legitimate live-use high-water marks separately for overlapping
+  generations, active controls, result/diagnostic bursts, and delayed valid
+  disposal; do not calibrate policy from abandonment pressure alone.
 - [ ] Measure representative prepared-engine retention separately from scalar
   controls and bounded outcome bytes.
 - [ ] Compare fixed count, estimated-byte, host-domain, and isolated-process
@@ -137,3 +148,9 @@ consumers.
 - 2026-08-31 -- Opened as Incubating from adversarial review Finding 6;
   separated existing per-object bounds and rollback obligations from the open
   aggregate quota and attribution policy.
+- 2026-08-31 -- Preflighted every structured envelope against the existing 1 MiB
+  bound, added bounded `FXFFI0014` replacement failure, and made engine plus
+  creation-outcome publication all-or-nothing before insertion. Aggregate
+  abandonment policy remains open.
+- 2026-08-31 -- Peer review retained Incubating and required separate live-use
+  and abandonment high-water measurements before any ceiling is proposed.
