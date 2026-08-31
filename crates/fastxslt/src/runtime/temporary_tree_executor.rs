@@ -79,6 +79,7 @@ fn select_temporary_template<'a>(
     let mut selected_rank = None;
     let mut ambiguous = false;
     for (index, candidate) in inputs.program.matched_templates.iter().enumerate() {
+        control.observe_template_candidate();
         if !template_accepts_mode(&candidate.modes, mode)
             || !temporary_matches(tree, node, &candidate.pattern, inputs.request_id, control)?
         {
@@ -115,17 +116,17 @@ pub(super) fn apply_temporary_roots(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     charge_xslt_instruction(control, inputs.request_id)?;
-    if let Some((template_index, template)) = inputs
-        .program
-        .matched_templates
-        .iter()
-        .enumerate()
-        .rev()
-        .find(|(_, template)| {
-            template_accepts_mode(&template.modes, mode)
-                && template.pattern == MatchPattern::Document
-        })
-    {
+    let mut document_template = None;
+    for (template_index, template) in inputs.program.matched_templates.iter().enumerate().rev() {
+        control.observe_template_candidate();
+        if template_accepts_mode(&template.modes, mode)
+            && template.pattern == MatchPattern::Document
+        {
+            document_template = Some((template_index, template));
+            break;
+        }
+    }
+    if let Some((template_index, template)) = document_template {
         let variables =
             bind_template_parameters(&template.template, parameters, &inputs.globals.atomics);
         return execute_sequence(

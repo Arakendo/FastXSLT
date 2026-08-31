@@ -1,6 +1,10 @@
 //! Phase-specific cancellation tests for the private golden runtime.
 
-use std::collections::{BTreeMap, HashSet};
+use std::{
+    collections::{BTreeMap, HashSet},
+    fmt::Write as _,
+    time::Instant,
+};
 
 use super::{
     ExecutionPolicy, FailureCategory, InvocationEntry, ResultNode, TransformRequest,
@@ -15,6 +19,8 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document_controlled};
 
 const SOURCE_ID: &str = "urn:fastxslt:golden:hello:input";
 const STYLESHEET_ID: &str = "urn:fastxslt:golden:hello:stylesheet";
+const FANOUT_SOURCE_ID: &str = "urn:fastxslt:template-fanout:source";
+const FANOUT_STYLESHEET_ID: &str = "urn:fastxslt:template-fanout:stylesheet";
 
 fn snapshot() -> crate::resources::ResourceSnapshot {
     let source = include_bytes!("../../../../corpus/golden/hello/input.xml").to_vec();
@@ -199,4 +205,128 @@ fn golden_path_has_an_exact_attributable_charge_profile() {
             ("serialized-byte", 35),
         ]
     );
+}
+
+fn template_fanout_workload(
+    template_count: usize,
+    source_nodes: usize,
+) -> (
+    crate::xslt::golden_semantics_experiment::StylesheetProgram,
+    Document,
+) {
+    let mut stylesheet = String::from(
+        r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><xsl:apply-templates select="root/item"/></xsl:template>"#,
+    );
+    for index in 0..template_count {
+        write!(stylesheet, r#"<xsl:template match="miss{index}"/>"#)
+            .expect("write generated template");
+    }
+    stylesheet.push_str(r#"<xsl:template match="item"><out/></xsl:template></xsl:stylesheet>"#);
+    let source = format!("<root>{}</root>", "<item/>".repeat(source_nodes));
+    let total_bytes = source.len() + stylesheet.len();
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, total_bytes, total_bytes));
+    resources
+        .admit(FANOUT_SOURCE_ID, source.into_bytes())
+        .expect("admit fanout source");
+    resources
+        .admit(FANOUT_STYLESHEET_ID, stylesheet.into_bytes())
+        .expect("admit fanout stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, FANOUT_STYLESHEET_ID).expect("compile fanout stylesheet");
+    let mut preparation = InvocationControl::unbounded();
+    let parsed = parse_document_controlled(
+        FANOUT_SOURCE_ID,
+        snapshot.get(FANOUT_SOURCE_ID).expect("fanout source bytes"),
+        ParseLimits {
+            max_events: source_nodes * 2 + 8,
+            max_depth: 8,
+        },
+        &mut preparation,
+    )
+    .expect("parse fanout source");
+    let document =
+        Document::from_parsed_controlled(parsed, &mut preparation).expect("construct fanout XDM");
+    (program, document)
+}
+
+#[test]
+fn template_candidate_fanout_is_observed_without_becoming_a_budget() {
+    let (program, source) = template_fanout_workload(32, 16);
+    let templates = program.matched_templates.len();
+    let mut control = InvocationControl::unbounded();
+
+    let result = super::execute_program(&program, &source, "template-fanout", &mut control)
+        .expect("execute fanout workload");
+
+    assert_eq!(result.children.len(), 16);
+    assert_eq!(templates, 33);
+    assert_eq!(
+        control.template_candidate_observation(),
+        (templates * 16, templates)
+    );
+    assert_eq!(control.consumed(WorkDomain::XsltInstruction), 33);
+}
+
+#[test]
+fn cancellation_signalled_during_simple_pattern_scan_waits_for_the_next_charge() {
+    let (program, source) = template_fanout_workload(128, 1);
+    let templates = program.matched_templates.len();
+    let mut control = InvocationControl::unbounded().cancelling_after_template_candidates(1);
+
+    let failure = super::execute_program(
+        &program,
+        &source,
+        "template-fanout-cancellation-gap",
+        &mut control,
+    )
+    .expect_err("the literal-result instruction should observe cancellation after selection");
+
+    assert_eq!(failure.code, "FXCT0001");
+    assert_eq!(failure.category, FailureCategory::Cancelled);
+    assert_eq!(failure.work_domain, Some(WorkDomain::XsltInstruction));
+    assert_eq!(
+        control.template_candidate_observation(),
+        (templates, templates)
+    );
+    assert_eq!(
+        control.template_candidates_after_cancellation_signal(),
+        templates - 1
+    );
+}
+
+#[test]
+#[ignore = "release-mode measurement probe"]
+fn measure_template_candidate_fanout() {
+    for template_count in [8, 32, 128] {
+        for source_nodes in [8, 64, 256] {
+            let (program, source) = template_fanout_workload(template_count, source_nodes);
+            let mut samples = Vec::with_capacity(5);
+            let mut observed = None;
+            for _ in 0..5 {
+                let mut control = InvocationControl::unbounded();
+                let started = Instant::now();
+                let result = super::execute_program(
+                    &program,
+                    &source,
+                    "template-fanout-measurement",
+                    &mut control,
+                )
+                .expect("execute measured fanout workload");
+                assert_eq!(result.children.len(), source_nodes);
+                samples.push(started.elapsed().as_secs_f64() * 1_000_000.0);
+                observed = Some(control.template_candidate_observation());
+            }
+            samples.sort_by(f64::total_cmp);
+            let (candidates, maximum_gap) = observed.expect("one observation");
+            println!(
+                "templates={} source_nodes={} candidates={} maximum_gap={} median_us={:.3}",
+                program.matched_templates.len(),
+                source_nodes,
+                candidates,
+                maximum_gap,
+                samples[samples.len() / 2]
+            );
+        }
+    }
 }

@@ -1,7 +1,7 @@
 # FastXSLT Adversarial Engineering Review
 
 Date: 2026-08-30  
-Remediation updated: 2026-08-30
+Remediation updated: 2026-08-31
 Scope: current repository state on the reviewed worktree  
 Method: read-only source, decision-record, evidence, corpus, Rust, native ABI,
 worker, and managed-host inspection; full workspace test execution; targeted
@@ -22,7 +22,7 @@ their original evidence. Implementation details and validation are recorded in
 | 4 | **Boundary closed** | FastXSLT now reports `FXRT1014 / unsupported` before strip-all execution when the source contains any `xml:space` declaration. Full inherited `preserve`/`default` semantics remain deliberately unimplemented under ADR-0012. |
 | 5 | **Completed** | Source element copies retain effective in-scope namespace bindings assembled from their ancestor lineage. Isolated descendant `xsl:copy-of` and `xsl:copy` regressions pass. |
 | 6 | **Open -- review required** | Measure registry abandonment and failure-envelope retention, then review a process-wide quota/ownership policy against ADR-0008 and AR-0010 before changing ABI behavior. |
-| 7 | **Open -- measurement required** | Instrument template candidates considered and maximum cancellation-observation delay. No budget unit or template index is selected yet. |
+| 7 | **Confirmed -- remediation decision required** | Test-only instrumentation proves exact `selected nodes × matched templates` fanout. A signal after candidate 1 remained unobserved through the other 128 simple-pattern candidates. The optimized sweep reached 33,024 candidates and a 429.3 us local median; no budget unit, check frequency, or index is selected yet. |
 | 8 | **Completed** | Temporary path and built-in selections carry real focus position/size through template and `next-match` execution. Two-node `1/2`, `2/2` regression evidence passes. |
 | 9 | **Boundary closed** | Same-module forward and cyclic global defaults fail at compilation as `FXST1044 / unsupported`; admitted backward dependencies continue to compile. A general dependency graph remains deferred. |
 | 10 | **Completed** | Cancellation commands are assembled and serialized as complete bounded frames. A 10,000-pair byte-fragmenting stress probe recovered all 20,000 unique frames exactly once; the existing live-worker probe retains cancellation correlation and same-process recovery. |
@@ -34,7 +34,10 @@ operational repairs and two explicit unsupported boundaries. **Four findings
 remain open**: two resource/accounting items and two performance hypotheses
 requiring measurement. The first completed tranche is commit `95aa31a`; the
 subsequent [worker control-frame evidence](../Evidence/aspnet-worker-control-frame-serialization-2026-08-31.md)
-records Finding 10's stress and operational validation.
+records Finding 10's stress and operational validation. The
+[template-candidate evidence](../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
+advances Finding 7 from an unmeasured suspicion to a confirmed remediation
+decision.
 
 ## Review posture and limits
 

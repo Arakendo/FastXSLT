@@ -9,7 +9,7 @@
 | Trigger | A dispatcher was proposed as a security layer capable of detecting and recovering a rogue parser worker |
 | Related ADRs | ADR-0002, ADR-0005 |
 | Related reviews | AR-0002, AR-0003, AR-0004, AR-0008, AR-0009 |
-| Related evidence | `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-ar-0010-review-monday-2026-08-25.md`; `docs/Evidence/private-invocation-control-charge-points-2026-08-25.md`; `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`; `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`; `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`; `docs/Evidence/aspnet-natural-cancellation-races-2026-08-26.md`; `docs/Evidence/aspnet-deterministic-instruction-budget-2026-08-26.md`; `docs/Evidence/aspnet-worker-control-frame-serialization-2026-08-31.md`; future fault-injection and host-boundary measurements |
+| Related evidence | `docs/Evidence/thread-pool-design-review-2026-08-25.md`; `docs/Evidence/peer-ar-0010-review-monday-2026-08-25.md`; `docs/Evidence/private-invocation-control-charge-points-2026-08-25.md`; `docs/Evidence/aspnet-worker-recovery-and-generation-replacement-2026-08-26.md`; `docs/Evidence/aspnet-predispatch-cooperative-cancellation-2026-08-26.md`; `docs/Evidence/aspnet-active-cooperative-cancellation-2026-08-26.md`; `docs/Evidence/aspnet-natural-cancellation-races-2026-08-26.md`; `docs/Evidence/aspnet-deterministic-instruction-budget-2026-08-26.md`; `docs/Evidence/aspnet-worker-control-frame-serialization-2026-08-31.md`; `docs/Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md`; future fault-injection and host-boundary measurements |
 
 ## Architectural question
 
@@ -149,6 +149,11 @@ only mode.
 - The golden path now asserts an exact eight-domain charge profile. Structural
   observation gaps are one named semantic unit, but work inside a dependency
   call, allocation, or fragment append remains variable in wall time.
+- Test-only template-selection observations now confirm exact
+  `selected nodes × matched templates` fanout. A deterministic signal after the
+  first of 129 simple-pattern candidates remained unobserved until all
+  candidates finished and the next XSLT instruction charged. No candidate work
+  domain or check frequency follows from that evidence yet.
 - A local optimized microprobe observed 1.215–1.249 ns per successful charge
   versus 0.205–0.207 ns for its black-box loop baseline on the recorded machine.
   It is not an end-to-end overhead or host-performance result.
@@ -262,10 +267,6 @@ is measured, or a stronger sandbox such as WASM becomes a viable host boundary.
   atomic cancellation token and six layer-owned work domains. Retained
   Incubating because observation latency, weights, overhead, deadlines, panic,
   dispatch, and hard isolation remain untested.
-- 2026-08-31 -- Serialized private worker cancellation frames and retained a
-  20,000-frame concurrent byte-fragmenting stress probe. This closes transport
-  write atomicity evidence without changing cancellation ordering or making a
-  public concurrency guarantee.
 - 2026-08-25 -- Injected deterministic cancellation after partial work in every
   implemented charge domain and retained request/domain identity. The private
   set returns no partial results, but public batch collection remains open.
@@ -300,3 +301,10 @@ is measured, or a stronger sandbox such as WASM becomes a viable host boundary.
 - 2026-08-26 -- Added the first native in-process ASP.NET candidate under
   ADR-0008. It strengthens the mechanism comparison but retains no thread-level
   hard-kill claim; broader supervision and panic evidence remain open.
+- 2026-08-31 -- Serialized private worker cancellation frames and retained a
+  20,000-frame concurrent byte-fragmenting stress probe. This closes transport
+  write atomicity evidence without changing cancellation ordering or making a
+  public concurrency guarantee.
+- 2026-08-31 -- Measured matched-template scan fanout and deterministically
+  exposed a 128-candidate post-signal cancellation gap. Retained the choice of
+  work domain, check frequency, and any dispatch index as open.

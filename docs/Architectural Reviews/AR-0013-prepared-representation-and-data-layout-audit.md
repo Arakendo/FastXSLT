@@ -4,12 +4,12 @@
 | --- | --- |
 | Status | Incubating |
 | Opened | 2026-08-27 |
-| Last reviewed | 2026-08-27 |
+| Last reviewed | 2026-08-31 |
 | Scope | XDM, compiled stylesheet, execution plan, prepared input, and invocation-local storage |
 | Trigger | Explore whether deliberately prepared representations can improve repeated execution rather than inheriting conventional engine layouts without evidence |
 | Related ADRs | ADR-0002, ADR-0003, ADR-0004, ADR-0007 |
 | Related reviews | AR-0007, AR-0009, AR-0012 |
-| Related evidence | `../Evidence/private-prepared-input-reuse-2026-08-25.md`; `../Evidence/private-prepared-retention-observation-2026-08-25.md`; `../Evidence/allocation-counter-review-and-preparation-probe-2026-08-25.md`; `../Evidence/aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md` |
+| Related evidence | `../Evidence/private-prepared-input-reuse-2026-08-25.md`; `../Evidence/private-prepared-retention-observation-2026-08-25.md`; `../Evidence/allocation-counter-review-and-preparation-probe-2026-08-25.md`; `../Evidence/aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md`; `../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md` |
 
 ## Architectural question
 
@@ -29,8 +29,9 @@ to establish semantics and lifecycle evidence. Its Rust containers and layouts
 must not become permanent merely because they were convenient for the reference
 path.
 
-There is no current profile showing that a particular arena, index, interner,
-sequence representation, or cache is the next bottleneck. There is also no
+One focused synthetic profile now confirms linear matched-template fanout, but
+does not establish that a dispatch index is the next consumer-visible
+bottleneck or that its preparation and retention cost would break even. There is also no
 evidence that a novel representation will outperform straightforward safe Rust
 after preparation cost, retained memory, diagnostics, cancellation, and result
 transfer are included. This review preserves the investigation without
@@ -246,6 +247,15 @@ Unknowns include representative consumer distributions, reuse counts, source
 shapes, namespace/name repetition, axis and template-selection pressure,
 allocation ownership inside Rust, cache behavior, and the memory budget an
 embedded ASP.NET consumer will tolerate per generation or worker.
+
+The first selection-fanout probe observes exact `selected nodes × matched
+templates` growth: its largest local shape considered 33,024 candidates and
+measured a 429.3 us optimized median. A deterministic signal after candidate 1
+was not observed through the remaining 128 simple-pattern candidates. This
+confirms both work-attribution and cancellation-check pressure. It does not
+select a stylesheet-activated index: candidate charging/check frequency belongs
+to AR-0010, while any index must still demonstrate preparation, memory,
+semantic-parity, and host-visible benefit under this review.
 
 ## Disposition
 

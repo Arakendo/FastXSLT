@@ -21,9 +21,14 @@ execution. The subsequent
 serializes each bounded cancellation command across write and flush; a
 byte-fragmenting 10,000-pair stress recovered all 20,000 frames exactly once,
 while the live worker retained correlated cancellation and process reuse. The
-next adversarial tranche measures native registry retention and
-template-selection work, and keeps the two performance findings under AR-0013
-until measurements justify a representation change.
+next adversarial tranche measures native registry retention. The
+[template-candidate fanout probe](../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
+has already confirmed exact `nodes × templates` growth, including 33,024
+candidate checks in the largest local sweep and a 128-candidate delay after a
+deterministic cancellation signal. AR-0010 must now compare candidate charging
+and check frequency while AR-0013 keeps a possible activated dispatch index and
+the other two performance findings experimental until consumer-visible evidence
+justifies representation changes.
 
 Completing the 31-case QT3 mixed deep-equal group raised
 `deep_equal_experiment.rs` to 1,054 lines and exposed independent atomic and

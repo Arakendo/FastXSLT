@@ -176,6 +176,19 @@ pub(crate) struct InvocationControl {
     limits: WorkLimits,
     remaining: WorkLimits,
     cancellation_fault: Option<CancellationFault>,
+    #[cfg(test)]
+    observations: InvocationObservations,
+}
+
+#[cfg(test)]
+#[derive(Debug, Default)]
+struct InvocationObservations {
+    template_candidates_considered: usize,
+    template_candidates_since_charge: usize,
+    maximum_template_candidates_between_charges: usize,
+    cancel_after_template_candidates: Option<usize>,
+    template_candidate_signal_sent: bool,
+    template_candidates_after_signal: usize,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -191,6 +204,8 @@ impl InvocationControl {
             limits,
             remaining: limits,
             cancellation_fault: None,
+            #[cfg(test)]
+            observations: InvocationObservations::default(),
         }
     }
 
@@ -223,11 +238,68 @@ impl InvocationControl {
             .saturating_sub(self.remaining.limit(domain))
     }
 
+    /// Records selection fanout without selecting a budget unit or adding a
+    /// cancellation check to the measured path.
+    pub(crate) fn observe_template_candidate(&mut self) {
+        #[cfg(not(test))]
+        let _ = self;
+        #[cfg(test)]
+        {
+            self.observations.template_candidates_considered += 1;
+            self.observations.template_candidates_since_charge += 1;
+            if self.observations.template_candidate_signal_sent {
+                self.observations.template_candidates_after_signal += 1;
+            } else if let Some(remaining) = &mut self.observations.cancel_after_template_candidates
+            {
+                *remaining -= 1;
+                if *remaining == 0 {
+                    self.cancellation.cancel();
+                    self.observations.template_candidate_signal_sent = true;
+                    self.observations.cancel_after_template_candidates = None;
+                }
+            }
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn cancelling_after_template_candidates(mut self, candidates: usize) -> Self {
+        assert!(
+            candidates > 0,
+            "candidate cancellation requires a positive offset"
+        );
+        self.observations.cancel_after_template_candidates = Some(candidates);
+        self
+    }
+
+    #[cfg(test)]
+    pub(crate) fn template_candidate_observation(&self) -> (usize, usize) {
+        (
+            self.observations.template_candidates_considered,
+            self.observations
+                .maximum_template_candidates_between_charges
+                .max(self.observations.template_candidates_since_charge),
+        )
+    }
+
+    #[cfg(test)]
+    pub(crate) fn template_candidates_after_cancellation_signal(&self) -> usize {
+        self.observations.template_candidates_after_signal
+    }
+
     pub(crate) fn charge(
         &mut self,
         domain: WorkDomain,
         units: usize,
     ) -> Result<(), ControlFailure> {
+        #[cfg(test)]
+        {
+            self.observations
+                .maximum_template_candidates_between_charges = self
+                .observations
+                .maximum_template_candidates_between_charges
+                .max(self.observations.template_candidates_since_charge);
+            self.observations.template_candidates_since_charge = 0;
+        }
         if let Some(fault) = &mut self.cancellation_fault
             && fault.domain == domain
         {
