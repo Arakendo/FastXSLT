@@ -1,4 +1,6 @@
-//! Private validation for the admitted inert `xsl:mode` declaration slice.
+//! Private validation for the admitted `xsl:mode` declaration slice.
+
+use std::collections::BTreeMap;
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 
@@ -6,6 +8,61 @@ use super::{
     CompileFailure, ensure_no_meaningful_children, ensure_only_attributes, invalid,
     optional_attribute, parse_template_modes, unsupported,
 };
+
+pub(super) fn validate_same_precedence_mode_declaration_conflicts(
+    document: &Document,
+    top_level_children: &[NodeId],
+) -> Result<(), CompileFailure> {
+    let mut on_no_match_by_mode = BTreeMap::<String, (&str, NodeId)>::new();
+    for element in top_level_children.iter().copied().filter(|element| {
+        document.name(*element).is_some_and(|name| {
+            name.namespace.as_deref() == Some(super::XSLT_NAMESPACE) && name.local == "mode"
+        })
+    }) {
+        let Some(lexical_name) = optional_attribute(document, element, None, "name") else {
+            continue;
+        };
+        let names = parse_template_modes(document, element, lexical_name)?;
+        if names.len() != 1 || names[0].starts_with('#') {
+            continue;
+        }
+        let Some(on_no_match) = optional_attribute(document, element, None, "on-no-match") else {
+            continue;
+        };
+        validate_on_no_match(on_no_match, document, element)?;
+        if let Some((existing, _)) = on_no_match_by_mode.get(&names[0]) {
+            if *existing != on_no_match {
+                return Err(invalid(
+                    "XTSE0545",
+                    "same-precedence xsl:mode declarations specify conflicting on-no-match values",
+                    document.location(element),
+                ));
+            }
+        } else {
+            on_no_match_by_mode.insert(names[0].clone(), (on_no_match, element));
+        }
+    }
+    Ok(())
+}
+
+fn validate_on_no_match(
+    value: &str,
+    document: &Document,
+    element: NodeId,
+) -> Result<(), CompileFailure> {
+    if matches!(
+        value,
+        "deep-copy" | "shallow-copy" | "deep-skip" | "shallow-skip" | "text-only-copy" | "fail"
+    ) {
+        Ok(())
+    } else {
+        Err(invalid(
+            "XTSE0020",
+            "xsl:mode on-no-match has an invalid value",
+            document.location(element),
+        ))
+    }
+}
 
 pub(super) fn validate_mode_declaration(
     document: &Document,
@@ -240,5 +297,29 @@ mod tests {
             assert_eq!(failure.code, "XTSE0020");
             assert_eq!(failure.category, CompileCategory::Invalid);
         }
+    }
+
+    #[test]
+    fn rejects_conflicting_on_no_match_at_one_import_precedence() {
+        let xml = r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0">
+            <xsl:mode name="m" on-no-match="shallow-copy"/>
+            <xsl:mode name="m" on-no-match="text-only-copy"/>
+            <xsl:template name="main"><out/></xsl:template>
+        </xsl:stylesheet>"#;
+        let parsed = parse_document(
+            "memory:mode-conflict.xsl",
+            xml.as_bytes(),
+            ParseLimits {
+                max_events: 64,
+                max_depth: 8,
+            },
+        )
+        .expect("parse mode conflict fixture");
+        let document = Document::from_parsed(parsed).expect("build mode conflict fixture");
+        let failure = compile_stylesheet(&document)
+            .expect_err("same-precedence mode property conflict should fail");
+        assert_eq!(failure.code, "XTSE0545");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+        assert_eq!(failure.location.resource, "memory:mode-conflict.xsl");
     }
 }

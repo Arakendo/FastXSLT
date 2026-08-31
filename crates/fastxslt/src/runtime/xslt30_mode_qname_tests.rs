@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 36] = [
+const SELECTED_CASES: [&str; 37] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -52,6 +52,7 @@ const SELECTED_CASES: [&str; 36] = [
     "mode-1204",
     "mode-1444",
     "mode-1447",
+    "mode-1502",
     "mode-1507",
     "mode-1508",
     "mode-1509",
@@ -158,7 +159,7 @@ fn inventories_the_complete_mode_denominator_before_selection() {
         );
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
-    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 36);
+    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 37);
     assert_eq!(
         OVERLAY
             .matches("selection = \"excluded-by-profile\"")
@@ -339,6 +340,25 @@ fn rejects_invalid_mode_visibility_and_name_combinations() {
         assert_eq!(failure.category, FailureCategory::Invalid);
         assert!(failure.location.is_some());
     }
+}
+
+#[test]
+fn rejects_conflicting_same_precedence_mode_declarations() {
+    let document = load_test_set();
+    let case = find_case(&document, "mode-1502");
+    let expected_error = child_named(
+        &document,
+        child_named(&document, case, "result").expect("result metadata"),
+        "error",
+    )
+    .and_then(|error| attribute(&document, error, "code"));
+    assert_eq!(expected_error, Some("XTSE0545"));
+
+    let failure = compile_case_only("mode-1502")
+        .expect_err("conflicting mode declarations should fail stylesheet compilation");
+    assert_eq!(failure.code, "XTSE0545");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+    assert!(failure.location.is_some());
 }
 
 #[test]

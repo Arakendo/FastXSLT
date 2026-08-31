@@ -189,6 +189,12 @@ execution = "passed"
 rationale = "The unnamed mode's invalid public visibility reports native static error XTSE0020 before unrelated template expressions are compiled."
 
 [[case_override]]
+case_name = "mode-1502"
+selection = "selected"
+execution = "passed"
+rationale = "Two declarations of mode c at the same import precedence specify conflicting explicit on-no-match values, producing native static error XTSE0545 before runtime mode behavior is considered."
+
+[[case_override]]
 case_name = "mode-1508"
 selection = "selected"
 execution = "passed"

@@ -136,6 +136,13 @@ rationale = "The unnamed mode cannot be public; the native XTSE0020 assertion ma
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1502"
+selection = "selected"
+execution = "passed"
+rationale = "Two same-precedence declarations of expanded mode c conflict on explicit on-no-match values; the native XTSE0545 assertion is satisfied before unrelated runtime behavior is considered."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-1508"
 selection = "selected"
 execution = "passed"

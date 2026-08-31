@@ -476,6 +476,15 @@ the `<test><package>` shape for every identity rather than relying on the
 exclusions, and 89 visible default not-run cases.
 [Evidence](../Evidence/xslt30-mode-package-profile-exclusions-2026-08-30.md)
 
+The independent same-precedence declaration case `mode-1502` now reports
+native static error `XTSE0545`. A private compiler prepass resolves both named
+mode declarations and detects their conflicting explicit `on-no-match` values
+before runtime mode policy or the unrelated template body is considered. The
+slice does not merge includes/imports or retain executable `on-no-match`
+behavior. The mode denominator advances to 37 passes, 44 profile exclusions,
+and 88 visible default not-run cases.
+[Evidence](../Evidence/xslt30-mode-same-precedence-conflict-2026-08-30.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -515,10 +524,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 36 | 0 | 44 | 89 |
+| `attr/mode` | 169 | 37 | 0 | 44 | 88 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **230** | **3** | **49** | **249** |
+| **Conserved total** | **531** | **231** | **3** | **49** | **248** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1364,6 +1373,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   from the pinned catalog and leave compilation and execution not run. The mode
   ledger now records 36 passes, 44 profile exclusions, and 89 visible default
   not-run cases.
+- [x] Execute `mode-1502` as native static error `XTSE0545` by detecting
+  conflicting explicit `on-no-match` values for one expanded mode in one
+  module/import precedence. Keep runtime policy, include/import composition,
+  and other mode properties outside this exact slice. The mode ledger now
+  records 37 passes, 44 profile exclusions, and 88 visible default not-run
+  cases.
 - [x] Retain non-whitespace text children in the private attribute-free
   temporary-tree representation and preserve mixed element/text order through
   invocation-owned materialization, built-in traversal, result accounting, and

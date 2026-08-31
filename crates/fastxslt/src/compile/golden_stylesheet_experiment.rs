@@ -34,7 +34,9 @@ use template_pattern_compiler::compile_match_pattern;
 use instruction_compiler::{
     compile_sequence_excluding, literal_result_namespaces, parse_template_modes,
 };
-use mode_declaration_compiler::validate_mode_declaration;
+use mode_declaration_compiler::{
+    validate_mode_declaration, validate_same_precedence_mode_declaration_conflicts,
+};
 pub(super) use output_compiler::default_output_settings;
 use output_compiler::{compile_output, merge_output};
 
@@ -84,6 +86,11 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
 ) -> Result<StylesheetProgram, CompileFailure> {
     require_stylesheet_root(document, root)?;
     let declared_version = required_attribute(document, root, None, "version")?.to_owned();
+    let top_level_children = meaningful_children(document, root)
+        .into_iter()
+        .filter(|child| !excluded_top_level.contains(child))
+        .collect::<Vec<_>>();
+    validate_same_precedence_mode_declaration_conflicts(document, &top_level_children)?;
 
     let mut output = None;
     let mut root_template = None;
@@ -91,10 +98,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     let mut matched_templates = Vec::new();
     let mut named_templates = Vec::new();
     let mut global_bindings = Vec::new();
-    for child in meaningful_children(document, root)
-        .into_iter()
-        .filter(|child| !excluded_top_level.contains(child))
-    {
+    for child in top_level_children {
         let Some(name) = document.name(child) else {
             continue;
         };
