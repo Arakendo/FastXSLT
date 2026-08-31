@@ -233,6 +233,13 @@ compatibility profile or expose a public or host-configurable policy. The
 current executable slice proves only the bounded module topologies below; it
 does not define a public module graph representation.
 
+The same policy seam has native mode-suite evidence for document-rooted match
+paths. An admitted absolute path is compiled through the existing typed
+location-path representation and evaluated from the source document node;
+relative patterns retain their candidate-relative matching behavior. This does
+not admit leading descendant patterns such as `//name`, warning delivery, or a
+general pattern grammar.
+
 Each source-node template invocation retains its position and size within the
 sequence selected by the applying instruction, including non-element child
 nodes. The bounded positional-pattern slice evaluates `position()` against the

@@ -69,6 +69,24 @@ execution = "passed"
 rationale = "An attribute selection in mode1 reaches the exact moded attribute rule without treating attributes as child nodes."
 
 [[case_override]]
+case_name = "mode-0801a"
+selection = "selected"
+execution = "passed"
+rationale = "The native XSLT 1.0/2.0 recover dependency selects the later equal-ranked matching rule through the private invocation policy."
+
+[[case_override]]
+case_name = "mode-0801b"
+selection = "selected"
+execution = "passed"
+rationale = "The native error-on-multiple-match dependency reports concrete XTDE0540 with request identity and stylesheet location, satisfying the suite's XTRE0540 pattern."
+
+[[case_override]]
+case_name = "mode-0801c"
+selection = "selected"
+execution = "passed"
+rationale = "The XSLT 3.0 default recovery path selects the later equal-ranked matching rule without importing a legacy compatibility mode."
+
+[[case_override]]
 case_name = "mode-0901"
 selection = "selected"
 execution = "passed"

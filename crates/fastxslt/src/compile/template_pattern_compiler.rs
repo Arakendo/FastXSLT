@@ -119,7 +119,7 @@ pub(super) fn compile_match_pattern(
             }
         }
         path if path.contains('/')
-            && !path.starts_with('/')
+            && !path.starts_with("//")
             && effective_xpath_default_namespace(document, element).is_some() =>
         {
             return Err(unsupported(
@@ -128,7 +128,7 @@ pub(super) fn compile_match_pattern(
                 document.location(element),
             ));
         }
-        path if path.contains('/') && !path.starts_with('/') => MatchPattern::Path(
+        path if path.contains('/') && !path.starts_with("//") => MatchPattern::Path(
             parse_location_path(path, document.location(element).clone())
                 .map_err(map_path_failure)?,
         ),

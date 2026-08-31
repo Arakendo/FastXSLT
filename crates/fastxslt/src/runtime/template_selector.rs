@@ -479,6 +479,11 @@ fn match_path_pattern(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
+    if path.starts_at_document_node() {
+        return evaluate_location_path_controlled(source, source.document_node(), path, control)
+            .map(|selected| selected.contains(&node))
+            .map_err(|failure| control_failure(failure, request_id));
+    }
     let mut first_step = node;
     for _ in 1..path.steps.len() {
         let Some(parent) = source.parent(first_step) else {

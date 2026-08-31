@@ -1279,6 +1279,21 @@ mod tests {
         ));
         assert!(program.matched_templates[1].priority > program.matched_templates[0].priority);
 
+        let document_rooted = parse_stylesheet(
+            "memory:document-rooted-descendant-wildcard-pattern.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="foo"><exact/></xsl:template><xsl:template match="/root//*"><descendant/></xsl:template></xsl:stylesheet>"#,
+        );
+        let document_rooted_program = compile_stylesheet(&document_rooted)
+            .expect("document-rooted descendant wildcard should compile");
+        assert!(matches!(
+            document_rooted_program.matched_templates[1].pattern,
+            crate::xslt::golden_semantics_experiment::MatchPattern::Path(_)
+        ));
+        assert!(
+            document_rooted_program.matched_templates[1].priority
+                > document_rooted_program.matched_templates[0].priority
+        );
+
         let named_descendant = parse_stylesheet(
             "memory:named-descendant-pattern.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="//foo"><out/></xsl:template></xsl:stylesheet>"#,

@@ -73,6 +73,27 @@ rationale = "Mode-qualified attribute dispatch selects the exact moded attribute
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0801a"
+selection = "selected"
+execution = "passed"
+rationale = "The suite's recover dependency reaches the private use-last multiple-match policy and preserves the native serialized result."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0801b"
+selection = "selected"
+execution = "passed"
+rationale = "The suite's error dependency reaches the private error policy and reports concrete XTDE0540 for the tied highest-ranked rules."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0801c"
+selection = "selected"
+execution = "passed"
+rationale = "The XSLT 3.0 default recovery behavior selects the later equal-ranked rule through the ordinary use-last path."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-0901"
 selection = "selected"
 execution = "passed"

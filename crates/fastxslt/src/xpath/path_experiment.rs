@@ -15,6 +15,12 @@ pub(crate) struct LocationPath {
     pub(crate) location: SourceLocation,
 }
 
+impl LocationPath {
+    pub(crate) fn starts_at_document_node(&self) -> bool {
+        self.origin == PathOrigin::DocumentNode
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PathOrigin {
     ContextItem,

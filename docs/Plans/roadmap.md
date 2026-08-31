@@ -413,6 +413,14 @@ selects the named document element as invocation-owned initial context before
 mode dispatch. Ordinary initial-mode document entry remains unchanged, and the
 private exact-name entry does not select a public context-selector API.
 
+The native multiple-match mode tranche adds `mode-0801a` through `mode-0801c`.
+The XSLT 1.0/2.0 recover dependency and XSLT 3.0 default both use the private
+later-equal-rank path, while the suite's error dependency reaches structured
+`XTDE0540` and satisfies its native `XTRE0540` pattern. The common stylesheet's
+document-rooted `/sss//*` pattern reuses the typed location-path evaluator from
+the document node rather than acquiring a parallel pattern engine. The mode
+denominator now records 28 passes and 141 visible default not-run cases.
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -452,10 +460,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 25 | 0 | 0 | 144 |
+| `attr/mode` | 169 | 28 | 0 | 0 | 141 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **219** | **3** | **5** | **304** |
+| **Conserved total** | **531** | **222** | **3** | **5** | **301** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -510,7 +518,7 @@ count:
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
 2. [ ] Continue coherent semantic slices through the 160 visible `output`
-   gaps and 144 visible `mode` gaps. Each promotion still requires native
+   gaps and 141 visible `mode` gaps. Each promotion still requires native
    metadata validation, a focused control, and an owned comparator or exact
    diagnostic—not merely successful stylesheet execution.
 3. [ ] Give `AxisStep.xml` and `fn/deep-equal.xml` complete QT3 overlays so all
@@ -1244,6 +1252,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   template carrying both `name` and `match` into both compiled indexes while
   retaining one shared body semantics. The mode ledger now records 14 passes
   and 155 visible default not-run cases.
+- [x] Execute `mode-0801a` through `mode-0801c` against their native
+  `on-multiple-match` dependencies. Reuse the private recover/error policy,
+  evaluate the common document-rooted `/sss//*` pattern from the document node,
+  and retain structured request identity and stylesheet location on concrete
+  `XTDE0540`. Do not infer `xsl:mode` warning semantics or a public policy from
+  this suite-configured slice.
 - [x] Execute `mode-0901` by resolving distinct prefixes bound to the same
   namespace into one expanded mode identity, and `mode-1001` by retaining a
   leading underscore and internal dot in admitted unprefixed NCNames. Reuse the
@@ -1262,8 +1276,8 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [x] Execute `mode-1201` through `mode-1204` by ranking `#all` and
   mode-specific rules through the shared priority model, independent of source
   order. Preserve the active explicit mode when `xsl:next-match` continues from
-  the winning `#all` rule. The mode ledger now records 25 passes and 144 visible
-  default not-run cases.
+  the winning `#all` rule. Together with the multiple-match tranche, the mode
+  ledger now records 28 passes and 141 visible default not-run cases.
 - [x] Retain non-whitespace text children in the private attribute-free
   temporary-tree representation and preserve mixed element/text order through
   invocation-owned materialization, built-in traversal, result accounting, and

@@ -7,8 +7,9 @@ use std::{
 };
 
 use super::{
-    ExecutionPolicy, InvocationEntry, InvocationParameter, TransformRequest, TransformSetBuilder,
-    compile_resource, execute_transform_set,
+    ExecutionFailure, ExecutionPolicy, FailureCategory, InvocationEntry, InvocationParameter,
+    MultipleMatchPolicy, TransformRequest, TransformSetBuilder, compile_resource,
+    execute_transform_set,
 };
 use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
@@ -17,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 25] = [
+const SELECTED_CASES: [&str; 28] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -32,6 +33,9 @@ const SELECTED_CASES: [&str; 25] = [
     "mode-0501",
     "mode-0601",
     "mode-0701",
+    "mode-0801a",
+    "mode-0801b",
+    "mode-0801c",
     "mode-0901",
     "mode-1001",
     "mode-1101",
@@ -138,6 +142,47 @@ fn executes_equivalent_prefixed_and_punctuated_mode_names() {
 }
 
 #[test]
+fn executes_native_multiple_match_recovery_and_error_policies() {
+    for case_name in ["mode-0801a", "mode-0801c"] {
+        let document = load_test_set();
+        let case = find_case(&document, case_name);
+        if case_name == "mode-0801a" {
+            assert_eq!(
+                case_dependency(&document, case, "on-multiple-match"),
+                Some("recover")
+            );
+        } else {
+            assert_eq!(case_dependency(&document, case, "spec"), Some("XSLT30+"));
+            assert_eq!(case_dependency(&document, case, "on-multiple-match"), None);
+        }
+        let (actual, expected) = execute_case_with_policy(case_name, MultipleMatchPolicy::UseLast)
+            .expect("recovery policy should choose the later equal-ranked rule");
+        assert_xml_equivalent(&actual, expected.as_deref().expect("XML assertion"));
+    }
+
+    let document = load_test_set();
+    let case = find_case(&document, "mode-0801b");
+    assert_eq!(
+        case_dependency(&document, case, "on-multiple-match"),
+        Some("error")
+    );
+    let expected_error = child_named(
+        &document,
+        child_named(&document, case, "result").expect("result metadata"),
+        "error",
+    )
+    .and_then(|error| attribute(&document, error, "code"));
+    assert_eq!(expected_error, Some("XTRE0540"));
+
+    let failure = execute_case_with_policy("mode-0801b", MultipleMatchPolicy::Error)
+        .expect_err("error policy should reject equal highest-ranked rules");
+    assert_eq!(failure.code, "XTDE0540");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+    assert_eq!(failure.request_id.as_deref(), Some("mode-0801b"));
+    assert!(failure.location.is_some());
+}
+
+#[test]
 fn executes_native_initial_mode_and_current_mode_continuation() {
     for case_name in [
         "mode-1101",
@@ -160,13 +205,22 @@ fn executes_all_mode_priority_and_next_match() {
 }
 
 fn execute_case(case_name: &str) -> (String, String) {
+    let (actual, expected) = execute_case_with_policy(case_name, MultipleMatchPolicy::UseLast)
+        .expect("selected mode case should execute");
+    (
+        actual,
+        expected.expect("selected positive case has an XML assertion"),
+    )
+}
+
+fn execute_case_with_policy(
+    case_name: &str,
+    multiple_match_policy: MultipleMatchPolicy,
+) -> Result<(String, Option<String>), ExecutionFailure> {
     let private_overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
     assert!(private_overlay.contains(&format!("case_name = \"{case_name}\"")));
     let document = load_test_set();
-    let case = element_children(&document, document_element(&document))
-        .into_iter()
-        .find(|node| attribute(&document, *node, "name") == Some(case_name))
-        .expect("selected mode case");
+    let case = find_case(&document, case_name);
     let environment = case_environment(&document, case);
     let source = child_named(&document, environment, "source").expect("principal source");
     let content = child_named(&document, source, "content").expect("inline source content");
@@ -180,12 +234,13 @@ fn execute_case(case_name: &str) -> (String, String) {
         &document,
         child_named(&document, case, "result").expect("result metadata"),
         "assert-xml",
-    )
-    .expect("XML assertion");
-    let expected = attribute(&document, assertion, "file").map_or_else(
-        || document.string_value(assertion),
-        |file| fs::read_to_string(directory.join(file)).expect("read expected XML result"),
     );
+    let expected = assertion.map(|assertion| {
+        attribute(&document, assertion, "file").map_or_else(
+            || document.string_value(assertion),
+            |file| fs::read_to_string(directory.join(file)).expect("read expected XML result"),
+        )
+    });
 
     let source_id = format!("urn:w3c:xslt30:attr:mode:{case_name}:source");
     let stylesheet_id = format!("https://example.invalid/xslt30/attr/mode/{stylesheet_file}");
@@ -221,7 +276,8 @@ fn execute_case(case_name: &str) -> (String, String) {
             serialized_byte_limit: 4_096,
             work_limits: WorkLimits::unbounded(),
         },
-    );
+    )
+    .with_multiple_match_policy(multiple_match_policy);
     let entry = case_entry(&document, test, source, &source_id);
     let parameters = case_parameters(&document, test);
     set.add(TransformRequest {
@@ -233,8 +289,21 @@ fn execute_case(case_name: &str) -> (String, String) {
         cancellation_fault: None,
     })
     .expect("admit mode request");
-    let results = execute_transform_set(set.seal()).expect("execute selected mode case");
-    (results.by_request[case_name].serialized.clone(), expected)
+    let results = execute_transform_set(set.seal())?;
+    Ok((results.by_request[case_name].serialized.clone(), expected))
+}
+
+fn find_case(document: &Document, case_name: &str) -> NodeId {
+    element_children(document, document_element(document))
+        .into_iter()
+        .find(|node| attribute(document, *node, "name") == Some(case_name))
+        .expect("selected mode case")
+}
+
+fn case_dependency<'a>(document: &'a Document, case: NodeId, name: &str) -> Option<&'a str> {
+    child_named(document, case, "dependencies")
+        .and_then(|dependencies| child_named(document, dependencies, name))
+        .and_then(|dependency| attribute(document, dependency, "value"))
 }
 
 fn case_entry(
