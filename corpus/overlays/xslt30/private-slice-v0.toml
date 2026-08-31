@@ -1210,3 +1210,45 @@ case_name = "include-0801"
 selection = "selected"
 execution = "passed"
 rationale = "Two principal imports and their respective leaf imports retain the exact precedence ladder -4/-3/-2/-1 below principal precedence 0, so apply-imports from the principal title rule reaches the later branch and then its leaf."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1601"
+selection = "selected"
+execution = "passed"
+rationale = "A literal result element's xsl:default-mode names mode a for its descendant unmoded apply-templates instruction."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1602"
+selection = "selected"
+execution = "passed"
+rationale = "A literal result element's xsl:default-mode=#unnamed preserves unnamed dispatch for its descendant unmoded apply-templates instruction."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1603"
+selection = "selected"
+execution = "passed"
+rationale = "A literal result element resolves a prefixed xsl:default-mode to the matching template's expanded mode identity."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1604"
+selection = "selected"
+execution = "passed"
+rationale = "An xsl:template default-mode names mode a for unmoded apply-templates instructions in its sequence constructor."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1605"
+selection = "selected"
+execution = "passed"
+rationale = "An xsl:template default-mode=#unnamed retains unnamed dispatch for its unmoded apply-templates instruction."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1606"
+selection = "selected"
+execution = "passed"
+rationale = "An xsl:template resolves a prefixed default-mode to expanded mode identity before compiling its unmoded apply-templates instruction."

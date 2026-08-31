@@ -8,9 +8,10 @@ use crate::xslt::golden_semantics_experiment::{
 
 use super::super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
 use super::{
-    CompileFailure, effective_xpath_default_namespace, ensure_no_meaningful_children,
-    ensure_only_attributes, invalid, is_ascii_ncname, is_xslt_element, map_path_failure,
-    meaningful_children, optional_attribute, required_attribute, unsupported,
+    CompileFailure, effective_default_mode, effective_xpath_default_namespace,
+    ensure_no_meaningful_children, ensure_only_attributes, invalid, is_ascii_ncname,
+    is_xslt_element, map_path_failure, meaningful_children, optional_attribute, required_attribute,
+    unsupported,
 };
 
 pub(super) fn compile_apply_imports(
@@ -38,15 +39,29 @@ pub(super) fn compile_apply_templates(
     let select = optional_attribute(document, element, None, "select")
         .map(|expression| parse_apply_selection(document, element, expression, location.clone()))
         .transpose()?;
-    let mode = optional_attribute(document, element, None, "mode")
-        .map(|mode| parse_apply_mode(document, element, mode))
-        .transpose()?;
+    let mode = match optional_attribute(document, element, None, "mode") {
+        Some(mode) => Some(parse_apply_mode(document, element, mode)?),
+        None => compile_effective_default_mode(document, element)?,
+    };
     Ok(Instruction::ApplyTemplates {
         select,
         mode,
         arguments: compile_with_params(document, element, "xsl:apply-templates", false)?,
         location,
     })
+}
+
+fn compile_effective_default_mode(
+    document: &Document,
+    element: NodeId,
+) -> Result<Option<String>, CompileFailure> {
+    let Some(parent) = document.parent(element) else {
+        return Ok(None);
+    };
+    match effective_default_mode(document, parent) {
+        Some("#unnamed") | None => Ok(None),
+        Some(mode) => parse_mode(document, element, mode).map(Some),
+    }
 }
 
 pub(super) fn compile_with_params(

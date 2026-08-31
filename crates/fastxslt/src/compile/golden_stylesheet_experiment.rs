@@ -284,7 +284,8 @@ fn compile_top_level_template(
     let pattern = required_attribute(document, element, None, "match")?;
     if pattern == "/" {
         let has_priority = optional_attribute(document, element, None, "priority").is_some();
-        let has_mode = optional_attribute(document, element, None, "mode").is_some();
+        let has_mode = optional_attribute(document, element, None, "mode").is_some()
+            || effective_default_mode(document, element).is_some_and(|mode| mode != "#unnamed");
         let has_competing_default = matched_templates.iter().any(|existing| {
             existing.pattern == MatchPattern::Document && existing.modes.is_empty()
         });
@@ -485,9 +486,13 @@ fn compile_matched_template(
     pattern: &str,
 ) -> Result<MatchedTemplate, CompileFailure> {
     let (pattern, priority) = compile_match_pattern(document, element, pattern)?;
-    let modes = optional_attribute(document, element, None, "mode")
-        .map(|mode| parse_template_modes(document, element, mode))
-        .transpose()?;
+    let modes = match optional_attribute(document, element, None, "mode") {
+        Some(mode) => Some(parse_template_modes(document, element, mode)?),
+        None => match effective_default_mode(document, element) {
+            Some("#unnamed") | None => None,
+            Some(mode) => Some(parse_template_modes(document, element, mode)?),
+        },
+    };
     Ok(MatchedTemplate {
         pattern,
         import_precedence: 0,
@@ -507,6 +512,7 @@ fn compile_template(document: &Document, element: NodeId) -> Result<Template, Co
             "mode",
             "priority",
             "xpath-default-namespace",
+            "default-mode",
         ],
         "xsl:template",
     )?;
@@ -593,6 +599,7 @@ fn compile_named_template(
             "mode",
             "priority",
             "xpath-default-namespace",
+            "default-mode",
         ],
         "xsl:template",
     )?;
@@ -743,6 +750,25 @@ pub(super) fn effective_xpath_default_namespace(
             })
         {
             return (!namespace.is_empty()).then_some(namespace);
+        }
+        current = document.parent(node);
+    }
+    None
+}
+
+pub(super) fn effective_default_mode(document: &Document, element: NodeId) -> Option<&str> {
+    let mut current = Some(element);
+    while let Some(node) = current {
+        let is_xslt = document
+            .name(node)
+            .is_some_and(|name| name.namespace.as_deref() == Some(XSLT_NAMESPACE));
+        let lexical = if is_xslt {
+            optional_attribute(document, node, None, "default-mode")
+        } else {
+            optional_attribute(document, node, Some(XSLT_NAMESPACE), "default-mode")
+        };
+        if lexical.is_some() {
+            return lexical;
         }
         current = document.parent(node);
     }
@@ -927,7 +953,8 @@ mod tests {
     use crate::xdm::owned_tree_experiment::Document;
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
     use crate::xslt::golden_semantics_experiment::{
-        Instruction, STANDARD_INITIAL_TEMPLATE_NAME, TemplatePriority, ValueExpression,
+        Instruction, MatchPattern, STANDARD_INITIAL_TEMPLATE_NAME, TemplatePriority,
+        ValueExpression,
     };
 
     use super::{CompileCategory, compile_stylesheet};
@@ -1277,6 +1304,30 @@ mod tests {
             }] if name.namespace.as_deref() == Some("http://example.test/")
                 && name.local == "tail"
                 && mode == "#current"
+        ));
+    }
+
+    #[test]
+    fn compiles_inherited_default_mode_without_overriding_explicit_mode() {
+        let stylesheet = parse_stylesheet(
+            "memory:inherited-default-mode.xsl",
+            br##"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/" default-mode="a"><out xsl:default-mode="#unnamed"><xsl:apply-templates select="doc/a"/><xsl:apply-templates select="doc/a" mode="b"/></out></xsl:template><xsl:template match="a" mode="a b"/></xsl:stylesheet>"##,
+        );
+        let program = compile_stylesheet(&stylesheet).expect("default mode should compile");
+        assert!(program.root_template.is_none());
+        let document_rule = program
+            .matched_templates
+            .iter()
+            .find(|template| template.pattern == MatchPattern::Document)
+            .expect("default-mode applies to the template rule");
+        assert_eq!(document_rule.modes, ["a"]);
+        assert!(matches!(
+            document_rule.template.body.as_slice(),
+            [Instruction::LiteralElement { body, .. }]
+                if matches!(body.as_slice(), [
+                    Instruction::ApplyTemplates { mode: None, .. },
+                    Instruction::ApplyTemplates { mode: Some(mode), .. }
+                ] if mode == "b")
         ));
     }
 

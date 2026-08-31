@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 46] = [
+const SELECTED_CASES: [&str; 52] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -64,6 +64,12 @@ const SELECTED_CASES: [&str; 46] = [
     "mode-1507",
     "mode-1508",
     "mode-1509",
+    "mode-1601",
+    "mode-1602",
+    "mode-1603",
+    "mode-1604",
+    "mode-1605",
+    "mode-1606",
     "mode-1904",
 ];
 const STREAMING_EXCLUDED_CASES: [&str; 26] = [
@@ -168,7 +174,7 @@ fn inventories_the_complete_mode_denominator_before_selection() {
         );
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
-    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 46);
+    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 52);
     assert_eq!(
         OVERLAY
             .matches("selection = \"excluded-by-profile\"")
@@ -236,6 +242,21 @@ fn executes_mode_preservation_and_typed_node_dispatch() {
 #[test]
 fn executes_equivalent_prefixed_and_punctuated_mode_names() {
     for case_name in ["mode-0901", "mode-1001"] {
+        let (actual, expected) = execute_case(case_name);
+        assert_xml_equivalent(&actual, &expected);
+    }
+}
+
+#[test]
+fn executes_inherited_default_mode_on_literal_and_template_elements() {
+    for case_name in [
+        "mode-1601",
+        "mode-1602",
+        "mode-1603",
+        "mode-1604",
+        "mode-1605",
+        "mode-1606",
+    ] {
         let (actual, expected) = execute_case(case_name);
         assert_xml_equivalent(&actual, &expected);
     }
@@ -653,9 +674,9 @@ fn case_entry(
             resource: source_id.to_owned(),
         },
         |initial_mode| {
-            let name = attribute(document, initial_mode, "name")
-                .expect("initial mode name")
-                .to_owned();
+            let lexical_name =
+                attribute(document, initial_mode, "name").expect("initial mode name");
+            let name = normalize_catalog_qname(document, initial_mode, lexical_name);
             match attribute(document, source, "select") {
                 None => InvocationEntry::InitialMode {
                     resource: source_id.to_owned(),
@@ -673,6 +694,24 @@ fn case_entry(
             }
         },
     )
+}
+
+fn normalize_catalog_qname(document: &Document, node: NodeId, lexical: &str) -> String {
+    let Some((prefix, local)) = lexical.split_once(':') else {
+        return lexical.to_owned();
+    };
+    let mut current = Some(node);
+    while let Some(candidate) = current {
+        if let Some(binding) = document
+            .namespace_declarations(candidate)
+            .iter()
+            .find(|binding| binding.prefix.as_deref() == Some(prefix))
+        {
+            return format!("Q{{{}}}{local}", binding.namespace);
+        }
+        current = document.parent(candidate);
+    }
+    panic!("unbound catalog QName prefix: {prefix}");
 }
 
 fn case_environment(document: &Document, case: NodeId) -> NodeId {

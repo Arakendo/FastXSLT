@@ -34,7 +34,7 @@ use source_copy_compiler::compile_copy;
 mod template_invocation_compiler;
 
 use super::{
-    CompileCategory, CompileFailure, XML_SCHEMA_NAMESPACE, XSLT_NAMESPACE,
+    CompileCategory, CompileFailure, XML_SCHEMA_NAMESPACE, XSLT_NAMESPACE, effective_default_mode,
     effective_xpath_default_namespace, ensure_no_meaningful_children, ensure_only_attributes,
     invalid, is_ascii_ncname, is_xslt_element, map_path_failure, meaningful_children,
     normalize_variable_qname, optional_attribute, required_attribute, unsupported,
@@ -271,7 +271,10 @@ fn ensure_literal_result_control_attributes(
             .name(*attribute)
             .expect("attribute nodes have expanded names");
         if name.namespace.as_deref() == Some(XSLT_NAMESPACE)
-            && name.local != "xpath-default-namespace"
+            && !matches!(
+                name.local.as_str(),
+                "xpath-default-namespace" | "default-mode"
+            )
         {
             return Err(unsupported(
                 "FXST1007",

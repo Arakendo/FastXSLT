@@ -261,6 +261,42 @@ execution = "passed"
 rationale = "Two declarations of expanded mode X at one import precedence specify conflicting explicit visibility values, producing native static error XTSE0545 before executable visibility semantics are considered."
 
 [[case_override]]
+case_name = "mode-1601"
+selection = "selected"
+execution = "passed"
+rationale = "A literal result element's xsl:default-mode names mode a for its descendant unmoded apply-templates instruction."
+
+[[case_override]]
+case_name = "mode-1602"
+selection = "selected"
+execution = "passed"
+rationale = "A literal result element's xsl:default-mode=#unnamed preserves unnamed dispatch for its descendant unmoded apply-templates instruction."
+
+[[case_override]]
+case_name = "mode-1603"
+selection = "selected"
+execution = "passed"
+rationale = "A literal result element resolves a prefixed xsl:default-mode to the same expanded mode identity as the matching template."
+
+[[case_override]]
+case_name = "mode-1604"
+selection = "selected"
+execution = "passed"
+rationale = "An xsl:template default-mode names mode a for unmoded apply-templates instructions in its sequence constructor."
+
+[[case_override]]
+case_name = "mode-1605"
+selection = "selected"
+execution = "passed"
+rationale = "An xsl:template default-mode=#unnamed retains unnamed dispatch for its unmoded apply-templates instruction."
+
+[[case_override]]
+case_name = "mode-1606"
+selection = "selected"
+execution = "passed"
+rationale = "An xsl:template resolves a prefixed default-mode to expanded mode identity before compiling its unmoded apply-templates instruction."
+
+[[case_override]]
 case_name = "mode-0105"
 selection = "selected"
 execution = "passed"
