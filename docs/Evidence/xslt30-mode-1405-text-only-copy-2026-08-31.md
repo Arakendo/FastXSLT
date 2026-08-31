@@ -35,7 +35,7 @@ not-run cases.
 
 ## Boundary exposed
 
-Adjacent `mode-1407` and `mode-1409` also depend on `text-only-copy`, but their
-explicit templates require the currently unsupported XPath expression
-`upper-case(.)`. They remain visible default not-run cases until that separate
-function-expression slice is admitted.
+At this checkpoint, adjacent `mode-1407` and `mode-1409` remained visible
+because their explicit templates required the then-unsupported XPath
+expression `upper-case(.)`. That separate expression slice is recorded in the
+later `xslt30-mode-1407-1409-upper-case-context-2026-08-31.md` evidence record.

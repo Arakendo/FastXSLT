@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 66] = [
+const SELECTED_CASES: [&str; 68] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -53,6 +53,8 @@ const SELECTED_CASES: [&str; 66] = [
     "mode-1204",
     "mode-1301",
     "mode-1405",
+    "mode-1407",
+    "mode-1409",
     "mode-1423",
     "mode-1431",
     "mode-1439",
@@ -194,7 +196,7 @@ fn inventories_the_complete_mode_denominator_before_selection() {
         );
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
-    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 66);
+    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 68);
     assert_eq!(
         OVERLAY
             .matches("selection = \"excluded-by-profile\"")
@@ -587,15 +589,24 @@ fn executes_mode_1301_with_stylesheet_dependent_whitespace_reference() {
 }
 
 #[test]
-fn executes_text_only_copy_builtin_rules_in_a_named_mode() {
-    let (actual, expected) = execute_case_with_policy("mode-1405", MultipleMatchPolicy::UseLast)
-        .expect("selected text-only-copy case should execute");
-    assert!(expected.is_none(), "native case uses a semantic assertion");
-    let normalized = without_xml_declaration(&actual)
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ");
-    assert!(normalized.starts_with("The First Book of Moses, Called GENESIS."));
+fn executes_text_only_copy_builtin_rules_in_named_and_unnamed_modes() {
+    for (case_name, prefix) in [
+        ("mode-1405", "The First Book of Moses, Called GENESIS."),
+        ("mode-1407", "The First Book of Moses, Called GENESIS."),
+        ("mode-1409", "THE FIRST BOOK OF MOSES, CALLED GENESIS."),
+    ] {
+        let (actual, expected) = execute_case_with_policy(case_name, MultipleMatchPolicy::UseLast)
+            .expect("selected text-only-copy case should execute");
+        assert!(expected.is_none(), "native case uses a semantic assertion");
+        let normalized = without_xml_declaration(&actual)
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(
+            normalized.starts_with(prefix),
+            "{case_name} result did not start with {prefix:?}"
+        );
+    }
 }
 
 #[test]
@@ -691,7 +702,7 @@ fn execute_case_with_policy(
             denied_sources: HashSet::new(),
             serialized_byte_limit: if matches!(
                 case_name,
-                "mode-1405" | "mode-1423" | "mode-1445" | "mode-1446"
+                "mode-1405" | "mode-1407" | "mode-1409" | "mode-1423" | "mode-1445" | "mode-1446"
             ) {
                 16_384
             } else {

@@ -1350,3 +1350,17 @@ case_name = "mode-1405"
 selection = "selected"
 execution = "passed"
 rationale = "Named initial mode s applies text-only-copy built-in rules to the unchanged native source and satisfies its normalized text-prefix assertion."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1407"
+selection = "selected"
+execution = "passed"
+rationale = "Named mode s combines text-only-copy built-in descent with the exact upper-case(.) context-string specialization and satisfies the native normalized text-prefix assertion."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1409"
+selection = "selected"
+execution = "passed"
+rationale = "The unnamed mode combines text-only-copy built-in descent with the exact upper-case(.) text-node rule and satisfies the native normalized text-prefix assertion."

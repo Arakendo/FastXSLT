@@ -55,6 +55,9 @@ pub(super) fn execute_value_of(
         ValueExpression::ContextNodeName => {
             append_context_node_name(inputs, context, result, control)?;
         }
+        ValueExpression::UpperCaseContextString => {
+            append_upper_case_context_string(inputs, context, result, control)?;
+        }
         ValueExpression::Variable(name) => {
             append_variable_value(inputs, name, separator, variables, result, control)?;
         }
@@ -129,6 +132,32 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_upper_case_context_string(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    source
+        .visit_string_value_controlled(context, control, &mut |part, control| {
+            let mut upper = String::with_capacity(part.len());
+            for character in part.chars() {
+                control
+                    .charge(WorkDomain::XPathOperation, 1)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                upper.extend(character.to_uppercase());
+            }
+            append_text(result, &upper, inputs.request_id, control)
+        })
+        .map_err(|failure| match failure {
+            StringValueVisitFailure::Control(failure) => {
+                control_failure(failure, inputs.request_id)
+            }
+            StringValueVisitFailure::Sink(failure) => failure,
+        })
 }
 
 fn append_context_node_name(

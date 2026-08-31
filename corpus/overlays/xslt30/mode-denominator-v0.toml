@@ -381,6 +381,18 @@ execution = "passed"
 rationale = "Named initial mode s applies text-only-copy built-in rules to the unchanged native source, recursively skipping document and element nodes while retaining descendant text."
 
 [[case_override]]
+case_name = "mode-1407"
+selection = "selected"
+execution = "passed"
+rationale = "Named initial mode s combines text-only-copy built-in descent with the explicit chtitle rule and evaluates the exact upper-case(.) context-string specialization."
+
+[[case_override]]
+case_name = "mode-1409"
+selection = "selected"
+execution = "passed"
+rationale = "The unnamed mode combines text-only-copy built-in descent with the explicit upper-case(.) text-node rule."
+
+[[case_override]]
 case_name = "mode-0105"
 selection = "selected"
 execution = "passed"

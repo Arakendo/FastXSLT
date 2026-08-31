@@ -342,6 +342,7 @@ pub(crate) enum Instruction {
 pub(crate) enum ValueExpression {
     LocationPath(LocationPath),
     ContextNodeName,
+    UpperCaseContextString,
     Variable(String),
     IntegerFor(Box<IntegerForExpression>),
     FocusSumFor(Box<FocusSumForExpression>),

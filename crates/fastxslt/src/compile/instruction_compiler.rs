@@ -538,6 +538,8 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
         ))
     } else if expression.trim() == "name(.)" {
         ValueExpression::ContextNodeName
+    } else if expression.trim() == "upper-case(.)" {
+        ValueExpression::UpperCaseContextString
     } else if let Some(variable) = expression.strip_prefix('$') {
         if !is_ascii_ncname(variable) {
             return Err(invalid(
