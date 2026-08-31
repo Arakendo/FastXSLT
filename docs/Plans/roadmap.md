@@ -428,6 +428,19 @@ error `XTSE0020`. Warning-enabled cases remain visibly not run because a
 successful result alone cannot establish the required warning event. The mode
 denominator now records 31 passes and 138 visible default not-run cases.
 
+The next numerically adjacent case, `mode-1301`, is deliberately not selected
+as a narrow traversal patch. Its `xsl:strip-space elements="*"` declaration
+creates stylesheet-dependent source semantics over an immutable prepared XDM
+document that must remain reusable by other stylesheets. Parser-time stripping
+would violate AR-0008, prepared-tree mutation would violate AR-0009, and
+filtering only built-in template traversal would let XPath and other semantic
+consumers observe a different tree. [AR-0016](../Architectural%20Reviews/AR-0016-stylesheet-dependent-source-views-and-whitespace-stripping.md)
+therefore incubates a complete safe derived-document reference and a private
+immutable visibility-view experiment. The mode denominator remains 31 passes
+and 138 visible default not-run cases until one approach preserves semantic
+parity, node identity, budgets, cancellation, prepared reuse, and attributable
+memory across all access paths exercised by the case.
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1291,6 +1304,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   the winning `#all` rule. Together with the multiple-match and declaration-
   validation tranches, the mode ledger now records 31 passes and 138 visible
   default not-run cases.
+- [ ] Resolve [AR-0016](../Architectural%20Reviews/AR-0016-stylesheet-dependent-source-views-and-whitespace-stripping.md)
+  far enough to execute `mode-1301` through one complete stylesheet-dependent
+  source view. Preserve the reusable source-derived prepared document, make
+  XPath and XSLT consumers observe identical stripped-node semantics, and
+  measure the safe reference before retaining a specialized representation.
 - [x] Retain non-whitespace text children in the private attribute-free
   temporary-tree representation and preserve mixed element/text order through
   invocation-owned materialization, built-in traversal, result accounting, and
