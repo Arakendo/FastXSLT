@@ -494,6 +494,15 @@ outside this slice. The mode denominator advances to 38 passes, 44 profile
 exclusions, and 87 visible default not-run cases.
 [Evidence](../Evidence/xslt30-mode-all-current-node-copy-2026-08-30.md)
 
+The independent structural case `mode-1108` now reports native static error
+`XTSE0260` for a nonempty `xsl:mode`. The stylesheet-wide declaration prepass
+detects the meaningful child before source-ordered compilation reaches the
+case's unrelated accumulator declarations, preserving a concrete invalid
+outcome instead of degrading into unsupported accumulator behavior. The mode
+denominator advances to 39 passes, 44 profile exclusions, and 86 visible
+default not-run cases.
+[Evidence](../Evidence/xslt30-mode-nonempty-declaration-2026-08-30.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -533,10 +542,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 38 | 0 | 44 | 87 |
+| `attr/mode` | 169 | 39 | 0 | 44 | 86 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **232** | **3** | **49** | **247** |
+| **Conserved total** | **531** | **233** | **3** | **49** | **246** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1394,6 +1403,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   result-node and byte accounting and keep attribute/comment copy semantics out
   of this exact slice. The mode ledger now records 38 passes, 44 profile
   exclusions, and 87 visible default not-run cases.
+- [x] Execute `mode-1108` as one of its native alternative static errors by
+  rejecting meaningful children in `xsl:mode` as `XTSE0260` during the
+  stylesheet-wide mode prepass. Preserve the declaration location and detect
+  the invalid structure before unrelated unsupported accumulator declarations;
+  do not infer accumulator support. The mode ledger now records 39 passes, 44
+  profile exclusions, and 86 visible default not-run cases.
 - [x] Retain non-whitespace text children in the private attribute-free
   temporary-tree representation and preserve mixed element/text order through
   invocation-owned materialization, built-in traversal, result accounting, and

@@ -213,6 +213,13 @@ rationale = "The exact inline /doc environment selection establishes element ini
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1108"
+selection = "selected"
+execution = "passed"
+rationale = "The compiler's top-level mode prepass reports native XTSE0260 for a nonempty declaration before reaching unrelated unsupported accumulator semantics."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-1201"
 selection = "selected"
 execution = "passed"

@@ -19,6 +19,13 @@ pub(super) fn validate_same_precedence_mode_declaration_conflicts(
             name.namespace.as_deref() == Some(super::XSLT_NAMESPACE) && name.local == "mode"
         })
     }) {
+        if !super::meaningful_children(document, element).is_empty() {
+            return Err(invalid(
+                "XTSE0260",
+                "xsl:mode must be empty",
+                document.location(element),
+            ));
+        }
         let Some(lexical_name) = optional_attribute(document, element, None, "name") else {
             continue;
         };
@@ -321,5 +328,28 @@ mod tests {
         assert_eq!(failure.code, "XTSE0545");
         assert_eq!(failure.category, CompileCategory::Invalid);
         assert_eq!(failure.location.resource, "memory:mode-conflict.xsl");
+    }
+
+    #[test]
+    fn rejects_nonempty_mode_before_unrelated_top_level_features() {
+        let xml = r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0">
+            <xsl:accumulator name="unsupported" initial-value="0"/>
+            <xsl:mode name="m"><xsl:apply-templates/></xsl:mode>
+        </xsl:stylesheet>"#;
+        let parsed = parse_document(
+            "memory:nonempty-mode.xsl",
+            xml.as_bytes(),
+            ParseLimits {
+                max_events: 64,
+                max_depth: 8,
+            },
+        )
+        .expect("parse nonempty mode fixture");
+        let document = Document::from_parsed(parsed).expect("build nonempty mode fixture");
+        let failure = compile_stylesheet(&document)
+            .expect_err("nonempty mode should fail before unrelated unsupported features");
+        assert_eq!(failure.code, "XTSE0260");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+        assert_eq!(failure.location.resource, "memory:nonempty-mode.xsl");
     }
 }
