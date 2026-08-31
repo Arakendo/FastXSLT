@@ -167,6 +167,9 @@ conformance shortcut.
 - The complete reference and view now agree at every current `Document`
   accessor and for one full stripping transform. Concurrent preserving and
   stripping execution against one prepared source also remains stable.
+- Focused runtime controls prove effective `position()` and `last()` across
+  whitespace-interleaved children, source-element/text copying, and concurrent
+  overlap of old stripping and replacement preserving stylesheet generations.
 - One local 500-item release microprobe measured a 4.86-times lower median
   invocation time and an approximately 141-times smaller attributable
   additional-capacity estimate for the view. This is candidate evidence, not a
@@ -205,10 +208,10 @@ guarantee follows from this disposition.
   preserving policies retains the prepared document's semantic identity.
 - [x] Prototype a private immutable visibility view only after the semantic
   inventory identifies the smallest complete access seam.
-- [ ] Differentially verify derived-document and view behavior for stripping
+- [x] Differentially verify derived-document and view behavior for stripping
   and non-stripping stylesheets sharing the same prepared source, including
   concurrent execution and generation replacement.
-- [ ] Add focused tests proving XPath, built-in traversal, explicit template
+- [x] Add focused tests proving XPath, built-in traversal, explicit template
   selection, string values, and copying cannot disagree about stripped nodes.
 - [ ] Add positional controls proving effective child/descendant sequences,
   sibling relations where implemented, `position()`, and `last()` exclude
@@ -216,7 +219,7 @@ guarantee follows from this disposition.
 - [x] Add an indirect string-value control where no expression selects the
   stripped text node but its removal changes an enclosing element or document
   value used by a comparison, predicate, or `xsl:value-of`.
-- [ ] Repeatedly execute one prepared source concurrently under stripping and
+- [x] Repeatedly execute one prepared source concurrently under stripping and
   preserving stylesheets, then overlap generation replacement. Prove there is
   no visibility, identity, relationship, or retained-state cross-talk.
 - [x] Execute pinned `mode-1301` without modifying its source, stylesheet, or
@@ -256,3 +259,7 @@ needs an explicit effective-document inspection contract.
   kept unchanged `mode-1301` passing, and recorded preliminary release timing
   and attributable-capacity evidence. Generation overlap, broader node/copy and
   positional controls, and complete peak/break-even measurements remain open.
+- 2026-08-30 -- Added runtime controls for effective child positions and focus
+  size, source element/text copying, and concurrent old/new stylesheet-
+  generation overlap. The reference and view agree and generation-specific
+  strip/preserve policy does not leak through shared prepared storage.

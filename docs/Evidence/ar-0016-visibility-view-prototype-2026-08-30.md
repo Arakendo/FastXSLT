@@ -40,11 +40,19 @@ source-access inventory.
 - One prepared source is executed 100 times concurrently under preserving and
   stripping stylesheets. Results remain stable and the prepared source remains
   unchanged afterward.
+- A focused runtime stylesheet proves that whitespace-only siblings do not
+  contribute to `position()` or `last()` and that `xsl:copy` traverses the same
+  effective children. The complete reference and view produce byte-identical
+  serialized results with positions 1 through 3 rather than the physical
+  whitespace-interleaved positions.
+- Old stripping and replacement preserving stylesheet generations execute
+  concurrently against the same prepared source. Each retains its own policy
+  and result while the prepared source remains unchanged.
 - Zero-node budgets and deterministic cancellation stop view construction at
   real `XdmNode` charge points.
 
-Generation-replacement overlap, explicit source copying under stripping, and
-positional/sibling controls remain required before closing AR-0016.
+Broader descendant-position and any future sibling-axis controls remain
+required before closing AR-0016.
 
 ## Preliminary local measurement
 

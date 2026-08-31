@@ -1549,6 +1549,10 @@ mod control_phase_tests;
 mod whitespace_view_measurement_tests;
 
 #[cfg(test)]
+#[path = "whitespace_view_runtime_tests.rs"]
+mod whitespace_view_runtime_tests;
+
+#[cfg(test)]
 #[path = "golden_runtime_workflow_tests.rs"]
 mod workflow_tests;
 

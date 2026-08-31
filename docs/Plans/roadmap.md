@@ -531,8 +531,10 @@ direct physical-child read in string-value recursion; full runtime results,
 unchanged `mode-1301`, and 100 concurrent preserving/stripping repetitions now
 agree. A preliminary 500-item release probe measured 4.86-times lower median
 invocation time and about 141-times less attributable additional capacity than
-the clone. Generation overlap, explicit copy/position controls, peak memory,
-and reuse break-even remain open rather than becoming performance guarantees.
+the clone. Follow-up controls now prove effective child positions, focus size,
+source element/text copying, and concurrent old/new stylesheet-generation
+overlap. Broader descendant/sibling-position controls, peak memory, and reuse
+break-even remain open rather than becoming performance guarantees.
 [Evidence](../Evidence/ar-0016-visibility-view-prototype-2026-08-30.md)
 
 ## Corpus audit -- 2026-08-30
@@ -1405,9 +1407,9 @@ failed, and harness-error cases without an unqualified conformance claim.
   retain the safe reference as the semantic oracle and measure it before
   retaining a specialized representation. The unchanged native case now
   passes. The invocation-owned visibility view now has differential, concurrent
-  strip/preserve, and preliminary timing/capacity evidence; generation overlap,
-  broader copy/position parity, peak memory, and break-even work remain
-  explicitly open in AR-0016.
+  strip/preserve, generation-overlap, source-copy, child-position, and
+  preliminary timing/capacity evidence; broader descendant/sibling parity,
+  peak memory, and break-even work remain explicitly open in AR-0016.
 - [x] Execute the independent static-error cases `mode-1444` and `mode-1447` by
   validating `warning-on-no-match` and `typed` through the existing XSLT 3.0
   boolean policy before unsupported runtime semantics. Preserve native
