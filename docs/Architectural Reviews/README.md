@@ -102,3 +102,6 @@ and add the record to this index. Never reuse a retired number.
   -- Accepted through ADR-0012; exact strip-all semantics use an
   invocation-owned visibility view over immutable prepared XDM, with the
   complete derived document retained as a safe differential oracle.
+- [AR-0017: Native Handle Registry Retention and Abandonment](AR-0017-native-handle-registry-retention-and-abandonment.md)
+  -- Incubating; repair per-object bounds and insertion rollback, then measure
+  abandoned native state before selecting an aggregate quota or ownership domain.
