@@ -22,6 +22,8 @@ mod xdm;
 mod xml;
 mod xpath;
 mod xslt;
+#[cfg(test)]
+mod xslt30_overlay_test_support;
 
 /// Explicitly unstable facade used only by the ASP.NET boundary workbench.
 #[cfg(feature = "workbench")]

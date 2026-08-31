@@ -920,3 +920,23 @@ fn evaluation_preserves_document_order_and_requires_no_namespace() {
     );
     assert!(evaluate_location_path(&document, catalog, &missing).is_empty());
 }
+
+#[test]
+fn each_path_step_normalizes_convergent_nodes_in_document_order() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<r><a/><a/></r>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let path = parse_location_path("/r/a/..", location()).expect("parent path should parse");
+
+    let selected = evaluate_location_path(&document, document.document_node(), &path);
+
+    assert_eq!(selected, [root]);
+}

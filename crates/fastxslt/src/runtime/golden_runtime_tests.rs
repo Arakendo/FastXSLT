@@ -326,6 +326,71 @@ fn temporary_tree_builtins_preserve_mixed_text_in_document_order() {
 }
 
 #[test]
+fn temporary_copy_is_shallow_and_executes_its_compiled_attributes_and_body() {
+    const SOURCE: &str = "urn:fastxslt:temporary-copy:source";
+    const STYLESHEET: &str = "urn:fastxslt:temporary-copy:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:variable name="temporary"><outer><inner><lost/></inner></outer></xsl:variable>
+        <xsl:template match="/"><xsl:apply-templates select="$temporary/outer" mode="temporary"/></xsl:template>
+        <xsl:template match="outer" mode="temporary"><xsl:copy><xsl:attribute name="marker">kept</xsl:attribute><xsl:apply-templates mode="temporary"/></xsl:copy></xsl:template>
+        <xsl:template match="inner" mode="temporary"><xsl:copy/></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<principal/>".to_vec())
+        .expect("admit principal source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit temporary-copy stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile temporary xsl:copy");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("temporary-copy", "result", SOURCE))
+        .expect("admit temporary-copy request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute temporary xsl:copy");
+
+    assert_eq!(
+        results.by_request["temporary-copy"].serialized,
+        "<outer marker=\"kept\"><inner></inner></outer>"
+    );
+}
+
+#[test]
+fn temporary_path_templates_receive_the_selected_sequence_focus() {
+    const SOURCE: &str = "urn:fastxslt:temporary-focus:source";
+    const STYLESHEET: &str = "urn:fastxslt:temporary-focus:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:variable name="temporary"><items><item/><item/></items></xsl:variable>
+        <xsl:template match="/"><out><xsl:apply-templates select="$temporary/items/item" mode="temporary"/></out></xsl:template>
+        <xsl:template match="item" mode="temporary"><seen p="{position()}" n="{last()}"/></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<principal/>".to_vec())
+        .expect("admit principal source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit temporary-focus stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile temporary focus AVTs");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("temporary-focus", "result", SOURCE))
+        .expect("admit temporary-focus request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute temporary focus");
+
+    assert_eq!(
+        results.by_request["temporary-focus"].serialized,
+        "<out><seen p=\"1\" n=\"2\"></seen><seen p=\"2\" n=\"2\"></seen></out>"
+    );
+}
+
+#[test]
 fn qualified_temporary_path_dispatches_a_matching_union_alternative() {
     const PATH_SOURCE: &str = "urn:fastxslt:temporary-path:source";
     const PATH_STYLESHEET: &str = "urn:fastxslt:temporary-path:stylesheet";
@@ -455,6 +520,67 @@ fn unmatched_attributes_use_the_built_in_string_value_rule() {
     assert_eq!(
         results.by_request["attribute-request"].serialized,
         "<out>kept</out>"
+    );
+}
+
+#[test]
+fn apply_templates_executes_a_convergent_path_node_once() {
+    const SOURCE: &str = "urn:fastxslt:path-normalization:source";
+    const STYLESHEET: &str = "urn:fastxslt:path-normalization:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<r><a/><a/></r>".to_vec())
+        .expect("admit convergent source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="/r/a/.."/></out></xsl:template><xsl:template match="r"><hit/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit convergent stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile convergent stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("convergent", "result", SOURCE))
+        .expect("admit convergent request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute convergent request");
+
+    assert_eq!(
+        results.by_request["convergent"].serialized,
+        "<out><hit></hit></out>"
+    );
+}
+
+#[test]
+fn isolated_descendant_copies_retain_required_namespace_bindings() {
+    const SOURCE: &str = "urn:fastxslt:namespace-fixup:source";
+    const STYLESHEET: &str = "urn:fastxslt:namespace-fixup:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            br#"<root xmlns:p="urn:example"><p:item/></root>"#.to_vec(),
+        )
+        .expect("admit namespaced descendant source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:example" exclude-result-prefixes="p"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><xsl:apply-templates/></xsl:template><xsl:template match="root"><out xsl:xpath-default-namespace="urn:example"><xsl:apply-templates select="item"/></out></xsl:template><xsl:template match="p:item"><deep><xsl:copy-of select="."/></deep><shallow><xsl:copy/></shallow></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit namespace-copy stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile namespace copies");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("namespace-fixup", "result", SOURCE))
+        .expect("admit namespace-copy request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute namespace copies");
+
+    assert_eq!(
+        results.by_request["namespace-fixup"].serialized,
+        "<out><deep><p:item xmlns:p=\"urn:example\"></p:item></deep><shallow><p:item xmlns:p=\"urn:example\"></p:item></shallow></out>"
     );
 }
 

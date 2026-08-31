@@ -2,15 +2,21 @@ use std::collections::BTreeMap;
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xml::quick_xml_experiment::ExpandedName;
-use crate::xslt::golden_semantics_experiment::{Instruction, MatchPattern, MatchedTemplate};
+use crate::xslt::golden_semantics_experiment::{
+    Instruction, LiteralAttribute, MatchPattern, MatchedTemplate,
+};
 
 use super::result_tree::ResultNode;
 use super::runtime_context::{
-    InvocationParameter, SequenceInputs, TemporaryNodeKind, TemporaryTree, bind_template_parameters,
+    InvocationParameter, RuntimeVariables, SequenceInputs, TemporaryNodeKind, TemporaryTree,
+    bind_template_parameters,
 };
 use super::runtime_failure::{ExecutionFailure, FailureCategory, control_failure, failure_at};
 use super::template_selector::accepts_mode as template_accepts_mode;
-use super::{SequenceContext, TemporaryFocus, charge_xslt_instruction, execute_sequence};
+use super::{
+    SequenceContext, SequenceFocus, TemporaryFocus, charge_xslt_instruction, execute_sequence,
+    materialize_literal_attributes,
+};
 
 pub(super) fn apply_temporary_template(
     inputs: &SequenceInputs<'_>,
@@ -18,23 +24,13 @@ pub(super) fn apply_temporary_template(
     node: usize,
     mode: Option<&str>,
     parameters: &BTreeMap<String, InvocationParameter>,
+    sequence_focus: SequenceFocus,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     charge_xslt_instruction(control, inputs.request_id)?;
     let temporary = &tree.nodes[node];
     let template = select_temporary_template(inputs, tree, node, mode, control)?;
     if let Some((template_index, template)) = template {
-        if matches!(
-            template.template.body.as_slice(),
-            [Instruction::Copy { .. }]
-        ) {
-            return Ok(vec![copy_temporary_node(
-                tree,
-                node,
-                inputs.request_id,
-                control,
-            )?]);
-        }
         let variables =
             bind_template_parameters(&template.template, parameters, &inputs.globals.atomics);
         return execute_sequence(
@@ -44,6 +40,7 @@ pub(super) fn apply_temporary_template(
                 TemporaryFocus::Node(tree, node),
                 mode,
                 template_index,
+                sequence_focus,
             ),
             &variables,
             control,
@@ -53,9 +50,19 @@ pub(super) fn apply_temporary_template(
         return copy_temporary_text(value, inputs.request_id, control);
     }
     let mut result = Vec::new();
-    for child in &temporary.children {
+    let child_count = temporary.children.len();
+    for (offset, child) in temporary.children.iter().enumerate() {
         result.extend(apply_temporary_template(
-            inputs, tree, *child, mode, parameters, control,
+            inputs,
+            tree,
+            *child,
+            mode,
+            parameters,
+            SequenceFocus {
+                position: offset + 1,
+                size: child_count,
+            },
+            control,
         )?);
     }
     Ok(result)
@@ -128,6 +135,10 @@ pub(super) fn apply_temporary_roots(
                 TemporaryFocus::Document(tree),
                 mode,
                 template_index,
+                SequenceFocus {
+                    position: 1,
+                    size: 1,
+                },
             ),
             &variables,
             control,
@@ -183,9 +194,19 @@ pub(super) fn apply_temporary_path(
         selected = next;
     }
     let mut result = Vec::new();
-    for node in selected {
+    let focus_size = selected.len();
+    for (offset, node) in selected.into_iter().enumerate() {
         result.extend(apply_temporary_template(
-            inputs, tree, node, mode, parameters, control,
+            inputs,
+            tree,
+            node,
+            mode,
+            parameters,
+            SequenceFocus {
+                position: offset + 1,
+                size: focus_size,
+            },
+            control,
         )?);
     }
     Ok(result)
@@ -197,6 +218,7 @@ pub(super) fn apply_temporary_next(
     mode: Option<&str>,
     current_index: usize,
     parameters: &BTreeMap<String, InvocationParameter>,
+    sequence_focus: SequenceFocus,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     if let Some((next_index, template)) =
@@ -207,7 +229,7 @@ pub(super) fn apply_temporary_next(
         return execute_sequence(
             inputs,
             &template.template.body,
-            SequenceContext::for_temporary_template(focus, mode, next_index),
+            SequenceContext::for_temporary_template(focus, mode, next_index, sequence_focus),
             &variables,
             control,
         );
@@ -284,44 +306,60 @@ pub(super) fn apply_temporary_builtin(
         TemporaryFocus::Document(tree) => (tree, tree.roots.as_slice()),
         TemporaryFocus::Node(tree, node) => (tree, tree.nodes[node].children.as_slice()),
     };
-    for root in children {
+    let focus_size = children.len();
+    for (offset, root) in children.iter().enumerate() {
         result.extend(apply_temporary_template(
-            inputs, tree, *root, mode, parameters, control,
+            inputs,
+            tree,
+            *root,
+            mode,
+            parameters,
+            SequenceFocus {
+                position: offset + 1,
+                size: focus_size,
+            },
+            control,
         )?);
     }
     Ok(result)
 }
 
-fn copy_temporary_node(
-    tree: &TemporaryTree,
-    node: usize,
-    request_id: &str,
+pub(super) fn execute_temporary_copy(
+    inputs: &SequenceInputs<'_>,
+    attributes: &[LiteralAttribute],
+    body: &[Instruction],
+    execution: SequenceContext<'_>,
+    variables: &RuntimeVariables,
     control: &mut InvocationControl,
-) -> Result<ResultNode, ExecutionFailure> {
-    control
-        .charge(WorkDomain::ResultNode, 1)
-        .map_err(|failure| control_failure(failure, request_id))?;
-    let node = &tree.nodes[node];
-    if let TemporaryNodeKind::Text(value) = &node.kind {
-        control
-            .charge(WorkDomain::ResultTextByte, value.len())
-            .map_err(|failure| control_failure(failure, request_id))?;
-        return Ok(ResultNode::Text(value.clone()));
-    }
-    let TemporaryNodeKind::Element { name, namespaces } = &node.kind else {
-        unreachable!("temporary node kinds are exhausted")
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let focus = execution
+        .temporary_focus
+        .expect("temporary xsl:copy has a temporary focus");
+    let TemporaryFocus::Node(tree, node) = focus else {
+        return execute_sequence(inputs, body, execution, variables, control);
     };
-    let children = node
-        .children
-        .iter()
-        .map(|child| copy_temporary_node(tree, *child, request_id, control))
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(ResultNode::Element {
-        name: name.clone(),
-        namespaces: namespaces.clone(),
-        attributes: Vec::new(),
-        children,
-    })
+    let temporary = &tree.nodes[node];
+    match &temporary.kind {
+        TemporaryNodeKind::Text(value) => copy_temporary_text(value, inputs.request_id, control),
+        TemporaryNodeKind::Element { name, namespaces } => {
+            control
+                .charge(WorkDomain::ResultNode, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            Ok(vec![ResultNode::Element {
+                name: name.clone(),
+                namespaces: namespaces.clone(),
+                attributes: materialize_literal_attributes(
+                    attributes,
+                    variables,
+                    execution.focus_position,
+                    execution.focus_size,
+                    inputs.request_id,
+                    control,
+                )?,
+                children: execute_sequence(inputs, body, execution, variables, control)?,
+            }])
+        }
+    }
 }
 
 fn temporary_matches(

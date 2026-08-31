@@ -192,8 +192,10 @@ fn try_execute_apply_templates_case_with_parameters(
     parameters: BTreeMap<String, InvocationParameter>,
     multiple_match_policy: MultipleMatchPolicy,
 ) -> (Result<String, ExecutionFailure>, String, usize) {
-    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
-    assert!(overlay.contains(&format!("case_name = \"{case_name}\"")));
+    crate::xslt30_overlay_test_support::assert_private_case_passed(
+        "tests/insn/apply-templates/_apply-templates-test-set.xml",
+        case_name,
+    );
     let (test_set, set_path) = apply_templates_test_set();
     let test_case = find_element(
         &test_set,

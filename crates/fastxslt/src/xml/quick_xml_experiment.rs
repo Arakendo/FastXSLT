@@ -341,7 +341,7 @@ fn parse_bytes(
                     .xml10_content()
                     .map_err(|error| malformed(start, error))?
                     .into_owned();
-                if depth == 0 && !text.as_ref().iter().all(u8::is_ascii_whitespace) {
+                if depth == 0 && !text.iter().all(u8::is_ascii_whitespace) {
                     return Err(ParseFailure::ContentOutsideRoot { span });
                 }
                 if depth > 0 {
@@ -362,15 +362,13 @@ fn parse_bytes(
                 if depth == 0 {
                     return Err(ParseFailure::ContentOutsideRoot { span });
                 }
+                let reference_bytes: &[u8] = reference.as_ref();
                 if reference.resolve_char_ref().ok().flatten().is_none()
-                    && !matches!(
-                        reference.as_ref(),
-                        b"lt" | b"gt" | b"amp" | b"apos" | b"quot"
-                    )
+                    && !matches!(reference_bytes, b"lt" | b"gt" | b"amp" | b"apos" | b"quot")
                 {
                     return Err(ParseFailure::UnknownEntity {
                         offset: start,
-                        name: reference.as_ref().to_vec(),
+                        name: reference_bytes.to_vec(),
                     });
                 }
                 events.push(OwnedXmlEvent::Text {
@@ -556,7 +554,8 @@ fn resolve_reference(
     {
         return Ok(character.to_string());
     }
-    let character = match reference.as_ref() {
+    let reference_bytes: &[u8] = reference.as_ref();
+    let character = match reference_bytes {
         b"lt" => '<',
         b"gt" => '>',
         b"amp" => '&',

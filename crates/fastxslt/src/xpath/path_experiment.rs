@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
@@ -506,7 +504,6 @@ pub(crate) fn evaluate_location_path_controlled(
     };
     for (step_index, step) in path.steps.iter().enumerate() {
         let mut next = Vec::new();
-        let mut seen_descendant_or_self = HashSet::new();
         for node in current {
             let candidates =
                 step_candidates(document, node, step, step_index, path.origin, control)?;
@@ -568,16 +565,13 @@ pub(crate) fn evaluate_location_path_controlled(
                     }
                     _ => true,
                 };
-                if position_matches
-                    && existence_matches
-                    && context_predicate_matches
-                    && (!step.uses_descendant_or_self_axis()
-                        || seen_descendant_or_self.insert(child))
-                {
+                if position_matches && existence_matches && context_predicate_matches {
                     next.push(child);
                 }
             }
         }
+        next.sort_unstable_by_key(|node| document.document_order(*node));
+        next.dedup();
         current = next;
     }
     Ok(current)

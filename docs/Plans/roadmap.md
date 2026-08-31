@@ -6,6 +6,21 @@ standards scope are decided.
 
 ## Current critical path
 
+The first
+[adversarial engine review](../Reviews/adversarial-engine-review-2026-08-30.md)
+found a misleading-green corpus overlay and six reproducible semantic
+counterexamples. The
+[first correctness tranche](../Evidence/adversarial-review-first-correctness-tranche-2026-08-30.md)
+now parses the private/output overlays through strict typed records, binds pass
+assertions to the same case identity, normalizes every XPath path step, restores
+temporary-tree shallow-copy and focus parity, rejects unadmitted `xml:space`
+semantics explicitly, retains effective namespace bindings when copying an
+isolated descendant, and rejects forward/cyclic globals as unsupported before
+execution. The next adversarial tranche measures native registry retention and
+template-selection work, serializes concurrent worker control frames, and
+keeps the two performance findings under AR-0013 until measurements justify a
+representation change.
+
 Completing the 31-case QT3 mixed deep-equal group raised
 `deep_equal_experiment.rs` to 1,054 lines and exposed independent atomic and
 node responsibilities. The mandatory

@@ -14,6 +14,7 @@ use crate::execution_control_experiment::{CancellationToken, InvocationControl, 
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xslt30_overlay_test_support::assert_output_case_passed;
 
 const SET_FILE: &str = "tests/decl/output/_output-test-set.xml";
 const CASE_COUNT: usize = 232;
@@ -635,8 +636,7 @@ fn execute_assert_serialization_case(
 }
 
 fn execute_output_case(case_name: &str, assertion_method: Option<&str>) -> SerializationExecution {
-    assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
-    assert!(OVERLAY.contains("execution = \"passed\""));
+    assert_output_case_passed(case_name);
 
     let (test_set, set_path) = load_test_set();
     let directory = set_path.parent().expect("output test-set directory");

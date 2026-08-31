@@ -397,6 +397,24 @@ impl Document {
         &self.nodes[id.0].namespaces
     }
 
+    pub(crate) fn in_scope_namespaces(&self, id: NodeId) -> Vec<NamespaceBinding> {
+        let mut lineage = Vec::new();
+        let mut current = Some(id);
+        while let Some(node) = current {
+            lineage.push(node);
+            current = self.parent(node);
+        }
+
+        let mut in_scope = Vec::new();
+        for node in lineage.into_iter().rev() {
+            for binding in self.namespace_declarations(node) {
+                in_scope.retain(|candidate: &NamespaceBinding| candidate.prefix != binding.prefix);
+                in_scope.push(binding.clone());
+            }
+        }
+        in_scope
+    }
+
     pub(crate) fn parent(&self, id: NodeId) -> Option<NodeId> {
         self.nodes[id.0].parent
     }
@@ -407,6 +425,33 @@ impl Document {
 
     pub(crate) fn location(&self, id: NodeId) -> &SourceLocation {
         &self.nodes[id.0].location
+    }
+
+    pub(crate) fn document_order(&self, id: NodeId) -> usize {
+        self.nodes[id.0]
+            .document_order
+            .expect("owned XDM nodes have assigned document order")
+    }
+
+    pub(crate) fn has_xml_space_declaration(
+        &self,
+        control: &mut InvocationControl,
+    ) -> Result<bool, ControlFailure> {
+        const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
+        for node in self.nodes.iter() {
+            control.charge(WorkDomain::XdmNode, 1)?;
+            if node.kind != NodeKind::Element {
+                continue;
+            }
+            if node.attributes.iter().any(|attribute| {
+                self.name(*attribute).is_some_and(|name| {
+                    name.namespace.as_deref() == Some(XML_NAMESPACE) && name.local == "space"
+                })
+            }) {
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 
     pub(crate) fn string_value(&self, id: NodeId) -> String {

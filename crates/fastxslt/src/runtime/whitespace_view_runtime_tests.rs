@@ -177,3 +177,43 @@ fn overlapping_stylesheet_generations_keep_independent_whitespace_policies() {
     assert_eq!(new, "<new>  A\n  B  </new>");
     assert_eq!(source.string_value(source.document_node()), "  A\n  B  ");
 }
+
+#[test]
+fn strip_all_rejects_sources_with_unadmitted_xml_space_semantics() {
+    let program = compile(
+        "memory:xml-space-style.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0">
+            <xsl:strip-space elements="*"/>
+            <xsl:template match="/"><xsl:value-of select="."/></xsl:template>
+        </xsl:stylesheet>"#,
+    );
+
+    for (value, source_xml) in [
+        (
+            "preserve",
+            b"<root xml:space=\"preserve\">   </root>".as_slice(),
+        ),
+        (
+            "default",
+            b"<root xml:space=\"default\"><child>   </child></root>".as_slice(),
+        ),
+    ] {
+        let source = document(&format!("memory:xml-space-{value}.xml"), source_xml);
+        let mut control = InvocationControl::unbounded();
+
+        let failure = execute_program_with_parameters_using(
+            &program,
+            &source,
+            &BTreeMap::new(),
+            MultipleMatchPolicy::UseLast,
+            &format!("xml-space-{value}"),
+            WhitespaceRepresentation::VisibilityView,
+            &mut control,
+        )
+        .expect_err("xml:space requires broader whitespace semantics");
+
+        assert_eq!(failure.code, "FXRT1014");
+        assert_eq!(failure.category, super::FailureCategory::Unsupported);
+        assert!(failure.detail.contains("xml:space"));
+    }
+}

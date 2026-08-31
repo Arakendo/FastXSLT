@@ -123,6 +123,27 @@ enum WhitespaceRepresentation {
     CompleteReference,
 }
 
+fn validate_whitespace_source(
+    policy: SourceWhitespacePolicy,
+    source: &Document,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    if policy == SourceWhitespacePolicy::StripAllElementWhitespace
+        && source
+            .has_xml_space_declaration(control)
+            .map_err(|failure| control_failure(failure, request_id))?
+    {
+        return Err(failure(
+            "FXRT1014",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "xsl:strip-space over a source containing xml:space is outside the admitted whitespace profile",
+        ));
+    }
+    Ok(())
+}
+
 #[allow(
     clippy::too_many_arguments,
     reason = "the test-only representation choice preserves the complete runtime invocation contract"
@@ -136,6 +157,7 @@ fn execute_program_with_parameters_using(
     representation: WhitespaceRepresentation,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
+    validate_whitespace_source(program.source_whitespace, source, request_id, control)?;
     let effective_source = match (program.source_whitespace, representation) {
         (SourceWhitespacePolicy::Preserve, _) => None,
         (
@@ -238,6 +260,7 @@ fn execute_initial_mode(
             "the requested typed mode cannot accept an untyped source node",
         ));
     }
+    validate_whitespace_source(program.source_whitespace, source, request_id, control)?;
     let effective_source = match program.source_whitespace {
         SourceWhitespacePolicy::Preserve => None,
         SourceWhitespacePolicy::StripAllElementWhitespace => Some(
@@ -420,13 +443,22 @@ impl<'a> SequenceContext<'a> {
         focus: TemporaryFocus<'a>,
         current_mode: Option<&'a str>,
         index: usize,
+        sequence_focus: SequenceFocus,
     ) -> Self {
         Self {
             temporary_focus: Some(focus),
             current_template_index: Some(index),
+            focus_position: sequence_focus.position,
+            focus_size: sequence_focus.size,
             ..Self::new(None, current_mode)
         }
     }
+}
+
+#[derive(Clone, Copy)]
+struct SequenceFocus {
+    position: usize,
+    size: usize,
 }
 
 #[derive(Clone, Copy)]
@@ -683,6 +715,11 @@ fn execute_copy(
     else {
         unreachable!("execute_copy_instruction receives xsl:copy")
     };
+    if execution.temporary_focus.is_some() {
+        return temporary_tree_executor::execute_temporary_copy(
+            inputs, attributes, body, execution, variables, control,
+        );
+    }
     execute_source_element_copy(inputs, attributes, body, execution, variables, control)
 }
 
@@ -706,7 +743,7 @@ fn execute_source_element_copy(
                     .name(node)
                     .expect("element context has a name")
                     .clone(),
-                namespaces: source.namespace_declarations(node).to_vec(),
+                namespaces: source.in_scope_namespaces(node),
                 attributes: materialize_literal_attributes(
                     attributes,
                     variables,
@@ -868,9 +905,19 @@ fn execute_apply_templates(
             )
         })?;
         let mut result = Vec::new();
-        for node in &tree.roots {
+        let focus_size = tree.roots.len();
+        for (offset, node) in tree.roots.iter().enumerate() {
             result.extend(apply_temporary_template(
-                inputs, tree, *node, mode, parameters, control,
+                inputs,
+                tree,
+                *node,
+                mode,
+                parameters,
+                SequenceFocus {
+                    position: offset + 1,
+                    size: focus_size,
+                },
+                control,
             )?);
         }
         return Ok(result);
@@ -923,6 +970,10 @@ fn execute_next_match(
             execution.current_mode,
             current_index,
             &parameters,
+            SequenceFocus {
+                position: execution.focus_position,
+                size: execution.focus_size,
+            },
             control,
         );
     }
@@ -1235,7 +1286,7 @@ fn copy_source_node(
                     .name(node)
                     .expect("source element nodes have names")
                     .clone(),
-                namespaces: source.namespace_declarations(node).to_vec(),
+                namespaces: source.in_scope_namespaces(node),
                 attributes,
                 children,
             }])

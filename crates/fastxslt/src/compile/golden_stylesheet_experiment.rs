@@ -80,6 +80,10 @@ pub(super) fn compile_stylesheet_excluding_unvalidated(
     compile_stylesheet_at_excluding_unvalidated(document, root, excluded_top_level)
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "single-document top-level composition remains one cohesive compiler responsibility"
+)]
 pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     document: &Document,
     root: NodeId,
@@ -101,6 +105,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     let mut matched_templates = Vec::new();
     let mut named_templates = Vec::new();
     let mut global_bindings = Vec::new();
+    let mut global_binding_locations = Vec::new();
     for child in top_level_children {
         let Some(name) = document.name(child) else {
             continue;
@@ -156,6 +161,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                         document.location(child),
                     ));
                 }
+                global_binding_locations.push(document.location(child).clone());
                 global_bindings.push(binding);
             }
             (Some(XSLT_NAMESPACE), local) => {
@@ -174,6 +180,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
             }
         }
     }
+    reject_unordered_global_dependencies(&global_bindings, &global_binding_locations)?;
 
     Ok(StylesheetProgram {
         declared_version,
@@ -187,6 +194,37 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         named_templates,
         global_bindings,
     })
+}
+
+fn reject_unordered_global_dependencies(
+    bindings: &[GlobalBinding],
+    locations: &[SourceLocation],
+) -> Result<(), CompileFailure> {
+    for (index, binding) in bindings.iter().enumerate() {
+        let GlobalBindingDefault::Variable(dependency) = &binding.default else {
+            continue;
+        };
+        if bindings[..index]
+            .iter()
+            .any(|candidate| candidate.name == *dependency)
+        {
+            continue;
+        }
+        if bindings[index..]
+            .iter()
+            .any(|candidate| candidate.name == *dependency)
+        {
+            return Err(unsupported(
+                "FXST1044",
+                format!(
+                    "global dependency ordering for ${} -> ${dependency} is outside the private slice",
+                    binding.name
+                ),
+                &locations[index],
+            ));
+        }
+    }
+    Ok(())
 }
 
 #[derive(Default)]
@@ -948,6 +986,47 @@ mod tests {
                 .resource,
             "golden:hello/stylesheet.xsl"
         );
+    }
+
+    #[test]
+    fn forward_and_cyclic_global_dependencies_are_explicitly_unsupported() {
+        for (label, declarations) in [
+            (
+                "forward",
+                r#"<xsl:variable name="first" select="$later"/><xsl:variable name="later" select="7"/>"#,
+            ),
+            (
+                "cycle",
+                r#"<xsl:variable name="first" select="$later"/><xsl:variable name="later" select="$first"/>"#,
+            ),
+        ] {
+            let stylesheet = format!(
+                r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{declarations}<xsl:template match="/"/></xsl:stylesheet>"#
+            );
+            let document = parse_stylesheet(
+                &format!("memory:{label}-global-dependency.xsl"),
+                stylesheet.as_bytes(),
+            );
+
+            let failure = compile_stylesheet(&document)
+                .expect_err("unordered global dependency should remain explicit");
+
+            assert_eq!(failure.code, "FXST1044");
+            assert_eq!(failure.category, CompileCategory::Unsupported);
+            assert!(failure.detail.contains("$first -> $later"));
+        }
+    }
+
+    #[test]
+    fn backward_global_dependencies_remain_in_the_admitted_slice() {
+        let document = parse_stylesheet(
+            "memory:backward-global-dependency.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:variable name="earlier" select="7"/><xsl:variable name="later" select="$earlier"/><xsl:template match="/"/></xsl:stylesheet>"#,
+        );
+
+        let program = compile_stylesheet(&document).expect("backward dependency should compile");
+
+        assert_eq!(program.global_bindings.len(), 2);
     }
 
     #[test]
