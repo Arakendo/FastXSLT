@@ -136,6 +136,13 @@ rationale = "The unnamed mode cannot be public; the native XTSE0020 assertion ma
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1501"
+selection = "selected"
+execution = "passed"
+rationale = "A #all node() rule shallow-copies the source document, elements, processing instruction, and text while #current retains initial mode baz and its foo-specific replacement."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-1502"
 selection = "selected"
 execution = "passed"

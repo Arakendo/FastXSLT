@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 37] = [
+const SELECTED_CASES: [&str; 38] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -52,6 +52,7 @@ const SELECTED_CASES: [&str; 37] = [
     "mode-1204",
     "mode-1444",
     "mode-1447",
+    "mode-1501",
     "mode-1502",
     "mode-1507",
     "mode-1508",
@@ -159,7 +160,7 @@ fn inventories_the_complete_mode_denominator_before_selection() {
         );
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
-    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 37);
+    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 38);
     assert_eq!(
         OVERLAY
             .matches("selection = \"excluded-by-profile\"")
@@ -381,6 +382,13 @@ fn executes_all_mode_priority_and_next_match() {
         let (actual, expected) = execute_case(case_name);
         assert_xml_equivalent(&actual, &expected);
     }
+}
+
+#[test]
+fn executes_all_and_current_modes_across_copied_node_kinds() {
+    let (actual, expected) = execute_case("mode-1501");
+    assert_xml_equivalent(&actual, &expected);
+    assert!(actual.contains("<?pi PI ?>"));
 }
 
 fn execute_case(case_name: &str) -> (String, String) {

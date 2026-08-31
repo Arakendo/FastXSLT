@@ -189,6 +189,12 @@ execution = "passed"
 rationale = "The unnamed mode's invalid public visibility reports native static error XTSE0020 before unrelated template expressions are compiled."
 
 [[case_override]]
+case_name = "mode-1501"
+selection = "selected"
+execution = "passed"
+rationale = "A node() rule in #all copies document, element, processing-instruction, and text nodes while #current preserves initial mode baz through recursive apply-templates."
+
+[[case_override]]
 case_name = "mode-1502"
 selection = "selected"
 execution = "passed"

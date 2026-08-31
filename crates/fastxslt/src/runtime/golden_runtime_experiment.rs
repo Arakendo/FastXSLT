@@ -474,7 +474,7 @@ fn execute_instruction(
         Instruction::CopyOfCurrent { .. } => {
             result.extend(execute_copy_of_current(inputs, execution.node, control)?);
         }
-        Instruction::Copy { .. } => result.push(execute_copy(
+        Instruction::Copy { .. } => result.extend(execute_copy(
             inputs,
             instruction,
             execution,
@@ -594,7 +594,7 @@ fn execute_copy(
     execution: SequenceContext<'_>,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
-) -> Result<ResultNode, ExecutionFailure> {
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let Instruction::Copy {
         attributes, body, ..
     } = instruction
@@ -611,35 +611,57 @@ fn execute_source_element_copy(
     execution: SequenceContext<'_>,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
-) -> Result<ResultNode, ExecutionFailure> {
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let (source, node) = required_source_context(inputs, execution.node)?;
-    if source.kind(node) != NodeKind::Element {
-        return Err(failure(
+    match source.kind(node) {
+        NodeKind::Document => execute_sequence(inputs, body, execution, variables, control),
+        NodeKind::Element => {
+            control
+                .charge(WorkDomain::ResultNode, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            Ok(vec![ResultNode::Element {
+                name: source
+                    .name(node)
+                    .expect("element context has a name")
+                    .clone(),
+                namespaces: source.namespace_declarations(node).to_vec(),
+                attributes: materialize_literal_attributes(
+                    attributes,
+                    variables,
+                    execution.focus_position,
+                    execution.focus_size,
+                    inputs.request_id,
+                    control,
+                )?,
+                children: execute_sequence(inputs, body, execution, variables, control)?,
+            }])
+        }
+        NodeKind::Text => {
+            let mut copied = Vec::new();
+            append_text(
+                &mut copied,
+                source.value(node).unwrap_or_default(),
+                inputs.request_id,
+                control,
+            )?;
+            Ok(copied)
+        }
+        NodeKind::ProcessingInstruction => Ok(vec![construct_processing_instruction(
+            &source
+                .name(node)
+                .expect("processing-instruction context has a target")
+                .local,
+            source.value(node).unwrap_or_default(),
+            inputs.request_id,
+            control,
+        )?]),
+        NodeKind::Attribute | NodeKind::Comment => Err(failure(
             "FXRT1007",
             FailureCategory::Unsupported,
             Some(inputs.request_id),
-            "the private xsl:copy slice requires an element context",
-        ));
+            "the selected source node kind is outside the private xsl:copy slice",
+        )),
     }
-    control
-        .charge(WorkDomain::ResultNode, 1)
-        .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    Ok(ResultNode::Element {
-        name: source
-            .name(node)
-            .expect("element context has a name")
-            .clone(),
-        namespaces: source.namespace_declarations(node).to_vec(),
-        attributes: materialize_literal_attributes(
-            attributes,
-            variables,
-            execution.focus_position,
-            execution.focus_size,
-            inputs.request_id,
-            control,
-        )?,
-        children: execute_sequence(inputs, body, execution, variables, control)?,
-    })
 }
 
 fn execute_literal_element(
