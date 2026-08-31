@@ -539,6 +539,17 @@ implemented. Peak memory and reuse break-even remain open rather than becoming
 performance guarantees.
 [Evidence](../Evidence/ar-0016-visibility-view-prototype-2026-08-30.md)
 
+The adjacent native `mode-1439` case now retains a named `typed="yes"` mode
+requirement and reports dynamic `XTTE3100` with stylesheet provenance when its
+untyped suite source enters that mode. The error occurs before the case's
+otherwise unsupported shallow-copy fallback, so no schema type or partial
+`on-no-match` behavior is fabricated. The adapter also admits the suite's
+explicit 9,001-byte external source into the same sealed memory snapshot. The
+streaming-dependent sibling `mode-1438` remains profile-excluded. The mode
+denominator advances to 42 passes, 44 profile exclusions, and 83 visible
+default not-run cases.
+[Evidence](../Evidence/xslt30-mode-1439-typed-untyped-error-2026-08-30.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -578,10 +589,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 41 | 0 | 44 | 84 |
+| `attr/mode` | 169 | 42 | 0 | 44 | 83 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **235** | **3** | **49** | **244** |
+| **Conserved total** | **531** | **236** | **3** | **49** | **243** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1418,6 +1429,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   boolean policy before unsupported runtime semantics. Preserve native
   `XTSE0020`, structured invalid classification, and stylesheet location. The
   mode ledger now records 33 passes and 136 visible default not-run cases.
+- [x] Execute `mode-1439` as native dynamic error `XTTE3100` by retaining the
+  named `typed="yes"` requirement and rejecting the suite's untyped initial
+  source before unrelated shallow-copy fallback. Preserve the stylesheet
+  declaration location, keep streaming-dependent `mode-1438` excluded, and do
+  not infer schema-aware execution.
 - [x] Execute `mode-1507` through `mode-1509` by validating mode name and
   visibility constraints before unrelated unsupported template expressions.
   Preserve native `XTSE0020` and keep valid visibility behavior private and

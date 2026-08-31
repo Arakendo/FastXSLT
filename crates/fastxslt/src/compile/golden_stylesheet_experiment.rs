@@ -3,7 +3,8 @@ use crate::xpath::path_experiment::{PathFailure, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
     ConstructedElement, ConstructedNode, GlobalBinding, GlobalBindingDefault, GlobalBindingKind,
     MatchPattern, MatchedTemplate, NamedTemplate, STANDARD_INITIAL_TEMPLATE_NAME,
-    StylesheetProgram, Template, TemplateParameter, TemplateParameterDefault, TemplatePriority,
+    SourceWhitespacePolicy, StylesheetProgram, Template, TemplateParameter,
+    TemplateParameterDefault, TemplatePriority,
 };
 
 #[path = "instruction_compiler.rs"]
@@ -35,7 +36,7 @@ use instruction_compiler::{
     compile_sequence_excluding, literal_result_namespaces, parse_template_modes,
 };
 use mode_declaration_compiler::{
-    validate_mode_declaration, validate_same_precedence_mode_declaration_conflicts,
+    validate_mode_declaration as validate_mode, validate_same_precedence_mode_declaration_conflicts,
 };
 pub(super) use output_compiler::default_output_settings;
 use output_compiler::{compile_output, merge_output};
@@ -93,8 +94,8 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     validate_same_precedence_mode_declaration_conflicts(document, &top_level_children)?;
 
     let mut output = None;
-    let mut source_whitespace =
-        crate::xslt::golden_semantics_experiment::SourceWhitespacePolicy::Preserve;
+    let mut source_whitespace = SourceWhitespacePolicy::Preserve;
+    let mut typed_mode_requirements = Vec::new();
     let mut root_template = None;
     let mut root_template_modes = Vec::new();
     let mut matched_templates = Vec::new();
@@ -123,7 +124,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                 )?;
             }
             (Some(XSLT_NAMESPACE), "mode") => {
-                validate_mode_declaration(document, child, &declared_version)?;
+                typed_mode_requirements.extend(validate_mode(document, child, &declared_version)?);
             }
             (Some(XSLT_NAMESPACE), "strip-space") => {
                 ensure_only_attributes(document, child, &["elements"], "xsl:strip-space")?;
@@ -136,7 +137,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                         document.location(child),
                     ));
                 }
-                source_whitespace = crate::xslt::golden_semantics_experiment::SourceWhitespacePolicy::StripAllElementWhitespace;
+                source_whitespace = SourceWhitespacePolicy::StripAllElementWhitespace;
             }
             (Some(XSLT_NAMESPACE), "variable" | "param") => {
                 let kind = if name.local == "variable" {
@@ -177,6 +178,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     Ok(StylesheetProgram {
         declared_version,
         source_whitespace,
+        typed_mode_requirements,
         output: output.map_or_else(default_output_settings, |declaration| declaration.settings),
         root_template,
         root_template_modes,

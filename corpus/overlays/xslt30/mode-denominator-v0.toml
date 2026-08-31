@@ -183,6 +183,12 @@ execution = "passed"
 rationale = "The exact xsl:strip-space elements='*' policy composes an invocation-owned safe derived document whose filtered relationships and string values are shared by built-in traversal and template selection while visible NodeIds retain prepared-source identity."
 
 [[case_override]]
+case_name = "mode-1439"
+selection = "selected"
+execution = "passed"
+rationale = "The named typed='yes' mode retains a runtime source-type requirement and reports native XTTE3100 with stylesheet provenance when invoked with the suite's untyped source, before unrelated shallow-copy execution."
+
+[[case_override]]
 case_name = "mode-1444"
 selection = "selected"
 execution = "passed"

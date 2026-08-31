@@ -16,12 +16,19 @@ pub(crate) const STANDARD_INITIAL_TEMPLATE_NAME: &str =
 pub(crate) struct StylesheetProgram {
     pub(crate) declared_version: String,
     pub(crate) source_whitespace: SourceWhitespacePolicy,
+    pub(crate) typed_mode_requirements: Vec<TypedModeRequirement>,
     pub(crate) output: OutputSettings,
     pub(crate) root_template: Option<Template>,
     pub(crate) root_template_modes: Vec<String>,
     pub(crate) matched_templates: Vec<MatchedTemplate>,
     pub(crate) named_templates: Vec<NamedTemplate>,
     pub(crate) global_bindings: Vec<GlobalBinding>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct TypedModeRequirement {
+    pub(crate) name: String,
+    pub(crate) location: SourceLocation,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

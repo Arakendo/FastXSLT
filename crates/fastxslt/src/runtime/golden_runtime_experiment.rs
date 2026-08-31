@@ -225,6 +225,19 @@ fn execute_initial_mode(
             format!("unknown initial mode: {name}"),
         ));
     }
+    if let Some(requirement) = program
+        .typed_mode_requirements
+        .iter()
+        .find(|requirement| requirement.name == name)
+    {
+        return Err(failure_at(
+            "XTTE3100",
+            FailureCategory::Invalid,
+            Some(request_id),
+            requirement.location.clone(),
+            "the requested typed mode cannot accept an untyped source node",
+        ));
+    }
     let effective_source = match program.source_whitespace {
         SourceWhitespacePolicy::Preserve => None,
         SourceWhitespacePolicy::StripAllElementWhitespace => Some(
@@ -308,6 +321,10 @@ fn program_has_mode(program: &StylesheetProgram, name: &str) -> bool {
             .matched_templates
             .iter()
             .any(|template| template.modes.iter().any(|mode| mode == name))
+        || program
+            .typed_mode_requirements
+            .iter()
+            .any(|requirement| requirement.name == name)
 }
 
 #[cfg(test)]

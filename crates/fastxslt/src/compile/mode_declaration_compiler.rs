@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
+use crate::xslt::golden_semantics_experiment::TypedModeRequirement;
 
 use super::{
     CompileFailure, ensure_no_meaningful_children, ensure_only_attributes, invalid,
@@ -89,7 +90,7 @@ pub(super) fn validate_mode_declaration(
     document: &Document,
     element: NodeId,
     declared_version: &str,
-) -> Result<(), CompileFailure> {
+) -> Result<Option<TypedModeRequirement>, CompileFailure> {
     ensure_only_attributes(
         document,
         element,
@@ -151,11 +152,14 @@ pub(super) fn validate_mode_declaration(
         ));
     }
     if typed == Some(true) {
-        return Err(unsupported(
-            "FXST1040",
-            "typed mode semantics require schema-aware source support",
-            document.location(element),
-        ));
+        return Ok(Some(TypedModeRequirement {
+            name: names
+                .expect("the admitted declaration has exactly one named mode")
+                .into_iter()
+                .next()
+                .expect("the admitted declaration has one mode"),
+            location: document.location(element).clone(),
+        }));
     }
     if optional_attribute(document, element, None, "on-no-match").is_some() {
         return Err(unsupported(
@@ -164,7 +168,7 @@ pub(super) fn validate_mode_declaration(
             document.location(element),
         ));
     }
-    Ok(())
+    Ok(None)
 }
 
 fn validate_visibility(
@@ -243,7 +247,11 @@ mod tests {
     use crate::xdm::owned_tree_experiment::Document;
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
-    fn compile(attribute: &str, value: &str) -> Result<(), super::CompileFailure> {
+    fn compile(
+        attribute: &str,
+        value: &str,
+    ) -> Result<crate::xslt::golden_semantics_experiment::StylesheetProgram, super::CompileFailure>
+    {
         let xml = format!(
             r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:mode name="m" {attribute}="{value}"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#
         );
@@ -257,7 +265,7 @@ mod tests {
         )
         .expect("parse mode declaration fixture");
         let document = Document::from_parsed(parsed).expect("build mode declaration fixture");
-        compile_stylesheet(&document).map(|_| ())
+        compile_stylesheet(&document)
     }
 
     #[test]
@@ -291,9 +299,14 @@ mod tests {
         }
 
         compile("typed", "false").expect("typed=false is semantically inert");
-        let failure = compile("typed", "true").expect_err("typed input is schema-aware");
-        assert_eq!(failure.code, "FXST1040");
-        assert_eq!(failure.category, CompileCategory::Unsupported);
+        let program = compile("typed", "true")
+            .expect("typed=true should retain an invocation requirement for untyped sources");
+        assert_eq!(program.typed_mode_requirements.len(), 1);
+        assert_eq!(program.typed_mode_requirements[0].name, "m");
+        assert_eq!(
+            program.typed_mode_requirements[0].location.resource,
+            "memory:mode-declaration.xsl"
+        );
     }
 
     #[test]

@@ -98,13 +98,16 @@ pub(crate) fn compile_stylesheet_with_single_include_program_at(
 
 fn merge_included_program(
     program: &mut StylesheetProgram,
-    included_program: StylesheetProgram,
+    mut included_program: StylesheetProgram,
     location: &SourceLocation,
     allow_duplicate_matches: bool,
 ) -> Result<(), CompileFailure> {
     if included_program.source_whitespace == SourceWhitespacePolicy::StripAllElementWhitespace {
         program.source_whitespace = SourceWhitespacePolicy::StripAllElementWhitespace;
     }
+    program
+        .typed_mode_requirements
+        .append(&mut included_program.typed_mode_requirements);
     if included_program.output != default_output_settings() {
         return Err(unsupported(
             "FXST1019",
@@ -518,6 +521,7 @@ fn compile_simplified_stylesheet_at(
     Ok(StylesheetProgram {
         declared_version: declared_version.to_owned(),
         source_whitespace: SourceWhitespacePolicy::Preserve,
+        typed_mode_requirements: Vec::new(),
         output: default_output_settings(),
         root_template: Some(root_template),
         root_template_modes: Vec::new(),

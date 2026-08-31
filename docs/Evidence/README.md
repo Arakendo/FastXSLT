@@ -177,3 +177,4 @@ pressure architecture but does not silently create a public guarantee.
 - [Native Boundary Diagnostic-Test Decomposition](native-boundary-diagnostic-test-decomposition-2026-08-28.md)
 - [AR-0016 Source Access Inventory and Safe Reference](ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md)
 - [AR-0016 Visibility-View Prototype](ar-0016-visibility-view-prototype-2026-08-30.md)
+- [XSLT30 `mode-1439` Typed-Mode Untyped-Source Error](xslt30-mode-1439-typed-untyped-error-2026-08-30.md)

@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 41] = [
+const SELECTED_CASES: [&str; 42] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -52,6 +52,7 @@ const SELECTED_CASES: [&str; 41] = [
     "mode-1203",
     "mode-1204",
     "mode-1301",
+    "mode-1439",
     "mode-1444",
     "mode-1447",
     "mode-1501",
@@ -163,7 +164,7 @@ fn inventories_the_complete_mode_denominator_before_selection() {
         );
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
-    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 41);
+    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 42);
     assert_eq!(
         OVERLAY
             .matches("selection = \"excluded-by-profile\"")
@@ -326,6 +327,31 @@ fn rejects_invalid_warning_and_typed_mode_booleans() {
 }
 
 #[test]
+fn reports_typed_mode_requirement_for_the_native_untyped_source() {
+    let document = load_test_set();
+    let case = find_case(&document, "mode-1439");
+    let expected_error = child_named(
+        &document,
+        child_named(&document, case, "result").expect("result metadata"),
+        "error",
+    )
+    .and_then(|error| attribute(&document, error, "code"));
+    assert_eq!(expected_error, Some("XTTE3100"));
+
+    let failure = execute_case_with_policy("mode-1439", MultipleMatchPolicy::UseLast)
+        .expect_err("typed mode should reject the native untyped source");
+    assert_eq!(failure.code, "XTTE3100");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+    assert_eq!(
+        failure
+            .location
+            .as_ref()
+            .map(|location| location.resource.as_str()),
+        Some("https://example.invalid/xslt30/attr/mode/mode-1439.xsl")
+    );
+}
+
+#[test]
 fn rejects_nonempty_mode_declaration_with_native_static_error() {
     let document = load_test_set();
     let case = find_case(&document, "mode-1108");
@@ -462,7 +488,6 @@ fn execute_case_with_policy(
     let case = find_case(&document, case_name);
     let environment = case_environment(&document, case);
     let source = child_named(&document, environment, "source").expect("principal source");
-    let content = child_named(&document, source, "content").expect("inline source content");
     let test = child_named(&document, case, "test").expect("test metadata");
     let stylesheet_file = child_named(&document, test, "stylesheet")
         .and_then(|node| attribute(&document, node, "file"))
@@ -483,12 +508,16 @@ fn execute_case_with_policy(
 
     let source_id = format!("urn:w3c:xslt30:attr:mode:{case_name}:source");
     let stylesheet_id = format!("https://example.invalid/xslt30/attr/mode/{stylesheet_file}");
-    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    let source_bytes = child_named(&document, source, "content").map_or_else(
+        || {
+            let file = attribute(&document, source, "file").expect("source content or file");
+            fs::read(directory.join(file)).expect("read source and close handle")
+        },
+        |content| document.string_value(content).into_bytes(),
+    );
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 16_384, 24_576));
     resources
-        .admit(
-            source_id.clone(),
-            document.string_value(content).into_bytes(),
-        )
+        .admit(source_id.clone(), source_bytes)
         .expect("admit source");
     resources
         .admit(
