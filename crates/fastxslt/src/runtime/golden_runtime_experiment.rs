@@ -1444,6 +1444,7 @@ fn execute_named_call(
         .iter()
         .find(|template| template.name == name)
         .expect("named-template references were validated during compilation");
+    control.observe_global_atomic_frame_clone(inputs.globals.atomics.len());
     let mut frame = RuntimeVariables::from_atomics(&inputs.globals.atomics);
     frame.atomics.extend(
         target

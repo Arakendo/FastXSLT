@@ -9,7 +9,7 @@
 | Trigger | Explore whether deliberately prepared representations can improve repeated execution rather than inheriting conventional engine layouts without evidence |
 | Related ADRs | ADR-0002, ADR-0003, ADR-0004, ADR-0007 |
 | Related reviews | AR-0007, AR-0009, AR-0012 |
-| Related evidence | `../Evidence/private-prepared-input-reuse-2026-08-25.md`; `../Evidence/private-prepared-retention-observation-2026-08-25.md`; `../Evidence/allocation-counter-review-and-preparation-probe-2026-08-25.md`; `../Evidence/aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md`; `../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md`; `../Evidence/document-rooted-match-path-reevaluation-2026-08-31.md` |
+| Related evidence | `../Evidence/private-prepared-input-reuse-2026-08-25.md`; `../Evidence/private-prepared-retention-observation-2026-08-25.md`; `../Evidence/allocation-counter-review-and-preparation-probe-2026-08-25.md`; `../Evidence/aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md`; `../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md`; `../Evidence/document-rooted-match-path-reevaluation-2026-08-31.md`; `../Evidence/named-template-global-frame-cloning-2026-08-31.md` |
 
 ## Architectural question
 
@@ -265,6 +265,14 @@ membership view is now a concrete comparison candidate, but no cache or index
 is admitted until its construction, memory, break-even reuse, cancellation,
 semantic parity, and generation ownership are measured against this reference.
 
+The first global-frame matrix also confirms that named calls repeatedly clone
+all atomic globals. Against a same-global depth-zero control, an eight-call,
+256-global chain added 8,824 allocation requests, 432,576 requested bytes,
+about 419 KiB peak live requested memory, and 598.3 us median. A safe private
+overlay/parent-frame representation is now a concrete comparison candidate,
+provided lookup cost, shadowing semantics, cleanup, and concurrency are measured
+alongside allocation. Prepared-XDM field duplication remains unmeasured.
+
 ## Disposition
 
 **Incubating.** Preserve the audit and candidate inventory, but select no data
@@ -278,6 +286,8 @@ provide a concrete hypothesis to test.
   fidelity sentinels, reuse count, concurrency, and memory/latency budgets.
 - [ ] Add Rust-side allocation and retained-memory attribution for compile,
   prepare, execute, and serialize phases.
+- [x] Attribute the nominated named-template global-frame clone mechanism
+  against a same-global, same-result depth-zero execution control.
 - [ ] Add bounded sequence length/item-kind histograms and prepared-XDM byte
   anatomy sufficient to distinguish node, name/namespace, text, relationship,
   index, capacity-slack, and ownership overhead.
@@ -325,3 +335,6 @@ provide a concrete hypothesis to test.
 - 2026-08-31 -- Confirmed `(items + 1)^2` charged node visits for one repeated
   document-rooted match path and nominated a safe invocation-owned membership
   view for comparison without admitting it.
+- 2026-08-31 -- Confirmed complete atomic-global cloning across named-template
+  calls with allocator-requested and latency deltas against a same-global
+  control; nominated a safe private overlay-frame comparison.

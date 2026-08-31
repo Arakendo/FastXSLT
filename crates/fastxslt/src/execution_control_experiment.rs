@@ -190,6 +190,8 @@ struct InvocationObservations {
     template_candidate_signal_sent: bool,
     template_candidates_after_signal: usize,
     document_rooted_match_evaluations: usize,
+    global_atomic_frames_cloned: usize,
+    global_atomic_entries_cloned: usize,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -301,6 +303,26 @@ impl InvocationControl {
     #[cfg(test)]
     pub(crate) fn document_rooted_match_evaluations(&self) -> usize {
         self.observations.document_rooted_match_evaluations
+    }
+
+    /// Attributes the current reference runtime's complete global-atomic map
+    /// clone when it creates a named-template frame.
+    pub(crate) fn observe_global_atomic_frame_clone(&mut self, entries: usize) {
+        #[cfg(not(test))]
+        let _ = (self, entries);
+        #[cfg(test)]
+        {
+            self.observations.global_atomic_frames_cloned += 1;
+            self.observations.global_atomic_entries_cloned += entries;
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn global_atomic_frame_clone_observation(&self) -> (usize, usize) {
+        (
+            self.observations.global_atomic_frames_cloned,
+            self.observations.global_atomic_entries_cloned,
+        )
     }
 
     pub(crate) fn charge(

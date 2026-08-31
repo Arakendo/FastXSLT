@@ -23,6 +23,7 @@ const FANOUT_SOURCE_ID: &str = "urn:fastxslt:template-fanout:source";
 const FANOUT_STYLESHEET_ID: &str = "urn:fastxslt:template-fanout:stylesheet";
 const ROOTED_MATCH_SOURCE_ID: &str = "urn:fastxslt:rooted-match:source";
 const ROOTED_MATCH_STYLESHEET_ID: &str = "urn:fastxslt:rooted-match:stylesheet";
+const GLOBAL_CLONE_STYLESHEET_ID: &str = "urn:fastxslt:global-clone:stylesheet";
 
 fn snapshot() -> crate::resources::ResourceSnapshot {
     let source = include_bytes!("../../../../corpus/golden/hello/input.xml").to_vec();
@@ -287,6 +288,143 @@ fn document_rooted_match_workload(
     let document = Document::from_parsed_controlled(parsed, &mut preparation)
         .expect("construct rooted-match XDM");
     (program, document)
+}
+
+fn global_clone_workload(
+    global_count: usize,
+    call_depth: usize,
+) -> crate::xslt::golden_semantics_experiment::StylesheetProgram {
+    let mut stylesheet = String::from(
+        r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0">"#,
+    );
+    for index in 0..global_count {
+        write!(
+            stylesheet,
+            r#"<xsl:variable name="g{index}" select="{index}"/>"#
+        )
+        .expect("write generated global");
+    }
+    for index in 0..call_depth {
+        write!(
+            stylesheet,
+            r#"<xsl:template name="t{index}"><xsl:call-template name="t{}"/></xsl:template>"#,
+            index + 1
+        )
+        .expect("write generated named-template call");
+    }
+    write!(
+        stylesheet,
+        r#"<xsl:template name="t{call_depth}"><out/></xsl:template></xsl:stylesheet>"#
+    )
+    .expect("finish generated stylesheet");
+
+    let bytes = stylesheet.into_bytes();
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, bytes.len(), bytes.len()));
+    resources
+        .admit(GLOBAL_CLONE_STYLESHEET_ID, bytes)
+        .expect("admit global-clone stylesheet");
+    compile_resource(&resources.seal(), GLOBAL_CLONE_STYLESHEET_ID)
+        .expect("compile global-clone stylesheet")
+}
+
+#[test]
+fn named_template_calls_clone_every_global_atomic_entry() {
+    let global_count = 16;
+    let call_depth = 8;
+    let program = global_clone_workload(global_count, call_depth);
+    let mut control = InvocationControl::unbounded();
+
+    let result = super::execute_initial_template(
+        &program,
+        "t0",
+        super::MultipleMatchPolicy::UseLast,
+        "global-clone",
+        &mut control,
+    )
+    .expect("execute global-clone workload");
+
+    assert_eq!(result.children.len(), 1);
+    assert_eq!(
+        control.global_atomic_frame_clone_observation(),
+        (call_depth, global_count * call_depth)
+    );
+}
+
+#[cfg(feature = "allocation-observation")]
+#[test]
+#[ignore = "release-mode global-frame clone allocation measurement probe"]
+fn measure_named_template_global_frame_cloning() {
+    const CALL_DEPTH: usize = 8;
+    for global_count in [0, 16, 64, 256] {
+        let baseline_program = global_clone_workload(global_count, 0);
+        let program = global_clone_workload(global_count, CALL_DEPTH);
+        let mut baseline_samples = Vec::with_capacity(5);
+        let mut samples = Vec::with_capacity(5);
+        let mut observed = None;
+        for _ in 0..5 {
+            let mut baseline_control = InvocationControl::unbounded();
+            let baseline_started = Instant::now();
+            let baseline_result = super::execute_initial_template(
+                &baseline_program,
+                "t0",
+                super::MultipleMatchPolicy::UseLast,
+                "global-clone-baseline",
+                &mut baseline_control,
+            )
+            .expect("execute global-clone baseline");
+            assert_eq!(baseline_result.children.len(), 1);
+            baseline_samples.push(baseline_started.elapsed().as_secs_f64() * 1_000_000.0);
+
+            let mut control = InvocationControl::unbounded();
+            let started = Instant::now();
+            let result = super::execute_initial_template(
+                &program,
+                "t0",
+                super::MultipleMatchPolicy::UseLast,
+                "global-clone-measurement",
+                &mut control,
+            )
+            .expect("execute measured global-clone workload");
+            assert_eq!(result.children.len(), 1);
+            samples.push(started.elapsed().as_secs_f64() * 1_000_000.0);
+            observed = Some(control.global_atomic_frame_clone_observation());
+        }
+        baseline_samples.sort_by(f64::total_cmp);
+        samples.sort_by(f64::total_cmp);
+
+        let mut baseline_allocation_control = InvocationControl::unbounded();
+        let baseline_allocations = allocation_counter::measure(|| {
+            let result = super::execute_initial_template(
+                &baseline_program,
+                "t0",
+                super::MultipleMatchPolicy::UseLast,
+                "global-clone-allocation-baseline",
+                &mut baseline_allocation_control,
+            )
+            .expect("execute allocation-observed global-clone baseline");
+            assert_eq!(result.children.len(), 1);
+        });
+        let mut allocation_control = InvocationControl::unbounded();
+        let allocations = allocation_counter::measure(|| {
+            let result = super::execute_initial_template(
+                &program,
+                "t0",
+                super::MultipleMatchPolicy::UseLast,
+                "global-clone-allocation",
+                &mut allocation_control,
+            )
+            .expect("execute allocation-observed global-clone workload");
+            assert_eq!(result.children.len(), 1);
+        });
+        println!(
+            "globals={global_count} call_depth={CALL_DEPTH} clone_observation={:?} baseline_median_us={:.3} chain_median_us={:.3} baseline_allocations={:?} chain_allocations={:?}",
+            observed.expect("one clone observation"),
+            baseline_samples[baseline_samples.len() / 2],
+            samples[samples.len() / 2],
+            baseline_allocations,
+            allocations
+        );
+    }
 }
 
 #[test]

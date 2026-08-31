@@ -46,8 +46,12 @@ and check frequency. The
 also confirms exact `(items + 1)^2` charged visits through width 256. AR-0013
 must compare a safe invocation-owned membership view against that reference and
 keeps both possible indexes private and experimental until preparation, memory,
-parity, and consumer-visible evidence justify representation changes. Global-
-frame cloning and prepared-XDM anatomy remain unmeasured hypotheses.
+parity, and consumer-visible evidence justify representation changes. The
+[global-frame clone probe](../Evidence/named-template-global-frame-cloning-2026-08-31.md)
+now also confirms material allocation and latency growth through 256 globals
+and eight named calls. AR-0013 may compare a safe private overlay frame against
+that complete-clone reference; prepared-XDM anatomy remains the unmeasured half
+of Finding 12.
 
 Completing the 31-case QT3 mixed deep-equal group raised
 `deep_equal_experiment.rs` to 1,054 lines and exposed independent atomic and
