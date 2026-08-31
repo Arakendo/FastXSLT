@@ -9,7 +9,7 @@
 | Trigger | Adversarial review Finding 6 confirmed that foreign callers can retain engines, controls, and outcomes without an aggregate ceiling |
 | Related ADRs | ADR-0002, ADR-0003, ADR-0008, ADR-0015 |
 | Related reviews | AR-0002, AR-0009, AR-0010, AR-0012 |
-| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; `../Evidence/native-registry-live-use-high-water-2026-08-31.md`; `../Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`; `../Evidence/aspnet-native-registry-burst-pressure-2026-08-31.md`; `../Evidence/native-registry-candidate-policy-replay-2026-08-31.md`; future consumer requirements |
+| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; `../Evidence/native-registry-live-use-high-water-2026-08-31.md`; `../Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`; `../Evidence/aspnet-native-registry-burst-pressure-2026-08-31.md`; `../Evidence/native-registry-candidate-policy-replay-2026-08-31.md`; `../Evidence/aspnet-native-sustained-generation-replacement-2026-08-31.md`; future consumer requirements |
 
 ## Architectural question
 
@@ -232,9 +232,19 @@ controls, 128 retained structured failures, and eight retained 900 KB results;
 exact native ownership again returned to baseline while managed and process
 memory followed independent reclamation timelines. The captured observations
 have also been replayed arithmetically against count-only and
-count-plus-exact-outcome-byte candidates. Larger prepared corpus shapes,
-sustained replacement, latency distributions, engine-retention estimates, and
-exhaustion delivery remain open.
+count-plus-exact-outcome-byte candidates. Larger prepared corpus shapes, a
+longer-duration replacement soak, engine-retention estimates, reclamation
+calibration, and exhaustion delivery remain open.
+
+The first sustained replacement trace performed 32 full eight-engine
+promotions while retaining exactly two old-generation leases. Its engine
+high-water reached the predicted 25 handles including the ordinary singleton,
+then stayed flat through the remaining promotions and returned exactly to
+baseline. All 512 current-generation requests and 32 retired-generation
+sentinels preserved generation identity and results. Observed replacement
+latency was 4.63/6.54/7.81 ms at p50/p95/p99; request latency was
+151.7/237.4/935.1 us. These are one-host calibration observations, not supported
+latency or overlap guarantees.
 
 ADR-0015 admits the four scalar observation exports used by this trace. It adds
 no unsafe block, quota behavior, registry mutation, layout exposure, or public
@@ -271,6 +281,9 @@ representative host policy are reviewed.
 - [x] Exercise and separately account for real active controls, retained
   structured failures, and retained near-limit semantic results through the
   ASP.NET/native boundary.
+- [x] Run the first sustained bounded generation-replacement trace with
+  promoted and retired semantic sentinels plus replacement/request latency
+  distributions.
 - [ ] Measure logical release and process-memory reclamation half-life
   separately after each bounded burst.
 - [x] Replay the captured trace against count-only and hybrid count/byte
@@ -319,3 +332,7 @@ consumers.
   900 KB results returned exact registry ownership to baseline. Candidate replay
   retained count ceilings as abuse protection and nominated exact aggregate
   outcome bytes as a necessary hybrid dimension without selecting thresholds.
+- 2026-08-31 -- Ran 32 sustained eight-engine promotions with two retained old
+  leases. Engine ownership remained at the predicted 25-handle high-water after
+  overlap filled, all 544 semantic observations passed, and exact ownership
+  returned to baseline. Latency remains evidence, not a guarantee.

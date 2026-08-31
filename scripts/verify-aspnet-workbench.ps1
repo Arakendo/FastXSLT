@@ -10,6 +10,7 @@ param(
     [switch]$NativeRegistryPressure,
     [switch]$RegistrySummaryOnly,
     [switch]$NativeRegistryBursts,
+    [switch]$NativeRegistryReplacementSoak,
     [int]$TieredRequests = 250,
     [int]$TieredConcurrency = 4,
     [int]$RegistryItems = 500,
@@ -19,7 +20,11 @@ param(
     [int]$BurstConcurrency = 8,
     [int]$BurstDelayedFailures = 128,
     [int]$BurstLargeOutcomes = 8,
-    [int]$BurstLargePayloadBytes = 900000
+    [int]$BurstLargePayloadBytes = 900000,
+    [int]$SoakConcurrency = 8,
+    [int]$SoakReplacements = 32,
+    [int]$SoakRetainedOldGenerations = 2,
+    [int]$SoakRequestsPerGeneration = 16
 )
 
 $ErrorActionPreference = 'Stop'
@@ -501,6 +506,43 @@ try {
             }
             else {
                 $registryBurst | ConvertTo-Json -Depth 8
+            }
+        }
+        if ($NativeRegistryReplacementSoak) {
+            $replacementSoakUri = "$baseAddress/experiment/native-registry-replacement-soak?concurrency=$SoakConcurrency&replacements=$SoakReplacements&retainedOldGenerations=$SoakRetainedOldGenerations&requestsPerGeneration=$SoakRequestsPerGeneration"
+            $replacementSoak = Invoke-RestMethod -Method Post -Uri $replacementSoakUri
+            $soakBaseline = $replacementSoak.checkpoints[0].registry
+            $expectedEngineHighWater = $soakBaseline.engineHandles +
+                ($SoakConcurrency * ([Math]::Min($SoakRetainedOldGenerations, $SoakReplacements) + 1))
+            if (-not $replacementSoak.logicalRegistryReturnedToBaseline -or
+                $replacementSoak.replacementSamples -ne $SoakReplacements -or
+                $replacementSoak.transformSamples -ne ($SoakReplacements * $SoakRequestsPerGeneration) -or
+                $replacementSoak.legitimateHighWater.engineHandles -ne $expectedEngineHighWater -or
+                $replacementSoak.legitimateHighWater.controlHandles -ne $soakBaseline.controlHandles -or
+                $replacementSoak.legitimateHighWater.outcomeHandles -ne $soakBaseline.outcomeHandles -or
+                $replacementSoak.replacementP99Microseconds -lt $replacementSoak.replacementP50Microseconds -or
+                $replacementSoak.transformP99Microseconds -lt $replacementSoak.transformP50Microseconds) {
+                throw "Native registry replacement soak violated lifecycle, semantics, or accounting: $($replacementSoak | ConvertTo-Json -Depth 8)"
+            }
+            if ($RegistrySummaryOnly) {
+                [pscustomobject]@{
+                    Experiment = 'NativeRegistryReplacementSoak'
+                    Concurrency = $replacementSoak.concurrency
+                    Replacements = $replacementSoak.replacements
+                    RetainedOldGenerations = $replacementSoak.retainedOldGenerations
+                    RequestsPerGeneration = $replacementSoak.requestsPerGeneration
+                    EngineHighWater = $replacementSoak.legitimateHighWater.engineHandles
+                    ReplacementP50Microseconds = $replacementSoak.replacementP50Microseconds
+                    ReplacementP95Microseconds = $replacementSoak.replacementP95Microseconds
+                    ReplacementP99Microseconds = $replacementSoak.replacementP99Microseconds
+                    TransformP50Microseconds = $replacementSoak.transformP50Microseconds
+                    TransformP95Microseconds = $replacementSoak.transformP95Microseconds
+                    TransformP99Microseconds = $replacementSoak.transformP99Microseconds
+                    LogicalRegistryReturnedToBaseline = $replacementSoak.logicalRegistryReturnedToBaseline
+                }
+            }
+            else {
+                $replacementSoak | ConvertTo-Json -Depth 8
             }
         }
         for ($run = 1; $run -le $MeasurementRuns; $run++) {

@@ -32,6 +32,7 @@ offers:
 - `POST /experiment/native-boundary`
 - `POST /experiment/native-registry-pressure?items=500&concurrency=4&generations=2&delayedOutcomes=64`
 - `POST /experiment/native-registry-bursts?concurrency=8&delayedFailures=128&largeOutcomes=8&largePayloadBytes=900000`
+- `POST /experiment/native-registry-replacement-soak?concurrency=8&replacements=32&retainedOldGenerations=2&requestsPerGeneration=16`
 - `POST /experiment/generation-replacement`
 - `POST /experiment/host-file-replacement`
 - `POST /transform/saxoncs`
@@ -150,6 +151,19 @@ settlement. Run it with:
 ```powershell
 ./scripts/verify-aspnet-workbench.ps1 `
   -NativeRegistryBursts `
+  -RegistrySummaryOnly
+```
+
+The sustained-replacement endpoint repeatedly prepares and promotes a complete
+native engine generation while retaining a bounded number of old leases. It
+executes semantic sentinels through both the promoted generation and each
+retired-but-live pool, records replacement and request latency distributions,
+and verifies exact registry restoration after every old lease and current
+generation is released. Run it with:
+
+```powershell
+./scripts/verify-aspnet-workbench.ps1 `
+  -NativeRegistryReplacementSoak `
   -RegistrySummaryOnly
 ```
 

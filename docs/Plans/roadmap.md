@@ -50,8 +50,13 @@ allocator/OS pages reclaim independently. The first
 [candidate-policy replay](../Evidence/native-registry-candidate-policy-replay-2026-08-31.md)
 keeps count ceilings as cheap abuse protection but shows exact aggregate
 outcome bytes are needed to distinguish tiny diagnostic bursts from bounded
-near-limit results. Larger prepared shapes, sustained replacement, latency,
-engine-retention estimates, and exhaustion delivery remain before AR-0017 can
+near-limit results. A
+[32-promotion replacement trace](../Evidence/aspnet-native-sustained-generation-replacement-2026-08-31.md)
+now keeps two old eight-engine generations live while new requests begin,
+preserves both retired and promoted semantics, holds the predicted 25-engine
+high-water after overlap fills, and records replacement/request p50/p95/p99.
+Larger prepared shapes, a longer-duration soak, engine-retention estimates,
+reclamation calibration, and exhaustion delivery remain before AR-0017 can
 select policy. The
 [template-candidate fanout probe](../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
 has already confirmed exact `nodes × templates` growth, including 33,024
