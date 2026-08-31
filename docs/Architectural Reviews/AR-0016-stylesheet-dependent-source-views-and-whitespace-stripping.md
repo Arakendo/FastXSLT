@@ -9,7 +9,7 @@
 | Trigger | XSLT30 `mode-1301` requires `xsl:strip-space` over a reusable prepared source |
 | Related ADRs | ADR-0001, ADR-0002, ADR-0004, ADR-0007 |
 | Related reviews | AR-0007, AR-0008, AR-0009, AR-0013 |
-| Related evidence | `../Evidence/xslt30-mode-denominator-and-qname-identity-2026-08-29.md` and the pinned XSLT30 `mode-1301` case |
+| Related evidence | `../Evidence/xslt30-mode-denominator-and-qname-identity-2026-08-29.md`, `../Evidence/peer-ar-0016-review-monday-2026-08-30.md`, and the pinned XSLT30 `mode-1301` case |
 
 ## Architectural question
 
@@ -50,7 +50,9 @@ interface for carrying such a view through all semantic consumers.
 - XML parsing retains lexical XML behavior and must not infer stylesheet policy.
 - XDM owns source node identity, document order, relationships, provenance, and
   the physical prepared representation. A semantic view may hide nodes but may
-  not silently renumber, merge, or change the identity of visible source nodes.
+  not silently renumber, merge, or change the semantic identity of visible
+  source nodes. A reference representation may map physical storage, but every
+  visible source node must still present its prepared-document identity.
 - Prepared input remains immutable and source-derived under AR-0009. One
   prepared document must remain reusable by stripping and non-stripping
   stylesheets, including concurrent executions and overlapping generations.
@@ -61,6 +63,14 @@ interface for carrying such a view through all semantic consumers.
   values, copying, comparison, serialization-facing result construction, and
   inspection must observe the same effective source semantics wherever the
   standard makes whitespace stripping relevant.
+- Every exposed relationship and focus sequence must behave as though stripped
+  nodes are absent. Child and descendant navigation, sibling relations where
+  implemented, sequence position and size, `position()`, and `last()` cannot
+  derive from the unfiltered physical child sequence.
+- Element and document string values must exclude stripped text even when no
+  expression explicitly navigates to that text node. Comparisons, predicates,
+  `xsl:value-of`, copying, and diagnostics cannot retain a second physical-tree
+  interpretation of the value.
 - Work and retained memory introduced by view construction or filtering must be
   charged and attributable to the owning compilation, prepared input, worker,
   or invocation. It may not become an unbounded global or cross-generation
@@ -100,7 +110,10 @@ the prepared document. Navigation skips stripped text nodes while preserving
 the identity and order of visible source nodes. A compact mask or lazy policy
 could avoid cloning node payloads, but every semantic access path must consume
 the view consistently. Repeated predicate checks, view construction cost, and
-private API shape require measurement.
+private API shape require measurement. A visibility form computed once per
+invocation is the leading candidate to compare with both the complete reference
+and repeated lazy rule matching; this does not select a bitset or retained
+generation cache.
 
 ### D. Retain stylesheet-specific prepared variants
 
@@ -128,6 +141,13 @@ conformance shortcut.
   selected without a semantic inventory and measurements.
 - The pressure is broader than `mode-1301`: explicit XPath axes, template
   selection, string values, copying, and future inspection surfaces must agree.
+- Stable visible-node identity, effective sibling/position behavior, and
+  containing element/document string values are hard semantic controls rather
+  than representation details.
+- Precomputing visibility once per invocation may avoid both complete node
+  cloning and repeated policy checks in hot navigation loops. Its construction
+  cost, memory, clearing, and break-even point remain unmeasured; retention
+  beyond an invocation would reopen AR-0009.
 - General `xsl:strip-space` and `xsl:preserve-space` matching, import
   precedence, conflicts, schema-aware whitespace, and interaction with
   `xml:space` remain outside the first exact `elements="*"` experiment unless
@@ -158,7 +178,8 @@ guarantee follows from this disposition.
   policy without changing parser or prepared-input behavior.
 - [ ] Implement a safe complete-derived-document reference for the exact
   `mode-1301` semantics, including cancellation, work charges, provenance, and
-  visible-node identity mapping.
+  visible-node identity mapping. Prove that a node visible under stripping and
+  preserving policies retains the prepared document's semantic identity.
 - [ ] Prototype a private immutable visibility view only after the semantic
   inventory identifies the smallest complete access seam.
 - [ ] Differentially verify derived-document and view behavior for stripping
@@ -166,6 +187,15 @@ guarantee follows from this disposition.
   concurrent execution and generation replacement.
 - [ ] Add focused tests proving XPath, built-in traversal, explicit template
   selection, string values, and copying cannot disagree about stripped nodes.
+- [ ] Add positional controls proving effective child/descendant sequences,
+  sibling relations where implemented, `position()`, and `last()` exclude
+  stripped nodes rather than merely filtering a final result.
+- [ ] Add an indirect string-value control where no expression selects the
+  stripped text node but its removal changes an enclosing element or document
+  value used by a comparison, predicate, or `xsl:value-of`.
+- [ ] Repeatedly execute one prepared source concurrently under stripping and
+  preserving stylesheets, then overlap generation replacement. Prove there is
+  no visibility, identity, relationship, or retained-state cross-talk.
 - [ ] Execute pinned `mode-1301` without modifying its source, stylesheet, or
   expected result, then update the conserved mode ledger.
 - [ ] Measure preparation/execution latency, retained and peak memory, warm
@@ -187,3 +217,7 @@ needs an explicit effective-document inspection contract.
   stylesheet-dependent whitespace semantics cannot be assigned to the parser,
   reusable prepared XDM, or one narrow built-in traversal without violating
   existing ownership and semantic-parity constraints.
+- 2026-08-30 -- Monday's peer review confirmed the Incubating disposition and
+  strengthened visible-node identity, effective relationship/position,
+  indirect string-value, concurrent strip/preserve, and precomputed-versus-lazy
+  representation proof obligations.
