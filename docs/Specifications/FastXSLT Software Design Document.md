@@ -99,6 +99,13 @@ open:
 - Source-derived global values retain identities only within the prepared input
   and invocation that produced them. A compiled stylesheet must not retain node
   identities from one principal source for reuse by another invocation.
+- For the exact admitted `xsl:strip-space elements="*"` policy, runtime composes
+  compiled stylesheet policy with immutable prepared XDM through a private
+  invocation-owned visibility view. Every source-semantic consumer observes
+  the effective relationships, visible nodes retain prepared identity and
+  provenance, and the view is never retained across invocations or
+  generations. ADR-0012 does not admit broader whitespace declarations or a
+  public source-view abstraction.
 - The invocation explicitly selects its standards-defined entry, such as a
   principal source in the default or a named initial mode, or a named initial
   template. A source-free initial-template

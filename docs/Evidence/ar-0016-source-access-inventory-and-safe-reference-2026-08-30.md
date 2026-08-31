@@ -91,7 +91,7 @@ exclusions, and 84 visible default not-run cases out of 169. Across the 11
 conserved XSLT30 denominators, the total is 235 passes, 3 engine-unsupported
 cases, 49 profile exclusions, and 244 visible default not-run cases out of 531.
 
-## Remaining AR-0016 work
+## Remaining AR-0016 work at this checkpoint
 
 - add broader differential controls for explicit XPath positions, copying, and
   every currently supported node kind;
@@ -103,3 +103,7 @@ cases, 49 profile exclusions, and 244 visible default not-run cases out of 531.
   throughput, tail latency, and reuse break-even;
 - retain general declaration matching, import precedence, `xml:space`, and
   typed whitespace as separate future widening work.
+
+The first four items were completed by the later visibility-view and
+decision-measurement records. General whitespace widening remains deferred by
+ADR-0012.

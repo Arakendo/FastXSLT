@@ -56,3 +56,7 @@ but supersede a materially changed decision instead of rewriting its history.
 - [ADR-0011: Bounded Stylesheet Dependency Host Framing](ADR-0011-bounded-stylesheet-dependency-host-framing.md)
   -- Accepted; admit one explicit sealed stylesheet dependency and independent
   denial policy through each unpublished .NET workbench initialization boundary.
+- [ADR-0012: Invocation-Owned Whitespace Visibility View](ADR-0012-invocation-owned-whitespace-visibility-view.md)
+  -- Accepted; compose exact strip-all stylesheet semantics with a private
+  invocation-owned view over immutable prepared XDM while retaining visible
+  identity and a complete safe differential oracle.

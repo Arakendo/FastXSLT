@@ -523,7 +523,7 @@ parity/concurrency controls, and measurements remain open. The mode denominator
 advances to 41 passes, 44 profile exclusions, and 84 visible default not-run
 cases. [Evidence](../Evidence/ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md)
 
-The next AR-0016 slice replaces the executable full clone with a private,
+The next AR-0016 slice replaced the executable full clone with a private,
 invocation-owned visibility view while retaining the clone as a differential
 oracle. Shared immutable node storage preserves prepared identity and the view
 retains only affected child sequences. Differential testing found and closed a
@@ -535,9 +535,14 @@ the clone. Follow-up controls now prove effective child positions, focus size,
 source element/text copying, and concurrent old/new stylesheet-generation
 overlap. A descendant `node()` control also proves stripped text is absent
 before focus positions and size are assigned; no sibling axis is currently
-implemented. Peak memory and reuse break-even remain open rather than becoming
-performance guarantees.
-[Evidence](../Evidence/ar-0016-visibility-view-prototype-2026-08-30.md)
+implemented. The later five-shape decision matrix measured 2.74x to 8.35x
+lower total time and 2.53x to 8.87x higher four-thread throughput versus the
+clone. On a 6,003-node source, allocator-requested peak bytes fell from
+3,214,912 to 32,408. ADR-0012 now accepts the invocation-owned view for exact
+strip-all semantics without admitting a cache, public abstraction, or broader
+whitespace declarations.
+[Prototype evidence](../Evidence/ar-0016-visibility-view-prototype-2026-08-30.md)
+[Decision evidence](../Evidence/ar-0016-decision-measurement-matrix-2026-08-30.md)
 
 The adjacent native `mode-1439` case now retains a named `typed="yes"` mode
 requirement and reports dynamic `XTTE3100` with stylesheet provenance when its
@@ -1452,9 +1457,10 @@ failed, and harness-error cases without an unqualified conformance claim.
   retaining a specialized representation. The unchanged native case now
   passes. The invocation-owned visibility view now has differential, concurrent
   strip/preserve, generation-overlap, source-copy, child-position, and
-  descendant-position, and preliminary timing/capacity evidence. Peak memory,
-  break-even work, and future sibling-axis controls remain explicitly open in
-  AR-0016.
+  descendant-position evidence. The five-shape timing/concurrency matrix and
+  allocator-requested retained/peak probe select it through ADR-0012. There is
+  no sibling axis in the current language surface; a future one must receive
+  the same effective-sequence control when admitted.
 - [x] Execute the independent static-error cases `mode-1444` and `mode-1447` by
   validating `warning-on-no-match` and `typed` through the existing XSLT 3.0
   boolean policy before unsupported runtime semantics. Preserve native

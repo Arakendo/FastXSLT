@@ -90,8 +90,12 @@ performance claim.
 
 ## Disposition
 
-Use the visibility view as the private executable candidate for the admitted
-strip-all policy while retaining the complete safe clone as a differential
-oracle. Do not retain views across invocations or generations. AR-0016 remains
-Incubating until broader semantic controls and lifecycle/measurement work are
-complete.
+At this checkpoint, use the visibility view as the private executable candidate
+for the admitted strip-all policy while retaining the complete safe clone as a
+differential oracle. Do not retain views across invocations or generations.
+
+The subsequent
+[decision measurement matrix](ar-0016-decision-measurement-matrix-2026-08-30.md)
+completed the source-shape, concurrency, and allocator-requested memory work.
+AR-0016 was then accepted through ADR-0012 for the exact strip-all policy;
+broader whitespace semantics remain deferred.

@@ -2,14 +2,14 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Incubating |
+| Status | Accepted |
 | Opened | 2026-08-30 |
 | Last reviewed | 2026-08-30 |
 | Scope | XSLT whitespace declarations, XDM navigation, prepared-input reuse, node identity, and execution accounting |
 | Trigger | XSLT30 `mode-1301` requires `xsl:strip-space` over a reusable prepared source |
-| Related ADRs | ADR-0001, ADR-0002, ADR-0004, ADR-0007 |
+| Related ADRs | ADR-0001, ADR-0002, ADR-0004, ADR-0007, ADR-0012 |
 | Related reviews | AR-0007, AR-0008, AR-0009, AR-0013 |
-| Related evidence | `../Evidence/xslt30-mode-denominator-and-qname-identity-2026-08-29.md`, `../Evidence/peer-ar-0016-review-monday-2026-08-30.md`, `../Evidence/ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md`, `../Evidence/ar-0016-visibility-view-prototype-2026-08-30.md`, and the pinned XSLT30 `mode-1301` case |
+| Related evidence | `../Evidence/xslt30-mode-denominator-and-qname-identity-2026-08-29.md`, `../Evidence/peer-ar-0016-review-monday-2026-08-30.md`, `../Evidence/ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md`, `../Evidence/ar-0016-visibility-view-prototype-2026-08-30.md`, `../Evidence/peer-ar-0016-decision-readiness-monday-2026-08-30.md`, `../Evidence/ar-0016-decision-measurement-matrix-2026-08-30.md`, and the pinned XSLT30 `mode-1301` case |
 
 ## Architectural question
 
@@ -39,10 +39,10 @@ appear to pass while XPath axes, explicit selections, string-value operations,
 copying, and other consumers could still observe the stripped nodes. That is a
 semantic split, not an admissible incremental implementation.
 
-The first safe complete-derived-document reference now executes the pinned
-case. No current measurement compares it with a visibility overlay or
-stylesheet-specialized preparation, and no review selects a retained optimized
-representation.
+The safe complete-derived-document reference and private visibility view both
+execute the pinned case. Differential, lifecycle, concurrency, and
+decision-measurement evidence now supports the view selected by ADR-0012. No
+retained cache or stylesheet-specific prepared variant is selected.
 
 ## Ownership and constraints
 
@@ -106,15 +106,13 @@ between original and derived nodes also require explicit rules.
 
 ### C. Compose an immutable visibility view at execution time
 
-Compilation retains the whitespace rule table and execution composes it with
-the prepared document. Navigation skips stripped text nodes while preserving
-the identity and order of visible source nodes. A compact mask or lazy policy
-could avoid cloning node payloads, but every semantic access path must consume
-the view consistently. Repeated predicate checks, view construction cost, and
-private API shape require measurement. A visibility form computed once per
-invocation is the leading candidate to compare with both the complete reference
-and repeated lazy rule matching; this does not select a bitset or retained
-generation cache.
+Compilation retains the whitespace policy and execution composes it with the
+prepared document. Navigation skips stripped text nodes while preserving the
+identity and order of visible source nodes. Differential controls closed the
+semantic access seam, and construction/execution, memory, and concurrency
+measurements favor one view computed per invocation. ADR-0012 selects that
+private lifecycle without selecting a bitset, retained generation cache, or
+public abstraction.
 
 ### D. Retain stylesheet-specific prepared variants
 
@@ -137,18 +135,20 @@ conformance shortcut.
   normalization and not source-only prepared state.
 - The same prepared XDM document must support different effective whitespace
   policies without mutation or identity collapse.
-- A complete derived document is the clearest safe reference candidate, while
-  an immutable execution view is the leading optimization candidate. Neither is
-  selected without a semantic inventory and measurements.
+- The complete derived document is the retained safe reference. ADR-0012
+  selects the immutable invocation-owned execution view after semantic
+  inventory, differential controls, and decision measurements.
 - The pressure is broader than `mode-1301`: explicit XPath axes, template
   selection, string values, copying, and future inspection surfaces must agree.
 - Stable visible-node identity, effective sibling/position behavior, and
   containing element/document string values are hard semantic controls rather
   than representation details.
-- Precomputing visibility once per invocation may avoid both complete node
-  cloning and repeated policy checks in hot navigation loops. Its construction
-  cost, memory, clearing, and break-even point remain unmeasured; retention
-  beyond an invocation would reopen AR-0009.
+- Precomputing visibility once per invocation avoids complete node cloning and
+  repeated policy checks in hot navigation loops. Across five measured source
+  shapes it reduced total time by 2.74x to 8.35x and four-thread comparison
+  time by 2.53x to 8.87x. On the 6,003-node memory workload it reduced
+  allocator-requested peak bytes from 3,214,912 to 32,408. Retention beyond an
+  invocation remains unadmitted and would reopen AR-0009.
 - The current source-access inventory confirms that every implemented source
   semantic is downstream of the private `Document` supplied at the execution
   entry. An invocation-owned full clone with filtered child relationships can
@@ -159,7 +159,7 @@ conformance shortcut.
   Visible identity, locations, names, and payload remain stable; effective
   navigation and containing string values follow the filtered relationships.
 - Exact `elements="*"` policy compilation and unchanged `mode-1301` execution
-  are now evidenced. General matching and broader view evidence remain open.
+  are now evidenced. General whitespace declaration matching remains open.
 - A private safe visibility view now shares immutable prepared node storage and
   retains only affected element-child sequences per invocation. Differential
   testing exposed and closed one direct physical-child read in containing
@@ -173,8 +173,9 @@ conformance shortcut.
   preserving stylesheet generations. No sibling axis is currently implemented.
 - One local 500-item release microprobe measured a 4.86-times lower median
   invocation time and an approximately 141-times smaller attributable
-  additional-capacity estimate for the view. This is candidate evidence, not a
-  product performance guarantee or complete peak-memory/break-even study.
+  additional-capacity estimate for the view. The later five-shape decision
+  matrix and allocator-requested probe supersede that preliminary result for
+  representation selection while remaining non-product benchmark evidence.
 - General `xsl:strip-space` and `xsl:preserve-space` matching, import
   precedence, conflicts, schema-aware whitespace, and interaction with
   `xml:space` remain outside the first exact `elements="*"` experiment unless
@@ -185,16 +186,18 @@ conformance shortcut.
 
 ## Disposition
 
-**Incubating.** `mode-1301` is admitted through one stylesheet-owned whitespace
-policy applied consistently across every source-semantic consumer used by the
-case. Do not widen that evidence into general declaration semantics, mutate
-prepared XDM, move the rule into XML parsing, retain an implicit stylesheet-
-specific cache, or add a narrow consumer-specific filter.
+**Accepted through ADR-0012.** `mode-1301` executes through a stylesheet-owned
+exact strip-all policy composed with a private invocation-owned visibility view
+over immutable prepared XDM. The complete safe derived document remains a
+test-only differential oracle. Visible identity, provenance, effective
+relationships, budgets, cancellation, concurrent prepared reuse, and
+generation isolation are conserved.
 
-The first experiment may use a complete safe derived document as a semantic
-reference and compare it with a private immutable visibility view. No public
-source-view API, cache policy, physical representation, or performance
-guarantee follows from this disposition.
+Do not widen this decision into general declaration semantics, mutate prepared
+XDM, move the rule into XML parsing, retain an implicit stylesheet-specific
+cache, or expose a public source-view abstraction. ADR-0012 fixes semantic
+ownership and lifecycle, not the private physical layout or a product
+performance guarantee.
 
 ## Required follow-up
 
@@ -225,18 +228,21 @@ guarantee follows from this disposition.
   no visibility, identity, relationship, or retained-state cross-talk.
 - [x] Execute pinned `mode-1301` without modifying its source, stylesheet, or
   expected result, then update the conserved mode ledger.
-- [ ] Measure preparation/execution latency, retained and peak memory, warm
+- [x] Measure preparation/execution latency, retained and peak memory, warm
   throughput, and break-even reuse for the reference and view candidates before
-  retaining an optimized representation or cache.
+  retaining an optimized representation or cache. The five-shape release
+  matrix and allocator-requested probe select the invocation-owned view without
+  admitting a retained cache.
 - [ ] Revisit general declaration matching, precedence, `xml:space`, and typed
   whitespace only when exact corpus cases enter selection.
 
 ## Reopening triggers
 
-Revisit the disposition when the navigation inventory is complete, a safe
-reference executes `mode-1301`, another corpus case requires broader whitespace
-semantics, the reference path materially harms prepared reuse, or a consumer
-needs an explicit effective-document inspection contract.
+Revisit the disposition when a new source-semantic consumer bypasses the
+effective access seam, another corpus case requires broader whitespace
+semantics, representative evidence materially reverses the selected view's
+costs, a retained/shared view is proposed, or a consumer needs an explicit
+effective-document inspection contract.
 
 ## Review history
 
@@ -267,3 +273,8 @@ needs an explicit effective-document inspection contract.
 - 2026-08-30 -- Added a descendant `node()` focus control proving stripped
   text is absent before positions 1 through 5 and `last() = 5` are assigned.
   No sibling axis exists in the current XPath surface to control yet.
+- 2026-08-30 -- Completed the five-shape construction/execution and four-thread
+  matrix plus allocator-requested retained/peak measurement. The view reduced
+  total time by 2.74x to 8.35x and large-source peak requested bytes by about
+  99.2x versus the complete reference. Accepted the narrow disposition through
+  ADR-0012; broader whitespace declaration semantics remain demand-gated.

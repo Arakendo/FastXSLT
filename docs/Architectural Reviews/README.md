@@ -99,5 +99,6 @@ and add the record to this index. Never reuse a retired number.
   -- Incubating; preserve a presealed memory-resident parity experiment while a
   real consumer identifies the target runtime, boundary, limits, and workload.
 - [AR-0016: Stylesheet-Dependent Source Views and Whitespace Stripping](AR-0016-stylesheet-dependent-source-views-and-whitespace-stripping.md)
-  -- Incubating; `mode-1301` requires one stylesheet-owned whitespace policy to
-  reach every semantic source consumer without mutating reusable prepared XDM.
+  -- Accepted through ADR-0012; exact strip-all semantics use an
+  invocation-owned visibility view over immutable prepared XDM, with the
+  complete derived document retained as a safe differential oracle.

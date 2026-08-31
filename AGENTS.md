@@ -60,6 +60,12 @@ contract.
   state is immutable and source-derived; never store invocation state in it,
   equate content hashes with document identity, eagerly parse every snapshot
   entry by default, or introduce global/cross-snapshot caching without evidence.
+- Follow ADR-0012 for exact `xsl:strip-space elements="*"`: compose immutable
+  prepared XDM with a private invocation-owned visibility view, preserve visible
+  node identity and provenance, route every source-semantic consumer through
+  effective relationships, retain the complete safe derivation as a test
+  oracle, and do not infer broader whitespace rules, a public provider trait,
+  or cross-invocation view retention.
 - Preserve source locations and structured diagnostics across XML parsing,
   XPath parsing/evaluation, stylesheet compilation, lowering, optimization, and
   execution.
