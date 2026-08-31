@@ -138,6 +138,7 @@ pressure architecture but does not silently create a public guarantee.
 - [ASP.NET Natural Cancellation Races](aspnet-natural-cancellation-races-2026-08-26.md)
 - [ASP.NET Worker Control-Frame Serialization](aspnet-worker-control-frame-serialization-2026-08-31.md)
 - [Template-Candidate Fanout and Cancellation Gap](template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
+- [Document-Rooted Match-Path Reevaluation](document-rooted-match-path-reevaluation-2026-08-31.md)
 - [Native Outcome Bounds and Atomic Creation Publication](native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md)
 - [Peer AR-0017 Review: Monday](peer-ar-0017-review-monday-2026-08-31.md)
 - [Native Registry Abandonment Measurement](native-registry-abandonment-measurement-2026-08-31.md)

@@ -41,9 +41,13 @@ policies. The
 has already confirmed exact `nodes × templates` growth, including 33,024
 candidate checks in the largest local sweep and a 128-candidate delay after a
 deterministic cancellation signal. AR-0010 must now compare candidate charging
-and check frequency while AR-0013 keeps a possible activated dispatch index and
-the other two performance findings experimental until consumer-visible evidence
-justifies representation changes.
+and check frequency. The
+[document-rooted match-path probe](../Evidence/document-rooted-match-path-reevaluation-2026-08-31.md)
+also confirms exact `(items + 1)^2` charged visits through width 256. AR-0013
+must compare a safe invocation-owned membership view against that reference and
+keeps both possible indexes private and experimental until preparation, memory,
+parity, and consumer-visible evidence justify representation changes. Global-
+frame cloning and prepared-XDM anatomy remain unmeasured hypotheses.
 
 Completing the 31-case QT3 mixed deep-equal group raised
 `deep_equal_experiment.rs` to 1,054 lines and exposed independent atomic and

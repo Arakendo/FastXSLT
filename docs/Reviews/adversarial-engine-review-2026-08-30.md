@@ -26,18 +26,21 @@ their original evidence. Implementation details and validation are recorded in
 | 8 | **Completed** | Temporary path and built-in selections carry real focus position/size through template and `next-match` execution. Two-node `1/2`, `2/2` regression evidence passes. |
 | 9 | **Boundary closed** | Same-module forward and cyclic global defaults fail at compilation as `FXST1044 / unsupported`; admitted backward dependencies continue to compile. A general dependency graph remains deferred. |
 | 10 | **Completed** | Cancellation commands are assembled and serialized as complete bounded frames. A 10,000-pair byte-fragmenting stress probe recovered all 20,000 unique frames exactly once; the existing live-worker probe retains cancellation correlation and same-process recovery. |
-| 11 | **Open performance hypothesis** | Measure document-rooted match-path reevaluation before considering invocation-owned membership or indexing. |
+| 11 | **Confirmed -- representation comparison required** | Widths 8/32/128/256 performed 8/32/128/256 full document-rooted path evaluations and exactly 81/1,089/16,641/66,049 charged node visits. One-less visit limits fail correctly, so accounting is honest; AR-0013 must compare a safe invocation-owned membership view before any optimization is admitted. |
 | 12 | **Open performance hypothesis** | Attribute global-frame cloning and prepared-XDM storage costs before changing representations under AR-0013. |
 
 Current total: **8 findings handled**, comprising six semantic, evidence, or
 operational repairs and two explicit unsupported boundaries. **Four findings
-remain open**: two resource/accounting items and two performance hypotheses
-requiring measurement. The first completed tranche is commit `95aa31a`; the
+remain open**: two resource/accounting decisions, one confirmed representation
+comparison, and one performance hypothesis still requiring measurement. The first completed tranche is commit `95aa31a`; the
 subsequent [worker control-frame evidence](../Evidence/aspnet-worker-control-frame-serialization-2026-08-31.md)
 records Finding 10's stress and operational validation. The
 [template-candidate evidence](../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
 advances Finding 7 from an unmeasured suspicion to a confirmed remediation
 decision.
+The [document-rooted match-path evidence](../Evidence/document-rooted-match-path-reevaluation-2026-08-31.md)
+advances Finding 11 from hypothesis to an exact quadratic charged-work
+mechanism; no optimized representation is selected.
 
 ## Review posture and limits
 

@@ -189,6 +189,7 @@ struct InvocationObservations {
     cancel_after_template_candidates: Option<usize>,
     template_candidate_signal_sent: bool,
     template_candidates_after_signal: usize,
+    document_rooted_match_evaluations: usize,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -284,6 +285,22 @@ impl InvocationControl {
     #[cfg(test)]
     pub(crate) fn template_candidates_after_cancellation_signal(&self) -> usize {
         self.observations.template_candidates_after_signal
+    }
+
+    /// Attributes repeated document-rooted match-path evaluation without
+    /// selecting or retaining an optimized membership representation.
+    pub(crate) fn observe_document_rooted_match_evaluation(&mut self) {
+        #[cfg(not(test))]
+        let _ = self;
+        #[cfg(test)]
+        {
+            self.observations.document_rooted_match_evaluations += 1;
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn document_rooted_match_evaluations(&self) -> usize {
+        self.observations.document_rooted_match_evaluations
     }
 
     pub(crate) fn charge(

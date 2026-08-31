@@ -21,6 +21,8 @@ const SOURCE_ID: &str = "urn:fastxslt:golden:hello:input";
 const STYLESHEET_ID: &str = "urn:fastxslt:golden:hello:stylesheet";
 const FANOUT_SOURCE_ID: &str = "urn:fastxslt:template-fanout:source";
 const FANOUT_STYLESHEET_ID: &str = "urn:fastxslt:template-fanout:stylesheet";
+const ROOTED_MATCH_SOURCE_ID: &str = "urn:fastxslt:rooted-match:source";
+const ROOTED_MATCH_STYLESHEET_ID: &str = "urn:fastxslt:rooted-match:stylesheet";
 
 fn snapshot() -> crate::resources::ResourceSnapshot {
     let source = include_bytes!("../../../../corpus/golden/hello/input.xml").to_vec();
@@ -248,6 +250,97 @@ fn template_fanout_workload(
     let document =
         Document::from_parsed_controlled(parsed, &mut preparation).expect("construct fanout XDM");
     (program, document)
+}
+
+fn document_rooted_match_workload(
+    source_nodes: usize,
+) -> (
+    crate::xslt::golden_semantics_experiment::StylesheetProgram,
+    Document,
+) {
+    let stylesheet = br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><xsl:apply-templates select="root/item"/></xsl:template><xsl:template match="/root/item"><out/></xsl:template></xsl:stylesheet>"#.to_vec();
+    let source = format!("<root>{}</root>", "<item/>".repeat(source_nodes)).into_bytes();
+    let total_bytes = source.len() + stylesheet.len();
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, total_bytes, total_bytes));
+    resources
+        .admit(ROOTED_MATCH_SOURCE_ID, source)
+        .expect("admit rooted-match source");
+    resources
+        .admit(ROOTED_MATCH_STYLESHEET_ID, stylesheet)
+        .expect("admit rooted-match stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, ROOTED_MATCH_STYLESHEET_ID)
+        .expect("compile rooted-match stylesheet");
+    let mut preparation = InvocationControl::unbounded();
+    let parsed = parse_document_controlled(
+        ROOTED_MATCH_SOURCE_ID,
+        snapshot
+            .get(ROOTED_MATCH_SOURCE_ID)
+            .expect("rooted-match source bytes"),
+        ParseLimits {
+            max_events: source_nodes * 2 + 8,
+            max_depth: 8,
+        },
+        &mut preparation,
+    )
+    .expect("parse rooted-match source");
+    let document = Document::from_parsed_controlled(parsed, &mut preparation)
+        .expect("construct rooted-match XDM");
+    (program, document)
+}
+
+#[test]
+fn document_rooted_match_path_reevaluates_for_each_dispatch_candidate() {
+    let source_nodes = 16;
+    let (program, source) = document_rooted_match_workload(source_nodes);
+    let mut control = InvocationControl::unbounded();
+
+    let result = super::execute_program(&program, &source, "rooted-match", &mut control)
+        .expect("execute rooted-match workload");
+
+    assert_eq!(result.children.len(), source_nodes);
+    assert_eq!(control.document_rooted_match_evaluations(), source_nodes);
+    assert!(control.consumed(WorkDomain::XPathNodeVisit) > source_nodes * source_nodes);
+}
+
+#[test]
+#[ignore = "release-mode document-rooted match-path measurement probe"]
+fn measure_document_rooted_match_path_reevaluation() {
+    for source_nodes in [8, 32, 128, 256] {
+        let (program, source) = document_rooted_match_workload(source_nodes);
+        let mut samples = Vec::with_capacity(5);
+        let mut observed = None;
+        for _ in 0..5 {
+            let mut control = InvocationControl::unbounded();
+            let started = Instant::now();
+            let result =
+                super::execute_program(&program, &source, "rooted-match-measurement", &mut control)
+                    .expect("execute measured rooted-match workload");
+            assert_eq!(result.children.len(), source_nodes);
+            samples.push(started.elapsed().as_secs_f64() * 1_000_000.0);
+            observed = Some((
+                control.document_rooted_match_evaluations(),
+                control.consumed(WorkDomain::XPathNodeVisit),
+            ));
+        }
+        samples.sort_by(f64::total_cmp);
+        let (evaluations, node_visits) = observed.expect("one rooted-match observation");
+
+        let mut limits = WorkLimits::unbounded();
+        limits.xpath_node_visits = node_visits - 1;
+        let mut limited = InvocationControl::new(CancellationToken::new(), limits);
+        let failure =
+            super::execute_program(&program, &source, "rooted-match-budget", &mut limited)
+                .expect_err("one fewer node visit must exhaust the rooted-match workload");
+        assert_eq!(failure.category, FailureCategory::Limit);
+        assert_eq!(failure.work_domain, Some(WorkDomain::XPathNodeVisit));
+
+        println!(
+            "source_nodes={source_nodes} evaluations={evaluations} node_visits={node_visits} budget_exhaustion_limit={} median_us={:.3}",
+            node_visits - 1,
+            samples[samples.len() / 2]
+        );
+    }
 }
 
 #[test]

@@ -483,6 +483,7 @@ fn match_path_pattern(
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
     if path.starts_at_document_node() {
+        control.observe_document_rooted_match_evaluation();
         return evaluate_location_path_controlled(source, source.document_node(), path, control)
             .map(|selected| selected.contains(&node))
             .map_err(|failure| control_failure(failure, request_id));

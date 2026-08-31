@@ -9,7 +9,7 @@
 | Trigger | Explore whether deliberately prepared representations can improve repeated execution rather than inheriting conventional engine layouts without evidence |
 | Related ADRs | ADR-0002, ADR-0003, ADR-0004, ADR-0007 |
 | Related reviews | AR-0007, AR-0009, AR-0012 |
-| Related evidence | `../Evidence/private-prepared-input-reuse-2026-08-25.md`; `../Evidence/private-prepared-retention-observation-2026-08-25.md`; `../Evidence/allocation-counter-review-and-preparation-probe-2026-08-25.md`; `../Evidence/aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md`; `../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md` |
+| Related evidence | `../Evidence/private-prepared-input-reuse-2026-08-25.md`; `../Evidence/private-prepared-retention-observation-2026-08-25.md`; `../Evidence/allocation-counter-review-and-preparation-probe-2026-08-25.md`; `../Evidence/aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md`; `../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md`; `../Evidence/document-rooted-match-path-reevaluation-2026-08-31.md` |
 
 ## Architectural question
 
@@ -257,6 +257,14 @@ select a stylesheet-activated index: candidate charging/check frequency belongs
 to AR-0010, while any index must still demonstrate preparation, memory,
 semantic-parity, and host-visible benefit under this review.
 
+A separate absolute-match probe now confirms repeated document-rooted path
+evaluation. Widths 8 through 256 performed one full path evaluation per
+dispatched item and exact charged node visits of `(items + 1)^2`; one-less
+budget probes failed in the advertised XPath domain. A safe invocation-owned
+membership view is now a concrete comparison candidate, but no cache or index
+is admitted until its construction, memory, break-even reuse, cancellation,
+semantic parity, and generation ownership are measured against this reference.
+
 ## Disposition
 
 **Incubating.** Preserve the audit and candidate inventory, but select no data
@@ -273,9 +281,10 @@ provide a concrete hypothesis to test.
 - [ ] Add bounded sequence length/item-kind histograms and prepared-XDM byte
   anatomy sufficient to distinguish node, name/namespace, text, relationship,
   index, capacity-slack, and ownership overhead.
-- [ ] Add focused fan-out, duplication, reference-count/synchronization, and
-  scratch-capacity probes only where the first profiles or representative
-  workloads nominate them.
+- [x] Add focused template-candidate and document-rooted match-path fan-out
+  probes nominated by the adversarial review.
+- [ ] Add duplication, reference-count/synchronization, and scratch-capacity
+  probes only where profiles or representative workloads nominate them.
 - [ ] Verify each experiment preserves deterministic retained/peak attribution
   and independent old/new generation retirement; do not use content equality to
   justify hidden cross-generation ownership.
@@ -313,3 +322,6 @@ provide a concrete hypothesis to test.
 - 2026-08-27 -- Peer review added seven initial profiling hypotheses and
   prioritized phase-attributed allocation/retention, sequence-shape histograms,
   and prepared-XDM byte anatomy as the first discriminating probes.
+- 2026-08-31 -- Confirmed `(items + 1)^2` charged node visits for one repeated
+  document-rooted match path and nominated a safe invocation-owned membership
+  view for comparison without admitting it.
