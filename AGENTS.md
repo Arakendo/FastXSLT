@@ -103,6 +103,10 @@ contract.
   accepted ADR covering necessity, rejected safe alternatives, safety contract,
   containment, safe reference behavior where practical, specialized tool
   evidence, measured benefit, exact surface, and removal criteria.
+- ADR-0015 admits only four read-only scalar native registry-pressure exports.
+  Do not treat them as a public metrics API or extend them to layout, capacity,
+  enumeration, mutation, engine-byte estimates, or quota control without a new
+  accepted decision.
 
 ## Design habits
 

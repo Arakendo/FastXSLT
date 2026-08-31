@@ -75,6 +75,26 @@ public sealed class NativeFastXsltClient : IDisposable
         }
     }
 
+    public static NativeRegistryObservation ObserveRegistry()
+    {
+        var engines = NativeMethods.RegistryEngineCount();
+        var controls = NativeMethods.RegistryControlCount();
+        var outcomes = NativeMethods.RegistryOutcomeCount();
+        var outcomePayloadBytes = NativeMethods.RegistryOutcomePayloadBytes();
+        if (engines == nuint.MaxValue ||
+            controls == nuint.MaxValue ||
+            outcomes == nuint.MaxValue ||
+            outcomePayloadBytes == nuint.MaxValue)
+        {
+            throw new InvalidOperationException("Native registry observation failed.");
+        }
+        return new NativeRegistryObservation(
+            checked((ulong)engines),
+            checked((ulong)controls),
+            checked((ulong)outcomes),
+            checked((ulong)outcomePayloadBytes));
+    }
+
     private static NativeFastXsltClient FromCreationOutcome(ulong outcome)
     {
         if (NativeMethods.OutcomeKind(outcome) != 1)
@@ -97,6 +117,21 @@ public sealed class NativeFastXsltClient : IDisposable
             var request = Encoding.UTF8.GetBytes(requestIdentity);
             var outcome = NativeMethods.Transform(_engine.Value, request, (nuint)request.Length);
             return ReadTransformOutcome(outcome);
+        }
+    }
+
+    public NativeRetainedOutcome TransformRetained(string requestIdentity)
+    {
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_engine.IsClosed, this);
+            var request = Encoding.UTF8.GetBytes(requestIdentity);
+            var outcome = NativeMethods.Transform(_engine.Value, request, (nuint)request.Length);
+            if (outcome == 0)
+            {
+                throw new InvalidOperationException("Native transform could not retain its outcome.");
+            }
+            return new NativeRetainedOutcome(outcome);
         }
     }
 
@@ -311,6 +346,35 @@ public sealed class NativeFastXsltClient : IDisposable
         protected override bool ReleaseHandle() => NativeMethods.EngineRelease(Value) == 1;
     }
 
+    public sealed class NativeRetainedOutcome : IDisposable
+    {
+        private readonly NativeOutcomeHandle _outcome;
+
+        internal NativeRetainedOutcome(ulong value) => _outcome = new NativeOutcomeHandle(value);
+
+        public string ReadResult()
+        {
+            ObjectDisposedException.ThrowIf(_outcome.IsClosed, this);
+            if (NativeMethods.OutcomeKind(_outcome.Value) != 2)
+            {
+                throw new InvalidDataException("Retained native outcome is not a result.");
+            }
+            return Encoding.UTF8.GetString(ReadOutcome(_outcome.Value));
+        }
+
+        public void Dispose() => _outcome.Dispose();
+    }
+
+    private sealed class NativeOutcomeHandle : SafeHandleZeroOrMinusOneIsInvalid
+    {
+        public NativeOutcomeHandle(ulong value) : base(ownsHandle: true) =>
+            SetHandle(unchecked((nint)value));
+
+        public ulong Value => unchecked((ulong)handle);
+
+        protected override bool ReleaseHandle() => NativeMethods.OutcomeRelease(Value) == 1;
+    }
+
     private sealed class NativeControlHandle : SafeHandleZeroOrMinusOneIsInvalid
     {
         private NativeControlHandle(ulong value) : base(ownsHandle: true) =>
@@ -432,8 +496,26 @@ public sealed class NativeFastXsltClient : IDisposable
 
         [DllImport(Library, EntryPoint = "fastxslt_workbench_v0_engine_release")]
         internal static extern uint EngineRelease(ulong engineHandle);
+
+        [DllImport(Library, EntryPoint = "fastxslt_workbench_v0_registry_engine_count")]
+        internal static extern nuint RegistryEngineCount();
+
+        [DllImport(Library, EntryPoint = "fastxslt_workbench_v0_registry_control_count")]
+        internal static extern nuint RegistryControlCount();
+
+        [DllImport(Library, EntryPoint = "fastxslt_workbench_v0_registry_outcome_count")]
+        internal static extern nuint RegistryOutcomeCount();
+
+        [DllImport(Library, EntryPoint = "fastxslt_workbench_v0_registry_outcome_payload_bytes")]
+        internal static extern nuint RegistryOutcomePayloadBytes();
     }
 }
+
+public sealed record NativeRegistryObservation(
+    ulong EngineHandles,
+    ulong ControlHandles,
+    ulong OutcomeHandles,
+    ulong OutcomePayloadBytes);
 
 public sealed record NativeActiveCancellationObservation(
     NativeFastXsltException Failure,

@@ -7,9 +7,9 @@
 | Last reviewed | 2026-08-31 |
 | Scope | Unpublished native .NET workbench handle registries and process-memory ownership |
 | Trigger | Adversarial review Finding 6 confirmed that foreign callers can retain engines, controls, and outcomes without an aggregate ceiling |
-| Related ADRs | ADR-0002, ADR-0003, ADR-0008 |
+| Related ADRs | ADR-0002, ADR-0003, ADR-0008, ADR-0015 |
 | Related reviews | AR-0002, AR-0009, AR-0010, AR-0012 |
-| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; `../Evidence/native-registry-live-use-high-water-2026-08-31.md`; future consumer requirements |
+| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; `../Evidence/native-registry-live-use-high-water-2026-08-31.md`; `../Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`; future consumer requirements |
 
 ## Architectural question
 
@@ -127,6 +127,95 @@ rose about 828 KiB over baseline. The engine-only checkpoint attributed about
 engines. This is one host-shaped calibration point, not a supported maximum;
 larger prepared workloads and real consumer bursts remain pressure.
 
+## Planned decision experiment
+
+Policy calibration and policy correctness are separate evidence jobs:
+
+```text
+corpus-backed ASP.NET soak
+    -> legitimate live-use and abandonment traces
+    -> candidate ceiling calibration and recovery expectations
+
+focused Rust and ABI tests
+    -> atomic admission and release recovery
+    -> deterministic races and no valid-handle eviction
+```
+
+The next ASP.NET experiment will exercise native pools at concurrency 1, 4, 8,
+16, and 32 with two and three overlapping prepared generations. Small, medium,
+and large memory-resident inputs will include unchanged admitted XSLT30
+stylesheets where the current engine surface can execute them. The corpus cases
+provide realistic compiled/prepared/result/diagnostic shapes and semantic
+sentinels; they do not turn registry policy into a conformance denominator.
+
+Each trace will distinguish legitimate live pressure from deliberate
+abandonment and record, per registry family:
+
+- current and legitimate high-water handle counts;
+- deliberately abandoned handles;
+- exact retained outcome-payload bytes;
+- conservative estimated prepared-engine bytes, with its accounting scope;
+- released/reclaimed handles and rejected admissions;
+- host working set and private bytes;
+- p50, p95, and p99 request latency; and
+- semantic or diagnostic parity against the same workload without pressure.
+
+The workload will include generation promotion while old leases drain, delayed
+but valid outcome disposal, cancellation and diagnostic bursts, and results
+near the one-megabyte per-object ceiling. A bounded soak will periodically
+replace generations rather than merely creating unrelated engines in a loop.
+
+After each burst and release, the experiment will sample both logical registry
+ownership and process memory over time. This **reclamation half-life** separates
+memory still owned by FastXSLT from pages retained by the allocator or operating
+system after logical release. Working set alone must not be used to declare a
+handle leak or quota failure.
+
+Captured traces will be replayed against these unselected candidates:
+
+1. separate process-wide count ceilings;
+2. count ceilings plus exact aggregate outcome bytes and conservative estimated
+   engine retention;
+3. host-created registry domains; and
+4. isolated workers when hard reclamation is required.
+
+The leading candidate remains a configurable hybrid count/byte policy for
+trusted native embedding plus isolated execution for hard reclamation, but the
+trace must earn that decision. Host domains remain unselected absent a real
+multi-tenant in-process consumer.
+
+Quota failure delivery will compare two narrow mechanisms before an ABI
+decision:
+
+- a reserved static/sentinel structured failure that consumes no ordinary
+  registry slot and cannot be released or reused as a normal handle; and
+- an out-of-band scalar admission status that creates no outcome object.
+
+The first retains uniform structured outcomes at the cost of special handle
+semantics. The second makes admission failure explicit but changes the otherwise
+uniform outcome contract. Neither is selected by this review.
+
+Once a candidate is calibrated, focused Rust/ABI tests must prove concurrent
+atomic admission, immediate capacity recovery after release, bounded failure
+delivery, creation rollback, deterministic transform/cancel/release races, and
+that no valid handle is silently evicted. The host soak cannot prove those
+properties.
+
+The first ASP.NET trace now covers the planned 1/4/8/16/32 concurrency points,
+two- and three-generation overlap, and 16 through 256 deliberately delayed
+valid outcomes over unchanged XSLT30 `for-004`. At the largest point, 96
+experiment engines plus the ordinary singleton and 256 outcomes returned
+logically to baseline immediately after explicit release. Working set and
+private bytes remained above fresh-process baseline and fluctuated during the
+one-second settlement window, validating the need for separate ownership and
+process-memory observations. Active controls, failure bursts, large outcomes,
+larger prepared corpus shapes, sustained replacement, latency, and policy replay
+remain open.
+
+ADR-0015 admits the four scalar observation exports used by this trace. It adds
+no unsafe block, quota behavior, registry mutation, layout exposure, or public
+metrics contract.
+
 ## Disposition
 
 **Incubating.** Repair individual envelope bounds and insertion rollback under
@@ -149,6 +238,18 @@ representative host policy are reviewed.
   separately from scalar controls and bounded outcome bytes.
 - [ ] Compare fixed count, estimated-byte, host-domain, and isolated-process
   policies against an ASP.NET consumer's concurrency and recovery requirements.
+- [ ] Run the corpus-backed ASP.NET pressure matrix with generation overlap,
+  delayed disposal, failure/result bursts, semantic sentinels, and separate
+  legitimate versus abandoned high-water accounting.
+- [x] Establish the first ASP.NET registry-observation and valid-retention trace
+  across concurrency 1/4/8/16/32, two/three generations, and exact outcome-byte
+  accounting while preserving the unchanged `for-004` result.
+- [ ] Measure logical release and process-memory reclamation half-life
+  separately after each bounded burst.
+- [ ] Replay the captured trace against count-only and hybrid count/byte
+  candidates without enforcing either in the production path.
+- [ ] Compare reserved static/sentinel failure delivery with out-of-band scalar
+  admission status before changing the ABI.
 - [ ] If a quota is selected, specify atomic admission, reserved failure
   delivery, concurrency races, release recovery, and host-visible diagnostics
   in an accepted ADR revision or superseding decision.
@@ -177,3 +278,12 @@ consumers.
 - 2026-08-31 -- Measured a separate 144-handle live-use high-water with two ×4
   generations, eight controls, and 128 delayed outcomes. The engine-only phase
   retained eight tiny prepared engines before scalar pressure was added.
+- 2026-08-31 -- Peer review defined the next decision experiment: corpus-backed
+  ASP.NET calibration separate from focused quota-correctness tests, explicit
+  legitimate/abandoned accounting, generation-overlap pressure, reclamation
+  half-life, candidate-policy replay, and comparison of static versus scalar
+  exhaustion delivery.
+- 2026-08-31 -- Added read-only scalar registry observation and ran the first
+  ASP.NET matrix through concurrency 32, three generations, and 256 delayed
+  valid outcomes. Every row returned logical ownership to baseline; process
+  memory remained non-monotonic during the one-second settlement trace.

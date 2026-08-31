@@ -653,13 +653,17 @@ path is observable. Unsafe code remains forbidden unless a later ADR supplies
 invariants, evidence, and focused verification. ADR-0008 admits only the
 workbench-native .NET boundary's export and bounded buffer-copy surface; it does
 not admit unsafe engine semantics or hot-path optimization.
+ADR-0015 adds only four read-only scalar registry-pressure observations to that
+unpublished surface. They expose counts and exact outcome bytes without
+exporting handles, maps, layouts, prepared-engine estimates, or mutation.
 
 ADR-0003 defines the exception policy: tests are necessary but cannot prove an
 unsafe invariant. Any first-party unsafe implementation requires its own narrow
 ADR, a measured need that safe Rust cannot reasonably meet, a written safety
 contract, minimized and reviewable surface, safe reference behavior whenever
 practical, specialized verification appropriate to the risk, and explicit
-removal criteria. ADR-0008 is the only current exception.
+removal criteria. ADR-0008, as narrowly extended by ADR-0015's scalar-only
+observation exports, is the only current exception.
 
 For embedded consumers, measurements include parsing or marshaling, interop,
 stylesheet lookup/compilation policy, execution, result transfer, diagnostics,

@@ -297,6 +297,27 @@ app.MapPost("/experiment/native-generation-replacement", async () =>
         operationalExperimentGate.Release();
     }
 });
+app.MapPost("/experiment/native-registry-pressure", async (
+    int? items,
+    int? concurrency,
+    int? generations,
+    int? delayedOutcomes) =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await NativeRegistryPressureExperiment.RunAsync(
+            stylesheet,
+            items ?? 500,
+            concurrency ?? 4,
+            generations ?? 2,
+            delayedOutcomes ?? 64));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
 app.MapPost("/experiment/native-active-cancellation", async () =>
 {
     await operationalExperimentGate.WaitAsync();

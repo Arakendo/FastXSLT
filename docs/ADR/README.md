@@ -68,3 +68,7 @@ but supersede a materially changed decision instead of rewriting its history.
   -- Accepted; share immutable atomic bindings within one invocation and copy
   safely on frame mutation while retaining the complete-clone differential
   oracle.
+- [ADR-0015: Read-Only Native Registry Pressure Observation](ADR-0015-read-only-native-registry-pressure-observation.md)
+  -- Accepted; add four scalar-only measurement exports for current native
+  registry counts and exact outcome bytes without adding an unsafe block or
+  exposing representation layout.

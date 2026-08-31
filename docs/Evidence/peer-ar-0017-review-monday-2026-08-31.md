@@ -42,3 +42,28 @@ AR-0017 remains **Incubating**. The per-object and publication repairs proceed
 under accepted ADR-0008. Aggregate count, byte, host-domain, eviction, and
 isolation policy remain unselected pending separate live-use and abandonment
 measurements.
+
+## Decision-experiment follow-up
+
+After the first abandonment and legitimate live-use probes, the reviewer agreed
+that corpus-backed ASP.NET pressure is the right calibration tool while focused
+Rust/ABI tests remain the correctness authority. The accepted experiment plan
+adds:
+
+- native concurrency 1/4/8/16/32 and two/three overlapping generations;
+- unchanged admitted corpus workloads as realistic pressure and semantic
+  sentinels, never as a registry-policy conformance denominator;
+- separate legitimate high-water and deliberate-abandonment accounting;
+- small through near-limit results, delayed disposal, cancellation/diagnostic
+  bursts, and generation replacement while old leases drain;
+- logical registry reclamation separated from working-set/private-byte
+  reclamation half-life;
+- trace replay against count, hybrid count/byte, host-domain, and isolation
+  candidates; and
+- explicit comparison of reserved static/sentinel versus out-of-band scalar
+  quota-failure delivery.
+
+The leading hybrid trusted-native candidate remains unselected until the trace
+exists. The soak will calibrate candidate policy; focused ABI tests must still
+prove atomic admission, release recovery, bounded exhaustion reporting, race
+behavior, and non-eviction.

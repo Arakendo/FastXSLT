@@ -36,7 +36,14 @@ separately covers two overlapping ×4 `for-004` generations plus eight controls
 and 128 delayed outcomes, reaching 144 handles and roughly 828 KiB above
 baseline. Broader consumer requirements, rather than the 100,000-handle abuse
 shape, must now drive comparison of count, byte, host-domain, and isolation
-policies. The
+policies. The first
+[ASP.NET registry-pressure matrix](../Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md)
+adds read-only scalar observation and real `SafeHandle` retention across
+concurrency 1/4/8/16/32, two/three generations, and 16–256 delayed valid
+`for-004` results. All rows reclaimed logical handles immediately; process
+memory remained noisy after release. Active controls, failure/large-result
+bursts, larger prepared shapes, sustained replacement, latency, candidate
+replay, and exhaustion delivery remain before AR-0017 can select policy. The
 [template-candidate fanout probe](../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
 has already confirmed exact `nodes × templates` growth, including 33,024
 candidate checks in the largest local sweep. A distinct candidate domain now

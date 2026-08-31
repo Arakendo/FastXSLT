@@ -30,6 +30,7 @@ offers:
 - `POST /experiment/diagnostic-parity`
 - `POST /experiment/instruction-budget`
 - `POST /experiment/native-boundary`
+- `POST /experiment/native-registry-pressure?items=500&concurrency=4&generations=2&delayedOutcomes=64`
 - `POST /experiment/generation-replacement`
 - `POST /experiment/host-file-replacement`
 - `POST /transform/saxoncs`
@@ -121,6 +122,23 @@ The native generation probe creates a complete replacement engine pool before
 atomic host promotion. An acquired old-generation lease retains its original
 prepared source until release, after which the retired pool is disposed. This
 is managed lifecycle policy over independent handles and adds no ABI authority.
+
+The AR-0017 native registry-pressure endpoint retains two or three independent
+engine generations and delayed valid result outcomes while exposing only
+read-only scalar handle counts and exact outcome-payload bytes. It validates the
+unchanged `for-004` result, releases each ownership class explicitly, and samples
+whole-process working set/private bytes for one second after logical release.
+This calibrates legitimate pressure; it neither enforces nor selects a quota.
+Run one trace with:
+
+```powershell
+./scripts/verify-aspnet-workbench.ps1 `
+  -NativeRegistryPressure `
+  -RegistrySummaryOnly `
+  -RegistryConcurrency 32 `
+  -RegistryGenerations 3 `
+  -RegistryDelayedOutcomes 256
+```
 
 The host-file variant imports source and stylesheet files into owned bytes,
 closes the handles, renames and removes both originals while the old worker

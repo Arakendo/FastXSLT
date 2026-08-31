@@ -7,8 +7,14 @@ param(
     [switch]$TieredBenchmark,
     [switch]$TieredSummaryOnly,
     [switch]$OperationalExperiments,
+    [switch]$NativeRegistryPressure,
+    [switch]$RegistrySummaryOnly,
     [int]$TieredRequests = 250,
-    [int]$TieredConcurrency = 4
+    [int]$TieredConcurrency = 4,
+    [int]$RegistryItems = 500,
+    [int]$RegistryConcurrency = 4,
+    [int]$RegistryGenerations = 2,
+    [int]$RegistryDelayedOutcomes = 64
 )
 
 $ErrorActionPreference = 'Stop'
@@ -418,6 +424,44 @@ try {
                 OldResultRetained = $fileReplacement.oldResult -ceq $oldFileExpected
                 NewResultPromoted = $fileReplacement.newGeneration.result -ceq $newFileExpected
                 OriginalFilesReleased = $fileReplacement.originalFilesRenamedAndRemovedWhileGenerationWasLive
+            }
+        }
+        if ($NativeRegistryPressure) {
+            $registryPressureUri = "$baseAddress/experiment/native-registry-pressure?items=$RegistryItems&concurrency=$RegistryConcurrency&generations=$RegistryGenerations&delayedOutcomes=$RegistryDelayedOutcomes"
+            $registryPressure = Invoke-RestMethod -Method Post -Uri $registryPressureUri
+            $baseline = $registryPressure.checkpoints[0].registry
+            if (-not $registryPressure.logicalRegistryReturnedToBaseline -or
+                $registryPressure.abandonedHandles -ne 0 -or
+                $registryPressure.legitimateHighWater.engineHandles -ne ($baseline.engineHandles + ($RegistryConcurrency * $RegistryGenerations)) -or
+                $registryPressure.legitimateHighWater.outcomeHandles -ne ($baseline.outcomeHandles + $RegistryDelayedOutcomes) -or
+                $registryPressure.legitimateHighWater.outcomePayloadBytes -le $baseline.outcomePayloadBytes -or
+                $registryPressure.settlement.Count -ne 6 -or
+                $registryPressure.semanticSentinel -cne "<?xml version=`"1.0`" encoding=`"UTF-8`"?><out>$RegistryItems.00</out>") {
+                throw "Native registry-pressure experiment violated lifecycle accounting or semantic parity: $($registryPressure | ConvertTo-Json -Depth 8)"
+            }
+            if ($RegistrySummaryOnly) {
+                $allWorkingSet = @($registryPressure.checkpoints.workingSetBytes) + @($registryPressure.settlement.checkpoint.workingSetBytes)
+                $allPrivateBytes = @($registryPressure.checkpoints.privateMemoryBytes) + @($registryPressure.settlement.checkpoint.privateMemoryBytes)
+                [pscustomobject]@{
+                    Experiment = 'NativeRegistryPressure'
+                    Items = $registryPressure.items
+                    Concurrency = $registryPressure.concurrency
+                    Generations = $registryPressure.generations
+                    DelayedOutcomes = $registryPressure.delayedOutcomes
+                    EngineHighWater = $registryPressure.legitimateHighWater.engineHandles
+                    OutcomeHighWater = $registryPressure.legitimateHighWater.outcomeHandles
+                    OutcomePayloadHighWater = $registryPressure.legitimateHighWater.outcomePayloadBytes
+                    LogicalRegistryReturnedToBaseline = $registryPressure.logicalRegistryReturnedToBaseline
+                    WorkingSetBaseline = $registryPressure.checkpoints[0].workingSetBytes
+                    WorkingSetPeak = ($allWorkingSet | Measure-Object -Maximum).Maximum
+                    WorkingSetAfterOneSecond = $registryPressure.settlement[-1].checkpoint.workingSetBytes
+                    PrivateBytesBaseline = $registryPressure.checkpoints[0].privateMemoryBytes
+                    PrivateBytesPeak = ($allPrivateBytes | Measure-Object -Maximum).Maximum
+                    PrivateBytesAfterOneSecond = $registryPressure.settlement[-1].checkpoint.privateMemoryBytes
+                }
+            }
+            else {
+                $registryPressure | ConvertTo-Json -Depth 8
             }
         }
         for ($run = 1; $run -le $MeasurementRuns; $run++) {

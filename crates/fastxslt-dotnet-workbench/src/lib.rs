@@ -856,6 +856,55 @@ pub extern "C" fn fastxslt_workbench_v0_engine_release(engine_handle: u64) -> u3
     })
 }
 
+/// Observes the current engine-handle cardinality for host-pressure experiments.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn fastxslt_workbench_v0_registry_engine_count() -> usize {
+    guarded(usize::MAX, |state| {
+        state.engines().map_or(usize::MAX, |engines| engines.len())
+    })
+}
+
+/// Observes the current control-handle cardinality for host-pressure experiments.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn fastxslt_workbench_v0_registry_control_count() -> usize {
+    guarded(usize::MAX, |state| {
+        state
+            .controls()
+            .map_or(usize::MAX, |controls| controls.len())
+    })
+}
+
+/// Observes the current outcome-handle cardinality for host-pressure experiments.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn fastxslt_workbench_v0_registry_outcome_count() -> usize {
+    guarded(usize::MAX, |state| {
+        state
+            .outcomes()
+            .map_or(usize::MAX, |outcomes| outcomes.len())
+    })
+}
+
+/// Observes exact bytes owned by byte-valued outcomes currently in the registry.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn fastxslt_workbench_v0_registry_outcome_payload_bytes() -> usize {
+    guarded(usize::MAX, |state| {
+        let Ok(outcomes) = state.outcomes() else {
+            return usize::MAX;
+        };
+        outcomes
+            .values()
+            .try_fold(0_usize, |total, outcome| match outcome {
+                Outcome::Engine(_) => Some(total),
+                Outcome::Bytes { value, .. } => total.checked_add(value.len()),
+            })
+            .unwrap_or(usize::MAX)
+    })
+}
+
 #[cfg(test)]
 #[path = "diagnostic_tests.rs"]
 mod diagnostic_tests;

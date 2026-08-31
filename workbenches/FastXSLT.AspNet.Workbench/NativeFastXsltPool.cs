@@ -67,6 +67,30 @@ public sealed class NativeFastXsltPool : IDisposable
         }
     }
 
+    public async Task<NativeFastXsltClient.NativeRetainedOutcome> TransformRetainedAsync(
+        string requestIdentity)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        await _slots.WaitAsync();
+        NativeFastXsltClient client;
+        lock (_queueLock)
+        {
+            client = _available.Dequeue();
+        }
+        try
+        {
+            return client.TransformRetained(requestIdentity);
+        }
+        finally
+        {
+            lock (_queueLock)
+            {
+                _available.Enqueue(client);
+            }
+            _slots.Release();
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed)
