@@ -228,7 +228,7 @@ delivery, creation rollback, deterministic transform/cancel/release races, and
 that no valid handle is silently evicted. The host soak cannot prove those
 properties.
 
-The first ASP.NET generation trace now covers the planned 1/4/8/16/32
+The ASP.NET generation trace now covers the planned 1/4/8/16/32
 concurrency points, two- and three-generation overlap, and 16 through 256
 deliberately delayed valid outcomes over unchanged XSLT30 `for-004`. At the
 largest point, 96
@@ -240,10 +240,8 @@ process-memory observations. A second trace now covers eight active first-charge
 controls, 128 retained structured failures, and eight retained 900 KB results;
 exact native ownership again returned to baseline while managed and process
 memory followed independent reclamation timelines. The captured observations
-have also been replayed arithmetically against count-only and
-count-plus-exact-outcome-byte candidates. Additional prepared corpus shapes, a
-longer-duration replacement soak, engine-retention estimates, reclamation
-calibration, and exhaustion delivery remain open.
+have also been replayed against count-only, count-plus-exact-outcome-byte, and
+full-hybrid candidates using the private known-capacity engine estimate.
 
 The first sustained replacement trace performed 32 full eight-engine
 promotions while retaining exactly two old-generation leases. Its engine
@@ -267,7 +265,7 @@ settlement window.
 
 A private compositional estimator now attributes known capacities to the
 engine, prepared map, immutable XDM, and recursively owned compiled stylesheet
-state. Across seven source-heavy and stylesheet-heavy calibration shapes it
+state. Across eight exact, source-heavy, and stylesheet-heavy calibration shapes it
 covered 90.94% through 99.97% of production-like live allocator-requested
 bytes, stayed below that comparison in every row, and tracked the 5,000-item,
 900 KB text, namespace/attribute, 128-template, and 256-global shapes. A shallow
@@ -315,7 +313,7 @@ representative host policy are reviewed.
   source-heavy and stylesheet-heavy shapes without exporting or enforcing it.
 - [ ] Compare fixed count, estimated-byte, host-domain, and isolated-process
   policies against an ASP.NET consumer's concurrency and recovery requirements.
-- [ ] Run the corpus-backed ASP.NET pressure matrix with generation overlap,
+- [x] Run the corpus-backed ASP.NET pressure matrix with generation overlap,
   delayed disposal, failure/result bursts, semantic sentinels, and separate
   legitimate versus abandoned high-water accounting.
 - [x] Establish the first ASP.NET registry-observation and valid-retention trace
@@ -391,7 +389,7 @@ consumers.
   bytes remained only 8.18 MB. Logical ownership returned exactly to baseline;
   no general engine-byte estimator was inferred.
 - 2026-08-31 -- Added and allocator-calibrated a private compositional
-  prepared-engine estimate across seven distinct shapes. Recursive compiled
+  prepared-engine estimate across the exact workload and seven generated shapes. Recursive compiled
   ownership repaired a deliberately exposed template-heavy blind spot; the
   estimator remains a lower-bound experiment and does not select quota policy.
 - 2026-08-31 -- Extended the largest prepared-engine settlement trace to 30

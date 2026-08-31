@@ -42,6 +42,7 @@ cargo test --release -p fastxslt --all-features measures_retention_estimate_agai
 
 | Shape | Known-capacity estimate | Production-like live requested bytes | Coverage |
 | --- | ---: | ---: | ---: |
+| Exact unchanged XSLT30 `for-004` | 13,078 | 14,354 | 91.11% |
 | `for-004`, 5 items | 12,900 | 14,185 | 90.94% |
 | `for-004`, 500 items | 593,166 | 594,447 | 99.78% |
 | `for-004`, 5,000 items | 4,917,937 | 4,919,219 | 99.97% |
@@ -54,8 +55,8 @@ The first shallow compiled-state prototype covered only 34,722 of 280,746
 bytes in the template-heavy shape (12.37%). That falsification caused the
 estimator to move into the compiled stylesheet owner and recursively account
 for its nested private representation. The corrected model stays below the
-live-allocation comparison in every measured shape while tracking source-heavy
-and stylesheet-heavy growth.
+live-allocation comparison in every measured shape while tracking the exact
+standards workload plus generated source-heavy and stylesheet-heavy growth.
 
 The remaining gap is relatively material for tiny engines and small for large
 prepared inputs. It is a known-capacity lower bound, not a safe memory ceiling:

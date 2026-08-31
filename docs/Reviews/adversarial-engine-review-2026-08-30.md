@@ -342,8 +342,8 @@ Validation performed:
     abandonment and legitimate-pressure traces, sustained generation overlap,
     near-limit outcome bursts, exhaustion-delivery comparison, and a large
     prepared-engine trace are complete under AR-0017.
-  - A private compositional retention estimate now tracks seven source-heavy
-    and stylesheet-heavy shapes at 90.94%–99.97% of production-like live
+  - A private compositional retention estimate now tracks the exact standards
+    workload and seven generated shapes at 90.94%–99.97% of production-like live
     requested bytes. A 30-second natural-settlement run then returned process
     memory near baseline, with the peak-to-half transition occurring before the
     first post-disposal sample. The estimate remains unenforced; consumer

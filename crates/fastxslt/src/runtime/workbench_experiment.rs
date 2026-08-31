@@ -516,6 +516,17 @@ mod tests {
         .expect("retention-observed engine should initialize")
     }
 
+    fn exact_for_004_engine() -> ExperimentalEngine {
+        ExperimentalEngine::new(
+            "urn:w3c:xslt30:for-004:source",
+            include_bytes!("../../../../vendor/xslt30-test/tests/expr/for/for03.xml").to_vec(),
+            "urn:w3c:xslt30:for-004:stylesheet",
+            include_bytes!("../../../../vendor/xslt30-test/tests/expr/for/for-004.xsl").to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("exact for-004 engine should initialize")
+    }
+
     fn retention_custom_engine(
         label: &str,
         source: Vec<u8>,
@@ -620,6 +631,23 @@ mod tests {
     #[test]
     #[ignore = "manual release-mode workbench engine retention-estimator calibration"]
     fn measures_retention_estimate_against_allocator_requested_bytes() {
+        let mut exact_retained = None;
+        let exact_allocations = allocation_counter::measure(|| {
+            exact_retained = Some(Box::new(exact_for_004_engine()));
+        });
+        let exact_engine = exact_retained.as_ref().expect("retain exact engine");
+        let exact_estimate = exact_engine.retention_estimate();
+        let exact_test_snapshot = exact_engine.test_only_snapshot_known_capacity_bytes();
+        let exact_denominator = usize::try_from(exact_allocations.bytes_current)
+            .expect("positive allocator-retained bytes fit usize")
+            .checked_sub(exact_test_snapshot)
+            .expect("test-only snapshot must be part of measured retained allocation");
+        assert!(exact_estimate.known_retained_capacity_bytes <= exact_denominator);
+        println!(
+            "shape=exact-for-004 estimate={exact_estimate:?} allocator_requested={exact_allocations:?} test_snapshot_known_bytes={exact_test_snapshot} estimator_numerator={} production_like_allocator_denominator={exact_denominator}",
+            exact_estimate.known_retained_capacity_bytes,
+        );
+
         for items in [5, 500, 5_000] {
             let mut retained = None;
             let allocations = allocation_counter::measure(|| {
@@ -699,14 +727,7 @@ mod tests {
 
     #[test]
     fn compiles_prepares_and_reuses_one_native_workload() {
-        let engine = ExperimentalEngine::new(
-            "urn:w3c:xslt30:for-004:source",
-            include_bytes!("../../../../vendor/xslt30-test/tests/expr/for/for03.xml").to_vec(),
-            "urn:w3c:xslt30:for-004:stylesheet",
-            include_bytes!("../../../../vendor/xslt30-test/tests/expr/for/for-004.xsl").to_vec(),
-            WorkbenchLimits::default(),
-        )
-        .expect("workbench engine should initialize");
+        let engine = exact_for_004_engine();
 
         for request_id in ["first", "second"] {
             assert_eq!(

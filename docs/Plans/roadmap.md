@@ -68,7 +68,8 @@ tiny probe—falsifies both raw input bytes and handle count as general memory
 estimates. The subsequent
 [prepared-engine estimator calibration](../Evidence/prepared-engine-retention-estimator-calibration-2026-08-31.md)
 now composes private prepared-XDM and recursively owned compiled-state
-capacities across seven source- and stylesheet-heavy shapes. It covers 90.94%
+capacities across the exact standards workload and seven generated source- and
+stylesheet-heavy shapes. It covers 90.94%
 through 99.97% of production-like live requested bytes without crossing the
 ABI or claiming allocator-exact accounting. A
 [30-second natural reclamation trace](../Evidence/aspnet-native-extended-reclamation-observation-2026-08-31.md)
