@@ -17,6 +17,23 @@ impl LocationPath {
     pub(crate) fn starts_at_document_node(&self) -> bool {
         self.origin == PathOrigin::DocumentNode
     }
+
+    #[cfg(feature = "workbench")]
+    pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
+        self.steps.capacity() * std::mem::size_of::<PathStep>()
+            + self
+                .steps
+                .iter()
+                .map(PathStep::known_owned_capacity_bytes)
+                .sum::<usize>()
+            + self
+                .final_predicate
+                .as_ref()
+                .map_or(0, |predicate| predicate.name.capacity())
+            + self.step_position_predicates.capacity()
+                * std::mem::size_of::<Option<PositionPredicate>>()
+            + self.location.resource.capacity()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,6 +72,19 @@ pub(crate) enum PathStep {
 }
 
 impl PathStep {
+    #[cfg(feature = "workbench")]
+    fn known_owned_capacity_bytes(&self) -> usize {
+        match self {
+            Self::ChildNamed(value)
+            | Self::AttributeNamed(value)
+            | Self::ParentNamed(value)
+            | Self::SelfNamed(value)
+            | Self::DescendantNamed(value)
+            | Self::DescendantOrSelfNamed(value) => value.capacity(),
+            _ => 0,
+        }
+    }
+
     fn from_validated(value: &str) -> Option<Self> {
         if value == ".." {
             return Some(Self::ParentAnyNode);

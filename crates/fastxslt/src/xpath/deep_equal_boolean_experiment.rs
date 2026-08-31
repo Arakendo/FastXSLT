@@ -14,6 +14,13 @@ pub(crate) struct DeepEqualBooleanExpression {
     projection: BooleanProjection,
 }
 
+#[cfg(feature = "workbench")]
+impl DeepEqualBooleanExpression {
+    pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
+        self.inner.known_owned_capacity_bytes()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum BooleanProjection {
     Identity,

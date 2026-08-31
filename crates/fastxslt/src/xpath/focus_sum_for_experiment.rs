@@ -14,6 +14,15 @@ pub(crate) struct FocusSumForExpression {
     right_attribute: String,
 }
 
+#[cfg(feature = "workbench")]
+impl FocusSumForExpression {
+    pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
+        self.binding_path.known_owned_capacity_bytes()
+            + self.left_attribute.capacity()
+            + self.right_attribute.capacity()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct FocusSumForFailure {
     pub(crate) detail: String,

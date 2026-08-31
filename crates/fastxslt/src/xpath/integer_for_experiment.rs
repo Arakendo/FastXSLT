@@ -9,6 +9,13 @@ pub(crate) struct IntegerForExpression {
     second_values: Vec<i64>,
 }
 
+#[cfg(feature = "workbench")]
+impl IntegerForExpression {
+    pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
+        (self.first_values.capacity() + self.second_values.capacity()) * std::mem::size_of::<i64>()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct IntegerForFailure {
     pub(crate) detail: String,

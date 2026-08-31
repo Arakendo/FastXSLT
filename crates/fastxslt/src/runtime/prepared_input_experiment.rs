@@ -127,6 +127,15 @@ pub(super) struct PreparedInputSet {
     parsed_phase_capacity_bytes: Arc<BTreeMap<String, usize>>,
 }
 
+#[cfg(feature = "workbench")]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(super) struct PreparedRetentionObservation {
+    pub(super) document_count: usize,
+    pub(super) xdm_node_count: usize,
+    pub(super) prepared_map_known_capacity_bytes: usize,
+    pub(super) xdm_owned_capacity_bytes: usize,
+}
+
 #[cfg(test)]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 struct PreparedInputObservation {
@@ -144,6 +153,34 @@ impl PreparedInputSet {
 
     pub(super) fn get(&self, identity: &str) -> Option<Arc<Document>> {
         self.documents.get(identity).cloned()
+    }
+
+    #[cfg(test)]
+    pub(super) fn test_only_snapshot_known_capacity_bytes(&self) -> usize {
+        self.snapshot.test_only_known_capacity_bytes()
+    }
+
+    #[cfg(feature = "workbench")]
+    pub(super) fn retention_observation(&self) -> PreparedRetentionObservation {
+        let prepared_map_known_capacity_bytes =
+            std::mem::size_of::<BTreeMap<String, Arc<Document>>>()
+                + self.documents.len()
+                    * (std::mem::size_of::<String>() + std::mem::size_of::<Arc<Document>>())
+                + self.documents.keys().map(String::capacity).sum::<usize>();
+        PreparedRetentionObservation {
+            document_count: self.documents.len(),
+            xdm_node_count: self
+                .documents
+                .values()
+                .map(|document| document.node_count())
+                .sum(),
+            prepared_map_known_capacity_bytes,
+            xdm_owned_capacity_bytes: self
+                .documents
+                .values()
+                .map(|document| document.owned_capacity_bytes())
+                .sum(),
+        }
     }
 
     #[cfg(test)]

@@ -65,9 +65,14 @@ The first
 now retains three ×16 generations over a 5,000-item input. Its stable roughly
 6 MB private-byte delta per engine for that shape—versus roughly 98 KiB in the
 tiny probe—falsifies both raw input bytes and handle count as general memory
-estimates. A longer-duration soak, additional large shapes, a defensible
-engine-retention model, and consumer headroom remain before AR-0017 can select
-policy. The
+estimates. The subsequent
+[prepared-engine estimator calibration](../Evidence/prepared-engine-retention-estimator-calibration-2026-08-31.md)
+now composes private prepared-XDM and recursively owned compiled-state
+capacities across seven source- and stylesheet-heavy shapes. It covers 90.94%
+through 99.97% of production-like live requested bytes without crossing the
+ABI or claiming allocator-exact accounting. A longer reclamation window,
+candidate replay using this engine dimension, and real consumer headroom remain
+before AR-0017 can select policy. The
 [template-candidate fanout probe](../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
 has already confirmed exact `nodes × templates` growth, including 33,024
 candidate checks in the largest local sweep. A distinct candidate domain now

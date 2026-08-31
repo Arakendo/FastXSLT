@@ -9,7 +9,7 @@
 | Trigger | Adversarial review Finding 6 confirmed that foreign callers can retain engines, controls, and outcomes without an aggregate ceiling |
 | Related ADRs | ADR-0002, ADR-0003, ADR-0008, ADR-0015 |
 | Related reviews | AR-0002, AR-0009, AR-0010, AR-0012 |
-| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; `../Evidence/native-registry-live-use-high-water-2026-08-31.md`; `../Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`; `../Evidence/aspnet-native-registry-burst-pressure-2026-08-31.md`; `../Evidence/native-registry-candidate-policy-replay-2026-08-31.md`; `../Evidence/aspnet-native-sustained-generation-replacement-2026-08-31.md`; `../Evidence/native-registry-exhaustion-delivery-comparison-2026-08-31.md`; `../Evidence/aspnet-native-large-prepared-engine-pressure-2026-08-31.md`; future consumer requirements |
+| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; `../Evidence/native-registry-live-use-high-water-2026-08-31.md`; `../Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`; `../Evidence/aspnet-native-registry-burst-pressure-2026-08-31.md`; `../Evidence/native-registry-candidate-policy-replay-2026-08-31.md`; `../Evidence/aspnet-native-sustained-generation-replacement-2026-08-31.md`; `../Evidence/native-registry-exhaustion-delivery-comparison-2026-08-31.md`; `../Evidence/aspnet-native-large-prepared-engine-pressure-2026-08-31.md`; `../Evidence/prepared-engine-retention-estimator-calibration-2026-08-31.md`; future consumer requirements |
 
 ## Architectural question
 
@@ -265,6 +265,17 @@ shows why count alone cannot describe memory. Exact logical ownership returned
 to baseline; process memory remained above baseline after the one-second
 settlement window.
 
+A private compositional estimator now attributes known capacities to the
+engine, prepared map, immutable XDM, and recursively owned compiled stylesheet
+state. Across seven source-heavy and stylesheet-heavy calibration shapes it
+covered 90.94% through 99.97% of production-like live allocator-requested
+bytes, stayed below that comparison in every row, and tracked the 5,000-item,
+900 KB text, namespace/attribute, 128-template, and 256-global shapes. A shallow
+compiled estimate initially covered only 12.37% of the template-heavy row and
+was rejected before documentation. The corrected observation remains a private
+representation-specific lower bound: it does not cross the ABI, select a
+threshold, or become allocator-exact memory accounting.
+
 ADR-0015 admits the four scalar observation exports used by this trace. It adds
 no unsafe block, quota behavior, registry mutation, layout exposure, or public
 metrics contract.
@@ -291,6 +302,8 @@ representative host policy are reviewed.
   separately from scalar controls and bounded outcome bytes.
 - [x] Measure one materially larger prepared-input shape separately and test
   whether raw admitted bytes or engine count explain its process pressure.
+- [x] Calibrate a private compositional prepared-engine retention estimate over
+  source-heavy and stylesheet-heavy shapes without exporting or enforcing it.
 - [ ] Compare fixed count, estimated-byte, host-domain, and isolated-process
   policies against an ASP.NET consumer's concurrency and recovery requirements.
 - [ ] Run the corpus-backed ASP.NET pressure matrix with generation overlap,
@@ -367,3 +380,7 @@ consumers.
   Each generation added about 96 MB private memory while aggregate admitted
   bytes remained only 8.18 MB. Logical ownership returned exactly to baseline;
   no general engine-byte estimator was inferred.
+- 2026-08-31 -- Added and allocator-calibrated a private compositional
+  prepared-engine estimate across seven distinct shapes. Recursive compiled
+  ownership repaired a deliberately exposed template-heavy blind spot; the
+  estimator remains a lower-bound experiment and does not select quota policy.

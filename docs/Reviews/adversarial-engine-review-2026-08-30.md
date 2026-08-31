@@ -337,6 +337,16 @@ Validation performed:
     already requires bounded failure envelopes and lifecycle evidence. A
     process-wide registry quota/ownership policy changes operational behavior
     enough to require review against ADR-0008/ADR-0010 before admission.
+- Progress (2026-08-31):
+  - Per-outcome bounds, atomic engine/outcome publication, registry observation,
+    abandonment and legitimate-pressure traces, sustained generation overlap,
+    near-limit outcome bursts, exhaustion-delivery comparison, and a large
+    prepared-engine trace are complete under AR-0017.
+  - A private compositional retention estimate now tracks seven source-heavy
+    and stylesheet-heavy shapes at 90.94%–99.97% of production-like live
+    requested bytes. It remains an unenforced lower-bound experiment; consumer
+    headroom, longer reclamation evidence, and the aggregate policy decision are
+    still open.
 
 ### Finding 7: Template-candidate scans are not represented in work budgets
 

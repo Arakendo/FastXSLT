@@ -12,6 +12,10 @@ use crate::xpath::path_experiment::LocationPath;
 pub(crate) const STANDARD_INITIAL_TEMPLATE_NAME: &str =
     "Q{http://www.w3.org/1999/XSL/Transform}initial-template";
 
+#[cfg(feature = "workbench")]
+#[path = "golden_semantics_retention.rs"]
+mod retention;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StylesheetProgram {
     pub(crate) declared_version: String,
@@ -25,6 +29,8 @@ pub(crate) struct StylesheetProgram {
     pub(crate) named_templates: Vec<NamedTemplate>,
     pub(crate) global_bindings: Vec<GlobalBinding>,
 }
+
+impl StylesheetProgram {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TypedModeRequirement {

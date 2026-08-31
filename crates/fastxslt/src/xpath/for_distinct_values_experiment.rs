@@ -18,6 +18,19 @@ pub(crate) struct ForDistinctValuesExpression {
     location: SourceLocation,
 }
 
+#[cfg(feature = "workbench")]
+impl ForDistinctValuesExpression {
+    pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
+        self.variable.capacity()
+            + self.binding_path.known_owned_capacity_bytes()
+            + self.first_equal_path.known_owned_capacity_bytes()
+            + self.related_parent_path.known_owned_capacity_bytes()
+            + self.related_test_child.capacity()
+            + self.related_result_child.capacity()
+            + self.location.resource.capacity()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ForExpressionFailure {
     Invalid {

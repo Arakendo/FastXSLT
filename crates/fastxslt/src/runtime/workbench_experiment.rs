@@ -95,6 +95,32 @@ pub struct WorkbenchStylesheetResources {
     pub denied_identities: Vec<String>,
 }
 
+/// Private lower-bound observation of capacities owned by one workbench engine.
+///
+/// This is admission-accounting evidence, not allocator-exact memory usage or a
+/// supported public metric. B-tree node allocation, `Arc` allocation headers,
+/// nested compiled-expression allocations, allocator metadata, and host copies
+/// are deliberately excluded until their owners can account for them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WorkbenchRetentionEstimate {
+    /// Inline bytes occupied by the engine value, including collection headers.
+    pub engine_inline_bytes: usize,
+    /// Heap capacity of the retained source identity string.
+    pub source_identity_capacity_bytes: usize,
+    /// Known prepared-map header, entry payload, and identity capacities.
+    pub prepared_map_known_capacity_bytes: usize,
+    /// Capacity bytes owned by retained immutable XDM documents.
+    pub prepared_xdm_capacity_bytes: usize,
+    /// Known recursively owned compiled vector, box, and string capacities.
+    pub compiled_known_capacity_bytes: usize,
+    /// Number of immutable documents retained by the engine.
+    pub prepared_document_count: usize,
+    /// Number of XDM nodes retained across those documents.
+    pub prepared_xdm_node_count: usize,
+    /// Sum of the explicitly accounted fields above.
+    pub known_retained_capacity_bytes: usize,
+}
+
 /// Cooperative cancellation state supplied to one experimental invocation.
 #[derive(Debug, Clone)]
 pub struct WorkbenchCancellation(CancellationToken);
@@ -264,6 +290,50 @@ impl ExperimentalEngine {
         self.transform_with_cancellation(request_id, WorkbenchCancellation::new())
     }
 
+    /// Reports a private compositional lower bound over known retained capacity.
+    ///
+    /// The observation is deterministic for the current private representation,
+    /// but intentionally excludes allocator and host memory. It exists only to
+    /// calibrate AR-0017 experiments and must not be treated as a public layout
+    /// or stable admission formula.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if the sum of live capacity observations exceeds `usize`,
+    /// which cannot represent a live allocation on the current process.
+    #[must_use]
+    pub fn retention_estimate(&self) -> WorkbenchRetentionEstimate {
+        let prepared = self.prepared.retention_observation();
+        let engine_inline_bytes = std::mem::size_of::<Self>();
+        let source_identity_capacity_bytes = self.source_id.capacity();
+        let compiled_known_capacity_bytes = self.program.known_owned_capacity_bytes();
+        let known_retained_capacity_bytes = [
+            engine_inline_bytes,
+            source_identity_capacity_bytes,
+            prepared.prepared_map_known_capacity_bytes,
+            prepared.xdm_owned_capacity_bytes,
+            compiled_known_capacity_bytes,
+        ]
+        .into_iter()
+        .try_fold(0_usize, usize::checked_add)
+        .expect("live engine retained-capacity components must fit usize");
+        WorkbenchRetentionEstimate {
+            engine_inline_bytes,
+            source_identity_capacity_bytes,
+            prepared_map_known_capacity_bytes: prepared.prepared_map_known_capacity_bytes,
+            prepared_xdm_capacity_bytes: prepared.xdm_owned_capacity_bytes,
+            compiled_known_capacity_bytes,
+            prepared_document_count: prepared.document_count,
+            prepared_xdm_node_count: prepared.xdm_node_count,
+            known_retained_capacity_bytes,
+        }
+    }
+
+    #[cfg(test)]
+    fn test_only_snapshot_known_capacity_bytes(&self) -> usize {
+        self.prepared.test_only_snapshot_known_capacity_bytes()
+    }
+
     /// Executes one request with explicitly supplied cooperative cancellation.
     ///
     /// # Errors
@@ -418,10 +488,214 @@ fn workbench_failure(
 
 #[cfg(test)]
 mod tests {
+    use std::fmt::Write as _;
+    use std::mem::size_of;
+
     use super::{
         ExperimentalEngine, WorkbenchCancellation, WorkbenchLimits, WorkbenchResource,
-        WorkbenchStylesheetResources,
+        WorkbenchRetentionEstimate, WorkbenchStylesheetResources,
     };
+
+    fn retention_source(items: usize) -> Vec<u8> {
+        let mut source = String::from("<order>");
+        for _ in 0..items {
+            source.push_str("<order-item price='1.00' qty='1'/>");
+        }
+        source.push_str("</order>");
+        source.into_bytes()
+    }
+
+    fn retention_engine(items: usize) -> ExperimentalEngine {
+        ExperimentalEngine::new(
+            format!("urn:fastxslt:retention:source:{items}"),
+            retention_source(items),
+            "urn:w3c:xslt30:for-004:stylesheet",
+            include_bytes!("../../../../vendor/xslt30-test/tests/expr/for/for-004.xsl").to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("retention-observed engine should initialize")
+    }
+
+    fn retention_custom_engine(
+        label: &str,
+        source: Vec<u8>,
+        stylesheet: Vec<u8>,
+    ) -> ExperimentalEngine {
+        ExperimentalEngine::new(
+            format!("urn:fastxslt:retention:shape:{label}"),
+            source,
+            format!("urn:fastxslt:retention:shape:{label}:stylesheet"),
+            stylesheet,
+            WorkbenchLimits::default(),
+        )
+        .expect("retention-observed shape should initialize")
+    }
+
+    fn retention_shape_engine(label: &str, source: Vec<u8>) -> ExperimentalEngine {
+        retention_custom_engine(
+            label,
+            source,
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+    }
+
+    fn text_heavy_source() -> Vec<u8> {
+        format!("<root><payload>{}</payload></root>", "x".repeat(900_000)).into_bytes()
+    }
+
+    fn namespace_attribute_source() -> Vec<u8> {
+        let mut source = String::from("<root>");
+        for _ in 0..2_000 {
+            source.push_str(
+                "<p:item xmlns:p='urn:fastxslt:retention:p' a='one' b='two'>text</p:item>",
+            );
+        }
+        source.push_str("</root>");
+        source.into_bytes()
+    }
+
+    fn template_heavy_stylesheet() -> Vec<u8> {
+        let mut stylesheet = String::from(
+            r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><out/></xsl:template>"#,
+        );
+        for index in 0..128 {
+            write!(
+                stylesheet,
+                "<xsl:template match='e{index}'><out><xsl:text>value-{index}</xsl:text></out></xsl:template>"
+            )
+            .expect("writing to a String cannot fail");
+        }
+        stylesheet.push_str("</xsl:stylesheet>");
+        stylesheet.into_bytes()
+    }
+
+    fn global_heavy_stylesheet() -> Vec<u8> {
+        let mut stylesheet = String::from(
+            r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0">"#,
+        );
+        for index in 0..256 {
+            write!(
+                stylesheet,
+                "<xsl:variable name='global-{index}'>value-{index}</xsl:variable>"
+            )
+            .expect("writing to a String cannot fail");
+        }
+        stylesheet.push_str("<xsl:template match='/'><out/></xsl:template></xsl:stylesheet>");
+        stylesheet.into_bytes()
+    }
+
+    fn assert_estimate_conserves(estimate: WorkbenchRetentionEstimate) {
+        assert_eq!(estimate.prepared_document_count, 1);
+        assert!(estimate.prepared_xdm_node_count > 0);
+        assert_eq!(
+            estimate.engine_inline_bytes,
+            size_of::<ExperimentalEngine>()
+        );
+        assert_eq!(
+            estimate.known_retained_capacity_bytes,
+            estimate.engine_inline_bytes
+                + estimate.source_identity_capacity_bytes
+                + estimate.prepared_map_known_capacity_bytes
+                + estimate.prepared_xdm_capacity_bytes
+                + estimate.compiled_known_capacity_bytes
+        );
+    }
+
+    #[test]
+    fn retention_estimate_is_compositional_and_scales_with_prepared_xdm() {
+        let small = retention_engine(5).retention_estimate();
+        let medium = retention_engine(500).retention_estimate();
+        assert_estimate_conserves(small);
+        assert_estimate_conserves(medium);
+        assert!(medium.prepared_xdm_node_count > small.prepared_xdm_node_count);
+        assert!(medium.prepared_xdm_capacity_bytes > small.prepared_xdm_capacity_bytes);
+        assert!(medium.known_retained_capacity_bytes > small.known_retained_capacity_bytes);
+        assert_eq!(
+            medium.compiled_known_capacity_bytes,
+            small.compiled_known_capacity_bytes
+        );
+    }
+
+    #[cfg(feature = "allocation-observation")]
+    #[test]
+    #[ignore = "manual release-mode workbench engine retention-estimator calibration"]
+    fn measures_retention_estimate_against_allocator_requested_bytes() {
+        for items in [5, 500, 5_000] {
+            let mut retained = None;
+            let allocations = allocation_counter::measure(|| {
+                retained = Some(Box::new(retention_engine(items)));
+            });
+            let engine = retained.as_ref().expect("retain measured engine");
+            let estimate = engine.retention_estimate();
+            assert_estimate_conserves(estimate);
+            let allocator_retained_with_test_snapshot = usize::try_from(allocations.bytes_current)
+                .expect("positive allocator-retained bytes fit usize");
+            let test_snapshot = engine.test_only_snapshot_known_capacity_bytes();
+            let production_like_allocator_retained = allocator_retained_with_test_snapshot
+                .checked_sub(test_snapshot)
+                .expect("test-only snapshot must be part of measured retained allocation");
+            assert!(estimate.known_retained_capacity_bytes <= production_like_allocator_retained);
+            println!(
+                "items={items} estimate={estimate:?} allocator_requested={allocations:?} test_snapshot_known_bytes={test_snapshot} estimator_numerator={} production_like_allocator_denominator={production_like_allocator_retained}",
+                estimate.known_retained_capacity_bytes,
+            );
+        }
+
+        for (label, build) in [
+            ("text-heavy", text_heavy_source as fn() -> Vec<u8>),
+            ("namespace-attribute", namespace_attribute_source),
+        ] {
+            let mut retained = None;
+            let allocations = allocation_counter::measure(|| {
+                retained = Some(Box::new(retention_shape_engine(label, build())));
+            });
+            let engine = retained.as_ref().expect("retain measured shape engine");
+            let estimate = engine.retention_estimate();
+            assert_estimate_conserves(estimate);
+            let allocator_retained_with_test_snapshot = usize::try_from(allocations.bytes_current)
+                .expect("positive allocator-retained bytes fit usize");
+            let test_snapshot = engine.test_only_snapshot_known_capacity_bytes();
+            let production_like_allocator_retained = allocator_retained_with_test_snapshot
+                .checked_sub(test_snapshot)
+                .expect("test-only snapshot must be part of measured retained allocation");
+            assert!(estimate.known_retained_capacity_bytes <= production_like_allocator_retained);
+            println!(
+                "shape={label} estimate={estimate:?} allocator_requested={allocations:?} test_snapshot_known_bytes={test_snapshot} estimator_numerator={} production_like_allocator_denominator={production_like_allocator_retained}",
+                estimate.known_retained_capacity_bytes,
+            );
+        }
+
+        for (label, build_stylesheet) in [
+            (
+                "template-heavy",
+                template_heavy_stylesheet as fn() -> Vec<u8>,
+            ),
+            ("global-heavy", global_heavy_stylesheet),
+        ] {
+            let mut retained = None;
+            let allocations = allocation_counter::measure(|| {
+                retained = Some(Box::new(retention_custom_engine(
+                    label,
+                    b"<root/>".to_vec(),
+                    build_stylesheet(),
+                )));
+            });
+            let engine = retained.as_ref().expect("retain measured compiled shape");
+            let estimate = engine.retention_estimate();
+            assert_estimate_conserves(estimate);
+            let allocator_retained_with_test_snapshot = usize::try_from(allocations.bytes_current)
+                .expect("positive allocator-retained bytes fit usize");
+            let test_snapshot = engine.test_only_snapshot_known_capacity_bytes();
+            let production_like_allocator_retained = allocator_retained_with_test_snapshot
+                .checked_sub(test_snapshot)
+                .expect("test-only snapshot must be part of measured retained allocation");
+            assert!(estimate.known_retained_capacity_bytes <= production_like_allocator_retained);
+            println!(
+                "shape={label} estimate={estimate:?} allocator_requested={allocations:?} test_snapshot_known_bytes={test_snapshot} estimator_numerator={} production_like_allocator_denominator={production_like_allocator_retained}",
+                estimate.known_retained_capacity_bytes,
+            );
+        }
+    }
 
     #[test]
     fn compiles_prepares_and_reuses_one_native_workload() {

@@ -26,6 +26,23 @@ pub(crate) struct CastExpression {
     target: BuiltinAtomicType,
 }
 
+#[cfg(feature = "workbench")]
+impl CastableExpression {
+    pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
+        match &self.operand {
+            AtomicOperand::Path(path) => path.known_owned_capacity_bytes(),
+            AtomicOperand::Variable(variable) => variable.capacity(),
+        }
+    }
+}
+
+#[cfg(feature = "workbench")]
+impl CastExpression {
+    pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
+        self.operand.known_owned_capacity_bytes()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CastableFailure {
     pub(crate) detail: String,

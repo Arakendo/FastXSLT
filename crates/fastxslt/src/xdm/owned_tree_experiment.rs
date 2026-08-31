@@ -377,9 +377,27 @@ impl Document {
         self.nodes.len()
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "workbench"))]
     pub(crate) fn owned_capacity_bytes(&self) -> usize {
-        self.capacity_anatomy().total_capacity_bytes()
+        let mut total =
+            std::mem::size_of::<Self>() + self.nodes.capacity() * std::mem::size_of::<Node>();
+        for node in self.nodes.iter() {
+            total += node.children.capacity() * std::mem::size_of::<NodeId>();
+            total += node.attributes.capacity() * std::mem::size_of::<NodeId>();
+            if let Some(name) = &node.name {
+                total += name.local.capacity();
+                total += name.namespace.as_ref().map_or(0, String::capacity);
+            }
+            total += node.prefix.as_ref().map_or(0, String::capacity);
+            total += node.value.as_ref().map_or(0, String::capacity);
+            total += node.namespaces.capacity() * std::mem::size_of::<NamespaceBinding>();
+            for binding in &node.namespaces {
+                total += binding.prefix.as_ref().map_or(0, String::capacity);
+                total += binding.namespace.capacity();
+            }
+            total += node.location.resource.capacity();
+        }
+        total
     }
 
     #[cfg(test)]

@@ -12,6 +12,33 @@ pub(crate) struct DeepEqualExpression {
     pub(crate) location: SourceLocation,
 }
 
+#[cfg(feature = "workbench")]
+impl DeepEqualExpression {
+    pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
+        self.location.resource.capacity()
+            + match &self.operands {
+                DeepEqualOperands::Nodes { left, right } => {
+                    node_selection_capacity(left) + node_selection_capacity(right)
+                }
+                // Atomic sequence representation remains owned by its private
+                // evaluator and is intentionally not guessed here.
+                DeepEqualOperands::Integers { .. }
+                | DeepEqualOperands::Decimals { .. }
+                | DeepEqualOperands::AtomicSequences { .. } => 0,
+            }
+    }
+}
+
+#[cfg(feature = "workbench")]
+fn node_selection_capacity(value: &NodeSelection) -> usize {
+    match value {
+        NodeSelection::DescendantAttribute {
+            element, attribute, ..
+        } => element.capacity() + attribute.capacity(),
+        NodeSelection::DescendantComment { .. } => 0,
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum DeepEqualOperands {
     Nodes {

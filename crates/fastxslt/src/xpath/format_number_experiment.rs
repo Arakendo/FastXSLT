@@ -17,6 +17,20 @@ enum Operand {
     Variable(String),
 }
 
+#[cfg(feature = "workbench")]
+impl FormatNumberExpression {
+    pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
+        operand_capacity(&self.number) + operand_capacity(&self.picture)
+    }
+}
+
+#[cfg(feature = "workbench")]
+fn operand_capacity(value: &Operand) -> usize {
+    match value {
+        Operand::Literal(value) | Operand::Variable(value) => value.capacity(),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct FormatNumberFailure {
     pub(crate) detail: String,

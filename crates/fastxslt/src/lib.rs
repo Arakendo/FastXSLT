@@ -31,6 +31,7 @@ mod xslt30_overlay_test_support;
 pub mod workbench {
     pub use crate::runtime::workbench_experiment::{
         ExperimentalEngine, WorkbenchCancellation, WorkbenchFailure, WorkbenchLimits,
-        WorkbenchLocation, WorkbenchResource, WorkbenchStylesheetResources,
+        WorkbenchLocation, WorkbenchResource, WorkbenchRetentionEstimate,
+        WorkbenchStylesheetResources,
     };
 }
