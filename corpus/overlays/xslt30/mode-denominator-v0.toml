@@ -183,6 +183,24 @@ execution = "passed"
 rationale = "The invalid mixed-case typed boolean reports native static error XTSE0020 before unsupported shallow-copy or schema-aware mode semantics are considered."
 
 [[case_override]]
+case_name = "mode-1507"
+selection = "selected"
+execution = "passed"
+rationale = "The unnamed mode's invalid public visibility reports native static error XTSE0020 before unrelated template expressions are compiled."
+
+[[case_override]]
+case_name = "mode-1508"
+selection = "selected"
+execution = "passed"
+rationale = "The unnamed mode's invalid final visibility reports native static error XTSE0020 before unrelated template expressions are compiled."
+
+[[case_override]]
+case_name = "mode-1509"
+selection = "selected"
+execution = "passed"
+rationale = "The named mode's invalid abstract visibility reports native static error XTSE0020 before unrelated template expressions are compiled."
+
+[[case_override]]
 case_name = "mode-0105"
 selection = "selected"
 execution = "passed"

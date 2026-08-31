@@ -4,7 +4,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId};
 
 use super::{
     CompileFailure, ensure_no_meaningful_children, ensure_only_attributes, invalid,
-    optional_attribute, parse_template_modes, required_attribute, unsupported,
+    optional_attribute, parse_template_modes, unsupported,
 };
 
 pub(super) fn validate_mode_declaration(
@@ -19,6 +19,7 @@ pub(super) fn validate_mode_declaration(
             "name",
             "on-no-match",
             "typed",
+            "visibility",
             "warning-on-multiple-match",
             "warning-on-no-match",
         ],
@@ -26,9 +27,20 @@ pub(super) fn validate_mode_declaration(
     )?;
     ensure_no_meaningful_children(document, element, "xsl:mode")?;
 
-    let lexical_name = required_attribute(document, element, None, "name")?;
-    let names = parse_template_modes(document, element, lexical_name)?;
-    if names.len() != 1 || names[0].starts_with('#') {
+    let lexical_name = optional_attribute(document, element, None, "name");
+    let names = lexical_name
+        .map(|name| parse_template_modes(document, element, name))
+        .transpose()?;
+    validate_visibility(
+        lexical_name.is_some(),
+        optional_attribute(document, element, None, "visibility"),
+        document,
+        element,
+    )?;
+    if names
+        .as_ref()
+        .is_none_or(|names| names.len() != 1 || names[0].starts_with('#'))
+    {
         return Err(unsupported(
             "FXST1037",
             "the private xsl:mode declaration slice requires one named mode",
@@ -75,6 +87,38 @@ pub(super) fn validate_mode_declaration(
         ));
     }
     Ok(())
+}
+
+fn validate_visibility(
+    is_named: bool,
+    visibility: Option<&str>,
+    document: &Document,
+    element: NodeId,
+) -> Result<(), CompileFailure> {
+    let Some(visibility) = visibility else {
+        return Ok(());
+    };
+    if !matches!(visibility, "public" | "private" | "final" | "abstract") {
+        return Err(invalid(
+            "XTSE0020",
+            "xsl:mode visibility has an invalid value",
+            document.location(element),
+        ));
+    }
+    if (!is_named && matches!(visibility, "public" | "final"))
+        || (is_named && visibility == "abstract")
+    {
+        return Err(invalid(
+            "XTSE0020",
+            "xsl:mode visibility is incompatible with its mode name",
+            document.location(element),
+        ));
+    }
+    Err(unsupported(
+        "FXST1042",
+        "mode visibility semantics are outside the private declaration slice",
+        document.location(element),
+    ))
 }
 
 fn parse_optional_boolean(
@@ -172,5 +216,29 @@ mod tests {
         let failure = compile("typed", "true").expect_err("typed input is schema-aware");
         assert_eq!(failure.code, "FXST1040");
         assert_eq!(failure.category, CompileCategory::Unsupported);
+    }
+
+    #[test]
+    fn rejects_invalid_named_and_unnamed_mode_visibility_combinations() {
+        for (name, visibility) in [(None, "public"), (None, "final"), (Some("m"), "abstract")] {
+            let name = name.map_or(String::new(), |name| format!(r#" name="{name}""#));
+            let xml = format!(
+                r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:mode{name} visibility="{visibility}"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#
+            );
+            let parsed = parse_document(
+                "memory:mode-visibility.xsl",
+                xml.as_bytes(),
+                ParseLimits {
+                    max_events: 64,
+                    max_depth: 8,
+                },
+            )
+            .expect("parse mode visibility fixture");
+            let document = Document::from_parsed(parsed).expect("build mode visibility fixture");
+            let failure = compile_stylesheet(&document)
+                .expect_err("invalid mode visibility combination should fail");
+            assert_eq!(failure.code, "XTSE0020");
+            assert_eq!(failure.category, CompileCategory::Invalid);
+        }
     }
 }

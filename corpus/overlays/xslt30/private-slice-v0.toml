@@ -129,6 +129,27 @@ rationale = "The native XTSE0020 assertion matches the structured static error f
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1507"
+selection = "selected"
+execution = "passed"
+rationale = "The unnamed mode cannot be public; the native XTSE0020 assertion matches the structured static error before unrelated template expressions are compiled."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1508"
+selection = "selected"
+execution = "passed"
+rationale = "The unnamed mode cannot be final; the native XTSE0020 assertion matches the structured static error before unrelated template expressions are compiled."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1509"
+selection = "selected"
+execution = "passed"
+rationale = "A named mode cannot be abstract; the native XTSE0020 assertion matches the structured static error before unrelated template expressions are compiled."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-0901"
 selection = "selected"
 execution = "passed"

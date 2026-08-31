@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 33] = [
+const SELECTED_CASES: [&str; 36] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -52,6 +52,9 @@ const SELECTED_CASES: [&str; 33] = [
     "mode-1204",
     "mode-1444",
     "mode-1447",
+    "mode-1507",
+    "mode-1508",
+    "mode-1509",
 ];
 const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/mode-denominator-v0.toml");
 
@@ -229,6 +232,27 @@ fn rejects_invalid_warning_and_typed_mode_booleans() {
 
         let failure = compile_case_only(case_name)
             .expect_err("invalid mode boolean should fail stylesheet compilation");
+        assert_eq!(failure.code, "XTSE0020");
+        assert_eq!(failure.category, FailureCategory::Invalid);
+        assert!(failure.location.is_some());
+    }
+}
+
+#[test]
+fn rejects_invalid_mode_visibility_and_name_combinations() {
+    for case_name in ["mode-1507", "mode-1508", "mode-1509"] {
+        let document = load_test_set();
+        let case = find_case(&document, case_name);
+        let expected_error = child_named(
+            &document,
+            child_named(&document, case, "result").expect("result metadata"),
+            "error",
+        )
+        .and_then(|error| attribute(&document, error, "code"));
+        assert_eq!(expected_error, Some("XTSE0020"));
+
+        let failure = compile_case_only(case_name)
+            .expect_err("invalid mode visibility should fail stylesheet compilation");
         assert_eq!(failure.code, "XTSE0020");
         assert_eq!(failure.category, FailureCategory::Invalid);
         assert!(failure.location.is_some());

@@ -450,6 +450,14 @@ schema-aware behavior is considered. The mode denominator now records 33
 passes and 136 visible default not-run cases; `mode-1301` remains among the
 latter. [Evidence](../Evidence/xslt30-mode-static-boolean-validation-tranche-2026-08-30.md)
 
+The following static visibility tranche selects `mode-1507` through
+`mode-1509`. The same declaration owner reports native `XTSE0020` when an
+unnamed mode is public or final and when a named mode is abstract, before the
+cases' unrelated unsupported template expressions are compiled. Otherwise
+valid visibility semantics remain unsupported. The mode denominator advances
+to 36 passes and 133 visible default not-run cases.
+[Evidence](../Evidence/xslt30-mode-visibility-validation-tranche-2026-08-30.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -489,10 +497,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 33 | 0 | 0 | 136 |
+| `attr/mode` | 169 | 36 | 0 | 0 | 133 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **227** | **3** | **5** | **296** |
+| **Conserved total** | **531** | **230** | **3** | **5** | **293** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1323,6 +1331,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   boolean policy before unsupported runtime semantics. Preserve native
   `XTSE0020`, structured invalid classification, and stylesheet location. The
   mode ledger now records 33 passes and 136 visible default not-run cases.
+- [x] Execute `mode-1507` through `mode-1509` by validating mode name and
+  visibility constraints before unrelated unsupported template expressions.
+  Preserve native `XTSE0020` and keep valid visibility behavior private and
+  unsupported. The mode ledger now records 36 passes and 133 visible default
+  not-run cases.
 - [x] Retain non-whitespace text children in the private attribute-free
   temporary-tree representation and preserve mixed element/text order through
   invocation-owned materialization, built-in traversal, result accounting, and
