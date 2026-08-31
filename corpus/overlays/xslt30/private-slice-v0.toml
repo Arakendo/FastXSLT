@@ -730,6 +730,13 @@ execution = "passed"
 rationale = "A source-derived parameter default uses the same charged descendant and ancestor navigation semantics."
 
 [[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1904"
+selection = "selected"
+execution = "passed"
+rationale = "Two same-precedence declarations of expanded mode X conflict on explicit final/private visibility; the native XTSE0545 assertion is satisfied before unrelated runtime visibility behavior is considered."
+
+[[case]]
 set_file = "tests/insn/apply-templates/_apply-templates-test-set.xml"
 case_name = "conflict-resolution-0101"
 selection = "selected"
