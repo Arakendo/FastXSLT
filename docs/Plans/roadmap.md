@@ -70,8 +70,12 @@ estimates. The subsequent
 now composes private prepared-XDM and recursively owned compiled-state
 capacities across seven source- and stylesheet-heavy shapes. It covers 90.94%
 through 99.97% of production-like live requested bytes without crossing the
-ABI or claiming allocator-exact accounting. A longer reclamation window,
-candidate replay using this engine dimension, and real consumer headroom remain
+ABI or claiming allocator-exact accounting. A
+[30-second natural reclamation trace](../Evidence/aspnet-native-extended-reclamation-observation-2026-08-31.md)
+then found more than 98% of the peak process-memory deltas gone before its first
+post-disposal sample and process memory near baseline at ten seconds. It closes
+the longer-window observation without inventing a portable half-life.
+Candidate replay using the engine estimate and real consumer headroom remain
 before AR-0017 can select policy. The
 [template-candidate fanout probe](../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
 has already confirmed exact `nodes × templates` growth, including 33,024

@@ -17,6 +17,8 @@ param(
     [int]$RegistryConcurrency = 4,
     [int]$RegistryGenerations = 2,
     [int]$RegistryDelayedOutcomes = 64,
+    [ValidateRange(1000, 60000)]
+    [int]$RegistrySettlementMilliseconds = 1000,
     [int]$BurstConcurrency = 8,
     [int]$BurstDelayedFailures = 128,
     [int]$BurstLargeOutcomes = 8,
@@ -437,7 +439,7 @@ try {
             }
         }
         if ($NativeRegistryPressure) {
-            $registryPressureUri = "$baseAddress/experiment/native-registry-pressure?items=$RegistryItems&concurrency=$RegistryConcurrency&generations=$RegistryGenerations&delayedOutcomes=$RegistryDelayedOutcomes"
+            $registryPressureUri = "$baseAddress/experiment/native-registry-pressure?items=$RegistryItems&concurrency=$RegistryConcurrency&generations=$RegistryGenerations&delayedOutcomes=$RegistryDelayedOutcomes&settlementMilliseconds=$RegistrySettlementMilliseconds"
             $registryPressure = Invoke-RestMethod -Method Post -Uri $registryPressureUri
             $baseline = $registryPressure.checkpoints[0].registry
             if (-not $registryPressure.logicalRegistryReturnedToBaseline -or
@@ -445,7 +447,7 @@ try {
                 $registryPressure.legitimateHighWater.engineHandles -ne ($baseline.engineHandles + ($RegistryConcurrency * $RegistryGenerations)) -or
                 $registryPressure.legitimateHighWater.outcomeHandles -ne ($baseline.outcomeHandles + $RegistryDelayedOutcomes) -or
                 $registryPressure.legitimateHighWater.outcomePayloadBytes -le $baseline.outcomePayloadBytes -or
-                $registryPressure.settlement.Count -ne 6 -or
+                $registryPressure.settlement[-1].millisecondsAfterRelease -ne $RegistrySettlementMilliseconds -or
                 $registryPressure.semanticSentinel -cne "<?xml version=`"1.0`" encoding=`"UTF-8`"?><out>$RegistryItems.00</out>") {
                 throw "Native registry-pressure experiment violated lifecycle accounting or semantic parity: $($registryPressure | ConvertTo-Json -Depth 8)"
             }
@@ -464,10 +466,20 @@ try {
                     LogicalRegistryReturnedToBaseline = $registryPressure.logicalRegistryReturnedToBaseline
                     WorkingSetBaseline = $registryPressure.checkpoints[0].workingSetBytes
                     WorkingSetPeak = ($allWorkingSet | Measure-Object -Maximum).Maximum
-                    WorkingSetAfterOneSecond = $registryPressure.settlement[-1].checkpoint.workingSetBytes
+                    SettlementMilliseconds = $registryPressure.settlement[-1].millisecondsAfterRelease
+                    WorkingSetAfterSettlement = $registryPressure.settlement[-1].checkpoint.workingSetBytes
                     PrivateBytesBaseline = $registryPressure.checkpoints[0].privateMemoryBytes
                     PrivateBytesPeak = ($allPrivateBytes | Measure-Object -Maximum).Maximum
-                    PrivateBytesAfterOneSecond = $registryPressure.settlement[-1].checkpoint.privateMemoryBytes
+                    PrivateBytesAfterSettlement = $registryPressure.settlement[-1].checkpoint.privateMemoryBytes
+                }
+                foreach ($sample in $registryPressure.settlement) {
+                    [pscustomobject]@{
+                        Experiment = 'NativeRegistrySettlement'
+                        MillisecondsAfterRelease = $sample.millisecondsAfterRelease
+                        WorkingSetBytes = $sample.checkpoint.workingSetBytes
+                        PrivateBytes = $sample.checkpoint.privateMemoryBytes
+                        ManagedHeapBytes = $sample.checkpoint.managedHeapBytes
+                    }
                 }
             }
             else {

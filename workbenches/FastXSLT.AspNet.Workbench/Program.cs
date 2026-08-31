@@ -301,7 +301,8 @@ app.MapPost("/experiment/native-registry-pressure", async (
     int? items,
     int? concurrency,
     int? generations,
-    int? delayedOutcomes) =>
+    int? delayedOutcomes,
+    int? settlementMilliseconds) =>
 {
     await operationalExperimentGate.WaitAsync();
     try
@@ -311,7 +312,8 @@ app.MapPost("/experiment/native-registry-pressure", async (
             items ?? 500,
             concurrency ?? 4,
             generations ?? 2,
-            delayedOutcomes ?? 64));
+            delayedOutcomes ?? 64,
+            settlementMilliseconds ?? 1_000));
     }
     finally
     {

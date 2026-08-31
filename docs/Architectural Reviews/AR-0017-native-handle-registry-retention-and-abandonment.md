@@ -9,7 +9,7 @@
 | Trigger | Adversarial review Finding 6 confirmed that foreign callers can retain engines, controls, and outcomes without an aggregate ceiling |
 | Related ADRs | ADR-0002, ADR-0003, ADR-0008, ADR-0015 |
 | Related reviews | AR-0002, AR-0009, AR-0010, AR-0012 |
-| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; `../Evidence/native-registry-live-use-high-water-2026-08-31.md`; `../Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`; `../Evidence/aspnet-native-registry-burst-pressure-2026-08-31.md`; `../Evidence/native-registry-candidate-policy-replay-2026-08-31.md`; `../Evidence/aspnet-native-sustained-generation-replacement-2026-08-31.md`; `../Evidence/native-registry-exhaustion-delivery-comparison-2026-08-31.md`; `../Evidence/aspnet-native-large-prepared-engine-pressure-2026-08-31.md`; `../Evidence/prepared-engine-retention-estimator-calibration-2026-08-31.md`; future consumer requirements |
+| Related evidence | `../Reviews/adversarial-engine-review-2026-08-30.md`; `../Evidence/native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md`; `../Evidence/peer-ar-0017-review-monday-2026-08-31.md`; `../Evidence/native-registry-abandonment-measurement-2026-08-31.md`; `../Evidence/native-registry-live-use-high-water-2026-08-31.md`; `../Evidence/aspnet-native-registry-pressure-calibration-2026-08-31.md`; `../Evidence/aspnet-native-registry-burst-pressure-2026-08-31.md`; `../Evidence/native-registry-candidate-policy-replay-2026-08-31.md`; `../Evidence/aspnet-native-sustained-generation-replacement-2026-08-31.md`; `../Evidence/native-registry-exhaustion-delivery-comparison-2026-08-31.md`; `../Evidence/aspnet-native-large-prepared-engine-pressure-2026-08-31.md`; `../Evidence/prepared-engine-retention-estimator-calibration-2026-08-31.md`; `../Evidence/aspnet-native-extended-reclamation-observation-2026-08-31.md`; future consumer requirements |
 
 ## Architectural question
 
@@ -276,6 +276,15 @@ was rejected before documentation. The corrected observation remains a private
 representation-specific lower bound: it does not cross the ABI, select a
 threshold, or become allocator-exact memory accounting.
 
+The same three ×16, 5,000-item shape now has a 30-second natural reclamation
+trace. More than 98% of both peak process-memory deltas disappeared during
+explicit disposal before the first zero-delay process sample. Private bytes
+were slightly below baseline at ten and 30 seconds; working set remained within
+about 2 MiB at 30 seconds and was non-monotonic. This closes the extended-window
+observation but cannot support a precise half-life or universal reclamation
+guarantee: the peak-to-half transition is below the harness's sampling
+resolution.
+
 ADR-0015 admits the four scalar observation exports used by this trace. It adds
 no unsafe block, quota behavior, registry mutation, layout exposure, or public
 metrics contract.
@@ -320,8 +329,9 @@ representative host policy are reviewed.
   distributions.
 - [x] Sample logical release and process-memory settlement separately after
   bounded result and prepared-engine bursts.
-- [ ] Extend natural reclamation observation beyond the current right-censored
-  one-second window before claiming a process-memory half-life.
+- [x] Extend natural reclamation observation beyond the prior one-second window;
+  record that the peak-to-half transition occurred before the first
+  post-disposal sample rather than inventing a precise half-life.
 - [x] Replay the captured trace against count-only and hybrid count/byte
   candidates without enforcing either in the production path.
 - [x] Compare reserved static/sentinel failure delivery with out-of-band scalar
@@ -384,3 +394,7 @@ consumers.
   prepared-engine estimate across seven distinct shapes. Recursive compiled
   ownership repaired a deliberately exposed template-heavy blind spot; the
   estimator remains a lower-bound experiment and does not select quota policy.
+- 2026-08-31 -- Extended the largest prepared-engine settlement trace to 30
+  seconds. More than 98% of the peak deltas were gone before the first sample;
+  process memory was near baseline by ten seconds, without supporting a
+  portable reclamation-time guarantee.

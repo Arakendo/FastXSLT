@@ -8,12 +8,14 @@ public static class NativeRegistryPressureExperiment
         int items,
         int concurrency,
         int generations,
-        int delayedOutcomes)
+        int delayedOutcomes,
+        int settlementMilliseconds)
     {
         items = Math.Clamp(items, 1, 5_000);
         concurrency = Math.Clamp(concurrency, 1, 32);
         generations = Math.Clamp(generations, 2, 3);
         delayedOutcomes = Math.Clamp(delayedOutcomes, 1, 4_096);
+        settlementMilliseconds = Math.Clamp(settlementMilliseconds, 1_000, 60_000);
 
         var source = BuildSource(items);
         var expected = $"<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>{items}.00</out>";
@@ -82,7 +84,7 @@ public static class NativeRegistryPressureExperiment
                 experiment.Elapsed.TotalMilliseconds));
 
             var priorDelay = 0;
-            foreach (var delay in new[] { 0, 10, 50, 100, 250, 1_000 })
+            foreach (var delay in SettlementSchedule(settlementMilliseconds))
             {
                 if (delay > priorDelay)
                 {
@@ -132,6 +134,18 @@ public static class NativeRegistryPressureExperiment
                 pool.Dispose();
             }
         }
+    }
+
+    private static IReadOnlyList<int> SettlementSchedule(int maximumMilliseconds)
+    {
+        var schedule = new[] { 0, 10, 50, 100, 250, 1_000, 2_000, 5_000, 10_000, 30_000, 60_000 }
+            .Where(delay => delay <= maximumMilliseconds)
+            .ToList();
+        if (schedule[^1] != maximumMilliseconds)
+        {
+            schedule.Add(maximumMilliseconds);
+        }
+        return schedule;
     }
 
     private static NativeRegistryPressureCheckpoint Observe(string phase, double elapsedMilliseconds)

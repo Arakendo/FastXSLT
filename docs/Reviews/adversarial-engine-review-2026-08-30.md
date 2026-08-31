@@ -344,9 +344,10 @@ Validation performed:
     prepared-engine trace are complete under AR-0017.
   - A private compositional retention estimate now tracks seven source-heavy
     and stylesheet-heavy shapes at 90.94%–99.97% of production-like live
-    requested bytes. It remains an unenforced lower-bound experiment; consumer
-    headroom, longer reclamation evidence, and the aggregate policy decision are
-    still open.
+    requested bytes. A 30-second natural-settlement run then returned process
+    memory near baseline, with the peak-to-half transition occurring before the
+    first post-disposal sample. The estimate remains unenforced; consumer
+    headroom and the aggregate policy decision are still open.
 
 ### Finding 7: Template-candidate scans are not represented in work budgets
 
