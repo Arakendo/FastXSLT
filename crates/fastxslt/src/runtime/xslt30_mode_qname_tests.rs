@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 52] = [
+const SELECTED_CASES: [&str; 58] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -70,6 +70,12 @@ const SELECTED_CASES: [&str; 52] = [
     "mode-1604",
     "mode-1605",
     "mode-1606",
+    "mode-1610",
+    "mode-1611",
+    "mode-1612",
+    "mode-1613",
+    "mode-1614",
+    "mode-1615",
     "mode-1904",
 ];
 const STREAMING_EXCLUDED_CASES: [&str; 26] = [
@@ -174,7 +180,7 @@ fn inventories_the_complete_mode_denominator_before_selection() {
         );
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
-    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 52);
+    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 58);
     assert_eq!(
         OVERLAY
             .matches("selection = \"excluded-by-profile\"")
@@ -256,6 +262,21 @@ fn executes_inherited_default_mode_on_literal_and_template_elements() {
         "mode-1604",
         "mode-1605",
         "mode-1606",
+    ] {
+        let (actual, expected) = execute_case(case_name);
+        assert_xml_equivalent(&actual, &expected);
+    }
+}
+
+#[test]
+fn executes_inherited_default_mode_on_if_and_nested_elements() {
+    for case_name in [
+        "mode-1610",
+        "mode-1611",
+        "mode-1612",
+        "mode-1613",
+        "mode-1614",
+        "mode-1615",
     ] {
         let (actual, expected) = execute_case(case_name);
         assert_xml_equivalent(&actual, &expected);

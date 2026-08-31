@@ -67,6 +67,7 @@ struct OutputInspection {
 struct CompiledInspection {
     stylesheet_identity: String,
     declared_version: String,
+    default_initial_mode: Option<String>,
     output: OutputInspection,
     root_template_count: usize,
     root_template_modes: Vec<String>,
@@ -86,6 +87,9 @@ fn inspect_compiled(
     let text_bytes = stylesheet_identity
         .len()
         .checked_add(program.declared_version.len())
+        .and_then(|bytes| {
+            bytes.checked_add(program.default_initial_mode.as_ref().map_or(0, String::len))
+        })
         .and_then(|bytes| output_text_bytes(&program.output)?.checked_add(bytes))
         .and_then(|bytes| {
             bytes.checked_add(program.root_template_modes.iter().map(String::len).sum())
@@ -131,6 +135,7 @@ fn inspect_compiled(
     Ok(CompiledInspection {
         stylesheet_identity: stylesheet_identity.to_owned(),
         declared_version: program.declared_version.clone(),
+        default_initial_mode: program.default_initial_mode.clone(),
         output: inspect_output(&program.output),
         root_template_count: usize::from(program.root_template.is_some()),
         root_template_modes: program.root_template_modes.clone(),
@@ -327,6 +332,7 @@ mod tests {
             CompiledInspection {
                 stylesheet_identity: IDENTITY.to_owned(),
                 declared_version: "1.0".to_owned(),
+                default_initial_mode: None,
                 output: OutputInspection {
                     method: Some("xml".to_owned()),
                     version: None,

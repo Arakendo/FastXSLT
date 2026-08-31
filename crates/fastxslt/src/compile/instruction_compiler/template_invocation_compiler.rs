@@ -32,7 +32,7 @@ pub(super) fn compile_apply_templates(
     ensure_only_attributes(
         document,
         element,
-        &["select", "mode"],
+        &["select", "mode", "default-mode"],
         "xsl:apply-templates",
     )?;
     let location = document.location(element).clone();
@@ -55,10 +55,7 @@ fn compile_effective_default_mode(
     document: &Document,
     element: NodeId,
 ) -> Result<Option<String>, CompileFailure> {
-    let Some(parent) = document.parent(element) else {
-        return Ok(None);
-    };
-    match effective_default_mode(document, parent) {
+    match effective_default_mode(document, element) {
         Some("#unnamed") | None => Ok(None),
         Some(mode) => parse_mode(document, element, mode).map(Some),
     }
@@ -326,7 +323,7 @@ pub(super) fn parse_template_modes(
     let modes = mode
         .split_whitespace()
         .map(|name| {
-            if matches!(name, "#all" | "#default") {
+            if matches!(name, "#all" | "#default" | "#unnamed") {
                 Ok(name.to_owned())
             } else {
                 parse_mode(document, element, name)

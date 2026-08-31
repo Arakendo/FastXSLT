@@ -190,7 +190,7 @@ pub(super) fn accepts_mode(modes: &[String], mode: Option<&str>) -> bool {
     }
     modes.iter().any(|candidate| {
         candidate == "#all"
-            || (candidate == "#default" && mode.is_none())
+            || (matches!(candidate.as_str(), "#default" | "#unnamed") && mode.is_none())
             || mode.is_some_and(|requested| candidate == requested)
     })
 }

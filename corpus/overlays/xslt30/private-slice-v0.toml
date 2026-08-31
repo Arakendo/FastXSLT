@@ -1252,3 +1252,45 @@ case_name = "mode-1606"
 selection = "selected"
 execution = "passed"
 rationale = "An xsl:template resolves a prefixed default-mode to expanded mode identity before compiling its unmoded apply-templates instruction."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1610"
+selection = "selected"
+execution = "passed"
+rationale = "An xsl:if default-mode names mode a for its descendant unmoded apply-templates instruction."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1611"
+selection = "selected"
+execution = "passed"
+rationale = "An xsl:if default-mode=#unnamed shadows surrounding mode selection for its descendant unmoded apply-templates instruction."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1612"
+selection = "selected"
+execution = "passed"
+rationale = "An xsl:if resolves a prefixed default-mode to the matching template's expanded mode identity."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1613"
+selection = "selected"
+execution = "passed"
+rationale = "An explicit default-mode on xsl:apply-templates shadows the inherited xsl:default-mode on its literal result ancestor."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1614"
+selection = "selected"
+execution = "passed"
+rationale = "The stylesheet default-mode supplies the default initial mode and an explicit apply-templates default-mode selects mode b."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1615"
+selection = "selected"
+execution = "passed"
+rationale = "The stylesheet default-mode supplies the default initial mode and its literal-result descendant inherits mode a."

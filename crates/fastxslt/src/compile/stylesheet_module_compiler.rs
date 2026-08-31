@@ -523,6 +523,7 @@ fn compile_simplified_stylesheet_at(
     };
     Ok(StylesheetProgram {
         declared_version: declared_version.to_owned(),
+        default_initial_mode: None,
         source_whitespace: SourceWhitespacePolicy::Preserve,
         typed_mode_requirements: Vec::new(),
         mode_on_no_match: Vec::new(),

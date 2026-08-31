@@ -19,6 +19,7 @@ mod retention;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StylesheetProgram {
     pub(crate) declared_version: String,
+    pub(crate) default_initial_mode: Option<String>,
     pub(crate) source_whitespace: SourceWhitespacePolicy,
     pub(crate) typed_mode_requirements: Vec<TypedModeRequirement>,
     pub(crate) mode_on_no_match: Vec<ModeOnNoMatch>,
@@ -358,6 +359,7 @@ pub(crate) struct EqualityTest {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum BooleanExpression {
     VariableEqualsInteger(EqualityTest),
+    NodeExists(LocationPath),
     Constant(bool),
 }
 

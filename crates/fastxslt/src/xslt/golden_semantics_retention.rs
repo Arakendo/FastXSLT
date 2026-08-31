@@ -14,6 +14,7 @@ use super::{
 impl StylesheetProgram {
     pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
         self.declared_version.capacity()
+            + option_string_owned(self.default_initial_mode.as_ref())
             + vec_owned(&self.typed_mode_requirements, |item| {
                 item.name.capacity() + location_owned(&item.location)
             })
@@ -381,6 +382,7 @@ fn sequence_item_owned(value: &SequenceItemExpression) -> usize {
 fn boolean_expression_owned(value: &BooleanExpression) -> usize {
     match value {
         BooleanExpression::VariableEqualsInteger(test) => test.variable.capacity(),
+        BooleanExpression::NodeExists(path) => path.known_owned_capacity_bytes(),
         BooleanExpression::Constant(_) => 0,
     }
 }

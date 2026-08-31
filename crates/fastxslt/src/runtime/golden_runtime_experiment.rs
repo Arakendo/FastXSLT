@@ -157,6 +157,20 @@ fn execute_program_with_parameters_using(
     representation: WhitespaceRepresentation,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
+    if let Some(name) = program.default_initial_mode.as_deref() {
+        return execute_initial_mode(
+            InitialModeInvocation {
+                program,
+                source,
+                initial_node: source.document_node(),
+                name,
+                parameters,
+                multiple_match_policy,
+                request_id,
+            },
+            control,
+        );
+    }
     validate_whitespace_source(program.source_whitespace, source, request_id, control)?;
     let effective_source = match (program.source_whitespace, representation) {
         (SourceWhitespacePolicy::Preserve, _) => None,
@@ -220,7 +234,6 @@ fn execute_program_with_parameters_using(
     Ok(SemanticResult { children })
 }
 
-#[cfg(test)]
 #[derive(Clone, Copy)]
 struct InitialModeInvocation<'a> {
     program: &'a StylesheetProgram,
@@ -232,7 +245,6 @@ struct InitialModeInvocation<'a> {
     request_id: &'a str,
 }
 
-#[cfg(test)]
 fn execute_initial_mode(
     invocation: InitialModeInvocation<'_>,
     control: &mut InvocationControl,
@@ -314,7 +326,6 @@ fn execute_initial_mode(
     Ok(SemanticResult { children })
 }
 
-#[cfg(test)]
 fn apply_initial_mode_template(
     inputs: &SequenceInputs<'_>,
     node: NodeId,
@@ -356,7 +367,6 @@ fn apply_initial_mode_template(
     apply_builtin_template(inputs, node, Some(mode), parameters, control)
 }
 
-#[cfg(test)]
 fn program_has_mode(program: &StylesheetProgram, name: &str) -> bool {
     program.root_template_modes.iter().any(|mode| mode == name)
         || program
@@ -1163,7 +1173,7 @@ fn execute_if(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    if evaluate_boolean(test, variables, inputs.request_id)? {
+    if evaluate_boolean(inputs, test, execution.node, variables, control)? {
         execute_sequence(inputs, body, execution, variables, control)
     } else {
         Ok(Vec::new())
@@ -1179,7 +1189,7 @@ fn execute_choose(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     for branch in branches {
-        if evaluate_boolean(&branch.test, variables, inputs.request_id)? {
+        if evaluate_boolean(inputs, &branch.test, execution.node, variables, control)? {
             return execute_sequence(inputs, &branch.body, execution, variables, control);
         }
     }
@@ -1187,18 +1197,26 @@ fn execute_choose(
 }
 
 fn evaluate_boolean(
+    inputs: &SequenceInputs<'_>,
     expression: &BooleanExpression,
+    context: Option<NodeId>,
     variables: &RuntimeVariables,
-    request_id: &str,
+    control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
     match expression {
         BooleanExpression::Constant(value) => Ok(*value),
+        BooleanExpression::NodeExists(path) => {
+            let (source, context) = required_source_context(inputs, context)?;
+            evaluate_location_path_controlled(source, context, path, control)
+                .map(|nodes| !nodes.is_empty())
+                .map_err(|failure| control_failure(failure, inputs.request_id))
+        }
         BooleanExpression::VariableEqualsInteger(test) => {
             let value = variables.atomics.get(&test.variable).ok_or_else(|| {
                 failure(
                     "FXRT0002",
                     FailureCategory::Invalid,
-                    Some(request_id),
+                    Some(inputs.request_id),
                     format!("unbound variable: ${}", test.variable),
                 )
             })?;

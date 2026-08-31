@@ -91,6 +91,13 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
 ) -> Result<StylesheetProgram, CompileFailure> {
     require_stylesheet_root(document, root)?;
     let declared_version = required_attribute(document, root, None, "version")?.to_owned();
+    let default_initial_mode = optional_attribute(document, root, None, "default-mode")
+        .map(|mode| match mode {
+            "#unnamed" => Ok(None),
+            mode => instruction_compiler::parse_mode(document, root, mode).map(Some),
+        })
+        .transpose()?
+        .flatten();
     let top_level_children = meaningful_children(document, root)
         .into_iter()
         .filter(|child| !excluded_top_level.contains(child))
@@ -184,6 +191,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
 
     Ok(StylesheetProgram {
         declared_version,
+        default_initial_mode,
         source_whitespace,
         typed_mode_requirements: modes.typed,
         mode_on_no_match: modes.on_no_match,
@@ -295,7 +303,7 @@ fn compile_top_level_template(
                 || matched_template
                     .modes
                     .iter()
-                    .any(|mode| matches!(mode.as_str(), "#default" | "#all"));
+                    .any(|mode| matches!(mode.as_str(), "#default" | "#unnamed" | "#all"));
             if competes_with_default {
                 if let Some(previous) = root_template.take() {
                     matched_templates.push(MatchedTemplate {
@@ -1329,6 +1337,14 @@ mod tests {
                     Instruction::ApplyTemplates { mode: Some(mode), .. }
                 ] if mode == "b")
         ));
+
+        let stylesheet = parse_stylesheet(
+            "memory:default-initial-mode.xsl",
+            br##"<xsl:stylesheet version="3.0" default-mode="a" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/" mode="#unnamed a"><out/></xsl:template></xsl:stylesheet>"##,
+        );
+        let program = compile_stylesheet(&stylesheet).expect("default initial mode should compile");
+        assert_eq!(program.default_initial_mode.as_deref(), Some("a"));
+        assert_eq!(program.matched_templates[0].modes, ["#unnamed", "a"]);
     }
 
     #[test]

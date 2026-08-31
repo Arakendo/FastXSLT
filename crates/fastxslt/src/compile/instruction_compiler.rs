@@ -33,6 +33,14 @@ use source_copy_compiler::compile_copy;
 #[path = "instruction_compiler/template_invocation_compiler.rs"]
 mod template_invocation_compiler;
 
+pub(super) fn parse_mode(
+    document: &Document,
+    element: NodeId,
+    mode: &str,
+) -> Result<String, CompileFailure> {
+    template_invocation_compiler::parse_mode(document, element, mode)
+}
+
 use super::{
     CompileCategory, CompileFailure, XML_SCHEMA_NAMESPACE, XSLT_NAMESPACE, effective_default_mode,
     effective_xpath_default_namespace, ensure_no_meaningful_children, ensure_only_attributes,
@@ -778,7 +786,7 @@ fn compile_sequence_nodes(
 }
 
 fn compile_if(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
-    ensure_only_attributes(document, element, &["test"], "xsl:if")?;
+    ensure_only_attributes(document, element, &["test", "default-mode"], "xsl:if")?;
     let location = document.location(element).clone();
     let expression = required_attribute(document, element, None, "test")?;
     Ok(Instruction::If {
@@ -844,6 +852,11 @@ fn parse_boolean_expression(
     location: &SourceLocation,
 ) -> Result<BooleanExpression, CompileFailure> {
     let parsed = strip_enclosing_parentheses(expression.trim());
+    if parsed.starts_with('/') || parsed.starts_with('@') {
+        return parse_location_path(parsed, location.clone())
+            .map(BooleanExpression::NodeExists)
+            .map_err(map_path_failure);
+    }
     if let Some((variable, integer)) = parsed.split_once('=') {
         let variable = variable.trim().strip_prefix('$').unwrap_or_default();
         if is_ascii_ncname(variable) {
