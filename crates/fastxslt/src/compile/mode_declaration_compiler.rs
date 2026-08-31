@@ -215,6 +215,7 @@ fn compile_on_no_match(
     let policy = match value {
         "fail" => OnNoMatchPolicy::Fail,
         "shallow-copy" => OnNoMatchPolicy::ShallowCopy,
+        "text-only-copy" => OnNoMatchPolicy::TextOnlyCopy,
         _ => {
             return Err(unsupported(
                 "FXST1041",
@@ -376,6 +377,34 @@ mod tests {
         assert_eq!(program.mode_on_no_match.len(), 1);
         assert_eq!(program.mode_on_no_match[0].name.as_deref(), Some("m"));
         assert_eq!(program.mode_on_no_match[0].policy, OnNoMatchPolicy::Fail);
+    }
+
+    #[test]
+    fn retains_named_and_unnamed_text_only_copy_policies() {
+        let named = compile("on-no-match", "text-only-copy")
+            .expect("named text-only-copy declaration should compile");
+        assert_eq!(
+            named.mode_on_no_match[0].policy,
+            OnNoMatchPolicy::TextOnlyCopy
+        );
+
+        let parsed = parse_document(
+            "memory:unnamed-text-only-copy.xsl",
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:mode on-no-match="text-only-copy"/></xsl:stylesheet>"#,
+            ParseLimits {
+                max_events: 32,
+                max_depth: 8,
+            },
+        )
+        .expect("parse unnamed text-only-copy fixture");
+        let document = Document::from_parsed(parsed).expect("build fixture document");
+        let unnamed = compile_stylesheet(&document)
+            .expect("unnamed text-only-copy declaration should compile");
+        assert_eq!(unnamed.mode_on_no_match[0].name, None);
+        assert_eq!(
+            unnamed.mode_on_no_match[0].policy,
+            OnNoMatchPolicy::TextOnlyCopy
+        );
     }
 
     #[test]

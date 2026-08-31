@@ -50,6 +50,7 @@ pub(crate) struct ModeOnNoMatch {
 pub(crate) enum OnNoMatchPolicy {
     Fail,
     ShallowCopy,
+    TextOnlyCopy,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

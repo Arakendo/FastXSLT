@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 65] = [
+const SELECTED_CASES: [&str; 66] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -52,6 +52,7 @@ const SELECTED_CASES: [&str; 65] = [
     "mode-1203",
     "mode-1204",
     "mode-1301",
+    "mode-1405",
     "mode-1423",
     "mode-1431",
     "mode-1439",
@@ -113,7 +114,7 @@ const STREAMING_EXCLUDED_CASES: [&str; 26] = [
     "mode-1506",
     "mode-1903",
 ];
-const PACKAGE_EXCLUDED_CASES: [&str; 18] = [
+const PACKAGE_EXCLUDED_CASES: [&str; 19] = [
     "mode-1701",
     "mode-1701a",
     "mode-1702",
@@ -132,6 +133,7 @@ const PACKAGE_EXCLUDED_CASES: [&str; 18] = [
     "mode-1712",
     "mode-1713",
     "mode-1714err",
+    "mode-1803",
 ];
 const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/mode-denominator-v0.toml");
 
@@ -181,18 +183,23 @@ fn inventories_the_complete_mode_denominator_before_selection() {
             .find(|case| attribute(&document, *case, "name") == Some(case_name))
             .expect("package-excluded case");
         let test = child_named(&document, case, "test").expect("test metadata");
+        let has_package_artifact = child_named(&document, test, "package").is_some();
+        let has_stylesheet_wrapped_package = case_name == "mode-1803"
+            && child_named(&document, test, "stylesheet")
+                .and_then(|stylesheet| attribute(&document, stylesheet, "file"))
+                == Some("mode-1803.xsl");
         assert!(
-            child_named(&document, test, "package").is_some(),
+            has_package_artifact || has_stylesheet_wrapped_package,
             "{case_name} must retain its native package artifact"
         );
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
-    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 65);
+    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 66);
     assert_eq!(
         OVERLAY
             .matches("selection = \"excluded-by-profile\"")
             .count(),
-        44
+        45
     );
 }
 
@@ -580,6 +587,18 @@ fn executes_mode_1301_with_stylesheet_dependent_whitespace_reference() {
 }
 
 #[test]
+fn executes_text_only_copy_builtin_rules_in_a_named_mode() {
+    let (actual, expected) = execute_case_with_policy("mode-1405", MultipleMatchPolicy::UseLast)
+        .expect("selected text-only-copy case should execute");
+    assert!(expected.is_none(), "native case uses a semantic assertion");
+    let normalized = without_xml_declaration(&actual)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(normalized.starts_with("The First Book of Moses, Called GENESIS."));
+}
+
+#[test]
 fn executes_all_and_current_modes_across_copied_node_kinds() {
     let (actual, expected) = execute_case("mode-1501");
     assert_xml_equivalent(&actual, &expected);
@@ -670,7 +689,10 @@ fn execute_case_with_policy(
         1,
         ExecutionPolicy {
             denied_sources: HashSet::new(),
-            serialized_byte_limit: if matches!(case_name, "mode-1423" | "mode-1445" | "mode-1446") {
+            serialized_byte_limit: if matches!(
+                case_name,
+                "mode-1405" | "mode-1423" | "mode-1445" | "mode-1446"
+            ) {
                 16_384
             } else {
                 4_096

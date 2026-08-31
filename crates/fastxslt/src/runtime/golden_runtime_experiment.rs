@@ -1670,8 +1670,21 @@ fn apply_builtin_template(
             OnNoMatchPolicy::ShallowCopy => {
                 return apply_shallow_copy_template(inputs, node, mode, parameters, control);
             }
+            OnNoMatchPolicy::TextOnlyCopy => {
+                return apply_text_only_copy_template(inputs, node, mode, parameters, control);
+            }
         }
     }
+    apply_text_only_copy_template(inputs, node, mode, parameters, control)
+}
+
+fn apply_text_only_copy_template(
+    inputs: &SequenceInputs<'_>,
+    node: NodeId,
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let source = inputs
         .source
         .expect("built-in source templates require a source document");
