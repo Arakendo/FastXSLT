@@ -207,6 +207,18 @@ execution = "passed"
 rationale = "The invalid mixed-case warning-on-no-match boolean reports native static error XTSE0020 before unsupported on-no-match execution semantics are considered."
 
 [[case_override]]
+case_name = "mode-1445"
+selection = "selected"
+execution = "passed"
+rationale = "The typed=' false ' lexical is inert and the named shallow-copy mode reproduces the native source document through bounded built-in traversal."
+
+[[case_override]]
+case_name = "mode-1446"
+selection = "selected"
+execution = "passed"
+rationale = "The typed='0' lexical is inert and shares the same bounded shallow-copy semantics and native result as mode-1445."
+
+[[case_override]]
 case_name = "mode-1447"
 selection = "selected"
 execution = "passed"

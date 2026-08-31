@@ -150,6 +150,20 @@ rationale = "The native XTSE0020 assertion matches the structured static error f
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1445"
+selection = "selected"
+execution = "passed"
+rationale = "The inert whitespace-padded false typed lexical composes with bounded shallow-copy traversal and the unchanged native XML result."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1446"
+selection = "selected"
+execution = "passed"
+rationale = "The inert numeric-zero typed lexical composes with the same shallow-copy path and unchanged native XML result."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-1447"
 selection = "selected"
 execution = "passed"

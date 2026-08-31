@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 44] = [
+const SELECTED_CASES: [&str; 46] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -56,6 +56,8 @@ const SELECTED_CASES: [&str; 44] = [
     "mode-1431",
     "mode-1439",
     "mode-1444",
+    "mode-1445",
+    "mode-1446",
     "mode-1447",
     "mode-1501",
     "mode-1502",
@@ -166,7 +168,7 @@ fn inventories_the_complete_mode_denominator_before_selection() {
         );
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
-    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 44);
+    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 46);
     assert_eq!(
         OVERLAY
             .matches("selection = \"excluded-by-profile\"")
@@ -386,6 +388,14 @@ fn executes_fail_on_no_match_when_every_visited_node_has_a_rule() {
 }
 
 #[test]
+fn executes_shallow_copy_with_both_false_typed_lexicals() {
+    for case_name in ["mode-1445", "mode-1446"] {
+        let (actual, expected) = execute_case(case_name);
+        assert_xml_equivalent(&actual, &expected);
+    }
+}
+
+#[test]
 fn rejects_nonempty_mode_declaration_with_native_static_error() {
     let document = load_test_set();
     let case = find_case(&document, "mode-1108");
@@ -575,7 +585,7 @@ fn execute_case_with_policy(
         1,
         ExecutionPolicy {
             denied_sources: HashSet::new(),
-            serialized_byte_limit: if case_name == "mode-1423" {
+            serialized_byte_limit: if matches!(case_name, "mode-1423" | "mode-1445" | "mode-1446") {
                 16_384
             } else {
                 4_096

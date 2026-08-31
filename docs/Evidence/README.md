@@ -180,3 +180,4 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `mode-1439` Typed-Mode Untyped-Source Error](xslt30-mode-1439-typed-untyped-error-2026-08-30.md)
 - [XSLT30 `mode-1431` Fail-on-No-Match Error](xslt30-mode-1431-fail-on-no-match-error-2026-08-30.md)
 - [XSLT30 `mode-1423` Fail-on-No-Match Success Control](xslt30-mode-1423-fail-on-no-match-success-control-2026-08-30.md)
+- [XSLT30 `mode-1445`/`mode-1446` Bounded Shallow-Copy](xslt30-mode-1445-1446-bounded-shallow-copy-2026-08-30.md)

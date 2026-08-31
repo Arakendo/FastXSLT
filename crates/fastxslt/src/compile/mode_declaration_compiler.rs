@@ -3,7 +3,9 @@
 use std::collections::BTreeMap;
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
-use crate::xslt::golden_semantics_experiment::{FailOnNoMatchMode, TypedModeRequirement};
+use crate::xslt::golden_semantics_experiment::{
+    ModeOnNoMatch, OnNoMatchPolicy, TypedModeRequirement,
+};
 
 use super::{
     CompileFailure, ensure_no_meaningful_children, ensure_only_attributes, invalid,
@@ -88,7 +90,7 @@ fn validate_on_no_match(
 
 pub(super) struct CompiledModeDeclaration {
     pub(super) typed_requirement: Option<TypedModeRequirement>,
-    pub(super) fail_on_no_match: Option<FailOnNoMatchMode>,
+    pub(super) on_no_match: Option<ModeOnNoMatch>,
 }
 
 pub(super) fn validate_mode_declaration(
@@ -178,41 +180,54 @@ fn compile_mode_semantics(
                 document.location(element),
             ));
         };
+        let on_no_match = compile_on_no_match(document, element, Some(name.clone()))?;
+        let typed_requirement = Some(TypedModeRequirement {
+            name,
+            location: document.location(element).clone(),
+        });
         return Ok(CompiledModeDeclaration {
-            typed_requirement: Some(TypedModeRequirement {
-                name,
-                location: document.location(element).clone(),
-            }),
-            fail_on_no_match: None,
+            typed_requirement,
+            on_no_match,
         });
     }
-    if let Some(on_no_match) = optional_attribute(document, element, None, "on-no-match") {
-        if on_no_match == "fail" {
-            return Ok(CompiledModeDeclaration {
-                typed_requirement: None,
-                fail_on_no_match: Some(FailOnNoMatchMode {
-                    name: mode_name,
-                    location: document.location(element).clone(),
-                }),
-            });
-        }
-        return Err(unsupported(
-            "FXST1041",
-            "this explicit on-no-match policy is outside the private mode declaration slice",
-            document.location(element),
-        ));
-    }
-    if mode_name.is_none() {
+    let on_no_match = compile_on_no_match(document, element, mode_name.clone())?;
+    if mode_name.is_none() && on_no_match.is_none() {
         return Err(unsupported(
             "FXST1037",
-            "the private xsl:mode declaration slice requires a named mode or on-no-match='fail'",
+            "the private xsl:mode declaration slice requires a named mode or an admitted on-no-match policy",
             document.location(element),
         ));
     }
     Ok(CompiledModeDeclaration {
         typed_requirement: None,
-        fail_on_no_match: None,
+        on_no_match,
     })
+}
+
+fn compile_on_no_match(
+    document: &Document,
+    element: NodeId,
+    mode_name: Option<String>,
+) -> Result<Option<ModeOnNoMatch>, CompileFailure> {
+    let Some(value) = optional_attribute(document, element, None, "on-no-match") else {
+        return Ok(None);
+    };
+    let policy = match value {
+        "fail" => OnNoMatchPolicy::Fail,
+        "shallow-copy" => OnNoMatchPolicy::ShallowCopy,
+        _ => {
+            return Err(unsupported(
+                "FXST1041",
+                "this explicit on-no-match policy is outside the private mode declaration slice",
+                document.location(element),
+            ));
+        }
+    };
+    Ok(Some(ModeOnNoMatch {
+        name: mode_name,
+        policy,
+        location: document.location(element).clone(),
+    }))
 }
 
 fn validate_visibility(
@@ -290,6 +305,7 @@ mod tests {
     use super::super::{CompileCategory, compile_stylesheet};
     use crate::xdm::owned_tree_experiment::Document;
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+    use crate::xslt::golden_semantics_experiment::OnNoMatchPolicy;
 
     fn compile(
         attribute: &str,
@@ -357,8 +373,9 @@ mod tests {
     fn retains_named_fail_on_no_match_policy() {
         let program = compile("on-no-match", "fail")
             .expect("named fail-on-no-match declaration should compile");
-        assert_eq!(program.fail_on_no_match_modes.len(), 1);
-        assert_eq!(program.fail_on_no_match_modes[0].name.as_deref(), Some("m"));
+        assert_eq!(program.mode_on_no_match.len(), 1);
+        assert_eq!(program.mode_on_no_match[0].name.as_deref(), Some("m"));
+        assert_eq!(program.mode_on_no_match[0].policy, OnNoMatchPolicy::Fail);
     }
 
     #[test]

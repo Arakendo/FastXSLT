@@ -17,7 +17,7 @@ pub(crate) struct StylesheetProgram {
     pub(crate) declared_version: String,
     pub(crate) source_whitespace: SourceWhitespacePolicy,
     pub(crate) typed_mode_requirements: Vec<TypedModeRequirement>,
-    pub(crate) fail_on_no_match_modes: Vec<FailOnNoMatchMode>,
+    pub(crate) mode_on_no_match: Vec<ModeOnNoMatch>,
     pub(crate) output: OutputSettings,
     pub(crate) root_template: Option<Template>,
     pub(crate) root_template_modes: Vec<String>,
@@ -33,9 +33,16 @@ pub(crate) struct TypedModeRequirement {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct FailOnNoMatchMode {
+pub(crate) struct ModeOnNoMatch {
     pub(crate) name: Option<String>,
+    pub(crate) policy: OnNoMatchPolicy,
     pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum OnNoMatchPolicy {
+    Fail,
+    ShallowCopy,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

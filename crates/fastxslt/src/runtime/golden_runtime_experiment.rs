@@ -10,8 +10,8 @@ use crate::xpath::for_distinct_values_experiment::{
 };
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, BooleanExpression, Instruction, NodeTest, SequenceItemExpression,
-    SourceWhitespacePolicy, StylesheetProgram, TemplateArgument,
+    ApplySelection, BooleanExpression, Instruction, NodeTest, OnNoMatchPolicy,
+    SequenceItemExpression, SourceWhitespacePolicy, StylesheetProgram, TemplateArgument,
 };
 
 #[path = "resource_compiler.rs"]
@@ -325,6 +325,10 @@ fn program_has_mode(program: &StylesheetProgram, name: &str) -> bool {
             .typed_mode_requirements
             .iter()
             .any(|requirement| requirement.name == name)
+        || program
+            .mode_on_no_match
+            .iter()
+            .any(|policy| policy.name.as_deref() == Some(name))
 }
 
 #[cfg(test)]
@@ -1475,19 +1479,26 @@ fn apply_builtin_template(
     parameters: &BTreeMap<String, InvocationParameter>,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    if let Some(policy) = inputs
+    if let Some(mode_policy) = inputs
         .program
-        .fail_on_no_match_modes
+        .mode_on_no_match
         .iter()
         .find(|policy| policy.name.as_deref() == mode)
     {
-        return Err(failure_at(
-            "XTDE0555",
-            FailureCategory::Invalid,
-            Some(inputs.request_id),
-            policy.location.clone(),
-            "the active mode's on-no-match='fail' policy rejected an unmatched node",
-        ));
+        match mode_policy.policy {
+            OnNoMatchPolicy::Fail => {
+                return Err(failure_at(
+                    "XTDE0555",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    mode_policy.location.clone(),
+                    "the active mode's on-no-match='fail' policy rejected an unmatched node",
+                ));
+            }
+            OnNoMatchPolicy::ShallowCopy => {
+                return apply_shallow_copy_template(inputs, node, mode, parameters, control);
+            }
+        }
     }
     let source = inputs
         .source
@@ -1522,6 +1533,134 @@ fn apply_builtin_template(
         }
         NodeKind::Comment | NodeKind::ProcessingInstruction => Ok(Vec::new()),
     }
+}
+
+fn apply_shallow_copy_template(
+    inputs: &SequenceInputs<'_>,
+    node: NodeId,
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let source = inputs
+        .source
+        .expect("shallow-copy built-in templates require a source document");
+    match source.kind(node) {
+        NodeKind::Document => apply_child_templates(inputs, node, mode, parameters, control),
+        NodeKind::Element => {
+            control
+                .charge(WorkDomain::ResultNode, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            Ok(vec![ResultNode::Element {
+                name: source
+                    .name(node)
+                    .expect("source element has a name")
+                    .clone(),
+                namespaces: source.namespace_declarations(node).to_vec(),
+                attributes: shallow_copy_attributes(inputs, node, mode, control)?,
+                children: apply_child_templates(inputs, node, mode, parameters, control)?,
+            }])
+        }
+        NodeKind::Text => {
+            let mut result = Vec::new();
+            append_text(
+                &mut result,
+                source.value(node).unwrap_or_default(),
+                inputs.request_id,
+                control,
+            )?;
+            Ok(result)
+        }
+        NodeKind::ProcessingInstruction => Ok(vec![construct_processing_instruction(
+            &source
+                .name(node)
+                .expect("processing instruction has a target")
+                .local,
+            source.value(node).unwrap_or_default(),
+            inputs.request_id,
+            control,
+        )?]),
+        NodeKind::Attribute | NodeKind::Comment => Err(failure_at(
+            "FXRT1012",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            source.location(node).clone(),
+            "this source node kind is outside the bounded shallow-copy result-tree slice",
+        )),
+    }
+}
+
+fn shallow_copy_attributes(
+    inputs: &SequenceInputs<'_>,
+    element: NodeId,
+    mode: Option<&str>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultAttribute>, ExecutionFailure> {
+    let source = inputs
+        .source
+        .expect("shallow-copy attributes require a source");
+    let mut result = Vec::new();
+    for attribute in source.attributes(element).iter().copied() {
+        charge_xslt_instruction(control, inputs.request_id)?;
+        if select_template_with_index(
+            inputs.program,
+            &TemplateSelectionContext {
+                source,
+                node: attribute,
+                mode,
+                variables: &inputs.globals.atomics,
+                request_id: inputs.request_id,
+            },
+            inputs.multiple_match_policy,
+            control,
+        )?
+        .is_some()
+        {
+            return Err(failure_at(
+                "FXRT1013",
+                FailureCategory::Unsupported,
+                Some(inputs.request_id),
+                source.location(attribute).clone(),
+                "attribute-template overrides are outside the bounded shallow-copy result-tree slice",
+            ));
+        }
+        control
+            .charge(WorkDomain::ResultNode, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        result.push(ResultAttribute {
+            name: source
+                .name(attribute)
+                .expect("source attribute has a name")
+                .clone(),
+            value: source.string_value(attribute),
+        });
+    }
+    Ok(result)
+}
+
+fn apply_child_templates(
+    inputs: &SequenceInputs<'_>,
+    node: NodeId,
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let source = inputs.source.expect("built-in traversal requires a source");
+    let mut result = Vec::new();
+    let children = source.children(node);
+    let focus_size = children.len();
+    for (offset, child) in children.iter().copied().enumerate() {
+        result.extend(apply_template_at(
+            inputs,
+            child,
+            mode,
+            parameters,
+            offset + 1,
+            focus_size,
+            control,
+        )?);
+    }
+    Ok(result)
 }
 
 fn append_text(

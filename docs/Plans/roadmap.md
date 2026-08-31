@@ -555,8 +555,9 @@ The unchanged `mode-1431` case now retains the unnamed mode's
 when dispatch reaches the first unmatched source text node. The policy is
 checked only after normal template selection fails, so matching document and
 element templates remain authoritative. The diagnostic retains request identity
-and the mode-declaration location. Other `on-no-match` policies remain
-unsupported. The mode denominator advances to 43 passes, 44 profile
+and the mode-declaration location. That slice left other `on-no-match`
+policies unsupported; bounded shallow-copy is admitted separately below while
+the remaining policies stay open. The mode denominator advanced to 43 passes, 44 profile
 exclusions, and 82 visible default not-run cases.
 [Evidence](../Evidence/xslt30-mode-1431-fail-on-no-match-error-2026-08-30.md)
 
@@ -568,6 +569,17 @@ serialization ceiling rather than weakening the engine's bounded-output
 contract. The mode denominator advances to 44 passes, 44 profile exclusions,
 and 81 visible default not-run cases.
 [Evidence](../Evidence/xslt30-mode-1423-fail-on-no-match-success-control-2026-08-30.md)
+
+The paired unchanged `mode-1445` and `mode-1446` cases now execute a bounded
+`on-no-match="shallow-copy"` policy while proving the whitespace-padded
+`typed=" false "` and numeric `typed="0"` forms remain inert. Normal template
+selection still runs first; the built-in policy copies the document traversal,
+elements, namespaces, attributes, text, and processing instructions required by
+the native source. Comment results, standalone attribute results, and
+attribute-template interception remain explicit structured unsupported outcomes
+instead of becoming partial output. The mode denominator advances to 46 passes,
+44 profile exclusions, and 79 visible default not-run cases.
+[Evidence](../Evidence/xslt30-mode-1445-1446-bounded-shallow-copy-2026-08-30.md)
 
 ## Corpus audit -- 2026-08-30
 
@@ -608,10 +620,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 44 | 0 | 44 | 81 |
+| `attr/mode` | 169 | 46 | 0 | 44 | 79 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **238** | **3** | **49** | **241** |
+| **Conserved total** | **531** | **240** | **3** | **49** | **239** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1461,6 +1473,11 @@ failed, and harness-error cases without an unqualified conformance claim.
 - [x] Execute `mode-1423` as the positive fail-on-no-match control. Prove the
   policy does not preempt matching document, element, or text templates and
   retain a bounded case-specific output ceiling for the native result.
+- [x] Execute `mode-1445` and `mode-1446` through a bounded shallow-copy
+  built-in policy while preserving inert `typed=false/0` semantics. Retain
+  ordinary template precedence and explicitly reject comment copying,
+  standalone attribute results, and attribute-template interception until the
+  result-tree representation owns them.
 - [x] Execute `mode-1507` through `mode-1509` by validating mode name and
   visibility constraints before unrelated unsupported template expressions.
   Preserve native `XTSE0020` and keep valid visibility behavior private and

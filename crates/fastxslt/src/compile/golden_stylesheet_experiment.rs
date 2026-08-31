@@ -179,7 +179,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         declared_version,
         source_whitespace,
         typed_mode_requirements: modes.typed,
-        fail_on_no_match_modes: modes.fail,
+        mode_on_no_match: modes.on_no_match,
         output: output.map_or_else(default_output_settings, |declaration| declaration.settings),
         root_template,
         root_template_modes,
@@ -192,13 +192,13 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
 #[derive(Default)]
 struct CompiledModes {
     typed: Vec<crate::xslt::golden_semantics_experiment::TypedModeRequirement>,
-    fail: Vec<crate::xslt::golden_semantics_experiment::FailOnNoMatchMode>,
+    on_no_match: Vec<crate::xslt::golden_semantics_experiment::ModeOnNoMatch>,
 }
 
 impl CompiledModes {
     fn push(&mut self, declaration: mode_declaration_compiler::CompiledModeDeclaration) {
         self.typed.extend(declaration.typed_requirement);
-        self.fail.extend(declaration.fail_on_no_match);
+        self.on_no_match.extend(declaration.on_no_match);
     }
 }
 
