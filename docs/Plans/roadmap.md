@@ -700,6 +700,16 @@ unchanged XML assertions pass. The mode denominator advances to 58 passes, 44
 profile exclusions, and 67 visible default not-run cases.
 [Evidence](../Evidence/xslt30-mode-1610-1615-default-mode-scope-and-entry-2026-08-31.md)
 
+The adjacent `mode-1607` through `mode-1609` trio now carries inherited
+`default-mode` through an ordinary source-node `xsl:for-each`. A private
+source-node iteration instruction evaluates its selection under the existing
+XPath budget, establishes node/position/size focus for every selected item,
+and preserves the current mode and template identity for its sequence
+constructor. Named, unnamed, and qualified defaults all pass unchanged. The
+mode denominator advances to 61 passes, 44 profile exclusions, and 64 visible
+default not-run cases.
+[Evidence](../Evidence/xslt30-mode-1607-1609-source-for-each-default-mode-2026-08-31.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -739,10 +749,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 58 | 0 | 44 | 67 |
+| `attr/mode` | 169 | 61 | 0 | 44 | 64 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **252** | **3** | **49** | **227** |
+| **Conserved total** | **531** | **255** | **3** | **49** | **224** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -797,7 +807,7 @@ count:
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
 2. [ ] Continue coherent semantic slices through the 160 visible `output`
-   gaps and 67 visible `mode` gaps. Each promotion still requires native
+   gaps and 64 visible `mode` gaps. Each promotion still requires native
    metadata validation, a focused control, and an owned comparator or exact
    diagnostic—not merely successful stylesheet execution.
 3. [ ] Give `AxisStep.xml` and `fn/deep-equal.xml` complete QT3 overlays so all

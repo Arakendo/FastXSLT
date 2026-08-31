@@ -297,6 +297,24 @@ execution = "passed"
 rationale = "An xsl:template resolves a prefixed default-mode to expanded mode identity before compiling its unmoded apply-templates instruction."
 
 [[case_override]]
+case_name = "mode-1607"
+selection = "selected"
+execution = "passed"
+rationale = "A source-node xsl:for-each changes focus while its default-mode supplies named dispatch to the descendant unmoded apply-templates instruction."
+
+[[case_override]]
+case_name = "mode-1608"
+selection = "selected"
+execution = "passed"
+rationale = "A source-node xsl:for-each changes focus while default-mode=#unnamed preserves unnamed descendant dispatch."
+
+[[case_override]]
+case_name = "mode-1609"
+selection = "selected"
+execution = "passed"
+rationale = "A source-node xsl:for-each resolves its prefixed default-mode to expanded identity for descendant dispatch."
+
+[[case_override]]
 case_name = "mode-1610"
 selection = "selected"
 execution = "passed"

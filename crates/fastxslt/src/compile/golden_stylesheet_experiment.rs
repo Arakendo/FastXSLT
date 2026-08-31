@@ -1633,7 +1633,7 @@ mod tests {
 
         let unsupported = parse_stylesheet(
             "memory:unsupported.xsl",
-            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><xsl:for-each select="item"/></xsl:template></xsl:stylesheet>"#,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><xsl:message>unsupported</xsl:message></xsl:template></xsl:stylesheet>"#,
         );
         let failure =
             compile_stylesheet(&unsupported).expect_err("unsupported instruction should fail");

@@ -298,6 +298,11 @@ pub(crate) enum Instruction {
         body: Vec<Instruction>,
         location: SourceLocation,
     },
+    ForEachNodes {
+        select: ApplySelection,
+        body: Vec<Instruction>,
+        location: SourceLocation,
+    },
     NextMatch {
         arguments: Vec<TemplateArgument>,
         location: SourceLocation,

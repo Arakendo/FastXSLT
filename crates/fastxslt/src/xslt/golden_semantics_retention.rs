@@ -245,11 +245,9 @@ fn instruction_owned(value: &Instruction) -> usize {
             arguments,
             location,
         } => apply_templates_owned(select.as_ref(), mode.as_ref(), arguments, location),
-        Instruction::ForEachTemporaryRoot {
-            variable,
-            body,
-            location,
-        } => variable.capacity() + vec_owned(body, instruction_owned) + location_owned(location),
+        Instruction::ForEachTemporaryRoot { .. } | Instruction::ForEachNodes { .. } => {
+            for_each_owned(value)
+        }
         Instruction::NextMatch {
             arguments,
             location,
@@ -279,6 +277,26 @@ fn instruction_owned(value: &Instruction) -> usize {
             body,
             location,
         } => copy_owned(attributes, body, location),
+    }
+}
+
+fn for_each_owned(value: &Instruction) -> usize {
+    match value {
+        Instruction::ForEachTemporaryRoot {
+            variable,
+            body,
+            location,
+        } => variable.capacity() + vec_owned(body, instruction_owned) + location_owned(location),
+        Instruction::ForEachNodes {
+            select,
+            body,
+            location,
+        } => {
+            apply_selection_owned(select)
+                + vec_owned(body, instruction_owned)
+                + location_owned(location)
+        }
+        _ => unreachable!("for-each accounting receives only for-each instructions"),
     }
 }
 

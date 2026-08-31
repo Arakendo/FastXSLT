@@ -236,7 +236,12 @@ fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction,
         .strip_prefix('$')
         .filter(|name| is_ascii_ncname(name))
     {
-        ensure_only_attributes(document, element, &["select"], "xsl:for-each")?;
+        ensure_only_attributes(
+            document,
+            element,
+            &["select", "default-mode"],
+            "xsl:for-each",
+        )?;
         return Ok(Instruction::ForEachTemporaryRoot {
             variable: variable.to_owned(),
             body: compile_sequence(document, element)?,
@@ -257,11 +262,23 @@ fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction,
             }
         }
     }
-    Err(unsupported(
-        "FXST1006",
-        "xsl:for-each is outside the private instruction slice",
-        document.location(element),
-    ))
+    ensure_only_attributes(
+        document,
+        element,
+        &["select", "default-mode"],
+        "xsl:for-each",
+    )?;
+    let location = document.location(element).clone();
+    Ok(Instruction::ForEachNodes {
+        select: template_invocation_compiler::parse_apply_selection(
+            document,
+            element,
+            select,
+            location.clone(),
+        )?,
+        body: compile_sequence(document, element)?,
+        location,
+    })
 }
 
 fn is_static_integer_range(expression: &str) -> bool {

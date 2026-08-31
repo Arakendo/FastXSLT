@@ -591,35 +591,15 @@ fn execute_instruction(
                 control,
             )?);
         }
-        Instruction::ForEachTemporaryRoot { variable, body, .. } => result.extend(
-            execute_for_each_temporary_root(inputs, variable, body, execution, scope, control)?,
-        ),
-        Instruction::NextMatch { .. } | Instruction::ApplyImports { .. } => result.extend(
-            execute_continuation_instruction(inputs, instruction, execution, scope, control)?,
-        ),
-        Instruction::If { test, body, .. } => {
-            result.extend(execute_if(inputs, test, body, execution, scope, control)?);
-        }
-        Instruction::Choose {
-            branches,
-            otherwise,
-            ..
-        } => {
-            result.extend(execute_choose(
-                inputs, branches, otherwise, execution, scope, control,
-            )?);
-        }
-        Instruction::CallTemplate { .. } => result.extend(execute_call(
-            inputs,
-            instruction,
-            execution,
-            scope,
-            control,
-        )?),
-        Instruction::CopyOfCurrent { .. } => {
-            result.extend(execute_copy_of_current(inputs, execution.node, control)?);
-        }
-        Instruction::Copy { .. } => result.extend(execute_copy(
+        Instruction::ForEachTemporaryRoot { .. }
+        | Instruction::ForEachNodes { .. }
+        | Instruction::NextMatch { .. }
+        | Instruction::ApplyImports { .. }
+        | Instruction::If { .. }
+        | Instruction::Choose { .. }
+        | Instruction::CallTemplate { .. }
+        | Instruction::CopyOfCurrent { .. }
+        | Instruction::Copy { .. } => result.extend(execute_result_instruction(
             inputs,
             instruction,
             execution,
@@ -628,6 +608,39 @@ fn execute_instruction(
         )?),
     }
     Ok(())
+}
+
+fn execute_result_instruction<'a>(
+    inputs: &SequenceInputs<'a>,
+    instruction: &Instruction,
+    execution: SequenceContext<'a>,
+    scope: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    match instruction {
+        Instruction::ForEachTemporaryRoot { .. } | Instruction::ForEachNodes { .. } => {
+            execute_for_each_instruction(inputs, instruction, execution, scope, control)
+        }
+        Instruction::NextMatch { .. } | Instruction::ApplyImports { .. } => {
+            execute_continuation_instruction(inputs, instruction, execution, scope, control)
+        }
+        Instruction::If { test, body, .. } => {
+            execute_if(inputs, test, body, execution, scope, control)
+        }
+        Instruction::Choose {
+            branches,
+            otherwise,
+            ..
+        } => execute_choose(inputs, branches, otherwise, execution, scope, control),
+        Instruction::CallTemplate { .. } => {
+            execute_call(inputs, instruction, execution, scope, control)
+        }
+        Instruction::CopyOfCurrent { .. } => {
+            execute_copy_of_current(inputs, execution.node, control)
+        }
+        Instruction::Copy { .. } => execute_copy(inputs, instruction, execution, scope, control),
+        _ => unreachable!("result dispatch receives only result-producing instructions"),
+    }
 }
 
 fn execute_copy_of_current(
@@ -670,6 +683,54 @@ fn execute_for_each_temporary_root<'a>(
         variables,
         control,
     )
+}
+
+fn execute_for_each_instruction<'a>(
+    inputs: &SequenceInputs<'a>,
+    instruction: &Instruction,
+    execution: SequenceContext<'a>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    match instruction {
+        Instruction::ForEachTemporaryRoot { variable, body, .. } => {
+            execute_for_each_temporary_root(inputs, variable, body, execution, variables, control)
+        }
+        Instruction::ForEachNodes { select, body, .. } => {
+            execute_for_each_nodes(inputs, select, body, execution, variables, control)
+        }
+        _ => unreachable!("for-each dispatch receives only for-each instructions"),
+    }
+}
+
+fn execute_for_each_nodes<'a>(
+    inputs: &SequenceInputs<'a>,
+    select: &ApplySelection,
+    body: &[Instruction],
+    execution: SequenceContext<'a>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let (_, context) = required_source_context(inputs, execution.node)?;
+    let selected = select_apply_nodes(inputs, Some(select), context, &variables.atomics, control)?;
+    let focus_size = selected.len();
+    let mut result = Vec::new();
+    for (index, node) in selected.into_iter().enumerate() {
+        result.extend(execute_sequence(
+            inputs,
+            body,
+            SequenceContext {
+                node: Some(node),
+                temporary_focus: None,
+                focus_position: index + 1,
+                focus_size,
+                ..execution
+            },
+            variables,
+            control,
+        )?);
+    }
+    Ok(result)
 }
 
 fn execute_continuation_instruction(
