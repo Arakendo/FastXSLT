@@ -1,9 +1,14 @@
+use std::collections::HashMap;
 use std::ops::Range;
+use std::sync::Arc;
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::xml::quick_xml_experiment::{
     ExpandedName, NamespaceBinding, OwnedXmlEvent, ParsedDocument,
 };
+
+#[path = "whitespace_view.rs"]
+mod whitespace_view;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct NodeId(usize);
@@ -40,8 +45,9 @@ struct Node {
 
 #[derive(Debug)]
 pub(crate) struct Document {
-    nodes: Vec<Node>,
-    document: NodeId,
+    nodes: Arc<Vec<Node>>,
+    root: NodeId,
+    child_overrides: Option<HashMap<NodeId, Box<[NodeId]>>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -86,7 +92,7 @@ impl Document {
             .charge(WorkDomain::XdmNode, 1)
             .map_err(BuildFailure::Control)?;
         let mut result = Self {
-            nodes: vec![Node {
+            nodes: Arc::new(vec![Node {
                 kind: NodeKind::Document,
                 parent: None,
                 children: Vec::new(),
@@ -100,10 +106,11 @@ impl Document {
                     span: 0..document_end,
                 },
                 document_order: None,
-            }],
-            document: NodeId(0),
+            }]),
+            root: NodeId(0),
+            child_overrides: None,
         };
-        let mut ancestors = vec![result.document];
+        let mut ancestors = vec![result.root];
 
         for event in parsed.events {
             match event {
@@ -126,8 +133,8 @@ impl Document {
                         &parsed.resource,
                         span.clone(),
                     );
-                    result.nodes[element.0].prefix = prefix;
-                    result.nodes[element.0].namespaces = namespaces;
+                    result.nodes_mut()[element.0].prefix = prefix;
+                    result.nodes_mut()[element.0].namespaces = namespaces;
                     for attribute in attributes {
                         control
                             .charge(WorkDomain::XdmNode, 1)
@@ -147,7 +154,7 @@ impl Document {
                             },
                             document_order: None,
                         });
-                        result.nodes[element.0].attributes.push(attribute_id);
+                        result.nodes_mut()[element.0].attributes.push(attribute_id);
                     }
                     ancestors.push(element);
                 }
@@ -162,12 +169,12 @@ impl Document {
                     if let Some(last) = result.nodes[parent.0].children.last().copied()
                         && result.nodes[last.0].kind == NodeKind::Text
                     {
-                        result.nodes[last.0]
+                        result.nodes_mut()[last.0]
                             .value
                             .as_mut()
                             .expect("text nodes carry values")
                             .push_str(&value);
-                        result.nodes[last.0].location.span.end = span.end;
+                        result.nodes_mut()[last.0].location.span.end = span.end;
                     } else {
                         control
                             .charge(WorkDomain::XdmNode, 1)
@@ -251,21 +258,25 @@ impl Document {
             },
             document_order: None,
         });
-        self.nodes[parent.0].children.push(id);
+        self.nodes_mut()[parent.0].children.push(id);
         id
     }
 
     fn push_node(&mut self, node: Node) -> NodeId {
         let id = NodeId(self.nodes.len());
-        self.nodes.push(node);
+        self.nodes_mut().push(node);
         id
+    }
+
+    fn nodes_mut(&mut self) -> &mut Vec<Node> {
+        Arc::get_mut(&mut self.nodes).expect("XDM construction retains the only node-storage owner")
     }
 
     fn assign_document_order(&mut self) {
         let mut ordered = Vec::with_capacity(self.nodes.len());
-        self.collect_document_order(self.document, &mut ordered);
+        self.collect_document_order(self.root, &mut ordered);
         for (rank, id) in ordered.into_iter().enumerate() {
-            self.nodes[id.0].document_order = Some(rank);
+            self.nodes_mut()[id.0].document_order = Some(rank);
         }
     }
 
@@ -280,27 +291,29 @@ impl Document {
     }
 
     pub(crate) fn document_node(&self) -> NodeId {
-        self.document
+        self.root
     }
 
+    #[cfg(test)]
     pub(crate) fn derive_stripping_all_element_whitespace(
         &self,
         control: &mut InvocationControl,
     ) -> Result<Self, ControlFailure> {
         let mut nodes = Vec::new();
-        for node in &self.nodes {
+        for node in self.nodes.iter() {
             control.charge(WorkDomain::XdmNode, 1)?;
             nodes.push(node.clone());
         }
         let mut derived = Self {
-            nodes,
-            document: self.document,
+            nodes: Arc::new(nodes),
+            root: self.root,
+            child_overrides: None,
         };
         for index in 0..self.nodes.len() {
             if self.nodes[index].kind != NodeKind::Element {
                 continue;
             }
-            derived.nodes[index].children.retain(|child| {
+            derived.nodes_mut()[index].children.retain(|child| {
                 let child = &self.nodes[child.0];
                 child.kind != NodeKind::Text
                     || !child.value.as_deref().is_some_and(is_xml_whitespace_only)
@@ -366,6 +379,13 @@ impl Document {
     }
 
     pub(crate) fn children(&self, id: NodeId) -> &[NodeId] {
+        if let Some(children) = self
+            .child_overrides
+            .as_ref()
+            .and_then(|overrides| overrides.get(&id))
+        {
+            return children;
+        }
         &self.nodes[id.0].children
     }
 
@@ -432,7 +452,7 @@ impl Document {
                 }
             }
             NodeKind::Document | NodeKind::Element => {
-                for child in &node.children {
+                for child in self.children(id) {
                     self.visit_string_value_controlled(*child, control, sink)?;
                 }
             }
@@ -480,7 +500,7 @@ mod tests {
         drop(input);
 
         let document = Document::from_parsed(parsed).expect("owned XDM should build");
-        let greeting = document.nodes[document.document.0].children[0];
+        let greeting = document.nodes[document.root.0].children[0];
         let name = document.nodes[greeting.0]
             .children
             .iter()
@@ -515,7 +535,7 @@ mod tests {
         )
         .expect("identity fixture should parse");
         let document = Document::from_parsed(parsed).expect("owned XDM should build");
-        let root = document.nodes[document.document.0].children[0];
+        let root = document.nodes[document.root.0].children[0];
         let elements: Vec<_> = document.nodes[root.0]
             .children
             .iter()
@@ -541,7 +561,7 @@ mod tests {
         )
         .expect("text fixture should parse");
         let document = Document::from_parsed(parsed).expect("owned XDM should build");
-        let root = document.nodes[document.document.0].children[0];
+        let root = document.nodes[document.root.0].children[0];
 
         assert_eq!(document.nodes[root.0].children.len(), 1);
         assert_eq!(document.string_value(root), "one&twothree");
@@ -598,7 +618,7 @@ mod tests {
         )
         .expect("fragment fixture should parse");
         let document = Document::from_parsed(parsed).expect("owned XDM should build");
-        let root = document.nodes[document.document.0].children[0];
+        let root = document.nodes[document.root.0].children[0];
         let mut control = crate::execution_control_experiment::InvocationControl::unbounded();
         let mut fragments = Vec::new();
 

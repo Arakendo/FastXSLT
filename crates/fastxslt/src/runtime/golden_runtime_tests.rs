@@ -11,10 +11,11 @@ use crate::xdm::owned_tree_experiment::Document;
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 use super::{
-    ExecutionPolicy, FailureCategory, InvocationEntry, InvocationParameter, ResultAttribute,
-    ResultNode, SemanticResult, TransformRequest, TransformSetBuilder, compile_resource,
-    execute_program, execute_transform_set, materialize_integer_range, serialize_xml,
-    serialize_xml_bytes,
+    ExecutionPolicy, FailureCategory, InvocationEntry, InvocationParameter, MultipleMatchPolicy,
+    ResultAttribute, ResultNode, SemanticResult, TransformRequest, TransformSetBuilder,
+    WhitespaceRepresentation, compile_resource, execute_program,
+    execute_program_with_parameters_using, execute_transform_set, materialize_integer_range,
+    serialize_xml, serialize_xml_bytes,
 };
 
 const SOURCE_ID: &str = "urn:fastxslt:golden:hello:source";
@@ -155,6 +156,17 @@ fn one_prepared_source_supports_preserving_and_stripping_stylesheets_without_mut
     };
     let preserved = execute(&preserving, "preserving-request");
     let stripped = execute(&stripping, "stripping-request");
+    let mut reference_control = InvocationControl::unbounded();
+    let reference = execute_program_with_parameters_using(
+        &stripping,
+        &source,
+        &BTreeMap::new(),
+        MultipleMatchPolicy::UseLast,
+        "stripping-reference-request",
+        WhitespaceRepresentation::CompleteReference,
+        &mut reference_control,
+    )
+    .expect("complete reference should execute");
 
     assert_eq!(
         preserved.children,
@@ -180,6 +192,31 @@ fn one_prepared_source_supports_preserving_and_stripping_stylesheets_without_mut
             children: vec![ResultNode::Text("AB".to_owned())],
         }]
     );
+    assert_eq!(stripped, reference);
+    assert_eq!(source.string_value(source.document_node()), "  A\n  B  ");
+
+    std::thread::scope(|scope| {
+        let preserving_run = scope.spawn(|| {
+            for iteration in 0..100 {
+                assert_eq!(
+                    execute(&preserving, &format!("concurrent-preserve-{iteration}")),
+                    preserved
+                );
+            }
+        });
+        let stripping_run = scope.spawn(|| {
+            for iteration in 0..100 {
+                assert_eq!(
+                    execute(&stripping, &format!("concurrent-strip-{iteration}")),
+                    stripped
+                );
+            }
+        });
+        preserving_run
+            .join()
+            .expect("preserving worker should join");
+        stripping_run.join().expect("stripping worker should join");
+    });
     assert_eq!(source.string_value(source.document_node()), "  A\n  B  ");
 }
 

@@ -9,7 +9,7 @@
 | Trigger | XSLT30 `mode-1301` requires `xsl:strip-space` over a reusable prepared source |
 | Related ADRs | ADR-0001, ADR-0002, ADR-0004, ADR-0007 |
 | Related reviews | AR-0007, AR-0008, AR-0009, AR-0013 |
-| Related evidence | `../Evidence/xslt30-mode-denominator-and-qname-identity-2026-08-29.md`, `../Evidence/peer-ar-0016-review-monday-2026-08-30.md`, `../Evidence/ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md`, and the pinned XSLT30 `mode-1301` case |
+| Related evidence | `../Evidence/xslt30-mode-denominator-and-qname-identity-2026-08-29.md`, `../Evidence/peer-ar-0016-review-monday-2026-08-30.md`, `../Evidence/ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md`, `../Evidence/ar-0016-visibility-view-prototype-2026-08-30.md`, and the pinned XSLT30 `mode-1301` case |
 
 ## Architectural question
 
@@ -159,7 +159,18 @@ conformance shortcut.
   Visible identity, locations, names, and payload remain stable; effective
   navigation and containing string values follow the filtered relationships.
 - Exact `elements="*"` policy compilation and unchanged `mode-1301` execution
-  are now evidenced. General matching and an optimized view remain open.
+  are now evidenced. General matching and broader view evidence remain open.
+- A private safe visibility view now shares immutable prepared node storage and
+  retains only affected element-child sequences per invocation. Differential
+  testing exposed and closed one direct physical-child read in containing
+  string-value traversal before the view became the executable candidate.
+- The complete reference and view now agree at every current `Document`
+  accessor and for one full stripping transform. Concurrent preserving and
+  stripping execution against one prepared source also remains stable.
+- One local 500-item release microprobe measured a 4.86-times lower median
+  invocation time and an approximately 141-times smaller attributable
+  additional-capacity estimate for the view. This is candidate evidence, not a
+  product performance guarantee or complete peak-memory/break-even study.
 - General `xsl:strip-space` and `xsl:preserve-space` matching, import
   precedence, conflicts, schema-aware whitespace, and interaction with
   `xml:space` remain outside the first exact `elements="*"` experiment unless
@@ -170,11 +181,11 @@ conformance shortcut.
 
 ## Disposition
 
-**Incubating.** Keep `mode-1301` visibly not run until FastXSLT can apply one
-stylesheet-owned whitespace policy consistently across every source-semantic
-consumer used by the case. Do not mutate prepared XDM, move the rule into XML
-parsing, retain an implicit stylesheet-specific cache, or add a built-in-rule-
-only filter.
+**Incubating.** `mode-1301` is admitted through one stylesheet-owned whitespace
+policy applied consistently across every source-semantic consumer used by the
+case. Do not widen that evidence into general declaration semantics, mutate
+prepared XDM, move the rule into XML parsing, retain an implicit stylesheet-
+specific cache, or add a narrow consumer-specific filter.
 
 The first experiment may use a complete safe derived document as a semantic
 reference and compare it with a private immutable visibility view. No public
@@ -192,7 +203,7 @@ guarantee follows from this disposition.
   `mode-1301` semantics, including cancellation, work charges, provenance, and
   visible-node identity mapping. Prove that a node visible under stripping and
   preserving policies retains the prepared document's semantic identity.
-- [ ] Prototype a private immutable visibility view only after the semantic
+- [x] Prototype a private immutable visibility view only after the semantic
   inventory identifies the smallest complete access seam.
 - [ ] Differentially verify derived-document and view behavior for stripping
   and non-stripping stylesheets sharing the same prepared source, including
@@ -239,3 +250,9 @@ needs an explicit effective-document inspection contract.
   source remains reusable under preserving and stripping stylesheets, and
   executed unchanged `mode-1301`. The optimized visibility view, broader parity
   controls, concurrency/generation evidence, and measurements remain open.
+- 2026-08-30 -- Added the private invocation-owned visibility view, retained
+  the complete clone as a test oracle, closed a string-value physical-access
+  leak found by differential testing, proved concurrent strip/preserve reuse,
+  kept unchanged `mode-1301` passing, and recorded preliminary release timing
+  and attributable-capacity evidence. Generation overlap, broader node/copy and
+  positional controls, and complete peak/break-even measurements remain open.

@@ -105,9 +105,52 @@ fn execute_program_with_parameters(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
-    let effective_source = match program.source_whitespace {
-        SourceWhitespacePolicy::Preserve => None,
-        SourceWhitespacePolicy::StripAllElementWhitespace => Some(
+    execute_program_with_parameters_using(
+        program,
+        source,
+        parameters,
+        multiple_match_policy,
+        request_id,
+        WhitespaceRepresentation::VisibilityView,
+        control,
+    )
+}
+
+#[derive(Clone, Copy)]
+enum WhitespaceRepresentation {
+    VisibilityView,
+    #[cfg(test)]
+    CompleteReference,
+}
+
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the test-only representation choice preserves the complete runtime invocation contract"
+)]
+fn execute_program_with_parameters_using(
+    program: &StylesheetProgram,
+    source: &Document,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    multiple_match_policy: MultipleMatchPolicy,
+    request_id: &str,
+    representation: WhitespaceRepresentation,
+    control: &mut InvocationControl,
+) -> Result<SemanticResult, ExecutionFailure> {
+    let effective_source = match (program.source_whitespace, representation) {
+        (SourceWhitespacePolicy::Preserve, _) => None,
+        (
+            SourceWhitespacePolicy::StripAllElementWhitespace,
+            WhitespaceRepresentation::VisibilityView,
+        ) => Some(
+            source
+                .view_stripping_all_element_whitespace(control)
+                .map_err(|failure| control_failure(failure, request_id))?,
+        ),
+        #[cfg(test)]
+        (
+            SourceWhitespacePolicy::StripAllElementWhitespace,
+            WhitespaceRepresentation::CompleteReference,
+        ) => Some(
             source
                 .derive_stripping_all_element_whitespace(control)
                 .map_err(|failure| control_failure(failure, request_id))?,
@@ -186,7 +229,7 @@ fn execute_initial_mode(
         SourceWhitespacePolicy::Preserve => None,
         SourceWhitespacePolicy::StripAllElementWhitespace => Some(
             source
-                .derive_stripping_all_element_whitespace(control)
+                .view_stripping_all_element_whitespace(control)
                 .map_err(|failure| control_failure(failure, request_id))?,
         ),
     };
@@ -1500,6 +1543,10 @@ mod tests;
 #[cfg(test)]
 #[path = "golden_runtime_control_tests.rs"]
 mod control_phase_tests;
+
+#[cfg(test)]
+#[path = "whitespace_view_measurement_tests.rs"]
+mod whitespace_view_measurement_tests;
 
 #[cfg(test)]
 #[path = "golden_runtime_workflow_tests.rs"]

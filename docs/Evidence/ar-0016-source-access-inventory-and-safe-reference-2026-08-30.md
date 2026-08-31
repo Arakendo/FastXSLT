@@ -68,7 +68,10 @@ prepared input, stylesheet, generation, snapshot, or a global cache.
 
 This representation is intentionally expensive. Cloning all payload and node
 storage makes it a clear safe semantic oracle for a later immutable visibility
-view; it is not evidence that cloning should become the optimized path.
+view; it is not evidence that cloning should become the optimized path. The
+subsequent visibility prototype and its first differential measurement are
+recorded in
+[AR-0016 Visibility-View Prototype](ar-0016-visibility-view-prototype-2026-08-30.md).
 
 ## Executable controls
 

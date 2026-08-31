@@ -523,6 +523,18 @@ parity/concurrency controls, and measurements remain open. The mode denominator
 advances to 41 passes, 44 profile exclusions, and 84 visible default not-run
 cases. [Evidence](../Evidence/ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md)
 
+The next AR-0016 slice replaces the executable full clone with a private,
+invocation-owned visibility view while retaining the clone as a differential
+oracle. Shared immutable node storage preserves prepared identity and the view
+retains only affected child sequences. Differential testing found and closed a
+direct physical-child read in string-value recursion; full runtime results,
+unchanged `mode-1301`, and 100 concurrent preserving/stripping repetitions now
+agree. A preliminary 500-item release probe measured 4.86-times lower median
+invocation time and about 141-times less attributable additional capacity than
+the clone. Generation overlap, explicit copy/position controls, peak memory,
+and reuse break-even remain open rather than becoming performance guarantees.
+[Evidence](../Evidence/ar-0016-visibility-view-prototype-2026-08-30.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1392,8 +1404,10 @@ failed, and harness-error cases without an unqualified conformance claim.
   XPath and XSLT consumers observe identical stripped-node semantics, and
   retain the safe reference as the semantic oracle and measure it before
   retaining a specialized representation. The unchanged native case now
-  passes; visibility-view, concurrency/generation, broader parity, and
-  measurement work remain explicitly open in AR-0016.
+  passes. The invocation-owned visibility view now has differential, concurrent
+  strip/preserve, and preliminary timing/capacity evidence; generation overlap,
+  broader copy/position parity, peak memory, and break-even work remain
+  explicitly open in AR-0016.
 - [x] Execute the independent static-error cases `mode-1444` and `mode-1447` by
   validating `warning-on-no-match` and `typed` through the existing XSLT 3.0
   boolean policy before unsupported runtime semantics. Preserve native

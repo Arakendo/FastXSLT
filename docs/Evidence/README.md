@@ -175,3 +175,5 @@ pressure architecture but does not silently create a public guarantee.
 - [Sealed Stylesheet-Dependency Accounting](sealed-stylesheet-dependency-accounting-2026-08-28.md)
 - [Workbench Resource-Authority Diagnostic Parity](workbench-resource-authority-diagnostic-parity-2026-08-28.md)
 - [Native Boundary Diagnostic-Test Decomposition](native-boundary-diagnostic-test-decomposition-2026-08-28.md)
+- [AR-0016 Source Access Inventory and Safe Reference](ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md)
+- [AR-0016 Visibility-View Prototype](ar-0016-visibility-view-prototype-2026-08-30.md)
