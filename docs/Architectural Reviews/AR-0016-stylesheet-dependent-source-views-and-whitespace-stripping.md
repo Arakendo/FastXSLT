@@ -168,8 +168,9 @@ conformance shortcut.
   accessor and for one full stripping transform. Concurrent preserving and
   stripping execution against one prepared source also remains stable.
 - Focused runtime controls prove effective `position()` and `last()` across
-  whitespace-interleaved children, source-element/text copying, and concurrent
-  overlap of old stripping and replacement preserving stylesheet generations.
+  whitespace-interleaved child and descendant-node sequences, source-element/
+  text copying, and concurrent overlap of old stripping and replacement
+  preserving stylesheet generations. No sibling axis is currently implemented.
 - One local 500-item release microprobe measured a 4.86-times lower median
   invocation time and an approximately 141-times smaller attributable
   additional-capacity estimate for the view. This is candidate evidence, not a
@@ -213,7 +214,7 @@ guarantee follows from this disposition.
   concurrent execution and generation replacement.
 - [x] Add focused tests proving XPath, built-in traversal, explicit template
   selection, string values, and copying cannot disagree about stripped nodes.
-- [ ] Add positional controls proving effective child/descendant sequences,
+- [x] Add positional controls proving effective child/descendant sequences,
   sibling relations where implemented, `position()`, and `last()` exclude
   stripped nodes rather than merely filtering a final result.
 - [x] Add an indirect string-value control where no expression selects the
@@ -263,3 +264,6 @@ needs an explicit effective-document inspection contract.
   size, source element/text copying, and concurrent old/new stylesheet-
   generation overlap. The reference and view agree and generation-specific
   strip/preserve policy does not leak through shared prepared storage.
+- 2026-08-30 -- Added a descendant `node()` focus control proving stripped
+  text is absent before positions 1 through 5 and `last() = 5` are assigned.
+  No sibling axis exists in the current XPath surface to control yet.

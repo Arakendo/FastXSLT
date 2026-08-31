@@ -90,6 +90,42 @@ fn effective_positions_and_source_copy_match_the_complete_reference() {
 }
 
 #[test]
+fn descendant_node_focus_excludes_stripped_text_before_positions_are_assigned() {
+    let source = document(
+        "memory:whitespace-descendant-source.xml",
+        b"<root>\n  <item>one</item>\n  <item>two</item>\n</root>",
+    );
+    let program = compile(
+        "memory:whitespace-descendant-style.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0">
+            <xsl:output method="xml" omit-xml-declaration="yes"/>
+            <xsl:strip-space elements="*"/>
+            <xsl:template match="/"><out><xsl:apply-templates select="descendant::node()"/></out></xsl:template>
+            <xsl:template match="node()"><seen position="{position()}" last="{last()}"/></xsl:template>
+        </xsl:stylesheet>"#,
+    );
+
+    let reference = execute_with(
+        &program,
+        &source,
+        WhitespaceRepresentation::CompleteReference,
+        "descendant-position-reference",
+    );
+    let view = execute_with(
+        &program,
+        &source,
+        WhitespaceRepresentation::VisibilityView,
+        "descendant-position-view",
+    );
+
+    assert_eq!(view, reference);
+    assert_eq!(
+        view,
+        "<out><seen position=\"1\" last=\"5\"></seen><seen position=\"2\" last=\"5\"></seen><seen position=\"3\" last=\"5\"></seen><seen position=\"4\" last=\"5\"></seen><seen position=\"5\" last=\"5\"></seen></out>"
+    );
+}
+
+#[test]
 fn overlapping_stylesheet_generations_keep_independent_whitespace_policies() {
     let source = Arc::new(document(
         "memory:whitespace-generation-source.xml",

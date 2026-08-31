@@ -45,14 +45,18 @@ source-access inventory.
   effective children. The complete reference and view produce byte-identical
   serialized results with positions 1 through 3 rather than the physical
   whitespace-interleaved positions.
+- A descendant `node()` selection independently proves that stripped text is
+  removed before focus positions are assigned. The five visible element/text
+  descendants report positions 1 through 5 and `last() = 5` through both the
+  reference and view.
 - Old stripping and replacement preserving stylesheet generations execute
   concurrently against the same prepared source. Each retains its own policy
   and result while the prepared source remains unchanged.
 - Zero-node budgets and deterministic cancellation stop view construction at
   real `XdmNode` charge points.
 
-Broader descendant-position and any future sibling-axis controls remain
-required before closing AR-0016.
+No sibling axis is implemented in the current XPath surface; a future sibling
+axis must receive the same effective-sequence control when admitted.
 
 ## Preliminary local measurement
 
