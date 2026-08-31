@@ -99,6 +99,11 @@ open:
 - Source-derived global values retain identities only within the prepared input
   and invocation that produced them. A compiled stylesheet must not retain node
   identities from one principal source for reuse by another invocation.
+- Runtime atomic-variable frames may share immutable bindings only within one
+  invocation. Frame mutation uses safe copy-on-write isolation, and no runtime
+  binding map crosses an invocation, prepared-input, worker, snapshot, or
+  generation boundary. The complete-clone frame remains a private test oracle
+  under ADR-0014.
 - For the exact admitted `xsl:strip-space elements="*"` policy, runtime composes
   compiled stylesheet policy with immutable prepared XDM through a private
   invocation-owned visibility view. Every source-semantic consumer observes

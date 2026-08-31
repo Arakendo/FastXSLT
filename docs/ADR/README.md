@@ -64,3 +64,7 @@ but supersede a materially changed decision instead of rewriting its history.
   -- Accepted; lazily retain bounded per-invocation membership for activated
   absolute match paths while preserving the complete charged evaluator as a
   fallback and differential oracle.
+- [ADR-0014: Invocation-Owned Copy-on-Write Atomic Frames](ADR-0014-invocation-owned-copy-on-write-atomic-frames.md)
+  -- Accepted; share immutable atomic bindings within one invocation and copy
+  safely on frame mutation while retaining the complete-clone differential
+  oracle.

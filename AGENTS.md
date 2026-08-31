@@ -66,6 +66,10 @@ contract.
   effective relationships, retain the complete safe derivation as a test
   oracle, and do not infer broader whitespace rules, a public provider trait,
   or cross-invocation view retention.
+- Follow ADR-0014 for runtime atomic-variable frames: sharing is private to one
+  invocation, every mutation uses safe copy-on-write isolation, and the
+  complete-clone path remains a test oracle. Do not extend frame sharing across
+  invocations, prepared inputs, workers, snapshots, or generations.
 - Follow ADR-0013 for document-rooted match paths: lazily build only bounded
   invocation-owned membership keyed by the current compiled template, preserve
   the complete charged evaluator as fallback and differential oracle, and do

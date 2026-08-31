@@ -31,8 +31,12 @@ pub(super) fn apply_temporary_template(
     let temporary = &tree.nodes[node];
     let template = select_temporary_template(inputs, tree, node, mode, control)?;
     if let Some((template_index, template)) = template {
-        let variables =
-            bind_template_parameters(&template.template, parameters, &inputs.globals.atomics);
+        let variables = bind_template_parameters(
+            &template.template,
+            parameters,
+            &inputs.globals.atomics,
+            inputs.complete_atomic_frame_clones,
+        );
         return execute_sequence(
             inputs,
             &template.template.body,
@@ -131,8 +135,12 @@ pub(super) fn apply_temporary_roots(
         }
     }
     if let Some((template_index, template)) = document_template {
-        let variables =
-            bind_template_parameters(&template.template, parameters, &inputs.globals.atomics);
+        let variables = bind_template_parameters(
+            &template.template,
+            parameters,
+            &inputs.globals.atomics,
+            inputs.complete_atomic_frame_clones,
+        );
         return execute_sequence(
             inputs,
             &template.template.body,
@@ -229,8 +237,12 @@ pub(super) fn apply_temporary_next(
     if let Some((next_index, template)) =
         select_next_temporary_template(inputs, focus, mode, current_index, control)?
     {
-        let variables =
-            bind_template_parameters(&template.template, parameters, &inputs.globals.atomics);
+        let variables = bind_template_parameters(
+            &template.template,
+            parameters,
+            &inputs.globals.atomics,
+            inputs.complete_atomic_frame_clones,
+        );
         return execute_sequence(
             inputs,
             &template.template.body,

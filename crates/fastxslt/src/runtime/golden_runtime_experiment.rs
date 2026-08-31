@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::BTreeMap};
+use std::{cell::RefCell, collections::BTreeMap, sync::Arc};
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
@@ -188,13 +188,19 @@ fn execute_program_with_parameters_using(
         globals: &globals,
         multiple_match_policy,
         document_rooted_matches: RefCell::default(),
+        complete_atomic_frame_clones: control.complete_atomic_frame_clones(),
     };
     let children = if let Some(root_template) = program
         .root_template
         .as_ref()
         .filter(|_| program.root_template_modes.is_empty())
     {
-        let variables = bind_template_parameters(root_template, &BTreeMap::new(), &globals.atomics);
+        let variables = bind_template_parameters(
+            root_template,
+            &BTreeMap::new(),
+            &globals.atomics,
+            inputs.complete_atomic_frame_clones,
+        );
         execute_sequence(
             &inputs,
             &root_template.body,
@@ -280,6 +286,7 @@ fn execute_initial_mode(
         globals: &globals,
         multiple_match_policy,
         document_rooted_matches: RefCell::default(),
+        complete_atomic_frame_clones: control.complete_atomic_frame_clones(),
     };
     let children = if initial_node == source.document_node()
         && program.root_template_modes.iter().any(|mode| mode == name)
@@ -288,7 +295,12 @@ fn execute_initial_mode(
             .root_template
             .as_ref()
             .expect("a compiled root initial mode has a root template");
-        let variables = bind_template_parameters(template, parameters, &globals.atomics);
+        let variables = bind_template_parameters(
+            template,
+            parameters,
+            &globals.atomics,
+            inputs.complete_atomic_frame_clones,
+        );
         execute_sequence(
             &inputs,
             &template.body,
@@ -327,8 +339,12 @@ fn apply_initial_mode_template(
         inputs.multiple_match_policy,
         control,
     )? {
-        let variables =
-            bind_template_parameters(&template.template, parameters, &inputs.globals.atomics);
+        let variables = bind_template_parameters(
+            &template.template,
+            parameters,
+            &inputs.globals.atomics,
+            inputs.complete_atomic_frame_clones,
+        );
         return execute_sequence(
             inputs,
             &template.template.body,
@@ -387,12 +403,13 @@ fn execute_initial_template(
         globals: &globals,
         multiple_match_policy,
         document_rooted_matches: RefCell::default(),
+        complete_atomic_frame_clones: control.complete_atomic_frame_clones(),
     };
     let children = execute_sequence(
         &inputs,
         &template.template.body,
         SequenceContext::new(None, None),
-        &RuntimeVariables::from_atomics(&globals.atomics),
+        &RuntimeVariables::from_atomics(&globals.atomics, inputs.complete_atomic_frame_clones),
         control,
     )?;
     Ok(SemanticResult { children })
@@ -673,7 +690,7 @@ fn execute_binding(
     match instruction {
         Instruction::Variable { name, select, .. } => {
             let value = execute_variable_binding(inputs, name, select, context, control)?;
-            scope.atomics.insert(name.clone(), value);
+            Arc::make_mut(&mut scope.atomics).insert(name.clone(), value);
         }
         Instruction::IntegerRangeVariable {
             name, start, end, ..
@@ -996,8 +1013,12 @@ fn execute_next_match(
         inputs.multiple_match_policy,
         control,
     )? {
-        let variables =
-            bind_template_parameters(&template.template, &parameters, &inputs.globals.atomics);
+        let variables = bind_template_parameters(
+            &template.template,
+            &parameters,
+            &inputs.globals.atomics,
+            inputs.complete_atomic_frame_clones,
+        );
         return execute_sequence(
             inputs,
             &template.template.body,
@@ -1051,8 +1072,12 @@ fn execute_apply_imports(
         current_index,
         control,
     )? {
-        let variables =
-            bind_template_parameters(&template.template, &parameters, &inputs.globals.atomics);
+        let variables = bind_template_parameters(
+            &template.template,
+            &parameters,
+            &inputs.globals.atomics,
+            inputs.complete_atomic_frame_clones,
+        );
         return execute_sequence(
             inputs,
             &template.template.body,
@@ -1450,16 +1475,21 @@ fn execute_named_call(
         .iter()
         .find(|template| template.name == name)
         .expect("named-template references were validated during compilation");
-    control.observe_global_atomic_frame_clone(inputs.globals.atomics.len());
-    let mut frame = RuntimeVariables::from_atomics(&inputs.globals.atomics);
-    frame.atomics.extend(
+    if inputs.complete_atomic_frame_clones {
+        control.observe_global_atomic_frame_clone(inputs.globals.atomics.len());
+    }
+    let mut frame = RuntimeVariables::from_atomics(
+        &inputs.globals.atomics,
+        inputs.complete_atomic_frame_clones,
+    );
+    Arc::make_mut(&mut frame.atomics).extend(
         target
             .parameters
             .iter()
             .map(|parameter| (parameter.clone(), AtomicValue::string(""))),
     );
     for (name, parameter) in evaluate_template_arguments(arguments, variables, inputs.request_id)? {
-        frame.atomics.insert(name, parameter.value);
+        Arc::make_mut(&mut frame.atomics).insert(name, parameter.value);
     }
     execute_sequence(
         inputs,
@@ -1511,8 +1541,12 @@ fn apply_template_at(
         inputs.multiple_match_policy,
         control,
     )? {
-        let variables =
-            bind_template_parameters(&template.template, parameters, &inputs.globals.atomics);
+        let variables = bind_template_parameters(
+            &template.template,
+            parameters,
+            &inputs.globals.atomics,
+            inputs.complete_atomic_frame_clones,
+        );
         return execute_sequence(
             inputs,
             &template.template.body,

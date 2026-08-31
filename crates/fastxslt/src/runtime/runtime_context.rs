@@ -1,6 +1,6 @@
 //! Invocation-local globals, variable frames, and temporary-tree preparation.
 
-use std::{cell::RefCell, collections::BTreeMap};
+use std::{cell::RefCell, collections::BTreeMap, sync::Arc};
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
@@ -24,11 +24,12 @@ pub(super) struct SequenceInputs<'a> {
     pub(super) globals: &'a RuntimeGlobals,
     pub(super) multiple_match_policy: MultipleMatchPolicy,
     pub(super) document_rooted_matches: RefCell<DocumentRootedMatchCache>,
+    pub(super) complete_atomic_frame_clones: bool,
 }
 
 #[derive(Debug, Default)]
 pub(super) struct RuntimeGlobals {
-    pub(super) atomics: BTreeMap<String, AtomicValue>,
+    pub(super) atomics: Arc<BTreeMap<String, AtomicValue>>,
     pub(super) nodes: BTreeMap<String, Vec<NodeId>>,
     pub(super) temporary_trees: BTreeMap<String, TemporaryTree>,
 }
@@ -57,7 +58,7 @@ pub(super) enum TemporaryNodeKind {
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct RuntimeVariables {
-    pub(super) atomics: BTreeMap<String, AtomicValue>,
+    pub(super) atomics: Arc<BTreeMap<String, AtomicValue>>,
     pub(super) atomic_sequences: BTreeMap<String, Vec<AtomicValue>>,
     pub(super) temporary_trees: BTreeMap<String, TemporaryTree>,
 }
@@ -106,9 +107,16 @@ pub(super) fn evaluate_template_arguments(
 }
 
 impl RuntimeVariables {
-    pub(super) fn from_atomics(atomics: &BTreeMap<String, AtomicValue>) -> Self {
+    pub(super) fn from_atomics(
+        atomics: &Arc<BTreeMap<String, AtomicValue>>,
+        complete_clone: bool,
+    ) -> Self {
         Self {
-            atomics: atomics.clone(),
+            atomics: if complete_clone {
+                Arc::new(atomics.as_ref().clone())
+            } else {
+                Arc::clone(atomics)
+            },
             atomic_sequences: BTreeMap::new(),
             temporary_trees: BTreeMap::new(),
         }
@@ -129,8 +137,7 @@ pub(super) fn materialize_global_defaults(
                 .get(&binding.name)
                 .filter(|parameter| !parameter.tunnel)
             {
-                globals
-                    .atomics
+                Arc::make_mut(&mut globals.atomics)
                     .insert(binding.name.clone(), parameter.value.clone());
                 continue;
             }
@@ -148,12 +155,11 @@ pub(super) fn materialize_global_defaults(
         }
         match &binding.default {
             GlobalBindingDefault::Text(value) => {
-                globals
-                    .atomics
+                Arc::make_mut(&mut globals.atomics)
                     .insert(binding.name.clone(), AtomicValue::untyped(value.clone()));
             }
             GlobalBindingDefault::Integer(value) => {
-                globals.atomics.insert(
+                Arc::make_mut(&mut globals.atomics).insert(
                     binding.name.clone(),
                     AtomicValue::from_validated_lexical(
                         crate::xdm::atomic_value_experiment::BuiltinAtomicType::Integer,
@@ -181,7 +187,7 @@ pub(super) fn materialize_global_defaults(
             }
             GlobalBindingDefault::Variable(name) => {
                 if let Some(value) = globals.atomics.get(name).cloned() {
-                    globals.atomics.insert(binding.name.clone(), value);
+                    Arc::make_mut(&mut globals.atomics).insert(binding.name.clone(), value);
                 } else if let Some(nodes) = globals.nodes.get(name).cloned() {
                     globals.nodes.insert(binding.name.clone(), nodes);
                 } else {
@@ -270,9 +276,10 @@ fn materialize_temporary_node(
 pub(super) fn bind_template_parameters(
     template: &Template,
     supplied: &BTreeMap<String, InvocationParameter>,
-    base: &BTreeMap<String, AtomicValue>,
+    base: &Arc<BTreeMap<String, AtomicValue>>,
+    complete_clone: bool,
 ) -> RuntimeVariables {
-    let mut frame = RuntimeVariables::from_atomics(base);
+    let mut frame = RuntimeVariables::from_atomics(base, complete_clone);
     for parameter in &template.parameters {
         let value = supplied
             .get(&parameter.name)
@@ -289,7 +296,7 @@ pub(super) fn bind_template_parameters(
                 },
                 |supplied| supplied.value.clone(),
             );
-        frame.atomics.insert(parameter.name.clone(), value);
+        Arc::make_mut(&mut frame.atomics).insert(parameter.name.clone(), value);
     }
     frame
 }

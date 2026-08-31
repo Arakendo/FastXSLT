@@ -50,10 +50,15 @@ width from 66,049 to 514 charged visits with differential, fallback, memory,
 cancellation, and concurrent-ownership evidence. Broader indexes remain private
 AR-0013 experiments. The
 [global-frame clone probe](../Evidence/named-template-global-frame-cloning-2026-08-31.md)
-now also confirms material allocation and latency growth through 256 globals
-and eight named calls. AR-0013 may compare a safe private overlay frame against
-that complete-clone reference; prepared-XDM anatomy remains the unmeasured half
-of Finding 12.
+confirmed material allocation and latency growth through 256 globals and eight
+named calls. [ADR-0014](../ADR/ADR-0014-invocation-owned-copy-on-write-atomic-frames.md)
+now admits private invocation-owned safe copy-on-write frames after eliminating
+all eight complete clones in that workload, while preserving the complete-clone
+oracle. The [prepared-XDM anatomy](../Evidence/prepared-xdm-byte-anatomy-2026-08-31.md)
+also closes Finding 12's measurement half: node records dominate its repetitive
+3,002-node shape, followed by resource identities and relationships, so no XDM
+representation change is yet justified. Finding 6's registry-policy decision is
+the adversarial review's sole open item.
 
 Completing the 31-case QT3 mixed deep-equal group raised
 `deep_equal_experiment.rs` to 1,054 lines and exposed independent atomic and
@@ -1892,14 +1897,18 @@ container or unsafe path before profiles establish a concrete pressure.
   count removal, boxed slices, enum/tag layout, safe arenas, worker-local reuse,
   static dispatch, synchronization traffic, and generated hot paths when a
   profile makes one relevant.
-- [ ] Start with three bounded, explicitly supplied probes: phase-attributed
-  Rust allocation/retention, XPath sequence length/item-kind histograms, and
-  prepared-XDM byte anatomy. Treat name duplication, refcount/synchronization,
+- [ ] Continue the bounded probe set with phase-attributed Rust
+  allocation/retention and XPath sequence length/item-kind histograms.
+- [x] Measure prepared-XDM byte anatomy by node records, relationships,
+  names/namespaces, values, resource identity, occurrence/unique counts, and
+  construction allocations; retain interning/layout as unselected candidates.
+  Treat name duplication, refcount/synchronization,
   dispatch/navigation fan-out, and scratch-capacity behavior as follow-ups
   nominated by evidence rather than simultaneous instrumentation projects.
-- [ ] Prototype one measured hypothesis at a time behind private safe-Rust
-  owners; preserve reference semantics and diagnostics through differential
-  verification.
+- [x] Prototype the first two measured hypotheses behind private safe-Rust
+  owners: bounded document-rooted match membership (ADR-0013) and
+  invocation-owned copy-on-write atomic frames (ADR-0014). Preserve both
+  complete reference paths for differential verification.
 - [ ] Record both successful and negative experiments, including preparation
   cost, break-even reuse, retained memory, throughput, tail latency, and host-
   visible behavior.

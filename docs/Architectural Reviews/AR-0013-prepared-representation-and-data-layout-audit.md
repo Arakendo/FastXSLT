@@ -269,13 +269,19 @@ Those measurements are now complete for the narrow absolute-pattern case.
 admits a bounded invocation-owned word-bitset membership with deterministic
 fallback while leaving every broader index under this incubating review.
 
-The first global-frame matrix also confirms that named calls repeatedly clone
-all atomic globals. Against a same-global depth-zero control, an eight-call,
-256-global chain added 8,824 allocation requests, 432,576 requested bytes,
-about 419 KiB peak live requested memory, and 598.3 us median. A safe private
-overlay/parent-frame representation is now a concrete comparison candidate,
-provided lookup cost, shadowing semantics, cleanup, and concurrency are measured
-alongside allocation. Prepared-XDM field duplication remains unmeasured.
+The first global-frame matrix confirmed that named calls repeatedly cloned all
+atomic globals. A safe shared/copy-on-write comparison then removed all eight
+complete clones at 256 globals, saving 552 allocation requests, 26,836
+requested/peak-live bytes, and 70.1 us local median while retaining the complete
+clone oracle. ADR-0014 admits that narrow invocation-owned representation; it
+does not admit a parent chain or cross-invocation sharing.
+
+Prepared-XDM anatomy is also now measured on a 3,002-node deliberately
+repetitive source. Node records account for 83.0% of the 1,223,367-byte capacity
+estimate, repeated source-resource strings 7.6%, relationships 5.9%, and
+name/namespace/value strings 3.4%. The high occurrence-to-unique ratios nominate
+interning and compact-layout experiments, but the field proportions and single
+synthetic shape do not justify selecting one.
 
 ## Disposition
 
@@ -292,13 +298,16 @@ provide a concrete hypothesis to test.
   prepare, execute, and serialize phases.
 - [x] Attribute the nominated named-template global-frame clone mechanism
   against a same-global, same-result depth-zero execution control.
-- [ ] Add bounded sequence length/item-kind histograms and prepared-XDM byte
-  anatomy sufficient to distinguish node, name/namespace, text, relationship,
-  index, capacity-slack, and ownership overhead.
+- [ ] Add bounded sequence length/item-kind histograms.
+- [x] Add prepared-XDM byte anatomy sufficient to distinguish node records,
+  names/namespaces, values, relationships, per-node resource identity, vector
+  capacity, occurrence/unique counts, and allocator-requested construction.
 - [x] Add focused template-candidate and document-rooted match-path fan-out
   probes nominated by the adversarial review.
 - [x] Compare and admit the narrow safe invocation-owned document-rooted match
   membership against its complete charged reference.
+- [x] Compare and admit the narrow safe invocation-owned copy-on-write atomic
+  frame against its complete-clone reference.
 - [ ] Add duplication, reference-count/synchronization, and scratch-capacity
   probes only where profiles or representative workloads nominate them.
 - [ ] Verify each experiment preserves deterministic retained/peak attribution
@@ -347,3 +356,9 @@ provide a concrete hypothesis to test.
 - 2026-08-31 -- Confirmed complete atomic-global cloning across named-template
   calls with allocator-requested and latency deltas against a same-global
   control; nominated a safe private overlay-frame comparison.
+- 2026-08-31 -- Accepted ADR-0014 after a safe invocation-owned copy-on-write
+  frame eliminated complete read-only frame clones and improved the measured
+  256-global path while retaining the clone oracle.
+- 2026-08-31 -- Completed prepared-XDM byte anatomy on a 3,002-node repetitive
+  shape; node records dominated the capacity estimate, so no interning or XDM
+  layout was selected from duplication counts alone.

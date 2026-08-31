@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+#[cfg(test)]
+use std::collections::HashSet;
 use std::ops::Range;
 use std::sync::Arc;
 
@@ -54,6 +56,49 @@ pub(crate) struct Document {
     nodes: Arc<Vec<Node>>,
     root: NodeId,
     child_overrides: Option<HashMap<NodeId, Box<[NodeId]>>>,
+}
+
+#[cfg(test)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct DocumentCapacityAnatomy {
+    pub(crate) document_header: usize,
+    pub(crate) node_records: usize,
+    pub(crate) child_ids: usize,
+    pub(crate) attribute_ids: usize,
+    pub(crate) expanded_name_locals: usize,
+    pub(crate) expanded_name_namespaces: usize,
+    pub(crate) prefixes: usize,
+    pub(crate) values: usize,
+    pub(crate) namespace_records: usize,
+    pub(crate) namespace_prefixes: usize,
+    pub(crate) namespace_uris: usize,
+    pub(crate) location_resources: usize,
+    pub(crate) local_name_occurrences: usize,
+    pub(crate) unique_local_names: usize,
+    pub(crate) namespace_occurrences: usize,
+    pub(crate) unique_namespaces: usize,
+    pub(crate) value_occurrences: usize,
+    pub(crate) unique_values: usize,
+    pub(crate) resource_occurrences: usize,
+    pub(crate) unique_resources: usize,
+}
+
+#[cfg(test)]
+impl DocumentCapacityAnatomy {
+    pub(crate) const fn total_capacity_bytes(self) -> usize {
+        self.document_header
+            + self.node_records
+            + self.child_ids
+            + self.attribute_ids
+            + self.expanded_name_locals
+            + self.expanded_name_namespaces
+            + self.prefixes
+            + self.values
+            + self.namespace_records
+            + self.namespace_prefixes
+            + self.namespace_uris
+            + self.location_resources
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -334,41 +379,73 @@ impl Document {
 
     #[cfg(test)]
     pub(crate) fn owned_capacity_bytes(&self) -> usize {
-        let node_storage = self.nodes.capacity() * std::mem::size_of::<Node>();
-        let nested_storage: usize = self
-            .nodes
-            .iter()
-            .map(|node| {
-                let relationships = (node.children.capacity() + node.attributes.capacity())
-                    * std::mem::size_of::<NodeId>();
-                let name_bytes = node.name.as_ref().map_or(0, |name| {
-                    name.local.capacity()
-                        + name
-                            .namespace
-                            .as_ref()
-                            .map_or(0, std::string::String::capacity)
-                });
-                let value_bytes = node.value.as_ref().map_or(0, std::string::String::capacity);
-                let prefix_bytes = node.prefix.as_ref().map_or(0, String::capacity);
-                let namespace_bytes = node.namespaces.capacity()
-                    * std::mem::size_of::<NamespaceBinding>()
-                    + node
-                        .namespaces
-                        .iter()
-                        .map(|binding| {
-                            binding.prefix.as_ref().map_or(0, String::capacity)
-                                + binding.namespace.capacity()
-                        })
-                        .sum::<usize>();
-                relationships
-                    + name_bytes
-                    + prefix_bytes
-                    + value_bytes
-                    + namespace_bytes
-                    + node.location.resource.capacity()
-            })
-            .sum();
-        std::mem::size_of::<Self>() + node_storage + nested_storage
+        self.capacity_anatomy().total_capacity_bytes()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn capacity_anatomy(&self) -> DocumentCapacityAnatomy {
+        let mut anatomy = DocumentCapacityAnatomy {
+            document_header: std::mem::size_of::<Self>(),
+            node_records: self.nodes.capacity() * std::mem::size_of::<Node>(),
+            child_ids: 0,
+            attribute_ids: 0,
+            expanded_name_locals: 0,
+            expanded_name_namespaces: 0,
+            prefixes: 0,
+            values: 0,
+            namespace_records: 0,
+            namespace_prefixes: 0,
+            namespace_uris: 0,
+            location_resources: 0,
+            local_name_occurrences: 0,
+            unique_local_names: 0,
+            namespace_occurrences: 0,
+            unique_namespaces: 0,
+            value_occurrences: 0,
+            unique_values: 0,
+            resource_occurrences: 0,
+            unique_resources: 0,
+        };
+        let mut local_names = HashSet::new();
+        let mut namespaces = HashSet::new();
+        let mut values = HashSet::new();
+        let mut resources = HashSet::new();
+        for node in self.nodes.iter() {
+            anatomy.child_ids += node.children.capacity() * std::mem::size_of::<NodeId>();
+            anatomy.attribute_ids += node.attributes.capacity() * std::mem::size_of::<NodeId>();
+            if let Some(name) = &node.name {
+                anatomy.expanded_name_locals += name.local.capacity();
+                anatomy.local_name_occurrences += 1;
+                local_names.insert(name.local.as_str());
+                if let Some(namespace) = &name.namespace {
+                    anatomy.expanded_name_namespaces += namespace.capacity();
+                    anatomy.namespace_occurrences += 1;
+                    namespaces.insert(namespace.as_str());
+                }
+            }
+            anatomy.prefixes += node.prefix.as_ref().map_or(0, String::capacity);
+            if let Some(value) = &node.value {
+                anatomy.values += value.capacity();
+                anatomy.value_occurrences += 1;
+                values.insert(value.as_str());
+            }
+            anatomy.namespace_records +=
+                node.namespaces.capacity() * std::mem::size_of::<NamespaceBinding>();
+            for binding in &node.namespaces {
+                anatomy.namespace_prefixes += binding.prefix.as_ref().map_or(0, String::capacity);
+                anatomy.namespace_uris += binding.namespace.capacity();
+                anatomy.namespace_occurrences += 1;
+                namespaces.insert(binding.namespace.as_str());
+            }
+            anatomy.location_resources += node.location.resource.capacity();
+            anatomy.resource_occurrences += 1;
+            resources.insert(node.location.resource.as_str());
+        }
+        anatomy.unique_local_names = local_names.len();
+        anatomy.unique_namespaces = namespaces.len();
+        anatomy.unique_values = values.len();
+        anatomy.unique_resources = resources.len();
+        anatomy
     }
 
     pub(crate) fn kind(&self, id: NodeId) -> NodeKind {
@@ -640,6 +717,61 @@ mod tests {
             document.namespace_declarations(child)[0].prefix.as_deref(),
             Some("q")
         );
+        assert_eq!(
+            document.capacity_anatomy().total_capacity_bytes(),
+            document.owned_capacity_bytes()
+        );
+    }
+
+    #[cfg(feature = "allocation-observation")]
+    #[test]
+    #[ignore = "release-mode prepared-XDM retained-field anatomy and allocation probe"]
+    fn measure_prepared_xdm_capacity_anatomy() {
+        use std::fmt::Write as _;
+
+        const ITEM_COUNT: usize = 1_000;
+        let mut xml = String::from("<catalog xmlns:p='urn:items'>");
+        for _ in 0..ITEM_COUNT {
+            xml.push_str("<p:item p:code='same'>shared text</p:item>");
+        }
+        xml.push_str("</catalog>");
+        let parsed = parse_document(
+            "memory:prepared-xdm-anatomy.xml",
+            xml.as_bytes(),
+            ParseLimits {
+                max_events: ITEM_COUNT * 3 + 2,
+                max_depth: 3,
+            },
+        )
+        .expect("representative repeated-name source should parse");
+        let mut document = None;
+        let allocations = allocation_counter::measure(|| {
+            document = Some(Document::from_parsed(parsed).expect("prepared XDM should build"));
+        });
+        let document = document.expect("measurement retains the prepared XDM");
+        let anatomy = document.capacity_anatomy();
+
+        assert_eq!(document.node_count(), ITEM_COUNT * 3 + 2);
+        assert_eq!(
+            anatomy.total_capacity_bytes(),
+            document.owned_capacity_bytes()
+        );
+        assert_eq!(anatomy.resource_occurrences, document.node_count());
+        assert_eq!(anatomy.unique_resources, 1);
+        assert!(anatomy.local_name_occurrences > anatomy.unique_local_names);
+        assert!(anatomy.namespace_occurrences > anatomy.unique_namespaces);
+        assert!(anatomy.value_occurrences > anatomy.unique_values);
+
+        let mut observation = String::new();
+        write!(
+            observation,
+            "items={ITEM_COUNT} source_bytes={} nodes={} anatomy={anatomy:?} total_capacity_bytes={} allocator_requested={allocations:?}",
+            xml.len(),
+            document.node_count(),
+            anatomy.total_capacity_bytes()
+        )
+        .expect("write anatomy observation");
+        println!("{observation}");
     }
 
     #[test]

@@ -188,6 +188,10 @@ pub(crate) struct InvocationControl {
 
 #[cfg(test)]
 #[derive(Debug, Default)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "independent test-only fault injection and reference-path switches remain explicit"
+)]
 struct InvocationObservations {
     template_candidates_considered: usize,
     template_candidates_since_charge: usize,
@@ -203,6 +207,7 @@ struct InvocationObservations {
     document_rooted_match_cache_builds: usize,
     document_rooted_match_cache_hits: usize,
     document_rooted_match_cache_bytes: usize,
+    complete_atomic_frame_clones: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -349,6 +354,22 @@ impl InvocationControl {
             self.observations.global_atomic_frames_cloned,
             self.observations.global_atomic_entries_cloned,
         )
+    }
+
+    pub(crate) fn complete_atomic_frame_clones(&self) -> bool {
+        #[cfg(not(test))]
+        let _ = self;
+        #[cfg(test)]
+        if self.observations.complete_atomic_frame_clones {
+            return true;
+        }
+        false
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_complete_atomic_frame_clones(mut self) -> Self {
+        self.observations.complete_atomic_frame_clones = true;
+        self
     }
 
     pub(crate) fn document_rooted_match_cache_enabled(&self) -> bool {

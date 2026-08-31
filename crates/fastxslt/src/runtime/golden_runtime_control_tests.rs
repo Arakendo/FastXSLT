@@ -330,25 +330,38 @@ fn global_clone_workload(
 }
 
 #[test]
-fn named_template_calls_clone_every_global_atomic_entry() {
+fn shared_global_atomic_frames_match_the_complete_clone_reference() {
     let global_count = 16;
     let call_depth = 8;
     let program = global_clone_workload(global_count, call_depth);
-    let mut control = InvocationControl::unbounded();
+    let mut reference_control = InvocationControl::unbounded().with_complete_atomic_frame_clones();
 
-    let result = super::execute_initial_template(
+    let reference_result = super::execute_initial_template(
         &program,
         "t0",
         super::MultipleMatchPolicy::UseLast,
-        "global-clone",
-        &mut control,
+        "global-clone-reference",
+        &mut reference_control,
     )
-    .expect("execute global-clone workload");
+    .expect("execute complete-clone reference workload");
+    let mut shared_control = InvocationControl::unbounded();
+    let shared_result = super::execute_initial_template(
+        &program,
+        "t0",
+        super::MultipleMatchPolicy::UseLast,
+        "global-clone-shared",
+        &mut shared_control,
+    )
+    .expect("execute shared-frame workload");
 
-    assert_eq!(result.children.len(), 1);
+    assert_eq!(shared_result, reference_result);
     assert_eq!(
-        control.global_atomic_frame_clone_observation(),
+        reference_control.global_atomic_frame_clone_observation(),
         (call_depth, global_count * call_depth)
+    );
+    assert_eq!(
+        shared_control.global_atomic_frame_clone_observation(),
+        (0, 0)
     );
 }
 
@@ -358,73 +371,76 @@ fn named_template_calls_clone_every_global_atomic_entry() {
 fn measure_named_template_global_frame_cloning() {
     const CALL_DEPTH: usize = 8;
     for global_count in [0, 16, 64, 256] {
-        let baseline_program = global_clone_workload(global_count, 0);
         let program = global_clone_workload(global_count, CALL_DEPTH);
-        let mut baseline_samples = Vec::with_capacity(5);
-        let mut samples = Vec::with_capacity(5);
-        let mut observed = None;
+        let mut reference_samples = Vec::with_capacity(5);
+        let mut shared_samples = Vec::with_capacity(5);
+        let mut reference_observed = None;
+        let mut shared_observed = None;
         for _ in 0..5 {
-            let mut baseline_control = InvocationControl::unbounded();
-            let baseline_started = Instant::now();
-            let baseline_result = super::execute_initial_template(
-                &baseline_program,
+            let mut reference_control =
+                InvocationControl::unbounded().with_complete_atomic_frame_clones();
+            let reference_started = Instant::now();
+            let reference_result = super::execute_initial_template(
+                &program,
                 "t0",
                 super::MultipleMatchPolicy::UseLast,
-                "global-clone-baseline",
-                &mut baseline_control,
+                "global-clone-reference",
+                &mut reference_control,
             )
-            .expect("execute global-clone baseline");
-            assert_eq!(baseline_result.children.len(), 1);
-            baseline_samples.push(baseline_started.elapsed().as_secs_f64() * 1_000_000.0);
+            .expect("execute complete-clone reference");
+            reference_samples.push(reference_started.elapsed().as_secs_f64() * 1_000_000.0);
+            reference_observed = Some(reference_control.global_atomic_frame_clone_observation());
 
-            let mut control = InvocationControl::unbounded();
-            let started = Instant::now();
+            let mut shared_control = InvocationControl::unbounded();
+            let shared_started = Instant::now();
+            let shared_result = super::execute_initial_template(
+                &program,
+                "t0",
+                super::MultipleMatchPolicy::UseLast,
+                "global-clone-shared",
+                &mut shared_control,
+            )
+            .expect("execute shared-frame workload");
+            assert_eq!(shared_result, reference_result);
+            shared_samples.push(shared_started.elapsed().as_secs_f64() * 1_000_000.0);
+            shared_observed = Some(shared_control.global_atomic_frame_clone_observation());
+        }
+        reference_samples.sort_by(f64::total_cmp);
+        shared_samples.sort_by(f64::total_cmp);
+
+        let mut reference_allocation_control =
+            InvocationControl::unbounded().with_complete_atomic_frame_clones();
+        let reference_allocations = allocation_counter::measure(|| {
             let result = super::execute_initial_template(
                 &program,
                 "t0",
                 super::MultipleMatchPolicy::UseLast,
-                "global-clone-measurement",
-                &mut control,
+                "global-clone-allocation-reference",
+                &mut reference_allocation_control,
             )
-            .expect("execute measured global-clone workload");
-            assert_eq!(result.children.len(), 1);
-            samples.push(started.elapsed().as_secs_f64() * 1_000_000.0);
-            observed = Some(control.global_atomic_frame_clone_observation());
-        }
-        baseline_samples.sort_by(f64::total_cmp);
-        samples.sort_by(f64::total_cmp);
-
-        let mut baseline_allocation_control = InvocationControl::unbounded();
-        let baseline_allocations = allocation_counter::measure(|| {
-            let result = super::execute_initial_template(
-                &baseline_program,
-                "t0",
-                super::MultipleMatchPolicy::UseLast,
-                "global-clone-allocation-baseline",
-                &mut baseline_allocation_control,
-            )
-            .expect("execute allocation-observed global-clone baseline");
+            .expect("execute allocation-observed complete-clone reference");
             assert_eq!(result.children.len(), 1);
         });
-        let mut allocation_control = InvocationControl::unbounded();
-        let allocations = allocation_counter::measure(|| {
+        let mut shared_allocation_control = InvocationControl::unbounded();
+        let shared_allocations = allocation_counter::measure(|| {
             let result = super::execute_initial_template(
                 &program,
                 "t0",
                 super::MultipleMatchPolicy::UseLast,
-                "global-clone-allocation",
-                &mut allocation_control,
+                "global-clone-allocation-shared",
+                &mut shared_allocation_control,
             )
-            .expect("execute allocation-observed global-clone workload");
+            .expect("execute allocation-observed shared-frame workload");
             assert_eq!(result.children.len(), 1);
         });
         println!(
-            "globals={global_count} call_depth={CALL_DEPTH} clone_observation={:?} baseline_median_us={:.3} chain_median_us={:.3} baseline_allocations={:?} chain_allocations={:?}",
-            observed.expect("one clone observation"),
-            baseline_samples[baseline_samples.len() / 2],
-            samples[samples.len() / 2],
-            baseline_allocations,
-            allocations
+            "globals={global_count} call_depth={CALL_DEPTH} reference_clone_observation={:?} shared_clone_observation={:?} reference_median_us={:.3} shared_median_us={:.3} reference_allocations={:?} shared_allocations={:?}",
+            reference_observed.expect("one reference observation"),
+            shared_observed.expect("one shared observation"),
+            reference_samples[reference_samples.len() / 2],
+            shared_samples[shared_samples.len() / 2],
+            reference_allocations,
+            shared_allocations
         );
     }
 }
