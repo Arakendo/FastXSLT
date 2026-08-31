@@ -39,9 +39,9 @@ shape, must now drive comparison of count, byte, host-domain, and isolation
 policies. The
 [template-candidate fanout probe](../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
 has already confirmed exact `nodes × templates` growth, including 33,024
-candidate checks in the largest local sweep and a 128-candidate delay after a
-deterministic cancellation signal. AR-0010 must now compare candidate charging
-and check frequency. The
+candidate checks in the largest local sweep. A distinct candidate domain now
+charges and observes cancellation before every source and temporary-tree
+candidate, closing Finding 7 while retaining an uncharged test oracle. The
 [document-rooted match-path probe](../Evidence/document-rooted-match-path-reevaluation-2026-08-31.md)
 also confirms exact `(items + 1)^2` charged visits through width 256. AR-0013
 must compare a safe invocation-owned membership view against that reference and

@@ -29,6 +29,8 @@ pub struct WorkbenchLimits {
     pub max_xpath_operations: usize,
     /// Maximum XSLT instructions charged during one transformation.
     pub max_xslt_instructions: usize,
+    /// Maximum matched-template candidates considered during one transformation.
+    pub max_xslt_template_candidates: usize,
     /// Maximum result nodes charged during one transformation.
     pub max_result_nodes: usize,
 }
@@ -43,6 +45,7 @@ impl Default for WorkbenchLimits {
             max_xdm_nodes: 100_000,
             max_xpath_operations: 1_000_000,
             max_xslt_instructions: 1_000_000,
+            max_xslt_template_candidates: 1_000_000,
             max_result_nodes: 100_000,
         }
     }
@@ -353,6 +356,7 @@ fn work_limits(limits: WorkbenchLimits) -> WorkLimits {
         xpath_node_visits: limits.max_xpath_operations,
         xpath_operations: limits.max_xpath_operations,
         xslt_instructions: limits.max_xslt_instructions,
+        xslt_template_candidates: limits.max_xslt_template_candidates,
         result_nodes: limits.max_result_nodes,
         result_text_bytes: limits.max_result_bytes,
         serialized_bytes: limits.max_result_bytes,

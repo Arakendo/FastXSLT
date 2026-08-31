@@ -482,7 +482,7 @@ fn measure_document_rooted_match_path_reevaluation() {
 }
 
 #[test]
-fn template_candidate_fanout_is_observed_without_becoming_a_budget() {
+fn template_candidate_fanout_is_charged_in_its_own_domain() {
     let (program, source) = template_fanout_workload(32, 16);
     let templates = program.matched_templates.len();
     let mut control = InvocationControl::unbounded();
@@ -494,15 +494,18 @@ fn template_candidate_fanout_is_observed_without_becoming_a_budget() {
     assert_eq!(templates, 33);
     assert_eq!(
         control.template_candidate_observation(),
-        (templates * 16, templates)
+        (templates * 16, 1)
+    );
+    assert_eq!(
+        control.consumed(WorkDomain::XsltTemplateCandidate),
+        templates * 16
     );
     assert_eq!(control.consumed(WorkDomain::XsltInstruction), 33);
 }
 
 #[test]
-fn cancellation_signalled_during_simple_pattern_scan_waits_for_the_next_charge() {
+fn cancellation_signalled_during_simple_pattern_scan_stops_at_the_candidate_charge() {
     let (program, source) = template_fanout_workload(128, 1);
-    let templates = program.matched_templates.len();
     let mut control = InvocationControl::unbounded().cancelling_after_template_candidates(1);
 
     let failure = super::execute_program(
@@ -515,15 +518,26 @@ fn cancellation_signalled_during_simple_pattern_scan_waits_for_the_next_charge()
 
     assert_eq!(failure.code, "FXCT0001");
     assert_eq!(failure.category, FailureCategory::Cancelled);
-    assert_eq!(failure.work_domain, Some(WorkDomain::XsltInstruction));
-    assert_eq!(
-        control.template_candidate_observation(),
-        (templates, templates)
-    );
-    assert_eq!(
-        control.template_candidates_after_cancellation_signal(),
-        templates - 1
-    );
+    assert_eq!(failure.work_domain, Some(WorkDomain::XsltTemplateCandidate));
+    assert_eq!(control.template_candidate_observation(), (1, 1));
+    assert_eq!(control.template_candidates_after_cancellation_signal(), 0);
+}
+
+#[test]
+fn template_candidate_limit_stops_before_the_first_pattern_test() {
+    let (program, source) = template_fanout_workload(8, 1);
+    let mut limits = WorkLimits::unbounded();
+    limits.xslt_template_candidates = 0;
+    let mut control = InvocationControl::new(CancellationToken::new(), limits);
+
+    let failure =
+        super::execute_program(&program, &source, "template-candidate-limit", &mut control)
+            .expect_err("zero template-candidate work must stop selection");
+
+    assert_eq!(failure.code, "FXCT0002");
+    assert_eq!(failure.category, FailureCategory::Limit);
+    assert_eq!(failure.work_domain, Some(WorkDomain::XsltTemplateCandidate));
+    assert_eq!(control.template_candidate_observation(), (1, 1));
 }
 
 #[test]
@@ -532,9 +546,23 @@ fn measure_template_candidate_fanout() {
     for template_count in [8, 32, 128] {
         for source_nodes in [8, 64, 256] {
             let (program, source) = template_fanout_workload(template_count, source_nodes);
-            let mut samples = Vec::with_capacity(5);
+            let mut uncharged_samples = Vec::with_capacity(5);
+            let mut charged_samples = Vec::with_capacity(5);
             let mut observed = None;
             for _ in 0..5 {
+                let mut uncharged_control =
+                    InvocationControl::unbounded().without_template_candidate_charging();
+                let uncharged_started = Instant::now();
+                let uncharged_result = super::execute_program(
+                    &program,
+                    &source,
+                    "template-fanout-uncharged",
+                    &mut uncharged_control,
+                )
+                .expect("execute uncharged reference fanout workload");
+                assert_eq!(uncharged_result.children.len(), source_nodes);
+                uncharged_samples.push(uncharged_started.elapsed().as_secs_f64() * 1_000_000.0);
+
                 let mut control = InvocationControl::unbounded();
                 let started = Instant::now();
                 let result = super::execute_program(
@@ -545,18 +573,20 @@ fn measure_template_candidate_fanout() {
                 )
                 .expect("execute measured fanout workload");
                 assert_eq!(result.children.len(), source_nodes);
-                samples.push(started.elapsed().as_secs_f64() * 1_000_000.0);
+                charged_samples.push(started.elapsed().as_secs_f64() * 1_000_000.0);
                 observed = Some(control.template_candidate_observation());
             }
-            samples.sort_by(f64::total_cmp);
+            uncharged_samples.sort_by(f64::total_cmp);
+            charged_samples.sort_by(f64::total_cmp);
             let (candidates, maximum_gap) = observed.expect("one observation");
             println!(
-                "templates={} source_nodes={} candidates={} maximum_gap={} median_us={:.3}",
+                "templates={} source_nodes={} candidates={} maximum_gap={} uncharged_median_us={:.3} charged_median_us={:.3}",
                 program.matched_templates.len(),
                 source_nodes,
                 candidates,
                 maximum_gap,
-                samples[samples.len() / 2]
+                uncharged_samples[uncharged_samples.len() / 2],
+                charged_samples[charged_samples.len() / 2]
             );
         }
     }

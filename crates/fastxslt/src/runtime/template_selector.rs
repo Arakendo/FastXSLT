@@ -34,7 +34,9 @@ pub(super) fn select_template_with_index<'a>(
     let mut selected_semantic_rank = None;
     let mut top_rank_is_ambiguous = false;
     for (index, template) in program.matched_templates.iter().enumerate() {
-        control.observe_template_candidate();
+        control
+            .charge_template_candidate()
+            .map_err(|failure| control_failure(failure, selection.request_id))?;
         if !accepts_mode(&template.modes, selection.mode)
             || !matches_pattern(&template.pattern, selection, control)?
         {
@@ -76,7 +78,9 @@ pub(super) fn select_next_template<'a>(
     let mut selected_semantic_rank = None;
     let mut top_rank_is_ambiguous = false;
     for (index, template) in program.matched_templates.iter().enumerate() {
-        control.observe_template_candidate();
+        control
+            .charge_template_candidate()
+            .map_err(|failure| control_failure(failure, selection.request_id))?;
         let rank = (template.import_precedence, template.priority, index);
         let lower_rank = rank < current_rank;
         if !lower_rank
@@ -118,7 +122,9 @@ pub(super) fn select_imported_template<'a>(
     let mut selected_template = None;
     let mut selected_rank = None;
     for (index, template) in program.matched_templates.iter().enumerate() {
-        control.observe_template_candidate();
+        control
+            .charge_template_candidate()
+            .map_err(|failure| control_failure(failure, selection.request_id))?;
         if template.import_precedence >= current_precedence
             || !accepts_mode(&template.modes, selection.mode)
             || !matches_pattern(&template.pattern, selection, control)?

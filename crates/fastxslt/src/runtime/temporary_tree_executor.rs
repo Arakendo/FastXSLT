@@ -79,7 +79,9 @@ fn select_temporary_template<'a>(
     let mut selected_rank = None;
     let mut ambiguous = false;
     for (index, candidate) in inputs.program.matched_templates.iter().enumerate() {
-        control.observe_template_candidate();
+        control
+            .charge_template_candidate()
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
         if !template_accepts_mode(&candidate.modes, mode)
             || !temporary_matches(tree, node, &candidate.pattern, inputs.request_id, control)?
         {
@@ -118,7 +120,9 @@ pub(super) fn apply_temporary_roots(
     charge_xslt_instruction(control, inputs.request_id)?;
     let mut document_template = None;
     for (template_index, template) in inputs.program.matched_templates.iter().enumerate().rev() {
-        control.observe_template_candidate();
+        control
+            .charge_template_candidate()
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
         if template_accepts_mode(&template.modes, mode)
             && template.pattern == MatchPattern::Document
         {

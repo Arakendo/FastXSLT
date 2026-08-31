@@ -149,11 +149,12 @@ only mode.
 - The golden path now asserts an exact eight-domain charge profile. Structural
   observation gaps are one named semantic unit, but work inside a dependency
   call, allocation, or fragment append remains variable in wall time.
-- Test-only template-selection observations now confirm exact
-  `selected nodes × matched templates` fanout. A deterministic signal after the
-  first of 129 simple-pattern candidates remained unobserved until all
-  candidates finished and the next XSLT instruction charged. No candidate work
-  domain or check frequency follows from that evidence yet.
+- Template selection now charges a distinct `xslt-template-candidate` unit
+  before every source or temporary-tree candidate test. Zero-limit and
+  deterministic-signal regressions retain structured identity and bound the
+  candidate observation interval at one. The largest local paired probe measured
+  240.9 us uncharged versus 284.2 us charged for 33,024 candidates; an index and
+  supported public default remain unselected.
 - A local optimized microprobe observed 1.215–1.249 ns per successful charge
   versus 0.205–0.207 ns for its black-box loop baseline on the recorded machine.
   It is not an end-to-end overhead or host-performance result.
@@ -221,6 +222,8 @@ or mutate semantic state.
   defaults.
 - [x] Force exhaustion in every currently implemented work domain and preserve
   domain plus request identity in the private structured failure.
+- [x] Attribute matched-template candidate work separately from entered XSLT
+  instructions and observe cancellation at every candidate boundary.
 - [ ] Add adversarial cases for excessive input bytes, names/attributes, nodes,
   sequence growth, recursion, expression work, diagnostics, and output.
 - [x] Fault-inject cancellation at multiple execution phases and prove request
@@ -298,6 +301,9 @@ is measured, or a stronger sandbox such as WASM becomes a viable host boundary.
 - 2026-08-26 -- Carried a zero XSLT-instruction budget through the isolated
   boundary as deterministic `FXCT0002 / limit`, declined retry/replacement, and
   reused the same compiled/prepared process afterward.
+- 2026-08-31 -- Added a distinct template-candidate work domain and one local
+  charge/check per implemented candidate scan. Paired release evidence retained
+  the uncharged reference for overhead attribution without selecting an index.
 - 2026-08-26 -- Added the first native in-process ASP.NET candidate under
   ADR-0008. It strengthens the mechanism comparison but retains no thread-level
   hard-kill claim; broader supervision and panic evidence remain open.

@@ -13,6 +13,7 @@ pub(crate) enum WorkDomain {
     XPathNodeVisit,
     XPathOperation,
     XsltInstruction,
+    XsltTemplateCandidate,
     ResultNode,
     ResultTextByte,
     SerializedByte,
@@ -27,6 +28,7 @@ impl WorkDomain {
             Self::XPathNodeVisit => "xpath-node-visit",
             Self::XPathOperation => "xpath-operation",
             Self::XsltInstruction => "xslt-instruction",
+            Self::XsltTemplateCandidate => "xslt-template-candidate",
             Self::ResultNode => "result-node",
             Self::ResultTextByte => "result-text-byte",
             Self::SerializedByte => "serialized-byte",
@@ -42,6 +44,7 @@ pub(crate) struct WorkLimits {
     pub(crate) xpath_node_visits: usize,
     pub(crate) xpath_operations: usize,
     pub(crate) xslt_instructions: usize,
+    pub(crate) xslt_template_candidates: usize,
     pub(crate) result_nodes: usize,
     pub(crate) result_text_bytes: usize,
     pub(crate) serialized_bytes: usize,
@@ -56,6 +59,7 @@ impl WorkLimits {
             xpath_node_visits: usize::MAX,
             xpath_operations: usize::MAX,
             xslt_instructions: usize::MAX,
+            xslt_template_candidates: usize::MAX,
             result_nodes: usize::MAX,
             result_text_bytes: usize::MAX,
             serialized_bytes: usize::MAX,
@@ -70,6 +74,7 @@ impl WorkLimits {
             WorkDomain::XPathNodeVisit => self.xpath_node_visits,
             WorkDomain::XPathOperation => self.xpath_operations,
             WorkDomain::XsltInstruction => self.xslt_instructions,
+            WorkDomain::XsltTemplateCandidate => self.xslt_template_candidates,
             WorkDomain::ResultNode => self.result_nodes,
             WorkDomain::ResultTextByte => self.result_text_bytes,
             WorkDomain::SerializedByte => self.serialized_bytes,
@@ -84,6 +89,7 @@ impl WorkLimits {
             WorkDomain::XPathNodeVisit => &mut self.xpath_node_visits,
             WorkDomain::XPathOperation => &mut self.xpath_operations,
             WorkDomain::XsltInstruction => &mut self.xslt_instructions,
+            WorkDomain::XsltTemplateCandidate => &mut self.xslt_template_candidates,
             WorkDomain::ResultNode => &mut self.result_nodes,
             WorkDomain::ResultTextByte => &mut self.result_text_bytes,
             WorkDomain::SerializedByte => &mut self.serialized_bytes,
@@ -189,6 +195,7 @@ struct InvocationObservations {
     cancel_after_template_candidates: Option<usize>,
     template_candidate_signal_sent: bool,
     template_candidates_after_signal: usize,
+    skip_template_candidate_charging: bool,
     document_rooted_match_evaluations: usize,
     global_atomic_frames_cloned: usize,
     global_atomic_entries_cloned: usize,
@@ -262,6 +269,21 @@ impl InvocationControl {
                 }
             }
         }
+    }
+
+    pub(crate) fn charge_template_candidate(&mut self) -> Result<(), ControlFailure> {
+        self.observe_template_candidate();
+        #[cfg(test)]
+        if self.observations.skip_template_candidate_charging {
+            return Ok(());
+        }
+        self.charge(WorkDomain::XsltTemplateCandidate, 1)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn without_template_candidate_charging(mut self) -> Self {
+        self.observations.skip_template_candidate_charging = true;
+        self
     }
 
     #[cfg(test)]

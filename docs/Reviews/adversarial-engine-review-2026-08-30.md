@@ -22,16 +22,16 @@ their original evidence. Implementation details and validation are recorded in
 | 4 | **Boundary closed** | FastXSLT now reports `FXRT1014 / unsupported` before strip-all execution when the source contains any `xml:space` declaration. Full inherited `preserve`/`default` semantics remain deliberately unimplemented under ADR-0012. |
 | 5 | **Completed** | Source element copies retain effective in-scope namespace bindings assembled from their ancestor lineage. Isolated descendant `xsl:copy-of` and `xsl:copy` regressions pass. |
 | 6 | **Partially repaired -- policy decision required** | Outcomes are bounded and creation publication is atomic. Separate probes now compare 100,000-handle abandonment with a 144-handle host-shaped high-water containing two ×4 prepared generations. [AR-0017](../Architectural%20Reviews/AR-0017-native-handle-registry-retention-and-abandonment.md) still requires consumer requirements and policy comparison before selecting count, byte, domain, shrink, or isolation behavior. |
-| 7 | **Confirmed -- remediation decision required** | Test-only instrumentation proves exact `selected nodes × matched templates` fanout. A signal after candidate 1 remained unobserved through the other 128 simple-pattern candidates. The optimized sweep reached 33,024 candidates and a 429.3 us local median; no budget unit, check frequency, or index is selected yet. |
+| 7 | **Completed** | Every source and temporary matched-template scan charges a distinct `xslt-template-candidate` unit before testing each candidate. Zero-limit and deterministic-cancellation regressions retain structured domain/request identity and reduce the candidate observation gap to one. A paired 33,024-candidate probe measured 240.9 us uncharged versus 284.2 us charged locally; a dispatch index remains optional AR-0013 work. |
 | 8 | **Completed** | Temporary path and built-in selections carry real focus position/size through template and `next-match` execution. Two-node `1/2`, `2/2` regression evidence passes. |
 | 9 | **Boundary closed** | Same-module forward and cyclic global defaults fail at compilation as `FXST1044 / unsupported`; admitted backward dependencies continue to compile. A general dependency graph remains deferred. |
 | 10 | **Completed** | Cancellation commands are assembled and serialized as complete bounded frames. A 10,000-pair byte-fragmenting stress probe recovered all 20,000 unique frames exactly once; the existing live-worker probe retains cancellation correlation and same-process recovery. |
 | 11 | **Confirmed -- representation comparison required** | Widths 8/32/128/256 performed 8/32/128/256 full document-rooted path evaluations and exactly 81/1,089/16,641/66,049 charged node visits. One-less visit limits fail correctly, so accounting is honest; AR-0013 must compare a safe invocation-owned membership view before any optimization is admitted. |
 | 12 | **Partially confirmed -- representation comparison required** | An eight-call chain with 256 globals clones 2,048 global entries and adds 8,824 allocation requests, 432,576 requested bytes, about 419 KiB peak live requested memory, and 598.3 us median over the same-global depth-zero control. AR-0013 may compare a safe overlay frame; prepared-XDM field duplication remains unmeasured. |
 
-Current total: **8 findings handled**, comprising six semantic, evidence, or
-operational repairs and two explicit unsupported boundaries. **Four findings
-remain open**: two resource/accounting decisions, one confirmed representation
+Current total: **9 findings handled**, comprising seven semantic, evidence, or
+operational repairs and two explicit unsupported boundaries. **Three findings
+remain open**: one registry-policy decision, one confirmed representation
 comparison, and one partially confirmed compound representation finding. The
 first completed tranche is commit `95aa31a`; the
 subsequent [worker control-frame evidence](../Evidence/aspnet-worker-control-frame-serialization-2026-08-31.md)
