@@ -468,6 +468,14 @@ denominator therefore records 36 passes, 26 profile exclusions, and 107 visible
 default not-run cases.
 [Evidence](../Evidence/xslt30-mode-streaming-profile-exclusions-2026-08-30.md)
 
+The same metadata-first accounting now identifies all 18 mode cases whose
+native test supplies a principal package artifact. ADR-0007 excludes packages,
+so each is explicitly profile-excluded and unexecuted; the inventory verifies
+the `<test><package>` shape for every identity rather than relying on the
+`mode-17` numbering. The mode denominator now records 36 passes, 44 profile
+exclusions, and 89 visible default not-run cases.
+[Evidence](../Evidence/xslt30-mode-package-profile-exclusions-2026-08-30.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -507,10 +515,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 36 | 0 | 26 | 107 |
+| `attr/mode` | 169 | 36 | 0 | 44 | 89 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **230** | **3** | **31** | **267** |
+| **Conserved total** | **531** | **230** | **3** | **49** | **249** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1351,6 +1359,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   from the pinned catalog and leave their execution not run. The mode ledger
   now records 36 passes, 26 profile exclusions, and 107 visible default not-run
   cases.
+- [x] Classify all 18 mode cases with a native principal package artifact as
+  explicit ADR-0007 profile exclusions. Verify each `<test><package>` shape
+  from the pinned catalog and leave compilation and execution not run. The mode
+  ledger now records 36 passes, 44 profile exclusions, and 89 visible default
+  not-run cases.
 - [x] Retain non-whitespace text children in the private attribute-free
   temporary-tree representation and preserve mixed element/text order through
   invocation-owned materialization, built-in traversal, result accounting, and

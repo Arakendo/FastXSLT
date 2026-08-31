@@ -84,6 +84,26 @@ const STREAMING_EXCLUDED_CASES: [&str; 26] = [
     "mode-1506",
     "mode-1903",
 ];
+const PACKAGE_EXCLUDED_CASES: [&str; 18] = [
+    "mode-1701",
+    "mode-1701a",
+    "mode-1702",
+    "mode-1702a",
+    "mode-1703",
+    "mode-1704",
+    "mode-1705",
+    "mode-1705a",
+    "mode-1705b",
+    "mode-1706",
+    "mode-1707",
+    "mode-1708",
+    "mode-1709",
+    "mode-1710",
+    "mode-1711",
+    "mode-1712",
+    "mode-1713",
+    "mode-1714err",
+];
 const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/mode-denominator-v0.toml");
 
 #[test]
@@ -105,7 +125,7 @@ fn inventories_the_complete_mode_denominator_before_selection() {
     assert!(OVERLAY.contains("selection = \"harness-unsupported\""));
     assert_eq!(
         OVERLAY.matches("[[case_override]]").count(),
-        SELECTED_CASES.len() + STREAMING_EXCLUDED_CASES.len()
+        SELECTED_CASES.len() + STREAMING_EXCLUDED_CASES.len() + PACKAGE_EXCLUDED_CASES.len()
     );
     for case_name in SELECTED_CASES {
         assert!(names.contains(case_name));
@@ -124,12 +144,26 @@ fn inventories_the_complete_mode_denominator_before_selection() {
         );
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
+    for case_name in PACKAGE_EXCLUDED_CASES {
+        assert!(names.contains(case_name));
+        let case = cases
+            .iter()
+            .copied()
+            .find(|case| attribute(&document, *case, "name") == Some(case_name))
+            .expect("package-excluded case");
+        let test = child_named(&document, case, "test").expect("test metadata");
+        assert!(
+            child_named(&document, test, "package").is_some(),
+            "{case_name} must retain its native package artifact"
+        );
+        assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
+    }
     assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 36);
     assert_eq!(
         OVERLAY
             .matches("selection = \"excluded-by-profile\"")
             .count(),
-        26
+        44
     );
 }
 

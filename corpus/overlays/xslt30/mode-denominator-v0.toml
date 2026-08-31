@@ -379,3 +379,111 @@ case_name = "mode-1903"
 selection = "excluded-by-profile"
 execution = "not-run"
 rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1701"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
+
+[[case_override]]
+case_name = "mode-1701a"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
+
+[[case_override]]
+case_name = "mode-1702"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
+
+[[case_override]]
+case_name = "mode-1702a"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
+
+[[case_override]]
+case_name = "mode-1703"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
+
+[[case_override]]
+case_name = "mode-1704"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
+
+[[case_override]]
+case_name = "mode-1705"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
+
+[[case_override]]
+case_name = "mode-1705a"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
+
+[[case_override]]
+case_name = "mode-1705b"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
+
+[[case_override]]
+case_name = "mode-1706"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
+
+[[case_override]]
+case_name = "mode-1707"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
+
+[[case_override]]
+case_name = "mode-1708"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
+
+[[case_override]]
+case_name = "mode-1709"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
+
+[[case_override]]
+case_name = "mode-1710"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
+
+[[case_override]]
+case_name = "mode-1711"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
+
+[[case_override]]
+case_name = "mode-1712"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
+
+[[case_override]]
+case_name = "mode-1713"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
+
+[[case_override]]
+case_name = "mode-1714err"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native test supplies a principal package artifact. ADR-0007 excludes XSLT packages from the current profile, so the case remains conserved without compilation or execution."
