@@ -223,3 +223,159 @@ case_name = "mode-0108"
 selection = "selected"
 execution = "passed"
 rationale = "A bounded xsl:for-each over $x changes focus to the global temporary-tree document while retaining the surrounding template rule context, then explicit mode a dispatch selects its temporary child element rule."
+
+[[case_override]]
+case_name = "mode-0002"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-0004"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-0006"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-0008"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-0010"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-0012"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-0014"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1406"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1408"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1410"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1412"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1414"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1416"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1418"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1420"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1422"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1424"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1426"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1428"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1430"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1432"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1436"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1437"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1438"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1506"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
+
+[[case_override]]
+case_name = "mode-1903"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."

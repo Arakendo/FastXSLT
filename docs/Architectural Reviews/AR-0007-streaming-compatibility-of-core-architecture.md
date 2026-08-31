@@ -8,7 +8,7 @@
 | Scope | XDM access, compilation metadata, execution strategy, buffering, and resource lifetime |
 | Trigger | Preserve future streaming optionality without committing to implementation or conformance |
 | Related ADRs | ADR-0001, ADR-0002 |
-| Related evidence | AR-0001, AR-0003, and `docs/Evidence/peer-streaming-architecture-review-monday-2026-08-25.md` |
+| Related evidence | AR-0001, AR-0003, `../Evidence/peer-streaming-architecture-review-monday-2026-08-25.md`, and `../Evidence/xslt30-mode-streaming-profile-exclusions-2026-08-30.md` |
 
 ## Architectural question
 
@@ -183,6 +183,9 @@ claim.
 
 - [x] ADR-0007 selects XSLT 3.0 as the reference edition and deliberately
   excludes any XSLT streaming-conformance claim from the initial profile.
+- [x] Classify all 26 XSLT30 mode cases with an explicit native streaming
+  feature dependency as profile exclusions without executing or preprocessing
+  them.
 - [ ] During M1/M2, inventory the navigation, order, ancestor, repeated-access,
   retention, and materialization needs of each implemented expression and
   instruction.
@@ -226,3 +229,6 @@ materialization proves useful, or abstraction cost harms the tree evaluator.
 - 2026-08-26 -- ADR-0007 selected modern reference semantics while deliberately
   excluding streaming conformance from the initial profile. Architectural
   optionality remains deferred under this review's existing triggers.
+- 2026-08-30 -- Classified the complete 26-case native streaming-dependent
+  subset of the conserved XSLT30 mode denominator as explicit profile
+  exclusions. This improves accounting and creates no streaming claim.

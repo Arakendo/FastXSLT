@@ -56,6 +56,34 @@ const SELECTED_CASES: [&str; 36] = [
     "mode-1508",
     "mode-1509",
 ];
+const STREAMING_EXCLUDED_CASES: [&str; 26] = [
+    "mode-0002",
+    "mode-0004",
+    "mode-0006",
+    "mode-0008",
+    "mode-0010",
+    "mode-0012",
+    "mode-0014",
+    "mode-1406",
+    "mode-1408",
+    "mode-1410",
+    "mode-1412",
+    "mode-1414",
+    "mode-1416",
+    "mode-1418",
+    "mode-1420",
+    "mode-1422",
+    "mode-1424",
+    "mode-1426",
+    "mode-1428",
+    "mode-1430",
+    "mode-1432",
+    "mode-1436",
+    "mode-1437",
+    "mode-1438",
+    "mode-1506",
+    "mode-1903",
+];
 const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/mode-denominator-v0.toml");
 
 #[test]
@@ -77,12 +105,32 @@ fn inventories_the_complete_mode_denominator_before_selection() {
     assert!(OVERLAY.contains("selection = \"harness-unsupported\""));
     assert_eq!(
         OVERLAY.matches("[[case_override]]").count(),
-        SELECTED_CASES.len()
+        SELECTED_CASES.len() + STREAMING_EXCLUDED_CASES.len()
     );
     for case_name in SELECTED_CASES {
         assert!(names.contains(case_name));
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
+    for case_name in STREAMING_EXCLUDED_CASES {
+        assert!(names.contains(case_name));
+        let case = cases
+            .iter()
+            .copied()
+            .find(|case| attribute(&document, *case, "name") == Some(case_name))
+            .expect("streaming-excluded case");
+        assert_eq!(
+            case_dependency(&document, case, "feature"),
+            Some("streaming")
+        );
+        assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
+    }
+    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 36);
+    assert_eq!(
+        OVERLAY
+            .matches("selection = \"excluded-by-profile\"")
+            .count(),
+        26
+    );
 }
 
 #[test]

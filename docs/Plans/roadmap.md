@@ -458,6 +458,16 @@ valid visibility semantics remain unsupported. The mode denominator advances
 to 36 passes and 133 visible default not-run cases.
 [Evidence](../Evidence/xslt30-mode-visibility-validation-tranche-2026-08-30.md)
 
+The complete native streaming-dependent mode subset is now explicitly
+classified rather than left inside the generic not-run remainder. All 26 cases
+whose catalog metadata declares `feature="streaming"` are excluded by the
+current ADR-0007 profile and remain unexecuted. The executable inventory checks
+the native dependency for every identity, including `mode-0014`, whose static
+error does not become a pass while its required feature is excluded. The mode
+denominator therefore records 36 passes, 26 profile exclusions, and 107 visible
+default not-run cases.
+[Evidence](../Evidence/xslt30-mode-streaming-profile-exclusions-2026-08-30.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -497,10 +507,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 36 | 0 | 0 | 133 |
+| `attr/mode` | 169 | 36 | 0 | 26 | 107 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **230** | **3** | **5** | **293** |
+| **Conserved total** | **531** | **230** | **3** | **31** | **267** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1336,6 +1346,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   Preserve native `XTSE0020` and keep valid visibility behavior private and
   unsupported. The mode ledger now records 36 passes and 133 visible default
   not-run cases.
+- [x] Classify all 26 mode cases with the native `feature="streaming"`
+  dependency as explicit ADR-0007 profile exclusions. Verify every dependency
+  from the pinned catalog and leave their execution not run. The mode ledger
+  now records 36 passes, 26 profile exclusions, and 107 visible default not-run
+  cases.
 - [x] Retain non-whitespace text children in the private attribute-free
   temporary-tree representation and preserve mixed element/text order through
   invocation-owned materialization, built-in traversal, result accounting, and
