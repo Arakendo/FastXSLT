@@ -1,15 +1,15 @@
 # ASP.NET Native Active Cooperative Cancellation
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-26 |
-| Host | ASP.NET Core targeting .NET 8 on Windows |
-| Boundary | ADR-0010 Rust-owned numeric native control handles |
-| Workload | Pinned XSLT30 `for-004` over 20,000 deterministic items |
-| Deterministic runs | Three independent live host processes |
-| Natural runs | Two unpaused samples of 25 managed-token races |
-| Command | `./scripts/verify-aspnet-workbench.ps1 -OperationalExperiments -MeasurementRequests 100 -MeasurementRuns 1` |
-| Claim | Private cooperative-control evidence; not a deadline or hard-termination guarantee |
+| Field              | Value                                                                                                       |
+| ------------------ | ----------------------------------------------------------------------------------------------------------- |
+| Date               | 2026-08-26                                                                                                  |
+| Host               | ASP.NET Core targeting .NET 8 on Windows                                                                    |
+| Boundary           | ADR-0010 Rust-owned numeric native control handles                                                          |
+| Workload           | Pinned XSLT30 `for-004` over 20,000 deterministic items                                                     |
+| Deterministic runs | Three independent live host processes                                                                       |
+| Natural runs       | Two unpaused samples of 25 managed-token races                                                              |
+| Command            | `./scripts/verify-aspnet-workbench.ps1 -OperationalExperiments -MeasurementRequests 100 -MeasurementRuns 1` |
+| Claim              | Private cooperative-control evidence; not a deadline or hard-termination guarantee                          |
 
 ## Mechanism
 
@@ -35,12 +35,12 @@ The workbench-only first-charge barrier paused execution after a real engine
 charge was reached. Signalling an unrelated control did not complete or cancel
 the target invocation. Signalling the target produced:
 
-| Field | Value |
-| --- | --- |
-| Code | `FXCT0001` |
-| Category | `cancelled` |
-| Request identity | `native-active-cancelled` |
-| Detail | `host cancellation observed while charging xslt-instruction work` |
+| Field            | Value                                                             |
+| ---------------- | ----------------------------------------------------------------- |
+| Code             | `FXCT0001`                                                        |
+| Category         | `cancelled`                                                       |
+| Request identity | `native-active-cancelled`                                         |
+| Detail           | `host cancellation observed while charging xslt-instruction work` |
 
 Three local signal-to-response observations were approximately 0.49 ms,
 0.13 ms, and 0.13 ms. The barrier makes these attribution checks, not natural
@@ -56,10 +56,10 @@ cancellation, so each sample conserved `cancellations + completions = 25`.
 Completion remains a valid race outcome even though it was not observed for
 this input size.
 
-| Sample | Minimum | Median | Maximum | Outcomes |
-| --- | ---: | ---: | ---: | --- |
-| 1 | 0.0258 ms | 0.0314 ms | 0.4316 ms | 25 cancelled, 0 completed |
-| 2 | 0.0311 ms | 0.0415 ms | 0.4912 ms | 25 cancelled, 0 completed |
+| Sample |   Minimum |    Median |   Maximum | Outcomes                  |
+| ------ | --------: | --------: | --------: | ------------------------- |
+| 1      | 0.0258 ms | 0.0314 ms | 0.4316 ms | 25 cancelled, 0 completed |
+| 2      | 0.0311 ms | 0.0415 ms | 0.4912 ms | 25 cancelled, 0 completed |
 
 Natural cancellation was observed while charging both `xslt-instruction` and
 `xpath-node-visit` work. Therefore code, category, request identity, and the

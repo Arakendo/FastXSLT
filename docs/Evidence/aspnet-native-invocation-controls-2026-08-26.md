@@ -1,13 +1,13 @@
 # ASP.NET Native Scalar Invocation Controls
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-26 |
-| Boundary | ADR-0008 native workbench ABI extended by ADR-0009 |
-| Workload | Pinned XSLT30 `for-004` compiled and prepared once |
-| Host | ASP.NET Core targeting .NET 8 |
-| Command | `./scripts/verify-aspnet-workbench.ps1 -OperationalExperiments -MeasurementRequests 100 -MeasurementRuns 1` |
-| Claim | Private diagnostic and lifecycle evidence; not a public cancellation or limit API |
+| Field    | Value                                                                                                       |
+| -------- | ----------------------------------------------------------------------------------------------------------- |
+| Date     | 2026-08-26                                                                                                  |
+| Boundary | ADR-0008 native workbench ABI extended by ADR-0009                                                          |
+| Workload | Pinned XSLT30 `for-004` compiled and prepared once                                                          |
+| Host     | ASP.NET Core targeting .NET 8                                                                               |
+| Command  | `./scripts/verify-aspnet-workbench.ps1 -OperationalExperiments -MeasurementRequests 100 -MeasurementRuns 1` |
+| Claim    | Private diagnostic and lifecycle evidence; not a public cancellation or limit API                           |
 
 ## Method
 
@@ -26,10 +26,10 @@ and the existing isolated operational experiments.
 
 ## Results
 
-| Case | Code | Category | Request identity | Exact detail |
-| --- | --- | --- | --- | --- |
-| Pre-dispatch cancellation | `FXCT0001` | `cancelled` | `native-controlled-cancelled` | `host cancellation observed while charging xslt-instruction work` |
-| Zero XSLT-instruction budget | `FXCT0002` | `limit` | `native-instruction-budget` | `xslt-instruction work budget exhausted: limit 0, consumed 0, next charge 1` |
+| Case                         | Code       | Category    | Request identity              | Exact detail                                                                 |
+| ---------------------------- | ---------- | ----------- | ----------------------------- | ---------------------------------------------------------------------------- |
+| Pre-dispatch cancellation    | `FXCT0001` | `cancelled` | `native-controlled-cancelled` | `host cancellation observed while charging xslt-instruction work`            |
+| Zero XSLT-instruction budget | `FXCT0002` | `limit`     | `native-instruction-budget`   | `xslt-instruction work budget exhausted: limit 0, consumed 0, next charge 1` |
 
 The ordinary recovery after both controlled failures returned the exact
 `for-004` result:

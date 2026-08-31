@@ -1,11 +1,11 @@
 # Private Built-In Rules and XSLT30 Fit Review
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-25 |
-| XSLT30 revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
-| Golden | `corpus/golden/built-in-template-rules` |
-| Claim | Private semantic and suite-fit evidence; no conformance claim |
+| Field           | Value                                                         |
+| --------------- | ------------------------------------------------------------- |
+| Date            | 2026-08-25                                                    |
+| XSLT30 revision | `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b`                    |
+| Golden          | `corpus/golden/built-in-template-rules`                       |
+| Claim           | Private semantic and suite-fit evidence; no conformance claim |
 
 ## Suite-fit screen
 

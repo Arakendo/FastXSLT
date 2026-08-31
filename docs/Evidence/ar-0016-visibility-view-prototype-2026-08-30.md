@@ -72,10 +72,10 @@ The generated source contains 500 item elements separated by indentation. Each
 sample performs 2,000 complete warm transforms, and seven samples are reduced
 to the median:
 
-| Candidate | Median invocation | Additional owned-capacity estimate |
-| --- | ---: | ---: |
-| Complete reference | 160,725.0 ns | 574,479 bytes |
-| Visibility view | 33,076.4 ns | 4,072 bytes |
+| Candidate          | Median invocation | Additional owned-capacity estimate |
+| ------------------ | ----------------: | ---------------------------------: |
+| Complete reference |      160,725.0 ns |                      574,479 bytes |
+| Visibility view    |       33,076.4 ns |                        4,072 bytes |
 
 For this private workload, the view was 4.86 times faster and its attributable
 additional-capacity estimate was about 141 times smaller. Both candidates scan

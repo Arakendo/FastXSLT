@@ -30,10 +30,10 @@ or host boundary changed.
 
 ## Responsibility result
 
-| Unit | Before | After | Responsibility |
-| --- | ---: | ---: | --- |
-| `path_experiment.rs` | 1,092 lines | 527 lines | private location-path grammar, typed lowering, evaluation, diagnostics, and work charging |
-| `path_experiment_tests.rs` | absent | 561 lines | path grammar/navigation/predicate/order/diagnostic/work-charge invariants |
+| Unit                       |      Before |     After | Responsibility                                                                            |
+| -------------------------- | ----------: | --------: | ----------------------------------------------------------------------------------------- |
+| `path_experiment.rs`       | 1,092 lines | 527 lines | private location-path grammar, typed lowering, evaluation, diagnostics, and work charging |
+| `path_experiment_tests.rs` |      absent | 561 lines | path grammar/navigation/predicate/order/diagnostic/work-charge invariants                 |
 
 The production owner has a one-way test child only under `cfg(test)`. The test
 module imports the private subject through `super`; production code does not

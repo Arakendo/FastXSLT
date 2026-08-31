@@ -1,11 +1,11 @@
 # Peer Review: AR-0016 Decision Readiness
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-30 |
-| Reviewer | Monday |
-| Subject | AR-0016 decision readiness after the visibility-view prototype |
-| Outcome | Complete a bounded measurement matrix, reconcile stale review prose, and accept only the demonstrated strip-all visibility-view decision |
+| Field    | Value                                                                                                                                    |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Date     | 2026-08-30                                                                                                                               |
+| Reviewer | Monday                                                                                                                                   |
+| Subject  | AR-0016 decision readiness after the visibility-view prototype                                                                           |
+| Outcome  | Complete a bounded measurement matrix, reconcile stale review prose, and accept only the demonstrated strip-all visibility-view decision |
 
 ## Review assessment
 

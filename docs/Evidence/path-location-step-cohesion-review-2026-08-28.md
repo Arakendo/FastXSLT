@@ -4,13 +4,13 @@ Date: 2026-08-28
 
 ## Trigger and scope
 
-| Item | Observation |
-| --- | --- |
-| Governing decision | [ADR-0004](../ADR/ADR-0004-source-unit-cohesion-size-pressure-and-decomposition.md) |
-| Source unit | `crates/fastxslt/src/xpath/path_experiment.rs` |
-| Before attribute-axis tranche | 975 physical lines |
-| After focused implementation and controls | 1,092 physical lines |
-| Size treatment | Inspect cohesion during this substantive modification |
+| Item                                      | Observation                                                                         |
+| ----------------------------------------- | ----------------------------------------------------------------------------------- |
+| Governing decision                        | [ADR-0004](../ADR/ADR-0004-source-unit-cohesion-size-pressure-and-decomposition.md) |
+| Source unit                               | `crates/fastxslt/src/xpath/path_experiment.rs`                                      |
+| Before attribute-axis tranche             | 975 physical lines                                                                  |
+| After focused implementation and controls | 1,092 physical lines                                                                |
+| Size treatment                            | Inspect cohesion during this substantive modification                               |
 
 The review covers only the private admitted location-path subset. It does not
 select a public XPath AST, general parser architecture, alternate evaluator, or

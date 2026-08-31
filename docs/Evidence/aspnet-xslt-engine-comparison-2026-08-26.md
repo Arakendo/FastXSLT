@@ -1,15 +1,15 @@
 # ASP.NET XSLT Engine Comparison
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-26 |
-| Host | ASP.NET Core targeting .NET 8 |
-| FastXSLT base | `2da565a9b55197ed4f570e31f38f113d68b0a131` plus this comparison harness |
-| Workload | XSLT30 `for-004` at suite revision `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
-| Source | `for03.xml`, 216 bytes, prepared once per engine |
-| Runs | Five warm sequential loops of 1,000 transformations |
-| Command | `./scripts/verify-aspnet-workbench.ps1 -LocalSaxonCs -MeasurementRuns 5` |
-| Claim | Local comparative evidence only; not a product benchmark or standards ranking |
+| Field         | Value                                                                         |
+| ------------- | ----------------------------------------------------------------------------- |
+| Date          | 2026-08-26                                                                    |
+| Host          | ASP.NET Core targeting .NET 8                                                 |
+| FastXSLT base | `2da565a9b55197ed4f570e31f38f113d68b0a131` plus this comparison harness       |
+| Workload      | XSLT30 `for-004` at suite revision `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
+| Source        | `for03.xml`, 216 bytes, prepared once per engine                              |
+| Runs          | Five warm sequential loops of 1,000 transformations                           |
+| Command       | `./scripts/verify-aspnet-workbench.ps1 -LocalSaxonCs -MeasurementRuns 5`      |
+| Claim         | Local comparative evidence only; not a product benchmark or standards ranking |
 
 ## Compared paths
 
@@ -48,11 +48,11 @@ for each lane.
 
 ## Five-run observations
 
-| Engine path | Minimum transforms/s | Median transforms/s | Maximum transforms/s | Median per-run ratio to FastXSLT |
-| --- | ---: | ---: | ---: | ---: |
-| FastXSLT isolated worker, exact XSLT 2.0 | 15,396 | 23,994 | 30,085 | 1.00× |
-| SaxonCS-HE in-process, exact XSLT 2.0 | 15,701 | 28,297 | 30,133 | 1.03× |
-| Microsoft in-process, equivalent XSLT 1.0 | 98,956 | 108,612 | 113,220 | 4.12× |
+| Engine path                               | Minimum transforms/s | Median transforms/s | Maximum transforms/s | Median per-run ratio to FastXSLT |
+| ----------------------------------------- | -------------------: | ------------------: | -------------------: | -------------------------------: |
+| FastXSLT isolated worker, exact XSLT 2.0  |               15,396 |              23,994 |               30,085 |                            1.00× |
+| SaxonCS-HE in-process, exact XSLT 2.0     |               15,701 |              28,297 |               30,133 |                            1.03× |
+| Microsoft in-process, equivalent XSLT 1.0 |               98,956 |             108,612 |              113,220 |                            4.12× |
 
 FastXSLT and SaxonCS were close on this very small exact workload: their
 per-run SaxonCS/FastXSLT ratios ranged from 0.94× to 1.34×. The large shared

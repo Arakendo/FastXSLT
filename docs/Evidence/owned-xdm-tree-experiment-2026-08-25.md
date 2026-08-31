@@ -1,12 +1,12 @@
 # Owned XDM Tree Experiment
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-25 |
-| Scope | First private XML-event to engine-owned document model |
-| Input | `corpus/golden/hello/input.xml` and three focused in-memory fixtures |
+| Field          | Value                                                                |
+| -------------- | -------------------------------------------------------------------- |
+| Date           | 2026-08-25                                                           |
+| Scope          | First private XML-event to engine-owned document model               |
+| Input          | `corpus/golden/hello/input.xml` and three focused in-memory fixtures |
 | Implementation | `crates/fastxslt/src/xdm/owned_tree_experiment.rs` under `cfg(test)` |
-| Informs | AR-0007, AR-0008, and M1 Slice 2 |
+| Informs        | AR-0007, AR-0008, and M1 Slice 2                                     |
 
 ## Question
 

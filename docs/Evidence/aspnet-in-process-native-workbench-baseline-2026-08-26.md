@@ -57,11 +57,11 @@ Command:
 All paths compiled/prepared once and materialized each serialized result. The
 FastXSLT lanes executed the exact pinned XSLT30 `for-004` source and stylesheet.
 
-| Lane | Run 1 | Run 2 | Run 3 | Median |
-| --- | ---: | ---: | ---: | ---: |
-| FastXSLT isolated worker | 14,214/s | 16,809/s | 17,521/s | 16,809/s |
-| FastXSLT in-process native | 266,042/s | 371,457/s | 321,926/s | 321,926/s |
-| Microsoft in-process XSLT 1.0 equivalent | 90,084/s | 94,093/s | 106,207/s | 94,093/s |
+| Lane                                     |     Run 1 |     Run 2 |     Run 3 |    Median |
+| ---------------------------------------- | --------: | --------: | --------: | --------: |
+| FastXSLT isolated worker                 |  14,214/s |  16,809/s |  17,521/s |  16,809/s |
+| FastXSLT in-process native               | 266,042/s | 371,457/s | 321,926/s | 321,926/s |
+| Microsoft in-process XSLT 1.0 equivalent |  90,084/s |  94,093/s | 106,207/s |  94,093/s |
 
 The native/isolated ratio is about 19.15× by ratio of medians. The median of the
 three per-run ratios is about 18.72×. The Microsoft lane executes an equivalent

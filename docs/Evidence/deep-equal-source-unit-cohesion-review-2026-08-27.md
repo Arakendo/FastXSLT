@@ -2,13 +2,13 @@
 
 ## Status
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-27 |
+| Field              | Value                                                                               |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| Date               | 2026-08-27                                                                          |
 | Governing decision | [ADR-0004](../ADR/ADR-0004-source-unit-cohesion-size-pressure-and-decomposition.md) |
-| Reviewed unit | `crates/fastxslt/src/xpath/deep_equal_experiment.rs` |
-| Physical size | 1,054 lines before extraction; 661-line parent and 505-line child after extraction |
-| Disposition | Completed: private atomic owner extracted |
+| Reviewed unit      | `crates/fastxslt/src/xpath/deep_equal_experiment.rs`                                |
+| Physical size      | 1,054 lines before extraction; 661-line parent and 505-line child after extraction  |
+| Disposition        | Completed: private atomic owner extracted                                           |
 
 ## Trigger
 

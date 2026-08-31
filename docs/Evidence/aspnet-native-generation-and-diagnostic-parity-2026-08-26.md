@@ -1,26 +1,26 @@
 # ASP.NET Native Generation and Diagnostic Parity
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-26 |
-| Host | ASP.NET Core targeting .NET 8 |
-| Native boundary | ADR-0008/ADR-0009 version-zero workbench ABI |
-| Stylesheet | Pinned XSLT30 `for-004`; focused unsupported `xsl:message` fixture |
-| Command | `./scripts/verify-aspnet-workbench.ps1 -OperationalExperiments -MeasurementRequests 100 -MeasurementRuns 1` |
-| Claim | Private host-lifecycle and representative diagnostic-parity evidence |
+| Field           | Value                                                                                                       |
+| --------------- | ----------------------------------------------------------------------------------------------------------- |
+| Date            | 2026-08-26                                                                                                  |
+| Host            | ASP.NET Core targeting .NET 8                                                                               |
+| Native boundary | ADR-0008/ADR-0009 version-zero workbench ABI                                                                |
+| Stylesheet      | Pinned XSLT30 `for-004`; focused unsupported `xsl:message` fixture                                          |
+| Command         | `./scripts/verify-aspnet-workbench.ps1 -OperationalExperiments -MeasurementRequests 100 -MeasurementRuns 1` |
+| Claim           | Private host-lifecycle and representative diagnostic-parity evidence                                        |
 
 ## Representative diagnostic matrix
 
 The live native probe now preserves all fields asserted by the existing direct
 and isolated workbench matrix:
 
-| Phase/outcome | Code | Category | Identity/provenance observation |
-| --- | --- | --- | --- |
-| Empty request identity | `FXWB0003` | `invalid` | No request identity is invented |
-| Malformed prepared source | `FXXM0002` | `invalid` | Detail retains the supplied source identity |
-| Unsupported `xsl:message` | `FXST1006` | `unsupported` | Detail retains stylesheet identity and exact `103..117` span |
-| Pre-dispatch cancellation | `FXCT0001` | `cancelled` | Exact logical request identity and charge-point detail |
-| XSLT-instruction exhaustion | `FXCT0002` | `limit` | Exact logical request identity and budget accounting detail |
+| Phase/outcome               | Code       | Category      | Identity/provenance observation                              |
+| --------------------------- | ---------- | ------------- | ------------------------------------------------------------ |
+| Empty request identity      | `FXWB0003` | `invalid`     | No request identity is invented                              |
+| Malformed prepared source   | `FXXM0002` | `invalid`     | Detail retains the supplied source identity                  |
+| Unsupported `xsl:message`   | `FXST1006` | `unsupported` | Detail retains stylesheet identity and exact `103..117` span |
+| Pre-dispatch cancellation   | `FXCT0001` | `cancelled`   | Exact logical request identity and charge-point detail       |
+| XSLT-instruction exhaustion | `FXCT0002` | `limit`       | Exact logical request identity and budget accounting detail  |
 
 The managed adapter selected behavior from the binary envelope fields rather
 than parsing display strings. Ordinary execution on the same retained engine

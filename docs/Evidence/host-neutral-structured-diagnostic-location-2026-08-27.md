@@ -1,12 +1,12 @@
 # Host-Neutral Structured Diagnostic Location
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-27 |
-| Boundary | Private host-neutral workbench facade |
-| Cases | Malformed source XML; unsupported `xsl:message` during stylesheet compilation |
-| Code/categories | `FXXM0002` / `invalid`; `FXST1006` / `unsupported` |
-| Outcome | Owned logical resource and byte span survive facade, native, and isolated ASP.NET translation |
+| Field           | Value                                                                                         |
+| --------------- | --------------------------------------------------------------------------------------------- |
+| Date            | 2026-08-27                                                                                    |
+| Boundary        | Private host-neutral workbench facade                                                         |
+| Cases           | Malformed source XML; unsupported `xsl:message` during stylesheet compilation                 |
+| Code/categories | `FXXM0002` / `invalid`; `FXST1006` / `unsupported`                                            |
+| Outcome         | Owned logical resource and byte span survive facade, native, and isolated ASP.NET translation |
 
 ## Executed boundary
 

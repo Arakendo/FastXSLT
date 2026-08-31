@@ -1,14 +1,14 @@
 # ASP.NET Natural Cancellation Races
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-26 |
-| Host | ASP.NET Core targeting .NET 8 on Windows |
-| Engine path | Supervised persistent isolated `fastxslt-worker` process |
-| Workload | Pinned XSLT30 `for-004` over 20,000 deterministic items |
-| Trials | 25 unpaused started-transform/cancel pairs |
-| Command | `./scripts/verify-aspnet-workbench.ps1 -OperationalExperiments -MeasurementRequests 100 -MeasurementRuns 1` |
-| Claim | Workload-specific natural cancellation-race evidence; not a deadline or general latency bound |
+| Field       | Value                                                                                                       |
+| ----------- | ----------------------------------------------------------------------------------------------------------- |
+| Date        | 2026-08-26                                                                                                  |
+| Host        | ASP.NET Core targeting .NET 8 on Windows                                                                    |
+| Engine path | Supervised persistent isolated `fastxslt-worker` process                                                    |
+| Workload    | Pinned XSLT30 `for-004` over 20,000 deterministic items                                                     |
+| Trials      | 25 unpaused started-transform/cancel pairs                                                                  |
+| Command     | `./scripts/verify-aspnet-workbench.ps1 -OperationalExperiments -MeasurementRequests 100 -MeasurementRuns 1` |
+| Claim       | Workload-specific natural cancellation-race evidence; not a deadline or general latency bound               |
 
 ## Limit propagation prerequisite
 
@@ -39,19 +39,19 @@ seam; the ordinary recovery path remained synchronous.
 
 ## Result
 
-| Outcome | Count |
-| --- | ---: |
-| Structured cancellation | 25 |
-| Valid completion | 0 |
-| Other failure | 0 |
+| Outcome                 | Count |
+| ----------------------- | ----: |
+| Structured cancellation |    25 |
+| Valid completion        |     0 |
+| Other failure           |     0 |
 
 Cancellation signal-to-response observations were:
 
 | Statistic | Milliseconds |
-| --- | ---: |
-| Minimum | 0.0952 |
-| Median | 0.1309 |
-| Maximum | 0.4285 |
+| --------- | -----------: |
+| Minimum   |       0.0952 |
+| Median    |       0.1309 |
+| Maximum   |       0.4285 |
 
 These values include managed framing, pipe transport, worker event dispatch,
 engine observation at a local charge point, structured projection, and response

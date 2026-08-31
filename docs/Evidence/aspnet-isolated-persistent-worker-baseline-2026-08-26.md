@@ -1,13 +1,13 @@
 # ASP.NET Isolated Persistent-Worker Baseline
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-26 |
-| Host | ASP.NET Core on .NET 8 |
-| Worker | Optimized `fastxslt-worker` Rust process |
-| Workload | Native XSLT30 `for-004` at suite revision `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` |
-| Command | `./scripts/verify-aspnet-workbench.ps1` |
-| Claim | First isolated host-boundary baseline; no production ABI, concurrency, or application-performance claim |
+| Field    | Value                                                                                                   |
+| -------- | ------------------------------------------------------------------------------------------------------- |
+| Date     | 2026-08-26                                                                                              |
+| Host     | ASP.NET Core on .NET 8                                                                                  |
+| Worker   | Optimized `fastxslt-worker` Rust process                                                                |
+| Workload | Native XSLT30 `for-004` at suite revision `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b`                    |
+| Command  | `./scripts/verify-aspnet-workbench.ps1`                                                                 |
+| Claim    | First isolated host-boundary baseline; no production ABI, concurrency, or application-performance claim |
 
 ## Lifecycle exercised
 

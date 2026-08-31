@@ -1,13 +1,13 @@
 # ASP.NET Worker Recovery and Generation Replacement
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-26 |
-| Host | ASP.NET Core targeting .NET 8 on Windows |
-| Engine path | Persistent isolated `fastxslt-worker` processes |
-| Stylesheet | Pinned XSLT30 `for-004` |
-| Command | `./scripts/verify-aspnet-workbench.ps1 -OperationalExperiments -MeasurementRequests 10 -MeasurementRuns 1` |
-| Claim | Private lifecycle and fault-containment evidence; not a production supervisor contract |
+| Field       | Value                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------- |
+| Date        | 2026-08-26                                                                                                 |
+| Host        | ASP.NET Core targeting .NET 8 on Windows                                                                   |
+| Engine path | Persistent isolated `fastxslt-worker` processes                                                            |
+| Stylesheet  | Pinned XSLT30 `for-004`                                                                                    |
+| Command     | `./scripts/verify-aspnet-workbench.ps1 -OperationalExperiments -MeasurementRequests 10 -MeasurementRuns 1` |
+| Claim       | Private lifecycle and fault-containment evidence; not a production supervisor contract                     |
 
 ## Worker termination and replacement
 

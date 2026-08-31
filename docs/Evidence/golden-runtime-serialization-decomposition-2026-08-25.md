@@ -1,12 +1,12 @@
 # Golden Runtime Serialization Decomposition
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-25 |
-| Checkpoint | `b5d7869` with 38 passing tests |
-| Structural revision | `7dbdb25` |
-| Scope | ADR-0004 private source-unit cohesion checkpoint |
-| Public guarantee | None |
+| Field               | Value                                            |
+| ------------------- | ------------------------------------------------ |
+| Date                | 2026-08-25                                       |
+| Checkpoint          | `b5d7869` with 38 passing tests                  |
+| Structural revision | `7dbdb25`                                        |
+| Scope               | ADR-0004 private source-unit cohesion checkpoint |
+| Public guarantee    | None                                             |
 
 ## Trigger
 

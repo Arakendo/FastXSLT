@@ -21,12 +21,12 @@ successful completion.
 A direct Rust test and the live isolated endpoint asserted the same code,
 category, request identity, and detail fields for:
 
-| Case | Code | Category | Request identity |
-| --- | --- | --- | --- |
-| Empty request identity | `FXWB0003` | `invalid` | none |
-| Mismatched source closing tag | `FXXM0002` | `invalid` | none |
-| Unsupported `xsl:message` | `FXST1006` | `unsupported` | none |
-| Host cancellation | `FXCT0001` | `cancelled` | correlated request |
+| Case                          | Code       | Category      | Request identity   |
+| ----------------------------- | ---------- | ------------- | ------------------ |
+| Empty request identity        | `FXWB0003` | `invalid`     | none               |
+| Mismatched source closing tag | `FXXM0002` | `invalid`     | none               |
+| Unsupported `xsl:message`     | `FXST1006` | `unsupported` | none               |
+| Host cancellation             | `FXCT0001` | `cancelled`   | correlated request |
 
 The unsupported diagnostic retained its stylesheet identity and byte span. The
 malformed-source diagnostic retained its source identity. The live check then

@@ -41,13 +41,13 @@ invocation state over the same immutable source and compiled stylesheet.
 
 ## Source-shape results
 
-| Workload | Nodes | Reference construction | View construction | Construction advantage | Preserve total | Reference total | View total | Total advantage |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Small, whitespace-heavy | 51 | 4,960 ns | 830 ns | 5.98x | 854 ns | 5,940 ns | 1,893 ns | 3.14x |
-| Medium, whitespace-heavy | 1,503 | 189,675 ns | 21,085 ns | 9.00x | 11,263 ns | 221,753 ns | 42,334 ns | 5.24x |
-| Medium, whitespace-light | 1,002 | 116,934 ns | 20,468 ns | 5.71x | 7,701 ns | 125,820 ns | 29,359 ns | 4.29x |
-| Large, whitespace-heavy | 6,003 | 999,833 ns | 105,212 ns | 9.50x | 53,325 ns | 1,257,739 ns | 150,678 ns | 8.35x |
-| Deep, whitespace-heavy | 150 | 20,179 ns | 5,589 ns | 3.61x | 2,674 ns | 17,421 ns | 6,367 ns | 2.74x |
+| Workload                 | Nodes | Reference construction | View construction | Construction advantage | Preserve total | Reference total | View total | Total advantage |
+| ------------------------ | ----: | ---------------------: | ----------------: | ---------------------: | -------------: | --------------: | ---------: | --------------: |
+| Small, whitespace-heavy  |    51 |               4,960 ns |            830 ns |                  5.98x |         854 ns |        5,940 ns |   1,893 ns |           3.14x |
+| Medium, whitespace-heavy | 1,503 |             189,675 ns |         21,085 ns |                  9.00x |      11,263 ns |      221,753 ns |  42,334 ns |           5.24x |
+| Medium, whitespace-light | 1,002 |             116,934 ns |         20,468 ns |                  5.71x |       7,701 ns |      125,820 ns |  29,359 ns |           4.29x |
+| Large, whitespace-heavy  | 6,003 |             999,833 ns |        105,212 ns |                  9.50x |      53,325 ns |    1,257,739 ns | 150,678 ns |           8.35x |
+| Deep, whitespace-heavy   |   150 |              20,179 ns |          5,589 ns |                  3.61x |       2,674 ns |       17,421 ns |   6,367 ns |           2.74x |
 
 The preserving baseline performs no effective-view construction. The view's
 total cost is 2.22x to 3.81x that baseline on these deliberately stripping
@@ -59,13 +59,13 @@ candidates.
 
 ## Latency and concurrency
 
-| Workload | View p50 | View p95 | View p99 | Reference x4/s | View x4/s | View throughput advantage |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Small, whitespace-heavy | 1.6 us | 2.7 us | 3.2 us | 457,221 | 1,346,983 | 2.95x |
-| Medium, whitespace-heavy | 31.6 us | 52.2 us | 66.4 us | 10,215 | 74,021 | 7.25x |
-| Medium, whitespace-light | 26.4 us | 41.1 us | 53.5 us | 16,471 | 88,334 | 5.36x |
-| Large, whitespace-heavy | 135.1 us | 213.8 us | 244.2 us | 2,046 | 18,150 | 8.87x |
-| Deep, whitespace-heavy | 6.2 us | 9.2 us | 10.3 us | 116,133 | 293,591 | 2.53x |
+| Workload                 | View p50 | View p95 | View p99 | Reference x4/s | View x4/s | View throughput advantage |
+| ------------------------ | -------: | -------: | -------: | -------------: | --------: | ------------------------: |
+| Small, whitespace-heavy  |   1.6 us |   2.7 us |   3.2 us |        457,221 | 1,346,983 |                     2.95x |
+| Medium, whitespace-heavy |  31.6 us |  52.2 us |  66.4 us |         10,215 |    74,021 |                     7.25x |
+| Medium, whitespace-light |  26.4 us |  41.1 us |  53.5 us |         16,471 |    88,334 |                     5.36x |
+| Large, whitespace-heavy  | 135.1 us | 213.8 us | 244.2 us |          2,046 |    18,150 |                     8.87x |
+| Deep, whitespace-heavy   |   6.2 us |   9.2 us |  10.3 us |        116,133 |   293,591 |                     2.53x |
 
 The view remains ahead under four concurrent invocations on every source
 shape. No shared mutable cache, lock, or cross-generation state is involved;
@@ -76,13 +76,13 @@ node storage.
 
 The memory probe uses the large 6,003-node whitespace-heavy source.
 
-| Phase | Requested bytes total | Retained bytes after construction | Peak requested bytes | Peak live allocations |
-| --- | ---: | ---: | ---: | ---: |
-| Complete-reference construction | 4,293,296 | 2,262,648 | 3,214,912 | 14,010 |
-| Visibility-view construction | 112,876 | 16,116 | 32,408 | 4 |
-| Preserve total invocation | 33,758 | 0 | 25,091 | 6 |
-| Complete-reference total invocation | 4,310,644 | 0 | 3,214,912 | 14,015 |
-| Visibility-view total invocation | 130,224 | 0 | 32,408 | 8 |
+| Phase                               | Requested bytes total | Retained bytes after construction | Peak requested bytes | Peak live allocations |
+| ----------------------------------- | --------------------: | --------------------------------: | -------------------: | --------------------: |
+| Complete-reference construction     |             4,293,296 |                         2,262,648 |            3,214,912 |                14,010 |
+| Visibility-view construction        |               112,876 |                            16,116 |               32,408 |                     4 |
+| Preserve total invocation           |                33,758 |                                 0 |               25,091 |                     6 |
+| Complete-reference total invocation |             4,310,644 |                                 0 |            3,214,912 |                14,015 |
+| Visibility-view total invocation    |               130,224 |                                 0 |               32,408 |                     8 |
 
 The view construction retains about 140.4 times fewer requested bytes and
 peaks about 99.2 times lower than the complete clone. End-to-end peak requested

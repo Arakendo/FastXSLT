@@ -1,11 +1,11 @@
 # Peer Review: AR-0016 Stylesheet-Dependent Source Views
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-30 |
-| Reviewer | Monday |
-| Subject | AR-0016 stylesheet-dependent source views and whitespace stripping |
-| Outcome | Retain Incubating disposition; strengthen identity, relationship, positional, string-value, concurrency, and representation experiments |
+| Field    | Value                                                                                                                                   |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Date     | 2026-08-30                                                                                                                              |
+| Reviewer | Monday                                                                                                                                  |
+| Subject  | AR-0016 stylesheet-dependent source views and whitespace stripping                                                                      |
+| Outcome  | Retain Incubating disposition; strengthen identity, relationship, positional, string-value, concurrency, and representation experiments |
 
 ## Review assessment
 

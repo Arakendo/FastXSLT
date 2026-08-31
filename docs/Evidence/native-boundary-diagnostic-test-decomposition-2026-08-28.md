@@ -1,14 +1,14 @@
 # Native Boundary Diagnostic-Test Decomposition
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-28 |
-| Governing decision | ADR-0004 |
-| Native boundary at inspection | 1,061 physical lines |
-| Native boundary after ADR-0011 | 1,086 physical lines |
-| Diagnostic companion after ADR-0011 | 176 physical lines |
-| Unsafe surface | 2 blocks, 16 exports, 18 allowances |
-| Disposition | Inspection trigger discharged by private test-owner extraction |
+| Field                               | Value                                                          |
+| ----------------------------------- | -------------------------------------------------------------- |
+| Date                                | 2026-08-28                                                     |
+| Governing decision                  | ADR-0004                                                       |
+| Native boundary at inspection       | 1,061 physical lines                                           |
+| Native boundary after ADR-0011      | 1,086 physical lines                                           |
+| Diagnostic companion after ADR-0011 | 176 physical lines                                             |
+| Unsafe surface                      | 2 blocks, 16 exports, 18 allowances                            |
+| Disposition                         | Inspection trigger discharged by private test-owner extraction |
 
 ## Trigger and ownership
 

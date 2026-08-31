@@ -29,12 +29,12 @@ No XSLT stylesheet wrapper is involved.
 
 ## Result
 
-| Case | Environment | Expected | Actual | Disposition |
-| --- | --- | ---: | ---: | --- |
-| `Axes002-1` | `TreeTrunc` | 0 | 0 | passed |
-| `Axes002-2` | `Tree1Child` | 0 | 0 | passed |
-| `Axes002-3` | `TreeCompass` | 1 | 1 | passed |
-| `Axes002-4` | `TreeRepeat` | 2 | 2 | passed |
+| Case        | Environment   | Expected | Actual | Disposition |
+| ----------- | ------------- | -------: | -----: | ----------- |
+| `Axes002-1` | `TreeTrunc`   |        0 |      0 | passed      |
+| `Axes002-2` | `Tree1Child`  |        0 |      0 | passed      |
+| `Axes002-3` | `TreeCompass` |        1 |      1 | passed      |
+| `Axes002-4` | `TreeRepeat`  |        2 |      2 | passed      |
 
 The conserved denominator at this checkpoint was four selected, four passed,
 zero failed, zero unsupported, and zero harness errors. Subsequent

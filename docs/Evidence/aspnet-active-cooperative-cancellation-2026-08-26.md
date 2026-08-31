@@ -1,13 +1,13 @@
 # ASP.NET Active Cooperative Cancellation
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-26 |
-| Host | ASP.NET Core targeting .NET 8 on Windows |
-| Engine path | Supervised persistent isolated `fastxslt-worker` process |
-| Workload | Pinned XSLT30 `for-004` over 500 deterministic items |
-| Command | `./scripts/verify-aspnet-workbench.ps1 -OperationalExperiments -MeasurementRequests 1000 -MeasurementRuns 1` |
-| Claim | Private correlated active-signal evidence; not a natural latency, deadline, or public protocol claim |
+| Field       | Value                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------ |
+| Date        | 2026-08-26                                                                                                   |
+| Host        | ASP.NET Core targeting .NET 8 on Windows                                                                     |
+| Engine path | Supervised persistent isolated `fastxslt-worker` process                                                     |
+| Workload    | Pinned XSLT30 `for-004` over 500 deterministic items                                                         |
+| Command     | `./scripts/verify-aspnet-workbench.ps1 -OperationalExperiments -MeasurementRequests 1000 -MeasurementRuns 1` |
+| Claim       | Private correlated active-signal evidence; not a natural latency, deadline, or public protocol claim         |
 
 ## Protocol experiment
 
@@ -36,15 +36,15 @@ path is private and absent from ordinary transforms.
 
 The recorded run returned:
 
-| Field | Observation |
-| --- | --- |
-| Code/category | `FXCT0001 / cancelled` |
-| Request identity | `active-cooperative-cancelled` |
-| Charge detail | `host cancellation observed while charging xslt-instruction work` |
-| Signal-to-response | 0.5392 ms; an earlier successful barrier run observed 1.2906 ms |
-| Process replacement | None |
-| Unrelated signal | Ignored |
-| Later same-worker result | `<out>500.00</out>` |
+| Field                    | Observation                                                       |
+| ------------------------ | ----------------------------------------------------------------- |
+| Code/category            | `FXCT0001 / cancelled`                                            |
+| Request identity         | `active-cooperative-cancelled`                                    |
+| Charge detail            | `host cancellation observed while charging xslt-instruction work` |
+| Signal-to-response       | 0.5392 ms; an earlier successful barrier run observed 1.2906 ms   |
+| Process replacement      | None                                                              |
+| Unrelated signal         | Ignored                                                           |
+| Later same-worker result | `<out>500.00</out>`                                               |
 
 The timing includes managed framing, pipe transport, worker dispatch, barrier
 release, engine failure projection, and response transport. Because execution

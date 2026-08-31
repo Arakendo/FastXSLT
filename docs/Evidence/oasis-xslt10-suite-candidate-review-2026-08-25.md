@@ -1,14 +1,14 @@
 # OASIS XSLT/XPath 1.0 Suite Candidate Review
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-08-25 |
-| Candidate | OASIS XSLT/XPath Conformance Test Suite, Committee Draft 04 |
-| Archive | `XSLT-testsuite-04.ZIP` |
-| Archive SHA-256 | `66750E63994C3A07252D8A6555E82E5CE5127D1942005BCC8314C7D736BD7BD5` |
-| Download size | 5,453,011 bytes |
-| Disposition | Local-only legacy reference; do not admit to the public repository |
-| Decision pressure | AR-0001 XSLT 1.0-first alternative |
+| Field             | Value                                                              |
+| ----------------- | ------------------------------------------------------------------ |
+| Date              | 2026-08-25                                                         |
+| Candidate         | OASIS XSLT/XPath Conformance Test Suite, Committee Draft 04        |
+| Archive           | `XSLT-testsuite-04.ZIP`                                            |
+| Archive SHA-256   | `66750E63994C3A07252D8A6555E82E5CE5127D1942005BCC8314C7D736BD7BD5` |
+| Download size     | 5,453,011 bytes                                                    |
+| Disposition       | Local-only legacy reference; do not admit to the public repository |
+| Decision pressure | AR-0001 XSLT 1.0-first alternative                                 |
 
 ## Authoritative sources
 
@@ -36,16 +36,16 @@ states that it does not include a complete test harness.
 
 ## Catalog observations
 
-| Observation | Count |
-| --- | ---: |
-| Catalog `test-case` entries | 3,173 |
-| Distinct catalog IDs | 3,166 |
-| Duplicate catalog IDs | 7 |
-| Standard-operation cases | 2,742 |
-| Expected execution-error cases | 431 |
-| XML comparisons | 2,736 |
-| Manual comparisons | 5 |
-| HTML comparisons | 1 |
+| Observation                    | Count |
+| ------------------------------ | ----: |
+| Catalog `test-case` entries    | 3,173 |
+| Distinct catalog IDs           | 3,166 |
+| Duplicate catalog IDs          |     7 |
+| Standard-operation cases       | 2,742 |
+| Expected execution-error cases |   431 |
+| XML comparisons                | 2,736 |
+| Manual comparisons             |     5 |
+| HTML comparisons               |     1 |
 
 The catalog provides contributor, path, purpose, XSLT/XPath specification
 citation, scenario, input, output, and comparison metadata. This is useful for a
@@ -54,15 +54,15 @@ identity rather than trusting `id` alone.
 
 ## Doubts observations
 
-| Observation | Count |
-| --- | ---: |
-| Doubts-file case entries | 3,174 |
-| Distinct doubts-file IDs | 3,161 |
-| Explicit `doubt` annotations | 86 |
-| Gray-area annotations | 34 |
-| Serialization annotations | 18 |
-| Extension annotations | 4 |
-| Processor-specific annotations | 3 |
+| Observation                    | Count |
+| ------------------------------ | ----: |
+| Doubts-file case entries       | 3,174 |
+| Distinct doubts-file IDs       | 3,161 |
+| Explicit `doubt` annotations   |    86 |
+| Gray-area annotations          |    34 |
+| Serialization annotations      |    18 |
+| Extension annotations          |     4 |
+| Processor-specific annotations |     3 |
 
 The doubts overlay is valuable evidence and must be applied before interpreting
 a result. It also confirms that raw pass/fail counts would be misleading.
