@@ -7,7 +7,7 @@
 | Remediation completed | 2026-08-31 |
 | Maintainer sign-off | 2026-08-31 |
 | Scope | Current repository state on the reviewed worktree |
-| Method | Read-only source, decision-record, evidence, corpus, Rust, native ABI, worker, and managed-host inspection; full workspace test execution; targeted static counterexamples; TOML parser validation. No engine code was changed. |
+| Method | Read-only source, decision-record, evidence, corpus, Rust, native ABI, worker, and managed-host inspection; full workspace test execution; targeted static counterexamples; TOML parser validation. The original review changed no engine code; subsequent remediation changed engine and host code as documented below. |
 
 ## Remediation status
 
