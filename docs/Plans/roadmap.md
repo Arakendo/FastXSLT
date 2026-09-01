@@ -878,6 +878,14 @@ longer chains, cycles, and precedence remain separate work. The output
 denominator advances to 100 passes and 132 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-character-map-qname-identity-2026-09-01.md)
 
+The unchanged `output-0206` case now resolves an ordered three-item character-
+map reference list containing the same expanded name under different prefixes.
+Repeated references merge idempotently into immutable runtime lookup state;
+longer dependency chains, cycles, imports, and declaration precedence remain
+unsupported. The output denominator advances to 101 passes and 131 visible
+default not-run cases.
+[Evidence](../Evidence/xslt30-output-repeated-character-map-references-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -919,8 +927,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 100 | 0 | 0 | 132 |
-| **Conserved total** | **531** | **298** | **3** | **50** | **180** |
+| `decl/output` | 232 | 101 | 0 | 0 | 131 |
+| **Conserved total** | **531** | **299** | **3** | **50** | **179** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

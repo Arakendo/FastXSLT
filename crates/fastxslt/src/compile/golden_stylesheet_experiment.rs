@@ -224,7 +224,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
 
 struct CompiledCharacterMap {
     name: ExpandedName,
-    referenced_map_name: Option<ExpandedName>,
+    referenced_map_names: Vec<ExpandedName>,
     entries: Vec<(char, String)>,
     location: SourceLocation,
 }
@@ -247,24 +247,30 @@ fn compile_character_map(
         &["name", "use-character-maps"],
         "xsl:character-map",
     )?;
-    let referenced_map_name = optional_attribute(document, element, None, "use-character-maps")
+    let referenced_map_names = optional_attribute(document, element, None, "use-character-maps")
         .map(|value| {
-            if value.split_whitespace().count() == 1 {
-                compile_expanded_qname(
-                    document,
-                    element,
-                    value,
-                    "xsl:character-map use-character-maps",
-                )
-            } else {
-                Err(unsupported(
-                    "FXST1047",
-                    "the first character-map composition slice requires one unprefixed name",
+            let names: Vec<_> = value.split_whitespace().collect();
+            if names.is_empty() {
+                return Err(invalid(
+                    "XTSE0020",
+                    "xsl:character-map use-character-maps must not be empty",
                     document.location(element),
-                ))
+                ));
             }
+            names
+                .into_iter()
+                .map(|name| {
+                    compile_expanded_qname(
+                        document,
+                        element,
+                        name,
+                        "xsl:character-map use-character-maps",
+                    )
+                })
+                .collect()
         })
-        .transpose()?;
+        .transpose()?
+        .unwrap_or_default();
     let children = meaningful_children(document, element);
     let mut entries = Vec::new();
     for child in children {
@@ -299,7 +305,7 @@ fn compile_character_map(
     }
     Ok(CompiledCharacterMap {
         name,
-        referenced_map_name,
+        referenced_map_names,
         entries,
         location: document.location(element).clone(),
     })
@@ -366,22 +372,21 @@ fn resolved_character_map(
     map: &CompiledCharacterMap,
     maps: &[CompiledCharacterMap],
 ) -> Result<Vec<(char, String)>, CompileFailure> {
-    let mut resolved = if let Some(reference) = map.referenced_map_name.as_ref() {
+    let mut resolved = Vec::new();
+    for reference in &map.referenced_map_names {
         let referenced = maps
             .iter()
             .find(|candidate| &candidate.name == reference)
             .ok_or_else(|| invalid("XTSE1590", "unknown character map", &map.location))?;
-        if referenced.referenced_map_name.is_some() {
+        if !referenced.referenced_map_names.is_empty() {
             return Err(unsupported(
                 "FXST1047",
                 "character-map composition chains remain outside the first composition slice",
                 &map.location,
             ));
         }
-        referenced.entries.clone()
-    } else {
-        Vec::new()
-    };
+        merge_character_map_entries(&mut resolved, &referenced.entries);
+    }
     merge_character_map_entries(&mut resolved, &map.entries);
     Ok(resolved)
 }

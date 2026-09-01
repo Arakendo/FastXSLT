@@ -648,6 +648,17 @@ fn resolves_character_map_qnames_by_expanded_name() {
 }
 
 #[test]
+fn repeated_character_map_references_are_idempotent() {
+    let execution = execute_assert_serialization_case("output-0206", "xml");
+    assert_eq!(
+        execution.expected.as_deref(),
+        Some(execution.actual.as_str())
+    );
+    assert!(execution.actual.contains("yy€yy"));
+    assert!(!execution.actual.contains("yy$yy"));
+}
+
+#[test]
 fn executes_xhtml_standalone_yes_no_and_omit_variants() {
     for case_name in [
         "output-0149",

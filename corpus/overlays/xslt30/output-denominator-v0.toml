@@ -537,6 +537,12 @@ execution = "passed"
 rationale = "Resolves character-map declaration and reference QNames by expanded name, including different prefixes bound to the same namespace."
 
 [[case_override]]
+case_name = "output-0206"
+selection = "selected"
+execution = "passed"
+rationale = "Resolves a three-item reference list containing the same expanded character-map name under two prefixes and applies the mapping idempotently."
+
+[[case_override]]
 case_name = "output-0303"
 selection = "selected"
 execution = "passed"
