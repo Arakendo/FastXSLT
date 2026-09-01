@@ -808,6 +808,14 @@ unadmitted. The output denominator advances to 81 passes and 151 visible
 default not-run cases.
 [Evidence](../Evidence/xslt30-output-sesu0011-2026-09-01.md)
 
+The intervening unchanged `output-0188` case now retains
+`undeclare-prefixes=yes` as compiled serialization metadata and reports native
+`SEPM0010` when combined with XML output version 1.0. The check is shared by
+the bounded string and byte entry points without implying XML 1.1 support. The
+output denominator advances to 82 passes and 150 visible default not-run
+cases.
+[Evidence](../Evidence/xslt30-output-sepm0010-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -849,8 +857,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 81 | 0 | 0 | 151 |
-| **Conserved total** | **531** | **279** | **3** | **50** | **199** |
+| `decl/output` | 232 | 82 | 0 | 0 | 150 |
+| **Conserved total** | **531** | **280** | **3** | **50** | **198** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

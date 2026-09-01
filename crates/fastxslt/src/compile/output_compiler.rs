@@ -22,6 +22,7 @@ const OUTPUT_ATTRIBUTES: &[&str] = &[
     "include-content-type",
     "byte-order-mark",
     "normalization-form",
+    "undeclare-prefixes",
     "standalone",
     "cdata-section-elements",
     "omit-xml-declaration",
@@ -39,6 +40,7 @@ pub(in crate::compile) fn default_output_settings() -> OutputSettings {
         include_content_type: None,
         byte_order_mark: None,
         normalization_form: None,
+        undeclare_prefixes: None,
         standalone: None,
         cdata_section_elements: Vec::new(),
         omit_xml_declaration: false,
@@ -111,6 +113,12 @@ pub(super) fn compile_output(
         })
         .transpose()?;
     let normalization_form = optional_attribute(document, element, None, "normalization-form");
+    let undeclare_prefixes = compile_output_boolean_attribute(
+        document,
+        element,
+        "undeclare-prefixes",
+        declared_version,
+    )?;
     let standalone = optional_attribute(document, element, None, "standalone")
         .map(|value| parse_standalone(value, declared_version, document.location(element)))
         .transpose()?;
@@ -131,6 +139,7 @@ pub(super) fn compile_output(
         include_content_type,
         byte_order_mark,
         normalization_form: normalization_form.map(str::to_owned),
+        undeclare_prefixes,
         standalone,
         cdata_section_elements: compile_cdata_section_elements(document, element)?,
         omit_xml_declaration,
@@ -219,6 +228,10 @@ pub(super) fn merge_output(
         &mut existing.settings.normalization_form,
         next.settings.normalization_form,
     );
+    merge_optional(
+        &mut existing.settings.undeclare_prefixes,
+        next.settings.undeclare_prefixes,
+    );
     merge_optional(&mut existing.settings.standalone, next.settings.standalone);
     merge_optional(&mut existing.settings.indent, next.settings.indent);
     existing.settings.omit_xml_declaration |= next.settings.omit_xml_declaration;
@@ -235,6 +248,24 @@ fn merge_optional<T>(target: &mut Option<T>, value: Option<T>) {
     if value.is_some() {
         *target = value;
     }
+}
+
+fn compile_output_boolean_attribute(
+    document: &Document,
+    element: NodeId,
+    local_name: &str,
+    declared_version: &str,
+) -> Result<Option<bool>, CompileFailure> {
+    optional_attribute(document, element, None, local_name)
+        .map(|value| {
+            parse_output_boolean(
+                value,
+                local_name,
+                declared_version,
+                document.location(element),
+            )
+        })
+        .transpose()
 }
 
 fn compile_serialization_version(

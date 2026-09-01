@@ -417,6 +417,12 @@ execution = "passed"
 rationale = "Matches the native serialization-error assertion with SEPM0009 when an omitted XML declaration combines a non-1.0 version with a requested external document type."
 
 [[case_override]]
+case_name = "output-0188"
+selection = "selected"
+execution = "passed"
+rationale = "Retains undeclare-prefixes=yes as serialization metadata and matches native serialization error SEPM0010 for XML output version 1.0."
+
+[[case_override]]
 case_name = "output-0189"
 selection = "selected"
 execution = "passed"

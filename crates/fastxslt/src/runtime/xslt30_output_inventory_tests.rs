@@ -634,6 +634,33 @@ fn reports_inconsistent_xml_serialization_parameters_as_sepm0009() {
 }
 
 #[test]
+fn reports_xml_10_prefix_undeclaration_as_sepm0010() {
+    let case_name = "output-0188";
+    let (test_set, _) = load_test_set();
+    let root = document_element(&test_set);
+    let case = element_children(&test_set, root)
+        .into_iter()
+        .find(|node| {
+            local_name(&test_set, *node) == "test-case"
+                && attribute(&test_set, *node, "name") == Some(case_name)
+        })
+        .expect("pinned serialization-error case");
+    let result = child_named(&test_set, case, "result").expect("output result");
+    let assertion = first_element_child(&test_set, result).expect("serialization error");
+    assert_eq!(
+        local_name(&test_set, assertion),
+        "assert-serialization-error"
+    );
+    assert_eq!(attribute(&test_set, assertion, "code"), Some("SEPM0010"));
+
+    let failure = try_execute_output_case(case_name, None)
+        .expect_err("XML 1.0 cannot serialize namespace undeclarations");
+    assert_eq!(failure.code, "SEPM0010");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+    assert_eq!(failure.request_id.as_deref(), Some(case_name));
+}
+
+#[test]
 fn reports_document_shaped_serialization_requirements_as_sepm0004() {
     for case_name in ["output-0182", "output-0183"] {
         let (test_set, _) = load_test_set();

@@ -326,6 +326,17 @@ fn validate_serialization_preconditions(
     settings: &OutputSettings,
     request_id: &str,
 ) -> Result<(), ExecutionFailure> {
+    if settings.method.as_deref() == Some("xml")
+        && settings.undeclare_prefixes == Some(true)
+        && settings.version.as_deref().unwrap_or("1.0") == "1.0"
+    {
+        return Err(failure(
+            "SEPM0010",
+            FailureCategory::Invalid,
+            Some(request_id),
+            "undeclare-prefixes=yes is inconsistent with XML output version 1.0",
+        ));
+    }
     let standalone_requires_declaration = settings.omit_xml_declaration
         && matches!(settings.standalone.as_deref(), Some("yes" | "no"));
     let doctype_requires_xml_10 = settings.omit_xml_declaration
