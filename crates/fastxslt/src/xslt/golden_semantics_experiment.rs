@@ -24,11 +24,22 @@ pub(crate) struct StylesheetProgram {
     pub(crate) typed_mode_requirements: Vec<TypedModeRequirement>,
     pub(crate) mode_on_no_match: Vec<ModeOnNoMatch>,
     pub(crate) output: OutputSettings,
+    pub(crate) character_maps: Vec<CharacterMapDefinition>,
+    pub(crate) output_character_map_names: Vec<ExpandedName>,
+    pub(crate) output_character_map_location: Option<SourceLocation>,
     pub(crate) root_template: Option<Template>,
     pub(crate) root_template_modes: Vec<String>,
     pub(crate) matched_templates: Vec<MatchedTemplate>,
     pub(crate) named_templates: Vec<NamedTemplate>,
     pub(crate) global_bindings: Vec<GlobalBinding>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CharacterMapDefinition {
+    pub(crate) name: ExpandedName,
+    pub(crate) referenced_map_names: Vec<ExpandedName>,
+    pub(crate) entries: Vec<(char, String)>,
+    pub(crate) location: SourceLocation,
 }
 
 impl StylesheetProgram {}

@@ -894,6 +894,16 @@ and result documents remain separate work. The output denominator advances to
 102 passes and 130 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-xhtml-character-maps-2026-09-01.md)
 
+The unchanged `output-0204` and `output-0207` cases now preserve character-map
+declarations through sealed stylesheet import composition, resolve principal
+output references after the complete package is assembled, and select the
+higher-precedence principal declaration for a duplicate expanded name. The
+output harness now admits catalog-declared secondary stylesheets by RFC-resolved
+snapshot identity. Imported output declarations, arbitrary map dependency
+graphs, named outputs, and result documents remain separate work. The output
+denominator advances to 104 passes and 128 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-imported-character-maps-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -935,8 +945,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 102 | 0 | 0 | 130 |
-| **Conserved total** | **531** | **300** | **3** | **50** | **178** |
+| `decl/output` | 232 | 104 | 0 | 0 | 128 |
+| **Conserved total** | **531** | **302** | **3** | **50** | **176** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

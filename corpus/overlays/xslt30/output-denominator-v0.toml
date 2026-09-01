@@ -531,6 +531,12 @@ execution = "passed"
 rationale = "Composes one directly referenced map and applies the referencing map's local character replacement as the higher-priority mapping."
 
 [[case_override]]
+case_name = "output-0204"
+selection = "selected"
+execution = "passed"
+rationale = "Retains one character-map declaration through sealed stylesheet import composition and resolves the principal output reference after the package is complete."
+
+[[case_override]]
 case_name = "output-0205"
 selection = "selected"
 execution = "passed"
@@ -541,6 +547,12 @@ case_name = "output-0206"
 selection = "selected"
 execution = "passed"
 rationale = "Resolves a three-item reference list containing the same expanded character-map name under two prefixes and applies the mapping idempotently."
+
+[[case_override]]
+case_name = "output-0207"
+selection = "selected"
+execution = "passed"
+rationale = "Selects the principal character-map declaration over an imported declaration with the same expanded name and exactly serializes the higher-precedence replacement."
 
 [[case_override]]
 case_name = "output-0301"

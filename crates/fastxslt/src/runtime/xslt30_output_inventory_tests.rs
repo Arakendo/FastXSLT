@@ -12,7 +12,7 @@ use super::{
     serialize_xml_bytes,
 };
 use crate::execution_control_experiment::{CancellationToken, InvocationControl, WorkLimits};
-use crate::resources::{ResourceLimits, ResourceSetBuilder};
+use crate::resources::{ResourceLimits, ResourceSetBuilder, resolve_reference};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use crate::xslt30_overlay_test_support::assert_output_case_passed;
@@ -694,6 +694,24 @@ fn applies_multiple_character_maps_to_xhtml_output() {
 }
 
 #[test]
+fn resolves_imported_character_maps_and_higher_precedence_override() {
+    let imported_only = execute_assert_serialization_case("output-0204", "xml");
+    assert_eq!(
+        imported_only.expected.as_deref(),
+        Some(imported_only.actual.as_str())
+    );
+    assert!(imported_only.actual.contains("yy€yy"));
+
+    let overridden = execute_assert_serialization_case("output-0207", "xml");
+    assert_eq!(
+        overridden.expected.as_deref(),
+        Some(overridden.actual.as_str())
+    );
+    assert!(overridden.actual.contains("yy*yy"));
+    assert!(!overridden.actual.contains("yy€yy"));
+}
+
+#[test]
 fn executes_xhtml_standalone_yes_no_and_omit_variants() {
     for case_name in [
         "output-0149",
@@ -1007,31 +1025,29 @@ fn try_execute_output_case(
         })
         .expect("pinned output case");
     let test = child_named(&test_set, case, "test").expect("output test");
-    let stylesheet_file = child_named(&test_set, test, "stylesheet")
+    let stylesheet_nodes = element_children(&test_set, test)
+        .into_iter()
+        .filter(|node| local_name(&test_set, *node) == "stylesheet")
+        .collect::<Vec<_>>();
+    let stylesheet_file = stylesheet_nodes
+        .first()
+        .copied()
         .and_then(|node| attribute(&test_set, node, "file"))
         .expect("output stylesheet file");
     let environment = resolve_environment(&test_set, root, case).expect("output environment");
     let source = child_named(&test_set, environment, "source").expect("output source");
     let source_content = child_named(&test_set, source, "content").expect("inline source content");
-    let expected_file = assertion_method.map(|method| {
-        let result = child_named(&test_set, case, "result").expect("output result");
-        let top_level = first_element_child(&test_set, result).expect("output assertion");
-        let assertion = if local_name(&test_set, top_level) == "any-of" {
-            child_named(&test_set, top_level, "assert-serialization")
-                .expect("admitted any-of has a file-backed serialization alternative")
-        } else {
-            top_level
-        };
-        assert_eq!(local_name(&test_set, assertion), "assert-serialization");
-        assert_eq!(attribute(&test_set, assertion, "method"), Some(method));
-        attribute(&test_set, assertion, "file")
-            .expect("expected file")
-            .to_owned()
-    });
+    let expected_file =
+        assertion_method.map(|method| expected_serialization_file(&test_set, case, method));
 
     let source_id = format!("urn:w3c:xslt30:{case_name}:source");
     let stylesheet_id = format!("urn:w3c:xslt30:{case_name}:stylesheet");
-    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 65_536, 131_072));
+    let resource_count = stylesheet_nodes.len() + 1;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(
+        resource_count,
+        65_536,
+        resource_count * 65_536,
+    ));
     resources
         .admit(
             source_id.clone(),
@@ -1044,6 +1060,13 @@ fn try_execute_output_case(
             fs::read(directory.join(stylesheet_file)).expect("read stylesheet and close handle"),
         )
         .expect("admit output stylesheet");
+    admit_secondary_stylesheets(
+        &mut resources,
+        &test_set,
+        &stylesheet_nodes,
+        directory,
+        &stylesheet_id,
+    );
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, &stylesheet_id).expect("compile output case");
     let output_settings = program.output.clone();
@@ -1087,6 +1110,43 @@ fn try_execute_output_case(
         actual,
         expected,
     })
+}
+
+fn expected_serialization_file(test_set: &Document, case: NodeId, method: &str) -> String {
+    let result = child_named(test_set, case, "result").expect("output result");
+    let top_level = first_element_child(test_set, result).expect("output assertion");
+    let assertion = if local_name(test_set, top_level) == "any-of" {
+        child_named(test_set, top_level, "assert-serialization")
+            .expect("admitted any-of has a file-backed serialization alternative")
+    } else {
+        top_level
+    };
+    assert_eq!(local_name(test_set, assertion), "assert-serialization");
+    assert_eq!(attribute(test_set, assertion, "method"), Some(method));
+    attribute(test_set, assertion, "file")
+        .expect("expected file")
+        .to_owned()
+}
+
+fn admit_secondary_stylesheets(
+    resources: &mut ResourceSetBuilder,
+    test_set: &Document,
+    stylesheet_nodes: &[NodeId],
+    directory: &Path,
+    principal_identity: &str,
+) {
+    for stylesheet in stylesheet_nodes.iter().skip(1) {
+        let file = attribute(test_set, *stylesheet, "file").expect("secondary stylesheet file");
+        let (identity, fragment) = resolve_reference(principal_identity, file)
+            .expect("resolve secondary stylesheet identity from principal base");
+        assert!(fragment.is_none(), "stylesheet files do not use fragments");
+        resources
+            .admit(
+                identity,
+                fs::read(directory.join(file)).expect("read secondary stylesheet and close handle"),
+            )
+            .expect("admit secondary output stylesheet");
+    }
 }
 
 fn output_invocation_entry(

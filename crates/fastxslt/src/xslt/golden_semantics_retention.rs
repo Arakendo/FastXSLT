@@ -1,8 +1,8 @@
 use std::mem::size_of;
 
 use super::{
-    ApplySelection, BooleanExpression, CastExpression, CastableExpression, ChooseBranch,
-    ComputedAttribute, ConstructedElement, ConstructedNode, DecimalSumForExpression,
+    ApplySelection, BooleanExpression, CastExpression, CastableExpression, CharacterMapDefinition,
+    ChooseBranch, ComputedAttribute, ConstructedElement, ConstructedNode, DecimalSumForExpression,
     DeepEqualBooleanExpression, ExpandedName, FocusSumForExpression, ForDistinctValuesExpression,
     FormatNumberExpression, GlobalBinding, GlobalBindingDefault, Instruction, IntegerForExpression,
     LiteralAttribute, LiteralAttributeValue, MatchPattern, MatchedTemplate, NamedTemplate,
@@ -22,12 +22,25 @@ impl StylesheetProgram {
                 option_string_owned(item.name.as_ref()) + location_owned(&item.location)
             })
             + output_owned(&self.output)
+            + vec_owned(&self.character_maps, character_map_owned)
+            + vec_owned(&self.output_character_map_names, name_owned)
+            + self
+                .output_character_map_location
+                .as_ref()
+                .map_or(0, location_owned)
             + self.root_template.as_ref().map_or(0, template_owned)
             + vec_owned(&self.root_template_modes, String::capacity)
             + vec_owned(&self.matched_templates, matched_template_owned)
             + vec_owned(&self.named_templates, named_template_owned)
             + vec_owned(&self.global_bindings, global_binding_owned)
     }
+}
+
+fn character_map_owned(value: &CharacterMapDefinition) -> usize {
+    name_owned(&value.name)
+        + vec_owned(&value.referenced_map_names, name_owned)
+        + vec_owned(&value.entries, |(_, replacement)| replacement.capacity())
+        + location_owned(&value.location)
 }
 
 fn vec_owned<T>(values: &Vec<T>, nested: impl Fn(&T) -> usize) -> usize {

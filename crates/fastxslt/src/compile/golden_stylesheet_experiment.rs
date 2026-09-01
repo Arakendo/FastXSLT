@@ -2,10 +2,10 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocati
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::path_experiment::{PathFailure, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
-    ConstructedElement, ConstructedNode, GlobalBinding, GlobalBindingDefault, GlobalBindingKind,
-    MatchPattern, MatchedTemplate, NamedTemplate, STANDARD_INITIAL_TEMPLATE_NAME,
-    SourceWhitespacePolicy, StylesheetProgram, Template, TemplateParameter,
-    TemplateParameterDefault, TemplatePriority,
+    CharacterMapDefinition, ConstructedElement, ConstructedNode, GlobalBinding,
+    GlobalBindingDefault, GlobalBindingKind, MatchPattern, MatchedTemplate, NamedTemplate,
+    STANDARD_INITIAL_TEMPLATE_NAME, SourceWhitespacePolicy, StylesheetProgram, Template,
+    TemplateParameter, TemplateParameterDefault, TemplatePriority,
 };
 
 #[path = "instruction_compiler.rs"]
@@ -68,7 +68,8 @@ pub(crate) fn compile_stylesheet_at(
     document: &Document,
     root: NodeId,
 ) -> Result<StylesheetProgram, CompileFailure> {
-    let program = compile_stylesheet_at_excluding_unvalidated(document, root, &[])?;
+    let mut program = compile_stylesheet_at_excluding_unvalidated(document, root, &[])?;
+    finalize_character_maps(&mut program)?;
     validate_named_template_references(&program)?;
     Ok(program)
 }
@@ -194,18 +195,13 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         }
     }
     reject_unordered_global_dependencies(&global_bindings, &global_binding_locations)?;
-    if let Some(declaration) = output.as_mut() {
-        for name in &declaration.character_map_names {
-            let map = character_maps
-                .iter()
-                .find(|map| map.name == *name)
-                .ok_or_else(|| {
-                    invalid("XTSE1590", "unknown character map", &declaration.location)
-                })?;
-            let resolved = resolved_character_map(map, &character_maps)?;
-            merge_character_map_entries(&mut declaration.settings.character_map, &resolved);
-        }
-    }
+    let output_character_map_names = output
+        .as_ref()
+        .map(|declaration| declaration.character_map_names.clone())
+        .unwrap_or_default();
+    let output_character_map_location = output.as_ref().and_then(|declaration| {
+        (!declaration.character_map_names.is_empty()).then(|| declaration.location.clone())
+    });
 
     Ok(StylesheetProgram {
         declared_version,
@@ -214,6 +210,9 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         typed_mode_requirements: modes.typed,
         mode_on_no_match: modes.on_no_match,
         output: output.map_or_else(default_output_settings, |declaration| declaration.settings),
+        character_maps,
+        output_character_map_names,
+        output_character_map_location,
         root_template,
         root_template_modes,
         matched_templates,
@@ -222,17 +221,10 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     })
 }
 
-struct CompiledCharacterMap {
-    name: ExpandedName,
-    referenced_map_names: Vec<ExpandedName>,
-    entries: Vec<(char, String)>,
-    location: SourceLocation,
-}
-
 fn compile_character_map(
     document: &Document,
     element: NodeId,
-) -> Result<CompiledCharacterMap, CompileFailure> {
+) -> Result<CharacterMapDefinition, CompileFailure> {
     let Some(name) = optional_attribute(document, element, None, "name") else {
         return Err(invalid(
             "XTSE0010",
@@ -303,7 +295,7 @@ fn compile_character_map(
         let replacement = required_attribute(document, child, None, "string")?.to_owned();
         entries.push((character, replacement));
     }
-    Ok(CompiledCharacterMap {
+    Ok(CharacterMapDefinition {
         name,
         referenced_map_names,
         entries,
@@ -369,8 +361,8 @@ fn namespace_for_prefix<'a>(
 }
 
 fn resolved_character_map(
-    map: &CompiledCharacterMap,
-    maps: &[CompiledCharacterMap],
+    map: &CharacterMapDefinition,
+    maps: &[CharacterMapDefinition],
 ) -> Result<Vec<(char, String)>, CompileFailure> {
     let mut resolved = Vec::new();
     for reference in &map.referenced_map_names {
@@ -389,6 +381,31 @@ fn resolved_character_map(
     }
     merge_character_map_entries(&mut resolved, &map.entries);
     Ok(resolved)
+}
+
+pub(super) fn finalize_character_maps(
+    program: &mut StylesheetProgram,
+) -> Result<(), CompileFailure> {
+    program.output.character_map.clear();
+    for name in &program.output_character_map_names {
+        let map = program
+            .character_maps
+            .iter()
+            .find(|map| map.name == *name)
+            .ok_or_else(|| {
+                invalid(
+                    "XTSE1590",
+                    "unknown character map",
+                    program
+                        .output_character_map_location
+                        .as_ref()
+                        .expect("character-map output reference retains its location"),
+                )
+            })?;
+        let resolved = resolved_character_map(map, &program.character_maps)?;
+        merge_character_map_entries(&mut program.output.character_map, &resolved);
+    }
+    Ok(())
 }
 
 fn merge_character_map_entries(target: &mut Vec<(char, String)>, entries: &[(char, String)]) {

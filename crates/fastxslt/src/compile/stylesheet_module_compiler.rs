@@ -9,8 +9,8 @@ use super::stylesheet_validation::validate_named_template_references;
 use super::{
     CompileFailure, XSLT_NAMESPACE, compile_stylesheet_at_excluding_unvalidated,
     compile_stylesheet_excluding_unvalidated, default_output_settings, document_element,
-    ensure_no_meaningful_children, ensure_only_attributes, invalid, is_xslt_element,
-    meaningful_children, require_stylesheet_root, required_attribute, unsupported,
+    ensure_no_meaningful_children, ensure_only_attributes, finalize_character_maps, invalid,
+    is_xslt_element, meaningful_children, require_stylesheet_root, required_attribute, unsupported,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -92,6 +92,7 @@ pub(crate) fn compile_stylesheet_with_single_include_program_at(
         principal.location(principal_root),
         false,
     )?;
+    finalize_character_maps(&mut program)?;
     validate_named_template_references(&program)?;
     Ok(program)
 }
@@ -111,6 +112,7 @@ fn merge_included_program(
     program
         .mode_on_no_match
         .append(&mut included_program.mode_on_no_match);
+    merge_included_character_maps(program, included_program.character_maps, location)?;
     if included_program.output != default_output_settings() {
         return Err(unsupported(
             "FXST1019",
@@ -206,6 +208,7 @@ pub(crate) fn compile_stylesheet_with_two_included_programs_at(
             true,
         )?;
     }
+    finalize_character_maps(&mut program)?;
     validate_named_template_references(&program)?;
     Ok(program)
 }
@@ -250,6 +253,8 @@ pub(crate) fn compile_stylesheet_with_import_and_include(
     program.matched_templates = imported_program.matched_templates;
     merge_imported_named_templates(&mut program, imported_program.named_templates)?;
     merge_imported_global_bindings(&mut program, imported_program.global_bindings);
+    merge_imported_character_maps(&mut program, imported_program.character_maps);
+    finalize_character_maps(&mut program)?;
     validate_named_template_references(&program)?;
     Ok(program)
 }
@@ -308,7 +313,9 @@ pub(crate) fn compile_stylesheet_with_imports(
     for program in imported_programs.into_iter().rev() {
         merge_imported_named_templates(&mut principal_program, program.named_templates)?;
         merge_imported_global_bindings(&mut principal_program, program.global_bindings);
+        merge_imported_character_maps(&mut principal_program, program.character_maps);
     }
+    finalize_character_maps(&mut principal_program)?;
     validate_named_template_references(&principal_program)?;
     Ok(principal_program)
 }
@@ -358,7 +365,9 @@ pub(crate) fn compile_stylesheet_with_two_imported_programs_at(
     for program in imported_programs.into_iter().rev() {
         merge_imported_named_templates(&mut principal_program, program.named_templates)?;
         merge_imported_global_bindings(&mut principal_program, program.global_bindings);
+        merge_imported_character_maps(&mut principal_program, program.character_maps);
     }
+    finalize_character_maps(&mut principal_program)?;
     validate_named_template_references(&principal_program)?;
     Ok(principal_program)
 }
@@ -484,6 +493,42 @@ fn merge_imported_global_bindings(
     principal.global_bindings = imported;
 }
 
+fn merge_imported_character_maps(
+    principal: &mut StylesheetProgram,
+    mut imported: Vec<crate::xslt::golden_semantics_experiment::CharacterMapDefinition>,
+) {
+    imported.retain(|map| {
+        !principal
+            .character_maps
+            .iter()
+            .any(|existing| existing.name == map.name)
+    });
+    imported.append(&mut principal.character_maps);
+    principal.character_maps = imported;
+}
+
+fn merge_included_character_maps(
+    principal: &mut StylesheetProgram,
+    included: Vec<crate::xslt::golden_semantics_experiment::CharacterMapDefinition>,
+    location: &SourceLocation,
+) -> Result<(), CompileFailure> {
+    for map in included {
+        if principal
+            .character_maps
+            .iter()
+            .any(|existing| existing.name == map.name)
+        {
+            return Err(invalid(
+                "XTSE1580",
+                "duplicate character map at one import precedence",
+                location,
+            ));
+        }
+        principal.character_maps.push(map);
+    }
+    Ok(())
+}
+
 fn compile_simplified_stylesheet_at(
     document: &Document,
     root: NodeId,
@@ -528,6 +573,9 @@ fn compile_simplified_stylesheet_at(
         typed_mode_requirements: Vec::new(),
         mode_on_no_match: Vec::new(),
         output: default_output_settings(),
+        character_maps: Vec::new(),
+        output_character_map_names: Vec::new(),
+        output_character_map_location: None,
         root_template: Some(root_template),
         root_template_modes: Vec::new(),
         matched_templates: Vec::new(),
