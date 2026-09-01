@@ -781,6 +781,14 @@ explicitly unsupported. The output denominator advances to 74 passes and 158
 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-sepm0009-2026-08-31.md)
 
+The adjacent unchanged `output-0182` and `output-0183` cases now report native
+serialization error `SEPM0004`. Standalone and external-document-type settings
+require exactly one top-level result element; FastXSLT checks the semantic
+result before emitting declarations, document types, or bytes while preserving
+fragment serialization when neither property is requested. The output
+denominator advances to 76 passes and 156 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-sepm0004-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -822,8 +830,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 74 | 0 | 0 | 158 |
-| **Conserved total** | **531** | **272** | **3** | **50** | **206** |
+| `decl/output` | 232 | 76 | 0 | 0 | 156 |
+| **Conserved total** | **531** | **274** | **3** | **50** | **204** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

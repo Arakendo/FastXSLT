@@ -387,6 +387,18 @@ execution = "passed"
 rationale = "Merges two unnamed declarations with non-overlapping scalar properties, retains standalone=yes, and exactly serializes the selected unnamespaced item1 text as CDATA while escaping item2 normally."
 
 [[case_override]]
+case_name = "output-0182"
+selection = "selected"
+execution = "passed"
+rationale = "Matches native serialization error SEPM0004 because standalone=yes requires a document-shaped result while the unchanged stylesheet constructs three top-level elements."
+
+[[case_override]]
+case_name = "output-0183"
+selection = "selected"
+execution = "passed"
+rationale = "Matches native serialization error SEPM0004 because doctype-system requires a document-shaped result while the unchanged stylesheet constructs three top-level elements."
+
+[[case_override]]
 case_name = "output-0186"
 selection = "selected"
 execution = "passed"

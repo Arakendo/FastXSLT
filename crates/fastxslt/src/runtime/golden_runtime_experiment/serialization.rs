@@ -21,7 +21,7 @@ pub(in crate::runtime) fn serialize_xml(
     byte_limit: usize,
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
-    validate_parameter_consistency(settings, request_id)?;
+    validate_serialization_preconditions(result, settings, request_id)?;
     if settings
         .encoding
         .as_deref()
@@ -192,7 +192,7 @@ pub(in crate::runtime) fn serialize_xml_bytes(
     byte_limit: usize,
     control: &mut InvocationControl,
 ) -> Result<Vec<u8>, ExecutionFailure> {
-    validate_parameter_consistency(settings, request_id)?;
+    validate_serialization_preconditions(result, settings, request_id)?;
     let encoding = settings.encoding.as_deref().unwrap_or("UTF-8");
     if encoding.eq_ignore_ascii_case("UTF-8") {
         let bom = settings.byte_order_mark == Some(true);
@@ -281,7 +281,8 @@ pub(in crate::runtime) fn serialize_xml_bytes(
     Ok(bytes)
 }
 
-fn validate_parameter_consistency(
+fn validate_serialization_preconditions(
+    result: &SemanticResult,
     settings: &OutputSettings,
     request_id: &str,
 ) -> Result<(), ExecutionFailure> {
@@ -299,6 +300,21 @@ fn validate_parameter_consistency(
             FailureCategory::Invalid,
             Some(request_id),
             "the selected serialization parameters are internally inconsistent",
+        ));
+    }
+    let document_element_required = matches!(settings.standalone.as_deref(), Some("yes" | "no"))
+        || settings.doctype_system.is_some();
+    let top_level_element_count = result
+        .children
+        .iter()
+        .filter(|node| matches!(node, ResultNode::Element { .. }))
+        .count();
+    if document_element_required && top_level_element_count != 1 {
+        return Err(failure(
+            "SEPM0004",
+            FailureCategory::Invalid,
+            Some(request_id),
+            "the selected serialization parameters require exactly one top-level element",
         ));
     }
     Ok(())
