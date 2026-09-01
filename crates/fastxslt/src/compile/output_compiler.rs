@@ -28,6 +28,7 @@ const OUTPUT_ATTRIBUTES: &[&str] = &[
     "cdata-section-elements",
     "omit-xml-declaration",
     "indent",
+    "html-version",
 ];
 
 pub(in crate::compile) fn default_output_settings() -> OutputSettings {
@@ -64,6 +65,7 @@ pub(super) fn compile_output(
 ) -> Result<OutputDeclaration, CompileFailure> {
     ensure_output_attributes(document, element)?;
     ensure_no_meaningful_children(document, element, "xsl:output")?;
+    validate_html_version_boundary(document, element)?;
     let method = optional_attribute(document, element, None, "method");
     let bounded_character_map_html = method == Some("html")
         && optional_attribute(document, element, None, "use-character-maps").is_some();
@@ -159,6 +161,48 @@ pub(super) fn compile_output(
         specified,
         location: document.location(element).clone(),
     })
+}
+
+fn validate_html_version_boundary(
+    document: &Document,
+    element: NodeId,
+) -> Result<(), CompileFailure> {
+    let Some(value) = optional_attribute(document, element, None, "html-version") else {
+        return Ok(());
+    };
+    if !is_positive_decimal(value.trim()) {
+        return Err(invalid(
+            "XTSE0020",
+            "html-version must be a positive decimal",
+            document.location(element),
+        ));
+    }
+    Err(unsupported(
+        "FXST1049",
+        "html-version serialization semantics are outside the private XHTML slice",
+        document.location(element),
+    ))
+}
+
+fn is_positive_decimal(value: &str) -> bool {
+    let value = value.strip_prefix('+').unwrap_or(value);
+    if value.is_empty() || value.starts_with('-') {
+        return false;
+    }
+    let mut point_seen = false;
+    let mut digit_seen = false;
+    let mut nonzero_seen = false;
+    for character in value.chars() {
+        if character == '.' && !point_seen {
+            point_seen = true;
+        } else if character.is_ascii_digit() {
+            digit_seen = true;
+            nonzero_seen |= character != '0';
+        } else {
+            return false;
+        }
+    }
+    digit_seen && nonzero_seen
 }
 
 fn compile_character_map_names(

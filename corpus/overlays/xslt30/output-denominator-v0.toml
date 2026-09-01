@@ -663,6 +663,12 @@ execution = "passed"
 rationale = "Ignores the XML-namespaced xml:space control on xsl:output and matches the native serialization requirement with the unchanged empty ok result."
 
 [[case_override]]
+case_name = "output-0230"
+selection = "selected"
+execution = "passed"
+rationale = "Reports the native static error XTSE0020 for the unchanged non-decimal html-version value while valid positive decimals remain explicitly unsupported."
+
+[[case_override]]
 case_name = "output-0501"
 selection = "selected"
 execution = "passed"

@@ -948,6 +948,14 @@ The output denominator advances to 110 passes and 122 visible default not-run
 cases.
 [Evidence](../Evidence/xslt30-output-xml-doctype-identifiers-2026-09-01.md)
 
+The unchanged `output-0230` case now reports its native `XTSE0020` for the
+nonnumeric `html-version="five"` value. Valid positive-decimal lexicals are
+recognized but remain explicitly unsupported as `FXST1049`; this does not
+claim XHTML 5 doctypes, namespace normalization, or empty-element behavior.
+The output denominator advances to 111 passes and 121 visible default not-run
+cases.
+[Evidence](../Evidence/xslt30-output-html-version-static-boundary-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -989,8 +997,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 110 | 0 | 0 | 122 |
-| **Conserved total** | **531** | **308** | **3** | **50** | **170** |
+| `decl/output` | 232 | 111 | 0 | 0 | 121 |
+| **Conserved total** | **531** | **309** | **3** | **50** | **169** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1044,8 +1052,8 @@ count:
    `apply-templates` case is schema-aware and the two remaining `include` cases
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
-2. [ ] Continue coherent semantic slices through the 160 visible `output`
-   gaps and 56 visible `mode` gaps. Each promotion still requires native
+2. [ ] Continue coherent semantic slices through the 121 visible `output`
+   gaps and 48 visible `mode` gaps. Each promotion still requires native
    metadata validation, a focused control, and an owned comparator or exact
    diagnostic—not merely successful stylesheet execution.
 3. [ ] Give `AxisStep.xml` and `fn/deep-equal.xml` complete QT3 overlays so all

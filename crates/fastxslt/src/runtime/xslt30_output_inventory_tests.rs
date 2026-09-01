@@ -549,6 +549,7 @@ fn reports_native_invalid_output_properties_with_the_standard_static_error() {
         "output-0283",
         "output-0283a",
         "output-0284",
+        "output-0230",
     ] {
         let failure = compile_output_case_failure(case_name, "XTSE0020");
         assert_eq!(failure.code, "XTSE0020", "{case_name}");

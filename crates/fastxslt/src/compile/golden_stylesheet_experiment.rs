@@ -1507,6 +1507,28 @@ mod tests {
     }
 
     #[test]
+    fn validates_html_version_without_admitting_its_serialization_semantics() {
+        let invalid = parse_stylesheet(
+            "memory:invalid-html-version.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xhtml" html-version="five"/><xsl:template match="/"><html xmlns="http://www.w3.org/1999/xhtml"/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&invalid).expect_err("invalid decimal must be rejected");
+        assert_eq!(failure.code, "XTSE0020");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+
+        for lexical in ["5", "5.0", " 5.00 ", "+4.1"] {
+            let bytes = format!(
+                r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xhtml" html-version="{lexical}"/><xsl:template match="/"><html xmlns="http://www.w3.org/1999/xhtml"/></xsl:template></xsl:stylesheet>"#
+            );
+            let valid = parse_stylesheet("memory:valid-html-version.xsl", bytes.as_bytes());
+            let failure = compile_stylesheet(&valid)
+                .expect_err("valid HTML versions remain explicitly unsupported");
+            assert_eq!(failure.code, "FXST1049", "{lexical}");
+            assert_eq!(failure.category, CompileCategory::Unsupported, "{lexical}");
+        }
+    }
+
+    #[test]
     fn preserves_output_media_type_as_owned_serialization_metadata() {
         let stylesheet = parse_stylesheet(
             "memory:media-type.xsl",
