@@ -704,6 +704,29 @@ fn applies_multiple_character_maps_to_bounded_html_output() {
 }
 
 #[test]
+fn applies_multiple_character_maps_to_xml_output() {
+    let execution = execute_assert_serialization_case("output-0309", "xml");
+    assert_eq!(
+        execution.expected.as_deref(),
+        Some(execution.actual.as_str())
+    );
+    assert!(execution.actual.contains("<a>xx&xx</a>"));
+    assert!(execution.actual.contains("<a>yy+Ayy</a>"));
+}
+
+#[test]
+fn cdata_text_bypasses_xml_character_maps() {
+    let execution = execute_assert_serialization_case("output-0310", "xml");
+    assert_eq!(
+        execution.expected.as_deref(),
+        Some(execution.actual.as_str())
+    );
+    assert!(execution.actual.contains("<a>AAA</a>"));
+    assert!(execution.actual.contains("<b><![CDATA[aaa]]></b>"));
+    assert!(execution.actual.contains("<b><![CDATA[xx#xx]]></b>"));
+}
+
+#[test]
 fn resolves_imported_character_maps_and_higher_precedence_override() {
     let imported_only = execute_assert_serialization_case("output-0204", "xml");
     assert_eq!(

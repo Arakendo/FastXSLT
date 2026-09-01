@@ -913,6 +913,15 @@ doctypes, and general HTML escaping remain separate work. The output denominator
 advances to 105 passes and 127 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-bounded-html-character-maps-2026-09-01.md)
 
+The unchanged `output-0309` and `output-0310` cases now prove ordered
+multi-map XML serialization and the required CDATA exclusion: ordinary text is
+mapped, while text selected for CDATA remains unchanged. Both paths retain the
+semantic result tree and charge bytes through the bounded serializer. Named
+outputs, result documents, imported output declarations, and arbitrary map
+dependency graphs remain separate work. The output denominator advances to 107
+passes and 125 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-xml-character-map-list-and-cdata-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -954,8 +963,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 105 | 0 | 0 | 127 |
-| **Conserved total** | **531** | **303** | **3** | **50** | **175** |
+| `decl/output` | 232 | 107 | 0 | 0 | 125 |
+| **Conserved total** | **531** | **305** | **3** | **50** | **173** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
