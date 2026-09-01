@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xslt::golden_semantics_experiment::{
-    Instruction, LiteralAttribute, MatchPattern, MatchedTemplate,
+    Instruction, LiteralAttribute, MatchPattern, MatchedTemplate, OnNoMatchPolicy,
 };
 
 use super::result_tree::ResultNode;
@@ -47,6 +47,17 @@ pub(super) fn apply_temporary_template(
                 sequence_focus,
             ),
             &variables,
+            control,
+        );
+    }
+    if inputs.program.mode_on_no_match.iter().any(|policy| {
+        policy.name.as_deref() == mode && policy.policy == OnNoMatchPolicy::ShallowSkip
+    }) {
+        return apply_temporary_builtin(
+            inputs,
+            TemporaryFocus::Node(tree, node),
+            mode,
+            parameters,
             control,
         );
     }

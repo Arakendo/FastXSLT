@@ -326,6 +326,40 @@ fn temporary_tree_builtins_preserve_mixed_text_in_document_order() {
 }
 
 #[test]
+fn temporary_tree_shallow_skip_traverses_elements_and_drops_unmatched_text() {
+    const SOURCE: &str = "urn:fastxslt:temporary-shallow-skip:source";
+    const STYLESHEET: &str = "urn:fastxslt:temporary-shallow-skip:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:mode name="temporary" on-no-match="shallow-skip"/>
+        <xsl:variable name="temporary"><x>head<keep>middle</keep>tail</x></xsl:variable>
+        <xsl:template match="/"><out><xsl:apply-templates select="$temporary" mode="temporary"/></out></xsl:template>
+        <xsl:template match="keep" mode="temporary"><kept/></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<principal/>".to_vec())
+        .expect("admit principal source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit temporary shallow-skip stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile temporary shallow-skip stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("temporary-shallow-skip", "result", SOURCE))
+        .expect("admit temporary shallow-skip request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute temporary shallow-skip traversal");
+    assert_eq!(
+        results.by_request["temporary-shallow-skip"].serialized,
+        "<out><kept></kept></out>"
+    );
+}
+
+#[test]
 fn temporary_copy_is_shallow_and_executes_its_compiled_attributes_and_body() {
     const SOURCE: &str = "urn:fastxslt:temporary-copy:source";
     const STYLESHEET: &str = "urn:fastxslt:temporary-copy:stylesheet";

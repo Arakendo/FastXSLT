@@ -749,6 +749,17 @@ existing 16 KiB result ceiling. Attribute-template interception in adjacent
 passes, 45 profile exclusions, and 54 visible default not-run cases.
 [Evidence](../Evidence/xslt30-mode-1411-1415-large-shallow-copy-2026-08-31.md)
 
+The next non-streaming mode-policy tranche executes unchanged `mode-1417`,
+`mode-1419`, and `mode-1421`. Shallow-skip traverses unmatched document and
+element children while dropping unmatched text, attributes, comments, and
+processing instructions; it participates after `xsl:next-match` and composes
+with a separate shallow-copy mode. A temporary-tree control preserves the same
+skip behavior, and one-step union alternatives retain exact-name rather than
+path default priority. The mode denominator advances to 73 passes, 45 profile
+exclusions, and 51 visible default not-run cases. `mode-1413` remains separate
+result-attribute pressure rather than receiving an arithmetic-only shortcut.
+[Evidence](../Evidence/xslt30-mode-shallow-skip-2026-08-31.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -788,10 +799,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 70 | 0 | 45 | 54 |
+| `attr/mode` | 169 | 73 | 0 | 45 | 51 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **264** | **3** | **50** | **214** |
+| **Conserved total** | **531** | **267** | **3** | **50** | **211** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

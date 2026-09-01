@@ -215,6 +215,7 @@ fn compile_on_no_match(
     let policy = match value {
         "fail" => OnNoMatchPolicy::Fail,
         "shallow-copy" => OnNoMatchPolicy::ShallowCopy,
+        "shallow-skip" => OnNoMatchPolicy::ShallowSkip,
         "text-only-copy" => OnNoMatchPolicy::TextOnlyCopy,
         _ => {
             return Err(unsupported(
@@ -380,7 +381,14 @@ mod tests {
     }
 
     #[test]
-    fn retains_named_and_unnamed_text_only_copy_policies() {
+    fn retains_named_and_unnamed_skip_and_text_only_copy_policies() {
+        let skip = compile("on-no-match", "shallow-skip")
+            .expect("named shallow-skip declaration should compile");
+        assert_eq!(
+            skip.mode_on_no_match[0].policy,
+            OnNoMatchPolicy::ShallowSkip
+        );
+
         let named = compile("on-no-match", "text-only-copy")
             .expect("named text-only-copy declaration should compile");
         assert_eq!(

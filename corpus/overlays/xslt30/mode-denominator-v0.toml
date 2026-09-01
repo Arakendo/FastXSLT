@@ -405,6 +405,24 @@ execution = "passed"
 rationale = "The unnamed shallow-copy mode composes with explicit text-node upper-casing and empty element/text overrides over the unchanged native source and matches the complete file-backed XML result."
 
 [[case_override]]
+case_name = "mode-1417"
+selection = "selected"
+execution = "passed"
+rationale = "Named initial mode s applies shallow-skip built-in descent while explicit union-pattern rules copy only book and its two title elements, matching the unchanged native XML assertion."
+
+[[case_override]]
+case_name = "mode-1419"
+selection = "selected"
+execution = "passed"
+rationale = "The explicit document-element rule wraps its result, xsl:next-match falls through to the named shallow-skip built-in, and the surviving bktshort text rule produces the unchanged native XML result."
+
+[[case_override]]
+case_name = "mode-1421"
+selection = "selected"
+execution = "passed"
+rationale = "Named shallow-copy mode s preserves the source structure while its v rule applies shallow-skip mode t, producing empty copied v elements and the complete unchanged native XML result."
+
+[[case_override]]
 case_name = "mode-0105"
 selection = "selected"
 execution = "passed"

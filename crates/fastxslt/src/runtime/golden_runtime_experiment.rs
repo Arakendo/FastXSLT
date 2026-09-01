@@ -1670,12 +1670,36 @@ fn apply_builtin_template(
             OnNoMatchPolicy::ShallowCopy => {
                 return apply_shallow_copy_template(inputs, node, mode, parameters, control);
             }
+            OnNoMatchPolicy::ShallowSkip => {
+                return apply_shallow_skip_template(inputs, node, mode, parameters, control);
+            }
             OnNoMatchPolicy::TextOnlyCopy => {
                 return apply_text_only_copy_template(inputs, node, mode, parameters, control);
             }
         }
     }
     apply_text_only_copy_template(inputs, node, mode, parameters, control)
+}
+
+fn apply_shallow_skip_template(
+    inputs: &SequenceInputs<'_>,
+    node: NodeId,
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let source = inputs
+        .source
+        .expect("shallow-skip built-in templates require a source document");
+    match source.kind(node) {
+        NodeKind::Document | NodeKind::Element => {
+            apply_child_templates(inputs, node, mode, parameters, control)
+        }
+        NodeKind::Text
+        | NodeKind::Attribute
+        | NodeKind::Comment
+        | NodeKind::ProcessingInstruction => Ok(Vec::new()),
+    }
 }
 
 fn apply_text_only_copy_template(

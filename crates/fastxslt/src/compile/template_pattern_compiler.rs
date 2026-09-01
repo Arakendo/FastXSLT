@@ -183,13 +183,6 @@ fn compile_qualified_element_path(
             })
         })
         .collect::<Result<Vec<_>, _>>()?;
-    if steps.len() < 2 {
-        return Err(unsupported(
-            "FXST1005",
-            "the private union-pattern slice requires multi-step element paths",
-            document.location(element),
-        ));
-    }
     Ok(steps)
 }
 
@@ -314,6 +307,11 @@ fn compile_template_priority(
 ) -> Result<TemplatePriority, CompileFailure> {
     let Some(lexical) = optional_attribute(document, element, None, "priority") else {
         return Ok(match pattern {
+            MatchPattern::QualifiedElementPathAlternatives(alternatives)
+                if alternatives.iter().all(|path| path.len() == 1) =>
+            {
+                TemplatePriority::EXACT_NAME_DEFAULT
+            }
             MatchPattern::Path(_)
             | MatchPattern::QualifiedElementPathAlternatives(_)
             | MatchPattern::DescendantAnyElement
