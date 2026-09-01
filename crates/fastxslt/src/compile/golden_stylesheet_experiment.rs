@@ -25,8 +25,8 @@ mod variable_filtered_path_compiler;
 
 pub(crate) use stylesheet_module_compiler::{
     StylesheetDependencyKind, compile_stylesheet_with_import_and_include,
-    compile_stylesheet_with_imports, compile_stylesheet_with_single_include,
-    compile_stylesheet_with_single_include_program_at,
+    compile_stylesheet_with_imports, compile_stylesheet_with_single_imported_program_at,
+    compile_stylesheet_with_single_include, compile_stylesheet_with_single_include_program_at,
     compile_stylesheet_with_two_imported_programs_at,
     compile_stylesheet_with_two_included_programs_at, discovered_stylesheet_dependencies_at,
 };

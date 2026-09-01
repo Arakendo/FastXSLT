@@ -3,7 +3,8 @@
 use crate::compile::golden_stylesheet_experiment::{
     CompileCategory, CompileFailure, StylesheetDependencyKind, compile_stylesheet,
     compile_stylesheet_with_import_and_include, compile_stylesheet_with_imports,
-    compile_stylesheet_with_single_include, compile_stylesheet_with_single_include_program_at,
+    compile_stylesheet_with_single_imported_program_at, compile_stylesheet_with_single_include,
+    compile_stylesheet_with_single_include_program_at,
     compile_stylesheet_with_two_imported_programs_at,
     compile_stylesheet_with_two_included_programs_at,
 };
@@ -70,6 +71,9 @@ fn compile_loaded_graph(
     if let Some(program) = compile_nested_include_chain(graph) {
         return program;
     }
+    if let Some(program) = compile_nested_import_chain(graph) {
+        return program;
+    }
     for dependency in &graph.dependencies {
         if !dependency.dependencies.is_empty() {
             return Err(CompileFailure {
@@ -126,6 +130,34 @@ fn compile_loaded_graph(
                 .clone(),
         }),
     }
+}
+
+fn compile_nested_import_chain(
+    graph: &LoadedStylesheetModule,
+) -> Option<Result<StylesheetProgram, CompileFailure>> {
+    let [dependency] = graph.dependencies.as_slice() else {
+        return None;
+    };
+    let [nested] = dependency.dependencies.as_slice() else {
+        return None;
+    };
+    if dependency.dependency_kind != Some(StylesheetDependencyKind::Import)
+        || nested.dependency_kind != Some(StylesheetDependencyKind::Import)
+        || !nested.dependencies.is_empty()
+    {
+        return None;
+    }
+    Some((|| {
+        let dependency_program = compile_stylesheet_with_imports(
+            &dependency.document,
+            &[(&nested.document, nested.root)],
+        )?;
+        compile_stylesheet_with_single_imported_program_at(
+            &graph.document,
+            graph.root,
+            dependency_program,
+        )
+    })())
 }
 
 fn compile_two_import_leaf_import_graph(

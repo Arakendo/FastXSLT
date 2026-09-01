@@ -573,6 +573,12 @@ execution = "passed"
 rationale = "Merges two unnamed output declarations with identical method, encoding, and indentation properties, concatenates their character-map lists in declaration order, and exactly matches the pinned serialization."
 
 [[case_override]]
+case_name = "output-0306"
+selection = "selected"
+execution = "passed"
+rationale = "Combines principal output map lists after a two-level sealed import graph selects higher-precedence character-map declarations, exactly matching the pinned serialization."
+
+[[case_override]]
 case_name = "output-0309"
 selection = "selected"
 execution = "passed"

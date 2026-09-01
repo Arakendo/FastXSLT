@@ -372,6 +372,50 @@ pub(crate) fn compile_stylesheet_with_two_imported_programs_at(
     Ok(principal_program)
 }
 
+pub(crate) fn compile_stylesheet_with_single_imported_program_at(
+    principal: &Document,
+    principal_root: NodeId,
+    mut imported_program: StylesheetProgram,
+) -> Result<StylesheetProgram, CompileFailure> {
+    let import_declarations = import_nodes_at(principal, principal_root)?;
+    if import_declarations.len() != 1 {
+        return Err(invalid(
+            "FXST0035",
+            "single-program import compilation requires exactly one xsl:import declaration",
+            principal.location(principal_root),
+        ));
+    }
+    let children = meaningful_children(principal, principal_root);
+    if children.first() != import_declarations.first() {
+        return Err(invalid(
+            "XTSE0200",
+            "xsl:import must precede every other top-level declaration",
+            principal.location(import_declarations[0]),
+        ));
+    }
+
+    let mut principal_program = compile_stylesheet_at_excluding_unvalidated(
+        principal,
+        principal_root,
+        &import_declarations,
+    )?;
+    rebase_imported_program(
+        &mut imported_program,
+        -1,
+        principal.location(principal_root),
+    )?;
+
+    let mut matched_templates = imported_program.matched_templates;
+    matched_templates.append(&mut principal_program.matched_templates);
+    principal_program.matched_templates = matched_templates;
+    merge_imported_named_templates(&mut principal_program, imported_program.named_templates)?;
+    merge_imported_global_bindings(&mut principal_program, imported_program.global_bindings);
+    merge_imported_character_maps(&mut principal_program, imported_program.character_maps);
+    finalize_character_maps(&mut principal_program)?;
+    validate_named_template_references(&principal_program)?;
+    Ok(principal_program)
+}
+
 fn rebase_imported_program(
     program: &mut StylesheetProgram,
     shift: i32,

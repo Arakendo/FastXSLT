@@ -926,10 +926,18 @@ The unchanged `output-0305` case now merges two same-precedence unnamed output
 declarations, concatenates their character-map lists in declaration order, and
 accepts repeated method/encoding/indent properties only when compiled values
 are identical. Conflicting scalar properties remain explicitly unsupported;
-cross-import output merging, named outputs, and result documents remain
-separate work. The output denominator advances to 108 passes and 124 visible
-default not-run cases.
+named outputs and result documents remain separate work. The output denominator
+advances to 108 passes and 124 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-character-map-declaration-merge-2026-09-01.md)
+
+The unchanged `output-0306` case now composes character-map declarations and
+principal output-map lists across a three-level sealed import chain. The
+principal `format1` definition overrides both imported definitions, while the
+intermediate module supplies `format2`; final map resolution occurs only after
+the complete package is assembled. This admits exactly one nested leaf import,
+not arbitrary dependency graphs. The output denominator advances to 109 passes
+and 123 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-nested-import-character-maps-2026-09-01.md)
 
 ## Corpus audit -- 2026-08-30
 
@@ -972,8 +980,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 108 | 0 | 0 | 124 |
-| **Conserved total** | **531** | **306** | **3** | **50** | **172** |
+| `decl/output` | 232 | 109 | 0 | 0 | 123 |
+| **Conserved total** | **531** | **307** | **3** | **50** | **171** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
