@@ -278,6 +278,9 @@ fn select_next_temporary_template<'a>(
     let mut selected_rank = None;
     let mut ambiguous = false;
     for (index, candidate) in inputs.program.matched_templates.iter().enumerate() {
+        control
+            .charge_template_candidate()
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
         let rank = (candidate.import_precedence, candidate.priority, index);
         if rank >= current_rank
             || !template_accepts_mode(&candidate.modes, mode)

@@ -136,6 +136,27 @@ rationale = "The native XTDE0555 assertion matches invocation-time rejection whe
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1433"
+selection = "selected"
+execution = "passed"
+rationale = "The stylesheet default-mode selects named mode dm for initial and inherited unqualified dispatch."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1434"
+selection = "selected"
+execution = "passed"
+rationale = "The explicit #unnamed default mode composes with #current descent over the unchanged native source."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1435"
+selection = "selected"
+execution = "passed"
+rationale = "The qualified default, initial, and template modes resolve by expanded QName identity despite distinct lexical prefixes."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-1439"
 selection = "selected"
 execution = "passed"

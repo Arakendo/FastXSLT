@@ -195,6 +195,24 @@ execution = "passed"
 rationale = "The unnamed mode's on-no-match='fail' policy reports native dynamic error XTDE0555 when built-in dispatch reaches the first unmatched text node."
 
 [[case_override]]
+case_name = "mode-1433"
+selection = "selected"
+execution = "passed"
+rationale = "The stylesheet default-mode selects named mode dm as the initial mode and supplies the inherited mode for unqualified template declarations and apply-templates instructions."
+
+[[case_override]]
+case_name = "mode-1434"
+selection = "selected"
+execution = "passed"
+rationale = "The explicit #unnamed default mode composes with #current descent and preserves unnamed template dispatch over the unchanged native source."
+
+[[case_override]]
+case_name = "mode-1435"
+selection = "selected"
+execution = "passed"
+rationale = "The namespace-qualified stylesheet default mode resolves to expanded identity Q{http://example.com/a}mode and matches the independently prefixed initial mode and template declaration."
+
+[[case_override]]
 case_name = "mode-1439"
 selection = "selected"
 execution = "passed"

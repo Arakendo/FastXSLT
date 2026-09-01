@@ -1,7 +1,7 @@
 //! Private template match-pattern normalization and priority compilation.
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
-use crate::xpath::path_experiment::parse_location_path;
+use crate::xpath::path_experiment::{PathStep, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
     MatchPattern, NamedSiblingBoundary, TemplatePriority,
 };
@@ -34,7 +34,7 @@ pub(super) fn compile_match_pattern(
         predicate if parse_any_element_attribute_variable_predicate(predicate).is_some() => {
             compile_any_element_attribute_variable_pattern(predicate)
         }
-        alternatives if alternatives.contains('|') => {
+        alternatives if is_homogeneous_qualified_path_union(alternatives) => {
             MatchPattern::QualifiedElementPathAlternatives(
                 alternatives
                     .split('|')
@@ -145,13 +145,65 @@ pub(super) fn compile_match_pattern(
     Ok((pattern, priority))
 }
 
+pub(super) fn is_homogeneous_qualified_path_union(pattern: &str) -> bool {
+    let lengths = pattern
+        .split('|')
+        .map(str::trim)
+        .map(|path| {
+            let steps = path.split('/').map(str::trim).collect::<Vec<_>>();
+            steps
+                .iter()
+                .all(|step| {
+                    is_ascii_ncname(step)
+                        || parse_qualified_element_test(step).is_some_and(|(_, local)| local != "*")
+                })
+                .then_some(steps.len())
+        })
+        .collect::<Option<Vec<_>>>();
+    let Some(lengths) = lengths else {
+        return false;
+    };
+    lengths.len() > 1
+        && (lengths.iter().all(|length| *length == 1) || lengths.iter().all(|length| *length > 1))
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum UnionMatchDomain {
+    Element(Option<String>, String),
+    Text,
+}
+
+pub(super) fn alternatives_are_pairwise_disjoint(
+    patterns: &[(MatchPattern, TemplatePriority)],
+) -> bool {
+    let mut domains = Vec::with_capacity(patterns.len());
+    for (pattern, _) in patterns {
+        let domain = match pattern {
+            MatchPattern::Element(name) => {
+                UnionMatchDomain::Element(name.namespace.clone(), name.local.clone())
+            }
+            MatchPattern::Text => UnionMatchDomain::Text,
+            MatchPattern::Path(path) => match path.steps.last() {
+                Some(PathStep::ChildNamed(local)) => UnionMatchDomain::Element(None, local.clone()),
+                Some(PathStep::ChildText) => UnionMatchDomain::Text,
+                _ => return false,
+            },
+            _ => return false,
+        };
+        if domains.contains(&domain) {
+            return false;
+        }
+        domains.push(domain);
+    }
+    true
+}
+
 fn compile_qualified_element_path(
     document: &Document,
     element: NodeId,
     path: &str,
 ) -> Result<Vec<crate::xml::quick_xml_experiment::ExpandedName>, CompileFailure> {
-    let steps = path
-        .split('/')
+    path.split('/')
         .map(str::trim)
         .map(|step| {
             if is_ascii_ncname(step) {
@@ -161,15 +213,9 @@ fn compile_qualified_element_path(
                     local: step.to_owned(),
                 });
             }
-            let Some((prefix, local)) =
-                parse_qualified_element_test(step).filter(|(_, local)| *local != "*")
-            else {
-                return Err(unsupported(
-                    "FXST1005",
-                    format!("unsupported union-pattern step: {step}"),
-                    document.location(element),
-                ));
-            };
+            let (prefix, local) = parse_qualified_element_test(step)
+                .filter(|(_, local)| *local != "*")
+                .expect("homogeneous qualified path shape was checked");
             let namespace = namespace_for_prefix(document, element, prefix).ok_or_else(|| {
                 invalid(
                     "FXST0031",
@@ -182,8 +228,7 @@ fn compile_qualified_element_path(
                 local: local.to_owned(),
             })
         })
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(steps)
+        .collect()
 }
 
 fn parse_local_name_wildcard(pattern: &str) -> Option<&str> {

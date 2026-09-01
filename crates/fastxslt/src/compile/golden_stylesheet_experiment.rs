@@ -92,6 +92,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     require_stylesheet_root(document, root)?;
     let declared_version = required_attribute(document, root, None, "version")?.to_owned();
     let default_initial_mode = optional_attribute(document, root, None, "default-mode")
+        .map(str::trim)
         .map(|mode| match mode {
             "#unnamed" => Ok(None),
             mode => instruction_compiler::parse_mode(document, root, mode).map(Some),
@@ -336,8 +337,7 @@ fn compile_top_level_template(
         return Ok(());
     }
 
-    let matched_template = compile_matched_template(document, element, pattern)?;
-    matched_templates.push(matched_template);
+    matched_templates.extend(compile_matched_templates(document, element, pattern)?);
     Ok(())
 }
 
@@ -494,6 +494,59 @@ fn compile_matched_template(
     pattern: &str,
 ) -> Result<MatchedTemplate, CompileFailure> {
     let (pattern, priority) = compile_match_pattern(document, element, pattern)?;
+    Ok(MatchedTemplate {
+        pattern,
+        import_precedence: 0,
+        priority,
+        modes: compile_template_modes_for_rule(document, element)?,
+        template: compile_template(document, element)?,
+    })
+}
+
+fn compile_matched_templates(
+    document: &Document,
+    element: NodeId,
+    lexical_pattern: &str,
+) -> Result<Vec<MatchedTemplate>, CompileFailure> {
+    let alternatives = lexical_pattern
+        .split('|')
+        .map(str::trim)
+        .collect::<Vec<_>>();
+    if alternatives.len() == 1 {
+        return compile_matched_template(document, element, lexical_pattern).map(|rule| vec![rule]);
+    }
+    if template_pattern_compiler::is_homogeneous_qualified_path_union(lexical_pattern) {
+        return compile_matched_template(document, element, lexical_pattern).map(|rule| vec![rule]);
+    }
+    let patterns = alternatives
+        .into_iter()
+        .map(|alternative| compile_match_pattern(document, element, alternative))
+        .collect::<Result<Vec<_>, _>>()?;
+    if !template_pattern_compiler::alternatives_are_pairwise_disjoint(&patterns) {
+        return Err(unsupported(
+            "FXST1005",
+            "union match patterns whose alternatives can overlap are outside the private slice",
+            document.location(element),
+        ));
+    }
+    let modes = compile_template_modes_for_rule(document, element)?;
+    let template = compile_template(document, element)?;
+    Ok(patterns
+        .into_iter()
+        .map(|(pattern, priority)| MatchedTemplate {
+            pattern,
+            import_precedence: 0,
+            priority,
+            modes: modes.clone(),
+            template: template.clone(),
+        })
+        .collect())
+}
+
+fn compile_template_modes_for_rule(
+    document: &Document,
+    element: NodeId,
+) -> Result<Vec<String>, CompileFailure> {
     let modes = match optional_attribute(document, element, None, "mode") {
         Some(mode) => Some(parse_template_modes(document, element, mode)?),
         None => match effective_default_mode(document, element) {
@@ -501,13 +554,7 @@ fn compile_matched_template(
             Some(mode) => Some(parse_template_modes(document, element, mode)?),
         },
     };
-    Ok(MatchedTemplate {
-        pattern,
-        import_precedence: 0,
-        priority,
-        modes: modes.unwrap_or_default(),
-        template: compile_template(document, element)?,
-    })
+    Ok(modes.unwrap_or_default())
 }
 
 fn compile_template(document: &Document, element: NodeId) -> Result<Template, CompileFailure> {
@@ -521,6 +568,7 @@ fn compile_template(document: &Document, element: NodeId) -> Result<Template, Co
             "priority",
             "xpath-default-namespace",
             "default-mode",
+            "exclude-result-prefixes",
         ],
         "xsl:template",
     )?;
@@ -776,7 +824,7 @@ pub(super) fn effective_default_mode(document: &Document, element: NodeId) -> Op
             optional_attribute(document, node, Some(XSLT_NAMESPACE), "default-mode")
         };
         if lexical.is_some() {
-            return lexical;
+            return lexical.map(str::trim);
         }
         current = document.parent(node);
     }
@@ -1345,6 +1393,44 @@ mod tests {
         let program = compile_stylesheet(&stylesheet).expect("default initial mode should compile");
         assert_eq!(program.default_initial_mode.as_deref(), Some("a"));
         assert_eq!(program.matched_templates[0].modes, ["#unnamed", "a"]);
+    }
+
+    #[test]
+    fn compiles_only_provably_disjoint_union_rules_with_individual_priorities() {
+        let stylesheet = parse_stylesheet(
+            "memory:disjoint-union.xsl",
+            br##"<xsl:stylesheet version="3.0" default-mode=" a " xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="v | chapter/text()" mode="#unnamed"><xsl:apply-templates mode="#unnamed"/></xsl:template></xsl:stylesheet>"##,
+        );
+        let program = compile_stylesheet(&stylesheet).expect("disjoint union should compile");
+        assert_eq!(program.default_initial_mode.as_deref(), Some("a"));
+        assert_eq!(program.matched_templates.len(), 2);
+        assert_eq!(
+            program.matched_templates[0].priority,
+            TemplatePriority::EXACT_NAME_DEFAULT
+        );
+        assert_eq!(
+            program.matched_templates[1].priority,
+            TemplatePriority::PATH_DEFAULT
+        );
+        assert!(
+            program
+                .matched_templates
+                .iter()
+                .all(|rule| rule.modes == ["#unnamed"])
+        );
+        assert!(program.matched_templates.iter().all(|rule| matches!(
+            rule.template.body.as_slice(),
+            [Instruction::ApplyTemplates { mode: None, .. }]
+        )));
+
+        let overlapping = parse_stylesheet(
+            "memory:overlapping-union.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="text() | chapter/text()"/></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&overlapping)
+            .expect_err("potentially overlapping alternatives must remain unsupported");
+        assert_eq!(failure.code, "FXST1005");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
     }
 
     #[test]

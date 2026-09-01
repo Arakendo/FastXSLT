@@ -760,6 +760,18 @@ exclusions, and 51 visible default not-run cases. `mode-1413` remains separate
 result-attribute pressure rather than receiving an arithmetic-only shortcut.
 [Evidence](../Evidence/xslt30-mode-shallow-skip-2026-08-31.md)
 
+The unchanged `mode-1433`, `mode-1434`, and `mode-1435` cases now conserve
+named, explicitly unnamed, and namespace-qualified stylesheet default modes
+over the complete native source. Default-mode lexical whitespace is normalized,
+explicit `mode="#unnamed"` dispatches through the unnamed mode, and independently
+prefixed QNames compare by expanded identity. Their shared
+`v | chapter/text()` rule is lowered only after proving its alternatives
+disjoint, preserving exact-name and path default priorities independently;
+potentially overlapping unions remain unsupported. The mode denominator
+advances to 76 passes, 45 profile exclusions, and 48 visible default not-run
+cases.
+[Evidence](../Evidence/xslt30-mode-default-mode-variants-2026-08-31.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -799,10 +811,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 73 | 0 | 45 | 51 |
+| `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **267** | **3** | **50** | **211** |
+| **Conserved total** | **531** | **270** | **3** | **50** | **208** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

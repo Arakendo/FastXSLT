@@ -40,6 +40,7 @@ pub(super) fn compile_apply_templates(
         .map(|expression| parse_apply_selection(document, element, expression, location.clone()))
         .transpose()?;
     let mode = match optional_attribute(document, element, None, "mode") {
+        Some("#unnamed") => None,
         Some(mode) => Some(parse_apply_mode(document, element, mode)?),
         None => compile_effective_default_mode(document, element)?,
     };

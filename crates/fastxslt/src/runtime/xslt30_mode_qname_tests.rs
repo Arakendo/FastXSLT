@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 73] = [
+const SELECTED_CASES: [&str; 76] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -62,6 +62,9 @@ const SELECTED_CASES: [&str; 73] = [
     "mode-1421",
     "mode-1423",
     "mode-1431",
+    "mode-1433",
+    "mode-1434",
+    "mode-1435",
     "mode-1439",
     "mode-1444",
     "mode-1445",
@@ -211,7 +214,7 @@ fn inventories_the_complete_mode_denominator_before_selection() {
         );
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
-    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 73);
+    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 76);
     assert_eq!(
         OVERLAY
             .matches("selection = \"excluded-by-profile\"")
@@ -503,6 +506,14 @@ fn executes_shallow_copy_over_the_complete_native_mode_source() {
 #[test]
 fn executes_shallow_skip_with_explicit_copy_rules() {
     for case_name in ["mode-1417", "mode-1419", "mode-1421"] {
+        let (actual, expected) = execute_case(case_name);
+        assert_xml_equivalent(&actual, &expected);
+    }
+}
+
+#[test]
+fn executes_default_mode_variants_over_the_native_source() {
+    for case_name in ["mode-1433", "mode-1434", "mode-1435"] {
         let (actual, expected) = execute_case(case_name);
         assert_xml_equivalent(&actual, &expected);
     }
