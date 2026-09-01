@@ -971,6 +971,14 @@ SVG/MathML handling, or foreign-attribute rewriting. The output denominator
 advances to 119 passes and 113 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-xhtml5-prefix-normalization-2026-09-01.md)
 
+Eight unchanged XHTML 5 empty-element cases—`output-0216` through
+`output-0223`—now distinguish void from non-void names across the XHTML and
+no-namespace forms, including attributes and prefixed input. The tranche also
+completes the modern void-name set and collapses surrounding whitespace in the
+output-method token without losing diagnostic provenance. The output
+denominator advances to 127 passes and 105 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-xhtml5-empty-elements-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1012,8 +1020,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 119 | 0 | 0 | 113 |
-| **Conserved total** | **531** | **317** | **3** | **50** | **161** |
+| `decl/output` | 232 | 127 | 0 | 0 | 105 |
+| **Conserved total** | **531** | **325** | **3** | **50** | **153** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1067,7 +1075,7 @@ count:
    `apply-templates` case is schema-aware and the two remaining `include` cases
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
-2. [ ] Continue coherent semantic slices through the 113 visible `output`
+2. [ ] Continue coherent semantic slices through the 105 visible `output`
    gaps and 48 visible `mode` gaps. Each promotion still requires native
    metadata validation, a focused control, and an owned comparator or exact
    diagnostic—not merely successful stylesheet execution.

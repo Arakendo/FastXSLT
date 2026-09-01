@@ -854,6 +854,40 @@ fn normalizes_xhtml_element_prefixes_for_bounded_version_five() {
 }
 
 #[test]
+fn executes_bounded_xhtml5_empty_element_rules() {
+    const VOID_NAMES: [&str; 14] = [
+        "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param",
+        "source", "track", "wbr",
+    ];
+    for case_name in ["output-0216", "output-0217", "output-0222", "output-0223"] {
+        let execution = execute_output_case(case_name, None);
+        assert_eq!(execution.method.as_deref(), Some("xhtml"), "{case_name}");
+        for name in VOID_NAMES {
+            assert!(
+                execution.actual.contains(&format!("<{name}"))
+                    && !execution.actual.contains(&format!("</{name}>")),
+                "{case_name}: {name}"
+            );
+        }
+    }
+
+    for case_name in ["output-0218", "output-0219", "output-0220", "output-0221"] {
+        let execution = execute_output_case(case_name, None);
+        assert_eq!(execution.method.as_deref(), Some("xhtml"), "{case_name}");
+        for name in ["title", "p", "i", "u", "div", "code", "strong"] {
+            assert!(
+                execution.actual.contains(&format!("</{name}>")),
+                "{case_name}: {name}"
+            );
+        }
+    }
+
+    let prefixed = execute_output_case("output-0221", None);
+    assert!(!prefixed.actual.contains("xmlns:h"));
+    assert!(!prefixed.actual.contains("h:"));
+}
+
+#[test]
 fn resolves_imported_character_maps_and_higher_precedence_override() {
     let imported_only = execute_assert_serialization_case("output-0204", "xml");
     assert_eq!(

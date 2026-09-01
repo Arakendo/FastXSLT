@@ -573,7 +573,10 @@ fn serialize_element(
     if options.xml_empty_document_element_tag && depth == 0 && children.is_empty() {
         return output.push_str("/>");
     }
-    if options.xhtml_mode != XhtmlMode::None && children.is_empty() && is_xhtml_void_element(name) {
+    if options.xhtml_mode != XhtmlMode::None
+        && children.is_empty()
+        && is_xhtml_void_element(name, options.xhtml_mode)
+    {
         return output.push_str(" />");
     }
     output.push('>')?;
@@ -634,8 +637,12 @@ fn normalize_xhtml_namespace_bindings(
     normalized
 }
 
-fn is_xhtml_void_element(name: &crate::xml::quick_xml_experiment::ExpandedName) -> bool {
-    name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml")
+fn is_xhtml_void_element(
+    name: &crate::xml::quick_xml_experiment::ExpandedName,
+    mode: XhtmlMode,
+) -> bool {
+    (name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml")
+        || (mode == XhtmlMode::DefaultNamespace && name.namespace.is_none()))
         && matches!(
             name.local.as_str(),
             "area"
@@ -643,6 +650,7 @@ fn is_xhtml_void_element(name: &crate::xml::quick_xml_experiment::ExpandedName) 
                 | "basefont"
                 | "br"
                 | "col"
+                | "embed"
                 | "frame"
                 | "hr"
                 | "img"
@@ -651,6 +659,9 @@ fn is_xhtml_void_element(name: &crate::xml::quick_xml_experiment::ExpandedName) 
                 | "link"
                 | "meta"
                 | "param"
+                | "source"
+                | "track"
+                | "wbr"
         )
 }
 

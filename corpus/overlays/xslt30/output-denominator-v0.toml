@@ -717,6 +717,54 @@ execution = "passed"
 rationale = "Normalizes authored XHTML element prefixes to the default XHTML namespace under the bounded version-five serializer and emits the automatic doctype."
 
 [[case_override]]
+case_name = "output-0216"
+selection = "selected"
+execution = "passed"
+rationale = "Serializes the XHTML 5 void-element set without end tags in the XHTML namespace."
+
+[[case_override]]
+case_name = "output-0217"
+selection = "selected"
+execution = "passed"
+rationale = "Serializes the XHTML 5 void-element set without end tags in no namespace."
+
+[[case_override]]
+case_name = "output-0218"
+selection = "selected"
+execution = "passed"
+rationale = "Retains explicit end tags for empty non-void XHTML-namespace elements."
+
+[[case_override]]
+case_name = "output-0219"
+selection = "selected"
+execution = "passed"
+rationale = "Retains explicit end tags for empty non-void elements in no namespace."
+
+[[case_override]]
+case_name = "output-0220"
+selection = "selected"
+execution = "passed"
+rationale = "Retains attributes and explicit end tags for empty non-void elements in no namespace."
+
+[[case_override]]
+case_name = "output-0221"
+selection = "selected"
+execution = "passed"
+rationale = "Normalizes prefixed XHTML element names while retaining attributes and explicit non-void end tags."
+
+[[case_override]]
+case_name = "output-0222"
+selection = "selected"
+execution = "passed"
+rationale = "Retains attributes while serializing XHTML-namespace void elements without end tags."
+
+[[case_override]]
+case_name = "output-0223"
+selection = "selected"
+execution = "passed"
+rationale = "Retains attributes while serializing no-namespace void elements without end tags."
+
+[[case_override]]
 case_name = "output-0501"
 selection = "selected"
 execution = "passed"

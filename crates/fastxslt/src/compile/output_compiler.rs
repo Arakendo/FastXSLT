@@ -67,7 +67,7 @@ pub(super) fn compile_output(
     ensure_output_attributes(document, element)?;
     ensure_no_meaningful_children(document, element, "xsl:output")?;
     let html_version = compile_html_version(document, element)?;
-    let method = optional_attribute(document, element, None, "method");
+    let method = optional_attribute(document, element, None, "method").map(str::trim);
     let bounded_character_map_html = method == Some("html")
         && optional_attribute(document, element, None, "use-character-maps").is_some();
     if method.is_some_and(|method| !matches!(method, "xml" | "text" | "xhtml"))
