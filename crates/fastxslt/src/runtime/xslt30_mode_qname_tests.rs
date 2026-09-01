@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 68] = [
+const SELECTED_CASES: [&str; 70] = [
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -55,6 +55,8 @@ const SELECTED_CASES: [&str; 68] = [
     "mode-1405",
     "mode-1407",
     "mode-1409",
+    "mode-1411",
+    "mode-1415",
     "mode-1423",
     "mode-1431",
     "mode-1439",
@@ -137,6 +139,16 @@ const PACKAGE_EXCLUDED_CASES: [&str; 19] = [
     "mode-1714err",
     "mode-1803",
 ];
+const LARGE_RESULT_CASES: [&str; 8] = [
+    "mode-1405",
+    "mode-1407",
+    "mode-1409",
+    "mode-1411",
+    "mode-1415",
+    "mode-1423",
+    "mode-1445",
+    "mode-1446",
+];
 const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/mode-denominator-v0.toml");
 
 #[test]
@@ -196,7 +208,7 @@ fn inventories_the_complete_mode_denominator_before_selection() {
         );
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
-    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 68);
+    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 70);
     assert_eq!(
         OVERLAY
             .matches("selection = \"excluded-by-profile\"")
@@ -478,6 +490,14 @@ fn executes_shallow_copy_with_both_false_typed_lexicals() {
 }
 
 #[test]
+fn executes_shallow_copy_over_the_complete_native_mode_source() {
+    for case_name in ["mode-1411", "mode-1415"] {
+        let (actual, expected) = execute_case(case_name);
+        assert_xml_equivalent(&actual, &expected);
+    }
+}
+
+#[test]
 fn rejects_nonempty_mode_declaration_with_native_static_error() {
     let document = load_test_set();
     let case = find_case(&document, "mode-1108");
@@ -700,10 +720,7 @@ fn execute_case_with_policy(
         1,
         ExecutionPolicy {
             denied_sources: HashSet::new(),
-            serialized_byte_limit: if matches!(
-                case_name,
-                "mode-1405" | "mode-1407" | "mode-1409" | "mode-1423" | "mode-1445" | "mode-1446"
-            ) {
+            serialized_byte_limit: if LARGE_RESULT_CASES.contains(&case_name) {
                 16_384
             } else {
                 4_096

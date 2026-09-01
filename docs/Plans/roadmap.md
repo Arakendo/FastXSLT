@@ -739,6 +739,16 @@ pass. The mode denominator advances to 65 passes, 44 profile exclusions, and 60
 visible default not-run cases.
 [Evidence](../Evidence/xslt30-mode-1618-1619-attribute-focus-default-mode-2026-08-31.md)
 
+The unchanged `mode-1411` and `mode-1415` cases now exercise bounded
+`on-no-match="shallow-copy"` across the complete external 9 KB mode source.
+The first relies entirely on named-mode built-in copying with `typed="no"`;
+the second composes unnamed shallow-copy with explicit upper-case and empty
+text/element overrides. Both complete file-backed XML results pass under the
+existing 16 KiB result ceiling. Attribute-template interception in adjacent
+`mode-1413` remains visibly separate. The mode denominator advances to 70
+passes, 45 profile exclusions, and 54 visible default not-run cases.
+[Evidence](../Evidence/xslt30-mode-1411-1415-large-shallow-copy-2026-08-31.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -778,10 +788,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 68 | 0 | 45 | 56 |
+| `attr/mode` | 169 | 70 | 0 | 45 | 54 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **262** | **3** | **50** | **216** |
+| **Conserved total** | **531** | **264** | **3** | **50** | **214** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

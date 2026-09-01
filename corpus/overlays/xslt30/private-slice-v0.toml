@@ -1364,3 +1364,17 @@ case_name = "mode-1409"
 selection = "selected"
 execution = "passed"
 rationale = "The unnamed mode combines text-only-copy built-in descent with the exact upper-case(.) text-node rule and satisfies the native normalized text-prefix assertion."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1411"
+selection = "selected"
+execution = "passed"
+rationale = "Named initial mode s applies bounded shallow-copy built-in rules to the unchanged 9 KB native source and matches the complete file-backed XML result."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1415"
+selection = "selected"
+execution = "passed"
+rationale = "The unnamed shallow-copy mode composes with explicit text-node upper-casing and empty element/text overrides over the unchanged native source and matches the complete file-backed XML result."

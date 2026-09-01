@@ -393,6 +393,18 @@ execution = "passed"
 rationale = "The unnamed mode combines text-only-copy built-in descent with the explicit upper-case(.) text-node rule."
 
 [[case_override]]
+case_name = "mode-1411"
+selection = "selected"
+execution = "passed"
+rationale = "Named initial mode s applies bounded shallow-copy built-in rules to the unchanged 9 KB native source and matches the complete file-backed XML result."
+
+[[case_override]]
+case_name = "mode-1415"
+selection = "selected"
+execution = "passed"
+rationale = "The unnamed shallow-copy mode composes with explicit text-node upper-casing and empty element/text overrides over the unchanged native source and matches the complete file-backed XML result."
+
+[[case_override]]
 case_name = "mode-0105"
 selection = "selected"
 execution = "passed"
