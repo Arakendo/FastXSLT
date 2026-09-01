@@ -711,6 +711,12 @@ execution = "passed"
 rationale = "Does not emit an automatic XHTML 5 doctype or content-type meta for a prefixed html element in an alien namespace."
 
 [[case_override]]
+case_name = "output-0211"
+selection = "selected"
+execution = "passed"
+rationale = "Normalizes authored XHTML element prefixes to the default XHTML namespace under the bounded version-five serializer and emits the automatic doctype."
+
+[[case_override]]
 case_name = "output-0501"
 selection = "selected"
 execution = "passed"

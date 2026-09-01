@@ -10,10 +10,17 @@ use crate::xslt::golden_semantics_experiment::OutputSettings;
 struct SerializationOptions<'a> {
     cdata_section_elements: &'a [crate::xml::quick_xml_experiment::ExpandedName],
     character_map: &'a [(char, String)],
-    xhtml: bool,
+    xhtml_mode: XhtmlMode,
     xhtml_media_type: Option<&'a str>,
     xml_empty_document_element_tag: bool,
     indent: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum XhtmlMode {
+    None,
+    PreservePrefixes,
+    DefaultNamespace,
 }
 
 pub(in crate::runtime) fn serialize_xml(
@@ -99,10 +106,17 @@ pub(in crate::runtime) fn serialize_xml(
     serialize_doctype(result, settings, xhtml, &mut output)?;
     let xhtml_media_type = (xhtml && settings.include_content_type != Some(false))
         .then(|| settings.media_type.as_deref().unwrap_or("text/html"));
+    let xhtml_mode = if !xhtml {
+        XhtmlMode::None
+    } else if settings.html_version.as_deref() == Some("5") {
+        XhtmlMode::DefaultNamespace
+    } else {
+        XhtmlMode::PreservePrefixes
+    };
     let options = SerializationOptions {
         cdata_section_elements: &settings.cdata_section_elements,
         character_map: &settings.character_map,
-        xhtml,
+        xhtml_mode,
         xhtml_media_type,
         xml_empty_document_element_tag: settings.doctype_system.is_some() && !xhtml && !html,
         indent: settings.indent == Some(true),
@@ -525,6 +539,15 @@ fn serialize_element(
     else {
         unreachable!("serialize_element receives an element")
     };
+    let normalized_namespaces;
+    let namespaces = if options.xhtml_mode == XhtmlMode::DefaultNamespace
+        && name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml")
+    {
+        normalized_namespaces = normalize_xhtml_namespace_bindings(namespaces);
+        normalized_namespaces.as_slice()
+    } else {
+        namespaces
+    };
     let (in_scope, declarations) = element_namespace_scope(name, namespaces, inherited_namespaces);
     let prefix = element_prefix(name.namespace.as_deref(), &in_scope, output)?;
     output.push('<')?;
@@ -550,7 +573,7 @@ fn serialize_element(
     if options.xml_empty_document_element_tag && depth == 0 && children.is_empty() {
         return output.push_str("/>");
     }
-    if options.xhtml && children.is_empty() && is_xhtml_void_element(name) {
+    if options.xhtml_mode != XhtmlMode::None && children.is_empty() && is_xhtml_void_element(name) {
         return output.push_str(" />");
     }
     output.push('>')?;
@@ -593,6 +616,22 @@ fn serialize_element(
     output.push_str("</")?;
     write_name(prefix, &name.local, output)?;
     output.push('>')
+}
+
+fn normalize_xhtml_namespace_bindings(
+    namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
+) -> Vec<crate::xml::quick_xml_experiment::NamespaceBinding> {
+    const XHTML_NAMESPACE: &str = "http://www.w3.org/1999/xhtml";
+    let mut normalized = namespaces
+        .iter()
+        .filter(|binding| binding.namespace != XHTML_NAMESPACE)
+        .cloned()
+        .collect::<Vec<_>>();
+    normalized.push(crate::xml::quick_xml_experiment::NamespaceBinding {
+        prefix: None,
+        namespace: XHTML_NAMESPACE.to_owned(),
+    });
+    normalized
 }
 
 fn is_xhtml_void_element(name: &crate::xml::quick_xml_experiment::ExpandedName) -> bool {

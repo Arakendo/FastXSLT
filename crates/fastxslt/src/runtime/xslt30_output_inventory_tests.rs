@@ -839,6 +839,21 @@ fn executes_bounded_xhtml5_automatic_doctype_selection() {
 }
 
 #[test]
+fn normalizes_xhtml_element_prefixes_for_bounded_version_five() {
+    let execution = execute_output_case("output-0211", None);
+    assert!(execution.actual.contains("<!DOCTYPE html>"));
+    assert!(
+        execution
+            .actual
+            .contains("<html xmlns=\"http://www.w3.org/1999/xhtml\">")
+    );
+    assert!(!execution.actual.contains("xmlns:h"));
+    assert!(!execution.actual.contains("h:"));
+    assert!(execution.actual.contains("<head>"));
+    assert!(execution.actual.contains("<body>"));
+}
+
+#[test]
 fn resolves_imported_character_maps_and_higher_precedence_override() {
     let imported_only = execute_assert_serialization_case("output-0204", "xml");
     assert_eq!(
