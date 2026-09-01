@@ -62,7 +62,7 @@ pub(in crate::runtime) fn serialize_xml(
     if settings.method.as_deref() == Some("text") {
         let mut output = BudgetedString::new(byte_limit, request_id, control);
         for node in &result.children {
-            serialize_text_node(node, &mut output)?;
+            serialize_text_node(node, &settings.character_map, &mut output)?;
         }
         return Ok(output.finish());
     }
@@ -375,18 +375,37 @@ fn validate_serialization_preconditions(
 
 fn serialize_text_node(
     node: &ResultNode,
+    character_map: &[(char, String)],
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
     match node {
-        ResultNode::Text(value) => output.push_str(value),
+        ResultNode::Text(value) => write_character_mapped(value, character_map, output),
         ResultNode::ProcessingInstruction { .. } => Ok(()),
         ResultNode::Element { children, .. } => {
             for child in children {
-                serialize_text_node(child, output)?;
+                serialize_text_node(child, character_map, output)?;
             }
             Ok(())
         }
     }
+}
+
+fn write_character_mapped(
+    value: &str,
+    character_map: &[(char, String)],
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    for character in value.chars() {
+        if let Some((_, replacement)) = character_map
+            .iter()
+            .find(|(candidate, _)| *candidate == character)
+        {
+            output.push_str(replacement)?;
+        } else {
+            output.push(character)?;
+        }
+    }
+    Ok(())
 }
 
 fn serialize_node(

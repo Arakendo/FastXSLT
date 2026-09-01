@@ -51,7 +51,7 @@ pub(in crate::compile) fn default_output_settings() -> OutputSettings {
 
 pub(super) struct OutputDeclaration {
     pub(super) settings: OutputSettings,
-    pub(super) character_map_name: Option<String>,
+    pub(super) character_map_names: Vec<String>,
     specified: BTreeSet<String>,
     pub(super) location: SourceLocation,
 }
@@ -106,7 +106,7 @@ pub(super) fn compile_output(
         })
         .transpose()?;
     let normalization_form = optional_attribute(document, element, None, "normalization-form");
-    let character_map_name = compile_character_map_name(document, element, method)?;
+    let character_map_names = compile_character_map_names(document, element, method)?;
     let undeclare_prefixes = compile_output_boolean_attribute(
         document,
         element,
@@ -150,31 +150,32 @@ pub(super) fn compile_output(
         .collect();
     Ok(OutputDeclaration {
         settings,
-        character_map_name,
+        character_map_names,
         specified,
         location: document.location(element).clone(),
     })
 }
 
-fn compile_character_map_name(
+fn compile_character_map_names(
     document: &Document,
     element: NodeId,
     method: Option<&str>,
-) -> Result<Option<String>, CompileFailure> {
+) -> Result<Vec<String>, CompileFailure> {
     let Some(value) = optional_attribute(document, element, None, "use-character-maps") else {
-        return Ok(None);
+        return Ok(Vec::new());
     };
-    if method.is_some_and(|method| method != "xml")
-        || value.split_whitespace().count() != 1
-        || !super::is_ascii_ncname(value)
+    let names: Vec<_> = value.split_whitespace().collect();
+    if method.is_some_and(|method| !matches!(method, "xml" | "xhtml" | "text"))
+        || names.is_empty()
+        || names.iter().any(|name| !super::is_ascii_ncname(name))
     {
         return Err(unsupported(
             "FXST1048",
-            "the first character-map slice requires one unprefixed name on XML or inferred output",
+            "the admitted character-map slice requires unprefixed names on XML, XHTML, text, or inferred output",
             document.location(element),
         ));
     }
-    Ok(Some(value.to_owned()))
+    Ok(names.into_iter().map(str::to_owned).collect())
 }
 
 fn ensure_output_attributes(document: &Document, element: NodeId) -> Result<(), CompileFailure> {
@@ -270,7 +271,9 @@ pub(super) fn merge_output(
         &mut existing.settings.normalization_form,
         next.settings.normalization_form,
     );
-    merge_optional(&mut existing.character_map_name, next.character_map_name);
+    existing
+        .character_map_names
+        .extend(next.character_map_names);
     merge_optional(
         &mut existing.settings.undeclare_prefixes,
         next.settings.undeclare_prefixes,

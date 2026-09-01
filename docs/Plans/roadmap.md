@@ -862,6 +862,14 @@ imports, declaration precedence, and cycles remain unsupported. The output
 denominator advances to 98 passes and 134 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-direct-character-map-composition-2026-09-01.md)
 
+The unchanged `output-0303` case now combines three unprefixed character maps
+and applies their replacements to an exact file-backed text serialization.
+Mapped replacement bytes use the same bounded sink, while QName identity,
+imports, named outputs, result documents, and method-specific HTML/XHTML
+admission remain separate work. The output denominator advances to 99 passes
+and 133 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-multiple-character-maps-text-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -903,8 +911,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 98 | 0 | 0 | 134 |
-| **Conserved total** | **531** | **296** | **3** | **50** | **182** |
+| `decl/output` | 232 | 99 | 0 | 0 | 133 |
+| **Conserved total** | **531** | **297** | **3** | **50** | **181** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

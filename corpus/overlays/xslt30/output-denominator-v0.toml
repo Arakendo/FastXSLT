@@ -531,6 +531,12 @@ execution = "passed"
 rationale = "Composes one directly referenced map and applies the referencing map's local character replacement as the higher-priority mapping."
 
 [[case_override]]
+case_name = "output-0303"
+selection = "selected"
+execution = "passed"
+rationale = "Combines three unprefixed character maps in declaration order and applies them to the exact file-backed text serialization."
+
+[[case_override]]
 case_name = "output-0280"
 selection = "selected"
 execution = "passed"

@@ -193,14 +193,17 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         }
     }
     reject_unordered_global_dependencies(&global_bindings, &global_binding_locations)?;
-    if let Some(declaration) = output.as_mut()
-        && let Some(name) = declaration.character_map_name.as_deref()
-    {
-        let map = character_maps
-            .iter()
-            .find(|map| map.name == name)
-            .ok_or_else(|| invalid("XTSE1590", "unknown character map", &declaration.location))?;
-        declaration.settings.character_map = resolved_character_map(map, &character_maps)?;
+    if let Some(declaration) = output.as_mut() {
+        for name in &declaration.character_map_names {
+            let map = character_maps
+                .iter()
+                .find(|map| map.name == *name)
+                .ok_or_else(|| {
+                    invalid("XTSE1590", "unknown character map", &declaration.location)
+                })?;
+            let resolved = resolved_character_map(map, &character_maps)?;
+            merge_character_map_entries(&mut declaration.settings.character_map, &resolved);
+        }
     }
 
     Ok(StylesheetProgram {
@@ -322,17 +325,21 @@ fn resolved_character_map(
     } else {
         Vec::new()
     };
-    for (character, replacement) in &map.entries {
-        if let Some((_, inherited)) = resolved
+    merge_character_map_entries(&mut resolved, &map.entries);
+    Ok(resolved)
+}
+
+fn merge_character_map_entries(target: &mut Vec<(char, String)>, entries: &[(char, String)]) {
+    for (character, replacement) in entries {
+        if let Some((_, inherited)) = target
             .iter_mut()
             .find(|(candidate, _)| candidate == character)
         {
             inherited.clone_from(replacement);
         } else {
-            resolved.push((*character, replacement.clone()));
+            target.push((*character, replacement.clone()));
         }
     }
-    Ok(resolved)
 }
 
 fn reject_unordered_global_dependencies(

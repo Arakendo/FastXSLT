@@ -627,6 +627,16 @@ fn executes_direct_character_map_composition_and_local_override() {
 }
 
 #[test]
+fn executes_multiple_character_maps_with_text_output() {
+    let execution = execute_assert_serialization_case("output-0303", "text");
+    assert_eq!(
+        execution.expected.as_deref(),
+        Some(execution.actual.as_str())
+    );
+    assert_eq!(execution.actual, "xx&xx\nyy+Ayy\nzz%&zz\n");
+}
+
+#[test]
 fn executes_xhtml_standalone_yes_no_and_omit_variants() {
     for case_name in [
         "output-0149",
