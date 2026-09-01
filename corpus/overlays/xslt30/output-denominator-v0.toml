@@ -765,6 +765,24 @@ execution = "passed"
 rationale = "Retains attributes while serializing no-namespace void elements without end tags."
 
 [[case_override]]
+case_name = "output-0224"
+selection = "selected"
+execution = "passed"
+rationale = "Serializes XHTML, SVG, and MathML elements through their required default namespaces when authored with defaults."
+
+[[case_override]]
+case_name = "output-0225"
+selection = "selected"
+execution = "passed"
+rationale = "Normalizes authored XHTML, SVG, and MathML element prefixes to their required XHTML 5 default namespaces."
+
+[[case_override]]
+case_name = "output-0226"
+selection = "selected"
+execution = "passed"
+rationale = "Normalizes mixed authored SVG prefix use to the SVG default namespace inside XHTML 5 output."
+
+[[case_override]]
 case_name = "output-0227"
 selection = "selected"
 execution = "passed"

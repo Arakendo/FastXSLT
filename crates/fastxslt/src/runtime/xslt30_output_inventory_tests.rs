@@ -929,6 +929,40 @@ fn executes_bounded_xhtml5_explicit_doctype_variants() {
 }
 
 #[test]
+fn normalizes_bounded_xhtml5_svg_and_mathml_element_namespaces() {
+    for case_name in ["output-0224", "output-0225", "output-0226"] {
+        let execution = execute_output_case(case_name, None);
+        assert_eq!(execution.method.as_deref(), Some("xhtml"), "{case_name}");
+        assert!(
+            execution
+                .actual
+                .contains("<html xmlns=\"http://www.w3.org/1999/xhtml\">"),
+            "{case_name}"
+        );
+        assert!(
+            execution
+                .actual
+                .contains("<svg xmlns=\"http://www.w3.org/2000/svg\""),
+            "{case_name}: {}",
+            execution.actual
+        );
+        assert!(!execution.actual.contains("h:"), "{case_name}");
+        assert!(!execution.actual.contains("s:"), "{case_name}");
+    }
+
+    for case_name in ["output-0224", "output-0225"] {
+        let execution = execute_output_case(case_name, None);
+        assert!(
+            execution
+                .actual
+                .contains("<math xmlns=\"http://www.w3.org/1998/Math/MathML\""),
+            "{case_name}"
+        );
+        assert!(!execution.actual.contains("m:"), "{case_name}");
+    }
+}
+
+#[test]
 fn resolves_imported_character_maps_and_higher_precedence_override() {
     let imported_only = execute_assert_serialization_case("output-0204", "xml");
     assert_eq!(

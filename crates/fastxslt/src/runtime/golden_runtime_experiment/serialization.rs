@@ -541,9 +541,12 @@ fn serialize_element(
     };
     let normalized_namespaces;
     let namespaces = if options.xhtml_mode == XhtmlMode::DefaultNamespace
-        && name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml")
+        && is_xhtml5_default_namespace(name.namespace.as_deref())
     {
-        normalized_namespaces = normalize_xhtml_namespace_bindings(namespaces);
+        normalized_namespaces = normalize_xhtml5_namespace_bindings(
+            name.namespace.as_deref().expect("recognized namespace"),
+            namespaces,
+        );
         normalized_namespaces.as_slice()
     } else {
         namespaces
@@ -621,18 +624,29 @@ fn serialize_element(
     output.push('>')
 }
 
-fn normalize_xhtml_namespace_bindings(
+fn is_xhtml5_default_namespace(namespace: Option<&str>) -> bool {
+    matches!(
+        namespace,
+        Some(
+            "http://www.w3.org/1999/xhtml"
+                | "http://www.w3.org/2000/svg"
+                | "http://www.w3.org/1998/Math/MathML"
+        )
+    )
+}
+
+fn normalize_xhtml5_namespace_bindings(
+    default_namespace: &str,
     namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
 ) -> Vec<crate::xml::quick_xml_experiment::NamespaceBinding> {
-    const XHTML_NAMESPACE: &str = "http://www.w3.org/1999/xhtml";
     let mut normalized = namespaces
         .iter()
-        .filter(|binding| binding.namespace != XHTML_NAMESPACE)
+        .filter(|binding| !is_xhtml5_default_namespace(Some(&binding.namespace)))
         .cloned()
         .collect::<Vec<_>>();
     normalized.push(crate::xml::quick_xml_experiment::NamespaceBinding {
         prefix: None,
-        namespace: XHTML_NAMESPACE.to_owned(),
+        namespace: default_namespace.to_owned(),
     });
     normalized
 }
