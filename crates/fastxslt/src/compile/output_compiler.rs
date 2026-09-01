@@ -164,13 +164,13 @@ fn compile_character_map_name(
     let Some(value) = optional_attribute(document, element, None, "use-character-maps") else {
         return Ok(None);
     };
-    if method != Some("xml")
+    if method.is_some_and(|method| method != "xml")
         || value.split_whitespace().count() != 1
         || !super::is_ascii_ncname(value)
     {
         return Err(unsupported(
             "FXST1048",
-            "the first character-map slice requires one unprefixed name on XML output",
+            "the first character-map slice requires one unprefixed name on XML or inferred output",
             document.location(element),
         ));
     }

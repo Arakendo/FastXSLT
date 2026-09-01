@@ -519,6 +519,18 @@ execution = "passed"
 rationale = "Compiles one named unprefixed character map, resolves one XML output reference, and replaces dollar signs with the raw mapped euro string during bounded serialization."
 
 [[case_override]]
+case_name = "output-0202"
+selection = "selected"
+execution = "passed"
+rationale = "Composes one directly referenced unprefixed character map into the XML serializer and exactly matches the pinned expected serialization."
+
+[[case_override]]
+case_name = "output-0203"
+selection = "selected"
+execution = "passed"
+rationale = "Composes one directly referenced map and applies the referencing map's local character replacement as the higher-priority mapping."
+
+[[case_override]]
 case_name = "output-0280"
 selection = "selected"
 execution = "passed"

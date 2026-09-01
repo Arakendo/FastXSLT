@@ -200,7 +200,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
             .iter()
             .find(|map| map.name == name)
             .ok_or_else(|| invalid("XTSE1590", "unknown character map", &declaration.location))?;
-        declaration.settings.character_map = map.entries.clone();
+        declaration.settings.character_map = resolved_character_map(map, &character_maps)?;
     }
 
     Ok(StylesheetProgram {
@@ -220,7 +220,9 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
 
 struct CompiledCharacterMap {
     name: String,
+    referenced_map_name: Option<String>,
     entries: Vec<(char, String)>,
+    location: SourceLocation,
 }
 
 fn compile_character_map(
@@ -241,7 +243,25 @@ fn compile_character_map(
             document.location(element),
         ));
     }
-    ensure_only_attributes(document, element, &["name"], "xsl:character-map")?;
+    ensure_only_attributes(
+        document,
+        element,
+        &["name", "use-character-maps"],
+        "xsl:character-map",
+    )?;
+    let referenced_map_name = optional_attribute(document, element, None, "use-character-maps")
+        .map(|value| {
+            if value.split_whitespace().count() == 1 && is_ascii_ncname(value) {
+                Ok(value.to_owned())
+            } else {
+                Err(unsupported(
+                    "FXST1047",
+                    "the first character-map composition slice requires one unprefixed name",
+                    document.location(element),
+                ))
+            }
+        })
+        .transpose()?;
     let children = meaningful_children(document, element);
     let mut entries = Vec::new();
     for child in children {
@@ -276,8 +296,43 @@ fn compile_character_map(
     }
     Ok(CompiledCharacterMap {
         name: name.to_owned(),
+        referenced_map_name,
         entries,
+        location: document.location(element).clone(),
     })
+}
+
+fn resolved_character_map(
+    map: &CompiledCharacterMap,
+    maps: &[CompiledCharacterMap],
+) -> Result<Vec<(char, String)>, CompileFailure> {
+    let mut resolved = if let Some(reference) = map.referenced_map_name.as_deref() {
+        let referenced = maps
+            .iter()
+            .find(|candidate| candidate.name == reference)
+            .ok_or_else(|| invalid("XTSE1590", "unknown character map", &map.location))?;
+        if referenced.referenced_map_name.is_some() {
+            return Err(unsupported(
+                "FXST1047",
+                "character-map composition chains remain outside the first composition slice",
+                &map.location,
+            ));
+        }
+        referenced.entries.clone()
+    } else {
+        Vec::new()
+    };
+    for (character, replacement) in &map.entries {
+        if let Some((_, inherited)) = resolved
+            .iter_mut()
+            .find(|(candidate, _)| candidate == character)
+        {
+            inherited.clone_from(replacement);
+        } else {
+            resolved.push((*character, replacement.clone()));
+        }
+    }
+    Ok(resolved)
 }
 
 fn reject_unordered_global_dependencies(

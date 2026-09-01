@@ -854,6 +854,14 @@ named outputs, CDATA interaction, and non-XML methods remain unsupported. The
 output denominator advances to 96 passes and 136 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-first-character-map-2026-09-01.md)
 
+The unchanged `output-0202` and `output-0203` cases now compose one directly
+referenced unprefixed character map and apply local mappings over inherited
+mappings for the same character. The slice works with explicit XML output and
+with XML method inference; longer chains, multiple or QName references,
+imports, declaration precedence, and cycles remain unsupported. The output
+denominator advances to 98 passes and 134 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-direct-character-map-composition-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -895,8 +903,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 96 | 0 | 0 | 136 |
-| **Conserved total** | **531** | **294** | **3** | **50** | **184** |
+| `decl/output` | 232 | 98 | 0 | 0 | 134 |
+| **Conserved total** | **531** | **296** | **3** | **50** | **182** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

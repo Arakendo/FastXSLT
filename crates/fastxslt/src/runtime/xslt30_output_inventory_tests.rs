@@ -608,6 +608,25 @@ fn executes_one_named_xml_character_map() {
 }
 
 #[test]
+fn executes_direct_character_map_composition_and_local_override() {
+    let inherited = execute_assert_serialization_case("output-0202", "xml");
+    assert_eq!(
+        inherited.expected.as_deref(),
+        Some(inherited.actual.as_str())
+    );
+    assert!(inherited.actual.contains("yy€yy"));
+
+    let overridden = execute_assert_serialization_case("output-0203", "xml");
+    assert_eq!(
+        overridden.expected.as_deref(),
+        Some(overridden.actual.as_str())
+    );
+    assert!(overridden.actual.contains("xxAxx"));
+    assert!(overridden.actual.contains("yy*yy"));
+    assert!(!overridden.actual.contains("yy€yy"));
+}
+
+#[test]
 fn executes_xhtml_standalone_yes_no_and_omit_variants() {
     for case_name in [
         "output-0149",
