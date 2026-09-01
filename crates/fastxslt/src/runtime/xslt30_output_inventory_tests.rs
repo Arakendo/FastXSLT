@@ -540,6 +540,14 @@ fn reports_native_invalid_output_boolean_cases_with_the_standard_static_error() 
         "output-0198a",
         "output-0199",
         "output-0199a",
+        "output-0280",
+        "output-0280a",
+        "output-0281",
+        "output-0281a",
+        "output-0282",
+        "output-0282a",
+        "output-0283",
+        "output-0283a",
     ] {
         let failure = compile_output_case_failure(case_name);
         assert_eq!(failure.code, "XTSE0020", "{case_name}");

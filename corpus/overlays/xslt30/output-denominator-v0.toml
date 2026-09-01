@@ -512,6 +512,54 @@ selection = "selected"
 execution = "passed"
 rationale = "Matches the native XSLT 3.0 any-of through compile-time XTSE0020 for the case-sensitive invalid include-content-type=TRUE lexical."
 
+[[case_override]]
+case_name = "output-0280"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native XSLT 2.0 any-of through compile-time XTSE0020 for the invalid indent=true lexical."
+
+[[case_override]]
+case_name = "output-0280a"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native XSLT 3.0 any-of through compile-time XTSE0020 for the case-sensitive invalid indent=TRUE lexical."
+
+[[case_override]]
+case_name = "output-0281"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native XSLT 2.0 any-of through compile-time XTSE0020 for the invalid omit-xml-declaration=true lexical."
+
+[[case_override]]
+case_name = "output-0281a"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native XSLT 3.0 any-of through compile-time XTSE0020 for the case-sensitive invalid omit-xml-declaration=YES lexical."
+
+[[case_override]]
+case_name = "output-0282"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native XSLT 2.0 any-of through compile-time XTSE0020 for the invalid standalone=true lexical."
+
+[[case_override]]
+case_name = "output-0282a"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native XSLT 3.0 any-of through compile-time XTSE0020 for the case-sensitive invalid standalone=TRUE lexical."
+
+[[case_override]]
+case_name = "output-0283"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native XSLT 2.0 any-of through compile-time XTSE0020 for the invalid undeclare-prefixes=true lexical."
+
+[[case_override]]
+case_name = "output-0283a"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native XSLT 3.0 any-of through compile-time XTSE0020 for the case-sensitive invalid undeclare-prefixes=True lexical."
+
 [[assertion_family]]
 name = "all-of"
 count = 89
