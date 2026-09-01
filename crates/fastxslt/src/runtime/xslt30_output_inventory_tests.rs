@@ -720,6 +720,44 @@ fn reports_unsupported_serialization_encoding_as_sesu0007() {
 }
 
 #[test]
+fn reports_unavailable_xml_compatible_encodings_through_native_alternatives() {
+    for case_name in ["output-0178", "output-0180"] {
+        let (test_set, _) = load_test_set();
+        let root = document_element(&test_set);
+        let case = element_children(&test_set, root)
+            .into_iter()
+            .find(|node| {
+                local_name(&test_set, *node) == "test-case"
+                    && attribute(&test_set, *node, "name") == Some(case_name)
+            })
+            .expect("pinned encoding alternative case");
+        let result = child_named(&test_set, case, "result").expect("output result");
+        let any_of = first_element_child(&test_set, result).expect("any-of assertion");
+        assert_eq!(local_name(&test_set, any_of), "any-of");
+        let native_codes: Vec<_> = element_children(&test_set, any_of)
+            .into_iter()
+            .filter(|node| local_name(&test_set, *node) == "assert-serialization-error")
+            .filter_map(|node| attribute(&test_set, node, "code"))
+            .collect();
+        assert!(native_codes.contains(&"SESU0007"), "{case_name}");
+
+        let failure = try_execute_output_case(case_name, None)
+            .expect_err("an unavailable requested encoding must fail serialization");
+        assert_eq!(failure.code, "SESU0007", "{case_name}");
+        assert_eq!(
+            failure.category,
+            FailureCategory::Unsupported,
+            "{case_name}"
+        );
+        assert_eq!(
+            failure.request_id.as_deref(),
+            Some(case_name),
+            "{case_name}"
+        );
+    }
+}
+
+#[test]
 fn reports_unsupported_normalization_form_as_sesu0011() {
     for case_name in ["output-0189", "output-0190", "output-0192"] {
         let (test_set, _) = load_test_set();

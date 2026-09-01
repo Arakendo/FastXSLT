@@ -387,6 +387,18 @@ execution = "passed"
 rationale = "Merges two unnamed declarations with non-overlapping scalar properties, retains standalone=yes, and exactly serializes the selected unnamespaced item1 text as CDATA while escaping item2 normally."
 
 [[case_override]]
+case_name = "output-0178"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native any-of assertion through SESU0007 when XHTML output requests the unavailable encoding XXX-xx."
+
+[[case_override]]
+case_name = "output-0180"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native any-of assertion through SESU0007 when XML output requests the unavailable encoding XXX-xx."
+
+[[case_override]]
 case_name = "output-0182"
 selection = "selected"
 execution = "passed"

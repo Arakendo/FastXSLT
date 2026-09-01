@@ -798,6 +798,12 @@ general encoding provider. The output denominator advances to 77 passes and
 155 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-sesu0007-2026-09-01.md)
 
+The same native encoding boundary now admits unchanged `output-0178` and
+`output-0180` through their explicit error-or-recovery alternatives. XHTML and
+XML requests for `XXX-xx` report `SESU0007`; FastXSLT does not pretend to
+recover with a different encoding. The output denominator advances to 84
+passes and 148 visible default not-run cases.
+
 The unchanged `output-0189`, `output-0190`, `output-0192`, and `output-0193`
 cases apply the same ownership boundary to unavailable normalization forms.
 XML, XHTML, and text output retain the requested form through compilation and
@@ -857,8 +863,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 82 | 0 | 0 | 150 |
-| **Conserved total** | **531** | **280** | **3** | **50** | **198** |
+| `decl/output` | 232 | 84 | 0 | 0 | 148 |
+| **Conserved total** | **531** | **282** | **3** | **50** | **196** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
