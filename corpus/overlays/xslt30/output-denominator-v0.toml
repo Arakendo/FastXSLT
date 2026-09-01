@@ -417,6 +417,24 @@ execution = "passed"
 rationale = "Matches the native serialization-error assertion with SEPM0009 when an omitted XML declaration combines a non-1.0 version with a requested external document type."
 
 [[case_override]]
+case_name = "output-0189"
+selection = "selected"
+execution = "passed"
+rationale = "Retains the unavailable XML output normalization form as declarative metadata and matches native serialization error SESU0011 when output is requested."
+
+[[case_override]]
+case_name = "output-0190"
+selection = "selected"
+execution = "passed"
+rationale = "Retains the unavailable XHTML output normalization form as declarative metadata and matches native serialization error SESU0011 when output is requested."
+
+[[case_override]]
+case_name = "output-0192"
+selection = "selected"
+execution = "passed"
+rationale = "Retains the unavailable text output normalization form as declarative metadata and matches native serialization error SESU0011 when output is requested."
+
+[[case_override]]
 case_name = "output-0171"
 selection = "selected"
 execution = "passed"

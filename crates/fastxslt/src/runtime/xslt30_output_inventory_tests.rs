@@ -693,6 +693,42 @@ fn reports_unsupported_serialization_encoding_as_sesu0007() {
 }
 
 #[test]
+fn reports_unsupported_normalization_form_as_sesu0011() {
+    for case_name in ["output-0189", "output-0190", "output-0192"] {
+        let (test_set, _) = load_test_set();
+        let root = document_element(&test_set);
+        let case = element_children(&test_set, root)
+            .into_iter()
+            .find(|node| {
+                local_name(&test_set, *node) == "test-case"
+                    && attribute(&test_set, *node, "name") == Some(case_name)
+            })
+            .expect("pinned serialization-error case");
+        let result = child_named(&test_set, case, "result").expect("output result");
+        let assertion = first_element_child(&test_set, result).expect("serialization error");
+        assert_eq!(
+            local_name(&test_set, assertion),
+            "assert-serialization-error"
+        );
+        assert_eq!(attribute(&test_set, assertion, "code"), Some("SESU0011"));
+
+        let failure = try_execute_output_case(case_name, None)
+            .expect_err("an unavailable normalization form must fail serialization");
+        assert_eq!(failure.code, "SESU0011", "{case_name}");
+        assert_eq!(
+            failure.category,
+            FailureCategory::Unsupported,
+            "{case_name}"
+        );
+        assert_eq!(
+            failure.request_id.as_deref(),
+            Some(case_name),
+            "{case_name}"
+        );
+    }
+}
+
+#[test]
 fn executes_xhtml_with_normalization_form_none() {
     let decomposed = "A\u{301}";
     let bytes = execute_output_bytes_case("output-0147");

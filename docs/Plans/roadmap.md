@@ -798,6 +798,15 @@ general encoding provider. The output denominator advances to 77 passes and
 155 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-sesu0007-2026-09-01.md)
 
+The unchanged `output-0189`, `output-0190`, and `output-0192` cases apply the
+same ownership boundary to unavailable normalization forms. XML, XHTML, and
+text output retain the requested form through compilation and report native
+serialization error `SESU0011` before emitting result content. Unicode
+normalization and the independently unsupported HTML output case remain
+unadmitted. The output denominator advances to 80 passes and 152 visible
+default not-run cases.
+[Evidence](../Evidence/xslt30-output-sesu0011-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -839,8 +848,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 77 | 0 | 0 | 155 |
-| **Conserved total** | **531** | **275** | **3** | **50** | **203** |
+| `decl/output` | 232 | 80 | 0 | 0 | 152 |
+| **Conserved total** | **531** | **278** | **3** | **50** | **200** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

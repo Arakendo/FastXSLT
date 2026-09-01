@@ -110,7 +110,7 @@ pub(super) fn compile_output(
             )
         })
         .transpose()?;
-    let normalization_form = compile_normalization_form(document, element)?;
+    let normalization_form = optional_attribute(document, element, None, "normalization-form");
     let standalone = optional_attribute(document, element, None, "standalone")
         .map(|value| parse_standalone(value, declared_version, document.location(element)))
         .transpose()?;
@@ -254,24 +254,6 @@ fn compile_serialization_version(
         ));
     }
     Ok(version)
-}
-
-fn compile_normalization_form(
-    document: &Document,
-    element: NodeId,
-) -> Result<Option<&str>, CompileFailure> {
-    let value = optional_attribute(document, element, None, "normalization-form");
-    if value.is_some_and(|value| value != "none") {
-        return Err(unsupported(
-            "FXST1017",
-            format!(
-                "unsupported output normalization form: {}",
-                value.unwrap_or_default()
-            ),
-            document.location(element),
-        ));
-    }
-    Ok(value)
 }
 
 fn compile_cdata_section_elements(

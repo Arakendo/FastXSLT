@@ -1136,7 +1136,7 @@ mod tests {
     }
 
     #[test]
-    fn retains_no_normalization_and_rejects_unimplemented_normalization() {
+    fn retains_requested_normalization_for_serializer_capability_selection() {
         let none = parse_stylesheet(
             "memory:no-normalization.xsl",
             br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" normalization-form="none"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
@@ -1148,9 +1148,9 @@ mod tests {
 
         let program = compile_stylesheet(&none).expect("none should preserve result characters");
         assert_eq!(program.output.normalization_form.as_deref(), Some("none"));
-        let failure = compile_stylesheet(&nfc).expect_err("NFC needs real Unicode normalization");
-        assert_eq!(failure.code, "FXST1017");
-        assert_eq!(failure.category, CompileCategory::Unsupported);
+        let program = compile_stylesheet(&nfc)
+            .expect("the compiler should retain rather than implement normalization");
+        assert_eq!(program.output.normalization_form.as_deref(), Some("NFC"));
     }
 
     #[test]

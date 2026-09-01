@@ -22,6 +22,7 @@ pub(in crate::runtime) fn serialize_xml(
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
     validate_serialization_preconditions(result, settings, request_id)?;
+    validate_normalization_form(settings, request_id)?;
     validate_string_encoding(settings, request_id)?;
     if settings.byte_order_mark == Some(true) {
         return Err(failure(
@@ -134,6 +135,25 @@ fn validate_string_encoding(
     Ok(())
 }
 
+fn validate_normalization_form(
+    settings: &OutputSettings,
+    request_id: &str,
+) -> Result<(), ExecutionFailure> {
+    if let Some(normalization_form) = settings
+        .normalization_form
+        .as_deref()
+        .filter(|value| *value != "none")
+    {
+        return Err(failure(
+            "SESU0011",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            format!("the requested normalization form is not supported: {normalization_form}"),
+        ));
+    }
+    Ok(())
+}
+
 fn serialize_xhtml_doctype(
     result: &SemanticResult,
     settings: &OutputSettings,
@@ -212,6 +232,7 @@ pub(in crate::runtime) fn serialize_xml_bytes(
     control: &mut InvocationControl,
 ) -> Result<Vec<u8>, ExecutionFailure> {
     validate_serialization_preconditions(result, settings, request_id)?;
+    validate_normalization_form(settings, request_id)?;
     let encoding = settings.encoding.as_deref().unwrap_or("UTF-8");
     if encoding.eq_ignore_ascii_case("UTF-8") {
         let bom = settings.byte_order_mark == Some(true);
