@@ -399,6 +399,12 @@ execution = "passed"
 rationale = "Matches native serialization error SEPM0004 because doctype-system requires a document-shaped result while the unchanged stylesheet constructs three top-level elements."
 
 [[case_override]]
+case_name = "output-0185"
+selection = "selected"
+execution = "passed"
+rationale = "Retains the unsupported text-output encoding as declarative metadata and matches the native serialization-error assertion with SESU0007 when serialization is requested."
+
+[[case_override]]
 case_name = "output-0186"
 selection = "selected"
 execution = "passed"

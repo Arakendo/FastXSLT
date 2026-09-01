@@ -789,6 +789,15 @@ fragment serialization when neither property is requested. The output
 denominator advances to 76 passes and 156 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-sepm0004-2026-09-01.md)
 
+The unchanged `output-0185` case now retains its requested output encoding
+through stylesheet compilation and reports native serialization error
+`SESU0007` only when the unavailable encoding is materialized. This keeps
+declarative output metadata separate from serializer implementation
+capability, preserves the bounded ISO-8859-1 byte lane, and does not claim a
+general encoding provider. The output denominator advances to 77 passes and
+155 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-sesu0007-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -830,8 +839,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 76 | 0 | 0 | 156 |
-| **Conserved total** | **531** | **274** | **3** | **50** | **204** |
+| `decl/output` | 232 | 77 | 0 | 0 | 155 |
+| **Conserved total** | **531** | **275** | **3** | **50** | **203** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

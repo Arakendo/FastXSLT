@@ -22,18 +22,7 @@ pub(in crate::runtime) fn serialize_xml(
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
     validate_serialization_preconditions(result, settings, request_id)?;
-    if settings
-        .encoding
-        .as_deref()
-        .is_some_and(|encoding| !encoding.eq_ignore_ascii_case("UTF-8"))
-    {
-        return Err(failure(
-            "FXSR1004",
-            FailureCategory::Unsupported,
-            Some(request_id),
-            "the private string serialization lane supports only UTF-8",
-        ));
-    }
+    validate_string_encoding(settings, request_id)?;
     if settings.byte_order_mark == Some(true) {
         return Err(failure(
             "FXSR1005",
@@ -113,6 +102,36 @@ pub(in crate::runtime) fn serialize_xml(
         serialize_node(node, &[], options, 0, &mut output)?;
     }
     Ok(output.finish())
+}
+
+fn validate_string_encoding(
+    settings: &OutputSettings,
+    request_id: &str,
+) -> Result<(), ExecutionFailure> {
+    if let Some(encoding) = settings
+        .encoding
+        .as_deref()
+        .filter(|encoding| !encoding.eq_ignore_ascii_case("UTF-8"))
+    {
+        let (code, detail) = if encoding.eq_ignore_ascii_case("ISO-8859-1") {
+            (
+                "FXSR1004",
+                "the private string serialization lane supports only UTF-8; use the bounded byte lane for ISO-8859-1".to_owned(),
+            )
+        } else {
+            (
+                "SESU0007",
+                format!("the requested output encoding is not supported: {encoding}"),
+            )
+        };
+        return Err(failure(
+            code,
+            FailureCategory::Unsupported,
+            Some(request_id),
+            detail,
+        ));
+    }
+    Ok(())
 }
 
 fn serialize_xhtml_doctype(
@@ -223,10 +242,10 @@ pub(in crate::runtime) fn serialize_xml_bytes(
     }
     if !encoding.eq_ignore_ascii_case("ISO-8859-1") {
         return Err(failure(
-            "FXSR1004",
+            "SESU0007",
             FailureCategory::Unsupported,
             Some(request_id),
-            format!("unsupported byte serialization encoding: {encoding}"),
+            format!("the requested output encoding is not supported: {encoding}"),
         ));
     }
     if settings.byte_order_mark == Some(true) {

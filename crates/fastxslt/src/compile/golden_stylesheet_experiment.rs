@@ -1200,7 +1200,7 @@ mod tests {
     }
 
     #[test]
-    fn admits_bounded_iso_8859_1_bytes_and_rejects_unadmitted_encodings() {
+    fn retains_requested_encoding_for_serializer_capability_selection() {
         let iso_8859_1 = parse_stylesheet(
             "memory:iso-8859-1-output.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" encoding="ISO-8859-1"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
@@ -1214,10 +1214,9 @@ mod tests {
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" encoding="UTF-16"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
         );
 
-        let failure = compile_stylesheet(&utf_16).expect_err("UTF-16 remains unadmitted");
-
-        assert_eq!(failure.code, "FXST1016");
-        assert_eq!(failure.category, CompileCategory::Unsupported);
+        let program = compile_stylesheet(&utf_16)
+            .expect("the compiler should retain rather than implement the requested encoding");
+        assert_eq!(program.output.encoding.as_deref(), Some("UTF-16"));
     }
 
     #[test]

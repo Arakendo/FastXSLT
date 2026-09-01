@@ -67,7 +67,7 @@ pub(super) fn compile_output(
             document.location(element),
         ));
     }
-    let encoding = compile_encoding(document, element)?;
+    let encoding = optional_attribute(document, element, None, "encoding");
     let omit_xml_declaration = optional_attribute(document, element, None, "omit-xml-declaration")
         .map(|value| {
             parse_output_boolean(
@@ -235,23 +235,6 @@ fn merge_optional<T>(target: &mut Option<T>, value: Option<T>) {
     if value.is_some() {
         *target = value;
     }
-}
-
-fn compile_encoding(document: &Document, element: NodeId) -> Result<Option<&str>, CompileFailure> {
-    let encoding = optional_attribute(document, element, None, "encoding");
-    if encoding.is_some_and(|value| {
-        !value.eq_ignore_ascii_case("UTF-8") && !value.eq_ignore_ascii_case("ISO-8859-1")
-    }) {
-        return Err(unsupported(
-            "FXST1016",
-            format!(
-                "unsupported output encoding: {}",
-                encoding.unwrap_or_default()
-            ),
-            document.location(element),
-        ));
-    }
-    Ok(encoding)
 }
 
 fn compile_serialization_version(
