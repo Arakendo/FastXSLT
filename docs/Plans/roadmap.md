@@ -832,6 +832,13 @@ alternative. The output denominator advances to 93 passes and 139 visible
 default not-run cases.
 [Evidence](../Evidence/xslt30-output-invalid-boolean-tranche-2026-09-01.md)
 
+The unchanged `output-0285` case now treats `xml:space` on `xsl:output` as an
+ignored XML-namespaced control instead of an unsupported unqualified output
+property. The allowance is local to that one expanded attribute name and does
+not weaken other instruction vocabularies. The output denominator advances to
+94 passes and 138 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-xml-space-control-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -873,8 +880,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 93 | 0 | 0 | 139 |
-| **Conserved total** | **531** | **291** | **3** | **50** | **187** |
+| `decl/output` | 232 | 94 | 0 | 0 | 138 |
+| **Conserved total** | **531** | **292** | **3** | **50** | **186** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

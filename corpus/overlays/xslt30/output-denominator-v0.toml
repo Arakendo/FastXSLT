@@ -566,6 +566,12 @@ selection = "selected"
 execution = "passed"
 rationale = "Matches the native any-of through compile-time XTSE0020 because doctype-public contains characters outside the XML public identifier set."
 
+[[case_override]]
+case_name = "output-0285"
+selection = "selected"
+execution = "passed"
+rationale = "Ignores the XML-namespaced xml:space control on xsl:output and matches the native serialization requirement with the unchanged empty ok result."
+
 [[assertion_family]]
 name = "all-of"
 count = 89

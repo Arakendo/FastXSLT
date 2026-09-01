@@ -7,8 +7,7 @@ use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xslt::golden_semantics_experiment::OutputSettings;
 
 use super::{
-    CompileFailure, ensure_no_meaningful_children, ensure_only_attributes, invalid,
-    optional_attribute, unsupported,
+    CompileFailure, ensure_no_meaningful_children, invalid, optional_attribute, unsupported,
 };
 
 const OUTPUT_ATTRIBUTES: &[&str] = &[
@@ -59,7 +58,7 @@ pub(super) fn compile_output(
     element: NodeId,
     declared_version: &str,
 ) -> Result<OutputDeclaration, CompileFailure> {
-    ensure_only_attributes(document, element, OUTPUT_ATTRIBUTES, "xsl:output")?;
+    ensure_output_attributes(document, element)?;
     ensure_no_meaningful_children(document, element, "xsl:output")?;
     let method = optional_attribute(document, element, None, "method");
     if method.is_some_and(|method| !matches!(method, "xml" | "text" | "xhtml")) {
@@ -158,6 +157,30 @@ pub(super) fn compile_output(
         specified,
         location: document.location(element).clone(),
     })
+}
+
+fn ensure_output_attributes(document: &Document, element: NodeId) -> Result<(), CompileFailure> {
+    const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
+    for attribute in document.attributes(element) {
+        let name = document
+            .name(*attribute)
+            .expect("attribute nodes have expanded names");
+        if (name.namespace.is_none() && OUTPUT_ATTRIBUTES.contains(&name.local.as_str()))
+            || (name.namespace.as_deref() == Some(XML_NAMESPACE) && name.local == "space")
+        {
+            continue;
+        }
+        return Err(unsupported(
+            "FXST1009",
+            format!(
+                "unsupported attribute on xsl:output: {{{}}}{}",
+                name.namespace.as_deref().unwrap_or(""),
+                name.local
+            ),
+            document.location(*attribute),
+        ));
+    }
+    Ok(())
 }
 
 fn compile_inert_xml_escape_uri_attributes(

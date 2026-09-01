@@ -565,6 +565,13 @@ fn reports_native_invalid_output_properties_with_the_standard_static_error() {
 }
 
 #[test]
+fn ignores_xml_space_on_output_without_relaxing_serialization_attributes() {
+    let execution = execute_output_case("output-0285", None);
+    assert_eq!(execution.method, None);
+    assert!(execution.actual.ends_with("<ok/>") || execution.actual.ends_with("<ok></ok>"));
+}
+
+#[test]
 fn executes_output_0173_with_merged_standalone_and_cdata_settings() {
     let execution = execute_assert_serialization_case("output-0173", "xhtml");
     assert_eq!(execution.method.as_deref(), Some("xml"));

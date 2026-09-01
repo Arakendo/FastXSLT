@@ -1188,6 +1188,19 @@ mod tests {
     }
 
     #[test]
+    fn output_ignores_only_the_admitted_xml_space_control_attribute() {
+        let stylesheet = parse_stylesheet(
+            "memory:foreign-output-attribute.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:e="urn:example"><xsl:output e:unknown="value"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
+        );
+
+        let failure = compile_stylesheet(&stylesheet)
+            .expect_err("an arbitrary foreign output attribute remains unsupported");
+        assert_eq!(failure.code, "FXST1009");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+    }
+
+    #[test]
     fn rejects_overlapping_output_properties_during_bounded_merge() {
         let stylesheet = parse_stylesheet(
             "memory:overlapping-output.xsl",
