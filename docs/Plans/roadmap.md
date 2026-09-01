@@ -904,6 +904,15 @@ graphs, named outputs, and result documents remain separate work. The output
 denominator advances to 104 passes and 128 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-imported-character-maps-2026-09-01.md)
 
+The unchanged `output-0302` case now applies three character maps to a narrowly
+guarded null-namespace `html/body/p` result and exactly satisfies its pinned
+optional-DOCTYPE pattern without emitting an XML declaration. General HTML
+output remains compiler-unsupported, and the runtime rejects result shapes
+outside this bounded profile; void/raw-text elements, URI behavior, metadata,
+doctypes, and general HTML escaping remain separate work. The output denominator
+advances to 105 passes and 127 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-bounded-html-character-maps-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -945,8 +954,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 104 | 0 | 0 | 128 |
-| **Conserved total** | **531** | **302** | **3** | **50** | **176** |
+| `decl/output` | 232 | 105 | 0 | 0 | 127 |
+| **Conserved total** | **531** | **303** | **3** | **50** | **175** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

@@ -66,10 +66,14 @@ pub(in crate::runtime) fn serialize_xml(
         }
         return Ok(output.finish());
     }
+    let html = settings.method.as_deref() == Some("html");
+    if html {
+        validate_bounded_html_character_map_result(result, settings, request_id)?;
+    }
     if settings
         .method
         .as_deref()
-        .is_some_and(|method| !matches!(method, "xml" | "xhtml"))
+        .is_some_and(|method| !matches!(method, "xml" | "xhtml" | "html"))
     {
         return Err(failure(
             "FXSR1001",
@@ -80,7 +84,7 @@ pub(in crate::runtime) fn serialize_xml(
     }
     let xhtml = settings.method.as_deref() == Some("xhtml") || default_is_xhtml;
     let mut output = BudgetedString::new(byte_limit, request_id, control);
-    if !settings.omit_xml_declaration {
+    if !settings.omit_xml_declaration && !html {
         output.push_str("<?xml version=\"")?;
         output.push_str(settings.version.as_deref().unwrap_or("1.0"))?;
         output.push_str("\" encoding=\"UTF-8\"")?;
@@ -105,6 +109,61 @@ pub(in crate::runtime) fn serialize_xml(
         serialize_node(node, &[], options, 0, &mut output)?;
     }
     Ok(output.finish())
+}
+
+fn validate_bounded_html_character_map_result(
+    result: &SemanticResult,
+    settings: &OutputSettings,
+    request_id: &str,
+) -> Result<(), ExecutionFailure> {
+    let significant: Vec<_> = result
+        .children
+        .iter()
+        .filter(|node| {
+            !matches!(node, ResultNode::Text(value) if value.chars().all(char::is_whitespace))
+        })
+        .collect();
+    let [root] = significant.as_slice() else {
+        return Err(unsupported_html_result(request_id));
+    };
+    if settings.character_map.is_empty() || !is_bounded_html_node(root, true) {
+        return Err(unsupported_html_result(request_id));
+    }
+    Ok(())
+}
+
+fn is_bounded_html_node(node: &ResultNode, root: bool) -> bool {
+    match node {
+        ResultNode::Text(_) => true,
+        ResultNode::ProcessingInstruction { .. } => false,
+        ResultNode::Element {
+            name,
+            namespaces,
+            attributes,
+            children,
+        } => {
+            name.namespace.is_none()
+                && attributes.is_empty()
+                && namespaces.is_empty()
+                && if root {
+                    name.local == "html"
+                } else {
+                    matches!(name.local.as_str(), "body" | "p")
+                }
+                && children
+                    .iter()
+                    .all(|child| is_bounded_html_node(child, false))
+        }
+    }
+}
+
+fn unsupported_html_result(request_id: &str) -> ExecutionFailure {
+    failure(
+        "FXSR1001",
+        FailureCategory::Unsupported,
+        Some(request_id),
+        "HTML serialization is limited to the admitted character-map html/body/p result shape",
+    )
 }
 
 fn validate_string_encoding(
@@ -280,7 +339,8 @@ pub(in crate::runtime) fn serialize_xml_bytes(
         ));
     }
 
-    let declaration = if settings.omit_xml_declaration || settings.method.as_deref() == Some("text")
+    let declaration = if settings.omit_xml_declaration
+        || matches!(settings.method.as_deref(), Some("text" | "html"))
     {
         String::new()
     } else {

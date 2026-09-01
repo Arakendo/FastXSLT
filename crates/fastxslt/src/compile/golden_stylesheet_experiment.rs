@@ -1352,6 +1352,20 @@ mod tests {
     }
 
     #[test]
+    fn html_output_remains_unsupported_without_the_bounded_character_map_slice() {
+        let stylesheet = parse_stylesheet(
+            "memory:unsupported-general-html.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="html"/><xsl:template match="/"><html/></xsl:template></xsl:stylesheet>"#,
+        );
+
+        let failure = compile_stylesheet(&stylesheet)
+            .expect_err("general HTML serialization must remain explicit");
+
+        assert_eq!(failure.code, "FXST1004");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+    }
+
+    #[test]
     fn retains_requested_normalization_for_serializer_capability_selection() {
         let none = parse_stylesheet(
             "memory:no-normalization.xsl",

@@ -65,7 +65,11 @@ pub(super) fn compile_output(
     ensure_output_attributes(document, element)?;
     ensure_no_meaningful_children(document, element, "xsl:output")?;
     let method = optional_attribute(document, element, None, "method");
-    if method.is_some_and(|method| !matches!(method, "xml" | "text" | "xhtml")) {
+    let bounded_character_map_html = method == Some("html")
+        && optional_attribute(document, element, None, "use-character-maps").is_some();
+    if method.is_some_and(|method| !matches!(method, "xml" | "text" | "xhtml"))
+        && !bounded_character_map_html
+    {
         return Err(unsupported(
             "FXST1004",
             format!("unsupported output method: {}", method.unwrap_or_default()),
@@ -166,11 +170,12 @@ fn compile_character_map_names(
         return Ok(Vec::new());
     };
     let names: Vec<_> = value.split_whitespace().collect();
-    if method.is_some_and(|method| !matches!(method, "xml" | "xhtml" | "text")) || names.is_empty()
+    if method.is_some_and(|method| !matches!(method, "xml" | "xhtml" | "html" | "text"))
+        || names.is_empty()
     {
         return Err(unsupported(
             "FXST1048",
-            "the admitted character-map slice requires QName names on XML, XHTML, text, or inferred output",
+            "the admitted character-map slice requires QName names on XML, XHTML, bounded HTML, text, or inferred output",
             document.location(element),
         ));
     }

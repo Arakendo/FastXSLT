@@ -561,6 +561,12 @@ execution = "passed"
 rationale = "Applies three disjoint character maps to XHTML text content and satisfies both pinned all-of serialization patterns through exact structural and mapped-content sentinels."
 
 [[case_override]]
+case_name = "output-0302"
+selection = "selected"
+execution = "passed"
+rationale = "Applies three character maps to the bounded null-namespace html/body/p result shape and exactly satisfies the pinned optional-DOCTYPE serialization pattern without emitting an XML declaration."
+
+[[case_override]]
 case_name = "output-0303"
 selection = "selected"
 execution = "passed"

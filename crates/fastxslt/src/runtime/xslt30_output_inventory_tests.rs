@@ -694,6 +694,16 @@ fn applies_multiple_character_maps_to_xhtml_output() {
 }
 
 #[test]
+fn applies_multiple_character_maps_to_bounded_html_output() {
+    let execution = execute_output_case("output-0302", None);
+    assert_eq!(execution.method.as_deref(), Some("html"));
+    assert_eq!(
+        execution.actual,
+        "<html><body><p>xx&xx</p><p>yy+Ayy</p><p>zz%&zz</p></body></html>"
+    );
+}
+
+#[test]
 fn resolves_imported_character_maps_and_higher_precedence_override() {
     let imported_only = execute_assert_serialization_case("output-0204", "xml");
     assert_eq!(
