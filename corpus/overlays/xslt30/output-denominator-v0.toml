@@ -560,6 +560,12 @@ selection = "selected"
 execution = "passed"
 rationale = "Matches the native XSLT 3.0 any-of through compile-time XTSE0020 for the case-sensitive invalid undeclare-prefixes=True lexical."
 
+[[case_override]]
+case_name = "output-0284"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native any-of through compile-time XTSE0020 because doctype-public contains characters outside the XML public identifier set."
+
 [[assertion_family]]
 name = "all-of"
 count = 89

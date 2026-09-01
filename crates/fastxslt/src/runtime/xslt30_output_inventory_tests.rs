@@ -532,7 +532,7 @@ fn executes_xml_output_with_inert_escape_uri_attributes_in_an_initial_mode() {
 }
 
 #[test]
-fn reports_native_invalid_output_boolean_cases_with_the_standard_static_error() {
+fn reports_native_invalid_output_properties_with_the_standard_static_error() {
     for case_name in [
         "output-0197",
         "output-0197a",
@@ -548,6 +548,7 @@ fn reports_native_invalid_output_boolean_cases_with_the_standard_static_error() 
         "output-0282a",
         "output-0283",
         "output-0283a",
+        "output-0284",
     ] {
         let failure = compile_output_case_failure(case_name);
         assert_eq!(failure.code, "XTSE0020", "{case_name}");

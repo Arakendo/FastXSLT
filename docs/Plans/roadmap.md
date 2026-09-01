@@ -826,8 +826,10 @@ Eight unchanged invalid-boolean cases, `output-0280` through `output-0283a`,
 now extend the compiler-owned `XTSE0020` tranche across indent, declaration
 omission, standalone, and prefix undeclaration. Each preserves its native
 XSLT-version-specific lexical rules, invalid category, and stylesheet
-location. The output denominator advances to 92 passes and 140 visible default
-not-run cases.
+location. Adjacent `output-0284` validates its XML public identifier before an
+unsupported XML 1.1 request can obscure the same native static-error
+alternative. The output denominator advances to 93 passes and 139 visible
+default not-run cases.
 [Evidence](../Evidence/xslt30-output-invalid-boolean-tranche-2026-09-01.md)
 
 ## Corpus audit -- 2026-08-30
@@ -871,8 +873,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 92 | 0 | 0 | 140 |
-| **Conserved total** | **531** | **290** | **3** | **50** | **188** |
+| `decl/output` | 232 | 93 | 0 | 0 | 139 |
+| **Conserved total** | **531** | **291** | **3** | **50** | **187** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

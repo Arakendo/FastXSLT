@@ -123,6 +123,8 @@ pub(super) fn compile_output(
         .map(|value| parse_standalone(value, declared_version, document.location(element)))
         .transpose()?;
     let doctype_system = optional_attribute(document, element, None, "doctype-system");
+    let doctype_public = optional_attribute(document, element, None, "doctype-public");
+    validate_doctype_public(document, element, doctype_public)?;
     let version = compile_serialization_version(
         document,
         element,
@@ -134,8 +136,7 @@ pub(super) fn compile_output(
         encoding: encoding.map(str::to_owned),
         media_type: optional_attribute(document, element, None, "media-type").map(str::to_owned),
         doctype_system: doctype_system.map(str::to_owned),
-        doctype_public: optional_attribute(document, element, None, "doctype-public")
-            .map(str::to_owned),
+        doctype_public: doctype_public.map(str::to_owned),
         include_content_type,
         byte_order_mark,
         normalization_form: normalization_form.map(str::to_owned),
@@ -266,6 +267,49 @@ fn compile_output_boolean_attribute(
             )
         })
         .transpose()
+}
+
+fn is_xml_public_identifier_char(value: char) -> bool {
+    value.is_ascii_alphanumeric()
+        || matches!(
+            value,
+            ' ' | '\r'
+                | '\n'
+                | '-'
+                | '\''
+                | '('
+                | ')'
+                | '+'
+                | ','
+                | '.'
+                | '/'
+                | ':'
+                | '='
+                | '?'
+                | ';'
+                | '!'
+                | '*'
+                | '#'
+                | '@'
+                | '$'
+                | '_'
+                | '%'
+        )
+}
+
+fn validate_doctype_public(
+    document: &Document,
+    element: NodeId,
+    value: Option<&str>,
+) -> Result<(), CompileFailure> {
+    if value.is_some_and(|value| !value.chars().all(is_xml_public_identifier_char)) {
+        return Err(invalid(
+            "XTSE0020",
+            "doctype-public contains a character outside the XML public identifier set",
+            document.location(element),
+        ));
+    }
+    Ok(())
 }
 
 fn compile_serialization_version(
