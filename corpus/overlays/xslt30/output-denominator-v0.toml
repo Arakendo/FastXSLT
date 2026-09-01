@@ -531,6 +531,12 @@ execution = "passed"
 rationale = "Composes one directly referenced map and applies the referencing map's local character replacement as the higher-priority mapping."
 
 [[case_override]]
+case_name = "output-0205"
+selection = "selected"
+execution = "passed"
+rationale = "Resolves character-map declaration and reference QNames by expanded name, including different prefixes bound to the same namespace."
+
+[[case_override]]
 case_name = "output-0303"
 selection = "selected"
 execution = "passed"

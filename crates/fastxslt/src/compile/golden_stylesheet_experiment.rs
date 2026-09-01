@@ -1,4 +1,5 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
+use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::path_experiment::{PathFailure, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
     ConstructedElement, ConstructedNode, GlobalBinding, GlobalBindingDefault, GlobalBindingKind,
@@ -222,8 +223,8 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
 }
 
 struct CompiledCharacterMap {
-    name: String,
-    referenced_map_name: Option<String>,
+    name: ExpandedName,
+    referenced_map_name: Option<ExpandedName>,
     entries: Vec<(char, String)>,
     location: SourceLocation,
 }
@@ -239,13 +240,7 @@ fn compile_character_map(
             document.location(element),
         ));
     };
-    if !is_ascii_ncname(name) {
-        return Err(unsupported(
-            "FXST1047",
-            "the first character-map slice requires an unprefixed NCName",
-            document.location(element),
-        ));
-    }
+    let name = compile_expanded_qname(document, element, name, "xsl:character-map name")?;
     ensure_only_attributes(
         document,
         element,
@@ -254,8 +249,13 @@ fn compile_character_map(
     )?;
     let referenced_map_name = optional_attribute(document, element, None, "use-character-maps")
         .map(|value| {
-            if value.split_whitespace().count() == 1 && is_ascii_ncname(value) {
-                Ok(value.to_owned())
+            if value.split_whitespace().count() == 1 {
+                compile_expanded_qname(
+                    document,
+                    element,
+                    value,
+                    "xsl:character-map use-character-maps",
+                )
             } else {
                 Err(unsupported(
                     "FXST1047",
@@ -298,21 +298,78 @@ fn compile_character_map(
         entries.push((character, replacement));
     }
     Ok(CompiledCharacterMap {
-        name: name.to_owned(),
+        name,
         referenced_map_name,
         entries,
         location: document.location(element).clone(),
     })
 }
 
+pub(super) fn compile_expanded_qname(
+    document: &Document,
+    element: NodeId,
+    lexical: &str,
+    role: &str,
+) -> Result<ExpandedName, CompileFailure> {
+    let (prefix, local) = lexical
+        .split_once(':')
+        .map_or((None, lexical), |(prefix, local)| (Some(prefix), local));
+    if !is_ascii_ncname(local)
+        || prefix.is_some_and(|prefix| !is_ascii_ncname(prefix))
+        || local.contains(':')
+    {
+        return Err(invalid(
+            "XTSE0020",
+            format!("invalid QName for {role}: {lexical}"),
+            document.location(element),
+        ));
+    }
+    let namespace = if let Some(prefix) = prefix {
+        namespace_for_prefix(document, element, prefix)
+            .ok_or_else(|| {
+                invalid(
+                    "XTSE0280",
+                    format!("unbound prefix in {role}: {lexical}"),
+                    document.location(element),
+                )
+            })?
+            .to_owned()
+    } else {
+        String::new()
+    };
+    Ok(ExpandedName {
+        namespace: (!namespace.is_empty()).then_some(namespace),
+        local: local.to_owned(),
+    })
+}
+
+fn namespace_for_prefix<'a>(
+    document: &'a Document,
+    element: NodeId,
+    prefix: &str,
+) -> Option<&'a str> {
+    let mut current = Some(element);
+    while let Some(node) = current {
+        if let Some(binding) = document
+            .namespace_declarations(node)
+            .iter()
+            .find(|binding| binding.prefix.as_deref() == Some(prefix))
+        {
+            return Some(binding.namespace.as_str());
+        }
+        current = document.parent(node);
+    }
+    None
+}
+
 fn resolved_character_map(
     map: &CompiledCharacterMap,
     maps: &[CompiledCharacterMap],
 ) -> Result<Vec<(char, String)>, CompileFailure> {
-    let mut resolved = if let Some(reference) = map.referenced_map_name.as_deref() {
+    let mut resolved = if let Some(reference) = map.referenced_map_name.as_ref() {
         let referenced = maps
             .iter()
-            .find(|candidate| candidate.name == reference)
+            .find(|candidate| &candidate.name == reference)
             .ok_or_else(|| invalid("XTSE1590", "unknown character map", &map.location))?;
         if referenced.referenced_map_name.is_some() {
             return Err(unsupported(

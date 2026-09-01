@@ -870,6 +870,14 @@ admission remain separate work. The output denominator advances to 99 passes
 and 133 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-multiple-character-maps-text-2026-09-01.md)
 
+The unchanged `output-0205` case now resolves character-map declaration and
+reference QNames by expanded name, proving that different lexical prefixes
+bound to the same namespace identify the same map. Unbound prefixes and unknown
+expanded names remain distinct static failures; imports, repeated references,
+longer chains, cycles, and precedence remain separate work. The output
+denominator advances to 100 passes and 132 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-character-map-qname-identity-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -911,8 +919,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 99 | 0 | 0 | 133 |
-| **Conserved total** | **531** | **297** | **3** | **50** | **181** |
+| `decl/output` | 232 | 100 | 0 | 0 | 132 |
+| **Conserved total** | **531** | **298** | **3** | **50** | **180** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

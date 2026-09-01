@@ -7,7 +7,8 @@ use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xslt::golden_semantics_experiment::OutputSettings;
 
 use super::{
-    CompileFailure, ensure_no_meaningful_children, invalid, optional_attribute, unsupported,
+    CompileFailure, compile_expanded_qname, ensure_no_meaningful_children, invalid,
+    optional_attribute, unsupported,
 };
 
 const OUTPUT_ATTRIBUTES: &[&str] = &[
@@ -51,7 +52,7 @@ pub(in crate::compile) fn default_output_settings() -> OutputSettings {
 
 pub(super) struct OutputDeclaration {
     pub(super) settings: OutputSettings,
-    pub(super) character_map_names: Vec<String>,
+    pub(super) character_map_names: Vec<ExpandedName>,
     specified: BTreeSet<String>,
     pub(super) location: SourceLocation,
 }
@@ -160,22 +161,25 @@ fn compile_character_map_names(
     document: &Document,
     element: NodeId,
     method: Option<&str>,
-) -> Result<Vec<String>, CompileFailure> {
+) -> Result<Vec<ExpandedName>, CompileFailure> {
     let Some(value) = optional_attribute(document, element, None, "use-character-maps") else {
         return Ok(Vec::new());
     };
     let names: Vec<_> = value.split_whitespace().collect();
-    if method.is_some_and(|method| !matches!(method, "xml" | "xhtml" | "text"))
-        || names.is_empty()
-        || names.iter().any(|name| !super::is_ascii_ncname(name))
+    if method.is_some_and(|method| !matches!(method, "xml" | "xhtml" | "text")) || names.is_empty()
     {
         return Err(unsupported(
             "FXST1048",
-            "the admitted character-map slice requires unprefixed names on XML, XHTML, text, or inferred output",
+            "the admitted character-map slice requires QName names on XML, XHTML, text, or inferred output",
             document.location(element),
         ));
     }
-    Ok(names.into_iter().map(str::to_owned).collect())
+    names
+        .into_iter()
+        .map(|name| {
+            compile_expanded_qname(document, element, name, "xsl:output use-character-maps")
+        })
+        .collect()
 }
 
 fn ensure_output_attributes(document: &Document, element: NodeId) -> Result<(), CompileFailure> {
