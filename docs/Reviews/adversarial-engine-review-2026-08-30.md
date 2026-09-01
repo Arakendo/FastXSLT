@@ -1,13 +1,20 @@
 # FastXSLT Adversarial Engineering Review
 
-Date: 2026-08-30  
-Remediation updated: 2026-08-31
-Scope: current repository state on the reviewed worktree  
-Method: read-only source, decision-record, evidence, corpus, Rust, native ABI,
-worker, and managed-host inspection; full workspace test execution; targeted
-static counterexamples; TOML parser validation. No engine code was changed.
+| Field | Value |
+| --- | --- |
+| Date | 2026-08-30 |
+| Status | **Resolved and signed off** |
+| Remediation completed | 2026-08-31 |
+| Maintainer sign-off | 2026-08-31 |
+| Scope | Current repository state on the reviewed worktree |
+| Method | Read-only source, decision-record, evidence, corpus, Rust, native ABI, worker, and managed-host inspection; full workspace test execution; targeted static counterexamples; TOML parser validation. No engine code was changed. |
 
 ## Remediation status
+
+This review is complete. All 12 findings have an implemented repair or an
+explicitly accepted unsupported boundary, the required evidence and decisions
+are linked below, and the maintainer has signed off the review. No remediation
+item from this review remains open.
 
 This table tracks repository work performed after the read-only review. The
 original findings remain below as reviewed; a completed status does not rewrite
@@ -70,7 +77,7 @@ private, staged standards slice, so unsupported language surface is not itself a
 finding; silently producing the wrong result, misclassifying unsupported
 behavior, escaping a stated resource boundary, or overstating evidence is.
 
-Validation performed:
+Original review validation performed:
 
 - `cargo test --workspace --all-features`: passed (378 engine tests with 10
   ignored, 10 native-workbench tests, and 3 worker tests).
