@@ -9,16 +9,15 @@ invalid with retained stylesheet location.
 
 ## Boundary conservation
 
-This tranche does not implement XHTML 5 serialization. Positive decimal
-lexicals—including `5`, `5.0`, whitespace-surrounded `5.00`, and `+4.1`—are
-recognized as valid syntax and then report private unsupported diagnostic
-`FXST1049`. Zero, negative, empty, multiple-point, exponent, and nonnumeric
-lexicals do not pass the positive-decimal boundary.
+This tranche separates positive decimal lexicals from invalid syntax. The
+subsequent bounded XHTML 5 tranche admits values numerically equal to five;
+other positive versions, including `+4.1`, report private unsupported
+diagnostic `FXST1049`. Zero, negative, empty, multiple-point, exponent, and
+nonnumeric lexicals do not pass the positive-decimal boundary.
 
-No `html-version` field is retained in `OutputSettings`, and no doctype,
-namespace normalization, void-element, or content-type behavior is inferred
-from it. A future positive-version tranche must admit those serialization
-semantics explicitly.
+At this checkpoint no `html-version` field was retained in `OutputSettings` and
+no behavior was inferred from it. The later XHTML 5 evidence records the
+deliberate representation and serializer admission separately.
 
 ## Denominator movement
 

@@ -669,6 +669,48 @@ execution = "passed"
 rationale = "Reports the native static error XTSE0020 for the unchanged non-decimal html-version value while valid positive decimals remain explicitly unsupported."
 
 [[case_override]]
+case_name = "output-0208"
+selection = "selected"
+execution = "passed"
+rationale = "Retains XHTML html-version 5 and emits the automatic lowercase document-element doctype plus existing content-type metadata."
+
+[[case_override]]
+case_name = "output-0209"
+selection = "selected"
+execution = "passed"
+rationale = "Treats html-version 5.0 as version 5 and emits the automatic doctype using the uppercase XHTML document-element name."
+
+[[case_override]]
+case_name = "output-0210"
+selection = "selected"
+execution = "passed"
+rationale = "Treats html-version 5 as version 5 and preserves the mixed-case XHTML document-element name in the automatic doctype."
+
+[[case_override]]
+case_name = "output-0212"
+selection = "selected"
+execution = "passed"
+rationale = "Treats html-version 5.00 as version 5 and emits the automatic doctype before the whitespace-separated XHTML html element."
+
+[[case_override]]
+case_name = "output-0213"
+selection = "selected"
+execution = "passed"
+rationale = "Does not emit an automatic XHTML 5 doctype when the XHTML document element is body rather than html."
+
+[[case_override]]
+case_name = "output-0214"
+selection = "selected"
+execution = "passed"
+rationale = "Does not emit an automatic XHTML 5 doctype or content-type meta for a null-prefix html element in an alien namespace."
+
+[[case_override]]
+case_name = "output-0215"
+selection = "selected"
+execution = "passed"
+rationale = "Does not emit an automatic XHTML 5 doctype or content-type meta for a prefixed html element in an alien namespace."
+
+[[case_override]]
 case_name = "output-0501"
 selection = "selected"
 execution = "passed"

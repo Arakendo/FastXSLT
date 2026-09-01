@@ -950,11 +950,19 @@ cases.
 
 The unchanged `output-0230` case now reports its native `XTSE0020` for the
 nonnumeric `html-version="five"` value. Valid positive-decimal lexicals are
-recognized but remain explicitly unsupported as `FXST1049`; this does not
-claim XHTML 5 doctypes, namespace normalization, or empty-element behavior.
+recognized independently; non-five positive versions remain explicitly
+unsupported as `FXST1049`.
 The output denominator advances to 111 passes and 121 visible default not-run
 cases.
 [Evidence](../Evidence/xslt30-output-html-version-static-boundary-2026-09-01.md)
+
+Seven unchanged XHTML 5 controls—`output-0208` through `output-0210` and
+`output-0212` through `output-0215`—now retain version-five metadata and emit an
+automatic doctype only for an XHTML `html` document element, preserving its
+case. XHTML `body` and alien-namespace `html` roots prove the negative boundary;
+prefix normalization and broader XHTML 5 rules remain separate. The output
+denominator advances to 118 passes and 114 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-bounded-xhtml5-doctype-2026-09-01.md)
 
 ## Corpus audit -- 2026-08-30
 
@@ -997,8 +1005,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 111 | 0 | 0 | 121 |
-| **Conserved total** | **531** | **309** | **3** | **50** | **169** |
+| `decl/output` | 232 | 118 | 0 | 0 | 114 |
+| **Conserved total** | **531** | **316** | **3** | **50** | **162** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1052,7 +1060,7 @@ count:
    `apply-templates` case is schema-aware and the two remaining `include` cases
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
-2. [ ] Continue coherent semantic slices through the 121 visible `output`
+2. [ ] Continue coherent semantic slices through the 114 visible `output`
    gaps and 48 visible `mode` gaps. Each promotion still requires native
    metadata validation, a focused control, and an owned comparator or exact
    diagnostic—not merely successful stylesheet execution.

@@ -67,6 +67,7 @@ fn output_owned(value: &OutputSettings) -> usize {
     [
         &value.method,
         &value.version,
+        &value.html_version,
         &value.encoding,
         &value.media_type,
         &value.doctype_system,

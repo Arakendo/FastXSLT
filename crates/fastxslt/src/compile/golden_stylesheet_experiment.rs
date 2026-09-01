@@ -1507,7 +1507,7 @@ mod tests {
     }
 
     #[test]
-    fn validates_html_version_without_admitting_its_serialization_semantics() {
+    fn validates_and_retains_only_xhtml_version_five() {
         let invalid = parse_stylesheet(
             "memory:invalid-html-version.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xhtml" html-version="five"/><xsl:template match="/"><html xmlns="http://www.w3.org/1999/xhtml"/></xsl:template></xsl:stylesheet>"#,
@@ -1516,16 +1516,22 @@ mod tests {
         assert_eq!(failure.code, "XTSE0020");
         assert_eq!(failure.category, CompileCategory::Invalid);
 
-        for lexical in ["5", "5.0", " 5.00 ", "+4.1"] {
+        for lexical in ["5", "5.0", " 5.00 ", "+005.000"] {
             let bytes = format!(
                 r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xhtml" html-version="{lexical}"/><xsl:template match="/"><html xmlns="http://www.w3.org/1999/xhtml"/></xsl:template></xsl:stylesheet>"#
             );
             let valid = parse_stylesheet("memory:valid-html-version.xsl", bytes.as_bytes());
-            let failure = compile_stylesheet(&valid)
-                .expect_err("valid HTML versions remain explicitly unsupported");
-            assert_eq!(failure.code, "FXST1049", "{lexical}");
-            assert_eq!(failure.category, CompileCategory::Unsupported, "{lexical}");
+            let program = compile_stylesheet(&valid).expect("XHTML version 5 should compile");
+            assert_eq!(program.output.html_version.as_deref(), Some("5"));
         }
+
+        let other = parse_stylesheet(
+            "memory:other-html-version.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xhtml" html-version="+4.1"/><xsl:template match="/"><html xmlns="http://www.w3.org/1999/xhtml"/></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&other).expect_err("other versions remain unsupported");
+        assert_eq!(failure.code, "FXST1049");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
     }
 
     #[test]

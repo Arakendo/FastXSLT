@@ -864,6 +864,7 @@ fn absent_output_declaration_does_not_silently_apply_html_serialization() {
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: None,
         version: None,
+        html_version: None,
         encoding: None,
         media_type: None,
         doctype_system: None,
@@ -913,6 +914,7 @@ fn absent_method_selects_xhtml_for_an_xhtml_html_document_element() {
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: None,
         version: None,
+        html_version: None,
         encoding: None,
         media_type: None,
         doctype_system: None,
@@ -998,6 +1000,7 @@ fn requested_indentation_formats_only_element_only_child_sequences() {
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: Some("xml".to_owned()),
         version: None,
+        html_version: None,
         encoding: None,
         media_type: None,
         doctype_system: None,
@@ -1061,6 +1064,7 @@ fn xhtml_content_type_replaces_an_existing_meta_without_mutating_result_content(
     let mut settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: Some("xhtml".to_owned()),
         version: None,
+        html_version: None,
         encoding: Some("UTF-8".to_owned()),
         media_type: Some("application/example+xml".to_owned()),
         doctype_system: None,
@@ -1124,6 +1128,7 @@ fn serializer_uses_the_predefined_xml_prefix_without_a_namespace_declaration() {
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: Some("xml".to_owned()),
         version: None,
+        html_version: None,
         encoding: None,
         media_type: None,
         doctype_system: None,
@@ -1184,6 +1189,7 @@ fn namespaced_element_names_use_retained_bindings_and_undeclare_defaults() {
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: Some("xml".to_owned()),
         version: None,
+        html_version: None,
         encoding: None,
         media_type: None,
         doctype_system: None,
@@ -1236,6 +1242,7 @@ fn text_output_concatenates_descendant_text_without_markup_or_escaping() {
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: Some("text".to_owned()),
         version: None,
+        html_version: None,
         encoding: None,
         media_type: None,
         doctype_system: None,
@@ -1269,6 +1276,7 @@ fn processing_instruction_serializes_as_markup_but_not_as_text_value() {
     let mut settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: Some("xml".to_owned()),
         version: None,
+        html_version: None,
         encoding: None,
         media_type: None,
         doctype_system: None,
@@ -1318,6 +1326,7 @@ fn xml_compatible_xhtml_output_honors_explicit_declaration_omission() {
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: Some("xhtml".to_owned()),
         version: None,
+        html_version: None,
         encoding: None,
         media_type: None,
         doctype_system: None,
@@ -1362,6 +1371,7 @@ fn xhtml_doctype_bytes_are_bounded_with_the_rest_of_serialization() {
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: Some("xhtml".to_owned()),
         version: None,
+        html_version: None,
         encoding: None,
         media_type: None,
         doctype_system: Some("out.dtd".to_owned()),
@@ -1408,6 +1418,7 @@ fn string_serialization_accepts_utf8_without_bom_and_rejects_bom_emission() {
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: Some("xml".to_owned()),
         version: None,
+        html_version: None,
         encoding: Some("UTF-8".to_owned()),
         media_type: None,
         doctype_system: None,
@@ -1461,6 +1472,7 @@ fn byte_serialization_emits_bounded_ascii_iso_8859_1() {
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: Some("xml".to_owned()),
         version: None,
+        html_version: None,
         encoding: Some("ISO-8859-1".to_owned()),
         media_type: None,
         doctype_system: None,
@@ -1506,6 +1518,7 @@ fn byte_serialization_emits_and_accounts_for_a_utf8_byte_order_mark() {
     let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
         method: Some("text".to_owned()),
         version: None,
+        html_version: None,
         encoding: Some("UTF-8".to_owned()),
         media_type: None,
         doctype_system: None,

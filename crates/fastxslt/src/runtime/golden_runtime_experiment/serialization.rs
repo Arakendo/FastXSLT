@@ -223,9 +223,11 @@ fn serialize_doctype(
     xhtml: bool,
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
-    let Some(system) = settings.doctype_system.as_deref() else {
+    let automatic_xhtml5 = xhtml && settings.html_version.as_deref() == Some("5");
+    let system = settings.doctype_system.as_deref();
+    if system.is_none() && !automatic_xhtml5 {
         return Ok(());
-    };
+    }
     let document_element = result
         .children
         .iter()
@@ -236,10 +238,17 @@ fn serialize_doctype(
     else {
         unreachable!("DOCTYPE preconditions require one document element")
     };
-    if xhtml
-        && (name.namespace.as_deref() != Some("http://www.w3.org/1999/xhtml")
-            || name.local != "html")
-    {
+    let is_xhtml_html = name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml")
+        && name.local.eq_ignore_ascii_case("html");
+    if automatic_xhtml5 && system.is_none() {
+        if is_xhtml_html {
+            output.push_str("<!DOCTYPE ")?;
+            output.push_str(&name.local)?;
+            return output.push('>');
+        }
+        return Ok(());
+    }
+    if xhtml && !is_xhtml_html {
         return Err(failure(
             "FXSR1007",
             FailureCategory::Unsupported,
@@ -258,7 +267,7 @@ fn serialize_doctype(
     } else {
         output.push_str(" SYSTEM ")?;
     }
-    serialize_external_identifier(system, output)?;
+    serialize_external_identifier(system.expect("system identifier branch"), output)?;
     output.push('>')
 }
 

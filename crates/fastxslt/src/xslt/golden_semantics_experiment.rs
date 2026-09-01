@@ -111,6 +111,7 @@ pub(crate) enum ConstructedNode {
 pub(crate) struct OutputSettings {
     pub(crate) method: Option<String>,
     pub(crate) version: Option<String>,
+    pub(crate) html_version: Option<String>,
     pub(crate) encoding: Option<String>,
     pub(crate) media_type: Option<String>,
     pub(crate) doctype_system: Option<String>,

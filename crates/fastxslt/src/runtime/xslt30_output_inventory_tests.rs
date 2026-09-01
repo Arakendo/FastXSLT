@@ -795,6 +795,50 @@ fn serializes_quote_characters_inside_doctype_identifiers() {
 }
 
 #[test]
+fn executes_bounded_xhtml5_automatic_doctype_selection() {
+    for (case_name, root_name) in [
+        ("output-0208", "html"),
+        ("output-0209", "HTML"),
+        ("output-0210", "HtMl"),
+        ("output-0212", "html"),
+    ] {
+        let execution = execute_output_case(case_name, None);
+        assert_eq!(execution.method.as_deref(), Some("xhtml"), "{case_name}");
+        assert!(
+            execution
+                .actual
+                .contains(&format!("<!DOCTYPE {root_name}>")),
+            "{case_name}"
+        );
+        assert!(
+            execution.actual.contains(&format!("<{root_name}")),
+            "{case_name}"
+        );
+    }
+    let metadata = execute_output_case("output-0208", None);
+    assert!(
+        metadata
+            .actual
+            .contains("<meta http-equiv=\"Content-Type\"")
+    );
+
+    for case_name in ["output-0213", "output-0214", "output-0215"] {
+        let execution = execute_output_case(case_name, None);
+        assert_eq!(execution.method.as_deref(), Some("xhtml"), "{case_name}");
+        assert!(!execution.actual.contains("<!DOCTYPE"), "{case_name}");
+        assert!(
+            !execution.actual.contains("http-equiv=\"Content-Type\""),
+            "{case_name}"
+        );
+    }
+    assert!(
+        execute_output_case("output-0215", None)
+            .actual
+            .contains("<z:html xmlns:z=\"http://www.example.com/not-xhtml\">")
+    );
+}
+
+#[test]
 fn resolves_imported_character_maps_and_higher_precedence_override() {
     let imported_only = execute_assert_serialization_case("output-0204", "xml");
     assert_eq!(

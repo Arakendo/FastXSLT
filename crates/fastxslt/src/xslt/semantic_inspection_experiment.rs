@@ -50,6 +50,7 @@ struct FeatureObservation {
 struct OutputInspection {
     method: Option<String>,
     version: Option<String>,
+    html_version: Option<String>,
     encoding: Option<String>,
     media_type: Option<String>,
     doctype_system: Option<String>,
@@ -178,6 +179,7 @@ fn output_text_bytes(output: &OutputSettings) -> Option<usize> {
         .as_ref()
         .map_or(0, String::len)
         .checked_add(output.version.as_ref().map_or(0, String::len))?
+        .checked_add(output.html_version.as_ref().map_or(0, String::len))?
         .checked_add(output.encoding.as_ref().map_or(0, String::len))?
         .checked_add(output.media_type.as_ref().map_or(0, String::len))?
         .checked_add(output.doctype_system.as_ref().map_or(0, String::len))?
@@ -199,6 +201,7 @@ fn inspect_output(output: &OutputSettings) -> OutputInspection {
     OutputInspection {
         method: output.method.clone(),
         version: output.version.clone(),
+        html_version: output.html_version.clone(),
         encoding: output.encoding.clone(),
         media_type: output.media_type.clone(),
         doctype_system: output.doctype_system.clone(),
@@ -339,6 +342,7 @@ mod tests {
                 output: OutputInspection {
                     method: Some("xml".to_owned()),
                     version: None,
+                    html_version: None,
                     encoding: None,
                     media_type: Some("application/xml".to_owned()),
                     doctype_system: None,

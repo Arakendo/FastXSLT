@@ -35,6 +35,7 @@ pub(in crate::compile) fn default_output_settings() -> OutputSettings {
     OutputSettings {
         method: None,
         version: None,
+        html_version: None,
         encoding: None,
         media_type: None,
         doctype_system: None,
@@ -65,7 +66,7 @@ pub(super) fn compile_output(
 ) -> Result<OutputDeclaration, CompileFailure> {
     ensure_output_attributes(document, element)?;
     ensure_no_meaningful_children(document, element, "xsl:output")?;
-    validate_html_version_boundary(document, element)?;
+    let html_version = compile_html_version(document, element)?;
     let method = optional_attribute(document, element, None, "method");
     let bounded_character_map_html = method == Some("html")
         && optional_attribute(document, element, None, "use-character-maps").is_some();
@@ -134,6 +135,7 @@ pub(super) fn compile_output(
     let settings = OutputSettings {
         method: method.map(str::to_owned),
         version: version.map(str::to_owned),
+        html_version,
         encoding: encoding.map(str::to_owned),
         media_type: optional_attribute(document, element, None, "media-type").map(str::to_owned),
         doctype_system: doctype_system.map(str::to_owned),
@@ -163,12 +165,12 @@ pub(super) fn compile_output(
     })
 }
 
-fn validate_html_version_boundary(
+fn compile_html_version(
     document: &Document,
     element: NodeId,
-) -> Result<(), CompileFailure> {
+) -> Result<Option<String>, CompileFailure> {
     let Some(value) = optional_attribute(document, element, None, "html-version") else {
-        return Ok(());
+        return Ok(None);
     };
     if !is_positive_decimal(value.trim()) {
         return Err(invalid(
@@ -177,11 +179,21 @@ fn validate_html_version_boundary(
             document.location(element),
         ));
     }
-    Err(unsupported(
-        "FXST1049",
-        "html-version serialization semantics are outside the private XHTML slice",
-        document.location(element),
-    ))
+    if is_decimal_five(value.trim()) {
+        Ok(Some("5".to_owned()))
+    } else {
+        Err(unsupported(
+            "FXST1049",
+            "only XHTML html-version 5 is admitted by the private serializer",
+            document.location(element),
+        ))
+    }
+}
+
+fn is_decimal_five(value: &str) -> bool {
+    let value = value.strip_prefix('+').unwrap_or(value);
+    let (whole, fraction) = value.split_once('.').unwrap_or((value, ""));
+    whole.trim_start_matches('0') == "5" && fraction.chars().all(|character| character == '0')
 }
 
 fn is_positive_decimal(value: &str) -> bool {
@@ -302,6 +314,10 @@ pub(super) fn merge_output(
     }
     merge_optional(&mut existing.settings.method, next.settings.method);
     merge_optional(&mut existing.settings.version, next.settings.version);
+    merge_optional(
+        &mut existing.settings.html_version,
+        next.settings.html_version,
+    );
     merge_optional(&mut existing.settings.encoding, next.settings.encoding);
     merge_optional(&mut existing.settings.media_type, next.settings.media_type);
     merge_optional(
@@ -351,6 +367,7 @@ fn repeat_is_compatible(
     match property {
         "cdata-section-elements" | "use-character-maps" => true,
         "method" => existing.settings.method == next.settings.method,
+        "html-version" => existing.settings.html_version == next.settings.html_version,
         "encoding" => existing.settings.encoding == next.settings.encoding,
         "indent" => existing.settings.indent == next.settings.indent,
         _ => false,
