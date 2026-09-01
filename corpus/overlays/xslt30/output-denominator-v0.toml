@@ -567,6 +567,12 @@ execution = "passed"
 rationale = "Applies three character maps to the bounded null-namespace html/body/p result shape and exactly satisfies the pinned optional-DOCTYPE serialization pattern without emitting an XML declaration."
 
 [[case_override]]
+case_name = "output-0305"
+selection = "selected"
+execution = "passed"
+rationale = "Merges two unnamed output declarations with identical method, encoding, and indentation properties, concatenates their character-map lists in declaration order, and exactly matches the pinned serialization."
+
+[[case_override]]
 case_name = "output-0309"
 selection = "selected"
 execution = "passed"

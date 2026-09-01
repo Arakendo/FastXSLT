@@ -727,6 +727,18 @@ fn cdata_text_bypasses_xml_character_maps() {
 }
 
 #[test]
+fn merges_output_character_map_lists_in_declaration_order() {
+    let execution = execute_assert_serialization_case("output-0305", "xml");
+    assert_eq!(
+        execution.expected.as_deref(),
+        Some(execution.actual.as_str())
+    );
+    assert!(execution.actual.contains("<p>xx&xx</p>"));
+    assert!(execution.actual.contains("<p>yy*Byy</p>"));
+    assert!(execution.actual.contains("<p>zz*&zz</p>"));
+}
+
+#[test]
 fn resolves_imported_character_maps_and_higher_precedence_override() {
     let imported_only = execute_assert_serialization_case("output-0204", "xml");
     assert_eq!(

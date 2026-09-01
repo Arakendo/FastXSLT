@@ -243,7 +243,7 @@ pub(super) fn merge_output(
     let overlaps = existing
         .specified
         .intersection(&next.specified)
-        .filter(|property| property.as_str() != "cdata-section-elements")
+        .filter(|property| !repeat_is_compatible(&existing, &next, property))
         .cloned()
         .collect::<Vec<_>>();
     if !overlaps.is_empty() {
@@ -297,6 +297,20 @@ pub(super) fn merge_output(
     }
     existing.specified.extend(next.specified);
     Ok(existing)
+}
+
+fn repeat_is_compatible(
+    existing: &OutputDeclaration,
+    next: &OutputDeclaration,
+    property: &str,
+) -> bool {
+    match property {
+        "cdata-section-elements" | "use-character-maps" => true,
+        "method" => existing.settings.method == next.settings.method,
+        "encoding" => existing.settings.encoding == next.settings.encoding,
+        "indent" => existing.settings.indent == next.settings.indent,
+        _ => false,
+    }
 }
 
 fn merge_optional<T>(target: &mut Option<T>, value: Option<T>) {

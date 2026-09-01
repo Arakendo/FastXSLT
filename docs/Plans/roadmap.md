@@ -922,6 +922,15 @@ dependency graphs remain separate work. The output denominator advances to 107
 passes and 125 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-xml-character-map-list-and-cdata-2026-09-01.md)
 
+The unchanged `output-0305` case now merges two same-precedence unnamed output
+declarations, concatenates their character-map lists in declaration order, and
+accepts repeated method/encoding/indent properties only when compiled values
+are identical. Conflicting scalar properties remain explicitly unsupported;
+cross-import output merging, named outputs, and result documents remain
+separate work. The output denominator advances to 108 passes and 124 visible
+default not-run cases.
+[Evidence](../Evidence/xslt30-output-character-map-declaration-merge-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -963,8 +972,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 107 | 0 | 0 | 125 |
-| **Conserved total** | **531** | **305** | **3** | **50** | **173** |
+| `decl/output` | 232 | 108 | 0 | 0 | 124 |
+| **Conserved total** | **531** | **306** | **3** | **50** | **172** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
