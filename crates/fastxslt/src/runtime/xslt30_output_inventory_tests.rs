@@ -550,7 +550,7 @@ fn reports_native_invalid_output_properties_with_the_standard_static_error() {
         "output-0283a",
         "output-0284",
     ] {
-        let failure = compile_output_case_failure(case_name);
+        let failure = compile_output_case_failure(case_name, "XTSE0020");
         assert_eq!(failure.code, "XTSE0020", "{case_name}");
         assert_eq!(failure.category, FailureCategory::Invalid, "{case_name}");
         assert_eq!(
@@ -569,6 +569,21 @@ fn ignores_xml_space_on_output_without_relaxing_serialization_attributes() {
     let execution = execute_output_case("output-0285", None);
     assert_eq!(execution.method, None);
     assert!(execution.actual.ends_with("<ok/>") || execution.actual.ends_with("<ok></ok>"));
+}
+
+#[test]
+fn reports_missing_character_map_name_without_admitting_character_maps() {
+    let case_name = "output-0501";
+    let failure = compile_output_case_failure(case_name, "XTSE0010");
+    assert_eq!(failure.code, "XTSE0010");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+    assert_eq!(
+        failure
+            .location
+            .as_ref()
+            .map(|location| location.resource.as_str()),
+        Some("urn:w3c:xslt30:output-0501:stylesheet")
+    );
 }
 
 #[test]
@@ -995,7 +1010,7 @@ fn output_invocation_entry(
     }
 }
 
-fn compile_output_case_failure(case_name: &str) -> super::ExecutionFailure {
+fn compile_output_case_failure(case_name: &str, expected_code: &str) -> super::ExecutionFailure {
     assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     let (test_set, set_path) = load_test_set();
     let root = document_element(&test_set);
@@ -1006,7 +1021,7 @@ fn compile_output_case_failure(case_name: &str) -> super::ExecutionFailure {
     let result = child_named(&test_set, case, "result").expect("output result");
     assert!(descendants(result, &test_set).into_iter().any(|node| {
         local_name(&test_set, node) == "error"
-            && attribute(&test_set, node, "code") == Some("XTSE0020")
+            && attribute(&test_set, node, "code") == Some(expected_code)
     }));
     let test = child_named(&test_set, case, "test").expect("output test");
     let file = child_named(&test_set, test, "stylesheet")

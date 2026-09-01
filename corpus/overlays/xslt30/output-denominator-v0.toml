@@ -572,6 +572,12 @@ selection = "selected"
 execution = "passed"
 rationale = "Ignores the XML-namespaced xml:space control on xsl:output and matches the native serialization requirement with the unchanged empty ok result."
 
+[[case_override]]
+case_name = "output-0501"
+selection = "selected"
+execution = "passed"
+rationale = "Reports the native static error XTSE0010 because the unchanged xsl:character-map declaration omits its required name, without admitting character-map execution."
+
 [[assertion_family]]
 name = "all-of"
 count = 89

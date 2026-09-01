@@ -139,6 +139,9 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
             (Some(XSLT_NAMESPACE), "mode") => {
                 modes.push(validate_mode(document, child, &declared_version)?);
             }
+            (Some(XSLT_NAMESPACE), "character-map") => {
+                validate_character_map_boundary(document, child)?;
+            }
             (Some(XSLT_NAMESPACE), "strip-space") => {
                 ensure_only_attributes(document, child, &["elements"], "xsl:strip-space")?;
                 ensure_no_meaningful_children(document, child, "xsl:strip-space")?;
@@ -203,6 +206,24 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         named_templates,
         global_bindings,
     })
+}
+
+fn validate_character_map_boundary(
+    document: &Document,
+    element: NodeId,
+) -> Result<(), CompileFailure> {
+    if optional_attribute(document, element, None, "name").is_none() {
+        return Err(invalid(
+            "XTSE0010",
+            "xsl:character-map requires a name attribute",
+            document.location(element),
+        ));
+    }
+    Err(unsupported(
+        "FXST1047",
+        "character-map composition and serialization remain outside the private slice",
+        document.location(element),
+    ))
 }
 
 fn reject_unordered_global_dependencies(

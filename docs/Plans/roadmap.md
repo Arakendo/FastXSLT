@@ -839,6 +839,13 @@ not weaken other instruction vocabularies. The output denominator advances to
 94 passes and 138 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-xml-space-control-2026-09-01.md)
 
+The unchanged `output-0501` case now reports native `XTSE0010` for a missing
+required character-map name before reaching the explicitly unsupported
+character-map execution boundary. Named maps remain unsupported rather than
+receiving partial replacement semantics. The output denominator advances to
+95 passes and 137 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-character-map-static-boundary-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -880,8 +887,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 94 | 0 | 0 | 138 |
-| **Conserved total** | **531** | **292** | **3** | **50** | **186** |
+| `decl/output` | 232 | 95 | 0 | 0 | 137 |
+| **Conserved total** | **531** | **293** | **3** | **50** | **185** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
