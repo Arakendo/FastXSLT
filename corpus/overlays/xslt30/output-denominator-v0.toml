@@ -765,6 +765,30 @@ execution = "passed"
 rationale = "Retains attributes while serializing no-namespace void elements without end tags."
 
 [[case_override]]
+case_name = "output-0227"
+selection = "selected"
+execution = "passed"
+rationale = "Emits the XHTML html doctype with paired public and system identifiers under version five."
+
+[[case_override]]
+case_name = "output-0228"
+selection = "selected"
+execution = "passed"
+rationale = "Emits the XHTML html doctype with a system identifier and accepts the positive-decimal +5.0 spelling."
+
+[[case_override]]
+case_name = "output-0229"
+selection = "selected"
+execution = "passed"
+rationale = "Emits the automatic XHTML 5 html doctype when a public identifier is present without a system identifier."
+
+[[case_override]]
+case_name = "output-0231"
+selection = "selected"
+execution = "passed"
+rationale = "Emits paired XHTML doctype identifiers with the integer html-version 5 spelling."
+
+[[case_override]]
 case_name = "output-0501"
 selection = "selected"
 execution = "passed"

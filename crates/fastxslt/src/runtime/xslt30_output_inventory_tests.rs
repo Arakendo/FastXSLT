@@ -888,6 +888,47 @@ fn executes_bounded_xhtml5_empty_element_rules() {
 }
 
 #[test]
+fn executes_bounded_xhtml5_explicit_doctype_variants() {
+    const PUBLIC: &str = "-//W3C//DTD XHTML 1.0 Strict//EN";
+    const SYSTEM: &str = "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd";
+
+    for case_name in ["output-0227", "output-0231"] {
+        let execution = execute_output_case(case_name, None);
+        assert_eq!(
+            execution.doctype_public.as_deref(),
+            Some(PUBLIC),
+            "{case_name}"
+        );
+        assert_eq!(
+            execution.doctype_system.as_deref(),
+            Some(SYSTEM),
+            "{case_name}"
+        );
+        assert!(
+            execution
+                .actual
+                .contains(&format!("<!DOCTYPE html PUBLIC \"{PUBLIC}\" \"{SYSTEM}\">")),
+            "{case_name}"
+        );
+    }
+
+    let system_only = execute_output_case("output-0228", None);
+    assert_eq!(system_only.doctype_public, None);
+    assert_eq!(system_only.doctype_system.as_deref(), Some(SYSTEM));
+    assert!(
+        system_only
+            .actual
+            .contains(&format!("<!DOCTYPE html SYSTEM \"{SYSTEM}\">"))
+    );
+
+    let public_only = execute_output_case("output-0229", None);
+    assert_eq!(public_only.doctype_public.as_deref(), Some(PUBLIC));
+    assert_eq!(public_only.doctype_system, None);
+    assert!(public_only.actual.contains("<!DOCTYPE html>"));
+    assert!(!public_only.actual.contains(" PUBLIC "));
+}
+
+#[test]
 fn resolves_imported_character_maps_and_higher_precedence_override() {
     let imported_only = execute_assert_serialization_case("output-0204", "xml");
     assert_eq!(
