@@ -21,6 +21,7 @@ const OUTPUT_ATTRIBUTES: &[&str] = &[
     "include-content-type",
     "byte-order-mark",
     "normalization-form",
+    "use-character-maps",
     "undeclare-prefixes",
     "standalone",
     "cdata-section-elements",
@@ -39,6 +40,7 @@ pub(in crate::compile) fn default_output_settings() -> OutputSettings {
         include_content_type: None,
         byte_order_mark: None,
         normalization_form: None,
+        character_map: Vec::new(),
         undeclare_prefixes: None,
         standalone: None,
         cdata_section_elements: Vec::new(),
@@ -49,8 +51,9 @@ pub(in crate::compile) fn default_output_settings() -> OutputSettings {
 
 pub(super) struct OutputDeclaration {
     pub(super) settings: OutputSettings,
+    pub(super) character_map_name: Option<String>,
     specified: BTreeSet<String>,
-    location: SourceLocation,
+    pub(super) location: SourceLocation,
 }
 
 pub(super) fn compile_output(
@@ -80,16 +83,7 @@ pub(super) fn compile_output(
         })
         .transpose()?
         .unwrap_or(false);
-    let indent = optional_attribute(document, element, None, "indent")
-        .map(|value| {
-            parse_output_boolean(
-                value,
-                "indent",
-                declared_version,
-                document.location(element),
-            )
-        })
-        .transpose()?;
+    let indent = compile_output_boolean_attribute(document, element, "indent", declared_version)?;
     let include_content_type = optional_attribute(document, element, None, "include-content-type")
         .map(|value| {
             parse_output_boolean(
@@ -112,6 +106,7 @@ pub(super) fn compile_output(
         })
         .transpose()?;
     let normalization_form = optional_attribute(document, element, None, "normalization-form");
+    let character_map_name = compile_character_map_name(document, element, method)?;
     let undeclare_prefixes = compile_output_boolean_attribute(
         document,
         element,
@@ -139,6 +134,7 @@ pub(super) fn compile_output(
         include_content_type,
         byte_order_mark,
         normalization_form: normalization_form.map(str::to_owned),
+        character_map: Vec::new(),
         undeclare_prefixes,
         standalone,
         cdata_section_elements: compile_cdata_section_elements(document, element)?,
@@ -154,9 +150,31 @@ pub(super) fn compile_output(
         .collect();
     Ok(OutputDeclaration {
         settings,
+        character_map_name,
         specified,
         location: document.location(element).clone(),
     })
+}
+
+fn compile_character_map_name(
+    document: &Document,
+    element: NodeId,
+    method: Option<&str>,
+) -> Result<Option<String>, CompileFailure> {
+    let Some(value) = optional_attribute(document, element, None, "use-character-maps") else {
+        return Ok(None);
+    };
+    if method != Some("xml")
+        || value.split_whitespace().count() != 1
+        || !super::is_ascii_ncname(value)
+    {
+        return Err(unsupported(
+            "FXST1048",
+            "the first character-map slice requires one unprefixed name on XML output",
+            document.location(element),
+        ));
+    }
+    Ok(Some(value.to_owned()))
 }
 
 fn ensure_output_attributes(document: &Document, element: NodeId) -> Result<(), CompileFailure> {
@@ -252,6 +270,7 @@ pub(super) fn merge_output(
         &mut existing.settings.normalization_form,
         next.settings.normalization_form,
     );
+    merge_optional(&mut existing.character_map_name, next.character_map_name);
     merge_optional(
         &mut existing.settings.undeclare_prefixes,
         next.settings.undeclare_prefixes,

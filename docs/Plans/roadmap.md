@@ -846,6 +846,14 @@ receiving partial replacement semantics. The output denominator advances to
 95 passes and 137 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-character-map-static-boundary-2026-09-01.md)
 
+The unchanged `output-0201` case now supplies the first complete character-map
+execution slice: one named unprefixed map is resolved by unnamed XML output and
+replaces `$` with the raw `€` mapping through the bounded serializer. Mapping
+state remains immutable and stylesheet-derived; composition, precedence,
+named outputs, CDATA interaction, and non-XML methods remain unsupported. The
+output denominator advances to 96 passes and 136 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-first-character-map-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -887,8 +895,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 95 | 0 | 0 | 137 |
-| **Conserved total** | **531** | **293** | **3** | **50** | **185** |
+| `decl/output` | 232 | 96 | 0 | 0 | 136 |
+| **Conserved total** | **531** | **294** | **3** | **50** | **184** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

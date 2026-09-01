@@ -65,6 +65,9 @@ fn output_owned(value: &OutputSettings) -> usize {
     .map(|value| option_string_owned(value.as_ref()))
     .sum::<usize>()
         + vec_owned(&value.cdata_section_elements, name_owned)
+        + vec_owned(&value.character_map, |(_, replacement)| {
+            replacement.capacity()
+        })
 }
 
 fn template_owned(value: &Template) -> usize {

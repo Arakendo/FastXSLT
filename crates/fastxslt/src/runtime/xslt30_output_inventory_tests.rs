@@ -597,6 +597,17 @@ fn executes_output_0173_with_merged_standalone_and_cdata_settings() {
 }
 
 #[test]
+fn executes_one_named_xml_character_map() {
+    let execution = execute_assert_serialization_case("output-0201", "xml");
+    assert_eq!(
+        execution.expected.as_deref(),
+        Some(execution.actual.as_str())
+    );
+    assert!(execution.actual.contains("yy€yy"));
+    assert!(!execution.actual.contains("yy$yy"));
+}
+
+#[test]
 fn executes_xhtml_standalone_yes_no_and_omit_variants() {
     for case_name in [
         "output-0149",

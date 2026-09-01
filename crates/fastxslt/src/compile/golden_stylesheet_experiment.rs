@@ -114,6 +114,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     let mut named_templates = Vec::new();
     let mut global_bindings = Vec::new();
     let mut global_binding_locations = Vec::new();
+    let mut character_maps = Vec::new();
     for child in top_level_children {
         let Some(name) = document.name(child) else {
             continue;
@@ -140,7 +141,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                 modes.push(validate_mode(document, child, &declared_version)?);
             }
             (Some(XSLT_NAMESPACE), "character-map") => {
-                validate_character_map_boundary(document, child)?;
+                character_maps.push(compile_character_map(document, child)?);
             }
             (Some(XSLT_NAMESPACE), "strip-space") => {
                 ensure_only_attributes(document, child, &["elements"], "xsl:strip-space")?;
@@ -192,6 +193,15 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         }
     }
     reject_unordered_global_dependencies(&global_bindings, &global_binding_locations)?;
+    if let Some(declaration) = output.as_mut()
+        && let Some(name) = declaration.character_map_name.as_deref()
+    {
+        let map = character_maps
+            .iter()
+            .find(|map| map.name == name)
+            .ok_or_else(|| invalid("XTSE1590", "unknown character map", &declaration.location))?;
+        declaration.settings.character_map = map.entries.clone();
+    }
 
     Ok(StylesheetProgram {
         declared_version,
@@ -208,22 +218,66 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     })
 }
 
-fn validate_character_map_boundary(
+struct CompiledCharacterMap {
+    name: String,
+    entries: Vec<(char, String)>,
+}
+
+fn compile_character_map(
     document: &Document,
     element: NodeId,
-) -> Result<(), CompileFailure> {
-    if optional_attribute(document, element, None, "name").is_none() {
+) -> Result<CompiledCharacterMap, CompileFailure> {
+    let Some(name) = optional_attribute(document, element, None, "name") else {
         return Err(invalid(
             "XTSE0010",
             "xsl:character-map requires a name attribute",
             document.location(element),
         ));
+    };
+    if !is_ascii_ncname(name) {
+        return Err(unsupported(
+            "FXST1047",
+            "the first character-map slice requires an unprefixed NCName",
+            document.location(element),
+        ));
     }
-    Err(unsupported(
-        "FXST1047",
-        "character-map composition and serialization remain outside the private slice",
-        document.location(element),
-    ))
+    ensure_only_attributes(document, element, &["name"], "xsl:character-map")?;
+    let children = meaningful_children(document, element);
+    let mut entries = Vec::new();
+    for child in children {
+        if !is_xslt_element(document, child, "output-character") {
+            return Err(unsupported(
+                "FXST1047",
+                "character-map children must be xsl:output-character",
+                document.location(child),
+            ));
+        }
+        ensure_only_attributes(
+            document,
+            child,
+            &["character", "string"],
+            "xsl:output-character",
+        )?;
+        ensure_no_meaningful_children(document, child, "xsl:output-character")?;
+        let lexical = required_attribute(document, child, None, "character")?;
+        let mut characters = lexical.chars();
+        let character = characters
+            .next()
+            .filter(|_| characters.next().is_none())
+            .ok_or_else(|| {
+                invalid(
+                    "XTSE0020",
+                    "output-character requires exactly one character",
+                    document.location(child),
+                )
+            })?;
+        let replacement = required_attribute(document, child, None, "string")?.to_owned();
+        entries.push((character, replacement));
+    }
+    Ok(CompiledCharacterMap {
+        name: name.to_owned(),
+        entries,
+    })
 }
 
 fn reject_unordered_global_dependencies(

@@ -107,6 +107,7 @@ pub(crate) struct OutputSettings {
     pub(crate) include_content_type: Option<bool>,
     pub(crate) byte_order_mark: Option<bool>,
     pub(crate) normalization_form: Option<String>,
+    pub(crate) character_map: Vec<(char, String)>,
     pub(crate) undeclare_prefixes: Option<bool>,
     pub(crate) standalone: Option<String>,
     pub(crate) cdata_section_elements: Vec<ExpandedName>,

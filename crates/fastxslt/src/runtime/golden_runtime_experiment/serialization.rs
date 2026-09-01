@@ -9,6 +9,7 @@ use crate::xslt::golden_semantics_experiment::OutputSettings;
 #[derive(Clone, Copy)]
 struct SerializationOptions<'a> {
     cdata_section_elements: &'a [crate::xml::quick_xml_experiment::ExpandedName],
+    character_map: &'a [(char, String)],
     xhtml: bool,
     xhtml_media_type: Option<&'a str>,
     indent: bool,
@@ -95,6 +96,7 @@ pub(in crate::runtime) fn serialize_xml(
         .then(|| settings.media_type.as_deref().unwrap_or("text/html"));
     let options = SerializationOptions {
         cdata_section_elements: &settings.cdata_section_elements,
+        character_map: &settings.character_map,
         xhtml,
         xhtml_media_type,
         indent: settings.indent == Some(true),
@@ -395,7 +397,7 @@ fn serialize_node(
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
     match node {
-        ResultNode::Text(value) => escape_text(value, output)?,
+        ResultNode::Text(value) => escape_text(value, options.character_map, output)?,
         ResultNode::ProcessingInstruction { target, value } => {
             serialize_processing_instruction(target, value, output)?;
         }
@@ -455,7 +457,7 @@ fn serialize_element(
         let prefix = attribute_prefix(attribute.name.namespace.as_deref(), &in_scope, output)?;
         write_name(prefix, &attribute.name.local, output)?;
         output.push_str("=\"")?;
-        escape_attribute(&attribute.value, output)?;
+        escape_attribute_with_character_map(&attribute.value, options.character_map, output)?;
         output.push('"')?;
     }
     if options.xhtml && children.is_empty() && is_xhtml_void_element(name) {
@@ -667,21 +669,57 @@ fn write_name(
 
 fn escape_attribute(value: &str, output: &mut BudgetedString) -> Result<(), ExecutionFailure> {
     for character in value.chars() {
-        match character {
-            '&' => output.push_str("&amp;")?,
-            '<' => output.push_str("&lt;")?,
-            '"' => output.push_str("&quot;")?,
-            '\t' => output.push_str("&#x9;")?,
-            '\n' => output.push_str("&#xA;")?,
-            '\r' => output.push_str("&#xD;")?,
-            _ => output.push(character)?,
+        escape_attribute_character(character, output)?;
+    }
+    Ok(())
+}
+
+fn escape_attribute_character(
+    character: char,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    match character {
+        '&' => output.push_str("&amp;"),
+        '<' => output.push_str("&lt;"),
+        '"' => output.push_str("&quot;"),
+        '\t' => output.push_str("&#x9;"),
+        '\n' => output.push_str("&#xA;"),
+        '\r' => output.push_str("&#xD;"),
+        _ => output.push(character),
+    }
+}
+
+fn escape_attribute_with_character_map(
+    value: &str,
+    character_map: &[(char, String)],
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    for character in value.chars() {
+        if let Some((_, replacement)) = character_map
+            .iter()
+            .find(|(candidate, _)| *candidate == character)
+        {
+            output.push_str(replacement)?;
+        } else {
+            escape_attribute_character(character, output)?;
         }
     }
     Ok(())
 }
 
-fn escape_text(value: &str, output: &mut BudgetedString) -> Result<(), ExecutionFailure> {
+fn escape_text(
+    value: &str,
+    character_map: &[(char, String)],
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
     for character in value.chars() {
+        if let Some((_, replacement)) = character_map
+            .iter()
+            .find(|(candidate, _)| *candidate == character)
+        {
+            output.push_str(replacement)?;
+            continue;
+        }
         match character {
             '&' => output.push_str("&amp;")?,
             '<' => output.push_str("&lt;")?,
