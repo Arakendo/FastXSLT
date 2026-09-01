@@ -435,6 +435,12 @@ execution = "passed"
 rationale = "Retains the unavailable text output normalization form as declarative metadata and matches native serialization error SESU0011 when output is requested."
 
 [[case_override]]
+case_name = "output-0193"
+selection = "selected"
+execution = "passed"
+rationale = "Retains fully-normalized as declarative metadata and matches the native any-of assertion through SESU0011 because the requested normalization form is unavailable."
+
+[[case_override]]
 case_name = "output-0171"
 selection = "selected"
 execution = "passed"
