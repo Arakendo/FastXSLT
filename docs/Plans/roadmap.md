@@ -939,6 +939,15 @@ not arbitrary dependency graphs. The output denominator advances to 109 passes
 and 123 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-nested-import-character-maps-2026-09-01.md)
 
+The unchanged `output-0311` case now emits a paired XML public/system doctype
+for the actual document-element name and chooses independent quote delimiters
+that preserve an apostrophe in the public identifier and a quotation mark in
+the system identifier. All three pinned serialization patterns pass; XHTML
+doctype name restrictions and the explicit both-quote rejection remain intact.
+The output denominator advances to 110 passes and 122 visible default not-run
+cases.
+[Evidence](../Evidence/xslt30-output-xml-doctype-identifiers-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -980,8 +989,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 109 | 0 | 0 | 123 |
-| **Conserved total** | **531** | **307** | **3** | **50** | **171** |
+| `decl/output` | 232 | 110 | 0 | 0 | 122 |
+| **Conserved total** | **531** | **308** | **3** | **50** | **170** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

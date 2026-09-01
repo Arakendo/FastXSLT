@@ -12,6 +12,7 @@ struct SerializationOptions<'a> {
     character_map: &'a [(char, String)],
     xhtml: bool,
     xhtml_media_type: Option<&'a str>,
+    xml_empty_document_element_tag: bool,
     indent: bool,
 }
 
@@ -95,7 +96,7 @@ pub(in crate::runtime) fn serialize_xml(
         }
         output.push_str("?>")?;
     }
-    serialize_xhtml_doctype(result, settings, xhtml, &mut output)?;
+    serialize_doctype(result, settings, xhtml, &mut output)?;
     let xhtml_media_type = (xhtml && settings.include_content_type != Some(false))
         .then(|| settings.media_type.as_deref().unwrap_or("text/html"));
     let options = SerializationOptions {
@@ -103,6 +104,7 @@ pub(in crate::runtime) fn serialize_xml(
         character_map: &settings.character_map,
         xhtml,
         xhtml_media_type,
+        xml_empty_document_element_tag: settings.doctype_system.is_some() && !xhtml && !html,
         indent: settings.indent == Some(true),
     };
     for node in &result.children {
@@ -215,7 +217,7 @@ fn validate_normalization_form(
     Ok(())
 }
 
-fn serialize_xhtml_doctype(
+fn serialize_doctype(
     result: &SemanticResult,
     settings: &OutputSettings,
     xhtml: bool,
@@ -224,15 +226,31 @@ fn serialize_xhtml_doctype(
     let Some(system) = settings.doctype_system.as_deref() else {
         return Ok(());
     };
-    if !xhtml || !is_xhtml_html_document(result) {
+    let document_element = result
+        .children
+        .iter()
+        .find(|node| matches!(node, ResultNode::Element { .. }));
+    let Some(ResultNode::Element {
+        name, namespaces, ..
+    }) = document_element
+    else {
+        unreachable!("DOCTYPE preconditions require one document element")
+    };
+    if xhtml
+        && (name.namespace.as_deref() != Some("http://www.w3.org/1999/xhtml")
+            || name.local != "html")
+    {
         return Err(failure(
             "FXSR1007",
             FailureCategory::Unsupported,
             Some(&output.request_id),
-            "DOCTYPE serialization is currently bounded to an XHTML html document element",
+            "XHTML DOCTYPE serialization requires an XHTML html document element",
         ));
     }
-    output.push_str("<!DOCTYPE html")?;
+    let (in_scope, _) = element_namespace_scope(name, namespaces, &[]);
+    let prefix = element_prefix(name.namespace.as_deref(), &in_scope, output)?;
+    output.push_str("<!DOCTYPE ")?;
+    write_name(prefix, &name.local, output)?;
     if let Some(public) = settings.doctype_public.as_deref() {
         output.push_str(" PUBLIC ")?;
         serialize_external_identifier(public, output)?;
@@ -242,25 +260,6 @@ fn serialize_xhtml_doctype(
     }
     serialize_external_identifier(system, output)?;
     output.push('>')
-}
-
-fn is_xhtml_html_document(result: &SemanticResult) -> bool {
-    let mut root_seen = false;
-    for node in &result.children {
-        match node {
-            ResultNode::Text(value) if value.chars().all(char::is_whitespace) => {}
-            ResultNode::ProcessingInstruction { .. } => {}
-            ResultNode::Element { name, .. }
-                if !root_seen
-                    && name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml")
-                    && name.local == "html" =>
-            {
-                root_seen = true;
-            }
-            _ => return false,
-        }
-    }
-    root_seen
 }
 
 fn serialize_external_identifier(
@@ -538,6 +537,9 @@ fn serialize_element(
         output.push_str("=\"")?;
         escape_attribute_with_character_map(&attribute.value, options.character_map, output)?;
         output.push('"')?;
+    }
+    if options.xml_empty_document_element_tag && depth == 0 && children.is_empty() {
+        return output.push_str("/>");
     }
     if options.xhtml && children.is_empty() && is_xhtml_void_element(name) {
         return output.push_str(" />");

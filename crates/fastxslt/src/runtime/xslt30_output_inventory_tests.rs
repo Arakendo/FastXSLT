@@ -751,6 +751,49 @@ fn merges_output_map_lists_after_nested_import_precedence() {
 }
 
 #[test]
+fn serializes_quote_characters_inside_doctype_identifiers() {
+    const CASE_NAME: &str = "output-0311";
+    let execution = execute_output_case(CASE_NAME, None);
+    assert_eq!(execution.doctype_public.as_deref(), Some("ABC'DEF"));
+    assert_eq!(execution.doctype_system.as_deref(), Some("ABC\"DEF"));
+    assert!(execution.actual.starts_with("<?xml"));
+    assert!(
+        execution
+            .actual
+            .contains("<!DOCTYPE a PUBLIC \"ABC'DEF\" 'ABC\"DEF'>")
+    );
+    assert!(execution.actual.ends_with("<a/>"));
+
+    let (test_set, _) = load_test_set();
+    let root = document_element(&test_set);
+    let case = element_children(&test_set, root)
+        .into_iter()
+        .find(|node| {
+            local_name(&test_set, *node) == "test-case"
+                && attribute(&test_set, *node, "name") == Some(CASE_NAME)
+        })
+        .expect("pinned output-0311 case");
+    let result = child_named(&test_set, case, "result").expect("output-0311 result");
+    let all_of = first_element_child(&test_set, result).expect("output-0311 assertion");
+    assert_eq!(local_name(&test_set, all_of), "all-of");
+    let patterns = element_children(&test_set, all_of)
+        .into_iter()
+        .map(|assertion| {
+            assert_eq!(local_name(&test_set, assertion), "serialization-matches");
+            test_set.string_value(assertion)
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        patterns,
+        [
+            "<\\?xml",
+            "<!DOCTYPE\\s+a\\s+PUBLIC\\s+\"ABC'DEF\"\\s+'ABC\"DEF'>",
+            "<a/>"
+        ]
+    );
+}
+
+#[test]
 fn resolves_imported_character_maps_and_higher_precedence_override() {
     let imported_only = execute_assert_serialization_case("output-0204", "xml");
     assert_eq!(
