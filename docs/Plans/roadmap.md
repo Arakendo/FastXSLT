@@ -772,6 +772,15 @@ advances to 76 passes, 45 profile exclusions, and 48 visible default not-run
 cases.
 [Evidence](../Evidence/xslt30-mode-default-mode-variants-2026-08-31.md)
 
+The output denominator now executes unchanged `output-0186` and `output-0187`
+through native serialization error `SEPM0009`. Both string and byte entry
+points reject internally inconsistent XML serialization parameters before
+emitting bytes. The non-1.0 version in `output-0187` is retained only on this
+deterministically failing parameter path; general XML 1.1 serialization remains
+explicitly unsupported. The output denominator advances to 74 passes and 158
+visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-sepm0009-2026-08-31.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -813,8 +822,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 72 | 0 | 0 | 160 |
-| **Conserved total** | **531** | **270** | **3** | **50** | **208** |
+| `decl/output` | 232 | 74 | 0 | 0 | 158 |
+| **Conserved total** | **531** | **272** | **3** | **50** | **206** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

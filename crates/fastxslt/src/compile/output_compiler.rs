@@ -114,13 +114,18 @@ pub(super) fn compile_output(
     let standalone = optional_attribute(document, element, None, "standalone")
         .map(|value| parse_standalone(value, declared_version, document.location(element)))
         .transpose()?;
+    let doctype_system = optional_attribute(document, element, None, "doctype-system");
+    let version = compile_serialization_version(
+        document,
+        element,
+        omit_xml_declaration && doctype_system.is_some(),
+    )?;
     let settings = OutputSettings {
         method: method.map(str::to_owned),
-        version: compile_serialization_version(document, element)?.map(str::to_owned),
+        version: version.map(str::to_owned),
         encoding: encoding.map(str::to_owned),
         media_type: optional_attribute(document, element, None, "media-type").map(str::to_owned),
-        doctype_system: optional_attribute(document, element, None, "doctype-system")
-            .map(str::to_owned),
+        doctype_system: doctype_system.map(str::to_owned),
         doctype_public: optional_attribute(document, element, None, "doctype-public")
             .map(str::to_owned),
         include_content_type,
@@ -252,9 +257,10 @@ fn compile_encoding(document: &Document, element: NodeId) -> Result<Option<&str>
 fn compile_serialization_version(
     document: &Document,
     element: NodeId,
+    admitted_inconsistent_error_path: bool,
 ) -> Result<Option<&str>, CompileFailure> {
     let version = optional_attribute(document, element, None, "version");
-    if version.is_some_and(|value| value != "1.0") {
+    if version.is_some_and(|value| value != "1.0") && !admitted_inconsistent_error_path {
         return Err(unsupported(
             "FXST1021",
             format!(

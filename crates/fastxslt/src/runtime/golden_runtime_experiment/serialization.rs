@@ -21,6 +21,7 @@ pub(in crate::runtime) fn serialize_xml(
     byte_limit: usize,
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
+    validate_parameter_consistency(settings, request_id)?;
     if settings
         .encoding
         .as_deref()
@@ -191,6 +192,7 @@ pub(in crate::runtime) fn serialize_xml_bytes(
     byte_limit: usize,
     control: &mut InvocationControl,
 ) -> Result<Vec<u8>, ExecutionFailure> {
+    validate_parameter_consistency(settings, request_id)?;
     let encoding = settings.encoding.as_deref().unwrap_or("UTF-8");
     if encoding.eq_ignore_ascii_case("UTF-8") {
         let bom = settings.byte_order_mark == Some(true);
@@ -262,6 +264,8 @@ pub(in crate::runtime) fn serialize_xml_bytes(
     let mut body_settings = settings.clone();
     body_settings.encoding = Some("UTF-8".to_owned());
     body_settings.omit_xml_declaration = true;
+    body_settings.standalone = None;
+    body_settings.version = Some("1.0".to_owned());
     let body = serialize_xml(result, &body_settings, request_id, body_limit, control)?;
     if !body.is_ascii() {
         return Err(failure(
@@ -275,6 +279,29 @@ pub(in crate::runtime) fn serialize_xml_bytes(
     let mut bytes = declaration.into_bytes();
     bytes.extend_from_slice(body.as_bytes());
     Ok(bytes)
+}
+
+fn validate_parameter_consistency(
+    settings: &OutputSettings,
+    request_id: &str,
+) -> Result<(), ExecutionFailure> {
+    let standalone_requires_declaration = settings.omit_xml_declaration
+        && matches!(settings.standalone.as_deref(), Some("yes" | "no"));
+    let doctype_requires_xml_10 = settings.omit_xml_declaration
+        && settings
+            .version
+            .as_deref()
+            .is_some_and(|version| version != "1.0")
+        && settings.doctype_system.is_some();
+    if standalone_requires_declaration || doctype_requires_xml_10 {
+        return Err(failure(
+            "SEPM0009",
+            FailureCategory::Invalid,
+            Some(request_id),
+            "the selected serialization parameters are internally inconsistent",
+        ));
+    }
+    Ok(())
 }
 
 fn serialize_text_node(

@@ -7,8 +7,9 @@ use std::{
 };
 
 use super::{
-    ExecutionPolicy, FailureCategory, InvocationEntry, TransformRequest, TransformSetBuilder,
-    compile_resource, execute_program, execute_transform_set, serialize_xml_bytes,
+    ExecutionFailure, ExecutionPolicy, FailureCategory, InvocationEntry, TransformRequest,
+    TransformSetBuilder, compile_resource, execute_program, execute_transform_set,
+    serialize_xml_bytes,
 };
 use crate::execution_control_experiment::{CancellationToken, InvocationControl, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
@@ -601,6 +602,38 @@ fn executes_xml_and_text_with_normalization_form_none() {
 }
 
 #[test]
+fn reports_inconsistent_xml_serialization_parameters_as_sepm0009() {
+    for case_name in ["output-0186", "output-0187"] {
+        let (test_set, _) = load_test_set();
+        let root = document_element(&test_set);
+        let case = element_children(&test_set, root)
+            .into_iter()
+            .find(|node| {
+                local_name(&test_set, *node) == "test-case"
+                    && attribute(&test_set, *node, "name") == Some(case_name)
+            })
+            .expect("pinned serialization-error case");
+        let result = child_named(&test_set, case, "result").expect("output result");
+        let assertion = first_element_child(&test_set, result).expect("serialization error");
+        assert_eq!(
+            local_name(&test_set, assertion),
+            "assert-serialization-error"
+        );
+        assert_eq!(attribute(&test_set, assertion, "code"), Some("SEPM0009"));
+
+        let failure = try_execute_output_case(case_name, None)
+            .expect_err("inconsistent output parameters must fail serialization");
+        assert_eq!(failure.code, "SEPM0009", "{case_name}");
+        assert_eq!(failure.category, FailureCategory::Invalid, "{case_name}");
+        assert_eq!(
+            failure.request_id.as_deref(),
+            Some(case_name),
+            "{case_name}"
+        );
+    }
+}
+
+#[test]
 fn executes_xhtml_with_normalization_form_none() {
     let decomposed = "A\u{301}";
     let bytes = execute_output_bytes_case("output-0147");
@@ -614,6 +647,7 @@ fn executes_xhtml_with_normalization_form_none() {
     assert!(bytes.windows(3).any(|part| part == [0x41, 0xcc, 0x81]));
 }
 
+#[derive(Debug)]
 struct SerializationExecution {
     method: Option<String>,
     version: Option<String>,
@@ -636,6 +670,13 @@ fn execute_assert_serialization_case(
 }
 
 fn execute_output_case(case_name: &str, assertion_method: Option<&str>) -> SerializationExecution {
+    try_execute_output_case(case_name, assertion_method).expect("execute output case")
+}
+
+fn try_execute_output_case(
+    case_name: &str,
+    assertion_method: Option<&str>,
+) -> Result<SerializationExecution, ExecutionFailure> {
     assert_output_case_passed(case_name);
 
     let (test_set, set_path) = load_test_set();
@@ -709,14 +750,14 @@ fn execute_output_case(case_name: &str, assertion_method: Option<&str>) -> Seria
         cancellation_fault: None,
     })
     .expect("admit output request");
-    let results = execute_transform_set(set.seal()).expect("execute output case");
+    let results = execute_transform_set(set.seal())?;
     let actual = results.by_request[case_name].serialized.clone();
     let expected = expected_file.map(|expected_file| {
         fs::read_to_string(directory.join(expected_file))
             .expect("read expected serialization and close handle")
             .replace("\r\n", "\n")
     });
-    SerializationExecution {
+    Ok(SerializationExecution {
         method: output_settings.method,
         version: output_settings.version,
         encoding: output_settings.encoding,
@@ -728,7 +769,7 @@ fn execute_output_case(case_name: &str, assertion_method: Option<&str>) -> Seria
         indent: output_settings.indent,
         actual,
         expected,
-    }
+    })
 }
 
 fn output_invocation_entry(

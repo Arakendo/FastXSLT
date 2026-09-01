@@ -387,6 +387,18 @@ execution = "passed"
 rationale = "Merges two unnamed declarations with non-overlapping scalar properties, retains standalone=yes, and exactly serializes the selected unnamespaced item1 text as CDATA while escaping item2 normally."
 
 [[case_override]]
+case_name = "output-0186"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native serialization-error assertion with SEPM0009 when standalone=yes requires an XML declaration but omit-xml-declaration=yes suppresses it."
+
+[[case_override]]
+case_name = "output-0187"
+selection = "selected"
+execution = "passed"
+rationale = "Matches the native serialization-error assertion with SEPM0009 when an omitted XML declaration combines a non-1.0 version with a requested external document type."
+
+[[case_override]]
 case_name = "output-0171"
 selection = "selected"
 execution = "passed"
