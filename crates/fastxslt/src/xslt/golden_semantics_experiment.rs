@@ -275,6 +275,10 @@ pub(crate) enum Instruction {
         value: String,
         location: SourceLocation,
     },
+    CommentNode {
+        value: String,
+        location: SourceLocation,
+    },
     ValueOf {
         select: ValueExpression,
         separator: String,

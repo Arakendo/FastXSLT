@@ -44,7 +44,7 @@ pub(in crate::runtime) fn serialize_xml(
     let first_significant = result.children.iter().find(|node| match node {
         ResultNode::Text(value) => !value.chars().all(char::is_whitespace),
         ResultNode::Element { .. } => true,
-        ResultNode::ProcessingInstruction { .. } => false,
+        ResultNode::ProcessingInstruction { .. } | ResultNode::Comment(_) => false,
     });
     let unsupported_adaptive_html = settings.method.is_none()
         && matches!(
@@ -103,7 +103,6 @@ pub(in crate::runtime) fn serialize_xml(
         }
         output.push_str("?>")?;
     }
-    serialize_doctype(result, settings, xhtml, &mut output)?;
     let xhtml_media_type = (xhtml && settings.include_content_type != Some(false))
         .then(|| settings.media_type.as_deref().unwrap_or("text/html"));
     let xhtml_mode = if !xhtml {
@@ -121,7 +120,12 @@ pub(in crate::runtime) fn serialize_xml(
         xml_empty_document_element_tag: settings.doctype_system.is_some() && !xhtml && !html,
         indent: settings.indent == Some(true),
     };
+    let mut doctype_written = false;
     for node in &result.children {
+        if !doctype_written && matches!(node, ResultNode::Element { .. }) {
+            serialize_doctype(result, settings, xhtml, &mut output)?;
+            doctype_written = true;
+        }
         serialize_node(node, &[], options, 0, &mut output)?;
     }
     Ok(output.finish())
@@ -151,7 +155,7 @@ fn validate_bounded_html_character_map_result(
 fn is_bounded_html_node(node: &ResultNode, root: bool) -> bool {
     match node {
         ResultNode::Text(_) => true,
-        ResultNode::ProcessingInstruction { .. } => false,
+        ResultNode::ProcessingInstruction { .. } | ResultNode::Comment(_) => false,
         ResultNode::Element {
             name,
             namespaces,
@@ -462,7 +466,7 @@ fn serialize_text_node(
 ) -> Result<(), ExecutionFailure> {
     match node {
         ResultNode::Text(value) => write_character_mapped(value, character_map, output),
-        ResultNode::ProcessingInstruction { .. } => Ok(()),
+        ResultNode::ProcessingInstruction { .. } | ResultNode::Comment(_) => Ok(()),
         ResultNode::Element { children, .. } => {
             for child in children {
                 serialize_text_node(child, character_map, output)?;
@@ -501,6 +505,11 @@ fn serialize_node(
         ResultNode::Text(value) => escape_text(value, options.character_map, output)?,
         ResultNode::ProcessingInstruction { target, value } => {
             serialize_processing_instruction(target, value, output)?;
+        }
+        ResultNode::Comment(value) => {
+            output.push_str("<!--")?;
+            output.push_str(value)?;
+            output.push_str("-->")?;
         }
         ResultNode::Element { .. } => {
             serialize_element(node, inherited_namespaces, options, depth, output)?;

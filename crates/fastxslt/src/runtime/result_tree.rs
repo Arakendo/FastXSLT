@@ -22,6 +22,7 @@ pub(super) enum ResultNode {
         target: String,
         value: String,
     },
+    Comment(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

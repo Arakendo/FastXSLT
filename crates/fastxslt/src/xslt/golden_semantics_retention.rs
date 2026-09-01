@@ -216,7 +216,9 @@ fn instruction_owned(value: &Instruction) -> usize {
             body,
             location,
         ),
-        Instruction::Text { value, location } => value.capacity() + location_owned(location),
+        Instruction::Text { value, location } | Instruction::CommentNode { value, location } => {
+            value.capacity() + location_owned(location)
+        }
         Instruction::ProcessingInstructionNode {
             target,
             value,

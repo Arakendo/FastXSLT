@@ -540,6 +540,9 @@ fn execute_instruction(
         Instruction::ProcessingInstructionNode { target, value, .. } => result.push(
             construct_processing_instruction(target, value, inputs.request_id, control)?,
         ),
+        Instruction::CommentNode { value, .. } => {
+            result.push(construct_comment(value, inputs.request_id, control)?);
+        }
         Instruction::ValueOf {
             select, separator, ..
         } => {
@@ -1914,6 +1917,20 @@ fn construct_processing_instruction(
         target: target.to_owned(),
         value: value.to_owned(),
     })
+}
+
+fn construct_comment(
+    value: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<ResultNode, ExecutionFailure> {
+    control
+        .charge(WorkDomain::ResultNode, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    control
+        .charge(WorkDomain::ResultTextByte, value.len())
+        .map_err(|failure| control_failure(failure, request_id))?;
+    Ok(ResultNode::Comment(value.to_owned()))
 }
 
 #[cfg(test)]

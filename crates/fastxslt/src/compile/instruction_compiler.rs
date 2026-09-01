@@ -84,6 +84,8 @@ pub(super) fn compile_sequence_excluding(
                 if name.namespace.as_deref() == Some(XSLT_NAMESPACE) {
                     if name.local == "text" {
                         instructions.push(compile_text(document, child)?);
+                    } else if name.local == "comment" {
+                        instructions.push(compile_comment(document, child)?);
                     } else if name.local == "processing-instruction" {
                         instructions.push(compile_processing_instruction(document, child)?);
                     } else if name.local == "value-of" {
@@ -376,6 +378,42 @@ fn compile_processing_instruction(
     }
     Ok(Instruction::ProcessingInstructionNode {
         target: target.to_owned(),
+        value,
+        location: document.location(element).clone(),
+    })
+}
+
+fn compile_comment(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
+    ensure_only_attributes(document, element, &[], "xsl:comment")?;
+    let mut value = String::new();
+    for child in document.children(element).iter().copied() {
+        match document.kind(child) {
+            NodeKind::Text => value.push_str(document.value(child).unwrap_or_default()),
+            NodeKind::Comment | NodeKind::ProcessingInstruction => {}
+            NodeKind::Element => {
+                return Err(unsupported(
+                    "FXST1036",
+                    "computed comment content is outside the private slice",
+                    document.location(child),
+                ));
+            }
+            NodeKind::Document | NodeKind::Attribute => {
+                return Err(invalid(
+                    "FXST0006",
+                    "unexpected node kind in xsl:comment",
+                    document.location(child),
+                ));
+            }
+        }
+    }
+    if value.contains("--") || value.ends_with('-') {
+        return Err(unsupported(
+            "FXST1037",
+            "comment content requiring lexical recovery is outside the private slice",
+            document.location(element),
+        ));
+    }
+    Ok(Instruction::CommentNode {
         value,
         location: document.location(element).clone(),
     })

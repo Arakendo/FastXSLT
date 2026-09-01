@@ -807,6 +807,12 @@ execution = "passed"
 rationale = "Emits paired XHTML doctype identifiers with the integer html-version 5 spelling."
 
 [[case_override]]
+case_name = "output-0234"
+selection = "selected"
+execution = "passed"
+rationale = "Serializes a static root comment and processing instruction before the XML doctype, which remains immediately before the document element."
+
+[[case_override]]
 case_name = "output-0501"
 selection = "selected"
 execution = "passed"

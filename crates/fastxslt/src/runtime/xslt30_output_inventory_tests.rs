@@ -963,6 +963,27 @@ fn normalizes_bounded_xhtml5_svg_and_mathml_element_namespaces() {
 }
 
 #[test]
+fn places_xml_doctype_after_root_misc_and_before_document_element() {
+    let execution = execute_output_case("output-0234", None);
+    let comment = execution
+        .actual
+        .find("<!--This should precede the DOCTYPE declaration-->")
+        .expect("serialized root comment");
+    let processing_instruction = execution
+        .actual
+        .find("<?pi R squared?>")
+        .expect("serialized root processing instruction");
+    let doctype = execution
+        .actual
+        .find("<!DOCTYPE out PUBLIC \"//PUBLIC//\" \"system.dtd\">")
+        .expect("serialized doctype");
+    let element = execution.actual.find("<out>").expect("document element");
+    assert!(comment < processing_instruction);
+    assert!(processing_instruction < doctype);
+    assert!(doctype < element);
+}
+
+#[test]
 fn resolves_imported_character_maps_and_higher_precedence_override() {
     let imported_only = execute_assert_serialization_case("output-0204", "xml");
     assert_eq!(
