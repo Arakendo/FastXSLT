@@ -886,6 +886,14 @@ unsupported. The output denominator advances to 101 passes and 131 visible
 default not-run cases.
 [Evidence](../Evidence/xslt30-output-repeated-character-map-references-2026-09-01.md)
 
+The unchanged `output-0301` case now applies three character maps through the
+XHTML serializer and satisfies both pinned `all-of` patterns with a bounded
+structural/content comparator. Raw mapped replacement strings are not escaped
+a second time; HTML method behavior, CDATA interaction, imports, named outputs,
+and result documents remain separate work. The output denominator advances to
+102 passes and 130 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-xhtml-character-maps-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -927,8 +935,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 101 | 0 | 0 | 131 |
-| **Conserved total** | **531** | **299** | **3** | **50** | **179** |
+| `decl/output` | 232 | 102 | 0 | 0 | 130 |
+| **Conserved total** | **531** | **300** | **3** | **50** | **178** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

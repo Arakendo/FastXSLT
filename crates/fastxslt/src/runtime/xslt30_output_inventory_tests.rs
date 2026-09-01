@@ -659,6 +659,41 @@ fn repeated_character_map_references_are_idempotent() {
 }
 
 #[test]
+fn applies_multiple_character_maps_to_xhtml_output() {
+    let execution = execute_output_case("output-0301", None);
+    assert_eq!(execution.method.as_deref(), Some("xhtml"));
+    assert!(
+        execution
+            .actual
+            .contains("<html xmlns=\"http://www.w3.org/1999/xhtml\">")
+    );
+    let body = execution
+        .actual
+        .split_once("<body>")
+        .expect("XHTML body start")
+        .1;
+    let (after_first, _) = body
+        .strip_prefix("<p>xx&xx</p>")
+        .expect("first mapped paragraph")
+        .split_once("<p>yy+Ayy</p>")
+        .expect("second mapped paragraph after first");
+    assert!(after_first.chars().all(char::is_whitespace));
+    let after_second = body
+        .split_once("<p>yy+Ayy</p>")
+        .expect("second mapped paragraph")
+        .1;
+    let (between, after_third) = after_second
+        .split_once("<p>zz%&zz</p>")
+        .expect("third mapped paragraph after second");
+    assert!(between.chars().all(char::is_whitespace));
+    let before_close = after_third
+        .strip_suffix("</body></html>")
+        .expect("XHTML body and document close");
+    assert!(before_close.chars().all(char::is_whitespace));
+    assert!(!execution.actual.contains("yy*$yy"));
+}
+
+#[test]
 fn executes_xhtml_standalone_yes_no_and_omit_variants() {
     for case_name in [
         "output-0149",

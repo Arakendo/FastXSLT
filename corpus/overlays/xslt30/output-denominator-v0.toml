@@ -543,6 +543,12 @@ execution = "passed"
 rationale = "Resolves a three-item reference list containing the same expanded character-map name under two prefixes and applies the mapping idempotently."
 
 [[case_override]]
+case_name = "output-0301"
+selection = "selected"
+execution = "passed"
+rationale = "Applies three disjoint character maps to XHTML text content and satisfies both pinned all-of serialization patterns through exact structural and mapped-content sentinels."
+
+[[case_override]]
 case_name = "output-0303"
 selection = "selected"
 execution = "passed"
