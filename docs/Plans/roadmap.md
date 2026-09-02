@@ -1377,6 +1377,16 @@ component composition. The mode denominator advances to 88 passes, 48 profile
 exclusions, and 33 visible defaults.
 [Evidence](../Evidence/xslt30-mode-1905-visibility-precedence-2026-09-02.md)
 
+The complete ten-case `fn/root` denominator is now conserved. Unchanged
+`root-0101` admits the exact `root(.)` context-node form and the equivalent
+`document-node()` match spelling. Its first execution exposed and repaired a
+shared XDM defect: document and element string values now exclude descendant
+comment and processing-instruction content, while those nodes retain their own
+string values when selected directly. One case passes and nine remain visible
+defaults pending broader function arguments, variables, node identity,
+temporary trees, or dynamic resource acquisition.
+[Evidence](../Evidence/xslt30-root-context-and-xdm-string-value-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1390,7 +1400,7 @@ conformance percentage or a promise about unselected cases.
 | --- | --- | --- |
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 408 explicitly selected cases execute through two suite-specific XPath adapters. |
-| XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 13 complete test-set denominators plus one separate AVT pressure case have first-party records. |
+| XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 14 complete test-set denominators plus one separate AVT pressure case have first-party records. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -1421,11 +1431,12 @@ The XSLT30 work currently conserves these complete native denominators:
 | `decl/output` | 232 | 198 | 0 | 1 | 33 |
 | `decl/strip-space` | 30 | 1 | 0 | 0 | 29 |
 | `misc/built-in-templates` | 6 | 2 | 0 | 0 | 4 |
-| **Conserved total** | **567** | **411** | **3** | **54** | **99** |
+| `fn/root` | 10 | 1 | 0 | 0 | 9 |
+| **Conserved total** | **577** | **412** | **3** | **54** | **108** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
-Across the full XSLT30 suite, 14,032 other cases are catalog-inventoried but do
+Across the full XSLT30 suite, 14,022 other cases are catalog-inventoried but do
 not yet have individual first-party dispositions. This distinction matters:
 catalog discovery conserves the source inventory, while only a complete
 test-set overlay conserves a reportable case denominator.
@@ -1487,7 +1498,7 @@ count:
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
 2. [ ] Continue coherent semantic slices through the 33 visible `output`
-   gaps and 45 visible `mode` gaps. The output remainder is now an explicit
+   gaps, 33 visible `mode` gaps, and 9 visible `fn/root` gaps. The output remainder is now an explicit
    feature frontier: 10 cases require secondary-result ownership, 22 require
    XDM 3.1 maps/arrays plus JSON, adaptive, or serialization-parameter
    semantics, and one depends on a host-supplied default HTML version. Each
@@ -1501,7 +1512,7 @@ count:
    identities. Explicit selection takes priority over a dependency rule.
 4. [ ] Add complete denominators deliberately, selected by standards and
    implementation pressure rather than easy-case sampling. The remaining
-   14,032 XSLT30 and 31,209 QT3 catalog-only cases must stay outside pass/fail
+   14,022 XSLT30 and 31,209 QT3 catalog-only cases must stay outside pass/fail
    totals until individually classified.
 5. [ ] Replace string-scanned experimental overlays with a validated internal
    loader and derive one immutable run report carrying suite/engine/harness

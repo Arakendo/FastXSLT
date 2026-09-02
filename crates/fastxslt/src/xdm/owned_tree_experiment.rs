@@ -598,9 +598,35 @@ impl Document {
             }
             NodeKind::Document | NodeKind::Element => {
                 for child in self.children(id) {
-                    self.visit_string_value_controlled(*child, control, sink)?;
+                    self.visit_descendant_text_controlled(*child, control, sink)?;
                 }
             }
+        }
+        Ok(())
+    }
+
+    fn visit_descendant_text_controlled<SinkFailure>(
+        &self,
+        id: NodeId,
+        control: &mut InvocationControl,
+        sink: &mut impl FnMut(&str, &mut InvocationControl) -> Result<(), SinkFailure>,
+    ) -> Result<(), StringValueVisitFailure<SinkFailure>> {
+        control
+            .charge(WorkDomain::XdmStringValueNode, 1)
+            .map_err(StringValueVisitFailure::Control)?;
+        let node = &self.nodes[id.0];
+        match node.kind {
+            NodeKind::Text => {
+                if let Some(value) = node.value.as_deref() {
+                    sink(value, control).map_err(StringValueVisitFailure::Sink)?;
+                }
+            }
+            NodeKind::Document | NodeKind::Element => {
+                for child in self.children(id) {
+                    self.visit_descendant_text_controlled(*child, control, sink)?;
+                }
+            }
+            NodeKind::Attribute | NodeKind::Comment | NodeKind::ProcessingInstruction => {}
         }
         Ok(())
     }
@@ -831,6 +857,38 @@ mod tests {
 
         assert_eq!(fragments, ["one", "two", "three"]);
         assert_eq!(fragments.concat(), document.string_value(root));
+    }
+
+    #[test]
+    fn container_string_values_exclude_comments_and_processing_instructions() {
+        let parsed = parse_document(
+            "memory:string-value-node-kinds.xml",
+            b"<root>one<!--comment--><?target instruction?><part>two</part>three</root>",
+            LIMITS,
+        )
+        .expect("node-kind fixture should parse");
+        let document = Document::from_parsed(parsed).expect("owned XDM should build");
+        let root = document.nodes[document.root.0].children[0];
+        let comment = document.nodes[root.0]
+            .children
+            .iter()
+            .copied()
+            .find(|node| document.kind(*node) == NodeKind::Comment)
+            .expect("comment node");
+        let instruction = document.nodes[root.0]
+            .children
+            .iter()
+            .copied()
+            .find(|node| document.kind(*node) == NodeKind::ProcessingInstruction)
+            .expect("processing-instruction node");
+
+        assert_eq!(
+            document.string_value(document.document_node()),
+            "onetwothree"
+        );
+        assert_eq!(document.string_value(root), "onetwothree");
+        assert_eq!(document.string_value(comment), "comment");
+        assert_eq!(document.string_value(instruction), "instruction");
     }
 
     #[test]

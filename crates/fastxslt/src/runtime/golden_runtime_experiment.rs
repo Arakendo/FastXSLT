@@ -2267,3 +2267,7 @@ mod xslt30_built_in_templates_tests;
 #[cfg(test)]
 #[path = "xslt30_deep_equal_inventory_tests.rs"]
 mod xslt30_deep_equal_inventory_tests;
+
+#[cfg(test)]
+#[path = "xslt30_root_inventory_tests.rs"]
+mod xslt30_root_inventory_tests;

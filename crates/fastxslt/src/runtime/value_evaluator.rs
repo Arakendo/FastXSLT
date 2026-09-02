@@ -52,6 +52,9 @@ pub(super) fn execute_value_of(
                 append_source_string_value(inputs, *node, result, control)?;
             }
         }
+        ValueExpression::RootContextNode => {
+            append_root_context_string(inputs, context, result, control)?;
+        }
         ValueExpression::ContextNodeName => {
             append_context_node_name(inputs, context, result, control)?;
         }
@@ -132,6 +135,25 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_root_context_string(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, mut root) = required_source_context(inputs, context)?;
+    loop {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        let Some(parent) = source.parent(root) else {
+            break;
+        };
+        root = parent;
+    }
+    append_source_string_value(inputs, root, result, control)
 }
 
 fn append_upper_case_context_string(

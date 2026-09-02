@@ -666,6 +666,8 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
                 location: failure.location,
             })?,
         ))
+    } else if expression.trim() == "root(.)" {
+        ValueExpression::RootContextNode
     } else if expression.trim() == "name(.)" {
         ValueExpression::ContextNodeName
     } else if expression.trim() == "upper-case(.)" {
