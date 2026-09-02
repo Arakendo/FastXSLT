@@ -537,6 +537,12 @@ execution = "passed"
 rationale = "The immutable global temporary element retains its literal attribute as an XDM node; each native on-no-match policy traverses attributes according to its semantics and the unchanged @bar rule produces the expected result."
 
 [[case_override]]
+case_name = "mode-0016"
+selection = "selected"
+execution = "passed"
+rationale = "The immutable namespaced temporary element retains both literal attributes as XDM nodes, @* dispatch observes their local names, and copied namespace bindings match the unchanged native assertion."
+
+[[case_override]]
 case_name = "mode-1406"
 selection = "excluded-by-profile"
 execution = "not-run"

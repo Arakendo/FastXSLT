@@ -453,6 +453,7 @@ pub(crate) enum LiteralAttributeValue {
     Variable(String),
     ContextPosition,
     ContextSize,
+    ContextLocalName,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

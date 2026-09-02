@@ -36,6 +36,7 @@ struct AttributeContext<'a> {
     variables: &'a RuntimeVariables,
     focus_position: usize,
     focus_size: usize,
+    context_name: Option<&'a ExpandedName>,
     request_id: &'a str,
 }
 
@@ -44,6 +45,7 @@ pub(super) fn materialize_literal_attributes(
     variables: &RuntimeVariables,
     context_position: usize,
     context_size: usize,
+    context_name: Option<&ExpandedName>,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultAttribute>, ExecutionFailure> {
@@ -51,6 +53,7 @@ pub(super) fn materialize_literal_attributes(
         variables,
         focus_position: context_position,
         focus_size: context_size,
+        context_name,
         request_id,
     };
     attributes
@@ -79,6 +82,7 @@ pub(super) fn materialize_computed_attributes(
         variables,
         focus_position: context_position,
         focus_size: context_size,
+        context_name: None,
         request_id,
     };
     attributes
@@ -124,6 +128,9 @@ fn materialize_attribute(
             .to_owned(),
         LiteralAttributeValue::ContextPosition => context.focus_position.to_string(),
         LiteralAttributeValue::ContextSize => context.focus_size.to_string(),
+        LiteralAttributeValue::ContextLocalName => context
+            .context_name
+            .map_or_else(String::new, |name| name.local.clone()),
     };
     Ok(ResultAttribute {
         name: name.clone(),

@@ -47,9 +47,9 @@ use result_tree::{
     ResultAttribute, ResultNode, materialize_computed_attributes, materialize_literal_attributes,
 };
 use runtime_context::{
-    InvocationParameter, RuntimeVariables, SequenceInputs, TemporaryTree, bind_template_parameters,
-    evaluate_template_arguments, materialize_global_defaults, materialize_temporary_tree,
-    required_source_context,
+    InvocationParameter, RuntimeVariables, SequenceInputs, TemporaryNodeKind, TemporaryTree,
+    bind_template_parameters, evaluate_template_arguments, materialize_global_defaults,
+    materialize_temporary_tree, required_source_context,
 };
 pub(super) use runtime_failure::ExecutionFailure;
 use runtime_failure::{FailureCategory, control_failure, failure, failure_at};
@@ -924,6 +924,7 @@ fn execute_source_element_copy(
                     variables,
                     execution.focus_position,
                     execution.focus_size,
+                    source.name(node),
                     inputs.request_id,
                     control,
                 )?,
@@ -984,6 +985,7 @@ fn execute_literal_element(
         variables,
         execution.focus_position,
         execution.focus_size,
+        execution_context_name(inputs, execution),
         inputs.request_id,
         control,
     )?;
@@ -1029,6 +1031,25 @@ fn execute_literal_element(
         attributes,
         children,
     })
+}
+
+fn execution_context_name<'a>(
+    inputs: &'a SequenceInputs<'a>,
+    execution: SequenceContext<'a>,
+) -> Option<&'a ExpandedName> {
+    if let Some(TemporaryFocus::Node(tree, node)) = execution.temporary_focus {
+        return match &tree.nodes[node].kind {
+            TemporaryNodeKind::Element { name, .. } | TemporaryNodeKind::Attribute { name, .. } => {
+                Some(name)
+            }
+            TemporaryNodeKind::Text(_)
+            | TemporaryNodeKind::Comment(_)
+            | TemporaryNodeKind::ProcessingInstruction { .. } => None,
+        };
+    }
+    execution
+        .node
+        .and_then(|node| inputs.source.and_then(|source| source.name(node)))
 }
 
 fn execute_apply_instruction(

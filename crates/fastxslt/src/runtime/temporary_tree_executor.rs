@@ -614,6 +614,7 @@ pub(super) fn execute_temporary_copy(
                     variables,
                     execution.focus_position,
                     execution.focus_size,
+                    Some(name),
                     inputs.request_id,
                     control,
                 )?,

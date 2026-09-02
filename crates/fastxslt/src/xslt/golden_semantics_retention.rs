@@ -476,6 +476,8 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
         LiteralAttributeValue::Text(text) | LiteralAttributeValue::Variable(text) => {
             text.capacity()
         }
-        LiteralAttributeValue::ContextPosition | LiteralAttributeValue::ContextSize => 0,
+        LiteralAttributeValue::ContextPosition
+        | LiteralAttributeValue::ContextSize
+        | LiteralAttributeValue::ContextLocalName => 0,
     }
 }

@@ -1454,3 +1454,10 @@ case_name = "mode-0015"
 selection = "selected"
 execution = "passed"
 rationale = "A source-free initial-template invocation applies shallow-copy, shallow-skip, and text-only-copy to one immutable temporary element whose literal attribute is selected by the unchanged @bar rule."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0016"
+selection = "selected"
+execution = "passed"
+rationale = "A namespaced temporary element retains unqualified and namespace-qualified attributes, dispatches the unchanged @* rule under each applicable built-in policy, and evaluates local-name() from temporary attribute focus."

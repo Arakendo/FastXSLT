@@ -5,8 +5,6 @@ use crate::xslt::golden_semantics_experiment::{LiteralAttribute, LiteralAttribut
 
 use super::{CompileFailure, XSLT_NAMESPACE, invalid, is_ascii_ncname, unsupported};
 
-const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
-
 pub(crate) fn compile_literal_result_attributes(
     document: &Document,
     element: NodeId,
@@ -18,17 +16,6 @@ pub(crate) fn compile_literal_result_attributes(
             .expect("attribute nodes have expanded names");
         if name.namespace.as_deref() == Some(XSLT_NAMESPACE) {
             continue;
-        }
-        if name
-            .namespace
-            .as_deref()
-            .is_some_and(|namespace| namespace != XML_NAMESPACE)
-        {
-            return Err(unsupported(
-                "FXST1007",
-                "namespaced literal result attributes are outside the private slice",
-                document.location(*attribute),
-            ));
         }
         let lexical = document.string_value(*attribute);
         let value = parse_literal_attribute_value(&lexical, document.location(*attribute))?;
@@ -50,6 +37,9 @@ fn parse_literal_attribute_value(
     }
     if lexical == "{last()}" {
         return Ok(LiteralAttributeValue::ContextSize);
+    }
+    if lexical == "{local-name()}" {
+        return Ok(LiteralAttributeValue::ContextLocalName);
     }
     if let Some(variable) = lexical
         .strip_prefix("{$")
