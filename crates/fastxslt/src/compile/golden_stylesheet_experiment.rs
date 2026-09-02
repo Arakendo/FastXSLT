@@ -233,6 +233,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         default_initial_mode,
         source_whitespace,
         typed_mode_requirements: modes.typed,
+        private_initial_modes: modes.private_initial,
         mode_policies: modes.policies,
         output: output.map_or_else(default_output_settings, |declaration| declaration.settings),
         output_specified_properties,
@@ -481,12 +482,15 @@ fn reject_unordered_global_dependencies(
 #[derive(Default)]
 struct CompiledModes {
     typed: Vec<crate::xslt::golden_semantics_experiment::TypedModeRequirement>,
+    private_initial: Vec<crate::xslt::golden_semantics_experiment::PrivateInitialMode>,
     policies: Vec<crate::xslt::golden_semantics_experiment::ModePolicy>,
 }
 
 impl CompiledModes {
     fn push(&mut self, declaration: mode_declaration_compiler::CompiledModeDeclaration) {
         self.typed.extend(declaration.typed_requirement);
+        self.private_initial
+            .extend(declaration.private_initial_mode);
         self.policies.extend(declaration.policy);
     }
 }

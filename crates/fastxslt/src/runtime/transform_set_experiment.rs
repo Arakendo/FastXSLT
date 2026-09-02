@@ -13,7 +13,7 @@ use crate::xslt::golden_semantics_experiment::StylesheetProgram;
 use super::{
     ExecutionFailure, FailureCategory, InvocationParameter, MultipleMatchPolicy, SemanticResult,
     XML_LIMITS, control_failure, execute_initial_mode, execute_initial_template,
-    execute_program_with_parameters, failure, program_has_mode, serialize_xml,
+    execute_program_with_parameters, failure, failure_at, program_has_mode, serialize_xml,
 };
 
 #[derive(Debug)]
@@ -193,6 +193,20 @@ impl TransformSetBuilder {
                         FailureCategory::Invalid,
                         Some(&request.identity),
                         format!("unknown initial mode: {name}"),
+                    ));
+                }
+                if let Some(private) = self
+                    .stylesheet
+                    .private_initial_modes
+                    .iter()
+                    .find(|mode| mode.name == *name)
+                {
+                    return Some(failure_at(
+                        "XTDE0045",
+                        FailureCategory::Invalid,
+                        Some(&request.identity),
+                        private.location.clone(),
+                        format!("initial mode is private: {name}"),
                     ));
                 }
             }

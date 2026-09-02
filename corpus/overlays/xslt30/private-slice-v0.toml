@@ -1451,6 +1451,13 @@ rationale = "A higher-precedence principal mode declaration replaces the importe
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1902"
+selection = "selected"
+execution = "passed"
+rationale = "A principal private declaration for imported mode X is retained into invocation admission and produces the unchanged XTDE0045 error when selected as initial mode."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-1417"
 selection = "selected"
 execution = "passed"

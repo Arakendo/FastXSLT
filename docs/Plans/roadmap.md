@@ -1356,6 +1356,17 @@ element rules. The four parameter-typing and schema-annotation cases remain
 visible defaults rather than being approximated.
 [Evidence](../Evidence/xslt30-built-in-template-mode-propagation-2026-09-02.md)
 
+The unchanged `mode-1902` case now retains the principal stylesheet's private
+mode declaration into request admission and reports native `XTDE0045` when the
+host selects imported mode X as the initial mode. The prerequisite import path
+now inherits only the already-supported `method`, `encoding`, and `indent`
+properties from one imported program when the principal leaves them
+unspecified. Other output properties, public/final visibility composition,
+packages, and imported-conflict recovery remain explicit boundaries. The mode
+denominator advances to 87 passes, 48 profile exclusions, and 34 visible
+defaults.
+[Evidence](../Evidence/xslt30-mode-1902-private-initial-mode-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1395,12 +1406,12 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 86 | 0 | 48 | 35 |
+| `attr/mode` | 169 | 87 | 0 | 48 | 34 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 198 | 0 | 1 | 33 |
 | `decl/strip-space` | 30 | 1 | 0 | 0 | 29 |
 | `misc/built-in-templates` | 6 | 2 | 0 | 0 | 4 |
-| **Conserved total** | **567** | **409** | **3** | **54** | **101** |
+| **Conserved total** | **567** | **410** | **3** | **54** | **100** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -2374,6 +2385,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   Keep executable visibility, include/import composition, and higher-precedence
   overrides outside this exact slice. The mode ledger now records 40 passes,
   44 profile exclusions, and 85 visible default not-run cases.
+- [x] Execute `mode-1902` as native dynamic error `XTDE0045` by retaining one
+  principal private named-mode declaration into request admission. Inherit
+  only supported `method`, `encoding`, and `indent` settings from its single
+  imported program, preserve the private declaration location, and leave
+  public/final/package visibility composition and `mode-1905` unresolved.
 - [x] Retain non-whitespace text children in the private attribute-free
   temporary-tree representation and preserve mixed element/text order through
   invocation-owned materialization, built-in traversal, result accounting, and

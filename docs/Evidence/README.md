@@ -183,6 +183,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 Parentless Comment, PI, and Text Mode Policies](xslt30-mode-parentless-comment-pi-text-2026-09-02.md)
 - [XSLT30 Overlapping Union Single-Rule Mode Semantics](xslt30-mode-overlapping-union-single-rule-2026-09-02.md)
 - [XSLT30 `mode-1901` Imported-Policy Override](xslt30-mode-1901-imported-policy-override-2026-09-02.md)
+- [XSLT30 `mode-1902` Private Initial-Mode Admission](xslt30-mode-1902-private-initial-mode-2026-09-02.md)
 - [XSLT30 `mode-1107` Streaming Profile Classification](xslt30-mode-1107-streaming-profile-classification-2026-09-02.md)
 - [XSLT30 Strip-Space Denominator and Exact Strip-All Execution](xslt30-strip-space-denominator-and-strip-all-2026-09-02.md)
 - [XSLT30 Built-In Template Mode Propagation](xslt30-built-in-template-mode-propagation-2026-09-02.md)

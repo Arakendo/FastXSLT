@@ -22,6 +22,7 @@ pub(crate) struct StylesheetProgram {
     pub(crate) default_initial_mode: Option<String>,
     pub(crate) source_whitespace: SourceWhitespacePolicy,
     pub(crate) typed_mode_requirements: Vec<TypedModeRequirement>,
+    pub(crate) private_initial_modes: Vec<PrivateInitialMode>,
     pub(crate) mode_policies: Vec<ModePolicy>,
     pub(crate) output: OutputSettings,
     pub(crate) output_specified_properties: Vec<String>,
@@ -47,6 +48,12 @@ impl StylesheetProgram {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TypedModeRequirement {
+    pub(crate) name: String,
+    pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct PrivateInitialMode {
     pub(crate) name: String,
     pub(crate) location: SourceLocation,
 }

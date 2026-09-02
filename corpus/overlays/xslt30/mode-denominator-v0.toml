@@ -567,6 +567,12 @@ execution = "passed"
 rationale = "The principal stylesheet's higher-precedence on-no-match=fail declaration overrides the imported shallow-copy policy for named mode s and reports the unchanged XTDE0555 result."
 
 [[case_override]]
+case_name = "mode-1902"
+selection = "selected"
+execution = "passed"
+rationale = "The principal stylesheet's private declaration for imported named mode X is retained into invocation admission and reports the unchanged XTDE0045 result when selected as initial mode."
+
+[[case_override]]
 case_name = "mode-1107a"
 selection = "excluded-by-profile"
 execution = "not-run"

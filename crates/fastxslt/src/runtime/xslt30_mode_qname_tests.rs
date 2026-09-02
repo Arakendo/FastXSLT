@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 86] = [
+const SELECTED_CASES: [&str; 87] = [
     "mode-0001",
     "mode-0003",
     "mode-0005",
@@ -104,6 +104,7 @@ const SELECTED_CASES: [&str; 86] = [
     "mode-1618",
     "mode-1619",
     "mode-1901",
+    "mode-1902",
     "mode-1904",
 ];
 const STREAMING_EXCLUDED_CASES: [&str; 29] = [
@@ -726,6 +727,32 @@ fn principal_mode_policy_overrides_imported_policy() {
 }
 
 #[test]
+fn private_principal_mode_cannot_be_selected_as_initial_mode() {
+    let document = load_test_set();
+    let case = find_case(&document, "mode-1902");
+    let expected_error = child_named(
+        &document,
+        child_named(&document, case, "result").expect("result metadata"),
+        "error",
+    )
+    .and_then(|error| attribute(&document, error, "code"));
+    assert_eq!(expected_error, Some("XTDE0045"));
+
+    let failure = execute_case_with_policy("mode-1902", MultipleMatchPolicy::UseLast)
+        .expect_err("private mode must not be available as an initial mode");
+    assert_eq!(failure.code, "XTDE0045");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+    assert_eq!(failure.request_id.as_deref(), Some("mode-1902"));
+    assert_eq!(
+        failure
+            .location
+            .as_ref()
+            .map(|location| location.resource.as_str()),
+        Some("https://example.invalid/xslt30/attr/mode/mode-1902.xsl")
+    );
+}
+
+#[test]
 fn executes_parentless_temporary_node_on_no_match_policies() {
     for case_name in ["mode-0001", "mode-0003", "mode-0005", "mode-0007"] {
         let (actual, expected) = execute_case(case_name);
@@ -799,6 +826,17 @@ fn execute_case_with_policy(
     admit_case_stylesheets(&mut resources, &directory, case_name, &stylesheet_files);
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, &stylesheet_id).expect("compile selected mode case");
+    if case_name == "mode-1902" {
+        assert_eq!(program.output.method.as_deref(), Some("xml"));
+        assert_eq!(program.output.encoding.as_deref(), Some("UTF-8"));
+        assert_eq!(program.output.indent, Some(false));
+        assert!(
+            program
+                .private_initial_modes
+                .iter()
+                .any(|mode| mode.name == "X")
+        );
+    }
     if matches!(case_name, "mode-0105" | "mode-0106") {
         assert!(program.matched_templates.iter().any(|template| {
             template
@@ -831,8 +869,7 @@ fn execute_case_with_policy(
         parameters,
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
-    })
-    .expect("admit mode request");
+    })?;
     let results = execute_transform_set(set.seal())?;
     Ok((results.by_request[case_name].serialized.clone(), expected))
 }
@@ -857,6 +894,15 @@ fn admit_case_stylesheets(
             .admit(
                 "https://example.invalid/xslt30/attr/mode/mode-0001.xsl",
                 fs::read(directory.join("mode-0001.xsl"))
+                    .expect("read imported mode stylesheet and close handle"),
+            )
+            .expect("admit imported mode stylesheet");
+    }
+    if case_name == "mode-1902" {
+        resources
+            .admit(
+                "https://example.invalid/xslt30/attr/mode/mode-1101.xsl",
+                fs::read(directory.join("mode-1101.xsl"))
                     .expect("read imported mode stylesheet and close handle"),
             )
             .expect("admit imported mode stylesheet");

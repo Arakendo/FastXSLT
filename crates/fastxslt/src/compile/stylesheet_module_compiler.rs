@@ -110,6 +110,9 @@ fn merge_included_program(
         .typed_mode_requirements
         .append(&mut included_program.typed_mode_requirements);
     program
+        .private_initial_modes
+        .append(&mut included_program.private_initial_modes);
+    program
         .mode_policies
         .append(&mut included_program.mode_policies);
     merge_included_character_maps(program, included_program.character_maps, location)?;
@@ -308,12 +311,20 @@ pub(crate) fn compile_stylesheet_with_imports(
             compile_imported_program(document, *root, precedence)
         })
         .collect::<Result<Vec<_>, _>>()?;
-    for program in &imported_programs {
-        validate_fully_shadowed_imported_output(
-            &principal_program,
-            program,
+    if imported_programs.len() == 1 {
+        merge_single_imported_output(
+            &mut principal_program,
+            &imported_programs[0],
             principal.location(root),
         )?;
+    } else {
+        for program in &imported_programs {
+            validate_fully_shadowed_imported_output(
+                &principal_program,
+                program,
+                principal.location(root),
+            )?;
+        }
     }
 
     let mut matched_templates = Vec::new();
@@ -423,8 +434,8 @@ pub(crate) fn compile_stylesheet_with_single_imported_program_at(
         -1,
         principal.location(principal_root),
     )?;
-    validate_fully_shadowed_imported_output(
-        &principal_program,
+    merge_single_imported_output(
+        &mut principal_program,
         &imported_program,
         principal.location(principal_root),
     )?;
@@ -520,6 +531,38 @@ fn validate_fully_shadowed_imported_output(
         ),
         location,
     ))
+}
+
+fn merge_single_imported_output(
+    principal: &mut StylesheetProgram,
+    imported: &StylesheetProgram,
+    location: &SourceLocation,
+) -> Result<(), CompileFailure> {
+    let unshadowed = imported
+        .output_specified_properties
+        .iter()
+        .filter(|property| !principal.output_specified_properties.contains(property))
+        .cloned()
+        .collect::<Vec<_>>();
+    if unshadowed
+        .iter()
+        .any(|property| !matches!(property.as_str(), "method" | "encoding" | "indent"))
+    {
+        return validate_fully_shadowed_imported_output(principal, imported, location);
+    }
+    for property in unshadowed {
+        match property.as_str() {
+            "method" => principal.output.method.clone_from(&imported.output.method),
+            "encoding" => principal
+                .output
+                .encoding
+                .clone_from(&imported.output.encoding),
+            "indent" => principal.output.indent = imported.output.indent,
+            _ => unreachable!("unadmitted output properties were rejected"),
+        }
+        principal.output_specified_properties.push(property);
+    }
+    Ok(())
 }
 
 fn compile_dependency_module(
@@ -649,6 +692,7 @@ fn compile_simplified_stylesheet_at(
         default_initial_mode: None,
         source_whitespace: SourceWhitespacePolicy::Preserve,
         typed_mode_requirements: Vec::new(),
+        private_initial_modes: Vec::new(),
         mode_policies: Vec::new(),
         output: default_output_settings(),
         output_specified_properties: Vec::new(),

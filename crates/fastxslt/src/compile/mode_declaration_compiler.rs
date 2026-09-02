@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xslt::golden_semantics_experiment::{
-    ModePolicy, OnMultipleMatchPolicy, OnNoMatchPolicy, TypedModeRequirement,
+    ModePolicy, OnMultipleMatchPolicy, OnNoMatchPolicy, PrivateInitialMode, TypedModeRequirement,
 };
 
 use super::{
@@ -112,6 +112,7 @@ fn validate_on_no_match(
 
 pub(super) struct CompiledModeDeclaration {
     pub(super) typed_requirement: Option<TypedModeRequirement>,
+    pub(super) private_initial_mode: Option<PrivateInitialMode>,
     pub(super) policy: Option<ModePolicy>,
 }
 
@@ -140,7 +141,7 @@ pub(super) fn validate_mode_declaration(
     let names = lexical_name
         .map(|name| parse_template_modes(document, element, name))
         .transpose()?;
-    validate_visibility(
+    let is_private = validate_visibility(
         lexical_name.is_some(),
         optional_attribute(document, element, None, "visibility"),
         document,
@@ -181,12 +182,16 @@ pub(super) fn validate_mode_declaration(
             document.location(element),
         ));
     }
-    compile_mode_semantics(
-        document,
-        element,
-        names.and_then(|names| names.into_iter().next()),
-        typed,
-    )
+    let mode_name = names.and_then(|names| names.into_iter().next());
+    let private_initial_mode = is_private.then(|| PrivateInitialMode {
+        name: mode_name
+            .clone()
+            .expect("private visibility requires one validated named mode"),
+        location: document.location(element).clone(),
+    });
+    let mut declaration = compile_mode_semantics(document, element, mode_name, typed)?;
+    declaration.private_initial_mode = private_initial_mode;
+    Ok(declaration)
 }
 
 fn compile_mode_semantics(
@@ -210,6 +215,7 @@ fn compile_mode_semantics(
         });
         return Ok(CompiledModeDeclaration {
             typed_requirement,
+            private_initial_mode: None,
             policy,
         });
     }
@@ -223,6 +229,7 @@ fn compile_mode_semantics(
     }
     Ok(CompiledModeDeclaration {
         typed_requirement: None,
+        private_initial_mode: None,
         policy,
     })
 }
@@ -271,9 +278,9 @@ fn validate_visibility(
     visibility: Option<&str>,
     document: &Document,
     element: NodeId,
-) -> Result<(), CompileFailure> {
+) -> Result<bool, CompileFailure> {
     let Some(visibility) = visibility else {
-        return Ok(());
+        return Ok(false);
     };
     if !matches!(visibility, "public" | "private" | "final" | "abstract") {
         return Err(invalid(
@@ -291,9 +298,12 @@ fn validate_visibility(
             document.location(element),
         ));
     }
+    if is_named && visibility == "private" {
+        return Ok(true);
+    }
     Err(unsupported(
         "FXST1042",
-        "mode visibility semantics are outside the private declaration slice",
+        "only private named-mode invocation visibility is admitted",
         document.location(element),
     ))
 }
@@ -486,6 +496,42 @@ mod tests {
             assert_eq!(failure.code, "XTSE0020");
             assert_eq!(failure.category, CompileCategory::Invalid);
         }
+    }
+
+    #[test]
+    fn retains_only_private_named_mode_invocation_visibility() {
+        let parsed = parse_document(
+            "memory:private-mode.xsl",
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:mode name="m" visibility="private"/><xsl:template match="/" mode="m"><out/></xsl:template></xsl:stylesheet>"#,
+            ParseLimits {
+                max_events: 64,
+                max_depth: 8,
+            },
+        )
+        .expect("parse private mode fixture");
+        let document = Document::from_parsed(parsed).expect("build private mode fixture");
+        let program = compile_stylesheet(&document).expect("private named mode should compile");
+        assert_eq!(program.private_initial_modes.len(), 1);
+        assert_eq!(program.private_initial_modes[0].name, "m");
+        assert_eq!(
+            program.private_initial_modes[0].location.resource,
+            "memory:private-mode.xsl"
+        );
+
+        let parsed = parse_document(
+            "memory:public-mode.xsl",
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:mode name="m" visibility="public"/><xsl:template match="/" mode="m"><out/></xsl:template></xsl:stylesheet>"#,
+            ParseLimits {
+                max_events: 64,
+                max_depth: 8,
+            },
+        )
+        .expect("parse public mode fixture");
+        let document = Document::from_parsed(parsed).expect("build public mode fixture");
+        let failure = compile_stylesheet(&document)
+            .expect_err("broader component visibility remains unsupported");
+        assert_eq!(failure.code, "FXST1042");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
     }
 
     #[test]

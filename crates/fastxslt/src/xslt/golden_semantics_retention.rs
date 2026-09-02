@@ -19,6 +19,9 @@ impl StylesheetProgram {
             + vec_owned(&self.typed_mode_requirements, |item| {
                 item.name.capacity() + location_owned(&item.location)
             })
+            + vec_owned(&self.private_initial_modes, |item| {
+                item.name.capacity() + location_owned(&item.location)
+            })
             + vec_owned(&self.mode_policies, |item| {
                 option_string_owned(item.name.as_ref()) + location_owned(&item.location)
             })
