@@ -2415,3 +2415,108 @@ case_name = "K-SeqDeepEqualFunc-5"
 selection = "selected"
 execution = "passed"
 rationale = "Reports an empty third argument as the permitted standard XPTY0004 type error."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-5"
+selection = "selected"
+execution = "passed"
+rationale = "Reports a comment between the namespace-wildcard colon and local name as XPST0003."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-6"
+selection = "selected"
+execution = "passed"
+rationale = "Reports a comment between the wildcard token and namespace separator as XPST0003."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-7"
+selection = "selected"
+execution = "passed"
+rationale = "Reports whitespace before the namespace-wildcard separator as XPST0003."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-8"
+selection = "selected"
+execution = "passed"
+rationale = "Retains the independently identified commented wildcard separator case as XPST0003."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-9"
+selection = "selected"
+execution = "passed"
+rationale = "Reports whitespace before the local-name wildcard separator as XPST0003."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-10"
+selection = "selected"
+execution = "passed"
+rationale = "Reports a comment between a namespace name and wildcard separator as XPST0003."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-11"
+selection = "selected"
+execution = "passed"
+rationale = "Retains the independently identified spaced namespace-wildcard case as XPST0003."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-12"
+selection = "selected"
+execution = "passed"
+rationale = "Reports whitespace after the local-name wildcard separator as XPST0003."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-13"
+selection = "selected"
+execution = "passed"
+rationale = "Retains the second independently identified commented wildcard separator case as XPST0003."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-14"
+selection = "selected"
+execution = "passed"
+rationale = "Reports a comment between the namespace separator and local-name wildcard as XPST0003."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-15"
+selection = "selected"
+execution = "passed"
+rationale = "Reports comments and whitespace splitting a namespace wildcard name test as XPST0003."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-16"
+selection = "selected"
+execution = "passed"
+rationale = "Retains the independently identified comment after a namespace-wildcard separator as XPST0003."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-17"
+selection = "selected"
+execution = "passed"
+rationale = "Reports an incomplete namespace wildcard as XPST0003."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-29"
+selection = "selected"
+execution = "passed"
+rationale = "Reports the nonexistent preceding-or-ancestor axis as XPST0003."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-37"
+selection = "selected"
+execution = "passed"
+rationale = "Reports self() as an invalid node test on the parent axis as XPST0003."

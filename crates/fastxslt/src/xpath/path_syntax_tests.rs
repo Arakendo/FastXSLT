@@ -42,6 +42,31 @@ fn distinguishes_invalid_from_unsupported_path_syntax() {
 }
 
 #[test]
+fn classifies_malformed_namespace_wildcards_and_axis_node_tests() {
+    for expression in [
+        "*:(:comment:)name",
+        "* (:comment:):name",
+        "prefix: *",
+        "parent::self()",
+    ] {
+        let failure = parse_location_path(expression, location())
+            .expect_err("malformed path syntax must fail");
+        assert!(matches!(
+            failure,
+            PathFailure::Invalid {
+                standard_code: "XPST0003",
+                ..
+            }
+        ));
+    }
+
+    assert!(matches!(
+        parse_location_path("namespace::namespace-node()", location()),
+        Err(PathFailure::Unsupported { .. })
+    ));
+}
+
+#[test]
 fn accepts_supported_ncname_punctuation_without_claiming_unicode_names() {
     let path = parse_location_path("catalog/item.name/item-2/_value", location())
         .expect("ASCII NCName punctuation belongs to the private grammar");

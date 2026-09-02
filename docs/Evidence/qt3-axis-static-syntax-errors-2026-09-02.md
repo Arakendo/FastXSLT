@@ -2,7 +2,7 @@
 
 ## Result
 
-Seven unchanged cases from pinned QT3 `prod/AxisStep.xml` now execute through
+Twenty-two unchanged cases from pinned QT3 `prod/AxisStep.xml` now execute through
 the private location-path parser and its owned static-diagnostic assertion:
 
 - `Axes088`;
@@ -10,8 +10,13 @@ the private location-path parser and its owned static-diagnostic assertion:
 - `K2-Axes-77`; and
 - `K2-Axes-90` and `K2-Axes-91`.
 
+The second tranche adds `K2-Axes-5` through `K2-Axes-17`, `K2-Axes-29`, and
+`K2-Axes-37`.
+
 The cases cover a trailing empty step, a bare descendant separator, an unknown
-axis name, and an incomplete QName. Each is classified as invalid syntax with
+axis name, an incomplete QName, namespace-wildcard tokens split by comments or
+whitespace, an incomplete namespace wildcard, and an invalid axis node test.
+Each is classified as invalid syntax with
 the standard `XPST0003` code and retains its expression source location.
 Where QT3 permits more than one outcome, FastXSLT takes the explicit
 `XPST0003` alternative.
@@ -31,9 +36,7 @@ parsing must fail before dynamic context is relevant.
 
 ## Accounting
 
-The AxisStep denominator advances from 182 to 189 passes, retains 112
-XQuery-profile exclusions, and reduces visible default not-run cases from 55
-to 48. Across the two active QT3 denominators, the conserved subtotal is now
-340 passes, 179 profile exclusions, and 93 visible default not-run cases out of
-612.
-
+The AxisStep denominator now records 204 passes, retains 112 XQuery-profile
+exclusions, and has 33 visible default not-run cases. Across the two active QT3
+denominators, the conserved subtotal is now 360 passes, 179 profile exclusions,
+and 73 visible default not-run cases out of 612.

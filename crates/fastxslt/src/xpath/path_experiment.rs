@@ -348,6 +348,17 @@ fn validate_unambiguous_step_syntax(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<(), PathFailure> {
+    let has_malformed_namespace_wildcard = steps.iter().any(|step| {
+        step.contains(':')
+            && !step.contains("::")
+            && (step.contains("(:") || step.chars().any(char::is_whitespace))
+    });
+    if has_malformed_namespace_wildcard {
+        return Err(invalid_syntax(
+            format!("the location path contains a malformed namespace wildcard: {expression}"),
+            location,
+        ));
+    }
     let has_unknown_axis = steps.iter().any(|step| {
         step.split_once("::").is_some_and(|(axis, _)| {
             !matches!(
@@ -374,6 +385,19 @@ fn validate_unambiguous_step_syntax(
             location,
         ));
     }
+    let has_invalid_axis_node_test = steps.iter().any(|step| {
+        step.split_once("::").is_some_and(|(_, node_test)| {
+            node_test
+                .strip_suffix("()")
+                .is_some_and(|name| !is_standard_kind_test_name(name))
+        })
+    });
+    if has_invalid_axis_node_test {
+        return Err(invalid_syntax(
+            format!("the location path contains an invalid axis node test: {expression}"),
+            location,
+        ));
+    }
     if steps.iter().any(|step| step.ends_with(':')) {
         return Err(invalid_syntax(
             format!("the location path contains an incomplete QName: {expression}"),
@@ -381,6 +405,22 @@ fn validate_unambiguous_step_syntax(
         ));
     }
     Ok(())
+}
+
+fn is_standard_kind_test_name(name: &str) -> bool {
+    matches!(
+        name,
+        "attribute"
+            | "comment"
+            | "document-node"
+            | "element"
+            | "namespace-node"
+            | "node"
+            | "processing-instruction"
+            | "schema-attribute"
+            | "schema-element"
+            | "text"
+    )
 }
 
 fn invalid_syntax(detail: impl Into<String>, location: &SourceLocation) -> PathFailure {

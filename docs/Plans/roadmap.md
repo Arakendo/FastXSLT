@@ -1283,7 +1283,7 @@ conformance percentage or a promise about unselected cases.
 | Family | Current authority | Current state |
 | --- | --- | --- |
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
-| QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 345 explicitly selected cases execute through two suite-specific XPath adapters. |
+| QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 360 explicitly selected cases execute through two suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 11 complete test-set denominators plus one separate AVT pressure case have first-party records. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
@@ -1331,11 +1331,11 @@ expression has been admitted is not hidden by broader upstream metadata:
 
 | QT3 test set | Native cases | Selected and passed | Profile excluded | Visible default not run |
 | --- | ---: | ---: | ---: | ---: |
-| `prod/AxisStep.xml` | 349 | 189 | 112 | 48 |
+| `prod/AxisStep.xml` | 349 | 204 | 112 | 33 |
 | `fn/deep-equal.xml` | 263 | 156 | 67 | 40 |
-| **Audited subtotal** | **612** | **345** | **179** | **88** |
+| **Audited subtotal** | **612** | **360** | **179** | **73** |
 
-The 612-case subtotal is therefore conserved without relabeling the 88
+The 612-case subtotal is therefore conserved without relabeling the 73
 unclassified siblings as engine failures. The 179 exclusions describe the
 current XPath-in-XSLT profile and remain overridable by explicit case admission.
 The other 31,209 QT3 cases remain
@@ -1384,8 +1384,8 @@ count:
    execution.
 3. [x] Give `AxisStep.xml` and `fn/deep-equal.xml` complete QT3 overlays so all
    612 parent-set cases receive a selection disposition. The typed verifier
-   now conserves 345 selected passes, 179 native-dependency profile exclusions,
-   and 88 visible default not-run cases against the immutable upstream case
+   now conserves 360 selected passes, 179 native-dependency profile exclusions,
+   and 73 visible default not-run cases against the immutable upstream case
    identities. Explicit selection takes priority over a dependency rule.
 4. [ ] Add complete denominators deliberately, selected by standards and
    implementation pressure rather than easy-case sampling. The remaining
@@ -1592,11 +1592,12 @@ implemented behavior belongs to a named standards slice.
   final zero-argument `normalize-space()` predicate over text nodes, use XML
   whitespace and effective-boolean-value semantics, retain exact candidate
   work charging, and import the larger pinned source under explicit limits.
-- [x] Execute the seven unchanged AxisStep static-syntax cases `Axes088`,
-  `K2-Axes-34`, `-35`, `-46`, `-77`, `-90`, and `-91`. Preserve `XPST0003`
-  and expression locations for trailing empty steps, a bare descendant
-  separator, an unknown axis name, and incomplete QNames while leaving valid
-  unimplemented forms classified as unsupported.
+- [x] Execute 22 unchanged AxisStep static-syntax cases: `Axes088`,
+  `K2-Axes-5` through `-17`, `-29`, `-34`, `-35`, `-37`, `-46`, `-77`, `-90`,
+  and `-91`. Preserve `XPST0003` and expression locations for malformed
+  namespace wildcards, trailing empty steps, a bare descendant separator,
+  unknown axes, an invalid axis node test, and incomplete QNames while leaving
+  valid unimplemented forms classified as unsupported.
 - [x] Admit and execute the complete two-case XSLT30 `fn/deep-equal` denominator
   through positioned descendant attribute/comment selection and charged,
   pairwise node comparison. Preserve distinct XDM identity while comparing

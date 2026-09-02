@@ -10,10 +10,25 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use super::count_experiment;
 
 const QT3_NAMESPACE: &str = "http://www.w3.org/2010/09/qt-fots-catalog";
-const STATIC_SYNTAX_ERROR_CASES: [(&str, &str); 7] = [
+const STATIC_SYNTAX_ERROR_CASES: [(&str, &str); 22] = [
     ("Axes088", "/*/"),
+    ("K2-Axes-5", "*:(:hey:)ncname"),
+    ("K2-Axes-6", "*(:hey:):ncname"),
+    ("K2-Axes-7", "* :ncname"),
+    ("K2-Axes-8", "*(:hey:):ncname"),
+    ("K2-Axes-9", "ncname :*"),
+    ("K2-Axes-10", "name(:hey:):*"),
+    ("K2-Axes-11", "* :ncname"),
+    ("K2-Axes-12", "ncname: *"),
+    ("K2-Axes-13", "*(:hey:):ncname"),
+    ("K2-Axes-14", "ncname:(:hey:)*"),
+    ("K2-Axes-15", "*(:hey:):(:hey:) ncname"),
+    ("K2-Axes-16", "*:(:hey:)ncname"),
+    ("K2-Axes-17", "*:"),
+    ("K2-Axes-29", "preceding-or-ancestor::*"),
     ("K2-Axes-34", "nametest//"),
     ("K2-Axes-35", "nametest/"),
+    ("K2-Axes-37", "parent::self()"),
     ("K2-Axes-46", "//"),
     ("K2-Axes-77", "preceeding::node()"),
     ("K2-Axes-90", "prefix:"),
