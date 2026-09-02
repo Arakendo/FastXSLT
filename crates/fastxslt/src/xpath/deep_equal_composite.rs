@@ -8,11 +8,17 @@ pub(super) struct ValueSequence(Vec<Value>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Value {
-    Integer(i128),
+    Number(Number),
     Boolean(bool),
     String(String),
     Array(Vec<ValueSequence>),
-    Map(Vec<(i128, ValueSequence)>),
+    Map(Vec<(Number, ValueSequence)>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Number {
+    Finite { coefficient: i128, scale: u32 },
+    NaN,
 }
 
 const MAX_LITERAL_COMPOSITE_DEPTH: usize = 64;
@@ -41,8 +47,8 @@ fn parse_at_depth(expression: &str, depth: usize) -> Option<ValueSequence> {
     if expression == "()" {
         return Some(ValueSequence(Vec::new()));
     }
-    if let Ok(value) = expression.parse::<i128>() {
-        return Some(ValueSequence(vec![Value::Integer(value)]));
+    if let Some(value) = parse_number(expression) {
+        return Some(ValueSequence(vec![Value::Number(value)]));
     }
     if matches!(expression, "true()" | "false()") {
         return Some(ValueSequence(vec![Value::Boolean(expression == "true()")]));
@@ -84,10 +90,7 @@ fn parse_at_depth(expression: &str, depth: usize) -> Option<ValueSequence> {
                 .into_iter()
                 .map(|entry| {
                     let (key, value) = split_map_entry(entry)?;
-                    Some((
-                        key.trim().parse::<i128>().ok()?,
-                        parse_at_depth(value, depth + 1)?,
-                    ))
+                    Some((parse_number(key.trim())?, parse_at_depth(value, depth + 1)?))
                 })
                 .collect::<Option<Vec<_>>>()?
         };
@@ -117,11 +120,67 @@ fn parse_at_depth(expression: &str, depth: usize) -> Option<ValueSequence> {
 }
 
 fn split_map_entry(entry: &str) -> Option<(&str, &str)> {
-    let (key, value) = entry.split_once(':')?;
-    if value.contains(':') {
+    let mut parenthesis_depth = 0_u32;
+    let mut square_depth = 0_u32;
+    let mut curly_depth = 0_u32;
+    let mut in_string = false;
+    for (index, character) in entry.char_indices() {
+        match character {
+            '\'' => in_string = !in_string,
+            '(' if !in_string => parenthesis_depth = parenthesis_depth.checked_add(1)?,
+            ')' if !in_string => parenthesis_depth = parenthesis_depth.checked_sub(1)?,
+            '[' if !in_string => square_depth = square_depth.checked_add(1)?,
+            ']' if !in_string => square_depth = square_depth.checked_sub(1)?,
+            '{' if !in_string => curly_depth = curly_depth.checked_add(1)?,
+            '}' if !in_string => curly_depth = curly_depth.checked_sub(1)?,
+            ':' if !in_string
+                && parenthesis_depth == 0
+                && square_depth == 0
+                && curly_depth == 0
+                && parse_number(entry[..index].trim()).is_some() =>
+            {
+                return Some((&entry[..index], &entry[index + 1..]));
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn parse_number(expression: &str) -> Option<Number> {
+    if matches!(expression, "xs:double('NaN')" | "xs:float('NaN')") {
+        return Some(Number::NaN);
+    }
+    let (mantissa, exponent) = expression
+        .split_once(['e', 'E'])
+        .map_or(Some((expression, 0_i32)), |(mantissa, exponent)| {
+            Some((mantissa, exponent.parse::<i32>().ok()?))
+        })?;
+    let negative = mantissa.starts_with('-');
+    let mantissa = mantissa.strip_prefix(['-', '+']).unwrap_or(mantissa);
+    let (whole, fraction) = mantissa.split_once('.').unwrap_or((mantissa, ""));
+    if whole.is_empty()
+        || !whole.bytes().all(|byte| byte.is_ascii_digit())
+        || !fraction.bytes().all(|byte| byte.is_ascii_digit())
+    {
         return None;
     }
-    Some((key, value))
+    let digits = format!("{whole}{fraction}");
+    let mut coefficient = digits.parse::<i128>().ok()?;
+    if negative {
+        coefficient = coefficient.checked_neg()?;
+    }
+    let mut scale = i32::try_from(fraction.len()).ok()?.checked_sub(exponent)?;
+    if scale < 0 {
+        coefficient = coefficient.checked_mul(10_i128.checked_pow(scale.unsigned_abs())?)?;
+        scale = 0;
+    }
+    let mut scale = u32::try_from(scale).ok()?;
+    while scale > 0 && coefficient % 10 == 0 {
+        coefficient /= 10;
+        scale -= 1;
+    }
+    Some(Number::Finite { coefficient, scale })
 }
 
 fn parse_string_literal(expression: &str) -> Option<String> {
@@ -187,7 +246,7 @@ pub(super) fn equals(
     for (left, right) in left.0.iter().zip(&right.0) {
         control.charge(WorkDomain::XPathOperation, 1)?;
         match (left, right) {
-            (Value::Integer(left), Value::Integer(right)) if left == right => {}
+            (Value::Number(left), Value::Number(right)) if left == right => {}
             (Value::Boolean(left), Value::Boolean(right)) if left == right => {}
             (Value::String(left), Value::String(right)) if left == right => {}
             (Value::Array(left), Value::Array(right)) => {
@@ -270,5 +329,21 @@ mod tests {
             .unwrap()
         );
         assert!(parse("map{1:true(), 1:false()}").is_none());
+    }
+
+    #[test]
+    fn numeric_keys_normalize_exactly_and_nan_uses_same_key_semantics() {
+        let mut control = InvocationControl::unbounded();
+        for (left, right) in [
+            ("map{1:true()}", "map{1.0:true()}"),
+            ("map{1:true()}", "map{1.0e0:true()}"),
+            (
+                "map{xs:double('NaN'):true()}",
+                "map{xs:float('NaN'):true()}",
+            ),
+        ] {
+            assert!(equals(&parse(left).unwrap(), &parse(right).unwrap(), &mut control).unwrap());
+        }
+        assert!(parse("map{1e999999999:true()}").is_none());
     }
 }

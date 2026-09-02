@@ -205,6 +205,14 @@ const MAP_LITERAL_CASES: [(&str, bool, usize); 6] = [
     ("fn-deep-equal-arrays-8", true, 6),
     ("fn-deep-equal-arrays-9", true, 12),
 ];
+const MAP_NUMERIC_CASES: [(&str, bool, usize); 6] = [
+    ("fn-deep-equal-maps-5", true, 6),
+    ("fn-deep-equal-maps-6", true, 6),
+    ("fn-deep-equal-maps-7", true, 6),
+    ("fn-deep-equal-maps-8", true, 6),
+    ("fn-deep-equal-maps-9", true, 13),
+    ("fn-deep-equal-maps-10", false, 9),
+];
 const MIXED_ATOMIC_CASES: [(&str, bool, usize); 31] = [
     ("fn-deep-equal-mix-args-001", false, 2),
     ("fn-deep-equal-mix-args-002", true, 3),
@@ -450,6 +458,11 @@ fn executes_qt3_array_string_and_sequence_tranche() {
 #[test]
 fn executes_qt3_map_literal_tranche() {
     execute_named_boolean_cases(&MAP_LITERAL_CASES);
+}
+
+#[test]
+fn executes_qt3_map_numeric_equivalence_tranche() {
+    execute_named_boolean_cases(&MAP_NUMERIC_CASES);
 }
 
 fn execute_named_true_cases(expected_cases: &[(&str, usize)]) {

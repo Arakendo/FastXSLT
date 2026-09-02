@@ -14,8 +14,8 @@ selected XPath pass despite its upstream `XQ10+` metadata.
 | QT3 test set | Total | Selected and passed | Profile excluded | Visible default not run |
 | --- | ---: | ---: | ---: | ---: |
 | `prod/AxisStep.xml` | 349 | 204 | 112 | 33 |
-| `fn/deep-equal.xml` | 263 | 175 | 67 | 21 |
-| **Conserved total** | **612** | **379** | **179** | **54** |
+| `fn/deep-equal.xml` | 263 | 181 | 67 | 15 |
+| **Conserved total** | **612** | **385** | **179** | **48** |
 
 ## Mechanical conservation
 
@@ -27,10 +27,10 @@ other than `harness-unsupported/not-run`. It also validates nonempty dependency
 rules and requires them to produce only `profile-excluded/not-run` outcomes.
 
 The verifier parses each immutable upstream test set, checks the exact 349 and
-263 unique case names, proves all 379 selected identities exist in the correct
+263 unique case names, proves all 385 selected identities exist in the correct
 parent set, reads native per-case dependency metadata, and proves the remaining
-179 profile exclusions plus 54 visible defaults. The private ledger is also
-checked to contain exactly those 379 cases and no third test-set family.
+179 profile exclusions plus 48 visible defaults. The private ledger is also
+checked to contain exactly those 385 cases and no third test-set family.
 
 The AxisStep and deep-equal execution adapters now ask this typed loader for
 their selected/pass authority. They no longer establish admission by splitting
@@ -38,7 +38,7 @@ TOML text or searching for a case-name substring.
 
 ## Boundary
 
-This change does not convert the 54 defaults into engine failures, assert that
+This change does not convert the 48 defaults into engine failures, assert that
 their semantics are unsupported by FastXSLT, or classify the other 31,209 QT3
 catalog cases. The 179 exclusions describe the current XPath-in-XSLT profile,
 not an inability to implement an individual expression; an individual case can
@@ -62,6 +62,6 @@ private unsupported classification.
 Thirteen literal-array cases establish bounded XDM-array comparison, including
 member-sequence and top-level sequence boundaries.
 [Evidence](qt3-deep-equal-array-literals-2026-09-02.md)
-Six empty or integer-keyed literal-map cases establish order-independent map
-entry comparison, including maps nested as array members.
+Twelve literal-map cases establish order-independent map entry comparison,
+numeric key equivalence, NaN same-key behavior, and array-valued entries.
 [Evidence](qt3-deep-equal-map-literals-2026-09-02.md)

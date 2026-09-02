@@ -2653,3 +2653,45 @@ case_name = "fn-deep-equal-arrays-9"
 selection = "selected"
 execution = "passed"
 rationale = "Compares reordered integer-keyed maps retained inside arrays."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-maps-5"
+selection = "selected"
+execution = "passed"
+rationale = "Matches integer and decimal map keys by normalized numeric value."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-maps-6"
+selection = "selected"
+execution = "passed"
+rationale = "Matches integer and exponent-form double map keys by normalized numeric value."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-maps-7"
+selection = "selected"
+execution = "passed"
+rationale = "Matches corresponding xs:double NaN map keys under same-key semantics."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-maps-8"
+selection = "selected"
+execution = "passed"
+rationale = "Matches xs:double and xs:float NaN map keys under same-key semantics."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-maps-9"
+selection = "selected"
+execution = "passed"
+rationale = "Compares numerically equivalent keys and array member values across integer and decimal forms."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-maps-10"
+selection = "selected"
+execution = "passed"
+rationale = "Preserves array member order while comparing corresponding map values."
