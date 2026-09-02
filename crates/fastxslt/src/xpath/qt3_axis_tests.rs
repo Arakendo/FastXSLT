@@ -9,6 +9,11 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 use super::count_experiment;
 
+const EMPTY_SEQUENCE_PATH_CASES: [(&str, &str); 2] = [
+    ("K2-Axes-55", "empty(()/@attr)"),
+    ("K2-Axes-56", "empty(()/name)"),
+];
+
 const QT3_NAMESPACE: &str = "http://www.w3.org/2010/09/qt-fots-catalog";
 const STATIC_SYNTAX_ERROR_CASES: [(&str, &str); 22] = [
     ("Axes088", "/*/"),
@@ -340,7 +345,7 @@ fn load_axis_test_set() -> (Document, PathBuf) {
 fn executes_qt3_axes001_through_axes084_admitted_location_path_groups() {
     crate::qt3_overlay_test_support::assert_selected_count(
         "prod/AxisStep.xml",
-        CASES.len() + STATIC_SYNTAX_ERROR_CASES.len(),
+        CASES.len() + STATIC_SYNTAX_ERROR_CASES.len() + EMPTY_SEQUENCE_PATH_CASES.len(),
     );
     let (test_set, set_path) = load_axis_test_set();
     let set_directory = set_path
@@ -426,6 +431,55 @@ fn executes_qt3_axes001_through_axes084_admitted_location_path_groups() {
 
         assert_eq!(actual, asserted, "native QT3 assertion for {case_name}");
         assert!(control.consumed(WorkDomain::XPathNodeVisit) > 0);
+    }
+}
+
+#[test]
+fn executes_qt3_empty_sequence_path_cases() {
+    use super::empty_experiment;
+
+    let (test_set, _) = load_axis_test_set();
+    let parsed = parse_document(
+        "memory:unused.xml",
+        b"<unused attribute='value'><child/></unused>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 8,
+        },
+    )
+    .expect("unused document should parse");
+    let document = Document::from_parsed(parsed).expect("unused XDM should build");
+
+    for (case_name, expected_expression) in EMPTY_SEQUENCE_PATH_CASES {
+        crate::qt3_overlay_test_support::assert_private_case_passed("prod/AxisStep.xml", case_name);
+        let test_case = find_element(
+            &test_set,
+            test_set.document_node(),
+            "test-case",
+            Some(("name", case_name)),
+        )
+        .expect("admitted QT3 empty-sequence path case");
+        let expression = find_element(&test_set, test_case, "test", None)
+            .map(|node| test_set.string_value(node).trim().to_owned())
+            .expect("QT3 empty-sequence path expression");
+        assert_eq!(expression, expected_expression, "{case_name}");
+        assert!(
+            find_element(&test_set, test_case, "assert-true", None).is_some(),
+            "{case_name} must retain its native successful alternative"
+        );
+        let mut control = InvocationControl::unbounded();
+        let actual = empty_experiment::evaluate(
+            &expression,
+            &document,
+            SourceLocation {
+                resource: format!("urn:w3c:qt3:{case_name}:expression"),
+                span: 0..expression.len(),
+            },
+            &mut control,
+        )
+        .expect("execute admitted QT3 empty-sequence path expression");
+        assert!(actual, "native QT3 assertion for {case_name}");
+        assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 0);
     }
 }
 

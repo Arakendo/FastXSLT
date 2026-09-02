@@ -2709,3 +2709,17 @@ case_name = "fn-deep-equal-maps-15"
 selection = "selected"
 execution = "passed"
 rationale = "Folds bounded literal map:remove before comparing the remaining string-valued entry."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-55"
+selection = "selected"
+execution = "passed"
+rationale = "Applies an attribute step to the empty sequence and preserves an empty result without visiting the supplied document."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-56"
+selection = "selected"
+execution = "passed"
+rationale = "Applies a child step to the empty sequence and preserves an empty result without visiting the supplied document."

@@ -40,6 +40,7 @@ impl LocationPath {
 enum PathOrigin {
     ContextItem,
     DocumentNode,
+    EmptySequence,
     Relative,
     Descendant,
 }
@@ -457,7 +458,9 @@ fn parse_final_context_predicate(expression: &str) -> (&str, Option<FinalContext
 }
 
 fn parse_path_origin(expression: &str) -> (&str, PathOrigin) {
-    if let Some(expression) = expression.strip_prefix("//") {
+    if let Some(expression) = expression.strip_prefix("()/") {
+        (expression, PathOrigin::EmptySequence)
+    } else if let Some(expression) = expression.strip_prefix("//") {
         (expression, PathOrigin::Descendant)
     } else if let Some(expression) = expression.strip_prefix('/') {
         (expression, PathOrigin::DocumentNode)
@@ -620,9 +623,14 @@ pub(crate) fn evaluate_location_path_controlled(
             control.charge(WorkDomain::XPathNodeVisit, 1)?;
             return Ok(vec![document.document_node()]);
         }
-        PathOrigin::DocumentNode | PathOrigin::Relative | PathOrigin::Descendant => {}
+        PathOrigin::DocumentNode
+        | PathOrigin::EmptySequence
+        | PathOrigin::Relative
+        | PathOrigin::Descendant => {}
     }
-    let mut current = if matches!(
+    let mut current = if path.origin == PathOrigin::EmptySequence {
+        Vec::new()
+    } else if matches!(
         path.origin,
         PathOrigin::DocumentNode | PathOrigin::Descendant
     ) {

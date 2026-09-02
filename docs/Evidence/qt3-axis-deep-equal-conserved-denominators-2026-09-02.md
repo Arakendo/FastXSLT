@@ -13,9 +13,9 @@ selected XPath pass despite its upstream `XQ10+` metadata.
 
 | QT3 test set | Total | Selected and passed | Profile excluded | Visible default not run |
 | --- | ---: | ---: | ---: | ---: |
-| `prod/AxisStep.xml` | 349 | 204 | 112 | 33 |
+| `prod/AxisStep.xml` | 349 | 206 | 112 | 31 |
 | `fn/deep-equal.xml` | 263 | 183 | 67 | 13 |
-| **Conserved total** | **612** | **387** | **179** | **46** |
+| **Conserved total** | **612** | **389** | **179** | **44** |
 
 ## Mechanical conservation
 
@@ -27,10 +27,10 @@ other than `harness-unsupported/not-run`. It also validates nonempty dependency
 rules and requires them to produce only `profile-excluded/not-run` outcomes.
 
 The verifier parses each immutable upstream test set, checks the exact 349 and
-263 unique case names, proves all 387 selected identities exist in the correct
+263 unique case names, proves all 389 selected identities exist in the correct
 parent set, reads native per-case dependency metadata, and proves the remaining
-179 profile exclusions plus 46 visible defaults. The private ledger is also
-checked to contain exactly those 387 cases and no third test-set family.
+179 profile exclusions plus 44 visible defaults. The private ledger is also
+checked to contain exactly those 389 cases and no third test-set family.
 
 The AxisStep and deep-equal execution adapters now ask this typed loader for
 their selected/pass authority. They no longer establish admission by splitting
@@ -38,7 +38,7 @@ TOML text or searching for a case-name substring.
 
 ## Boundary
 
-This change does not convert the 46 defaults into engine failures, assert that
+This change does not convert the 44 defaults into engine failures, assert that
 their semantics are unsupported by FastXSLT, or classify the other 31,209 QT3
 catalog cases. The 179 exclusions describe the current XPath-in-XSLT profile,
 not an inability to implement an individual expression; an individual case can
@@ -68,3 +68,6 @@ numeric key equivalence, NaN same-key behavior, and array-valued entries.
 Two literal composite-update cases fold bounded array replacement/removal and
 map removal before using the same recursive equality oracle.
 [Evidence](qt3-deep-equal-composite-updates-2026-09-02.md)
+Two empty-sequence path cases now prove that attribute and child steps over an
+empty input remain empty without visiting the otherwise supplied document.
+[Evidence](qt3-axis-empty-sequence-paths-2026-09-02.md)
