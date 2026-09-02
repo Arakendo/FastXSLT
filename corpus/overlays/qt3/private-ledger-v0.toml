@@ -2723,3 +2723,73 @@ case_name = "K2-Axes-56"
 selection = "selected"
 execution = "passed"
 rationale = "Applies a child step to the empty sequence and preserves an empty result without visiting the supplied document."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-38"
+selection = "selected"
+execution = "passed"
+rationale = "Reports XPTY0020 when a parent-axis step receives a statically known integer context item inside a predicate."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-39"
+selection = "selected"
+execution = "passed"
+rationale = "Reports XPTY0020 when a child-axis element test receives a statically known integer context item inside a predicate."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-50"
+selection = "selected"
+execution = "passed"
+rationale = "Reports XPTY0019 before navigation when the left path operand is a statically known integer."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-53"
+selection = "selected"
+execution = "passed"
+rationale = "Reports XPTY0019 before navigation when a positional filter leaves a statically known atomic path operand."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "statictypingaxis-1"
+selection = "selected"
+execution = "passed"
+rationale = "Reports XPTY0019 for a child step whose left operand is a parenthesized integer."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "statictypingaxis-2"
+selection = "selected"
+execution = "passed"
+rationale = "Reports XPTY0019 for a self step whose left operand is a parenthesized integer."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "statictypingaxis-3"
+selection = "selected"
+execution = "passed"
+rationale = "Reports XPTY0019 for an attribute step whose left operand is a parenthesized integer."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "statictypingaxis-4"
+selection = "selected"
+execution = "passed"
+rationale = "Reports XPTY0019 for a parent step whose left operand is a parenthesized integer."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "statictypingaxis-5"
+selection = "selected"
+execution = "passed"
+rationale = "Reports XPTY0019 for a descendant step whose left operand is a parenthesized integer."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "statictypingaxis-6"
+selection = "selected"
+execution = "passed"
+rationale = "Reports XPTY0019 for a descendant-or-self step whose left operand is a parenthesized integer."

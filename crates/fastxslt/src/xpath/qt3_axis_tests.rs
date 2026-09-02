@@ -13,6 +13,26 @@ const EMPTY_SEQUENCE_PATH_CASES: [(&str, &str); 2] = [
     ("K2-Axes-55", "empty(()/@attr)"),
     ("K2-Axes-56", "empty(()/name)"),
 ];
+const ATOMIC_PATH_TYPE_CASES: [(&str, &str, &str); 10] = [
+    ("K2-Axes-38", "123[..]", "XPTY0020"),
+    ("K2-Axes-39", "1[element()]", "XPTY0020"),
+    ("K2-Axes-50", "1/3", "XPTY0019"),
+    (
+        "K2-Axes-53",
+        "(1, 2, 3)[1]/(1, 2)[last()]/\"a string\"",
+        "XPTY0019",
+    ),
+    ("statictypingaxis-1", "(10)/child::*", "XPTY0019"),
+    ("statictypingaxis-2", "(10)/self::*", "XPTY0019"),
+    ("statictypingaxis-3", "(10)/attribute::*", "XPTY0019"),
+    ("statictypingaxis-4", "(10)/parent::*", "XPTY0019"),
+    ("statictypingaxis-5", "(10)/descendant::*", "XPTY0019"),
+    (
+        "statictypingaxis-6",
+        "(10)/descendant-or-self::*",
+        "XPTY0019",
+    ),
+];
 
 const QT3_NAMESPACE: &str = "http://www.w3.org/2010/09/qt-fots-catalog";
 const STATIC_SYNTAX_ERROR_CASES: [(&str, &str); 22] = [
@@ -322,6 +342,16 @@ fn find_element(
     None
 }
 
+fn has_error_code(document: &Document, parent: NodeId, required_code: &str) -> bool {
+    document.children(parent).iter().copied().any(|child| {
+        document.kind(child) == NodeKind::Element
+            && ((document.name(child).is_some_and(|name| {
+                name.namespace.as_deref() == Some(QT3_NAMESPACE) && name.local == "error"
+            }) && attribute(document, child, "code") == Some(required_code))
+                || has_error_code(document, child, required_code))
+    })
+}
+
 fn load_axis_test_set() -> (Document, PathBuf) {
     let path =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../vendor/qt3tests/prod/AxisStep.xml");
@@ -345,7 +375,10 @@ fn load_axis_test_set() -> (Document, PathBuf) {
 fn executes_qt3_axes001_through_axes084_admitted_location_path_groups() {
     crate::qt3_overlay_test_support::assert_selected_count(
         "prod/AxisStep.xml",
-        CASES.len() + STATIC_SYNTAX_ERROR_CASES.len() + EMPTY_SEQUENCE_PATH_CASES.len(),
+        CASES.len()
+            + STATIC_SYNTAX_ERROR_CASES.len()
+            + EMPTY_SEQUENCE_PATH_CASES.len()
+            + ATOMIC_PATH_TYPE_CASES.len(),
     );
     let (test_set, set_path) = load_axis_test_set();
     let set_directory = set_path
@@ -480,6 +513,40 @@ fn executes_qt3_empty_sequence_path_cases() {
         .expect("execute admitted QT3 empty-sequence path expression");
         assert!(actual, "native QT3 assertion for {case_name}");
         assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 0);
+    }
+}
+
+#[test]
+fn reports_qt3_statically_known_atomic_path_type_errors() {
+    use super::path_operand_type_experiment;
+
+    let (test_set, _) = load_axis_test_set();
+    for (case_name, expected_expression, expected_code) in ATOMIC_PATH_TYPE_CASES {
+        crate::qt3_overlay_test_support::assert_private_case_passed("prod/AxisStep.xml", case_name);
+        let test_case = find_element(
+            &test_set,
+            test_set.document_node(),
+            "test-case",
+            Some(("name", case_name)),
+        )
+        .expect("admitted QT3 atomic path type case");
+        let expression = find_element(&test_set, test_case, "test", None)
+            .map(|node| test_set.string_value(node).trim().to_owned())
+            .expect("QT3 atomic path expression");
+        assert_eq!(expression, expected_expression, "{case_name}");
+        assert!(
+            has_error_code(&test_set, test_case, expected_code),
+            "{case_name} native assertion must permit {expected_code}"
+        );
+        let location = SourceLocation {
+            resource: format!("urn:w3c:qt3:{case_name}:expression"),
+            span: 0..expression.len(),
+        };
+        let failure = path_operand_type_experiment::classify(&expression, location.clone())
+            .expect("statically known atomic path must report a type error");
+        assert_eq!(failure.standard_code, expected_code, "{case_name}");
+        assert_eq!(failure.location, location, "{case_name}");
+        assert!(!failure.detail.is_empty(), "{case_name}");
     }
 }
 

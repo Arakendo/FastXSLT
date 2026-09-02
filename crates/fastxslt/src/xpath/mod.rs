@@ -30,6 +30,8 @@ pub(crate) mod integer_for_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod path_experiment;
 #[cfg(test)]
+pub(crate) mod path_operand_type_experiment;
+#[cfg(test)]
 mod qt3_axis_tests;
 #[cfg(test)]
 mod qt3_deep_equal_tests;
