@@ -425,6 +425,9 @@ qualified attribute retains the exact prefix binding it consumes, and an
 admitted arbitrary foreign namespace retains its prefix. HTML URI attributes, raw-text
 handling, arbitrary element and attribute vocabularies, general namespace
 fixup, and other HTML versions remain outside this successful slice.
+An independent HTML 5 character-map slice admits only the unchanged
+`doc/a/@value` corpus shape and applies the compiled map to both text and
+attribute values; it does not widen the ordinary HTML 5 element vocabulary.
 The predefined XML namespace serializes attributes with the reserved `xml`
 prefix without requiring an authored declaration. Other namespaced literal
 result attributes remain outside the current private compilation slice.

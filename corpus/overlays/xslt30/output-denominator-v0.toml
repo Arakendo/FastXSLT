@@ -896,6 +896,12 @@ selection = "selected"
 execution = "passed"
 rationale = "Preserves an attribute and prefix binding in an unrelated foreign namespace on an HTML element."
 
+[[case_override]]
+case_name = "output-0604"
+selection = "selected"
+execution = "passed"
+rationale = "Applies the unchanged HTML 5 character map to both a text node and an unnamespaced attribute in the bounded doc/a result shape."
+
 [[assertion_family]]
 name = "all-of"
 count = 89

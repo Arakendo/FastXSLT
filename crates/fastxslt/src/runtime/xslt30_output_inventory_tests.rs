@@ -705,6 +705,14 @@ fn applies_multiple_character_maps_to_bounded_html_output() {
 }
 
 #[test]
+fn applies_an_html5_character_map_to_text_and_attribute_values() {
+    let execution = execute_output_case("output-0604", None);
+    assert_eq!(execution.method.as_deref(), Some("html"));
+    assert!(execution.actual.contains("value=\"ab[C]de\""));
+    assert!(execution.actual.contains("vw[X]yz"));
+}
+
+#[test]
 fn applies_multiple_character_maps_to_xml_output() {
     let execution = execute_assert_serialization_case("output-0309", "xml");
     assert_eq!(

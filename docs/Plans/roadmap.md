@@ -1060,6 +1060,13 @@ attribute or namespace support. The output denominator advances to 148 passes
 and 84 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-html5-attribute-namespaces-2026-09-01.md)
 
+The unchanged `output-0604` case now applies its compiled HTML 5 character map
+to both text and an unnamespaced attribute after copying the source document
+element. A separate validator admits only the exact `doc/a/@value` result shape,
+so this evidence does not widen the ordinary bounded HTML 5 vocabulary. The
+output denominator advances to 149 passes and 83 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-html5-character-map-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1101,8 +1108,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 148 | 0 | 0 | 84 |
-| **Conserved total** | **531** | **346** | **3** | **50** | **132** |
+| `decl/output` | 232 | 149 | 0 | 0 | 83 |
+| **Conserved total** | **531** | **347** | **3** | **50** | **131** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1156,7 +1163,7 @@ count:
    `apply-templates` case is schema-aware and the two remaining `include` cases
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
-2. [ ] Continue coherent semantic slices through the 84 visible `output`
+2. [ ] Continue coherent semantic slices through the 83 visible `output`
    gaps and 48 visible `mode` gaps. Each promotion still requires native
    metadata validation, a focused control, and an owned comparator or exact
    diagnostic—not merely successful stylesheet execution.

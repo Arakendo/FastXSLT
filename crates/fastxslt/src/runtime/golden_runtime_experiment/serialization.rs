@@ -138,6 +138,12 @@ fn validate_bounded_html_character_map_result(
     {
         return Ok(());
     }
+    if settings.html_version.as_deref() == Some("5")
+        && !settings.character_map.is_empty()
+        && is_bounded_html5_character_map_document(&result.children)
+    {
+        return Ok(());
+    }
     let significant: Vec<_> = result
         .children
         .iter()
@@ -152,6 +158,45 @@ fn validate_bounded_html_character_map_result(
         return Err(unsupported_html_result(request_id));
     }
     Ok(())
+}
+
+fn is_bounded_html5_character_map_document(nodes: &[ResultNode]) -> bool {
+    let significant: Vec<_> = nodes
+        .iter()
+        .filter(|node| {
+            !matches!(node, ResultNode::Text(value) if value.chars().all(char::is_whitespace))
+        })
+        .collect();
+    let [
+        ResultNode::Element {
+            name,
+            namespaces,
+            attributes,
+            children,
+        },
+    ] = significant.as_slice()
+    else {
+        return false;
+    };
+    name.namespace.is_none()
+        && name.local == "doc"
+        && namespaces.is_empty()
+        && attributes.is_empty()
+        && matches!(
+            children.as_slice(),
+            [ResultNode::Element {
+                name,
+                namespaces,
+                attributes,
+                children,
+            }] if name.namespace.is_none()
+                && name.local == "a"
+                && namespaces.is_empty()
+                && matches!(attributes.as_slice(), [attribute]
+                    if attribute.name.namespace.is_none()
+                        && attribute.name.local == "value")
+                && matches!(children.as_slice(), [ResultNode::Text(_)])
+        )
 }
 
 fn is_bounded_html5_document(nodes: &[ResultNode]) -> bool {
