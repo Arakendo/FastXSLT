@@ -1260,6 +1260,13 @@ fn executes_xml_and_text_with_normalization_form_none() {
 
     let text = execute_output_bytes_case("output-0170");
     assert_eq!(text, decomposed.as_bytes());
+
+    let html = execute_output_bytes_case("output-0161");
+    assert_eq!(
+        html,
+        format!("<html><body>{decomposed}</body></html>").as_bytes()
+    );
+    assert!(html.windows(3).any(|bytes| bytes == [0x41, 0xcc, 0x81]));
 }
 
 #[test]

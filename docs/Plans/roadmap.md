@@ -1120,6 +1120,14 @@ remains limited to one exact two-attribute meta in the bounded head shape. The
 output denominator advances to 171 passes and 60 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-html-content-type-replacement-2026-09-01.md)
 
+The unchanged `output-0161` case now composes HTML output with the retained
+`normalization-form="none"` setting and verifies the exact decomposed
+`41 CC 81` UTF-8 sequence. This extends the existing XML, XHTML, and text
+non-normalizing evidence without admitting NFC normalization; `output-0164`
+still needs NFC before URI percent encoding. The output denominator advances to
+172 passes and 59 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-html-normalization-none-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1161,8 +1169,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 171 | 0 | 1 | 60 |
-| **Conserved total** | **531** | **369** | **3** | **51** | **108** |
+| `decl/output` | 232 | 172 | 0 | 1 | 59 |
+| **Conserved total** | **531** | **370** | **3** | **51** | **107** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

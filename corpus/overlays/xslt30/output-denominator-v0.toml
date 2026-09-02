@@ -1040,6 +1040,12 @@ selection = "selected"
 execution = "passed"
 rationale = "Applies the unchanged HTML 5 character map to both a text node and an unnamespaced attribute in the bounded doc/a result shape."
 
+[[case_override]]
+case_name = "output-0161"
+selection = "selected"
+execution = "passed"
+rationale = "Retains normalization-form=none for HTML output and verifies that the exact decomposed A plus combining-acute UTF-8 sequence is not normalized."
+
 [[assertion_family]]
 name = "all-of"
 count = 89
