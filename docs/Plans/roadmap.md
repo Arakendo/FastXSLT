@@ -1137,6 +1137,14 @@ than widening FastXSLT to general HTML serialization. The output denominator
 advances to 173 passes and 58 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-html-ins-del-whitespace-2026-09-01.md)
 
+The unchanged `output-0162` and `output-0163` cases now exercise HTML through
+the UTF-8 byte-result lane with `byte-order-mark="yes"` and `"no"`. The first
+result begins with exactly `EF BB BF`; the second begins directly with the
+bounded `html/body` serialization. This reuses the charged byte boundary rather
+than teaching the string-result API to represent a BOM. The output denominator
+advances to 175 passes and 56 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-html-utf8-bom-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1178,8 +1186,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 173 | 0 | 1 | 58 |
-| **Conserved total** | **531** | **371** | **3** | **51** | **106** |
+| `decl/output` | 232 | 175 | 0 | 1 | 56 |
+| **Conserved total** | **531** | **373** | **3** | **51** | **104** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

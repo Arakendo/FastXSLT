@@ -1052,6 +1052,18 @@ selection = "selected"
 execution = "passed"
 rationale = "Preserves significant whitespace inside HTML del and ins elements while omitting whitespace-only stylesheet nodes between result instructions under indent=no."
 
+[[case_override]]
+case_name = "output-0162"
+selection = "selected"
+execution = "passed"
+rationale = "Executes UTF-8 HTML byte serialization with byte-order-mark=yes and verifies the exact leading mark and bounded html/body result bytes."
+
+[[case_override]]
+case_name = "output-0163"
+selection = "selected"
+execution = "passed"
+rationale = "Executes UTF-8 HTML byte serialization with byte-order-mark=no and verifies that the bounded html/body result has no leading mark."
+
 [[assertion_family]]
 name = "all-of"
 count = 89

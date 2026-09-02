@@ -380,6 +380,17 @@ fn executes_text_output_with_and_without_a_utf8_byte_order_mark() {
 }
 
 #[test]
+fn executes_html_output_with_and_without_a_utf8_byte_order_mark() {
+    let body = b"<html><body>Hello</body></html>";
+    let with_mark = execute_output_bytes_case("output-0162");
+    assert_eq!(&with_mark[..3], &[0xef, 0xbb, 0xbf]);
+    assert_eq!(&with_mark[3..], body);
+
+    let without_mark = execute_output_bytes_case("output-0163");
+    assert_eq!(without_mark, body);
+}
+
+#[test]
 fn executes_xhtml_byte_order_mark_boolean_variants() {
     let body = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\"><body>Hello</body></html>";
     for case_name in ["output-0136", "output-0136a", "output-0136b"] {
