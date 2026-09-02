@@ -1443,6 +1443,13 @@ rationale = "A source-free initial-template invocation applies the three native 
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0007"
+selection = "selected"
+execution = "passed"
+rationale = "A source-free initial-template invocation applies the three native on-no-match policies to an immutable parentless temporary attribute and attaches shallow-copy output to its containing literal result element."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-0015"
 selection = "selected"
 execution = "passed"

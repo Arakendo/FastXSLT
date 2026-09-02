@@ -18,10 +18,11 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 80] = [
+const SELECTED_CASES: [&str; 81] = [
     "mode-0001",
     "mode-0003",
     "mode-0005",
+    "mode-0007",
     "mode-0015",
     "mode-0101",
     "mode-0102",
@@ -667,7 +668,7 @@ fn executes_all_and_current_modes_across_copied_node_kinds() {
 
 #[test]
 fn executes_parentless_temporary_node_on_no_match_policies() {
-    for case_name in ["mode-0001", "mode-0003", "mode-0005"] {
+    for case_name in ["mode-0001", "mode-0003", "mode-0005", "mode-0007"] {
         let (actual, expected) = execute_case(case_name);
         assert_xml_equivalent(&actual, &expected);
     }

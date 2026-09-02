@@ -2,13 +2,13 @@ use std::mem::size_of;
 
 use super::{
     ApplySelection, BooleanExpression, CastExpression, CastableExpression, CharacterMapDefinition,
-    ChooseBranch, ComputedAttribute, ConstructedElement, ConstructedNode, DecimalSumForExpression,
-    DeepEqualBooleanExpression, ExpandedName, FocusSumForExpression, ForDistinctValuesExpression,
-    FormatNumberExpression, GlobalBinding, GlobalBindingDefault, Instruction, IntegerForExpression,
-    LiteralAttribute, LiteralAttributeValue, MatchPattern, MatchedTemplate, NamedTemplate,
-    NamespaceBinding, OutputSettings, SequenceItemExpression, SourceLocation, StylesheetProgram,
-    Template, TemplateArgument, TemplateArgumentValue, TemplateParameter, TemplateParameterDefault,
-    ValueExpression, VariableFilteredElementPath,
+    ChooseBranch, ComputedAttribute, ConstructedAttribute, ConstructedElement, ConstructedNode,
+    DecimalSumForExpression, DeepEqualBooleanExpression, ExpandedName, FocusSumForExpression,
+    ForDistinctValuesExpression, FormatNumberExpression, GlobalBinding, GlobalBindingDefault,
+    Instruction, IntegerForExpression, LiteralAttribute, LiteralAttributeValue, MatchPattern,
+    MatchedTemplate, NamedTemplate, NamespaceBinding, OutputSettings, SequenceItemExpression,
+    SourceLocation, StylesheetProgram, Template, TemplateArgument, TemplateArgumentValue,
+    TemplateParameter, TemplateParameterDefault, ValueExpression, VariableFilteredElementPath,
 };
 
 impl StylesheetProgram {
@@ -124,6 +124,9 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
             }
             GlobalBindingDefault::TemporaryText(value)
             | GlobalBindingDefault::TemporaryComment(value) => value.capacity(),
+            GlobalBindingDefault::TemporaryAttribute { name, value } => {
+                name_owned(name) + value.capacity()
+            }
             GlobalBindingDefault::TemporaryProcessingInstruction { target, value } => {
                 target.capacity() + value.capacity()
             }
@@ -133,7 +136,12 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
 fn constructed_element_owned(value: &ConstructedElement) -> usize {
     name_owned(&value.name)
         + vec_owned(&value.namespaces, namespace_owned)
+        + vec_owned(&value.attributes, constructed_attribute_owned)
         + vec_owned(&value.children, constructed_node_owned)
+}
+
+fn constructed_attribute_owned(value: &ConstructedAttribute) -> usize {
+    name_owned(&value.name) + value.value.capacity()
 }
 
 fn constructed_node_owned(value: &ConstructedNode) -> usize {

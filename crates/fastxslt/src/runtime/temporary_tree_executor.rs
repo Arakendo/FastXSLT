@@ -515,12 +515,17 @@ fn copy_temporary_focus(
                 children,
             }])
         }
-        TemporaryNodeKind::Attribute { .. } => Err(failure(
-            "FXRT1012",
-            FailureCategory::Unsupported,
-            Some(inputs.request_id),
-            "a standalone temporary attribute cannot be represented in the result-tree slice",
-        )),
+        TemporaryNodeKind::Attribute { name, value } => {
+            control
+                .charge(WorkDomain::ResultNode, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            Ok(vec![ResultNode::PendingAttribute(
+                super::result_tree::ResultAttribute {
+                    name: name.clone(),
+                    value: value.clone(),
+                },
+            )])
+        }
     }
 }
 

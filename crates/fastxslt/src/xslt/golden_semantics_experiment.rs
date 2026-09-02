@@ -94,6 +94,7 @@ pub(crate) enum GlobalBindingDefault {
     Variable(String),
     TemporaryTree(Vec<ConstructedElement>),
     TemporaryText(String),
+    TemporaryAttribute { name: ExpandedName, value: String },
     TemporaryComment(String),
     TemporaryProcessingInstruction { target: String, value: String },
 }

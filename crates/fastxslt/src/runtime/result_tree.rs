@@ -17,6 +17,7 @@ pub(super) enum ResultNode {
         attributes: Vec<ResultAttribute>,
         children: Vec<ResultNode>,
     },
+    PendingAttribute(ResultAttribute),
     Text(String),
     ProcessingInstruction {
         target: String,

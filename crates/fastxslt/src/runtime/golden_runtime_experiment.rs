@@ -995,11 +995,39 @@ fn execute_literal_element(
         inputs.request_id,
         control,
     )?);
+    let mut children = Vec::new();
+    for item in execute_sequence(inputs, body, execution, variables, control)? {
+        match item {
+            ResultNode::PendingAttribute(attribute) if children.is_empty() => {
+                if attributes
+                    .iter()
+                    .any(|existing| existing.name == attribute.name)
+                {
+                    return Err(failure(
+                        "XTDE0410",
+                        FailureCategory::Invalid,
+                        Some(inputs.request_id),
+                        "result element construction produced duplicate expanded attribute names",
+                    ));
+                }
+                attributes.push(attribute);
+            }
+            ResultNode::PendingAttribute(_) => {
+                return Err(failure(
+                    "XTDE0410",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    "result attributes must be constructed before result child nodes",
+                ));
+            }
+            child => children.push(child),
+        }
+    }
     Ok(ResultNode::Element {
         name: name.clone(),
         namespaces: namespaces.clone(),
         attributes,
-        children: execute_sequence(inputs, body, execution, variables, control)?,
+        children,
     })
 }
 

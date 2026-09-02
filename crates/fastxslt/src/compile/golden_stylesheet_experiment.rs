@@ -715,6 +715,42 @@ fn compile_parentless_temporary_node(
     let [constructor] = children.as_slice() else {
         return Ok(None);
     };
+    if is_xslt_element(document, *constructor, "attribute") {
+        if declared_type != Some("attribute()") {
+            return Err(unsupported(
+                "FXST1016",
+                "the private parentless attribute slice requires as='attribute()'",
+                document.location(element),
+            ));
+        }
+        ensure_only_attributes(document, *constructor, &["name"], "xsl:attribute")?;
+        let name = required_attribute(document, *constructor, None, "name")?;
+        if !is_ascii_ncname(name) {
+            return Err(unsupported(
+                "FXST1016",
+                "the private parentless attribute slice requires an unprefixed static NCName",
+                document.location(*constructor),
+            ));
+        }
+        if document
+            .children(*constructor)
+            .iter()
+            .any(|child| document.kind(*child) == NodeKind::Element)
+        {
+            return Err(unsupported(
+                "FXST1016",
+                "the private parentless attribute slice requires static text content",
+                document.location(*constructor),
+            ));
+        }
+        return Ok(Some(GlobalBindingDefault::TemporaryAttribute {
+            name: ExpandedName {
+                namespace: None,
+                local: name.to_owned(),
+            },
+            value: document.string_value(*constructor),
+        }));
+    }
     let (expected_type, instruction) = if is_xslt_element(document, *constructor, "text") {
         ("text()", compile_text(document, *constructor)?)
     } else if is_xslt_element(document, *constructor, "comment") {

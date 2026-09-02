@@ -31,10 +31,11 @@ entries continue through their previous paths.
 
 This slice does not admit typed global expressions generally. The constructor
 must be one statically known node and its declared type must match exactly.
-Parentless attributes remain outside the slice because copying an attribute
-into a containing result element requires an owned result-tree attribute
-attachment path, not a child-node approximation. Namespace nodes remain
-outside the current XDM representation.
+At this checkpoint, parentless attributes remained outside the slice because
+copying one required an owned result-tree attribute attachment path rather than
+a child-node approximation. That path was subsequently admitted by
+[the `mode-0007` evidence](xslt30-mode-parentless-attribute-policies-2026-09-02.md).
+Namespace nodes remain outside the current XDM representation.
 
 ## Denominator movement
 

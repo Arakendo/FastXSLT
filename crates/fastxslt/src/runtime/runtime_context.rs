@@ -229,6 +229,17 @@ fn materialize_global_default(
             )?;
             globals.temporary_trees.insert(binding.name.clone(), tree);
         }
+        GlobalBindingDefault::TemporaryAttribute { name, value } => {
+            let tree = materialize_parentless_temporary_node(
+                TemporaryNodeKind::Attribute {
+                    name: name.clone(),
+                    value: value.clone(),
+                },
+                request_id,
+                control,
+            )?;
+            globals.temporary_trees.insert(binding.name.clone(), tree);
+        }
         GlobalBindingDefault::TemporaryComment(value) => {
             let tree = materialize_parentless_temporary_node(
                 TemporaryNodeKind::Comment(value.clone()),

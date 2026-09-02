@@ -525,6 +525,12 @@ execution = "not-run"
 rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
 
 [[case_override]]
+case_name = "mode-0007"
+selection = "selected"
+execution = "passed"
+rationale = "The typed parentless attribute is immutable invocation state; shallow-copy attaches it to the containing result element, shallow-skip omits it, and text-only-copy emits its string value."
+
+[[case_override]]
 case_name = "mode-0015"
 selection = "selected"
 execution = "passed"

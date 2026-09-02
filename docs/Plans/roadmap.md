@@ -1279,6 +1279,14 @@ the first two policies. The mode denominator advances to 80 passes, 45 profile
 exclusions, and 44 visible default not-run cases.
 [Evidence](../Evidence/xslt30-mode-temporary-element-attribute-policies-2026-09-02.md)
 
+The unchanged source-free `mode-0007` case now materializes one typed
+parentless attribute. Shallow-copy attaches it to the surrounding literal
+result element through private pending construction state, shallow-skip omits
+it, and text-only-copy emits its value. Escaped, late, and duplicate result
+attributes remain explicit `XTDE0410` failures. The mode denominator advances
+to 81 passes, 45 profile exclusions, and 43 visible default not-run cases.
+[Evidence](../Evidence/xslt30-mode-parentless-attribute-policies-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1318,10 +1326,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 80 | 0 | 45 | 44 |
+| `attr/mode` | 169 | 81 | 0 | 45 | 43 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 198 | 0 | 1 | 33 |
-| **Conserved total** | **531** | **400** | **3** | **51** | **77** |
+| **Conserved total** | **531** | **401** | **3** | **51** | **76** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -2381,6 +2389,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   child descent, and select the unchanged `@bar` rule in `mode="#all"` without
   treating attributes as children. Dynamic temporary attributes, namespace
   nodes, and standalone attribute results remain outside this slice.
+- [x] Execute pinned `mode-0007` through one static typed parentless attribute.
+  Carry shallow-copy output as private pending construction state consumed by
+  the containing literal result element, preserve shallow-skip omission and
+  text-only-copy string value, and reject escaped, late, or duplicate result
+  attributes instead of representing them as children.
 - [ ] Establish explicit URI/resource resolution and execution limits.
   - [x] Route private principal-stylesheet acquisition through an exact,
     qualified-identity resolver over one sealed snapshot. Charge a fixed attempt
