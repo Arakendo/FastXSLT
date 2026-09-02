@@ -181,6 +181,9 @@ fn validate_bounded_html_result(
     if is_bounded_html_manual_script_document(&result.children) {
         return Ok(());
     }
+    if is_bounded_html_raw_text_whitespace_document(&result.children) {
+        return Ok(());
+    }
     if is_bounded_html_ins_del_document(&result.children) {
         return Ok(());
     }
@@ -305,6 +308,97 @@ fn is_bounded_manual_script(node: &ResultNode) -> bool {
             if attribute.name.namespace.is_none()
                 && attribute.name.local == "type"
                 && attribute.value == "text/javascript")
+        && matches!(children.as_slice(), [ResultNode::Text(_)])
+}
+
+fn is_bounded_html_raw_text_whitespace_document(nodes: &[ResultNode]) -> bool {
+    let significant: Vec<_> = nodes
+        .iter()
+        .filter(|node| !is_whitespace_text(node))
+        .collect();
+    let [html] = significant.as_slice() else {
+        return false;
+    };
+    let Some(html_children) = plain_html_children(html, "html") else {
+        return false;
+    };
+    let html_elements: Vec<_> = html_children
+        .iter()
+        .filter(|node| !is_whitespace_text(node))
+        .collect();
+    let [head, body] = html_elements.as_slice() else {
+        return false;
+    };
+    is_bounded_raw_text_head(head) && is_bounded_pre_textarea_body(body)
+}
+
+fn is_bounded_raw_text_head(node: &ResultNode) -> bool {
+    let Some(children) = plain_html_children(node, "head") else {
+        return false;
+    };
+    let elements: Vec<_> = children
+        .iter()
+        .filter(|child| !is_whitespace_text(child))
+        .collect();
+    matches!(elements.as_slice(), [script, style]
+        if is_bounded_manual_script(script)
+            && plain_html_children(style, "style")
+                .is_some_and(|children| matches!(children, [ResultNode::Text(_)])))
+}
+
+fn is_bounded_pre_textarea_body(node: &ResultNode) -> bool {
+    let Some(children) = plain_html_children(node, "body") else {
+        return false;
+    };
+    let elements: Vec<_> = children
+        .iter()
+        .filter(|child| !is_whitespace_text(child))
+        .collect();
+    matches!(elements.as_slice(), [pre, textarea]
+        if is_bounded_pre(pre) && is_bounded_textarea(textarea))
+}
+
+fn is_bounded_pre(node: &ResultNode) -> bool {
+    let Some(children) = plain_html_children(node, "pre") else {
+        return false;
+    };
+    let elements: Vec<_> = children
+        .iter()
+        .filter(|child| matches!(child, ResultNode::Element { .. }))
+        .collect();
+    matches!(elements.as_slice(), [bold]
+        if plain_html_children(bold, "b")
+            .is_some_and(|children| matches!(children, [ResultNode::Text(_)])))
+        && children.iter().all(|child| {
+            matches!(child, ResultNode::Text(_))
+                || elements.iter().any(|element| std::ptr::eq(*element, child))
+        })
+}
+
+fn is_bounded_textarea(node: &ResultNode) -> bool {
+    let ResultNode::Element {
+        name,
+        namespaces,
+        attributes,
+        children,
+    } = node
+    else {
+        return false;
+    };
+    name.namespace.is_none()
+        && name.local == "textarea"
+        && namespaces.is_empty()
+        && attributes.len() == 2
+        && attributes.iter().any(|attribute| {
+            attribute.name.namespace.is_none()
+                && attribute.name.local == "rows"
+                && attribute.value == "2"
+        })
+        && attributes.iter().any(|attribute| {
+            attribute.name.namespace.is_none()
+                && attribute.name.local == "cols"
+                && attribute.value == "20"
+        })
         && matches!(children.as_slice(), [ResultNode::Text(_)])
 }
 

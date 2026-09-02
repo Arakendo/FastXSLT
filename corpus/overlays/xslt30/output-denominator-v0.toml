@@ -1070,6 +1070,12 @@ selection = "selected"
 execution = "passed"
 rationale = "Emits the manually escaped script content as HTML raw text in the exact bounded html/head/script/body result shape."
 
+[[case_override]]
+case_name = "output-0159"
+selection = "selected"
+execution = "passed"
+rationale = "Preserves raw script/style text and significant pre/textarea whitespace in the exact bounded HTML hierarchy under indent=no."
+
 [[assertion_family]]
 name = "all-of"
 count = 89

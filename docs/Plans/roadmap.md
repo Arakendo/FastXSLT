@@ -1153,6 +1153,15 @@ separate XML-compatible path. The output denominator advances to 176 passes and
 55 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-html-script-raw-text-2026-09-01.md)
 
+The unchanged `output-0159` case extends that bounded HTML evidence to one
+script and style in the head plus one pre/b and textarea in the body. Script and
+style text is emitted raw, while all significant newlines, tabs, and spaces in
+the preformatted content survive under `indent="no"`. The validator fixes the
+exact hierarchy and textarea attributes rather than admitting general HTML.
+The output denominator advances to 177 passes and 54 visible default not-run
+cases.
+[Evidence](../Evidence/xslt30-output-html-preformatted-whitespace-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1194,8 +1203,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 176 | 0 | 1 | 55 |
-| **Conserved total** | **531** | **374** | **3** | **51** | **103** |
+| `decl/output` | 232 | 177 | 0 | 1 | 54 |
+| **Conserved total** | **531** | **375** | **3** | **51** | **102** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

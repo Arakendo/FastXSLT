@@ -1301,6 +1301,24 @@ fn emits_manually_escaped_html_script_as_raw_text() {
 }
 
 #[test]
+fn preserves_bounded_html_raw_and_preformatted_text() {
+    let execution = execute_output_case("output-0159", None);
+    assert_eq!(execution.method.as_deref(), Some("html"));
+    assert!(execution.actual.contains(
+        "<script type=\"text/javascript\">document.write (\"<EM>This will work<\\/EM>\")"
+    ));
+    assert!(
+        execution
+            .actual
+            .contains("<style>\n\n        < > &\n\n      </style>")
+    );
+    assert!(execution.actual.contains("<b> Save    all\tspace here</b>"));
+    assert!(execution.actual.contains(
+        "<textarea rows=\"2\" cols=\"20\">\nThe cat was playing in the garden.\n\nSuddenly a dog showed up....."
+    ));
+}
+
+#[test]
 fn reports_inconsistent_xml_serialization_parameters_as_sepm0009() {
     for case_name in ["output-0186", "output-0187"] {
         let (test_set, _) = load_test_set();
