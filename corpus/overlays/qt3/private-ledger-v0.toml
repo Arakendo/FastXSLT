@@ -2569,3 +2569,45 @@ case_name = "fn-deep-equal-arrays-7"
 selection = "selected"
 execution = "passed"
 rationale = "Compares arrays containing corresponding empty sequence members."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-arrays-11"
+selection = "selected"
+execution = "passed"
+rationale = "Compares nested arrays containing equal ordered string members."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-arrays-12"
+selection = "selected"
+execution = "passed"
+rationale = "Preserves codepoint string inequality inside nested array members."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-arrays-14"
+selection = "selected"
+execution = "passed"
+rationale = "Compares equal top-level sequences containing nested, empty, and integer arrays."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-arrays-15"
+selection = "selected"
+execution = "passed"
+rationale = "Rejects unequal top-level array-sequence lengths before item comparison."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-arrays-16"
+selection = "selected"
+execution = "passed"
+rationale = "Reports an integer mismatch in the final array of a top-level sequence."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-arrays-17"
+selection = "selected"
+execution = "passed"
+rationale = "Reports unequal nested string-member counts before later top-level arrays."
