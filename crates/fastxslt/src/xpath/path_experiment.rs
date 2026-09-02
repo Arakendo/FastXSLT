@@ -56,6 +56,8 @@ pub(crate) enum PathStep {
     ChildAnyElement,
     ChildAnyNode,
     ChildText,
+    ChildComment,
+    ChildProcessingInstruction,
     AttributeNamed(String),
     AttributeAny,
     ParentNamed(String),
@@ -134,9 +136,11 @@ impl PathStep {
         }
         let name_test = value.strip_prefix("child::").unwrap_or(value);
         Some(match name_test {
-            "*" => Self::ChildAnyElement,
+            "*" | "element()" => Self::ChildAnyElement,
             "node()" => Self::ChildAnyNode,
             "text()" => Self::ChildText,
+            "comment()" => Self::ChildComment,
+            "processing-instruction()" => Self::ChildProcessingInstruction,
             _ => Self::ChildNamed(name_test.to_owned()),
         })
     }
@@ -196,6 +200,8 @@ impl PartialEq<&str> for PathStep {
             | Self::DescendantAnyNode
             | Self::DescendantOrSelfAnyNode => *other == "node()",
             Self::ChildText => *other == "text()",
+            Self::ChildComment => *other == "comment()",
+            Self::ChildProcessingInstruction => *other == "processing-instruction()",
             Self::AttributeAny => matches!(*other, "*" | "node()"),
         }
     }
@@ -305,18 +311,7 @@ pub(crate) fn parse_location_path(
             location,
         });
     }
-    if steps.iter().any(|step| {
-        let name_test = step
-            .strip_prefix("child::")
-            .or_else(|| step.strip_prefix("attribute::"))
-            .or_else(|| step.strip_prefix("parent::"))
-            .or_else(|| step.strip_prefix("self::"))
-            .or_else(|| step.strip_prefix("descendant::"))
-            .or_else(|| step.strip_prefix("descendant-or-self::"))
-            .or_else(|| step.strip_prefix('@'))
-            .unwrap_or(if step == ".." { "node()" } else { step });
-        !matches!(name_test, "*" | "node()" | "text()") && !is_ascii_ncname(name_test)
-    }) {
+    if steps.iter().any(|step| has_unadmitted_name_test(step)) {
         if steps.iter().any(|step| {
             step.chars().any(|character| {
                 !character.is_ascii_alphanumeric() && !matches!(character, '_' | '-' | '.')
@@ -343,6 +338,26 @@ pub(crate) fn parse_location_path(
         step_position_predicates,
         location,
     })
+}
+
+fn has_unadmitted_name_test(step: &str) -> bool {
+    let name_test = step
+        .strip_prefix("child::")
+        .or_else(|| step.strip_prefix("attribute::"))
+        .or_else(|| step.strip_prefix("parent::"))
+        .or_else(|| step.strip_prefix("self::"))
+        .or_else(|| step.strip_prefix("descendant::"))
+        .or_else(|| step.strip_prefix("descendant-or-self::"))
+        .or_else(|| step.strip_prefix('@'))
+        .unwrap_or(if step == ".." { "node()" } else { step });
+    let admitted_child_kind = (!step.contains("::") || step.starts_with("child::"))
+        && matches!(
+            name_test,
+            "element()" | "comment()" | "processing-instruction()"
+        );
+    !matches!(name_test, "*" | "node()" | "text()")
+        && !admitted_child_kind
+        && !is_ascii_ncname(name_test)
 }
 
 fn validate_expression_opening(
@@ -783,6 +798,10 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
         | PathStep::DescendantAnyNode
         | PathStep::DescendantOrSelfAnyNode => true,
         PathStep::ChildText => document.kind(child) == NodeKind::Text,
+        PathStep::ChildComment => document.kind(child) == NodeKind::Comment,
+        PathStep::ChildProcessingInstruction => {
+            document.kind(child) == NodeKind::ProcessingInstruction
+        }
         PathStep::AttributeNamed(required) => {
             document.kind(child) == NodeKind::Attribute
                 && document

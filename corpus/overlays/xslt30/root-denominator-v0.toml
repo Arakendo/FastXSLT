@@ -25,3 +25,9 @@ case_name = "root-0201"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged XSLT 2.0 case selects the principal element, walks to its document root, and matches the native empty string-value result."
+
+[[case_override]]
+case_name = "root-0601"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case applies root() to child element(), comment(), node(), and text() kind tests; typed child selection produces the two native document-root string values without treating kind tests as element names."

@@ -609,6 +609,33 @@ fn explicit_child_node_test_selects_every_child_node_kind() {
 }
 
 #[test]
+fn child_kind_tests_select_only_their_declared_node_kinds() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        br"<root>text<a/><?work item?><!-- comment --></root>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+
+    for (expression, kind) in [
+        ("element()", NodeKind::Element),
+        ("text()", NodeKind::Text),
+        ("comment()", NodeKind::Comment),
+        ("processing-instruction()", NodeKind::ProcessingInstruction),
+    ] {
+        let path = parse_location_path(expression, location()).expect("kind test should parse");
+        let selected = evaluate_location_path(&document, root, &path);
+        assert_eq!(selected.len(), 1, "{expression}");
+        assert_eq!(document.kind(selected[0]), kind, "{expression}");
+    }
+}
+
+#[test]
 fn evaluates_the_golden_path_from_the_document_node() {
     let parsed = parse_document(
         "memory:source.xml",

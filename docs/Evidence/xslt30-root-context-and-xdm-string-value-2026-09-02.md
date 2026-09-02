@@ -36,19 +36,27 @@ has its own content as its string value.
 ## Results
 
 - Complete conserved denominator: 10 cases.
-- Selected and passed: 3 (`root-0101`, `root-0103`, and `root-0201`).
-- Visible default not run: 7.
+- Selected and passed: 4 (`root-0101`, `root-0103`, `root-0201`, and
+  `root-0601`).
+- Visible default not run: 6.
 - Engine unsupported: 0.
 - Profile excluded: 0.
 - The unchanged assertion passes after the shared XDM string-value correction.
 
-This raises conserved XSLT30 accounting to 577 cases: 414 passed comparisons,
-3 engine-unsupported cases, 54 profile exclusions, and 106 visible default
+The fourth case also admits typed child `element()`, `comment()`, and
+`processing-instruction()` steps alongside the existing `node()` and `text()`
+steps. A focused mixed-child test proves that each kind test selects only its
+declared XDM node kind.
+
+This raises conserved XSLT30 accounting within this denominator to four passes
+and six visible defaults. With the subsequently conserved `insn/apply-imports`
+case, current XSLT30 accounting is 578 cases: 415 passed comparisons, 3
+engine-unsupported cases, 54 profile exclusions, and 106 visible default
 not-run cases.
 
 ## Limitations
 
-This evidence does not admit arbitrary `root()` arguments. The remaining seven
+This evidence does not admit arbitrary `root()` arguments. The remaining six
 cases require namespace-aware or variable function arguments, generated node
 identity, temporary trees, dynamic resource acquisition, or broader kind-test
 expressions. They remain individually visible under the

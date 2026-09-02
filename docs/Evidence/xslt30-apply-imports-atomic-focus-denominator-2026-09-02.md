@@ -26,8 +26,9 @@ matches. FastXSLT's current apply-imports implementation owns source and
 temporary-tree node focus; accepting this result would require atomic template
 matching and built-in behavior, not merely another module-loader branch.
 
-This raises conserved XSLT30 accounting to 578 cases: 414 passed comparisons,
-3 engine-unsupported cases, 54 profile exclusions, and 107 visible default
+At the time of admission this raised conserved XSLT30 accounting to 578 cases:
+414 passed comparisons, 3 engine-unsupported cases, 54 profile exclusions, and
+107 visible default
 not-run cases across 15 complete test-set denominators.
 
 ## Limitation

@@ -12,7 +12,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/fn/root/_root-test-set.xml";
-const PASSED_CASES: [&str; 3] = ["root-0101", "root-0103", "root-0201"];
+const PASSED_CASES: [&str; 4] = ["root-0101", "root-0103", "root-0201", "root-0601"];
 const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/root-denominator-v0.toml");
 
 #[test]
@@ -33,7 +33,7 @@ fn inventories_complete_root_denominator_before_selection() {
     assert_eq!(names.last(), Some(&"root-0601"));
     assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
     assert!(OVERLAY.contains("case_count = 10"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 3);
+    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 4);
     for case_name in PASSED_CASES {
         assert!(names.contains(case_name));
         let record = overlay_case(case_name);
