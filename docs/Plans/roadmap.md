@@ -1194,6 +1194,17 @@ surface. The output denominator advances to 187 passes, one profile exclusion,
 and 44 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-unicode-normalization-and-uri-expansion-2026-09-02.md)
 
+The adjacent `output-0115b` through `output-0115e` cases now execute through a
+bounded US-ASCII XHTML CDATA byte profile. Nonrepresentable characters close
+the CDATA run, serialize as uppercase hexadecimal references, and reopen it;
+the NFD case leaves ASCII `c` inside CDATA and externalizes only the combining
+cedilla. CDATA continues to bypass character maps. Expansion bytes are charged
+and checked against the final host byte ceiling. Non-ASCII content outside
+selected CDATA, arbitrary legacy encodings, NFKC/NFKD, and fully-normalized
+output remain outside the slice. The output denominator advances to 191 passes,
+one profile exclusion, and 40 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-us-ascii-cdata-normalization-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1235,8 +1246,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 187 | 0 | 1 | 44 |
-| **Conserved total** | **531** | **385** | **3** | **51** | **92** |
+| `decl/output` | 232 | 191 | 0 | 1 | 40 |
+| **Conserved total** | **531** | **389** | **3** | **51** | **88** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

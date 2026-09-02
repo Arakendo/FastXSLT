@@ -35,10 +35,11 @@ The native assertions establish:
 - the exact normalized URI substring
   `%EF%AD%8F/%C3%A5rsrapport/%C3%A5r/2005?x=y` for all four HTML cases.
 
-The earlier `normalization-form="none"` controls remain byte-preserving.
-`NFD`, `NFKC`, `NFKD`, and `fully-normalized` remain unsupported and continue
-to report `SESU0011` where an upstream permitted alternative admits that
-outcome.
+The earlier `normalization-form="none"` controls remain byte-preserving. At
+this tranche, `NFD`, `NFKC`, `NFKD`, and `fully-normalized` remained
+unsupported. The subsequent
+[US-ASCII CDATA tranche](xslt30-output-us-ascii-cdata-normalization-2026-09-02.md)
+admits NFD; compatibility forms and fully-normalized output remain unsupported.
 
 ## Dependency review
 
@@ -89,4 +90,3 @@ exclusions, and 92 visible default not-run cases.
 The focused output inventory ran all 87 output-owner tests successfully. The
 workspace-wide format, Clippy, test, documentation, and Markdown-link gates are
 recorded in the implementing commit's validation.
-

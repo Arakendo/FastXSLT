@@ -40,6 +40,7 @@ enum HtmlMode {
 enum NormalizationForm {
     None,
     Nfc,
+    Nfd,
 }
 
 pub(in crate::runtime) fn serialize_xml(
@@ -921,6 +922,7 @@ fn validate_normalization_form(
     match settings.normalization_form.as_deref().unwrap_or("none") {
         "none" => Ok(NormalizationForm::None),
         "NFC" => Ok(NormalizationForm::Nfc),
+        "NFD" => Ok(NormalizationForm::Nfd),
         normalization_form => Err(failure(
             "SESU0011",
             FailureCategory::Unsupported,
@@ -1051,33 +1053,57 @@ pub(in crate::runtime) fn serialize_xml_bytes(
     validate_normalization_form(settings, request_id)?;
     let encoding = settings.encoding.as_deref().unwrap_or("UTF-8");
     if encoding.eq_ignore_ascii_case("UTF-8") {
-        let bom = settings.byte_order_mark == Some(true);
-        let body_limit = byte_limit
-            .checked_sub(usize::from(bom) * 3)
-            .ok_or_else(|| {
-                failure(
-                    "FXSR0002",
-                    FailureCategory::Limit,
-                    Some(request_id),
-                    format!("serialized result requires at least 3 bytes; limit is {byte_limit}"),
-                )
-            })?;
-        if bom {
-            control
-                .charge(WorkDomain::SerializedByte, 3)
-                .map_err(|failure| control_failure(failure, request_id))?;
-        }
-        let mut body_settings = settings.clone();
-        body_settings.byte_order_mark = Some(false);
-        let body = serialize_xml(result, &body_settings, request_id, body_limit, control)?;
-        let mut bytes = Vec::with_capacity(usize::from(bom) * 3 + body.len());
-        if bom {
-            bytes.extend_from_slice(&[0xef, 0xbb, 0xbf]);
-        }
-        bytes.extend_from_slice(body.as_bytes());
-        return Ok(bytes);
+        return serialize_utf8_bytes(result, settings, request_id, byte_limit, control);
     }
-    if !encoding.eq_ignore_ascii_case("ISO-8859-1") {
+    serialize_single_byte_bytes(result, settings, request_id, byte_limit, control, encoding)
+}
+
+#[cfg(test)]
+fn serialize_utf8_bytes(
+    result: &SemanticResult,
+    settings: &OutputSettings,
+    request_id: &str,
+    byte_limit: usize,
+    control: &mut InvocationControl,
+) -> Result<Vec<u8>, ExecutionFailure> {
+    let bom = settings.byte_order_mark == Some(true);
+    let body_limit = byte_limit
+        .checked_sub(usize::from(bom) * 3)
+        .ok_or_else(|| {
+            failure(
+                "FXSR0002",
+                FailureCategory::Limit,
+                Some(request_id),
+                format!("serialized result requires at least 3 bytes; limit is {byte_limit}"),
+            )
+        })?;
+    if bom {
+        control
+            .charge(WorkDomain::SerializedByte, 3)
+            .map_err(|failure| control_failure(failure, request_id))?;
+    }
+    let mut body_settings = settings.clone();
+    body_settings.byte_order_mark = Some(false);
+    let body = serialize_xml(result, &body_settings, request_id, body_limit, control)?;
+    let mut bytes = Vec::with_capacity(usize::from(bom) * 3 + body.len());
+    if bom {
+        bytes.extend_from_slice(&[0xef, 0xbb, 0xbf]);
+    }
+    bytes.extend_from_slice(body.as_bytes());
+    Ok(bytes)
+}
+
+#[cfg(test)]
+fn serialize_single_byte_bytes(
+    result: &SemanticResult,
+    settings: &OutputSettings,
+    request_id: &str,
+    byte_limit: usize,
+    control: &mut InvocationControl,
+    encoding: &str,
+) -> Result<Vec<u8>, ExecutionFailure> {
+    let us_ascii = encoding.eq_ignore_ascii_case("US-ASCII");
+    if !us_ascii && !encoding.eq_ignore_ascii_case("ISO-8859-1") {
         return Err(failure(
             "SESU0007",
             FailureCategory::Unsupported,
@@ -1090,7 +1116,7 @@ pub(in crate::runtime) fn serialize_xml_bytes(
             "FXSR1005",
             FailureCategory::Unsupported,
             Some(request_id),
-            "the bounded ISO-8859-1 lane does not emit a byte-order mark",
+            "the bounded single-byte encoding lane does not emit a byte-order mark",
         ));
     }
 
@@ -1124,18 +1150,81 @@ pub(in crate::runtime) fn serialize_xml_bytes(
     body_settings.standalone = None;
     body_settings.version = Some("1.0".to_owned());
     let body = serialize_xml(result, &body_settings, request_id, body_limit, control)?;
-    if !body.is_ascii() {
+    let body_len = body.len();
+    let encoded_body = if us_ascii {
+        encode_us_ascii_cdata(&body, request_id)?
+    } else if body.is_ascii() {
+        body
+    } else {
         return Err(failure(
             "FXSR1006",
             FailureCategory::Unsupported,
             Some(request_id),
             "the bounded ISO-8859-1 lane currently admits only ASCII result characters",
         ));
+    };
+    let expansion_bytes = encoded_body.len().saturating_sub(body_len);
+    if expansion_bytes > 0 {
+        control
+            .charge(WorkDomain::SerializedByte, expansion_bytes)
+            .map_err(|failure| control_failure(failure, request_id))?;
+    }
+    if encoded_body.len() > body_limit {
+        return Err(failure(
+            "FXSR0002",
+            FailureCategory::Limit,
+            Some(request_id),
+            format!(
+                "serialized result requires {} bytes; limit is {byte_limit}",
+                declaration.len() + encoded_body.len()
+            ),
+        ));
     }
 
     let mut bytes = declaration.into_bytes();
-    bytes.extend_from_slice(body.as_bytes());
+    bytes.extend_from_slice(encoded_body.as_bytes());
     Ok(bytes)
+}
+
+#[cfg(test)]
+fn encode_us_ascii_cdata(value: &str, request_id: &str) -> Result<String, ExecutionFailure> {
+    use std::fmt::Write as _;
+
+    let mut output = String::with_capacity(value.len());
+    let mut remaining = value;
+    let mut in_cdata = false;
+    while !remaining.is_empty() {
+        if remaining.starts_with("<![CDATA[") {
+            output.push_str("<![CDATA[");
+            remaining = &remaining[9..];
+            in_cdata = true;
+            continue;
+        }
+        if remaining.starts_with("]]>") {
+            output.push_str("]]>");
+            remaining = &remaining[3..];
+            in_cdata = false;
+            continue;
+        }
+        let character = remaining.chars().next().expect("nonempty remainder");
+        remaining = &remaining[character.len_utf8()..];
+        if character.is_ascii() {
+            output.push(character);
+        } else if in_cdata {
+            output.push_str("]]>&#x");
+            write!(&mut output, "{:X}", u32::from(character))
+                .expect("writing to a String cannot fail");
+            output.push_str(";<![CDATA[");
+        } else {
+            return Err(failure(
+                "FXSR1009",
+                FailureCategory::Unsupported,
+                Some(request_id),
+                "the bounded US-ASCII lane admits non-ASCII characters only inside selected CDATA text",
+            ));
+        }
+    }
+    Ok(output)
 }
 
 fn validate_serialization_preconditions(
@@ -1827,6 +1916,9 @@ fn write_normalized_characters(
         NormalizationForm::Nfc => value
             .nfc()
             .try_for_each(|character| write_character(character, output)),
+        NormalizationForm::Nfd => value
+            .nfd()
+            .try_for_each(|character| write_character(character, output)),
     }
 }
 
@@ -1834,6 +1926,7 @@ fn normalize_to_string(value: &str, normalization_form: NormalizationForm) -> St
     match normalization_form {
         NormalizationForm::None => value.to_owned(),
         NormalizationForm::Nfc => value.nfc().collect(),
+        NormalizationForm::Nfd => value.nfd().collect(),
     }
 }
 

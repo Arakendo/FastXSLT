@@ -1304,6 +1304,26 @@ fn executes_nfc_normalization_and_uri_expansion() {
 }
 
 #[test]
+fn executes_us_ascii_cdata_and_nfd_normalization() {
+    let cases = [
+        ("output-0115b", "<![CDATA[foo ]]>&#xAA;<![CDATA[ bar]]>"),
+        ("output-0115c", "<![CDATA[foo ]]>&#xAA;<![CDATA[ bar]]>"),
+        ("output-0115d", "<![CDATA[foo c]]>&#x327;<![CDATA[ bar]]>"),
+        ("output-0115e", "<![CDATA[foo ]]>&#xE7;<![CDATA[ bar]]>"),
+    ];
+    for (case_name, expected_cdata) in cases {
+        let bytes = execute_output_bytes_case_with_encoding(case_name, "US-ASCII");
+        assert!(bytes.is_ascii(), "{case_name}");
+        let actual = String::from_utf8(bytes).expect("US-ASCII is valid UTF-8");
+        assert!(
+            actual.starts_with("<?xml version=\"1.0\" encoding=\"US-ASCII\"?>"),
+            "{case_name}"
+        );
+        assert!(actual.contains(expected_cdata), "{case_name}: {actual}");
+    }
+}
+
+#[test]
 fn preserves_html_ins_and_del_content_whitespace_without_indent() {
     let execution = execute_output_case("output-0160", None);
     assert_eq!(execution.method.as_deref(), Some("html"));
@@ -1861,6 +1881,10 @@ fn compile_output_case_failure(case_name: &str, expected_code: &str) -> super::E
 }
 
 fn execute_output_bytes_case(case_name: &str) -> Vec<u8> {
+    execute_output_bytes_case_with_encoding(case_name, "UTF-8")
+}
+
+fn execute_output_bytes_case_with_encoding(case_name: &str, expected_encoding: &str) -> Vec<u8> {
     assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     let (test_set, set_path) = load_test_set();
     let directory = set_path.parent().expect("output test-set directory");
@@ -1896,7 +1920,11 @@ fn execute_output_bytes_case(case_name: &str) -> Vec<u8> {
         .expect("admit byte-output stylesheet");
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, &stylesheet_id).expect("compile byte-output case");
-    assert_eq!(program.output.encoding.as_deref(), Some("UTF-8"));
+    assert_eq!(
+        program.output.encoding.as_deref(),
+        Some(expected_encoding),
+        "{case_name}"
+    );
 
     let parsed = parse_document(
         &source_id,

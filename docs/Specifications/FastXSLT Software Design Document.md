@@ -387,17 +387,21 @@ The first slice may implement them together, but tests and future APIs must be
 able to distinguish semantic result correctness from serialization correctness.
 The private string result remains UTF-8-only. A separate bounded byte lane
 admits UTF-8, including an explicitly requested three-byte UTF-8 byte-order
-mark, and the ASCII subset of ISO-8859-1. It charges marks, declarations, and
-body bytes and rejects non-ASCII ISO-8859-1 output rather than substituting
-characters or returning a mislabeled UTF-8 string. This is executable
+mark, the ASCII subset of ISO-8859-1, and one bounded US-ASCII XHTML CDATA
+profile. The US-ASCII profile closes CDATA around each nonrepresentable
+character, emits an uppercase hexadecimal character reference, and reopens the
+section; non-ASCII content elsewhere remains unsupported. It charges marks,
+declarations, body bytes, and encoding expansion and rejects non-ASCII
+ISO-8859-1 output rather than substituting characters or returning a mislabeled
+UTF-8 string. This is executable
 serialization evidence, not selection of a public byte-result contract or
 general encoding support. Compiled output metadata may explicitly retain
 `normalization-form="none"`, which preserves result characters byte-for-byte,
-or `normalization-form="NFC"`, which uses an exact-pinned UAX #15
+or `normalization-form="NFC"`/`"NFD"`, which uses an exact-pinned UAX #15
 implementation during private XML, XHTML, HTML, and text serialization.
 Character mapping precedes requested normalization and mapped replacement
 strings bypass it; CDATA-selected text normalizes before CDATA construction.
-NFD, NFKC, NFKD, and fully-normalized output remain unsupported.
+NFKC, NFKD, and fully-normalized output remain unsupported.
 The XML-compatible lane also retains canonical standalone `yes`, `no`, and
 `omit` metadata; `yes` and `no` become declaration pseudo-attributes, while
 `omit` emits none. An explicit serialization version is retained separately

@@ -1005,6 +1005,30 @@ execution = "passed"
 rationale = "Applies normalization-form=NFC to the descendant text selected by the text output method and verifies the composed UTF-8 bytes."
 
 [[case_override]]
+case_name = "output-0115b"
+selection = "selected"
+execution = "passed"
+rationale = "Serializes non-ASCII XHTML CDATA content through the bounded US-ASCII byte lane by closing the CDATA section, emitting a hexadecimal character reference, and reopening it."
+
+[[case_override]]
+case_name = "output-0115c"
+selection = "selected"
+execution = "passed"
+rationale = "Proves CDATA-selected text bypasses the compiled character map before the bounded US-ASCII lane emits the nonrepresentable character as a reference."
+
+[[case_override]]
+case_name = "output-0115d"
+selection = "selected"
+execution = "passed"
+rationale = "Applies normalization-form=NFD before CDATA construction and emits the decomposed combining cedilla outside the US-ASCII CDATA section as a hexadecimal character reference."
+
+[[case_override]]
+case_name = "output-0115e"
+selection = "selected"
+execution = "passed"
+rationale = "Applies normalization-form=NFC before CDATA construction and emits the composed non-ASCII character outside the US-ASCII CDATA section as a hexadecimal character reference."
+
+[[case_override]]
 case_name = "output-0103d"
 selection = "selected"
 execution = "passed"

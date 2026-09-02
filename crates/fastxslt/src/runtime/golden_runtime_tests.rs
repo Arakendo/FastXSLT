@@ -1535,6 +1535,86 @@ fn byte_serialization_emits_bounded_ascii_iso_8859_1() {
 }
 
 #[test]
+fn us_ascii_cdata_expansion_is_bounded_and_rejects_other_non_ascii_content() {
+    let name = crate::xml::quick_xml_experiment::ExpandedName {
+        namespace: Some("http://www.w3.org/1999/xhtml".to_owned()),
+        local: "example".to_owned(),
+    };
+    let result = SemanticResult {
+        children: vec![ResultNode::Element {
+            name: name.clone(),
+            namespaces: vec![crate::xml::quick_xml_experiment::NamespaceBinding {
+                prefix: None,
+                namespace: "http://www.w3.org/1999/xhtml".to_owned(),
+            }],
+            attributes: Vec::new(),
+            children: vec![ResultNode::Text("ç".to_owned())],
+        }],
+    };
+    let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
+        method: Some("xhtml".to_owned()),
+        version: None,
+        html_version: None,
+        encoding: Some("US-ASCII".to_owned()),
+        media_type: None,
+        doctype_system: None,
+        doctype_public: None,
+        include_content_type: None,
+        escape_uri_attributes: None,
+        byte_order_mark: Some(false),
+        normalization_form: Some("NFC".to_owned()),
+        character_map: Vec::new(),
+        undeclare_prefixes: None,
+        standalone: None,
+        suppress_indentation_elements: Vec::new(),
+        cdata_section_elements: vec![name],
+        omit_xml_declaration: false,
+        indent: Some(false),
+    };
+    let bytes = serialize_xml_bytes(
+        &result,
+        &settings,
+        "ascii-cdata",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("serialize bounded non-ASCII CDATA as US-ASCII");
+    assert!(bytes.is_ascii());
+    assert!(String::from_utf8_lossy(&bytes).contains("]]>&#xE7;<![CDATA["));
+
+    serialize_xml_bytes(
+        &result,
+        &settings,
+        "ascii-cdata-exact-limit",
+        bytes.len(),
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("the exact final expanded-byte limit must pass");
+    let failure = serialize_xml_bytes(
+        &result,
+        &settings,
+        "ascii-cdata-short-limit",
+        bytes.len() - 1,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect_err("the final expanded-byte limit must reject one byte less");
+    assert_eq!(failure.code, "FXSR0002");
+
+    let mut ordinary = settings;
+    ordinary.cdata_section_elements.clear();
+    let failure = serialize_xml_bytes(
+        &result,
+        &ordinary,
+        "ascii-non-cdata",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect_err("non-ASCII outside the admitted CDATA shape must stay unsupported");
+    assert_eq!(failure.code, "FXSR1009");
+    assert_eq!(failure.category, FailureCategory::Unsupported);
+}
+
+#[test]
 fn byte_serialization_emits_and_accounts_for_a_utf8_byte_order_mark() {
     let result = SemanticResult {
         children: vec![ResultNode::Text("result".to_owned())],
