@@ -1458,6 +1458,13 @@ rationale = "A principal private declaration for imported mode X is retained int
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1905"
+selection = "selected"
+execution = "passed"
+rationale = "A principal public declaration for mode X overrides lower-precedence visibility-only conflicts and allows initial-mode dispatch to the higher-precedence scout rule."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-1417"
 selection = "selected"
 execution = "passed"

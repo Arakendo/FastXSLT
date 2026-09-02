@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 87] = [
+const SELECTED_CASES: [&str; 88] = [
     "mode-0001",
     "mode-0003",
     "mode-0005",
@@ -106,6 +106,7 @@ const SELECTED_CASES: [&str; 87] = [
     "mode-1901",
     "mode-1902",
     "mode-1904",
+    "mode-1905",
 ];
 const STREAMING_EXCLUDED_CASES: [&str; 29] = [
     "mode-0002",
@@ -753,6 +754,24 @@ fn private_principal_mode_cannot_be_selected_as_initial_mode() {
 }
 
 #[test]
+fn principal_public_visibility_resolves_lower_precedence_conflict() {
+    let document = load_test_set();
+    let case = find_case(&document, "mode-1905");
+    let assertion = child_named(
+        &document,
+        child_named(&document, case, "result").expect("result metadata"),
+        "assert",
+    )
+    .expect("native XPath assertion");
+    assert_eq!(document.string_value(assertion).trim(), "exists(/scout)");
+
+    let (actual, expected) = execute_case_with_policy("mode-1905", MultipleMatchPolicy::UseLast)
+        .expect("principal public visibility must resolve the imported visibility conflict");
+    assert!(expected.is_none(), "native case uses an XPath assertion");
+    assert_xml_equivalent(&actual, "<scout/>");
+}
+
+#[test]
 fn executes_parentless_temporary_node_on_no_match_policies() {
     for case_name in ["mode-0001", "mode-0003", "mode-0005", "mode-0007"] {
         let (actual, expected) = execute_case(case_name);
@@ -906,6 +925,15 @@ fn admit_case_stylesheets(
                     .expect("read imported mode stylesheet and close handle"),
             )
             .expect("admit imported mode stylesheet");
+    }
+    if case_name == "mode-1905" {
+        resources
+            .admit(
+                "https://example.invalid/xslt30/attr/mode/mode-1904.xsl",
+                fs::read(directory.join("mode-1904.xsl"))
+                    .expect("read imported visibility-conflict stylesheet and close handle"),
+            )
+            .expect("admit imported visibility-conflict stylesheet");
     }
 }
 

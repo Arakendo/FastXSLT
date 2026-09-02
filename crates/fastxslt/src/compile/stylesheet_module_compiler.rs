@@ -10,7 +10,8 @@ use super::{
     CompileFailure, XSLT_NAMESPACE, compile_stylesheet_at_excluding_unvalidated,
     compile_stylesheet_excluding_unvalidated, default_output_settings, document_element,
     ensure_no_meaningful_children, ensure_only_attributes, finalize_character_maps, invalid,
-    is_xslt_element, meaningful_children, require_stylesheet_root, required_attribute, unsupported,
+    is_xslt_element, meaningful_children, optional_attribute, require_stylesheet_root,
+    required_attribute, unsupported,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -301,6 +302,7 @@ pub(crate) fn compile_stylesheet_with_imports(
     }
     let mut principal_program =
         compile_stylesheet_excluding_unvalidated(principal, &import_declarations)?;
+    let overridden_visibility_modes = explicit_visibility_mode_names(principal, root);
     let import_count = i32::try_from(imported.len()).expect("bounded import count fits i32");
     let mut imported_programs = imported
         .iter()
@@ -308,7 +310,9 @@ pub(crate) fn compile_stylesheet_with_imports(
         .map(|(index, (document, root))| {
             let precedence =
                 i32::try_from(index).expect("bounded import index fits i32") - import_count;
-            compile_imported_program(document, *root, precedence)
+            let excluded_modes =
+                shadowed_visibility_only_modes(document, *root, &overridden_visibility_modes);
+            compile_imported_program_excluding(document, *root, precedence, &excluded_modes)
         })
         .collect::<Result<Vec<_>, _>>()?;
     if imported_programs.len() == 1 {
@@ -490,7 +494,20 @@ fn compile_imported_program(
     imported_root: NodeId,
     import_precedence: i32,
 ) -> Result<StylesheetProgram, CompileFailure> {
-    let mut imported_program = compile_dependency_module(imported, imported_root)?;
+    compile_imported_program_excluding(imported, imported_root, import_precedence, &[])
+}
+
+fn compile_imported_program_excluding(
+    imported: &Document,
+    imported_root: NodeId,
+    import_precedence: i32,
+    excluded: &[NodeId],
+) -> Result<StylesheetProgram, CompileFailure> {
+    let mut imported_program = if excluded.is_empty() {
+        compile_dependency_module(imported, imported_root)?
+    } else {
+        compile_stylesheet_at_excluding_unvalidated(imported, imported_root, excluded)?
+    };
     if let Some(template) = imported_program.root_template.take() {
         imported_program.matched_templates.insert(
             0,
@@ -507,6 +524,42 @@ fn compile_imported_program(
         template.import_precedence = import_precedence;
     }
     Ok(imported_program)
+}
+
+fn explicit_visibility_mode_names(document: &Document, root: NodeId) -> Vec<String> {
+    meaningful_children(document, root)
+        .into_iter()
+        .filter(|node| is_xslt_element(document, *node, "mode"))
+        .filter_map(|node| {
+            optional_attribute(document, node, None, "visibility")?;
+            let name = optional_attribute(document, node, None, "name")?;
+            (!name.contains(':') && !name.starts_with('#')).then(|| name.to_owned())
+        })
+        .collect()
+}
+
+fn shadowed_visibility_only_modes(
+    document: &Document,
+    root: NodeId,
+    overridden_names: &[String],
+) -> Vec<NodeId> {
+    meaningful_children(document, root)
+        .into_iter()
+        .filter(|node| is_xslt_element(document, *node, "mode"))
+        .filter(|node| {
+            let Some(name) = optional_attribute(document, *node, None, "name") else {
+                return false;
+            };
+            overridden_names.iter().any(|candidate| candidate == name)
+                && optional_attribute(document, *node, None, "visibility").is_some()
+                && document.attributes(*node).iter().all(|attribute| {
+                    document.name(*attribute).is_some_and(|name| {
+                        name.namespace.is_none()
+                            && matches!(name.local.as_str(), "name" | "visibility")
+                    })
+                })
+        })
+        .collect()
 }
 
 fn validate_fully_shadowed_imported_output(

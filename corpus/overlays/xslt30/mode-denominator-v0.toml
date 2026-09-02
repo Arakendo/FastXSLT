@@ -573,6 +573,12 @@ execution = "passed"
 rationale = "The principal stylesheet's private declaration for imported named mode X is retained into invocation admission and reports the unchanged XTDE0045 result when selected as initial mode."
 
 [[case_override]]
+case_name = "mode-1905"
+selection = "selected"
+execution = "passed"
+rationale = "The principal public declaration for mode X overrides two lower-precedence visibility-only declarations, allowing initial-mode dispatch to the higher-precedence document rule and satisfying exists(/scout)."
+
+[[case_override]]
 case_name = "mode-1107a"
 selection = "excluded-by-profile"
 execution = "not-run"

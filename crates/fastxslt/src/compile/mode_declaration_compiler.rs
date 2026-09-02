@@ -298,8 +298,8 @@ fn validate_visibility(
             document.location(element),
         ));
     }
-    if is_named && visibility == "private" {
-        return Ok(true);
+    if is_named && matches!(visibility, "private" | "public") {
+        return Ok(visibility == "private");
     }
     Err(unsupported(
         "FXST1042",
@@ -528,10 +528,8 @@ mod tests {
         )
         .expect("parse public mode fixture");
         let document = Document::from_parsed(parsed).expect("build public mode fixture");
-        let failure = compile_stylesheet(&document)
-            .expect_err("broader component visibility remains unsupported");
-        assert_eq!(failure.code, "FXST1042");
-        assert_eq!(failure.category, CompileCategory::Unsupported);
+        let program = compile_stylesheet(&document).expect("public named mode should compile");
+        assert!(program.private_initial_modes.is_empty());
     }
 
     #[test]

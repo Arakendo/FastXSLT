@@ -1367,6 +1367,16 @@ denominator advances to 87 passes, 48 profile exclusions, and 34 visible
 defaults.
 [Evidence](../Evidence/xslt30-mode-1902-private-initial-mode-2026-09-02.md)
 
+The unchanged `mode-1905` case now composes visibility at import precedence.
+A principal public declaration for unprefixed mode X resolves two conflicting
+lower-precedence visibility-only declarations without suppressing their
+templates or unrelated validation. Initial-mode dispatch selects the principal
+document rule and satisfies `exists(/scout)`, while direct `mode-1904` still
+reports `XTSE0545`. This is a bounded property-level rule, not general package
+component composition. The mode denominator advances to 88 passes, 48 profile
+exclusions, and 33 visible defaults.
+[Evidence](../Evidence/xslt30-mode-1905-visibility-precedence-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1406,12 +1416,12 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 87 | 0 | 48 | 34 |
+| `attr/mode` | 169 | 88 | 0 | 48 | 33 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 198 | 0 | 1 | 33 |
 | `decl/strip-space` | 30 | 1 | 0 | 0 | 29 |
 | `misc/built-in-templates` | 6 | 2 | 0 | 0 | 4 |
-| **Conserved total** | **567** | **410** | **3** | **54** | **100** |
+| **Conserved total** | **567** | **411** | **3** | **54** | **99** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -2390,6 +2400,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   only supported `method`, `encoding`, and `indent` settings from its single
   imported program, preserve the private declaration location, and leave
   public/final/package visibility composition and `mode-1905` unresolved.
+- [x] Execute `mode-1905` by deferring only lower-precedence declarations whose
+  attributes are exactly one unprefixed mode name and visibility, then applying
+  the principal public visibility at higher precedence. Preserve imported
+  templates, keep direct `mode-1904` conflict detection, and do not infer
+  general package or multi-property component composition.
 - [x] Retain non-whitespace text children in the private attribute-free
   temporary-tree representation and preserve mixed element/text order through
   invocation-owned materialization, built-in traversal, result accounting, and
