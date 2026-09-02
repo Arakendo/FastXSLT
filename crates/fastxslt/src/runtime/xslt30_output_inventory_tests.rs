@@ -1007,6 +1007,16 @@ fn reports_html_serialization_parameter_failures_before_shape_selection() {
 }
 
 #[test]
+fn reports_html_processing_instruction_delimiter_as_sere0015() {
+    let case_name = "output-0196";
+    let failure = try_execute_output_case(case_name, None)
+        .expect_err("HTML processing-instruction data containing > must fail");
+    assert_eq!(failure.code, "SERE0015");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+    assert_eq!(failure.request_id.as_deref(), Some(case_name));
+}
+
+#[test]
 fn resolves_imported_character_maps_and_higher_precedence_override() {
     let imported_only = execute_assert_serialization_case("output-0204", "xml");
     assert_eq!(

@@ -34,14 +34,7 @@ pub(in crate::runtime) fn serialize_xml(
     validate_normalization_form(settings, request_id)?;
     validate_string_encoding(settings, request_id)?;
     validate_html_version(settings, request_id)?;
-    if settings.byte_order_mark == Some(true) {
-        return Err(failure(
-            "FXSR1005",
-            FailureCategory::Unsupported,
-            Some(request_id),
-            "byte-order-mark=yes requires a future byte serialization result lane",
-        ));
-    }
+    validate_string_byte_order_mark(settings, request_id)?;
     let first_significant = result.children.iter().find(|node| match node {
         ResultNode::Text(value) => !value.chars().all(char::is_whitespace),
         ResultNode::Element { .. } => true,
@@ -77,6 +70,7 @@ pub(in crate::runtime) fn serialize_xml(
     }
     let html = settings.method.as_deref() == Some("html");
     if html {
+        validate_html_processing_instructions(result, request_id)?;
         validate_bounded_html_character_map_result(result, settings, request_id)?;
     }
     if settings
@@ -149,6 +143,44 @@ fn validate_bounded_html_character_map_result(
     };
     if settings.character_map.is_empty() || !is_bounded_html_node(root, true) {
         return Err(unsupported_html_result(request_id));
+    }
+    Ok(())
+}
+
+fn validate_string_byte_order_mark(
+    settings: &OutputSettings,
+    request_id: &str,
+) -> Result<(), ExecutionFailure> {
+    if settings.byte_order_mark == Some(true) {
+        return Err(failure(
+            "FXSR1005",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "byte-order-mark=yes requires a byte serialization result lane",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_html_processing_instructions(
+    result: &SemanticResult,
+    request_id: &str,
+) -> Result<(), ExecutionFailure> {
+    fn contains_forbidden_data(node: &ResultNode) -> bool {
+        match node {
+            ResultNode::ProcessingInstruction { value, .. } => value.contains('>'),
+            ResultNode::Element { children, .. } => children.iter().any(contains_forbidden_data),
+            ResultNode::Text(_) | ResultNode::Comment(_) => false,
+        }
+    }
+
+    if result.children.iter().any(contains_forbidden_data) {
+        return Err(failure(
+            "SERE0015",
+            FailureCategory::Invalid,
+            Some(request_id),
+            "HTML processing-instruction data must not contain >",
+        ));
     }
     Ok(())
 }

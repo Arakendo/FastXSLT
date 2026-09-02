@@ -831,6 +831,12 @@ execution = "passed"
 rationale = "Reports SESU0013 at serialization for an unsupported explicit HTML version."
 
 [[case_override]]
+case_name = "output-0196"
+selection = "selected"
+execution = "passed"
+rationale = "Reports SERE0015 before general HTML shape selection when processing-instruction data contains a greater-than delimiter."
+
+[[case_override]]
 case_name = "output-0501"
 selection = "selected"
 execution = "passed"
