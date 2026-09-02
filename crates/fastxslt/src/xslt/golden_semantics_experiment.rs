@@ -322,6 +322,12 @@ pub(crate) enum Instruction {
         body: Vec<Instruction>,
         location: SourceLocation,
     },
+    ForEachStaticIntegerRange {
+        start: i64,
+        end: i64,
+        body: Vec<Instruction>,
+        location: SourceLocation,
+    },
     ForEachNodes {
         select: ApplySelection,
         body: Vec<Instruction>,

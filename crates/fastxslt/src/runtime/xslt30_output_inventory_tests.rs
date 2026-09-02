@@ -1324,6 +1324,31 @@ fn executes_us_ascii_cdata_and_nfd_normalization() {
 }
 
 #[test]
+fn executes_static_ranges_with_expanded_name_indentation_suppression() {
+    let execution = execute_output_case("output-0232", None);
+    assert_eq!(execution.method.as_deref(), Some("xml"));
+    assert_eq!(execution.suppress_indentation_elements.len(), 2);
+    assert_eq!(execution.actual.matches("<p>").count(), 5);
+    assert_eq!(execution.actual.matches("<z:p>").count(), 5);
+    assert!(execution.actual.contains("<chapter>\n"));
+    assert!(!execution.actual.contains("<chapter><p>"));
+    for adjacency in [
+        "<wizard><cap>",
+        "</cap><small>",
+        "</small></wizard>",
+        "<hobbit><big>",
+        "</big><little>",
+        "</little></hobbit>",
+    ] {
+        assert!(
+            execution.actual.contains(adjacency),
+            "missing {adjacency} in {}",
+            execution.actual
+        );
+    }
+}
+
+#[test]
 fn preserves_html_ins_and_del_content_whitespace_without_indent() {
     let execution = execute_output_case("output-0160", None);
     assert_eq!(execution.method.as_deref(), Some("html"));

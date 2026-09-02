@@ -813,6 +813,12 @@ execution = "passed"
 rationale = "Emits paired XHTML doctype identifiers with the integer html-version 5 spelling."
 
 [[case_override]]
+case_name = "output-0232"
+selection = "selected"
+execution = "passed"
+rationale = "Executes both unchanged static integer-range loops and verifies XML indentation suppression for the unprefixed and namespace-qualified paragraph names."
+
+[[case_override]]
 case_name = "output-0233"
 selection = "selected"
 execution = "passed"

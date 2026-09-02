@@ -25,6 +25,7 @@ fn validate_named_calls(
         match instruction {
             Instruction::LiteralElement { body, .. }
             | Instruction::ForEachTemporaryRoot { body, .. }
+            | Instruction::ForEachStaticIntegerRange { body, .. }
             | Instruction::ForEachNodes { body, .. }
             | Instruction::If { body, .. } => {
                 validate_named_calls(program, body)?;

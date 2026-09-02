@@ -20,6 +20,22 @@ struct SerializationOptions<'a> {
     normalization_form: NormalizationForm,
     xml_empty_element_tag: bool,
     indent: bool,
+    indentation_state: IndentationState,
+}
+
+impl SerializationOptions<'_> {
+    fn inherited_for(self, name: &crate::xml::quick_xml_experiment::ExpandedName) -> Self {
+        Self {
+            indentation_state: if self.indentation_state == IndentationState::Suppressed
+                || self.suppress_indentation_elements.contains(name)
+            {
+                IndentationState::Suppressed
+            } else {
+                IndentationState::Enabled
+            },
+            ..self
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -41,6 +57,12 @@ enum NormalizationForm {
     None,
     Nfc,
     Nfd,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum IndentationState {
+    Enabled,
+    Suppressed,
 }
 
 pub(in crate::runtime) fn serialize_xml(
@@ -138,6 +160,7 @@ pub(in crate::runtime) fn serialize_xml(
         normalization_form,
         xml_empty_element_tag: settings.doctype_system.is_some() && !xhtml && !html,
         indent: settings.indent == Some(true),
+        indentation_state: IndentationState::Enabled,
     };
     let mut doctype_written = false;
     for node in &result.children {
@@ -1433,8 +1456,9 @@ fn serialize_element(
     let inject_content_type = options
         .content_type_media_type
         .is_some_and(|_| is_content_type_head(name, options));
+    let options = options.inherited_for(name);
     let indent_children = options.indent
-        && !options.suppress_indentation_elements.contains(name)
+        && options.indentation_state == IndentationState::Enabled
         && (inject_content_type
             || children
                 .iter()

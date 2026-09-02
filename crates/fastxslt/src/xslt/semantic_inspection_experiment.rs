@@ -263,6 +263,7 @@ fn observe_instructions(
             Instruction::SequenceItems { .. } => (SemanticFeature::SequenceItems, None),
             Instruction::ApplyTemplates { .. } => (SemanticFeature::ApplyTemplates, None),
             Instruction::ForEachTemporaryRoot { body, .. }
+            | Instruction::ForEachStaticIntegerRange { body, .. }
             | Instruction::ForEachNodes { body, .. } => {
                 (SemanticFeature::ForEach, Some(body.as_slice()))
             }

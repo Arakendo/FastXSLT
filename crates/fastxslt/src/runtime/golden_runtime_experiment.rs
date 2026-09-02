@@ -595,6 +595,7 @@ fn execute_instruction(
             )?);
         }
         Instruction::ForEachTemporaryRoot { .. }
+        | Instruction::ForEachStaticIntegerRange { .. }
         | Instruction::ForEachNodes { .. }
         | Instruction::NextMatch { .. }
         | Instruction::ApplyImports { .. }
@@ -622,7 +623,9 @@ fn execute_result_instruction<'a>(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     match instruction {
-        Instruction::ForEachTemporaryRoot { .. } | Instruction::ForEachNodes { .. } => {
+        Instruction::ForEachTemporaryRoot { .. }
+        | Instruction::ForEachStaticIntegerRange { .. }
+        | Instruction::ForEachNodes { .. } => {
             execute_for_each_instruction(inputs, instruction, execution, scope, control)
         }
         Instruction::NextMatch { .. } | Instruction::ApplyImports { .. } => {
@@ -721,11 +724,63 @@ fn execute_for_each_instruction<'a>(
         Instruction::ForEachTemporaryRoot { variable, body, .. } => {
             execute_for_each_temporary_root(inputs, variable, body, execution, variables, control)
         }
+        Instruction::ForEachStaticIntegerRange {
+            start, end, body, ..
+        } => execute_for_each_static_integer_range(
+            inputs, *start, *end, body, execution, variables, control,
+        ),
         Instruction::ForEachNodes { select, body, .. } => {
             execute_for_each_nodes(inputs, select, body, execution, variables, control)
         }
         _ => unreachable!("for-each dispatch receives only for-each instructions"),
     }
+}
+
+fn execute_for_each_static_integer_range<'a>(
+    inputs: &SequenceInputs<'a>,
+    start: i64,
+    end: i64,
+    body: &[Instruction],
+    execution: SequenceContext<'a>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    if start > end {
+        return Ok(Vec::new());
+    }
+    let span = end
+        .checked_sub(start)
+        .and_then(|value| value.checked_add(1));
+    let focus_size = span
+        .and_then(|value| usize::try_from(value).ok())
+        .ok_or_else(|| {
+            failure(
+                "FXRT0007",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                "integer range cannot be represented by this host",
+            )
+        })?;
+    let mut result = Vec::new();
+    for index in 0..focus_size {
+        control
+            .charge(WorkDomain::XPathOperation, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        result.extend(execute_sequence(
+            inputs,
+            body,
+            SequenceContext {
+                node: None,
+                temporary_focus: None,
+                focus_position: index + 1,
+                focus_size,
+                ..execution
+            },
+            variables,
+            control,
+        )?);
+    }
+    Ok(result)
 }
 
 fn execute_for_each_nodes<'a>(

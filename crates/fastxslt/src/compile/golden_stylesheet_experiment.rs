@@ -2153,6 +2153,36 @@ mod tests {
     }
 
     #[test]
+    fn static_integer_range_requires_a_context_independent_body() {
+        let stylesheet = parse_stylesheet(
+            "memory:static-range.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:for-each select="2 to 4"><item>fixed</item></xsl:for-each></xsl:template></xsl:stylesheet>"#,
+        );
+        let program = compile_stylesheet(&stylesheet).expect("bounded static range should compile");
+        assert!(matches!(
+            program
+                .root_template
+                .expect("root template")
+                .body
+                .as_slice(),
+            [Instruction::ForEachStaticIntegerRange {
+                start: 2,
+                end: 4,
+                ..
+            }]
+        ));
+
+        let unsupported = parse_stylesheet(
+            "memory:static-range-focus.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:for-each select="2 to 4"><xsl:value-of select="."/></xsl:for-each></xsl:template></xsl:stylesheet>"#,
+        );
+        let failure = compile_stylesheet(&unsupported)
+            .expect_err("atomic-focus-dependent body should stay unsupported");
+        assert_eq!(failure.code, "FXST1007");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+    }
+
+    #[test]
     fn separates_invalid_deep_equal_arity_from_unsupported_collation_semantics() {
         let invalid = parse_stylesheet(
             "memory:deep-equal-arity.xsl",

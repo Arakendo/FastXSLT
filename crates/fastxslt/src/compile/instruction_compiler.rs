@@ -253,7 +253,7 @@ fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction,
             location: document.location(element).clone(),
         });
     }
-    if is_static_integer_range(select) {
+    if let Some((start, end)) = parse_static_integer_range(select) {
         for child in meaningful_children(document, element) {
             if is_xslt_element(document, child, "apply-templates") {
                 let apply_select = optional_attribute(document, child, None, "select");
@@ -266,6 +266,26 @@ fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction,
                 }
             }
         }
+        ensure_only_attributes(
+            document,
+            element,
+            &["select", "default-mode"],
+            "xsl:for-each",
+        )?;
+        let body = compile_sequence(document, element)?;
+        if !is_context_independent_static_range_body(&body) {
+            return Err(unsupported(
+                "FXST1007",
+                "the admitted static integer-range xsl:for-each body is limited to literal result elements and text",
+                document.location(element),
+            ));
+        }
+        return Ok(Instruction::ForEachStaticIntegerRange {
+            start,
+            end,
+            body,
+            location: document.location(element).clone(),
+        });
     }
     ensure_only_attributes(
         document,
@@ -286,9 +306,19 @@ fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction,
     })
 }
 
-fn is_static_integer_range(expression: &str) -> bool {
-    expression.split_once(" to ").is_some_and(|(start, end)| {
-        start.trim().parse::<i64>().is_ok() && end.trim().parse::<i64>().is_ok()
+fn parse_static_integer_range(expression: &str) -> Option<(i64, i64)> {
+    let (start, end) = expression.split_once(" to ")?;
+    Some((
+        start.trim().parse::<i64>().ok()?,
+        end.trim().parse::<i64>().ok()?,
+    ))
+}
+
+fn is_context_independent_static_range_body(body: &[Instruction]) -> bool {
+    body.iter().all(|instruction| match instruction {
+        Instruction::Text { .. } => true,
+        Instruction::LiteralElement { body, .. } => is_context_independent_static_range_body(body),
+        _ => false,
     })
 }
 

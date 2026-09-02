@@ -266,9 +266,9 @@ fn instruction_owned(value: &Instruction) -> usize {
             arguments,
             location,
         } => apply_templates_owned(select.as_ref(), mode.as_ref(), arguments, location),
-        Instruction::ForEachTemporaryRoot { .. } | Instruction::ForEachNodes { .. } => {
-            for_each_owned(value)
-        }
+        Instruction::ForEachTemporaryRoot { .. }
+        | Instruction::ForEachStaticIntegerRange { .. }
+        | Instruction::ForEachNodes { .. } => for_each_owned(value),
         Instruction::NextMatch {
             arguments,
             location,
@@ -310,6 +310,9 @@ fn for_each_owned(value: &Instruction) -> usize {
             body,
             location,
         } => variable.capacity() + vec_owned(body, instruction_owned) + location_owned(location),
+        Instruction::ForEachStaticIntegerRange { body, location, .. } => {
+            vec_owned(body, instruction_owned) + location_owned(location)
+        }
         Instruction::ForEachNodes {
             select,
             body,

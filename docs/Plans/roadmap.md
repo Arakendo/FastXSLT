@@ -1205,6 +1205,17 @@ output remain outside the slice. The output denominator advances to 191 passes,
 one profile exclusion, and 40 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-us-ascii-cdata-normalization-2026-09-02.md)
 
+The unchanged `output-0232` case now executes two static `1 to 5` loops through
+a bounded context-independent range instruction and verifies all seven native
+serialization patterns. Range items are individually charged; bodies that
+would observe the unrepresented atomic context item remain explicitly
+unsupported. The case also corrected `suppress-indentation` inheritance:
+suppression selected by unprefixed `p` or namespace-qualified `z:p` now remains
+active through nested descendant elements rather than restarting indentation
+one level below the match. The output denominator advances to 192 passes, one
+profile exclusion, and 39 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-static-range-suppress-indentation-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1246,8 +1257,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 191 | 0 | 1 | 40 |
-| **Conserved total** | **531** | **389** | **3** | **51** | **88** |
+| `decl/output` | 232 | 192 | 0 | 1 | 39 |
+| **Conserved total** | **531** | **390** | **3** | **51** | **87** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
