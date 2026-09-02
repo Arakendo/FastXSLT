@@ -36,7 +36,7 @@ The 263-case deep-equal denominator now records 169 passes, 67 profile
 exclusions, and 27 visible defaults. The combined 612-case QT3 subtotal is 373
 passes, 179 exclusions, and 60 visible defaults.
 
-This does not admit maps, node-valued members, array update functions, brace
-constructors, general function-item equality, or non-codepoint collation inside
-arrays. Those cases remain excluded or visibly not run according to their
-existing metadata.
+This does not admit node-valued members, array update functions, general
+function-item equality, or non-codepoint collation inside arrays. A subsequent
+bounded literal-map tranche shares the renamed private composite-value owner;
+broader maps remain outside this array evidence.

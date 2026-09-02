@@ -1,11 +1,11 @@
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 
-use super::deep_equal_array;
 use super::deep_equal_atomic::{
     AtomicCollation, AtomicSequence, ExactDecimal, parse_decimal, parse_integer, parse_sequence,
     split_top_level_once,
 };
+use super::deep_equal_composite;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DeepEqualExpression {
@@ -61,8 +61,8 @@ enum DeepEqualOperands {
         collation: AtomicCollation,
     },
     ArraySequences {
-        left: deep_equal_array::ValueSequence,
-        right: deep_equal_array::ValueSequence,
+        left: deep_equal_composite::ValueSequence,
+        right: deep_equal_composite::ValueSequence,
     },
 }
 
@@ -137,13 +137,14 @@ pub(crate) fn parse(
             AtomicCollation::Codepoint,
         )
     };
-    let operands = if deep_equal_array::recognizes(left, right) {
+    let operands = if deep_equal_composite::recognizes(left, right) {
         if collation != AtomicCollation::Codepoint {
             return Err(unsupported(expression, location));
         }
         DeepEqualOperands::ArraySequences {
-            left: deep_equal_array::parse(left).ok_or_else(|| unsupported(expression, location))?,
-            right: deep_equal_array::parse(right)
+            left: deep_equal_composite::parse(left)
+                .ok_or_else(|| unsupported(expression, location))?,
+            right: deep_equal_composite::parse(right)
                 .ok_or_else(|| unsupported(expression, location))?,
         }
     } else if let (Some(left), Some(right)) = (parse_integer(left), parse_integer(right)) {
@@ -290,7 +291,7 @@ pub(crate) fn evaluate(
             Ok(true)
         }
         DeepEqualOperands::ArraySequences { left, right } => {
-            deep_equal_array::equals(left, right, control)
+            deep_equal_composite::equals(left, right, control)
                 .map_err(DeepEqualEvaluationFailure::Control)
         }
         DeepEqualOperands::Nodes { left, right } => {

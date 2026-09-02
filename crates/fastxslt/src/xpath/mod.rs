@@ -10,11 +10,11 @@ pub(crate) mod count_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod decimal_sum_for_experiment;
 #[cfg(any(test, feature = "workbench"))]
-mod deep_equal_array;
-#[cfg(any(test, feature = "workbench"))]
 mod deep_equal_atomic;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod deep_equal_boolean_experiment;
+#[cfg(any(test, feature = "workbench"))]
+mod deep_equal_composite;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod deep_equal_experiment;
 pub(crate) mod escape_html_uri_experiment;

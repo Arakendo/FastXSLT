@@ -2611,3 +2611,45 @@ case_name = "fn-deep-equal-arrays-17"
 selection = "selected"
 execution = "passed"
 rationale = "Reports unequal nested string-member counts before later top-level arrays."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-maps-1"
+selection = "selected"
+execution = "passed"
+rationale = "Compares two empty XDM maps through the private safe composite representation."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-maps-2"
+selection = "selected"
+execution = "passed"
+rationale = "Rejects a one-entry map against an empty map by entry count."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-maps-3"
+selection = "selected"
+execution = "passed"
+rationale = "Rejects an empty map against a one-entry map whose value is an empty sequence."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-maps-4"
+selection = "selected"
+execution = "passed"
+rationale = "Compares integer-keyed boolean maps independently of entry order."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-arrays-8"
+selection = "selected"
+execution = "passed"
+rationale = "Compares empty maps retained as corresponding array member items."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-arrays-9"
+selection = "selected"
+execution = "passed"
+rationale = "Compares reordered integer-keyed maps retained inside arrays."

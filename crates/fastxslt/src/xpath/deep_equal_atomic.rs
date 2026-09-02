@@ -83,6 +83,7 @@ pub(super) struct ExactDecimal {
 pub(super) fn split_top_level_once(value: &str) -> Option<(&str, &str)> {
     let mut depth = 0_u32;
     let mut square_depth = 0_u32;
+    let mut curly_depth = 0_u32;
     let mut in_string = false;
     for (index, character) in value.char_indices() {
         match character {
@@ -91,7 +92,9 @@ pub(super) fn split_top_level_once(value: &str) -> Option<(&str, &str)> {
             ')' if !in_string => depth = depth.checked_sub(1)?,
             '[' if !in_string => square_depth = square_depth.checked_add(1)?,
             ']' if !in_string => square_depth = square_depth.checked_sub(1)?,
-            ',' if !in_string && depth == 0 && square_depth == 0 => {
+            '{' if !in_string => curly_depth = curly_depth.checked_add(1)?,
+            '}' if !in_string => curly_depth = curly_depth.checked_sub(1)?,
+            ',' if !in_string && depth == 0 && square_depth == 0 && curly_depth == 0 => {
                 return Some((&value[..index], &value[index + 1..]));
             }
             _ => {}
