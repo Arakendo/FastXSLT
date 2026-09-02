@@ -45,7 +45,7 @@ const MISSING_CONTEXT_CASES: [(&str, &str); 5] = [
 ];
 
 const QT3_NAMESPACE: &str = "http://www.w3.org/2010/09/qt-fots-catalog";
-const STATIC_SYNTAX_ERROR_CASES: [(&str, &str); 22] = [
+const STATIC_SYNTAX_ERROR_CASES: [(&str, &str); 25] = [
     ("Axes088", "/*/"),
     ("K2-Axes-5", "*:(:hey:)ncname"),
     ("K2-Axes-6", "*(:hey:):ncname"),
@@ -68,6 +68,9 @@ const STATIC_SYNTAX_ERROR_CASES: [(&str, &str); 22] = [
     ("K2-Axes-77", "preceeding::node()"),
     ("K2-Axes-90", "prefix:"),
     ("K2-Axes-91", "prefix:"),
+    ("K2-Axes-95", "eclare function"),
+    ("K2-Axes-96", "declare function name"),
+    ("K2-Axes-97", "declare function local:foo() external;"),
 ];
 const CASES: [(&str, &str, usize); 182] = [
     ("Axes001-1", "fn:count(//center/child::*)", 0),

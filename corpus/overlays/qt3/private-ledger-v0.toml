@@ -2828,3 +2828,24 @@ case_name = "K2-Axes-98"
 selection = "selected"
 execution = "passed"
 rationale = "Treats the reserved words as relative name tests and reports XPDY0002 because their sequence has no context item."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-95"
+selection = "selected"
+execution = "passed"
+rationale = "Reports XPST0003 for a malformed declaration-shaped token sequence that is not an XPath expression."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-96"
+selection = "selected"
+execution = "passed"
+rationale = "Reports XPST0003 because function declarations are not permitted in an XPath expression."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-97"
+selection = "selected"
+execution = "passed"
+rationale = "Selects the native permitted XPST0003 result because an external function declaration is not XPath syntax."

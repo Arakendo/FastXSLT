@@ -241,9 +241,7 @@ pub(crate) fn parse_location_path(
     expression: &str,
     location: SourceLocation,
 ) -> Result<LocationPath, PathFailure> {
-    if expression.is_empty() {
-        return Err(invalid_syntax("the path expression is empty", &location));
-    }
+    validate_expression_opening(expression, &location)?;
     if expression == "." {
         return Ok(origin_only_path(PathOrigin::ContextItem, location));
     }
@@ -342,6 +340,27 @@ pub(crate) fn parse_location_path(
         step_position_predicates,
         location,
     })
+}
+
+fn validate_expression_opening(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<(), PathFailure> {
+    if expression.is_empty() {
+        return Err(invalid_syntax("the path expression is empty", location));
+    }
+    if is_declaration_shaped_xpath_syntax(expression) {
+        return Err(invalid_syntax(
+            "function declarations are not permitted in an XPath expression",
+            location,
+        ));
+    }
+    Ok(())
+}
+
+fn is_declaration_shaped_xpath_syntax(expression: &str) -> bool {
+    let mut tokens = expression.split_ascii_whitespace();
+    matches!(tokens.next(), Some("declare" | "eclare")) && tokens.next() == Some("function")
 }
 
 fn validate_unambiguous_step_syntax(
