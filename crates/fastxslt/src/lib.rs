@@ -11,6 +11,8 @@ mod compile;
 mod diagnostics;
 #[cfg(any(test, feature = "workbench"))]
 mod execution_control_experiment;
+#[cfg(test)]
+mod qt3_overlay_test_support;
 #[cfg(any(test, feature = "workbench"))]
 mod resources;
 mod runtime;

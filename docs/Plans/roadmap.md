@@ -1314,19 +1314,21 @@ not yet have individual first-party dispositions. This distinction matters:
 catalog discovery conserves the source inventory, while only a complete
 test-set overlay conserves a reportable case denominator.
 
-QT3 currently has passing selected-case records rather than complete parent
-test-set overlays:
+QT3 now has complete parent overlays for the two test sets under active
+execution. Typed validation composes the selected private-ledger records with a
+visible `harness-unsupported/not-run` default for every remaining sibling:
 
-| QT3 test set | Native cases | Selected and passed | Not individually classified |
+| QT3 test set | Native cases | Selected and passed | Visible default not run |
 | --- | ---: | ---: | ---: |
 | `prod/AxisStep.xml` | 349 | 182 | 167 |
 | `fn/deep-equal.xml` | 263 | 151 | 112 |
 | **Audited subtotal** | **612** | **333** | **279** |
 
-The other 31,209 QT3 cases remain structural catalog inventory only. The 333
-passes are useful XPath evidence, but they are not yet a conserved QT3
-denominator because the 279 sibling cases in those two test sets and the rest
-of the suite lack per-case selection dispositions.
+The 612-case subtotal is therefore conserved without relabeling the 279
+unselected siblings as engine failures. The other 31,209 QT3 cases remain
+structural catalog inventory only and still lack first-party selection
+dispositions.
+[Evidence](../Evidence/qt3-axis-deep-equal-conserved-denominators-2026-09-02.md)
 
 ### Verification capabilities already established
 
@@ -1367,9 +1369,10 @@ count:
    promotion still requires native metadata validation, a focused control, and
    an owned comparator or exact diagnostic—not merely successful stylesheet
    execution.
-3. [ ] Give `AxisStep.xml` and `fn/deep-equal.xml` complete QT3 overlays so all
-   612 parent-set cases receive a selection disposition. Only after that should
-   aggregate QT3 progress be described as a conserved denominator.
+3. [x] Give `AxisStep.xml` and `fn/deep-equal.xml` complete QT3 overlays so all
+   612 parent-set cases receive a selection disposition. The typed verifier
+   now conserves 333 selected passes plus 279 visible default not-run cases
+   against the immutable upstream case identities.
 4. [ ] Add complete denominators deliberately, selected by standards and
    implementation pressure rather than easy-case sampling. The remaining
    14,068 XSLT30 and 31,209 QT3 catalog-only cases must stay outside pass/fail

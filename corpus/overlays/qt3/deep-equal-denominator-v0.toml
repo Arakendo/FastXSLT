@@ -1,0 +1,10 @@
+suite = "QT3"
+revision = "83993587711dbd5c18ed846385ec37d079d6e492"
+set_file = "fn/deep-equal.xml"
+case_count = 263
+selected_source = "private-ledger-v0.toml"
+
+[default_disposition]
+selection = "harness-unsupported"
+execution = "not-run"
+rationale = "Unless selected by the typed private ledger, this deep-equal case has not been admitted through the current atomic/node comparison slice and owned assertion adapter."

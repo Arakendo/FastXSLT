@@ -163,6 +163,7 @@ pressure architecture but does not silently create a public guarantee.
 - [Private Host-Owned Two-Stage Workflow](private-host-owned-two-stage-workflow-2026-08-25.md)
 - [Private Compiled Semantic Inspection](private-compiled-semantic-inspection-2026-08-25.md)
 - [Private Qualified Snapshot Resolution](private-qualified-snapshot-resolution-2026-08-28.md)
+- [QT3 AxisStep and Deep-Equal Conserved Denominators](qt3-axis-deep-equal-conserved-denominators-2026-09-02.md)
 - [XSLT30 Include Denominator Inventory](xslt30-include-denominator-inventory-2026-08-28.md)
 - [Peer AR-0014 Review: Monday](peer-ar-0014-review-monday-2026-08-28.md)
 - [RFC 3986 Relative-Reference Mechanics](rfc3986-relative-reference-mechanics-2026-08-28.md)
