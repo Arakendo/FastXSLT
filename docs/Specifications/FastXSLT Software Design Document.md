@@ -428,6 +428,10 @@ fixup, and other HTML versions remain outside this successful slice.
 An independent HTML 5 character-map slice admits only the unchanged
 `doc/a/@value` corpus shape and applies the compiled map to both text and
 attribute values; it does not widen the ordinary HTML 5 element vocabulary.
+The explicit HTML serialization version 5 path emits C1 controls (`#x7F` through
+`#x9F`) as hexadecimal numeric character references for the bounded corpus
+shape. HTML 4 serialization remains excluded from the selected profile, and an
+environment-supplied default HTML version is not inferred by this evidence.
 The predefined XML namespace serializes attributes with the reserved `xml`
 prefix without requiring an authored declaration. Other namespaced literal
 result attributes remain outside the current private compilation slice.

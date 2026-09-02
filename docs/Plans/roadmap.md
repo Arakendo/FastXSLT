@@ -1067,6 +1067,15 @@ so this evidence does not widen the ordinary bounded HTML 5 vocabulary. The
 output denominator advances to 149 passes and 83 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-html5-character-map-2026-09-01.md)
 
+The explicit-version HTML 5 `output-0195b` case now serializes its C1 control as
+a hexadecimal numeric character reference through an exact `doc` result shape.
+The sibling HTML 4 `output-0195` case is now explicitly excluded by profile;
+`output-0195a` remains visible because it depends on an environment-supplied
+default HTML version rather than an explicit stylesheet property. The output
+denominator advances to 150 passes, 1 profile exclusion, and 81 visible default
+not-run cases.
+[Evidence](../Evidence/xslt30-output-html-version-control-characters-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1108,8 +1117,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 149 | 0 | 0 | 83 |
-| **Conserved total** | **531** | **347** | **3** | **50** | **131** |
+| `decl/output` | 232 | 150 | 0 | 1 | 81 |
+| **Conserved total** | **531** | **348** | **3** | **51** | **129** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1163,7 +1172,7 @@ count:
    `apply-templates` case is schema-aware and the two remaining `include` cases
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
-2. [ ] Continue coherent semantic slices through the 83 visible `output`
+2. [ ] Continue coherent semantic slices through the 81 visible `output`
    gaps and 48 visible `mode` gaps. Each promotion still requires native
    metadata validation, a focused control, and an owned comparator or exact
    diagnostic—not merely successful stylesheet execution.

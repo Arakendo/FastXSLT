@@ -849,6 +849,18 @@ execution = "passed"
 rationale = "Reports SERE0015 before general HTML shape selection when processing-instruction data contains a greater-than delimiter."
 
 [[case_override]]
+case_name = "output-0195"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "Requires HTML 4 serialization, which remains outside FastXSLT's selected output profile."
+
+[[case_override]]
+case_name = "output-0195b"
+selection = "selected"
+execution = "passed"
+rationale = "Serializes the C1 control character through explicit HTML version 5 as the required numeric character reference."
+
+[[case_override]]
 case_name = "output-0501"
 selection = "selected"
 execution = "passed"

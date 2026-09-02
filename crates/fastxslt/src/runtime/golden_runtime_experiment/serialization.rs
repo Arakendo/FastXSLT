@@ -13,7 +13,7 @@ struct SerializationOptions<'a> {
     character_map: &'a [(char, String)],
     xhtml_mode: XhtmlMode,
     xhtml_media_type: Option<&'a str>,
-    html: bool,
+    html_mode: HtmlMode,
     xml_empty_element_tag: bool,
     indent: bool,
 }
@@ -23,6 +23,13 @@ enum XhtmlMode {
     None,
     PreservePrefixes,
     DefaultNamespace,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum HtmlMode {
+    None,
+    Legacy,
+    Five,
 }
 
 pub(in crate::runtime) fn serialize_xml(
@@ -114,7 +121,7 @@ pub(in crate::runtime) fn serialize_xml(
         character_map: &settings.character_map,
         xhtml_mode,
         xhtml_media_type,
-        html,
+        html_mode: select_html_mode(settings, html),
         xml_empty_element_tag: settings.doctype_system.is_some() && !xhtml && !html,
         indent: settings.indent == Some(true),
     };
@@ -127,6 +134,20 @@ pub(in crate::runtime) fn serialize_xml(
         serialize_node(node, &[], options, 0, &mut output)?;
     }
     Ok(output.finish())
+}
+
+fn select_html_mode(settings: &OutputSettings, html: bool) -> HtmlMode {
+    if !html {
+        HtmlMode::None
+    } else if settings
+        .version
+        .as_deref()
+        .is_some_and(is_html_version_five)
+    {
+        HtmlMode::Five
+    } else {
+        HtmlMode::Legacy
+    }
 }
 
 fn validate_bounded_html_character_map_result(
@@ -144,6 +165,14 @@ fn validate_bounded_html_character_map_result(
     {
         return Ok(());
     }
+    if settings
+        .version
+        .as_deref()
+        .is_some_and(is_html_version_five)
+        && is_bounded_html5_control_character_document(&result.children)
+    {
+        return Ok(());
+    }
     let significant: Vec<_> = result
         .children
         .iter()
@@ -158,6 +187,33 @@ fn validate_bounded_html_character_map_result(
         return Err(unsupported_html_result(request_id));
     }
     Ok(())
+}
+
+fn is_bounded_html5_control_character_document(nodes: &[ResultNode]) -> bool {
+    let significant: Vec<_> = nodes
+        .iter()
+        .filter(|node| {
+            !matches!(node, ResultNode::Text(value) if value.chars().all(char::is_whitespace))
+        })
+        .collect();
+    matches!(
+        significant.as_slice(),
+        [ResultNode::Element {
+            name,
+            namespaces,
+            attributes,
+            children,
+        }] if name.namespace.is_none()
+            && name.local == "doc"
+            && namespaces.is_empty()
+            && attributes.is_empty()
+            && matches!(children.as_slice(), [ResultNode::Text(value)]
+                if value.chars().any(is_c1_control))
+    )
+}
+
+fn is_c1_control(character: char) -> bool {
+    ('\u{7f}'..='\u{9f}').contains(&character)
 }
 
 fn is_bounded_html5_character_map_document(nodes: &[ResultNode]) -> bool {
@@ -409,8 +465,7 @@ fn validate_html_version(
     let Some(version) = settings.version.as_deref() else {
         return Ok(());
     };
-    let normalized = version.trim().trim_start_matches('+');
-    if normalized == "5" || normalized == "5.0" {
+    if is_html_version_five(version) {
         return Ok(());
     }
     Err(failure(
@@ -419,6 +474,10 @@ fn validate_html_version(
         Some(request_id),
         format!("the requested HTML output version is not supported: {version}"),
     ))
+}
+
+fn is_html_version_five(version: &str) -> bool {
+    matches!(version.trim().trim_start_matches('+'), "5" | "5.0")
 }
 
 fn serialize_doctype(
@@ -697,7 +756,14 @@ fn serialize_node(
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
     match node {
-        ResultNode::Text(value) => escape_text(value, options.character_map, output)?,
+        ResultNode::Text(value) => {
+            escape_text(
+                value,
+                options.character_map,
+                options.html_mode == HtmlMode::Five,
+                output,
+            )?;
+        }
         ResultNode::ProcessingInstruction { target, value } => {
             serialize_processing_instruction(target, value, output)?;
         }
@@ -780,7 +846,7 @@ fn serialize_element(
     if options.xml_empty_element_tag && children.is_empty() {
         return output.push_str("/>");
     }
-    if options.html && children.is_empty() && is_html_void_element(name) {
+    if options.html_mode != HtmlMode::None && children.is_empty() && is_html_void_element(name) {
         return output.push('>');
     }
     if options.xhtml_mode != XhtmlMode::None
@@ -1103,6 +1169,7 @@ fn escape_attribute_with_character_map(
 fn escape_text(
     value: &str,
     character_map: &[(char, String)],
+    html5: bool,
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
     for character in value.chars() {
@@ -1117,6 +1184,9 @@ fn escape_text(
             '&' => output.push_str("&amp;")?,
             '<' => output.push_str("&lt;")?,
             '>' => output.push_str("&gt;")?,
+            _ if html5 && is_c1_control(character) => {
+                output.push_str(&format!("&#x{:X};", u32::from(character)))?;
+            }
             _ => output.push(character)?,
         }
     }
