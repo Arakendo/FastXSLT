@@ -878,6 +878,24 @@ selection = "selected"
 execution = "passed"
 rationale = "Preserves an element in an arbitrary foreign namespace with a qualified prefix during bounded HTML 5 output."
 
+[[case_override]]
+case_name = "output-0603a"
+selection = "selected"
+execution = "passed"
+rationale = "Retains an SVG-qualified attribute prefix and local declaration on a MathML element during HTML 5 namespace normalization."
+
+[[case_override]]
+case_name = "output-0603b"
+selection = "selected"
+execution = "passed"
+rationale = "Retains a MathML-qualified attribute prefix and local declaration on a MathML element during HTML 5 namespace normalization."
+
+[[case_override]]
+case_name = "output-0603c"
+selection = "selected"
+execution = "passed"
+rationale = "Preserves an attribute and prefix binding in an unrelated foreign namespace on an HTML element."
+
 [[assertion_family]]
 name = "all-of"
 count = 89

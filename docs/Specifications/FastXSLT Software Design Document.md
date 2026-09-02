@@ -420,8 +420,9 @@ pretty-printing choices remain implementation-defined and unclaimed.
 The private HTML 5 lane admits one no-namespace document element with a bounded
 HTML/SVG/MathML vocabulary and a fixed set of non-URI attributes. Its standard
 void-element list serializes without end tags. Known XHTML, SVG, and MathML
-prefix bindings normalize to the required default namespace while an admitted
-arbitrary foreign namespace retains its prefix. HTML URI attributes, raw-text
+element prefix bindings normalize to the required default namespace. A
+qualified attribute retains the exact prefix binding it consumes, and an
+admitted arbitrary foreign namespace retains its prefix. HTML URI attributes, raw-text
 handling, arbitrary element and attribute vocabularies, general namespace
 fixup, and other HTML versions remain outside this successful slice.
 The predefined XML namespace serializes attributes with the reserved `xml`

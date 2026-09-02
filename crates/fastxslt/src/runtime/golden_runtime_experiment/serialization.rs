@@ -1,7 +1,8 @@
 //! Private serialization of the golden slice's semantic result.
 
 use super::{
-    ExecutionFailure, FailureCategory, ResultNode, SemanticResult, control_failure, failure,
+    ExecutionFailure, FailureCategory, ResultAttribute, ResultNode, SemanticResult,
+    control_failure, failure,
 };
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xslt::golden_semantics_experiment::OutputSettings;
@@ -181,19 +182,28 @@ fn is_bounded_html5_node(node: &ResultNode, root: bool) -> bool {
             is_bounded_html5_element_name(name, root)
                 && namespaces.iter().all(|binding| {
                     is_xhtml5_default_namespace(Some(&binding.namespace))
-                        || binding.namespace == "NamespaceN"
+                        || matches!(binding.namespace.as_str(), "NamespaceN" | "NamespaceM")
                 })
-                && attributes.iter().all(|attribute| {
-                    attribute.name.namespace.is_none()
-                        && matches!(
-                            attribute.name.local.as_str(),
-                            "width" | "height" | "fill" | "cx" | "cy" | "r"
-                        )
-                })
+                && attributes.iter().all(is_bounded_html5_attribute)
                 && children
                     .iter()
                     .all(|child| is_bounded_html5_node(child, false))
         }
+    }
+}
+
+fn is_bounded_html5_attribute(attribute: &ResultAttribute) -> bool {
+    match attribute.name.namespace.as_deref() {
+        None => matches!(
+            attribute.name.local.as_str(),
+            "width" | "height" | "fill" | "cx" | "cy" | "r" | "z"
+        ),
+        Some("http://www.w3.org/2000/svg") => {
+            matches!(attribute.name.local.as_str(), "att" | "atZZZ")
+        }
+        Some("http://www.w3.org/1998/Math/MathML") => attribute.name.local == "att",
+        Some("NamespaceM") => attribute.name.local == "zzz",
+        Some(_) => false,
     }
 }
 
@@ -694,7 +704,8 @@ fn serialize_element(
             .namespace
             .as_deref()
             .filter(|namespace| is_xhtml5_default_namespace(Some(namespace)));
-        normalized_namespaces = normalize_xhtml5_namespace_bindings(default_namespace, namespaces);
+        normalized_namespaces =
+            normalize_xhtml5_namespace_bindings(default_namespace, namespaces, attributes);
         normalized_namespaces.as_slice()
     } else {
         namespaces
@@ -812,10 +823,17 @@ fn is_xhtml5_default_namespace(namespace: Option<&str>) -> bool {
 fn normalize_xhtml5_namespace_bindings(
     default_namespace: Option<&str>,
     namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
+    attributes: &[ResultAttribute],
 ) -> Vec<crate::xml::quick_xml_experiment::NamespaceBinding> {
     let mut normalized = namespaces
         .iter()
-        .filter(|binding| !is_xhtml5_default_namespace(Some(&binding.namespace)))
+        .filter(|binding| {
+            !is_xhtml5_default_namespace(Some(&binding.namespace))
+                || binding.prefix.is_some()
+                    && attributes.iter().any(|attribute| {
+                        attribute.name.namespace.as_deref() == Some(&binding.namespace)
+                    })
+        })
         .cloned()
         .collect::<Vec<_>>();
     if let Some(default_namespace) = default_namespace {

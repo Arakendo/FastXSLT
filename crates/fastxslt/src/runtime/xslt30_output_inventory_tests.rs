@@ -1068,6 +1068,28 @@ fn normalizes_html5_svg_mathml_and_preserves_foreign_element_namespaces() {
 }
 
 #[test]
+fn preserves_html5_namespaced_attribute_prefixes() {
+    let svg = execute_output_case("output-0603a", None);
+    assert!(
+        svg.actual
+            .contains("xmlns:svg=\"http://www.w3.org/2000/svg\"")
+    );
+    assert!(svg.actual.contains("svg:att=\"34\""));
+
+    let mathml = execute_output_case("output-0603b", None);
+    assert!(
+        mathml
+            .actual
+            .contains("xmlns:mathML=\"http://www.w3.org/1998/Math/MathML\"")
+    );
+    assert!(mathml.actual.contains("mathML:att=\"123\""));
+
+    let foreign = execute_output_case("output-0603c", None);
+    assert!(foreign.actual.contains("xmlns:m=\"NamespaceM\""));
+    assert!(foreign.actual.contains("<p m:zzz=\"value\">"));
+}
+
+#[test]
 fn resolves_imported_character_maps_and_higher_precedence_override() {
     let imported_only = execute_assert_serialization_case("output-0204", "xml");
     assert_eq!(
