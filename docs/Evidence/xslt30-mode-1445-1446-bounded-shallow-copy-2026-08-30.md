@@ -40,7 +40,7 @@ The shared native output is roughly 9 KiB, so the adapter uses the same explicit
 and execution remain memory-resident over the sealed source/stylesheet
 snapshot.
 
-## Explicit non-admissions
+## Explicit non-admissions at this checkpoint
 
 The current semantic result tree cannot represent comments or standalone
 attribute result items. It also cannot yet route an attribute-template result
@@ -50,9 +50,12 @@ therefore require structured unsupported failures with source locations for:
 - a comment reached by shallow-copy (`FXRT1012`); and
 - an attribute intercepted by a matching template (`FXRT1013`).
 
-These outcomes prevent plausible partial XML from being mistaken for supported
-shallow-copy semantics. Deep copy, deep/shallow skip, and text-only-copy remain
-unsupported.
+These outcomes prevented plausible partial XML from being mistaken for
+supported shallow-copy semantics at this checkpoint. Source comment copying
+and source attribute-template interception were subsequently admitted with
+focused conservation coverage by the
+[source shallow-copy attribute override slice](xslt30-mode-source-shallow-copy-attribute-override-2026-09-02.md).
+Deep copy, deep/shallow skip, and text-only-copy remained unsupported here.
 
 ## Accounting
 

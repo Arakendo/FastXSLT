@@ -17,8 +17,8 @@ use crate::xpath::format_number_experiment::parse as parse_format_number;
 use crate::xpath::integer_for_experiment::parse as parse_integer_for;
 use crate::xpath::path_experiment::parse_location_path;
 use crate::xslt::golden_semantics_experiment::{
-    BooleanExpression, ChooseBranch, EqualityTest, Instruction, SequenceItemExpression,
-    TemplateArgument, ValueExpression,
+    BooleanExpression, ChooseBranch, ComputedAttribute, EqualityTest, Instruction,
+    LiteralAttributeValue, SequenceItemExpression, TemplateArgument, ValueExpression,
 };
 
 #[path = "instruction_compiler/computed_attribute_compiler.rs"]
@@ -86,6 +86,8 @@ pub(super) fn compile_sequence_excluding(
                         instructions.push(compile_text(document, child)?);
                     } else if name.local == "comment" {
                         instructions.push(compile_comment(document, child)?);
+                    } else if name.local == "attribute" {
+                        instructions.push(compile_attribute(document, child)?);
                     } else if name.local == "processing-instruction" {
                         instructions.push(compile_processing_instruction(document, child)?);
                     } else if name.local == "value-of" {
@@ -157,6 +159,41 @@ pub(super) fn compile_sequence_excluding(
         }
     }
     Ok(instructions)
+}
+
+fn compile_attribute(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
+    ensure_only_attributes(document, element, &["name", "select"], "xsl:attribute")?;
+    ensure_no_meaningful_children(document, element, "xsl:attribute")?;
+    let name = required_attribute(document, element, None, "name")?;
+    if !is_ascii_ncname(name) {
+        return Err(unsupported(
+            "FXST1033",
+            "the private standalone xsl:attribute slice requires an unprefixed static NCName",
+            document.location(element),
+        ));
+    }
+    let select = required_attribute(document, element, None, "select")?;
+    let value = match select.split_whitespace().collect::<String>().as_str() {
+        ".+1" => LiteralAttributeValue::ContextIntegerIncrement(1),
+        _ => {
+            return Err(unsupported(
+                "FXXP1012",
+                format!("unsupported standalone xsl:attribute value expression: {select}"),
+                document.location(element),
+            ));
+        }
+    };
+    Ok(Instruction::Attribute {
+        attribute: ComputedAttribute {
+            name: crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: None,
+                local: name.to_owned(),
+            },
+            value,
+            location: document.location(element).clone(),
+        },
+        location: document.location(element).clone(),
+    })
 }
 
 fn compile_literal_element(

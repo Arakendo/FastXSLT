@@ -215,21 +215,7 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
 
 fn instruction_owned(value: &Instruction) -> usize {
     match value {
-        Instruction::LiteralElement {
-            name,
-            namespaces,
-            attributes,
-            computed_attributes,
-            body,
-            location,
-        } => literal_element_owned(
-            name,
-            namespaces,
-            attributes,
-            computed_attributes,
-            body,
-            location,
-        ),
+        Instruction::LiteralElement { .. } => literal_element_instruction_owned(value),
         Instruction::Text { value, location } | Instruction::CommentNode { value, location } => {
             value.capacity() + location_owned(location)
         }
@@ -238,6 +224,10 @@ fn instruction_owned(value: &Instruction) -> usize {
             value,
             location,
         } => target.capacity() + value.capacity() + location_owned(location),
+        Instruction::Attribute {
+            attribute,
+            location,
+        } => computed_attribute_owned(attribute) + location_owned(location),
         Instruction::ValueOf {
             select,
             separator,
@@ -314,6 +304,28 @@ fn instruction_owned(value: &Instruction) -> usize {
             location,
         } => copy_owned(attributes, body, location),
     }
+}
+
+fn literal_element_instruction_owned(value: &Instruction) -> usize {
+    let Instruction::LiteralElement {
+        name,
+        namespaces,
+        attributes,
+        computed_attributes,
+        body,
+        location,
+    } = value
+    else {
+        unreachable!("literal-element retention requires a literal-element instruction")
+    };
+    literal_element_owned(
+        name,
+        namespaces,
+        attributes,
+        computed_attributes,
+        body,
+        location,
+    )
 }
 
 fn for_each_owned(value: &Instruction) -> usize {
@@ -478,6 +490,7 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
         }
         LiteralAttributeValue::ContextPosition
         | LiteralAttributeValue::ContextSize
-        | LiteralAttributeValue::ContextLocalName => 0,
+        | LiteralAttributeValue::ContextLocalName
+        | LiteralAttributeValue::ContextIntegerIncrement(_) => 0,
     }
 }

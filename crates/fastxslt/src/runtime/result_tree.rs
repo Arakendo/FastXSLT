@@ -37,6 +37,7 @@ struct AttributeContext<'a> {
     focus_position: usize,
     focus_size: usize,
     context_name: Option<&'a ExpandedName>,
+    context_value: Option<&'a str>,
     request_id: &'a str,
 }
 
@@ -54,6 +55,7 @@ pub(super) fn materialize_literal_attributes(
         focus_position: context_position,
         focus_size: context_size,
         context_name,
+        context_value: None,
         request_id,
     };
     attributes
@@ -75,6 +77,7 @@ pub(super) fn materialize_computed_attributes(
     variables: &RuntimeVariables,
     context_position: usize,
     context_size: usize,
+    context_value: Option<&str>,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultAttribute>, ExecutionFailure> {
@@ -83,6 +86,7 @@ pub(super) fn materialize_computed_attributes(
         focus_position: context_position,
         focus_size: context_size,
         context_name: None,
+        context_value,
         request_id,
     };
     attributes
@@ -131,6 +135,32 @@ fn materialize_attribute(
         LiteralAttributeValue::ContextLocalName => context
             .context_name
             .map_or_else(String::new, |name| name.local.clone()),
+        LiteralAttributeValue::ContextIntegerIncrement(increment) => {
+            let lexical = context.context_value.ok_or_else(|| {
+                failure_at(
+                    "XPTY0004",
+                    FailureCategory::Invalid,
+                    Some(context.request_id),
+                    location.clone(),
+                    "the numeric attribute expression requires an atomic context value",
+                )
+            })?;
+            lexical
+                .trim()
+                .parse::<i64>()
+                .ok()
+                .and_then(|value| value.checked_add(*increment))
+                .ok_or_else(|| {
+                    failure_at(
+                        "FORG0001",
+                        FailureCategory::Invalid,
+                        Some(context.request_id),
+                        location.clone(),
+                        format!("attribute value is not an admitted integer: {lexical}"),
+                    )
+                })?
+                .to_string()
+        }
     };
     Ok(ResultAttribute {
         name: name.clone(),

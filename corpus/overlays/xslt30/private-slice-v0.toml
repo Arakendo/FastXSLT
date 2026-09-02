@@ -1402,6 +1402,13 @@ rationale = "The unnamed shallow-copy mode composes with explicit text-node uppe
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1413"
+selection = "selected"
+execution = "passed"
+rationale = "Named shallow-copy mode lets the unchanged @length rule replace copied source attributes, preserves combined attribute/child focus, and lets the chtitle wrapper continue to the built-in rule with xsl:next-match."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-1417"
 selection = "selected"
 execution = "passed"

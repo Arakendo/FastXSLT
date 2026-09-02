@@ -30,10 +30,12 @@ native XML assertion passes.
 
 This does not admit dynamic attribute value templates in global temporary
 constructors, standalone temporary-attribute result construction, namespace
-nodes, or general typed global expressions. The ordinary source-tree
-shallow-copy lane still reports attribute-template interception as unsupported;
-that separate result attachment path is not silently inferred from temporary
-tree support.
+nodes, or general typed global expressions. At this checkpoint the ordinary
+source-tree shallow-copy lane still reported attribute-template interception as
+unsupported; that separate result attachment path was subsequently admitted
+and conserved by the
+[source shallow-copy attribute override slice](xslt30-mode-source-shallow-copy-attribute-override-2026-09-02.md),
+not silently inferred from temporary-tree support.
 
 ## Denominator movement
 

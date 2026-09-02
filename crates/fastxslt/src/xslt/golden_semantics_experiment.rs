@@ -293,6 +293,10 @@ pub(crate) enum Instruction {
         value: String,
         location: SourceLocation,
     },
+    Attribute {
+        attribute: ComputedAttribute,
+        location: SourceLocation,
+    },
     ValueOf {
         select: ValueExpression,
         separator: String,
@@ -454,6 +458,7 @@ pub(crate) enum LiteralAttributeValue {
     ContextPosition,
     ContextSize,
     ContextLocalName,
+    ContextIntegerIncrement(i64),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

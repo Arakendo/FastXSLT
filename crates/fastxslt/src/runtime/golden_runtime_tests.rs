@@ -619,23 +619,23 @@ fn isolated_descendant_copies_retain_required_namespace_bindings() {
 }
 
 #[test]
-fn shallow_copy_reports_unrepresented_comment_and_attribute_override_paths() {
+fn shallow_copy_preserves_comments_and_attribute_template_results() {
     const SOURCE: &str = "urn:fastxslt:shallow-copy-boundary:source";
     const STYLESHEET: &str = "urn:fastxslt:shallow-copy-boundary:stylesheet";
     let cases: [(&[u8], &[u8], &str); 2] = [
         (
             b"<root><!--retained source comment--></root>",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:mode on-no-match="shallow-copy"/></xsl:stylesheet>"#,
-            "FXRT1012",
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root><!--retained source comment--></root>",
         ),
         (
             br#"<root code="intercepted"/>"#,
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:mode on-no-match="shallow-copy"/><xsl:template match="@code"><xsl:value-of select="."/></xsl:template></xsl:stylesheet>"#,
-            "FXRT1013",
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root>intercepted</root>",
         ),
     ];
 
-    for (source, stylesheet, code) in cases {
+    for (source, stylesheet, expected) in cases {
         let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
         resources
             .admit(SOURCE, source.to_vec())
@@ -651,11 +651,9 @@ fn shallow_copy_reports_unrepresented_comment_and_attribute_override_paths() {
             .add(request("shallow-copy", "result", SOURCE))
             .expect("admit shallow-copy boundary request");
 
-        let failure = execute_transform_set(builder.seal())
-            .expect_err("unrepresented shallow-copy result path must remain explicit");
-        assert_eq!(failure.code, code);
-        assert_eq!(failure.category, FailureCategory::Unsupported);
-        assert!(failure.location.is_some());
+        let results = execute_transform_set(builder.seal())
+            .expect("represented shallow-copy result path must execute");
+        assert_eq!(results.by_request["shallow-copy"].serialized, expected);
     }
 }
 

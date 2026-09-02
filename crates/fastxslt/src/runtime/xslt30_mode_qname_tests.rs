@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 82] = [
+const SELECTED_CASES: [&str; 83] = [
     "mode-0001",
     "mode-0003",
     "mode-0005",
@@ -62,6 +62,7 @@ const SELECTED_CASES: [&str; 82] = [
     "mode-1407",
     "mode-1409",
     "mode-1411",
+    "mode-1413",
     "mode-1415",
     "mode-1417",
     "mode-1419",
@@ -151,11 +152,12 @@ const PACKAGE_EXCLUDED_CASES: [&str; 19] = [
     "mode-1714err",
     "mode-1803",
 ];
-const LARGE_RESULT_CASES: [&str; 8] = [
+const LARGE_RESULT_CASES: [&str; 9] = [
     "mode-1405",
     "mode-1407",
     "mode-1409",
     "mode-1411",
+    "mode-1413",
     "mode-1415",
     "mode-1423",
     "mode-1445",
@@ -510,6 +512,12 @@ fn executes_shallow_copy_over_the_complete_native_mode_source() {
         let (actual, expected) = execute_case(case_name);
         assert_xml_equivalent(&actual, &expected);
     }
+}
+
+#[test]
+fn executes_shallow_copy_attribute_override_and_next_match() {
+    let (actual, expected) = execute_case("mode-1413");
+    assert_xml_equivalent(&actual, &expected);
 }
 
 #[test]

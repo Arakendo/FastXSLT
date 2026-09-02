@@ -255,6 +255,7 @@ fn observe_instructions(
                 (SemanticFeature::ProcessingInstruction, None)
             }
             Instruction::CommentNode { .. } => (SemanticFeature::Comment, None),
+            Instruction::Attribute { .. } => (SemanticFeature::ComputedAttribute, None),
             Instruction::ValueOf { .. } => (SemanticFeature::ValueOf, None),
             Instruction::Variable { .. }
             | Instruction::IntegerRangeVariable { .. }

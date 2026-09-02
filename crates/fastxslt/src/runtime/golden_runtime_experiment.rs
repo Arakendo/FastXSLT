@@ -10,7 +10,7 @@ use crate::xpath::for_distinct_values_experiment::{
 };
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, BooleanExpression, Instruction, NodeTest, OnNoMatchPolicy,
+    ApplySelection, BooleanExpression, ComputedAttribute, Instruction, NodeTest, OnNoMatchPolicy,
     SequenceItemExpression, SourceWhitespacePolicy, StylesheetProgram, TemplateArgument,
 };
 
@@ -546,6 +546,9 @@ fn execute_instruction(
         Instruction::CommentNode { value, .. } => {
             result.push(construct_comment(value, inputs.request_id, control)?);
         }
+        Instruction::Attribute { attribute, .. } => result.push(execute_attribute_instruction(
+            inputs, attribute, execution, scope, control,
+        )?),
         Instruction::ValueOf {
             select, separator, ..
         } => {
@@ -616,6 +619,27 @@ fn execute_instruction(
         )?),
     }
     Ok(())
+}
+
+fn execute_attribute_instruction(
+    inputs: &SequenceInputs<'_>,
+    attribute: &ComputedAttribute,
+    execution: SequenceContext<'_>,
+    scope: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<ResultNode, ExecutionFailure> {
+    let mut materialized = materialize_computed_attributes(
+        std::slice::from_ref(attribute),
+        scope,
+        execution.focus_position,
+        execution.focus_size,
+        execution_context_value(inputs, execution),
+        inputs.request_id,
+        control,
+    )?;
+    Ok(ResultNode::PendingAttribute(materialized.pop().expect(
+        "one compiled attribute materializes one result attribute",
+    )))
 }
 
 fn execute_result_instruction<'a>(
@@ -994,6 +1018,7 @@ fn execute_literal_element(
         variables,
         execution.focus_position,
         execution.focus_size,
+        None,
         inputs.request_id,
         control,
     )?);
@@ -1050,6 +1075,24 @@ fn execution_context_name<'a>(
     execution
         .node
         .and_then(|node| inputs.source.and_then(|source| source.name(node)))
+}
+
+fn execution_context_value<'a>(
+    inputs: &'a SequenceInputs<'a>,
+    execution: SequenceContext<'a>,
+) -> Option<&'a str> {
+    if let Some(TemporaryFocus::Node(tree, node)) = execution.temporary_focus {
+        return match &tree.nodes[node].kind {
+            TemporaryNodeKind::Attribute { value, .. }
+            | TemporaryNodeKind::Text(value)
+            | TemporaryNodeKind::Comment(value)
+            | TemporaryNodeKind::ProcessingInstruction { value, .. } => Some(value),
+            TemporaryNodeKind::Element { .. } => None,
+        };
+    }
+    execution
+        .node
+        .and_then(|node| inputs.source.and_then(|source| source.value(node)))
 }
 
 fn execute_apply_instruction(
@@ -1892,14 +1935,28 @@ fn apply_shallow_copy_template(
             control
                 .charge(WorkDomain::ResultNode, 1)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let attributes = source.attributes(node);
+            let children = source.children(node);
+            let focus_size = attributes.len() + children.len();
+            let (attributes, mut generated_children) =
+                shallow_copy_attributes(inputs, node, mode, parameters, focus_size, control)?;
+            generated_children.extend(apply_child_templates_with_focus(
+                inputs,
+                node,
+                mode,
+                parameters,
+                source.attributes(node).len(),
+                focus_size,
+                control,
+            )?);
             Ok(vec![ResultNode::Element {
                 name: source
                     .name(node)
                     .expect("source element has a name")
                     .clone(),
                 namespaces: source.namespace_declarations(node).to_vec(),
-                attributes: shallow_copy_attributes(inputs, node, mode, control)?,
-                children: apply_child_templates(inputs, node, mode, parameters, control)?,
+                attributes,
+                children: generated_children,
             }])
         }
         NodeKind::Text => {
@@ -1921,13 +1978,23 @@ fn apply_shallow_copy_template(
             inputs.request_id,
             control,
         )?]),
-        NodeKind::Attribute | NodeKind::Comment => Err(failure_at(
-            "FXRT1012",
-            FailureCategory::Unsupported,
-            Some(inputs.request_id),
-            source.location(node).clone(),
-            "this source node kind is outside the bounded shallow-copy result-tree slice",
-        )),
+        NodeKind::Attribute => {
+            control
+                .charge(WorkDomain::ResultNode, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            Ok(vec![ResultNode::PendingAttribute(ResultAttribute {
+                name: source
+                    .name(node)
+                    .expect("source attribute has a name")
+                    .clone(),
+                value: source.string_value(node),
+            })])
+        }
+        NodeKind::Comment => Ok(vec![construct_comment(
+            source.value(node).unwrap_or_default(),
+            inputs.request_id,
+            control,
+        )?]),
     }
 }
 
@@ -1935,49 +2002,46 @@ fn shallow_copy_attributes(
     inputs: &SequenceInputs<'_>,
     element: NodeId,
     mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    focus_size: usize,
     control: &mut InvocationControl,
-) -> Result<Vec<ResultAttribute>, ExecutionFailure> {
+) -> Result<(Vec<ResultAttribute>, Vec<ResultNode>), ExecutionFailure> {
     let source = inputs
         .source
         .expect("shallow-copy attributes require a source");
-    let mut result = Vec::new();
-    for attribute in source.attributes(element).iter().copied() {
-        charge_xslt_instruction(control, inputs.request_id)?;
-        if select_template_with_index(
-            inputs.program,
-            &TemplateSelectionContext {
-                source,
-                node: attribute,
-                mode,
-                variables: &inputs.globals.atomics,
-                request_id: inputs.request_id,
-                document_rooted_matches: &inputs.document_rooted_matches,
-            },
-            inputs.multiple_match_policy,
+    let mut result_attributes = Vec::new();
+    let mut generated_children = Vec::new();
+    for (offset, attribute) in source.attributes(element).iter().copied().enumerate() {
+        for item in apply_template_at(
+            inputs,
+            attribute,
+            mode,
+            parameters,
+            offset + 1,
+            focus_size,
             control,
-        )?
-        .is_some()
-        {
-            return Err(failure_at(
-                "FXRT1013",
-                FailureCategory::Unsupported,
-                Some(inputs.request_id),
-                source.location(attribute).clone(),
-                "attribute-template overrides are outside the bounded shallow-copy result-tree slice",
-            ));
+        )? {
+            match item {
+                ResultNode::PendingAttribute(result_attribute) => {
+                    if result_attributes
+                        .iter()
+                        .any(|existing: &ResultAttribute| existing.name == result_attribute.name)
+                    {
+                        return Err(failure_at(
+                            "XTDE0410",
+                            FailureCategory::Invalid,
+                            Some(inputs.request_id),
+                            source.location(attribute).clone(),
+                            "shallow-copy attribute templates produced duplicate expanded names",
+                        ));
+                    }
+                    result_attributes.push(result_attribute);
+                }
+                child => generated_children.push(child),
+            }
         }
-        control
-            .charge(WorkDomain::ResultNode, 1)
-            .map_err(|failure| control_failure(failure, inputs.request_id))?;
-        result.push(ResultAttribute {
-            name: source
-                .name(attribute)
-                .expect("source attribute has a name")
-                .clone(),
-            value: source.string_value(attribute),
-        });
     }
-    Ok(result)
+    Ok((result_attributes, generated_children))
 }
 
 fn apply_child_templates(
@@ -1987,17 +2051,34 @@ fn apply_child_templates(
     parameters: &BTreeMap<String, InvocationParameter>,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let child_count = inputs
+        .source
+        .expect("built-in traversal requires a source")
+        .children(node)
+        .len();
+    apply_child_templates_with_focus(inputs, node, mode, parameters, 0, child_count, control)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn apply_child_templates_with_focus(
+    inputs: &SequenceInputs<'_>,
+    node: NodeId,
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    position_offset: usize,
+    focus_size: usize,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let source = inputs.source.expect("built-in traversal requires a source");
     let mut result = Vec::new();
     let children = source.children(node);
-    let focus_size = children.len();
     for (offset, child) in children.iter().copied().enumerate() {
         result.extend(apply_template_at(
             inputs,
             child,
             mode,
             parameters,
-            offset + 1,
+            position_offset + offset + 1,
             focus_size,
             control,
         )?);

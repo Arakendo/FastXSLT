@@ -693,10 +693,11 @@ The paired unchanged `mode-1445` and `mode-1446` cases now execute a bounded
 `typed=" false "` and numeric `typed="0"` forms remain inert. Normal template
 selection still runs first; the built-in policy copies the document traversal,
 elements, namespaces, attributes, text, and processing instructions required by
-the native source. Comment results, standalone attribute results, and
-attribute-template interception remain explicit structured unsupported outcomes
-instead of becoming partial output. The mode denominator advances to 46 passes,
-44 profile exclusions, and 79 visible default not-run cases.
+the native source. At this checkpoint comment results, standalone attribute
+results, and attribute-template interception remained explicit structured
+unsupported outcomes instead of becoming partial output; later slices admit
+those paths independently. The mode denominator advanced to 46 passes, 44
+profile exclusions, and 79 visible default not-run cases.
 [Evidence](../Evidence/xslt30-mode-1445-1446-bounded-shallow-copy-2026-08-30.md)
 
 The coherent `mode-1601` through `mode-1606` tranche now resolves inherited
@@ -1296,6 +1297,16 @@ denominator advances to 82 passes, 45 profile exclusions, and 42 visible
 default not-run cases.
 [Evidence](../Evidence/xslt30-mode-namespaced-temporary-attributes-2026-09-02.md)
 
+The unchanged `mode-1413` case now applies source attribute templates during
+shallow-copy rather than blindly copying or rejecting the intercepted
+attribute. The exact `@length` rule emits an incremented replacement attribute,
+attribute and child traversal retain one combined focus, source comments are
+representable, and the `chtitle` wrapper continues through `xsl:next-match`
+into the built-in shallow-copy rule. General standalone computed-attribute
+expressions remain outside the bounded slice. The mode denominator advances to
+83 passes, 45 profile exclusions, and 41 visible default not-run cases.
+[Evidence](../Evidence/xslt30-mode-source-shallow-copy-attribute-override-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1335,10 +1346,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 82 | 0 | 45 | 42 |
+| `attr/mode` | 169 | 83 | 0 | 45 | 41 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 198 | 0 | 1 | 33 |
-| **Conserved total** | **531** | **402** | **3** | **51** | **75** |
+| **Conserved total** | **531** | **403** | **3** | **51** | **74** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -2271,9 +2282,9 @@ failed, and harness-error cases without an unqualified conformance claim.
   retain a bounded case-specific output ceiling for the native result.
 - [x] Execute `mode-1445` and `mode-1446` through a bounded shallow-copy
   built-in policy while preserving inert `typed=false/0` semantics. Retain
-  ordinary template precedence and explicitly reject comment copying,
-  standalone attribute results, and attribute-template interception until the
-  result-tree representation owns them.
+  ordinary template precedence and, at that checkpoint, explicitly reject
+  comment copying, standalone attribute results, and attribute-template
+  interception until subsequent result-tree slices own them.
 - [x] Execute `mode-1507` through `mode-1509` by validating mode name and
   visibility constraints before unrelated unsupported template expressions.
   Preserve native `XTSE0020` and keep valid visibility behavior private and
@@ -2408,6 +2419,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   Evaluate the exact `{local-name()}` AVT from temporary attribute focus and
   dispatch the unchanged `@*` rule without claiming selectable namespace nodes
   or general function-valued AVTs.
+- [x] Execute pinned `mode-1413` by applying source attribute templates during
+  shallow-copy, carrying generated attributes through private pending
+  construction state, preserving combined attribute/child focus, and
+  continuing an explicit element wrapper through `xsl:next-match`. Retain the
+  exact static `xsl:attribute select=". + 1"` boundary rather than inferring a
+  general computed-attribute or arithmetic evaluator.
 - [ ] Establish explicit URI/resource resolution and execution limits.
   - [x] Route private principal-stylesheet acquisition through an exact,
     qualified-identity resolver over one sealed snapshot. Charge a fixed attempt

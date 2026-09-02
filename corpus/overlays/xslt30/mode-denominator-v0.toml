@@ -543,6 +543,12 @@ execution = "passed"
 rationale = "The immutable namespaced temporary element retains both literal attributes as XDM nodes, @* dispatch observes their local names, and copied namespace bindings match the unchanged native assertion."
 
 [[case_override]]
+case_name = "mode-1413"
+selection = "selected"
+execution = "passed"
+rationale = "Source shallow-copy applies the explicit @length override before child traversal, attaches its incremented replacement attribute, and preserves xsl:next-match continuation for the wrapped chtitle elements."
+
+[[case_override]]
 case_name = "mode-1406"
 selection = "excluded-by-profile"
 execution = "not-run"

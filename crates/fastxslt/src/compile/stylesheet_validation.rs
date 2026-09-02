@@ -73,6 +73,7 @@ fn validate_named_calls(
             Instruction::Text { .. }
             | Instruction::ProcessingInstructionNode { .. }
             | Instruction::CommentNode { .. }
+            | Instruction::Attribute { .. }
             | Instruction::ValueOf { .. }
             | Instruction::Variable { .. }
             | Instruction::IntegerRangeVariable { .. }
