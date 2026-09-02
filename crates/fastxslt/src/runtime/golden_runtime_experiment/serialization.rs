@@ -14,6 +14,7 @@ struct SerializationOptions<'a> {
     xhtml_mode: XhtmlMode,
     xhtml_media_type: Option<&'a str>,
     html_mode: HtmlMode,
+    escape_uri_attributes: bool,
     xml_empty_element_tag: bool,
     indent: bool,
 }
@@ -122,6 +123,7 @@ pub(in crate::runtime) fn serialize_xml(
         xhtml_mode,
         xhtml_media_type,
         html_mode: select_html_mode(settings, html),
+        escape_uri_attributes: (xhtml || html) && settings.escape_uri_attributes.unwrap_or(true),
         xml_empty_element_tag: settings.doctype_system.is_some() && !xhtml && !html,
         indent: settings.indent == Some(true),
     };
@@ -840,7 +842,11 @@ fn serialize_element(
         let prefix = attribute_prefix(attribute.name.namespace.as_deref(), &in_scope, output)?;
         write_name(prefix, &attribute.name.local, output)?;
         output.push_str("=\"")?;
-        escape_attribute_with_character_map(&attribute.value, options.character_map, output)?;
+        if options.escape_uri_attributes && is_uri_attribute(name, attribute) {
+            escape_uri_attribute(&attribute.value, options.character_map, output)?;
+        } else {
+            escape_attribute_with_character_map(&attribute.value, options.character_map, output)?;
+        }
         output.push('"')?;
     }
     if options.xml_empty_element_tag && children.is_empty() {
@@ -1140,6 +1146,7 @@ fn escape_attribute_character(
     match character {
         '&' => output.push_str("&amp;"),
         '<' => output.push_str("&lt;"),
+        '>' => output.push_str("&gt;"),
         '"' => output.push_str("&quot;"),
         '\t' => output.push_str("&#x9;"),
         '\n' => output.push_str("&#xA;"),
@@ -1164,6 +1171,41 @@ fn escape_attribute_with_character_map(
             output.push_str(replacement)?;
         } else {
             escape_attribute_character(character, output)?;
+        }
+    }
+    Ok(())
+}
+
+fn is_uri_attribute(
+    element: &crate::xml::quick_xml_experiment::ExpandedName,
+    attribute: &ResultAttribute,
+) -> bool {
+    attribute.name.namespace.is_none()
+        && attribute.name.local == "href"
+        && matches!(
+            element.namespace.as_deref(),
+            None | Some("http://www.w3.org/1999/xhtml")
+        )
+}
+
+fn escape_uri_attribute(
+    value: &str,
+    character_map: &[(char, String)],
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    for character in value.chars() {
+        if let Some((_, replacement)) = character_map
+            .iter()
+            .find(|(candidate, _)| *candidate == character)
+        {
+            output.push_str(replacement)?;
+        } else if character.is_ascii() {
+            escape_attribute_character(character, output)?;
+        } else {
+            let mut encoded = [0_u8; 4];
+            for byte in character.encode_utf8(&mut encoded).as_bytes() {
+                output.push_str(&format!("%{byte:02X}"))?;
+            }
         }
     }
     Ok(())

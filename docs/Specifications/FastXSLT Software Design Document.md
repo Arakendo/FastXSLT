@@ -400,14 +400,16 @@ The XML-compatible lane also retains canonical standalone `yes`, `no`, and
 `omit` emits none. An explicit serialization version is retained separately
 from the stylesheet language version; the current bounded lane admits and emits
 only XML `1.0`. XHTML-only content-type metadata remains inert for XML output.
-An explicit XML output declaration may also carry a valid
-`escape-uri-attributes` boolean; the current bounded compiler validates and
-then discards it because it has no effect on XML serialization. Explicit HTML
-5 and XHTML output may carry the property only while every admitted result
-attribute is outside the bounded URI-attribute vocabulary, making it equally
-inert. The property remains unsupported for an absent output method, and HTML
-or XHTML URI attributes remain unadmitted until the compiled representation
-owns the corresponding normalization and escaping semantics.
+An explicit XML, XHTML, or HTML output declaration may carry a valid
+`escape-uri-attributes` boolean, which the compiled output settings retain.
+The property has no effect on XML output. The bounded XHTML lane recognizes
+only an unnamespaced `href` on an XHTML element as URI-valued: when enabled or
+defaulted, each non-ASCII character is encoded as its uppercase percent-escaped
+UTF-8 bytes, while existing ASCII percent sequences remain unchanged; when
+disabled, ordinary XML-compatible attribute escaping applies. The property
+remains unsupported for an absent output method. NFC normalization, the wider
+HTML/XHTML URI-attribute vocabulary, and character-map composition with URI
+escaping remain outside this slice.
 Invalid boolean values on admitted `xsl:output` properties are static
 stylesheet errors reported as `XTSE0020`, with the structured invalid category
 and stylesheet source location preserved. XSLT 2.0 accepts only `yes`/`no`;

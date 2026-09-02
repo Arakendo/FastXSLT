@@ -41,6 +41,7 @@ pub(in crate::compile) fn default_output_settings() -> OutputSettings {
         doctype_system: None,
         doctype_public: None,
         include_content_type: None,
+        escape_uri_attributes: None,
         byte_order_mark: None,
         normalization_form: None,
         character_map: Vec::new(),
@@ -98,7 +99,8 @@ pub(super) fn compile_output(
             )
         })
         .transpose()?;
-    compile_bounded_escape_uri_attributes(document, element, method, declared_version)?;
+    let escape_uri_attributes =
+        compile_bounded_escape_uri_attributes(document, element, method, declared_version)?;
     let byte_order_mark = optional_attribute(document, element, None, "byte-order-mark")
         .map(|value| {
             parse_output_boolean(
@@ -138,6 +140,7 @@ pub(super) fn compile_output(
         doctype_system: doctype_system.map(str::to_owned),
         doctype_public: doctype_public.map(str::to_owned),
         include_content_type,
+        escape_uri_attributes,
         byte_order_mark,
         normalization_form: normalization_form.map(str::to_owned),
         character_map: Vec::new(),
@@ -269,11 +272,11 @@ fn compile_bounded_escape_uri_attributes(
     element: NodeId,
     method: Option<&str>,
     declared_version: &str,
-) -> Result<(), CompileFailure> {
+) -> Result<Option<bool>, CompileFailure> {
     let Some(value) = optional_attribute(document, element, None, "escape-uri-attributes") else {
-        return Ok(());
+        return Ok(None);
     };
-    parse_output_boolean(
+    let enabled = parse_output_boolean(
         value,
         "escape-uri-attributes",
         declared_version,
@@ -286,7 +289,7 @@ fn compile_bounded_escape_uri_attributes(
             document.location(element),
         ));
     }
-    Ok(())
+    Ok(Some(enabled))
 }
 
 pub(super) fn merge_output(
@@ -328,6 +331,10 @@ pub(super) fn merge_output(
     merge_optional(
         &mut existing.settings.include_content_type,
         next.settings.include_content_type,
+    );
+    merge_optional(
+        &mut existing.settings.escape_uri_attributes,
+        next.settings.escape_uri_attributes,
     );
     merge_optional(
         &mut existing.settings.byte_order_mark,

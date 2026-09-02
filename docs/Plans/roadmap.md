@@ -1093,6 +1093,16 @@ XML-compatible attribute escaping, not URI percent encoding. The output
 denominator advances to 156 passes and 75 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-xhtml-c1-attributes-2026-09-01.md)
 
+The six source-free XHTML `href` cases `output-0102a` through `0102c` and
+`output-0103a` through `0103c` now retain `escape-uri-attributes` in compiled
+output settings. Enabled/default escaping percent-encodes non-ASCII UTF-8 bytes
+without double-encoding existing ASCII percent sequences; disabled escaping
+keeps non-ASCII content under ordinary XML-compatible attribute rules. The
+recognized URI vocabulary is still exactly XHTML `href`, and the HTML case that
+requires NFC normalization remains separate. The output denominator advances
+to 162 passes and 69 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-xhtml-uri-attributes-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1134,8 +1144,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 156 | 0 | 1 | 75 |
-| **Conserved total** | **531** | **354** | **3** | **51** | **123** |
+| `decl/output` | 232 | 162 | 0 | 1 | 69 |
+| **Conserved total** | **531** | **360** | **3** | **51** | **117** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1189,7 +1199,7 @@ count:
    `apply-templates` case is schema-aware and the two remaining `include` cases
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
-2. [ ] Continue coherent semantic slices through the 75 visible `output`
+2. [ ] Continue coherent semantic slices through the 69 visible `output`
    gaps and 48 visible `mode` gaps. Each promotion still requires native
    metadata validation, a focused control, and an owned comparator or exact
    diagnostic—not merely successful stylesheet execution.

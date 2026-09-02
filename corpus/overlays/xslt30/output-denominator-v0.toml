@@ -879,6 +879,24 @@ execution = "passed"
 rationale = "Executes the source-free named template and leaves non-URI XHTML accesskey content unchanged when URI escaping is enabled."
 
 [[case_override]]
+case_name = "output-0102a"
+selection = "selected"
+execution = "passed"
+rationale = "Percent-encodes a non-ASCII UTF-8 character in the XHTML href attribute when URI escaping is enabled."
+
+[[case_override]]
+case_name = "output-0102b"
+selection = "selected"
+execution = "passed"
+rationale = "Percent-encodes the UTF-8 bytes of a C1 character in the XHTML href attribute when URI escaping is enabled."
+
+[[case_override]]
+case_name = "output-0102c"
+selection = "selected"
+execution = "passed"
+rationale = "Preserves existing ASCII percent sequences while encoding non-ASCII href characters and XML-escaping markup delimiters."
+
+[[case_override]]
 case_name = "output-0102f"
 selection = "selected"
 execution = "passed"
@@ -895,6 +913,24 @@ case_name = "output-0103d"
 selection = "selected"
 execution = "passed"
 rationale = "Executes the source-free named template and leaves non-URI XHTML accesskey content unchanged when URI escaping is disabled."
+
+[[case_override]]
+case_name = "output-0103a"
+selection = "selected"
+execution = "passed"
+rationale = "Preserves a non-ASCII XHTML href character when URI escaping is explicitly disabled."
+
+[[case_override]]
+case_name = "output-0103b"
+selection = "selected"
+execution = "passed"
+rationale = "Uses the XML-compatible numeric reference for a C1 XHTML href character when URI escaping is disabled."
+
+[[case_override]]
+case_name = "output-0103c"
+selection = "selected"
+execution = "passed"
+rationale = "Preserves non-ASCII href content and existing percent sequences while applying XML attribute escaping with URI escaping disabled."
 
 [[case_override]]
 case_name = "output-0103f"

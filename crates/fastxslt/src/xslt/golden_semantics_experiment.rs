@@ -118,6 +118,7 @@ pub(crate) struct OutputSettings {
     pub(crate) doctype_system: Option<String>,
     pub(crate) doctype_public: Option<String>,
     pub(crate) include_content_type: Option<bool>,
+    pub(crate) escape_uri_attributes: Option<bool>,
     pub(crate) byte_order_mark: Option<bool>,
     pub(crate) normalization_form: Option<String>,
     pub(crate) character_map: Vec<(char, String)>,

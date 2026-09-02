@@ -744,6 +744,33 @@ fn escapes_source_free_xhtml_c1_non_uri_attributes() {
 }
 
 #[test]
+fn applies_source_free_xhtml_uri_attribute_escaping() {
+    let enabled_a = execute_output_case("output-0102a", None);
+    assert!(enabled_a.actual.contains("href=\"%C2%A1\""));
+    let enabled_b = execute_output_case("output-0102b", None);
+    assert!(enabled_b.actual.contains("href=\"%C2%96\""));
+    let enabled_c = execute_output_case("output-0102c", None);
+    assert!(
+        enabled_c
+            .actual
+            .contains("href=\"% %C2%96 %C2%96 a &quot;  %C2%A1 &lt; &gt; &amp; end\""),
+        "{}",
+        enabled_c.actual
+    );
+
+    let disabled_a = execute_output_case("output-0103a", None);
+    assert!(disabled_a.actual.contains("href=\"¡\""));
+    let disabled_b = execute_output_case("output-0103b", None);
+    assert!(disabled_b.actual.contains("href=\"&#x96;\""));
+    let disabled_c = execute_output_case("output-0103c", None);
+    assert!(
+        disabled_c
+            .actual
+            .contains("href=\"% %C2%96 &#x96; a &quot;  ¡ &lt; &gt; &amp; end\"")
+    );
+}
+
+#[test]
 fn applies_multiple_character_maps_to_xml_output() {
     let execution = execute_assert_serialization_case("output-0309", "xml");
     assert_eq!(

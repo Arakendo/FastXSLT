@@ -1491,14 +1491,16 @@ mod tests {
             "memory:xml-escape-uri.xsl",
             br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" escape-uri-attributes="yes"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
         );
-        compile_stylesheet(&xml).expect("the explicit XML property should be inert");
+        let xml_program =
+            compile_stylesheet(&xml).expect("the explicit XML property should compile");
+        assert_eq!(xml_program.output.escape_uri_attributes, Some(true));
 
         let xhtml = parse_stylesheet(
             "memory:xhtml-escape-uri.xsl",
             br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xhtml" escape-uri-attributes="yes"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
         );
-        compile_stylesheet(&xhtml)
-            .expect("the property is inert when the bounded result has no URI attributes");
+        let xhtml_program = compile_stylesheet(&xhtml).expect("the XHTML property should compile");
+        assert_eq!(xhtml_program.output.escape_uri_attributes, Some(true));
 
         let invalid = parse_stylesheet(
             "memory:invalid-escape-uri.xsl",
