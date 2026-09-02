@@ -131,6 +131,10 @@ fn validate_bounded_html_character_map_result(
     settings: &OutputSettings,
     request_id: &str,
 ) -> Result<(), ExecutionFailure> {
+    if settings.html_version.as_deref() == Some("5") && is_bounded_html5_document(&result.children)
+    {
+        return Ok(());
+    }
     let significant: Vec<_> = result
         .children
         .iter()
@@ -145,6 +149,46 @@ fn validate_bounded_html_character_map_result(
         return Err(unsupported_html_result(request_id));
     }
     Ok(())
+}
+
+fn is_bounded_html5_document(nodes: &[ResultNode]) -> bool {
+    let elements: Vec<_> = nodes
+        .iter()
+        .filter(|node| matches!(node, ResultNode::Element { .. }))
+        .collect();
+    let [root] = elements.as_slice() else {
+        return false;
+    };
+    nodes.iter().all(|node| match node {
+        ResultNode::Text(value) => value.chars().all(char::is_whitespace),
+        ResultNode::Comment(_) | ResultNode::ProcessingInstruction { .. } => true,
+        ResultNode::Element { .. } => std::ptr::eq(node, *root),
+    }) && is_bounded_html5_node(root, true)
+}
+
+fn is_bounded_html5_node(node: &ResultNode, root: bool) -> bool {
+    match node {
+        ResultNode::Text(_) | ResultNode::Comment(_) => true,
+        ResultNode::ProcessingInstruction { .. } => false,
+        ResultNode::Element {
+            name,
+            namespaces,
+            attributes,
+            children,
+        } => {
+            name.namespace.is_none()
+                && namespaces.is_empty()
+                && attributes.is_empty()
+                && if root {
+                    name.local == "html"
+                } else {
+                    matches!(name.local.as_str(), "head" | "title" | "body" | "p")
+                }
+                && children
+                    .iter()
+                    .all(|child| is_bounded_html5_node(child, false))
+        }
+    }
 }
 
 fn validate_string_byte_order_mark(
@@ -297,8 +341,10 @@ fn serialize_doctype(
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
     let automatic_xhtml5 = xhtml && settings.html_version.as_deref() == Some("5");
+    let html_doctype_required =
+        settings.method.as_deref() == Some("html") && settings.html_version.as_deref() == Some("5");
     let system = settings.doctype_system.as_deref();
-    if system.is_none() && !automatic_xhtml5 {
+    if system.is_none() && !automatic_xhtml5 && !html_doctype_required {
         return Ok(());
     }
     let document_element = result
@@ -313,6 +359,10 @@ fn serialize_doctype(
     };
     let is_xhtml_html = name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml")
         && name.local.eq_ignore_ascii_case("html");
+    if html_doctype_required && system.is_none() {
+        output.push_str("<!DOCTYPE html>")?;
+        return Ok(());
+    }
     if automatic_xhtml5 && system.is_none() {
         if is_xhtml_html {
             output.push_str("<!DOCTYPE ")?;

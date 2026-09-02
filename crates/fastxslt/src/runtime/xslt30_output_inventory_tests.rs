@@ -1017,6 +1017,22 @@ fn reports_html_processing_instruction_delimiter_as_sere0015() {
 }
 
 #[test]
+fn places_automatic_html5_doctype_after_root_comment() {
+    let execution = execute_output_case("output-0233", None);
+    let comment = execution
+        .actual
+        .find("<!--This should precede the DOCTYPE declaration-->")
+        .expect("serialized root comment");
+    let doctype = execution
+        .actual
+        .find("<!DOCTYPE html>")
+        .expect("automatic HTML 5 doctype");
+    let element = execution.actual.find("<html>").expect("document element");
+    assert!(comment < doctype);
+    assert!(doctype < element);
+}
+
+#[test]
 fn resolves_imported_character_maps_and_higher_precedence_override() {
     let imported_only = execute_assert_serialization_case("output-0204", "xml");
     assert_eq!(

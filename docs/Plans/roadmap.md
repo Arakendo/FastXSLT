@@ -1018,6 +1018,14 @@ standards diagnostic without admitting successful general HTML output. The
 output denominator advances to 139 passes and 93 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-html-processing-instruction-error-2026-09-01.md)
 
+The unchanged HTML 5 `output-0233` case now emits its automatic doctype after a
+root comment and immediately before the document element. The successful HTML
+slice remains restricted to one no-namespace document element and the exact
+`html`, `head`, `title`, `body`, and `p` vocabulary without attributes or
+namespace nodes; general HTML serialization remains unadmitted. The output
+denominator advances to 140 passes and 92 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-html5-doctype-placement-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1059,8 +1067,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 139 | 0 | 0 | 93 |
-| **Conserved total** | **531** | **337** | **3** | **50** | **141** |
+| `decl/output` | 232 | 140 | 0 | 0 | 92 |
+| **Conserved total** | **531** | **338** | **3** | **50** | **140** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1114,7 +1122,7 @@ count:
    `apply-templates` case is schema-aware and the two remaining `include` cases
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
-2. [ ] Continue coherent semantic slices through the 93 visible `output`
+2. [ ] Continue coherent semantic slices through the 92 visible `output`
    gaps and 48 visible `mode` gaps. Each promotion still requires native
    metadata validation, a focused control, and an owned comparator or exact
    diagnostic—not merely successful stylesheet execution.
