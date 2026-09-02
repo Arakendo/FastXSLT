@@ -3,7 +3,7 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xpath::path_experiment::{PathStep, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
-    MatchPattern, NamedSiblingBoundary, TemplatePriority,
+    ChildPresenceTest, MatchPattern, NamedSiblingBoundary, TemplatePriority,
 };
 
 use super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
@@ -30,6 +30,9 @@ pub(super) fn compile_match_pattern(
         }
         predicate if parse_element_attribute_value_predicate(predicate).is_some() => {
             compile_element_attribute_value_pattern(predicate)
+        }
+        predicate if parse_element_child_presence_predicate(predicate).is_some() => {
+            compile_element_child_presence_pattern(predicate)
         }
         predicate if parse_any_element_attribute_variable_predicate(predicate).is_some() => {
             compile_any_element_attribute_variable_pattern(predicate)
@@ -182,6 +185,9 @@ pub(super) fn alternatives_are_pairwise_disjoint(
             MatchPattern::Element(name) => {
                 UnionMatchDomain::Element(name.namespace.clone(), name.local.clone())
             }
+            MatchPattern::ElementWithChild { element, .. } => {
+                UnionMatchDomain::Element(element.namespace.clone(), element.local.clone())
+            }
             MatchPattern::Text => UnionMatchDomain::Text,
             MatchPattern::Path(path) => match path.steps.last() {
                 Some(PathStep::ChildNamed(local)) => UnionMatchDomain::Element(None, local.clone()),
@@ -288,6 +294,24 @@ fn compile_element_attribute_value_pattern(pattern: &str) -> MatchPattern {
     }
 }
 
+fn compile_element_child_presence_pattern(pattern: &str) -> MatchPattern {
+    let (element, child) = parse_element_child_presence_predicate(pattern)
+        .expect("child-presence predicate shape was checked");
+    MatchPattern::ElementWithChild {
+        element: crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: None,
+            local: element.to_owned(),
+        },
+        child: match child {
+            "text()" => ChildPresenceTest::Text,
+            name => ChildPresenceTest::Element(crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: None,
+                local: name.to_owned(),
+            }),
+        },
+    }
+}
+
 fn parse_qualified_element_test(pattern: &str) -> Option<(&str, &str)> {
     let (prefix, local) = pattern.split_once(':')?;
     (is_ascii_ncname(prefix) && (local == "*" || is_ascii_ncname(local))).then_some((prefix, local))
@@ -316,6 +340,13 @@ fn parse_element_attribute_predicate(pattern: &str) -> Option<(&str, &str)> {
     let (element, attribute) = pattern.split_once("[@")?;
     let attribute = attribute.strip_suffix(']')?;
     (is_ascii_ncname(element) && is_ascii_ncname(attribute)).then_some((element, attribute))
+}
+
+fn parse_element_child_presence_predicate(pattern: &str) -> Option<(&str, &str)> {
+    let (element, child) = pattern.split_once('[')?;
+    let child = child.strip_suffix(']')?.trim();
+    (is_ascii_ncname(element.trim()) && (child == "text()" || is_ascii_ncname(child)))
+        .then_some((element.trim(), child))
 }
 
 fn parse_element_attribute_value_predicate(pattern: &str) -> Option<(&str, &str, &str)> {
@@ -362,12 +393,14 @@ fn compile_template_priority(
             | MatchPattern::DescendantAnyElement
             | MatchPattern::ElementWithAttribute { .. }
             | MatchPattern::ElementWithAttributeValue { .. }
+            | MatchPattern::ElementWithChild { .. }
             | MatchPattern::AnyElementWithAttributeVariable { .. }
             | MatchPattern::VariableFilteredElementPath(_)
             | MatchPattern::ElementWithSameNamedChild
             | MatchPattern::ElementWithSameNamedParent
             | MatchPattern::ElementWithSameNamedParentAtPosition(_)
-            | MatchPattern::ElementAtNamedSiblingBoundary { .. } => TemplatePriority::PATH_DEFAULT,
+            | MatchPattern::ElementAtNamedSiblingBoundary { .. }
+            | MatchPattern::UnionAlternatives(_) => TemplatePriority::PATH_DEFAULT,
             MatchPattern::Document | MatchPattern::DocumentElement(None) => {
                 TemplatePriority::ROOT_DEFAULT
             }

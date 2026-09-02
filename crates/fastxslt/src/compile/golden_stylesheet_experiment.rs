@@ -233,7 +233,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         default_initial_mode,
         source_whitespace,
         typed_mode_requirements: modes.typed,
-        mode_on_no_match: modes.on_no_match,
+        mode_policies: modes.policies,
         output: output.map_or_else(default_output_settings, |declaration| declaration.settings),
         output_specified_properties,
         character_maps,
@@ -481,13 +481,13 @@ fn reject_unordered_global_dependencies(
 #[derive(Default)]
 struct CompiledModes {
     typed: Vec<crate::xslt::golden_semantics_experiment::TypedModeRequirement>,
-    on_no_match: Vec<crate::xslt::golden_semantics_experiment::ModeOnNoMatch>,
+    policies: Vec<crate::xslt::golden_semantics_experiment::ModePolicy>,
 }
 
 impl CompiledModes {
     fn push(&mut self, declaration: mode_declaration_compiler::CompiledModeDeclaration) {
         self.typed.extend(declaration.typed_requirement);
-        self.on_no_match.extend(declaration.on_no_match);
+        self.policies.extend(declaration.policy);
     }
 }
 
@@ -878,26 +878,45 @@ fn compile_matched_templates(
     element: NodeId,
     lexical_pattern: &str,
 ) -> Result<Vec<MatchedTemplate>, CompileFailure> {
-    let alternatives = lexical_pattern
+    let normalized_pattern = strip_outer_pattern_parentheses(lexical_pattern);
+    let alternatives = normalized_pattern
         .split('|')
         .map(str::trim)
         .collect::<Vec<_>>();
     if alternatives.len() == 1 {
         return compile_matched_template(document, element, lexical_pattern).map(|rule| vec![rule]);
     }
-    if template_pattern_compiler::is_homogeneous_qualified_path_union(lexical_pattern) {
-        return compile_matched_template(document, element, lexical_pattern).map(|rule| vec![rule]);
+    if template_pattern_compiler::is_homogeneous_qualified_path_union(normalized_pattern) {
+        return compile_matched_template(document, element, normalized_pattern)
+            .map(|rule| vec![rule]);
     }
     let patterns = alternatives
         .into_iter()
         .map(|alternative| compile_match_pattern(document, element, alternative))
         .collect::<Result<Vec<_>, _>>()?;
     if !template_pattern_compiler::alternatives_are_pairwise_disjoint(&patterns) {
-        return Err(unsupported(
-            "FXST1005",
-            "union match patterns whose alternatives can overlap are outside the private slice",
-            document.location(element),
-        ));
+        let Some(priority) = patterns.first().map(|(_, priority)| *priority) else {
+            unreachable!("union pattern has more than one alternative")
+        };
+        if patterns
+            .iter()
+            .any(|(_, candidate_priority)| *candidate_priority != priority)
+        {
+            return Err(unsupported(
+                "FXST1005",
+                "overlapping union alternatives with different default priorities are outside the private slice",
+                document.location(element),
+            ));
+        }
+        return Ok(vec![MatchedTemplate {
+            pattern: MatchPattern::UnionAlternatives(
+                patterns.into_iter().map(|(pattern, _)| pattern).collect(),
+            ),
+            import_precedence: 0,
+            priority,
+            modes: compile_template_modes_for_rule(document, element)?,
+            template: compile_template(document, element)?,
+        }]);
     }
     let modes = compile_template_modes_for_rule(document, element)?;
     let template = compile_template(document, element)?;
@@ -911,6 +930,14 @@ fn compile_matched_templates(
             template: template.clone(),
         })
         .collect())
+}
+
+fn strip_outer_pattern_parentheses(pattern: &str) -> &str {
+    let trimmed = pattern.trim();
+    trimmed
+        .strip_prefix('(')
+        .and_then(|inner| inner.strip_suffix(')'))
+        .map_or(trimmed, str::trim)
 }
 
 fn compile_template_modes_for_rule(

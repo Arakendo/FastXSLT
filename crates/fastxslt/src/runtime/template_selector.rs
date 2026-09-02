@@ -7,7 +7,7 @@ use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    MatchPattern, MatchedTemplate, NamedSiblingBoundary, StylesheetProgram,
+    ChildPresenceTest, MatchPattern, MatchedTemplate, NamedSiblingBoundary, StylesheetProgram,
 };
 
 use super::MultipleMatchPolicy;
@@ -258,6 +258,24 @@ fn matches_pattern(
             }
             Ok(false)
         }
+        MatchPattern::ElementWithChild { element, child } => {
+            if source.name(node) != Some(element) {
+                return Ok(false);
+            }
+            for candidate in source.children(node) {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                let matches = match child {
+                    ChildPresenceTest::Element(name) => source.name(*candidate) == Some(name),
+                    ChildPresenceTest::Text => source.kind(*candidate) == NodeKind::Text,
+                };
+                if matches {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
         MatchPattern::AnyElementWithAttributeVariable {
             attribute,
             variable,
@@ -302,6 +320,14 @@ fn matches_pattern(
         ),
         MatchPattern::QualifiedElementPathAlternatives(alternatives) => {
             matches_qualified_path_alternatives(selection, alternatives, control)
+        }
+        MatchPattern::UnionAlternatives(alternatives) => {
+            for alternative in alternatives {
+                if matches_pattern(template_index, alternative, selection, control)? {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
         }
         MatchPattern::Attribute(name) => {
             Ok(source.kind(node) == NodeKind::Attribute && source.name(node) == Some(name))

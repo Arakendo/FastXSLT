@@ -1307,6 +1307,18 @@ expressions remain outside the bounded slice. The mode denominator advances to
 83 passes, 45 profile exclusions, and 41 visible default not-run cases.
 [Evidence](../Evidence/xslt30-mode-source-shallow-copy-attribute-override-2026-09-02.md)
 
+The unchanged `mode-1516` and `mode-1517` cases now retain overlapping
+equal-priority union alternatives as one compiled template rule. A source
+`para` matching both `para[foo]` and `para[text()]` therefore remains
+unambiguous under the mode-owned `on-multiple-match="fail"` policy, including
+the parenthesized spelling. The policy overrides a host recovery fallback,
+while two genuinely distinct equal-rank rules still report `XTDE0540`. The
+catalog's named initial-template entry now also receives its supplied source
+document as context. General predicate grammar and mixed-priority overlapping
+unions remain outside the bounded slice. The mode denominator advances to 85
+passes, 45 profile exclusions, and 39 visible default not-run cases.
+[Evidence](../Evidence/xslt30-mode-overlapping-union-single-rule-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1346,10 +1358,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 83 | 0 | 45 | 41 |
+| `attr/mode` | 169 | 85 | 0 | 45 | 39 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 198 | 0 | 1 | 33 |
-| **Conserved total** | **531** | **403** | **3** | **51** | **74** |
+| **Conserved total** | **531** | **405** | **3** | **51** | **72** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -2425,6 +2437,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   continuing an explicit element wrapper through `xsl:next-match`. Retain the
   exact static `xsl:attribute select=". + 1"` boundary rather than inferring a
   general computed-attribute or arithmetic evaluator.
+- [x] Execute pinned `mode-1516` and `mode-1517` by retaining overlapping
+  equal-priority union alternatives as one template identity, preserving
+  parenthesized spelling, and enforcing mode-owned
+  `on-multiple-match="fail"` only across distinct selected rules. Keep exact
+  child-presence predicates and supplied-source initial-template context
+  bounded rather than claiming general pattern predicates or union grammar.
 - [ ] Establish explicit URI/resource resolution and execution limits.
   - [x] Route private principal-stylesheet acquisition through an exact,
     qualified-identity resolver over one sealed snapshot. Charge a fixed attempt

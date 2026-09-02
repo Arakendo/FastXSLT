@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xslt::golden_semantics_experiment::{
-    ModeOnNoMatch, OnNoMatchPolicy, TypedModeRequirement,
+    ModePolicy, OnMultipleMatchPolicy, OnNoMatchPolicy, TypedModeRequirement,
 };
 
 use super::{
@@ -17,6 +17,7 @@ pub(super) fn validate_same_precedence_mode_declaration_conflicts(
     top_level_children: &[NodeId],
 ) -> Result<(), CompileFailure> {
     let mut on_no_match_by_mode = BTreeMap::<String, (&str, NodeId)>::new();
+    let mut on_multiple_match_by_mode = BTreeMap::<String, &str>::new();
     let mut visibility_by_mode = BTreeMap::<String, &str>::new();
     for element in top_level_children.iter().copied().filter(|element| {
         document.name(*element).is_some_and(|name| {
@@ -50,20 +51,41 @@ pub(super) fn validate_same_precedence_mode_declaration_conflicts(
                 visibility_by_mode.insert(names[0].clone(), visibility);
             }
         }
-        let Some(on_no_match) = optional_attribute(document, element, None, "on-no-match") else {
-            continue;
-        };
-        validate_on_no_match(on_no_match, document, element)?;
-        if let Some((existing, _)) = on_no_match_by_mode.get(&names[0]) {
-            if *existing != on_no_match {
+        if let Some(on_no_match) = optional_attribute(document, element, None, "on-no-match") {
+            validate_on_no_match(on_no_match, document, element)?;
+            if let Some((existing, _)) = on_no_match_by_mode.get(&names[0]) {
+                if *existing != on_no_match {
+                    return Err(invalid(
+                        "XTSE0545",
+                        "same-precedence xsl:mode declarations specify conflicting on-no-match values",
+                        document.location(element),
+                    ));
+                }
+            } else {
+                on_no_match_by_mode.insert(names[0].clone(), (on_no_match, element));
+            }
+        }
+        if let Some(on_multiple_match) =
+            optional_attribute(document, element, None, "on-multiple-match")
+        {
+            if on_multiple_match != "fail" {
                 return Err(invalid(
-                    "XTSE0545",
-                    "same-precedence xsl:mode declarations specify conflicting on-no-match values",
+                    "XTSE0020",
+                    "xsl:mode on-multiple-match has an invalid value",
                     document.location(element),
                 ));
             }
-        } else {
-            on_no_match_by_mode.insert(names[0].clone(), (on_no_match, element));
+            if let Some(existing) = on_multiple_match_by_mode.get(&names[0]) {
+                if *existing != on_multiple_match {
+                    return Err(invalid(
+                        "XTSE0545",
+                        "same-precedence xsl:mode declarations specify conflicting on-multiple-match values",
+                        document.location(element),
+                    ));
+                }
+            } else {
+                on_multiple_match_by_mode.insert(names[0].clone(), on_multiple_match);
+            }
         }
     }
     Ok(())
@@ -90,7 +112,7 @@ fn validate_on_no_match(
 
 pub(super) struct CompiledModeDeclaration {
     pub(super) typed_requirement: Option<TypedModeRequirement>,
-    pub(super) on_no_match: Option<ModeOnNoMatch>,
+    pub(super) policy: Option<ModePolicy>,
 }
 
 pub(super) fn validate_mode_declaration(
@@ -104,6 +126,7 @@ pub(super) fn validate_mode_declaration(
         &[
             "name",
             "on-no-match",
+            "on-multiple-match",
             "typed",
             "visibility",
             "warning-on-multiple-match",
@@ -180,18 +203,18 @@ fn compile_mode_semantics(
                 document.location(element),
             ));
         };
-        let on_no_match = compile_on_no_match(document, element, Some(name.clone()))?;
+        let policy = compile_mode_policy(document, element, Some(name.clone()))?;
         let typed_requirement = Some(TypedModeRequirement {
             name,
             location: document.location(element).clone(),
         });
         return Ok(CompiledModeDeclaration {
             typed_requirement,
-            on_no_match,
+            policy,
         });
     }
-    let on_no_match = compile_on_no_match(document, element, mode_name.clone())?;
-    if mode_name.is_none() && on_no_match.is_none() {
+    let policy = compile_mode_policy(document, element, mode_name.clone())?;
+    if mode_name.is_none() && policy.is_none() {
         return Err(unsupported(
             "FXST1037",
             "the private xsl:mode declaration slice requires a named mode or an admitted on-no-match policy",
@@ -200,34 +223,45 @@ fn compile_mode_semantics(
     }
     Ok(CompiledModeDeclaration {
         typed_requirement: None,
-        on_no_match,
+        policy,
     })
 }
 
-fn compile_on_no_match(
+fn compile_mode_policy(
     document: &Document,
     element: NodeId,
     mode_name: Option<String>,
-) -> Result<Option<ModeOnNoMatch>, CompileFailure> {
-    let Some(value) = optional_attribute(document, element, None, "on-no-match") else {
-        return Ok(None);
-    };
-    let policy = match value {
-        "fail" => OnNoMatchPolicy::Fail,
-        "shallow-copy" => OnNoMatchPolicy::ShallowCopy,
-        "shallow-skip" => OnNoMatchPolicy::ShallowSkip,
-        "text-only-copy" => OnNoMatchPolicy::TextOnlyCopy,
-        _ => {
-            return Err(unsupported(
+) -> Result<Option<ModePolicy>, CompileFailure> {
+    let on_no_match = optional_attribute(document, element, None, "on-no-match")
+        .map(|value| match value {
+            "fail" => Ok(OnNoMatchPolicy::Fail),
+            "shallow-copy" => Ok(OnNoMatchPolicy::ShallowCopy),
+            "shallow-skip" => Ok(OnNoMatchPolicy::ShallowSkip),
+            "text-only-copy" => Ok(OnNoMatchPolicy::TextOnlyCopy),
+            _ => Err(unsupported(
                 "FXST1041",
                 "this explicit on-no-match policy is outside the private mode declaration slice",
                 document.location(element),
-            ));
-        }
-    };
-    Ok(Some(ModeOnNoMatch {
+            )),
+        })
+        .transpose()?;
+    let on_multiple_match = optional_attribute(document, element, None, "on-multiple-match")
+        .map(|value| match value {
+            "fail" => Ok(OnMultipleMatchPolicy::Fail),
+            _ => Err(invalid(
+                "XTSE0020",
+                "xsl:mode on-multiple-match has an invalid value",
+                document.location(element),
+            )),
+        })
+        .transpose()?;
+    if on_no_match.is_none() && on_multiple_match.is_none() {
+        return Ok(None);
+    }
+    Ok(Some(ModePolicy {
         name: mode_name,
-        policy,
+        on_no_match,
+        on_multiple_match,
         location: document.location(element).clone(),
     }))
 }
@@ -375,9 +409,24 @@ mod tests {
     fn retains_named_fail_on_no_match_policy() {
         let program = compile("on-no-match", "fail")
             .expect("named fail-on-no-match declaration should compile");
-        assert_eq!(program.mode_on_no_match.len(), 1);
-        assert_eq!(program.mode_on_no_match[0].name.as_deref(), Some("m"));
-        assert_eq!(program.mode_on_no_match[0].policy, OnNoMatchPolicy::Fail);
+        assert_eq!(program.mode_policies.len(), 1);
+        assert_eq!(program.mode_policies[0].name.as_deref(), Some("m"));
+        assert_eq!(
+            program.mode_policies[0].on_no_match,
+            Some(OnNoMatchPolicy::Fail)
+        );
+    }
+
+    #[test]
+    fn retains_named_fail_on_multiple_match_policy() {
+        let program = compile("on-multiple-match", "fail")
+            .expect("named fail-on-multiple-match declaration should compile");
+        assert_eq!(program.mode_policies.len(), 1);
+        assert_eq!(program.mode_policies[0].name.as_deref(), Some("m"));
+        assert_eq!(
+            program.mode_policies[0].on_multiple_match,
+            Some(crate::xslt::golden_semantics_experiment::OnMultipleMatchPolicy::Fail)
+        );
     }
 
     #[test]
@@ -385,15 +434,15 @@ mod tests {
         let skip = compile("on-no-match", "shallow-skip")
             .expect("named shallow-skip declaration should compile");
         assert_eq!(
-            skip.mode_on_no_match[0].policy,
-            OnNoMatchPolicy::ShallowSkip
+            skip.mode_policies[0].on_no_match,
+            Some(OnNoMatchPolicy::ShallowSkip)
         );
 
         let named = compile("on-no-match", "text-only-copy")
             .expect("named text-only-copy declaration should compile");
         assert_eq!(
-            named.mode_on_no_match[0].policy,
-            OnNoMatchPolicy::TextOnlyCopy
+            named.mode_policies[0].on_no_match,
+            Some(OnNoMatchPolicy::TextOnlyCopy)
         );
 
         let parsed = parse_document(
@@ -408,10 +457,10 @@ mod tests {
         let document = Document::from_parsed(parsed).expect("build fixture document");
         let unnamed = compile_stylesheet(&document)
             .expect("unnamed text-only-copy declaration should compile");
-        assert_eq!(unnamed.mode_on_no_match[0].name, None);
+        assert_eq!(unnamed.mode_policies[0].name, None);
         assert_eq!(
-            unnamed.mode_on_no_match[0].policy,
-            OnNoMatchPolicy::TextOnlyCopy
+            unnamed.mode_policies[0].on_no_match,
+            Some(OnNoMatchPolicy::TextOnlyCopy)
         );
     }
 

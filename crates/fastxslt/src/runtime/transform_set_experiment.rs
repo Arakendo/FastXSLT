@@ -33,6 +33,10 @@ pub(super) enum InvocationEntry {
     InitialTemplate {
         name: String,
     },
+    InitialTemplateWithSource {
+        resource: String,
+        name: String,
+    },
 }
 
 #[derive(Debug)]
@@ -192,7 +196,8 @@ impl TransformSetBuilder {
                     ));
                 }
             }
-            InvocationEntry::InitialTemplate { name } => {
+            InvocationEntry::InitialTemplate { name }
+            | InvocationEntry::InitialTemplateWithSource { name, .. } => {
                 if !self
                     .stylesheet
                     .named_templates
@@ -206,6 +211,24 @@ impl TransformSetBuilder {
                         format!("unknown initial template: {name}"),
                     ));
                 }
+            }
+        }
+        if let InvocationEntry::InitialTemplateWithSource { resource, .. } = &request.entry {
+            if self.policy.denied_sources.contains(resource) {
+                return Some(failure(
+                    "FXRS0003",
+                    FailureCategory::Denied,
+                    Some(&request.identity),
+                    format!("source authority is denied: {resource}"),
+                ));
+            }
+            if self.snapshot.get(resource).is_none() {
+                return Some(failure(
+                    "FXRS0001",
+                    FailureCategory::MissingResource,
+                    Some(&request.identity),
+                    format!("source is not admitted: {resource}"),
+                ));
             }
         }
         None
@@ -323,6 +346,18 @@ fn execute_request(
             &request.identity,
             &mut control,
         )?,
+        InvocationEntry::InitialTemplateWithSource { resource, name } => {
+            let source =
+                prepare_request_source(snapshot, resource, &request.identity, &mut control)?;
+            super::execute_initial_template_with_source(
+                stylesheet,
+                name,
+                &source,
+                multiple_match_policy,
+                &request.identity,
+                &mut control,
+            )?
+        }
     };
     let serialized = serialize_xml(
         &semantic,

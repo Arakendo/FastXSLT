@@ -10,8 +10,9 @@ use crate::xpath::for_distinct_values_experiment::{
 };
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, BooleanExpression, ComputedAttribute, Instruction, NodeTest, OnNoMatchPolicy,
-    SequenceItemExpression, SourceWhitespacePolicy, StylesheetProgram, TemplateArgument,
+    ApplySelection, BooleanExpression, ComputedAttribute, Instruction, NodeTest,
+    OnMultipleMatchPolicy, OnNoMatchPolicy, SequenceItemExpression, SourceWhitespacePolicy,
+    StylesheetProgram, TemplateArgument,
 };
 
 #[cfg(test)]
@@ -350,7 +351,7 @@ fn apply_initial_mode_template(
             request_id: inputs.request_id,
             document_rooted_matches: &inputs.document_rooted_matches,
         },
-        inputs.multiple_match_policy,
+        effective_multiple_match_policy(inputs, Some(mode)),
         control,
     )? {
         let variables = bind_template_parameters(
@@ -381,7 +382,7 @@ fn program_has_mode(program: &StylesheetProgram, name: &str) -> bool {
             .iter()
             .any(|requirement| requirement.name == name)
         || program
-            .mode_on_no_match
+            .mode_policies
             .iter()
             .any(|policy| policy.name.as_deref() == Some(name))
 }
@@ -390,6 +391,44 @@ fn program_has_mode(program: &StylesheetProgram, name: &str) -> bool {
 fn execute_initial_template(
     program: &StylesheetProgram,
     name: &str,
+    multiple_match_policy: MultipleMatchPolicy,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<SemanticResult, ExecutionFailure> {
+    execute_initial_template_with_optional_source(
+        program,
+        name,
+        None,
+        multiple_match_policy,
+        request_id,
+        control,
+    )
+}
+
+#[cfg(test)]
+fn execute_initial_template_with_source(
+    program: &StylesheetProgram,
+    name: &str,
+    source: &Document,
+    multiple_match_policy: MultipleMatchPolicy,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<SemanticResult, ExecutionFailure> {
+    execute_initial_template_with_optional_source(
+        program,
+        name,
+        Some(source),
+        multiple_match_policy,
+        request_id,
+        control,
+    )
+}
+
+#[cfg(test)]
+fn execute_initial_template_with_optional_source(
+    program: &StylesheetProgram,
+    name: &str,
+    source: Option<&Document>,
     multiple_match_policy: MultipleMatchPolicy,
     request_id: &str,
     control: &mut InvocationControl,
@@ -408,10 +447,10 @@ fn execute_initial_template(
         ));
     }
     let globals =
-        materialize_global_defaults(program, None, &BTreeMap::new(), request_id, control)?;
+        materialize_global_defaults(program, source, &BTreeMap::new(), request_id, control)?;
     let inputs = SequenceInputs {
         program,
-        source: None,
+        source,
         request_id,
         globals: &globals,
         multiple_match_policy,
@@ -421,7 +460,7 @@ fn execute_initial_template(
     let children = execute_sequence(
         &inputs,
         &template.template.body,
-        SequenceContext::new(None, None),
+        SequenceContext::new(source.map(Document::document_node), None),
         &RuntimeVariables::from_atomics(&globals.atomics, inputs.complete_atomic_frame_clones),
         control,
     )?;
@@ -1256,7 +1295,7 @@ fn execute_next_match(
             document_rooted_matches: &inputs.document_rooted_matches,
         },
         current_index,
-        inputs.multiple_match_policy,
+        effective_multiple_match_policy(inputs, execution.current_mode),
         control,
     )? {
         let variables = bind_template_parameters(
@@ -1792,7 +1831,7 @@ fn apply_template_at(
             request_id: inputs.request_id,
             document_rooted_matches: &inputs.document_rooted_matches,
         },
-        inputs.multiple_match_policy,
+        effective_multiple_match_policy(inputs, mode),
         control,
     )? {
         let variables = bind_template_parameters(
@@ -1819,6 +1858,20 @@ fn apply_template_at(
     apply_builtin_template(inputs, node, mode, parameters, control)
 }
 
+fn effective_multiple_match_policy(
+    inputs: &SequenceInputs<'_>,
+    mode: Option<&str>,
+) -> MultipleMatchPolicy {
+    if inputs.program.mode_policies.iter().any(|policy| {
+        policy.name.as_deref() == mode
+            && policy.on_multiple_match == Some(OnMultipleMatchPolicy::Fail)
+    }) {
+        MultipleMatchPolicy::Error
+    } else {
+        inputs.multiple_match_policy
+    }
+}
+
 fn apply_builtin_template(
     inputs: &SequenceInputs<'_>,
     node: NodeId,
@@ -1828,28 +1881,30 @@ fn apply_builtin_template(
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     if let Some(mode_policy) = inputs
         .program
-        .mode_on_no_match
+        .mode_policies
         .iter()
-        .find(|policy| policy.name.as_deref() == mode)
+        .find(|policy| policy.name.as_deref() == mode && policy.on_no_match.is_some())
     {
-        match mode_policy.policy {
-            OnNoMatchPolicy::Fail => {
-                return Err(failure_at(
-                    "XTDE0555",
-                    FailureCategory::Invalid,
-                    Some(inputs.request_id),
-                    mode_policy.location.clone(),
-                    "the active mode's on-no-match='fail' policy rejected an unmatched node",
-                ));
-            }
-            OnNoMatchPolicy::ShallowCopy => {
-                return apply_shallow_copy_template(inputs, node, mode, parameters, control);
-            }
-            OnNoMatchPolicy::ShallowSkip => {
-                return apply_shallow_skip_template(inputs, node, mode, parameters, control);
-            }
-            OnNoMatchPolicy::TextOnlyCopy => {
-                return apply_text_only_copy_template(inputs, node, mode, parameters, control);
+        if let Some(on_no_match) = mode_policy.on_no_match {
+            match on_no_match {
+                OnNoMatchPolicy::Fail => {
+                    return Err(failure_at(
+                        "XTDE0555",
+                        FailureCategory::Invalid,
+                        Some(inputs.request_id),
+                        mode_policy.location.clone(),
+                        "the active mode's on-no-match='fail' policy rejected an unmatched node",
+                    ));
+                }
+                OnNoMatchPolicy::ShallowCopy => {
+                    return apply_shallow_copy_template(inputs, node, mode, parameters, control);
+                }
+                OnNoMatchPolicy::ShallowSkip => {
+                    return apply_shallow_skip_template(inputs, node, mode, parameters, control);
+                }
+                OnNoMatchPolicy::TextOnlyCopy => {
+                    return apply_text_only_copy_template(inputs, node, mode, parameters, control);
+                }
             }
         }
     }

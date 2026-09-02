@@ -1409,6 +1409,20 @@ rationale = "Named shallow-copy mode lets the unchanged @length rule replace cop
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1516"
+selection = "selected"
+execution = "passed"
+rationale = "Named mode c retains on-multiple-match=fail while two matching branches of one unparenthesized union remain one template rule and satisfy the unchanged native assertion."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1517"
+selection = "selected"
+execution = "passed"
+rationale = "The parenthesized overlapping union remains one compiled template rule under named mode c and satisfies the unchanged native assertion."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-1417"
 selection = "selected"
 execution = "passed"

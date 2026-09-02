@@ -549,6 +549,18 @@ execution = "passed"
 rationale = "Source shallow-copy applies the explicit @length override before child traversal, attaches its incremented replacement attribute, and preserves xsl:next-match continuation for the wrapped chtitle elements."
 
 [[case_override]]
+case_name = "mode-1516"
+selection = "selected"
+execution = "passed"
+rationale = "Named mode c retains on-multiple-match=fail while two matching branches of one unparenthesized union remain one template rule, producing the native unambiguous result."
+
+[[case_override]]
+case_name = "mode-1517"
+selection = "selected"
+execution = "passed"
+rationale = "The parenthesized form of the same overlapping union remains one compiled template rule under named mode c and produces the native unambiguous result."
+
+[[case_override]]
 case_name = "mode-1406"
 selection = "excluded-by-profile"
 execution = "not-run"

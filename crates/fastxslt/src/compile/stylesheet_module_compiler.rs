@@ -110,8 +110,8 @@ fn merge_included_program(
         .typed_mode_requirements
         .append(&mut included_program.typed_mode_requirements);
     program
-        .mode_on_no_match
-        .append(&mut included_program.mode_on_no_match);
+        .mode_policies
+        .append(&mut included_program.mode_policies);
     merge_included_character_maps(program, included_program.character_maps, location)?;
     if included_program.output != default_output_settings() {
         return Err(unsupported(
@@ -649,7 +649,7 @@ fn compile_simplified_stylesheet_at(
         default_initial_mode: None,
         source_whitespace: SourceWhitespacePolicy::Preserve,
         typed_mode_requirements: Vec::new(),
-        mode_on_no_match: Vec::new(),
+        mode_policies: Vec::new(),
         output: default_output_settings(),
         output_specified_properties: Vec::new(),
         character_maps: Vec::new(),

@@ -658,6 +658,46 @@ fn shallow_copy_preserves_comments_and_attribute_template_results() {
 }
 
 #[test]
+fn mode_owned_multiple_match_failure_overrides_host_recovery() {
+    const SOURCE: &str = "urn:fastxslt:mode-multiple-match:source";
+    const STYLESHEET: &str = "urn:fastxslt:mode-multiple-match:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc><para>text<foo/></para></doc>".to_vec())
+        .expect("admit ambiguous mode source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:mode name="c" on-multiple-match="fail"/><xsl:template match="/" mode="c"><xsl:apply-templates mode="c"/></xsl:template><xsl:template match="para[foo]" mode="c"><a/></xsl:template><xsl:template match="para[text()]" mode="c"><b/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit ambiguous mode stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile mode-owned fail policy");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096))
+        .with_multiple_match_policy(MultipleMatchPolicy::UseLast);
+    builder
+        .add(TransformRequest {
+            identity: "ambiguous-mode".to_owned(),
+            result_identity: "ambiguous-mode-result".to_owned(),
+            entry: InvocationEntry::InitialMode {
+                resource: SOURCE.to_owned(),
+                name: "c".to_owned(),
+            },
+            parameters: BTreeMap::new(),
+            cancellation: CancellationToken::new(),
+            cancellation_fault: None,
+        })
+        .expect("admit ambiguous mode request");
+
+    let failure = execute_transform_set(builder.seal())
+        .expect_err("mode-owned fail policy must reject distinct equal-rank rules");
+    assert_eq!(failure.code, "XTDE0540");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+    assert_eq!(failure.request_id.as_deref(), Some("ambiguous-mode"));
+    assert!(failure.location.is_some());
+}
+
+#[test]
 fn named_template_recursion_stops_at_the_private_depth_limit() {
     const SOURCE: &str = "urn:fastxslt:recursion:source";
     const STYLESHEET: &str = "urn:fastxslt:recursion:stylesheet";

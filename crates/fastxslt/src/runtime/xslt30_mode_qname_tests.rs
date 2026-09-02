@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 83] = [
+const SELECTED_CASES: [&str; 85] = [
     "mode-0001",
     "mode-0003",
     "mode-0005",
@@ -82,6 +82,8 @@ const SELECTED_CASES: [&str; 83] = [
     "mode-1507",
     "mode-1508",
     "mode-1509",
+    "mode-1516",
+    "mode-1517",
     "mode-1601",
     "mode-1602",
     "mode-1603",
@@ -676,6 +678,25 @@ fn executes_all_and_current_modes_across_copied_node_kinds() {
 }
 
 #[test]
+fn executes_overlapping_union_as_one_template_rule_under_fail_policy() {
+    for case_name in ["mode-1516", "mode-1517"] {
+        let document = load_test_set();
+        let case = find_case(&document, case_name);
+        let result = child_named(&document, case, "result").expect("mode result metadata");
+        let assertion = child_named(&document, result, "assert").expect("native XPath assertion");
+        assert_eq!(
+            document.string_value(assertion).trim(),
+            "/out/unambiguous-match"
+        );
+
+        let (actual, expected) = execute_case_with_policy(case_name, MultipleMatchPolicy::UseLast)
+            .expect("mode-owned fail policy must not split one union rule");
+        assert!(expected.is_none(), "native case uses an XPath assertion");
+        assert_xml_equivalent(&actual, "<out><unambiguous-match/></out>");
+    }
+}
+
+#[test]
 fn executes_parentless_temporary_node_on_no_match_policies() {
     for case_name in ["mode-0001", "mode-0003", "mode-0005", "mode-0007"] {
         let (actual, expected) = execute_case(case_name);
@@ -843,9 +864,14 @@ fn case_entry(
     if let Some(name) = child_named(document, test, "initial-template")
         .and_then(|initial_template| attribute(document, initial_template, "name"))
     {
-        return InvocationEntry::InitialTemplate {
-            name: normalize_catalog_qname(document, test, name),
-        };
+        let name = normalize_catalog_qname(document, test, name);
+        return source.map_or(
+            InvocationEntry::InitialTemplate { name: name.clone() },
+            |_| InvocationEntry::InitialTemplateWithSource {
+                resource: source_id.to_owned(),
+                name,
+            },
+        );
     }
     child_named(document, test, "initial-mode").map_or_else(
         || {

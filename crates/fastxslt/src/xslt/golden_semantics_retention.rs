@@ -2,13 +2,14 @@ use std::mem::size_of;
 
 use super::{
     ApplySelection, BooleanExpression, CastExpression, CastableExpression, CharacterMapDefinition,
-    ChooseBranch, ComputedAttribute, ConstructedAttribute, ConstructedElement, ConstructedNode,
-    DecimalSumForExpression, DeepEqualBooleanExpression, ExpandedName, FocusSumForExpression,
-    ForDistinctValuesExpression, FormatNumberExpression, GlobalBinding, GlobalBindingDefault,
-    Instruction, IntegerForExpression, LiteralAttribute, LiteralAttributeValue, MatchPattern,
-    MatchedTemplate, NamedTemplate, NamespaceBinding, OutputSettings, SequenceItemExpression,
-    SourceLocation, StylesheetProgram, Template, TemplateArgument, TemplateArgumentValue,
-    TemplateParameter, TemplateParameterDefault, ValueExpression, VariableFilteredElementPath,
+    ChildPresenceTest, ChooseBranch, ComputedAttribute, ConstructedAttribute, ConstructedElement,
+    ConstructedNode, DecimalSumForExpression, DeepEqualBooleanExpression, ExpandedName,
+    FocusSumForExpression, ForDistinctValuesExpression, FormatNumberExpression, GlobalBinding,
+    GlobalBindingDefault, Instruction, IntegerForExpression, LiteralAttribute,
+    LiteralAttributeValue, MatchPattern, MatchedTemplate, NamedTemplate, NamespaceBinding,
+    OutputSettings, SequenceItemExpression, SourceLocation, StylesheetProgram, Template,
+    TemplateArgument, TemplateArgumentValue, TemplateParameter, TemplateParameterDefault,
+    ValueExpression, VariableFilteredElementPath,
 };
 
 impl StylesheetProgram {
@@ -18,7 +19,7 @@ impl StylesheetProgram {
             + vec_owned(&self.typed_mode_requirements, |item| {
                 item.name.capacity() + location_owned(&item.location)
             })
-            + vec_owned(&self.mode_on_no_match, |item| {
+            + vec_owned(&self.mode_policies, |item| {
                 option_string_owned(item.name.as_ref()) + location_owned(&item.location)
             })
             + output_owned(&self.output)
@@ -177,6 +178,13 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
             attribute,
             value,
         } => name_owned(element) + name_owned(attribute) + value.capacity(),
+        MatchPattern::ElementWithChild { element, child } => {
+            name_owned(element)
+                + match child {
+                    ChildPresenceTest::Element(name) => name_owned(name),
+                    ChildPresenceTest::Text => 0,
+                }
+        }
         MatchPattern::AnyElementWithAttributeVariable {
             attribute,
             variable,
@@ -186,6 +194,7 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
         MatchPattern::QualifiedElementPathAlternatives(paths) => {
             vec_owned(paths, |path| vec_owned(path, name_owned))
         }
+        MatchPattern::UnionAlternatives(patterns) => vec_owned(patterns, match_pattern_owned),
         MatchPattern::Path(path) => path.known_owned_capacity_bytes(),
     }
 }

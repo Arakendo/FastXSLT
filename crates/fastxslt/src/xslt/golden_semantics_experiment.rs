@@ -22,7 +22,7 @@ pub(crate) struct StylesheetProgram {
     pub(crate) default_initial_mode: Option<String>,
     pub(crate) source_whitespace: SourceWhitespacePolicy,
     pub(crate) typed_mode_requirements: Vec<TypedModeRequirement>,
-    pub(crate) mode_on_no_match: Vec<ModeOnNoMatch>,
+    pub(crate) mode_policies: Vec<ModePolicy>,
     pub(crate) output: OutputSettings,
     pub(crate) output_specified_properties: Vec<String>,
     pub(crate) character_maps: Vec<CharacterMapDefinition>,
@@ -52,10 +52,16 @@ pub(crate) struct TypedModeRequirement {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ModeOnNoMatch {
+pub(crate) struct ModePolicy {
     pub(crate) name: Option<String>,
-    pub(crate) policy: OnNoMatchPolicy,
+    pub(crate) on_no_match: Option<OnNoMatchPolicy>,
+    pub(crate) on_multiple_match: Option<OnMultipleMatchPolicy>,
     pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum OnMultipleMatchPolicy {
+    Fail,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -217,6 +223,10 @@ pub(crate) enum MatchPattern {
         attribute: ExpandedName,
         value: String,
     },
+    ElementWithChild {
+        element: ExpandedName,
+        child: ChildPresenceTest,
+    },
     AnyElementWithAttributeVariable {
         attribute: ExpandedName,
         variable: String,
@@ -230,6 +240,7 @@ pub(crate) enum MatchPattern {
         boundary: NamedSiblingBoundary,
     },
     QualifiedElementPathAlternatives(Vec<Vec<ExpandedName>>),
+    UnionAlternatives(Vec<MatchPattern>),
     Path(LocationPath),
     Attribute(ExpandedName),
     AnyAttribute,
@@ -238,6 +249,12 @@ pub(crate) enum MatchPattern {
     ProcessingInstruction,
     AnyNode,
     AnyElement,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ChildPresenceTest {
+    Element(ExpandedName),
+    Text,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

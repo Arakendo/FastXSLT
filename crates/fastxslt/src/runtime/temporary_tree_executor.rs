@@ -3,7 +3,8 @@ use std::collections::BTreeMap;
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xslt::golden_semantics_experiment::{
-    Instruction, LiteralAttribute, MatchPattern, MatchedTemplate, OnNoMatchPolicy,
+    ChildPresenceTest, Instruction, LiteralAttribute, MatchPattern, MatchedTemplate,
+    OnNoMatchPolicy,
 };
 
 use super::result_tree::ResultNode;
@@ -114,7 +115,9 @@ fn select_temporary_template<'a>(
             ambiguous = true;
         }
     }
-    if inputs.multiple_match_policy == super::MultipleMatchPolicy::Error && ambiguous {
+    if super::effective_multiple_match_policy(inputs, mode) == super::MultipleMatchPolicy::Error
+        && ambiguous
+    {
         let (_, selected) = selected.expect("an ambiguous temporary rank has a template");
         return Err(failure_at(
             "XTDE0540",
@@ -300,7 +303,9 @@ fn select_next_temporary_template<'a>(
             ambiguous = true;
         }
     }
-    if inputs.multiple_match_policy == super::MultipleMatchPolicy::Error && ambiguous {
+    if super::effective_multiple_match_policy(inputs, mode) == super::MultipleMatchPolicy::Error
+        && ambiguous
+    {
         let (_, selected) = selected.expect("an ambiguous temporary next rank has a template");
         return Err(failure_at(
             "XTDE0540",
@@ -334,19 +339,22 @@ pub(super) fn apply_temporary_builtin(
     parameters: &BTreeMap<String, InvocationParameter>,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    let policy = inputs
+    let mode_policy = inputs
         .program
-        .mode_on_no_match
+        .mode_policies
         .iter()
-        .find(|policy| policy.name.as_deref() == mode);
-    if let Some(policy) = policy {
-        match policy.policy {
+        .find(|policy| policy.name.as_deref() == mode && policy.on_no_match.is_some());
+    if let Some(on_no_match) = mode_policy.and_then(|policy| policy.on_no_match) {
+        match on_no_match {
             OnNoMatchPolicy::Fail => {
                 return Err(failure_at(
                     "XTDE0555",
                     FailureCategory::Invalid,
                     Some(inputs.request_id),
-                    policy.location.clone(),
+                    mode_policy
+                        .expect("on-no-match policy has a containing mode policy")
+                        .location
+                        .clone(),
                     "the active mode's on-no-match='fail' policy rejected an unmatched temporary node",
                 ));
             }
@@ -665,6 +673,39 @@ fn temporary_matches(
                 request_id,
                 control,
             );
+        }
+        (_, MatchPattern::UnionAlternatives(alternatives)) => {
+            for alternative in alternatives {
+                if temporary_matches(tree, node, alternative, request_id, control)? {
+                    return Ok(true);
+                }
+            }
+            false
+        }
+        (
+            TemporaryNodeKind::Element { name, .. },
+            MatchPattern::ElementWithChild {
+                element,
+                child: required,
+            },
+        ) if name == element => {
+            for child in &tree.nodes[node].children {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                let child_matches = match (required, &tree.nodes[*child].kind) {
+                    (
+                        ChildPresenceTest::Element(expected),
+                        TemporaryNodeKind::Element { name, .. },
+                    ) => expected == name,
+                    (ChildPresenceTest::Text, TemporaryNodeKind::Text(_)) => true,
+                    _ => false,
+                };
+                if child_matches {
+                    return Ok(true);
+                }
+            }
+            false
         }
         _ => false,
     };
