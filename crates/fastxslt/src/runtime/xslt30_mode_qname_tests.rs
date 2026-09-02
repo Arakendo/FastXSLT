@@ -3,7 +3,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet, HashSet},
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use super::{
@@ -18,7 +18,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 85] = [
+const SELECTED_CASES: [&str; 86] = [
     "mode-0001",
     "mode-0003",
     "mode-0005",
@@ -103,6 +103,7 @@ const SELECTED_CASES: [&str; 85] = [
     "mode-1617",
     "mode-1618",
     "mode-1619",
+    "mode-1901",
     "mode-1904",
 ];
 const STREAMING_EXCLUDED_CASES: [&str; 26] = [
@@ -697,6 +698,25 @@ fn executes_overlapping_union_as_one_template_rule_under_fail_policy() {
 }
 
 #[test]
+fn principal_mode_policy_overrides_imported_policy() {
+    let document = load_test_set();
+    let case = find_case(&document, "mode-1901");
+    let expected_error = child_named(
+        &document,
+        child_named(&document, case, "result").expect("result metadata"),
+        "error",
+    )
+    .and_then(|error| attribute(&document, error, "code"));
+    assert_eq!(expected_error, Some("XTDE0555"));
+
+    let failure = execute_case_with_policy("mode-1901", MultipleMatchPolicy::UseLast)
+        .expect_err("principal fail-on-no-match must replace the imported shallow-copy policy");
+    assert_eq!(failure.code, "XTDE0555");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+    assert_eq!(failure.request_id.as_deref(), Some("mode-1901"));
+}
+
+#[test]
 fn executes_parentless_temporary_node_on_no_match_policies() {
     for case_name in ["mode-0001", "mode-0003", "mode-0005", "mode-0007"] {
         let (actual, expected) = execute_case(case_name);
@@ -767,21 +787,7 @@ fn execute_case_with_policy(
             .admit(source_id.clone(), source_bytes)
             .expect("admit source");
     }
-    resources
-        .admit(
-            stylesheet_id.clone(),
-            fs::read(directory.join(stylesheet_file)).expect("read stylesheet and close handle"),
-        )
-        .expect("admit stylesheet");
-    for secondary_file in stylesheet_files.iter().skip(1) {
-        resources
-            .admit(
-                format!("https://example.invalid/xslt30/attr/mode/{secondary_file}"),
-                fs::read(directory.join(secondary_file))
-                    .expect("read secondary stylesheet and close handle"),
-            )
-            .expect("admit secondary stylesheet");
-    }
+    admit_case_stylesheets(&mut resources, &directory, case_name, &stylesheet_files);
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, &stylesheet_id).expect("compile selected mode case");
     if matches!(case_name, "mode-0105" | "mode-0106") {
@@ -820,6 +826,32 @@ fn execute_case_with_policy(
     .expect("admit mode request");
     let results = execute_transform_set(set.seal())?;
     Ok((results.by_request[case_name].serialized.clone(), expected))
+}
+
+fn admit_case_stylesheets(
+    resources: &mut ResourceSetBuilder,
+    directory: &Path,
+    case_name: &str,
+    stylesheet_files: &[&str],
+) {
+    for stylesheet_file in stylesheet_files {
+        resources
+            .admit(
+                format!("https://example.invalid/xslt30/attr/mode/{stylesheet_file}"),
+                fs::read(directory.join(stylesheet_file))
+                    .expect("read stylesheet and close handle"),
+            )
+            .expect("admit stylesheet");
+    }
+    if case_name == "mode-1901" {
+        resources
+            .admit(
+                "https://example.invalid/xslt30/attr/mode/mode-0001.xsl",
+                fs::read(directory.join("mode-0001.xsl"))
+                    .expect("read imported mode stylesheet and close handle"),
+            )
+            .expect("admit imported mode stylesheet");
+    }
 }
 
 fn find_case(document: &Document, case_name: &str) -> NodeId {

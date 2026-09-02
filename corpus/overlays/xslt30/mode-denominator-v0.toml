@@ -561,6 +561,12 @@ execution = "passed"
 rationale = "The parenthesized form of the same overlapping union remains one compiled template rule under named mode c and produces the native unambiguous result."
 
 [[case_override]]
+case_name = "mode-1901"
+selection = "selected"
+execution = "passed"
+rationale = "The principal stylesheet's higher-precedence on-no-match=fail declaration overrides the imported shallow-copy policy for named mode s and reports the unchanged XTDE0555 result."
+
+[[case_override]]
 case_name = "mode-1406"
 selection = "excluded-by-profile"
 execution = "not-run"

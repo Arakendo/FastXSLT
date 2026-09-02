@@ -1423,6 +1423,13 @@ rationale = "The parenthesized overlapping union remains one compiled template r
 
 [[case]]
 set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-1901"
+selection = "selected"
+execution = "passed"
+rationale = "A higher-precedence principal mode declaration replaces the imported mode's on-no-match policy and produces the unchanged XTDE0555 error."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
 case_name = "mode-1417"
 selection = "selected"
 execution = "passed"

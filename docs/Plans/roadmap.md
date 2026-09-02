@@ -1319,6 +1319,16 @@ unions remain outside the bounded slice. The mode denominator advances to 85
 passes, 45 profile exclusions, and 39 visible default not-run cases.
 [Evidence](../Evidence/xslt30-mode-overlapping-union-single-rule-2026-09-02.md)
 
+The unchanged `mode-1901` case now admits its exact imported stylesheet into
+the sealed snapshot and executes the imported named initial template under the
+principal stylesheet's higher-precedence mode policy. The principal
+`on-no-match="fail"` replaces the imported text-only-copy behavior and reports
+the native `XTDE0555` outcome when the temporary comment is unmatched. This
+does not infer package-level mode overriding, visibility composition, or
+accumulator semantics. The mode denominator advances to 86 passes, 45 profile
+exclusions, and 38 visible default not-run cases.
+[Evidence](../Evidence/xslt30-mode-1901-imported-policy-override-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1358,10 +1368,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 85 | 0 | 45 | 39 |
+| `attr/mode` | 169 | 86 | 0 | 45 | 38 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 198 | 0 | 1 | 33 |
-| **Conserved total** | **531** | **405** | **3** | **51** | **72** |
+| **Conserved total** | **531** | **406** | **3** | **51** | **71** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -2443,6 +2453,11 @@ failed, and harness-error cases without an unqualified conformance claim.
   `on-multiple-match="fail"` only across distinct selected rules. Keep exact
   child-presence predicates and supplied-source initial-template context
   bounded rather than claiming general pattern predicates or union grammar.
+- [x] Execute pinned `mode-1901` by admitting its exact imported stylesheet
+  into the sealed snapshot and applying the principal stylesheet's
+  higher-precedence `on-no-match="fail"` policy to the imported named-template
+  execution. Preserve the native `XTDE0555` outcome without claiming general
+  package, visibility, or accumulator component merging.
 - [ ] Establish explicit URI/resource resolution and execution limits.
   - [x] Route private principal-stylesheet acquisition through an exact,
     qualified-identity resolver over one sealed snapshot. Charge a fixed attempt
