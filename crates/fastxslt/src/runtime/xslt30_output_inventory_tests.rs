@@ -15,6 +15,7 @@ use crate::execution_control_experiment::{CancellationToken, InvocationControl, 
 use crate::resources::{ResourceLimits, ResourceSetBuilder, resolve_reference};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xslt::golden_semantics_experiment::STANDARD_INITIAL_TEMPLATE_NAME;
 use crate::xslt30_overlay_test_support::assert_output_case_passed;
 
 const SET_FILE: &str = "tests/decl/output/_output-test-set.xml";
@@ -1319,6 +1320,19 @@ fn preserves_bounded_html_raw_and_preformatted_text() {
 }
 
 #[test]
+fn serializes_bounded_html5_input_value_without_uri_escaping() {
+    let execution = execute_output_case("output-0724", None);
+    assert_eq!(execution.method.as_deref(), Some("html"));
+    assert!(
+        execution
+            .actual
+            .ends_with("<input type=\"text\" value=\"✈\">")
+    );
+    assert!(!execution.actual.contains("%E2%9C%88"));
+    assert!(!execution.actual.ends_with("/>"));
+}
+
+#[test]
 fn reports_inconsistent_xml_serialization_parameters_as_sepm0009() {
     for case_name in ["output-0186", "output-0187"] {
         let (test_set, _) = load_test_set();
@@ -1579,16 +1593,22 @@ fn execute_output_case(case_name: &str, assertion_method: Option<&str>) -> Seria
     try_execute_output_case(case_name, assertion_method).expect("execute output case")
 }
 
-fn output_stylesheet_nodes(document: &Document, test: NodeId, environment: NodeId) -> Vec<NodeId> {
+fn output_stylesheet_nodes(
+    document: &Document,
+    test: NodeId,
+    environment: Option<NodeId>,
+) -> Vec<NodeId> {
     let local = element_children(document, test)
         .into_iter()
         .filter(|node| local_name(document, *node) == "stylesheet")
         .collect::<Vec<_>>();
     if local.is_empty() {
-        element_children(document, environment)
-            .into_iter()
-            .filter(|node| local_name(document, *node) == "stylesheet")
-            .collect()
+        environment.map_or_else(Vec::new, |environment| {
+            element_children(document, environment)
+                .into_iter()
+                .filter(|node| local_name(document, *node) == "stylesheet")
+                .collect()
+        })
     } else {
         local
     }
@@ -1611,14 +1631,14 @@ fn try_execute_output_case(
         })
         .expect("pinned output case");
     let test = child_named(&test_set, case, "test").expect("output test");
-    let environment = resolve_environment(&test_set, root, case).expect("output environment");
+    let environment = resolve_environment(&test_set, root, case);
     let stylesheet_nodes = output_stylesheet_nodes(&test_set, test, environment);
     let stylesheet_file = stylesheet_nodes
         .first()
         .copied()
         .and_then(|node| attribute(&test_set, node, "file"))
         .expect("output stylesheet file");
-    let source = child_named(&test_set, environment, "source");
+    let source = environment.and_then(|environment| child_named(&test_set, environment, "source"));
     let source_bytes = source.map(|source| {
         if let Some(file) = attribute(&test_set, source, "file") {
             fs::read(directory.join(file)).expect("read source and close handle")
@@ -1752,7 +1772,11 @@ fn output_invocation_entry(
     }
     let initial_mode = child_named(test_set, test, "initial-mode")
         .and_then(|node| attribute(test_set, node, "name"));
-    let source_id = source_id.expect("source-based output entry requires a principal source");
+    let Some(source_id) = source_id else {
+        return InvocationEntry::InitialTemplate {
+            name: STANDARD_INITIAL_TEMPLATE_NAME.to_owned(),
+        };
+    };
     match initial_mode {
         Some(name) => InvocationEntry::InitialMode {
             resource: source_id,

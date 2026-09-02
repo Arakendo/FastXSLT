@@ -162,6 +162,11 @@ fn validate_bounded_html_result(
         return Ok(());
     }
     if settings.html_version.as_deref() == Some("5")
+        && is_bounded_html5_input_document(&result.children)
+    {
+        return Ok(());
+    }
+    if settings.html_version.as_deref() == Some("5")
         && !settings.character_map.is_empty()
         && is_bounded_html5_character_map_document(&result.children)
     {
@@ -201,6 +206,33 @@ fn validate_bounded_html_result(
         return Err(unsupported_html_result(request_id));
     }
     Ok(())
+}
+
+fn is_bounded_html5_input_document(nodes: &[ResultNode]) -> bool {
+    let significant: Vec<_> = nodes
+        .iter()
+        .filter(|node| !is_whitespace_text(node))
+        .collect();
+    matches!(significant.as_slice(), [ResultNode::Element {
+        name,
+        namespaces,
+        attributes,
+        children,
+    }] if name.namespace.is_none()
+        && name.local == "input"
+        && namespaces.is_empty()
+        && attributes.len() == 2
+        && children.is_empty()
+        && attributes.iter().any(|attribute| {
+            attribute.name.namespace.is_none()
+                && attribute.name.local == "type"
+                && attribute.value == "text"
+        })
+        && attributes.iter().any(|attribute| {
+            attribute.name.namespace.is_none()
+                && attribute.name.local == "value"
+                && attribute.value == "✈"
+        }))
 }
 
 fn is_bounded_html_ins_del_document(nodes: &[ResultNode]) -> bool {

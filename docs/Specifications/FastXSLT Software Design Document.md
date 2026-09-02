@@ -432,7 +432,10 @@ An independent HTML 5 character-map slice admits only the unchanged
 attribute values; it does not widen the ordinary HTML 5 element vocabulary.
 The explicit HTML serialization version 5 path emits C1 controls (`#x7F` through
 `#x9F`) as hexadecimal numeric character references for the bounded corpus
-shape. HTML 4 serialization remains excluded from the selected profile, and an
+shape. A separate exact source-free HTML 5 lane admits one empty `input` with
+the corpus `type` and `value` attributes, emits void-element syntax, and keeps
+the non-URI value out of URI percent encoding. HTML 4 serialization remains
+excluded from the selected profile, and an
 environment-supplied default HTML version is not inferred by this evidence.
 XML-compatible attribute serialization emits C1 controls as hexadecimal numeric
 character references. XHTML evidence covers a bounded non-URI `accesskey`

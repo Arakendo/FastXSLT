@@ -1162,6 +1162,14 @@ The output denominator advances to 177 passes and 54 visible default not-run
 cases.
 [Evidence](../Evidence/xslt30-output-html-preformatted-whitespace-2026-09-01.md)
 
+The unchanged `output-0724` case now executes as an exact source-free HTML 5
+`input` result. The serializer emits the empty element as a void tag, preserves
+the airplane character in the ordinary `value` attribute, and does not apply
+URI percent encoding. The validator admits only the case's `type="text"` and
+`value="✈"` attributes. The output denominator advances to 178 passes and 53
+visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-html5-input-value-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1203,8 +1211,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 177 | 0 | 1 | 54 |
-| **Conserved total** | **531** | **375** | **3** | **51** | **102** |
+| `decl/output` | 232 | 178 | 0 | 1 | 53 |
+| **Conserved total** | **531** | **376** | **3** | **51** | **101** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

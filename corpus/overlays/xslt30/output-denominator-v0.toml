@@ -1076,6 +1076,12 @@ selection = "selected"
 execution = "passed"
 rationale = "Preserves raw script/style text and significant pre/textarea whitespace in the exact bounded HTML hierarchy under indent=no."
 
+[[case_override]]
+case_name = "output-0724"
+selection = "selected"
+execution = "passed"
+rationale = "Serializes the exact source-free HTML 5 input element as a void tag and preserves the non-URI airplane value without percent encoding."
+
 [[assertion_family]]
 name = "all-of"
 count = 89
