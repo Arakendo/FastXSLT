@@ -1046,6 +1046,12 @@ selection = "selected"
 execution = "passed"
 rationale = "Retains normalization-form=none for HTML output and verifies that the exact decomposed A plus combining-acute UTF-8 sequence is not normalized."
 
+[[case_override]]
+case_name = "output-0160"
+selection = "selected"
+execution = "passed"
+rationale = "Preserves significant whitespace inside HTML del and ins elements while omitting whitespace-only stylesheet nodes between result instructions under indent=no."
+
 [[assertion_family]]
 name = "all-of"
 count = 89

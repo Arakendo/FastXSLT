@@ -1270,6 +1270,17 @@ fn executes_xml_and_text_with_normalization_form_none() {
 }
 
 #[test]
+fn preserves_html_ins_and_del_content_whitespace_without_indent() {
+    let execution = execute_output_case("output-0160", None);
+    assert_eq!(execution.method.as_deref(), Some("html"));
+    assert!(
+        execution
+            .actual
+            .contains("is <del>\n    \t\t\t20\t</del><ins>     1 2 </ins> pieces")
+    );
+}
+
+#[test]
 fn reports_inconsistent_xml_serialization_parameters_as_sepm0009() {
     for case_name in ["output-0186", "output-0187"] {
         let (test_set, _) = load_test_set();

@@ -81,7 +81,7 @@ pub(in crate::runtime) fn serialize_xml(
     let html = settings.method.as_deref() == Some("html");
     if html {
         validate_html_processing_instructions(result, request_id)?;
-        validate_bounded_html_character_map_result(result, settings, request_id)?;
+        validate_bounded_html_result(result, settings, request_id)?;
     }
     if settings
         .method
@@ -152,7 +152,7 @@ fn select_html_mode(settings: &OutputSettings, html: bool) -> HtmlMode {
     }
 }
 
-fn validate_bounded_html_character_map_result(
+fn validate_bounded_html_result(
     result: &SemanticResult,
     settings: &OutputSettings,
     request_id: &str,
@@ -178,6 +178,9 @@ fn validate_bounded_html_character_map_result(
     if is_bounded_html_content_type_document(&result.children) {
         return Ok(());
     }
+    if is_bounded_html_ins_del_document(&result.children) {
+        return Ok(());
+    }
     let significant: Vec<_> = result
         .children
         .iter()
@@ -192,6 +195,82 @@ fn validate_bounded_html_character_map_result(
         return Err(unsupported_html_result(request_id));
     }
     Ok(())
+}
+
+fn is_bounded_html_ins_del_document(nodes: &[ResultNode]) -> bool {
+    let significant: Vec<_> = nodes
+        .iter()
+        .filter(|node| !is_whitespace_text(node))
+        .collect();
+    let [html] = significant.as_slice() else {
+        return false;
+    };
+    let Some(html_children) = plain_html_children(html, "html") else {
+        return false;
+    };
+    let html_elements: Vec<_> = html_children
+        .iter()
+        .filter(|node| !is_whitespace_text(node))
+        .collect();
+    let [head, body] = html_elements.as_slice() else {
+        return false;
+    };
+    let Some(head_children) = plain_html_children(head, "head") else {
+        return false;
+    };
+    if !head_children
+        .iter()
+        .all(|node| matches!(node, ResultNode::Text(_)))
+    {
+        return false;
+    }
+    let Some(body_children) = plain_html_children(body, "body") else {
+        return false;
+    };
+    let body_elements: Vec<_> = body_children
+        .iter()
+        .filter(|node| !is_whitespace_text(node))
+        .collect();
+    let [paragraph] = body_elements.as_slice() else {
+        return false;
+    };
+    let Some(paragraph_children) = plain_html_children(paragraph, "p") else {
+        return false;
+    };
+    let embedded: Vec<_> = paragraph_children
+        .iter()
+        .filter(|node| matches!(node, ResultNode::Element { .. }))
+        .collect();
+    matches!(embedded.as_slice(), [deleted, inserted]
+        if plain_html_children(deleted, "del")
+            .is_some_and(|children| children.iter().all(|node| matches!(node, ResultNode::Text(_))))
+            && plain_html_children(inserted, "ins")
+                .is_some_and(|children| children.iter().all(|node| matches!(node, ResultNode::Text(_)))))
+        && paragraph_children.iter().all(|node| {
+            matches!(node, ResultNode::Text(_))
+                || embedded.iter().any(|child| std::ptr::eq(*child, node))
+        })
+}
+
+fn plain_html_children<'a>(node: &'a ResultNode, local: &str) -> Option<&'a [ResultNode]> {
+    let ResultNode::Element {
+        name,
+        namespaces,
+        attributes,
+        children,
+    } = node
+    else {
+        return None;
+    };
+    (name.namespace.is_none()
+        && name.local == local
+        && namespaces.is_empty()
+        && attributes.is_empty())
+    .then_some(children)
+}
+
+fn is_whitespace_text(node: &ResultNode) -> bool {
+    matches!(node, ResultNode::Text(value) if value.chars().all(char::is_whitespace))
 }
 
 fn is_bounded_html_content_type_document(nodes: &[ResultNode]) -> bool {
@@ -475,7 +554,7 @@ fn unsupported_html_result(request_id: &str) -> ExecutionFailure {
         "FXSR1001",
         FailureCategory::Unsupported,
         Some(request_id),
-        "HTML serialization is limited to the admitted character-map html/body/p result shape",
+        "HTML serialization is limited to the admitted bounded result shapes",
     )
 }
 

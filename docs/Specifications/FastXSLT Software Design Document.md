@@ -453,7 +453,10 @@ shape may contain one existing two-attribute Content-Type `meta`; serialization
 replaces it with one UTF-8 meta, discarding the authored charset or additional
 content parameters without mutating the result tree.
 Disabling the property retains authored metadata. This does not extend the
-private lane to general HTML serialization. XHTML `script` and `style` text
+private lane to general HTML serialization. A separate bounded HTML lane admits
+only the exact attribute-free `html/head/body/p/del/ins` hierarchy needed to
+verify preservation of significant `del` and `ins` text under `indent="no"`;
+other HTML hierarchies remain unsupported. XHTML `script` and `style` text
 continues to use XML escaping; the raw-text conventions of the HTML method are
 not inferred from element names. Selected XHTML CDATA elements use the same
 expanded-name matching and terminator-splitting behavior as XML output, so a

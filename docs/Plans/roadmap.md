@@ -1128,6 +1128,15 @@ still needs NFC before URI percent encoding. The output denominator advances to
 172 passes and 59 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-html-normalization-none-2026-09-01.md)
 
+The unchanged `output-0160` case now verifies whitespace conservation for an
+attribute-free HTML `html/head/body/p/del/ins` hierarchy under `indent="no"`.
+Text containing the newline, tabs, and spaces inside `del` and `ins` survives,
+while the whitespace-only stylesheet node between those result instructions
+does not appear. A private validator admits only this exact hierarchy rather
+than widening FastXSLT to general HTML serialization. The output denominator
+advances to 173 passes and 58 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-html-ins-del-whitespace-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1169,8 +1178,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 172 | 0 | 1 | 59 |
-| **Conserved total** | **531** | **370** | **3** | **51** | **107** |
+| `decl/output` | 232 | 173 | 0 | 1 | 58 |
+| **Conserved total** | **531** | **371** | **3** | **51** | **106** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
