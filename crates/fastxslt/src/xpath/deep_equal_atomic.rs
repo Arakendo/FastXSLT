@@ -210,6 +210,11 @@ fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
     {
         return (!value.contains('"')).then(|| AtomicValue::String(value.to_owned()));
     }
+    if let Some(value) =
+        constructor_lexical(expression, "xs:NCName").filter(|value| is_ascii_ncname(value))
+    {
+        return Some(AtomicValue::String(value.to_owned()));
+    }
     if let Some(value) = expression
         .strip_prefix('"')
         .and_then(|value| value.strip_suffix('"'))
@@ -617,6 +622,13 @@ mod tests {
             return Some(false);
         }
         Some((0..left.len()).all(|index| left.item_equals(&right, index)))
+    }
+
+    #[test]
+    fn compares_admitted_string_derived_ncname_by_value() {
+        assert_eq!(sequences_equal("\"a\"", "xs:NCName(\"a\")"), Some(true));
+        assert_eq!(sequences_equal("\"a\"", "xs:NCName(\"b\")"), Some(false));
+        assert!(parse_sequence("xs:NCName(\"1bad\")").is_none());
     }
 
     #[test]

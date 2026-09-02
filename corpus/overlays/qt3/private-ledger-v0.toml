@@ -2380,3 +2380,10 @@ case_name = "K2-Axes-91"
 selection = "selected"
 execution = "passed"
 rationale = "Reports the independently identified incomplete QName case as the standard XPST0003 static syntax error."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K2-SeqDeepEqualFunc-35"
+selection = "selected"
+execution = "passed"
+rationale = "Compares the admitted xs:NCName string-derived value with an equal string while validating the NCName lexical form."
