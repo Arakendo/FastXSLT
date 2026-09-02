@@ -180,6 +180,15 @@ const STANDARD_COLLATION_ERROR_CASES: [(&str, &str); 2] = [
     ("K-SeqDeepEqualFunc-4", "FOCH0002"),
     ("K-SeqDeepEqualFunc-5", "XPTY0004"),
 ];
+const ARRAY_LITERAL_CASES: [(&str, bool, usize); 7] = [
+    ("fn-deep-equal-arrays-1", true, 3),
+    ("fn-deep-equal-arrays-2", true, 7),
+    ("fn-deep-equal-arrays-3", true, 6),
+    ("fn-deep-equal-arrays-4", false, 3),
+    ("fn-deep-equal-arrays-5", false, 2),
+    ("fn-deep-equal-arrays-6", false, 3),
+    ("fn-deep-equal-arrays-7", true, 4),
+];
 const MIXED_ATOMIC_CASES: [(&str, bool, usize); 31] = [
     ("fn-deep-equal-mix-args-001", false, 2),
     ("fn-deep-equal-mix-args-002", true, 3),
@@ -410,6 +419,11 @@ fn reports_qt3_standard_collation_errors() {
         };
         assert_eq!(actual_code, standard_code);
     }
+}
+
+#[test]
+fn executes_qt3_array_literal_tranche() {
+    execute_named_boolean_cases(&ARRAY_LITERAL_CASES);
 }
 
 fn execute_named_true_cases(expected_cases: &[(&str, usize)]) {

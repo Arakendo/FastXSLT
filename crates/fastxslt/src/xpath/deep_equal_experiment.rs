@@ -1,6 +1,7 @@
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 
+use super::deep_equal_array;
 use super::deep_equal_atomic::{
     AtomicCollation, AtomicSequence, ExactDecimal, parse_decimal, parse_integer, parse_sequence,
     split_top_level_once,
@@ -24,7 +25,8 @@ impl DeepEqualExpression {
                 // evaluator and is intentionally not guessed here.
                 DeepEqualOperands::Integers { .. }
                 | DeepEqualOperands::Decimals { .. }
-                | DeepEqualOperands::AtomicSequences { .. } => 0,
+                | DeepEqualOperands::AtomicSequences { .. }
+                | DeepEqualOperands::ArraySequences { .. } => 0,
             }
     }
 }
@@ -57,6 +59,10 @@ enum DeepEqualOperands {
         left: AtomicSequence,
         right: AtomicSequence,
         collation: AtomicCollation,
+    },
+    ArraySequences {
+        left: deep_equal_array::ValueSequence,
+        right: deep_equal_array::ValueSequence,
     },
 }
 
@@ -131,7 +137,16 @@ pub(crate) fn parse(
             AtomicCollation::Codepoint,
         )
     };
-    let operands = if let (Some(left), Some(right)) = (parse_integer(left), parse_integer(right)) {
+    let operands = if deep_equal_array::recognizes(left, right) {
+        if collation != AtomicCollation::Codepoint {
+            return Err(unsupported(expression, location));
+        }
+        DeepEqualOperands::ArraySequences {
+            left: deep_equal_array::parse(left).ok_or_else(|| unsupported(expression, location))?,
+            right: deep_equal_array::parse(right)
+                .ok_or_else(|| unsupported(expression, location))?,
+        }
+    } else if let (Some(left), Some(right)) = (parse_integer(left), parse_integer(right)) {
         DeepEqualOperands::Integers { left, right }
     } else if let (Some(left), Some(right)) = (parse_decimal(left), parse_decimal(right)) {
         DeepEqualOperands::Decimals { left, right }
@@ -273,6 +288,10 @@ pub(crate) fn evaluate(
                 }
             }
             Ok(true)
+        }
+        DeepEqualOperands::ArraySequences { left, right } => {
+            deep_equal_array::equals(left, right, control)
+                .map_err(DeepEqualEvaluationFailure::Control)
         }
         DeepEqualOperands::Nodes { left, right } => {
             let document = document.ok_or(DeepEqualEvaluationFailure::MissingNodeContext)?;
