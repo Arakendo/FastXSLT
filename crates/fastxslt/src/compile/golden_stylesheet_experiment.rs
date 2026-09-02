@@ -2,10 +2,11 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocati
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::path_experiment::{PathFailure, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
-    CharacterMapDefinition, ConstructedElement, ConstructedNode, GlobalBinding,
-    GlobalBindingDefault, GlobalBindingKind, Instruction, MatchPattern, MatchedTemplate,
-    NamedTemplate, STANDARD_INITIAL_TEMPLATE_NAME, SourceWhitespacePolicy, StylesheetProgram,
-    Template, TemplateParameter, TemplateParameterDefault, TemplatePriority,
+    CharacterMapDefinition, ConstructedAttribute, ConstructedElement, ConstructedNode,
+    GlobalBinding, GlobalBindingDefault, GlobalBindingKind, Instruction, LiteralAttributeValue,
+    MatchPattern, MatchedTemplate, NamedTemplate, STANDARD_INITIAL_TEMPLATE_NAME,
+    SourceWhitespacePolicy, StylesheetProgram, Template, TemplateParameter,
+    TemplateParameterDefault, TemplatePriority,
 };
 
 #[path = "instruction_compiler.rs"]
@@ -34,8 +35,8 @@ use stylesheet_validation::validate_named_template_references;
 use template_pattern_compiler::compile_match_pattern;
 
 use instruction_compiler::{
-    compile_comment, compile_processing_instruction, compile_sequence_excluding, compile_text,
-    literal_result_namespaces, parse_template_modes,
+    compile_comment, compile_literal_result_attributes, compile_processing_instruction,
+    compile_sequence_excluding, compile_text, literal_result_namespaces, parse_template_modes,
 };
 use mode_declaration_compiler::{
     validate_mode_declaration as validate_mode, validate_same_precedence_mode_declaration_conflicts,
@@ -681,16 +682,17 @@ fn compile_global_default(
         {
             Ok(temporary)
         } else {
-            if declared_type.is_some() {
+            let elements = compile_constructed_elements(document, element)?;
+            if declared_type.is_some_and(|declared| declared != "element()")
+                || declared_type == Some("element()") && elements.len() != 1
+            {
                 return Err(unsupported(
                     "FXST1016",
-                    "the private typed global-variable slice requires one static parentless node constructor",
+                    "the private typed global-variable slice requires one static node constructor matching its declared type",
                     document.location(element),
                 ));
             }
-            Ok(GlobalBindingDefault::TemporaryTree(
-                compile_constructed_elements(document, element)?,
-            ))
+            Ok(GlobalBindingDefault::TemporaryTree(elements))
         }
     } else {
         if declared_type.is_some() {
@@ -766,17 +768,31 @@ fn compile_constructed_element(
     element: NodeId,
 ) -> Result<ConstructedElement, CompileFailure> {
     let name = document.name(element).expect("element nodes have names");
-    if name.namespace.as_deref() == Some(XSLT_NAMESPACE) || !document.attributes(element).is_empty()
-    {
+    if name.namespace.as_deref() == Some(XSLT_NAMESPACE) {
         return Err(unsupported(
             "FXST1015",
-            "only attribute-free literal elements are admitted in global temporary trees",
+            "XSLT instructions are outside the global temporary-tree constructor slice",
             document.location(element),
         ));
     }
+    let attributes = compile_literal_result_attributes(document, element)?
+        .into_iter()
+        .map(|attribute| match attribute.value {
+            LiteralAttributeValue::Text(value) => Ok(ConstructedAttribute {
+                name: attribute.name,
+                value,
+            }),
+            _ => Err(unsupported(
+                "FXST1015",
+                "dynamic literal attributes are outside the global temporary-tree constructor slice",
+                &attribute.location,
+            )),
+        })
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(ConstructedElement {
         name: name.clone(),
         namespaces: literal_result_namespaces(document, element),
+        attributes,
         children: compile_constructed_children(document, element)?,
     })
 }

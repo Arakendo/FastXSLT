@@ -525,6 +525,12 @@ execution = "not-run"
 rationale = "The native case declares feature=streaming. ADR-0007 excludes XSLT streaming conformance from the current profile, so the case remains conserved without execution."
 
 [[case_override]]
+case_name = "mode-0015"
+selection = "selected"
+execution = "passed"
+rationale = "The immutable global temporary element retains its literal attribute as an XDM node; each native on-no-match policy traverses attributes according to its semantics and the unchanged @bar rule produces the expected result."
+
+[[case_override]]
 case_name = "mode-1406"
 selection = "excluded-by-profile"
 execution = "not-run"

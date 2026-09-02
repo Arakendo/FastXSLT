@@ -1271,6 +1271,14 @@ mode denominator advances to 79 passes, 45 profile exclusions, and 45 visible
 default not-run cases.
 [Evidence](../Evidence/xslt30-mode-parentless-comment-pi-text-2026-09-02.md)
 
+The unchanged source-free `mode-0015` case now retains a literal attribute as
+an immutable temporary XDM node rather than a child approximation. Exact
+attribute-rule dispatch composes with shallow-copy, shallow-skip, and
+text-only-copy traversal, including the combined attribute/child focus used by
+the first two policies. The mode denominator advances to 80 passes, 45 profile
+exclusions, and 44 visible default not-run cases.
+[Evidence](../Evidence/xslt30-mode-temporary-element-attribute-policies-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1310,10 +1318,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 79 | 0 | 45 | 45 |
+| `attr/mode` | 169 | 80 | 0 | 45 | 44 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 198 | 0 | 1 | 33 |
-| **Conserved total** | **531** | **399** | **3** | **51** | **78** |
+| **Conserved total** | **531** | **400** | **3** | **51** | **77** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -2367,6 +2375,12 @@ failed, and harness-error cases without an unqualified conformance claim.
   the principal source, and copying the selected element through the unnamed
   wildcard template. The full five-case initial-mode denominator now passes;
   general temporary-tree navigation and `xsl:copy` construction remain open.
+- [x] Execute pinned `mode-0015` by retaining static literal attributes as
+  immutable temporary XDM nodes with element parents. Apply shallow-copy and
+  shallow-skip over the combined attribute/child focus, keep text-only-copy on
+  child descent, and select the unchanged `@bar` rule in `mode="#all"` without
+  treating attributes as children. Dynamic temporary attributes, namespace
+  nodes, and standalone attribute results remain outside this slice.
 - [ ] Establish explicit URI/resource resolution and execution limits.
   - [x] Route private principal-stylesheet acquisition through an exact,
     qualified-identity resolver over one sealed snapshot. Charge a fixed attempt

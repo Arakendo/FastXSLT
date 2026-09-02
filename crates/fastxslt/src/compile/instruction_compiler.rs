@@ -26,7 +26,7 @@ mod computed_attribute_compiler;
 use computed_attribute_compiler::compile_computed_attributes;
 #[path = "instruction_compiler/literal_attribute_compiler.rs"]
 mod literal_attribute_compiler;
-use literal_attribute_compiler::compile_literal_result_attributes;
+pub(super) use literal_attribute_compiler::compile_literal_result_attributes;
 #[path = "instruction_compiler/source_copy_compiler.rs"]
 mod source_copy_compiler;
 use source_copy_compiler::compile_copy;

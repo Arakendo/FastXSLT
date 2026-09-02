@@ -7,7 +7,7 @@ use super::{CompileFailure, XSLT_NAMESPACE, invalid, is_ascii_ncname, unsupporte
 
 const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
 
-pub(super) fn compile_literal_result_attributes(
+pub(crate) fn compile_literal_result_attributes(
     document: &Document,
     element: NodeId,
 ) -> Result<Vec<LiteralAttribute>, CompileFailure> {

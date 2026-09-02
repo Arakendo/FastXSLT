@@ -52,6 +52,11 @@ pub(super) enum TemporaryNodeKind {
     Element {
         name: ExpandedName,
         namespaces: Vec<NamespaceBinding>,
+        attributes: Vec<usize>,
+    },
+    Attribute {
+        name: ExpandedName,
+        value: String,
     },
     Text(String),
     Comment(String),
@@ -293,10 +298,35 @@ fn materialize_temporary_element(
         kind: TemporaryNodeKind::Element {
             name: element.name.clone(),
             namespaces: element.namespaces.clone(),
+            attributes: Vec::new(),
         },
         parent,
         children: Vec::new(),
     });
+    let mut attributes = Vec::with_capacity(element.attributes.len());
+    for attribute in &element.attributes {
+        control
+            .charge(WorkDomain::XdmNode, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        let attribute_node = tree.nodes.len();
+        tree.nodes.push(TemporaryNode {
+            kind: TemporaryNodeKind::Attribute {
+                name: attribute.name.clone(),
+                value: attribute.value.clone(),
+            },
+            parent: Some(node),
+            children: Vec::new(),
+        });
+        attributes.push(attribute_node);
+    }
+    let TemporaryNodeKind::Element {
+        attributes: node_attributes,
+        ..
+    } = &mut tree.nodes[node].kind
+    else {
+        unreachable!("the new temporary node is an element")
+    };
+    *node_attributes = attributes;
     for child in &element.children {
         let child = materialize_temporary_node(child, Some(node), tree, request_id, control)?;
         tree.nodes[node].children.push(child);

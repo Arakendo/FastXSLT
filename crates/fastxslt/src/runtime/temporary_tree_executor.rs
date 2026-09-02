@@ -11,7 +11,9 @@ use super::runtime_context::{
     InvocationParameter, RuntimeVariables, SequenceInputs, TemporaryNodeKind, TemporaryTree,
     bind_template_parameters,
 };
-use super::runtime_failure::{ExecutionFailure, FailureCategory, control_failure, failure_at};
+use super::runtime_failure::{
+    ExecutionFailure, FailureCategory, control_failure, failure, failure_at,
+};
 use super::template_selector::accepts_mode as template_accepts_mode;
 use super::{
     SequenceContext, SequenceFocus, TemporaryFocus, charge_xslt_instruction, execute_sequence,
@@ -30,22 +32,15 @@ pub(super) fn apply_temporary_template(
     charge_xslt_instruction(control, inputs.request_id)?;
     let template = select_temporary_template(inputs, tree, node, mode, control)?;
     if let Some((template_index, template)) = template {
-        let variables = bind_template_parameters(
-            &template.template,
-            parameters,
-            &inputs.globals.atomics,
-            inputs.complete_atomic_frame_clones,
-        );
-        return execute_sequence(
+        return execute_selected_temporary_template(
             inputs,
-            &template.template.body,
-            SequenceContext::for_temporary_template(
-                TemporaryFocus::Node(tree, node),
-                mode,
-                template_index,
-                sequence_focus,
-            ),
-            &variables,
+            tree,
+            node,
+            mode,
+            parameters,
+            sequence_focus,
+            template_index,
+            template,
             control,
         );
     }
@@ -54,6 +49,38 @@ pub(super) fn apply_temporary_template(
         TemporaryFocus::Node(tree, node),
         mode,
         parameters,
+        control,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn execute_selected_temporary_template(
+    inputs: &SequenceInputs<'_>,
+    tree: &TemporaryTree,
+    node: usize,
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    sequence_focus: SequenceFocus,
+    template_index: usize,
+    template: &MatchedTemplate,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let variables = bind_template_parameters(
+        &template.template,
+        parameters,
+        &inputs.globals.atomics,
+        inputs.complete_atomic_frame_clones,
+    );
+    execute_sequence(
+        inputs,
+        &template.template.body,
+        SequenceContext::for_temporary_template(
+            TemporaryFocus::Node(tree, node),
+            mode,
+            template_index,
+            sequence_focus,
+        ),
+        &variables,
         control,
     )
 }
@@ -327,14 +354,14 @@ pub(super) fn apply_temporary_builtin(
                 return copy_temporary_focus(inputs, focus, mode, parameters, control);
             }
             OnNoMatchPolicy::ShallowSkip => {
-                return apply_temporary_children(inputs, focus, mode, parameters, control);
+                return apply_temporary_descendants(inputs, focus, mode, parameters, true, control);
             }
             OnNoMatchPolicy::TextOnlyCopy => {}
         }
     }
     match focus {
         TemporaryFocus::Node(tree, node) => match &tree.nodes[node].kind {
-            TemporaryNodeKind::Text(value) => {
+            TemporaryNodeKind::Text(value) | TemporaryNodeKind::Attribute { value, .. } => {
                 copy_temporary_text(value, inputs.request_id, control)
             }
             TemporaryNodeKind::Element { .. } => {
@@ -350,6 +377,45 @@ pub(super) fn apply_temporary_builtin(
     }
 }
 
+fn apply_temporary_descendants(
+    inputs: &SequenceInputs<'_>,
+    focus: TemporaryFocus<'_>,
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    include_attributes: bool,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let (tree, attributes, children) = match focus {
+        TemporaryFocus::Document(tree) => (tree, &[][..], tree.roots.as_slice()),
+        TemporaryFocus::Node(tree, node) => match &tree.nodes[node].kind {
+            TemporaryNodeKind::Element { attributes, .. } => (
+                tree,
+                attributes.as_slice(),
+                tree.nodes[node].children.as_slice(),
+            ),
+            _ => return Ok(Vec::new()),
+        },
+    };
+    let attributes = if include_attributes { attributes } else { &[] };
+    let focus_size = attributes.len() + children.len();
+    let mut result = Vec::new();
+    for (offset, selected) in attributes.iter().chain(children).copied().enumerate() {
+        result.extend(apply_temporary_template(
+            inputs,
+            tree,
+            selected,
+            mode,
+            parameters,
+            SequenceFocus {
+                position: offset + 1,
+                size: focus_size,
+            },
+            control,
+        )?);
+    }
+    Ok(result)
+}
+
 fn apply_temporary_children(
     inputs: &SequenceInputs<'_>,
     focus: TemporaryFocus<'_>,
@@ -357,21 +423,37 @@ fn apply_temporary_children(
     parameters: &BTreeMap<String, InvocationParameter>,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    let mut result = Vec::new();
+    let child_count = match focus {
+        TemporaryFocus::Document(tree) => tree.roots.len(),
+        TemporaryFocus::Node(tree, node) => tree.nodes[node].children.len(),
+    };
+    apply_temporary_children_with_focus(inputs, focus, mode, parameters, 0, child_count, control)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn apply_temporary_children_with_focus(
+    inputs: &SequenceInputs<'_>,
+    focus: TemporaryFocus<'_>,
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    position_offset: usize,
+    focus_size: usize,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let (tree, children) = match focus {
         TemporaryFocus::Document(tree) => (tree, tree.roots.as_slice()),
         TemporaryFocus::Node(tree, node) => (tree, tree.nodes[node].children.as_slice()),
     };
-    let focus_size = children.len();
-    for (offset, root) in children.iter().enumerate() {
+    let mut result = Vec::new();
+    for (offset, child) in children.iter().copied().enumerate() {
         result.extend(apply_temporary_template(
             inputs,
             tree,
-            *root,
+            child,
             mode,
             parameters,
             SequenceFocus {
-                position: offset + 1,
+                position: position_offset + offset + 1,
                 size: focus_size,
             },
             control,
@@ -398,18 +480,96 @@ fn copy_temporary_focus(
         TemporaryNodeKind::ProcessingInstruction { target, value } => {
             copy_temporary_processing_instruction(target, value, inputs.request_id, control)
         }
-        TemporaryNodeKind::Element { name, namespaces } => {
+        TemporaryNodeKind::Element {
+            name,
+            namespaces,
+            attributes,
+        } => {
             control
                 .charge(WorkDomain::ResultNode, 1)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let (result_attributes, attribute_results) = shallow_copy_temporary_attributes(
+                inputs,
+                tree,
+                attributes,
+                mode,
+                parameters,
+                tree.nodes[node].children.len(),
+                control,
+            )?;
+            let mut children = attribute_results;
+            let focus_size = attributes.len() + tree.nodes[node].children.len();
+            children.extend(apply_temporary_children_with_focus(
+                inputs,
+                focus,
+                mode,
+                parameters,
+                attributes.len(),
+                focus_size,
+                control,
+            )?);
             Ok(vec![ResultNode::Element {
                 name: name.clone(),
                 namespaces: namespaces.clone(),
-                attributes: Vec::new(),
-                children: apply_temporary_children(inputs, focus, mode, parameters, control)?,
+                attributes: result_attributes,
+                children,
             }])
         }
+        TemporaryNodeKind::Attribute { .. } => Err(failure(
+            "FXRT1012",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "a standalone temporary attribute cannot be represented in the result-tree slice",
+        )),
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn shallow_copy_temporary_attributes(
+    inputs: &SequenceInputs<'_>,
+    tree: &TemporaryTree,
+    attributes: &[usize],
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    child_count: usize,
+    control: &mut InvocationControl,
+) -> Result<(Vec<super::result_tree::ResultAttribute>, Vec<ResultNode>), ExecutionFailure> {
+    let mut copied = Vec::new();
+    let mut generated = Vec::new();
+    let focus_size = attributes.len() + child_count;
+    for (offset, node) in attributes.iter().copied().enumerate() {
+        charge_xslt_instruction(control, inputs.request_id)?;
+        if let Some((template_index, template)) =
+            select_temporary_template(inputs, tree, node, mode, control)?
+        {
+            generated.extend(execute_selected_temporary_template(
+                inputs,
+                tree,
+                node,
+                mode,
+                parameters,
+                SequenceFocus {
+                    position: offset + 1,
+                    size: focus_size,
+                },
+                template_index,
+                template,
+                control,
+            )?);
+            continue;
+        }
+        let TemporaryNodeKind::Attribute { name, value } = &tree.nodes[node].kind else {
+            unreachable!("temporary element attribute indexes identify attributes")
+        };
+        control
+            .charge(WorkDomain::ResultNode, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        copied.push(super::result_tree::ResultAttribute {
+            name: name.clone(),
+            value: value.clone(),
+        });
+    }
+    Ok((copied, generated))
 }
 
 pub(super) fn execute_temporary_copy(
@@ -435,7 +595,9 @@ pub(super) fn execute_temporary_copy(
         TemporaryNodeKind::ProcessingInstruction { target, value } => {
             copy_temporary_processing_instruction(target, value, inputs.request_id, control)
         }
-        TemporaryNodeKind::Element { name, namespaces } => {
+        TemporaryNodeKind::Element {
+            name, namespaces, ..
+        } => {
             control
                 .charge(WorkDomain::ResultNode, 1)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
@@ -453,6 +615,12 @@ pub(super) fn execute_temporary_copy(
                 children: execute_sequence(inputs, body, execution, variables, control)?,
             }])
         }
+        TemporaryNodeKind::Attribute { .. } => Err(failure(
+            "FXRT1012",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "xsl:copy of a temporary attribute is outside the private result-tree slice",
+        )),
     }
 }
 
@@ -465,13 +633,18 @@ fn temporary_matches(
 ) -> Result<bool, ExecutionFailure> {
     let kind = &tree.nodes[node].kind;
     let matched = match (kind, pattern) {
-        (TemporaryNodeKind::Element { name, .. }, MatchPattern::Element(expected)) => {
+        (TemporaryNodeKind::Element { name, .. }, MatchPattern::Element(expected))
+        | (TemporaryNodeKind::Attribute { name, .. }, MatchPattern::Attribute(expected)) => {
             name == expected
         }
         (TemporaryNodeKind::Element { name, .. }, MatchPattern::ElementLocal(local)) => {
             name.local == *local
         }
-        (TemporaryNodeKind::Element { .. }, MatchPattern::AnyElement | MatchPattern::AnyNode)
+        (
+            TemporaryNodeKind::Attribute { .. },
+            MatchPattern::AnyAttribute | MatchPattern::AnyNode,
+        )
+        | (TemporaryNodeKind::Element { .. }, MatchPattern::AnyElement | MatchPattern::AnyNode)
         | (TemporaryNodeKind::Text(_), MatchPattern::Text | MatchPattern::AnyNode)
         | (TemporaryNodeKind::Comment(_), MatchPattern::Comment | MatchPattern::AnyNode)
         | (
