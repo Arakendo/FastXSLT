@@ -2695,3 +2695,17 @@ case_name = "fn-deep-equal-maps-10"
 selection = "selected"
 execution = "passed"
 rationale = "Preserves array member order while comparing corresponding map values."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-arrays-18"
+selection = "selected"
+execution = "passed"
+rationale = "Folds bounded literal array:put and array:remove operations before comparing the resulting arrays."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "fn-deep-equal-maps-15"
+selection = "selected"
+execution = "passed"
+rationale = "Folds bounded literal map:remove before comparing the remaining string-valued entry."

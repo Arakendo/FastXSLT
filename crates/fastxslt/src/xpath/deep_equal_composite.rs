@@ -53,7 +53,7 @@ fn parse_at_depth(expression: &str, depth: usize) -> Option<ValueSequence> {
     if matches!(expression, "true()" | "false()") {
         return Some(ValueSequence(vec![Value::Boolean(expression == "true()")]));
     }
-    if expression.starts_with('\'') {
+    if expression.starts_with(['\'', '"']) {
         return Some(ValueSequence(vec![Value::String(parse_string_literal(
             expression,
         )?)]));
@@ -74,6 +74,15 @@ fn parse_at_depth(expression: &str, depth: usize) -> Option<ValueSequence> {
             values.extend(parse_at_depth(item, depth + 1)?.0);
         }
         return Some(ValueSequence(values));
+    }
+    if expression.starts_with('[') && expression.ends_with(']') {
+        return parse_array_constructor(expression, depth);
+    }
+    if expression.contains("=> array:") {
+        return parse_array_update(expression, depth);
+    }
+    if expression.starts_with("map:remove(") {
+        return parse_map_remove(expression, depth);
     }
     if let Some(body) = expression
         .strip_prefix("map{")
@@ -103,6 +112,10 @@ fn parse_at_depth(expression: &str, depth: usize) -> Option<ValueSequence> {
         }
         return Some(ValueSequence(vec![Value::Map(entries)]));
     }
+    None
+}
+
+fn parse_array_constructor(expression: &str, depth: usize) -> Option<ValueSequence> {
     let body = expression.strip_prefix('[')?.strip_suffix(']')?;
     let members = if body.trim().is_empty() {
         Vec::new()
@@ -117,6 +130,63 @@ fn parse_at_depth(expression: &str, depth: usize) -> Option<ValueSequence> {
             .collect::<Option<Vec<_>>>()?
     };
     Some(ValueSequence(vec![Value::Array(members)]))
+}
+
+fn parse_array_update(expression: &str, depth: usize) -> Option<ValueSequence> {
+    let (base, operation) = expression.split_once("=>")?;
+    let mut base = parse_at_depth(base, depth + 1)?.0;
+    if base.len() != 1 {
+        return None;
+    }
+    let Value::Array(mut members) = base.pop()? else {
+        return None;
+    };
+    let operation = operation.trim();
+    if let Some(arguments) = operation
+        .strip_prefix("array:put(")
+        .and_then(|value| value.strip_suffix(')'))
+    {
+        let arguments = split_members(arguments)?;
+        if arguments.len() != 2 {
+            return None;
+        }
+        let position = arguments[0].trim().parse::<usize>().ok()?.checked_sub(1)?;
+        *members.get_mut(position)? = parse_at_depth(arguments[1], depth + 1)?;
+    } else if let Some(position) = operation
+        .strip_prefix("array:remove(")
+        .and_then(|value| value.strip_suffix(')'))
+        .and_then(|value| value.trim().parse::<usize>().ok())
+        .and_then(|value| value.checked_sub(1))
+    {
+        if position >= members.len() {
+            return None;
+        }
+        members.remove(position);
+    } else {
+        return None;
+    }
+    Some(ValueSequence(vec![Value::Array(members)]))
+}
+
+fn parse_map_remove(expression: &str, depth: usize) -> Option<ValueSequence> {
+    let arguments = expression.strip_prefix("map:remove(")?.strip_suffix(')')?;
+    let arguments = split_members(arguments)?;
+    if arguments.len() != 2 {
+        return None;
+    }
+    let mut base = parse_at_depth(arguments[0], depth + 1)?.0;
+    if base.len() != 1 {
+        return None;
+    }
+    let Value::Map(mut entries) = base.pop()? else {
+        return None;
+    };
+    let key = parse_number(arguments[1].trim())?;
+    let position = entries
+        .iter()
+        .position(|(candidate, _)| *candidate == key)?;
+    entries.remove(position);
+    Some(ValueSequence(vec![Value::Map(entries)]))
 }
 
 fn split_map_entry(entry: &str) -> Option<(&str, &str)> {
@@ -184,15 +254,19 @@ fn parse_number(expression: &str) -> Option<Number> {
 }
 
 fn parse_string_literal(expression: &str) -> Option<String> {
-    let body = expression.strip_prefix('\'')?.strip_suffix('\'')?;
+    let quote = expression.chars().next()?;
+    if !matches!(quote, '\'' | '"') {
+        return None;
+    }
+    let body = expression.strip_prefix(quote)?.strip_suffix(quote)?;
     let mut characters = body.chars().peekable();
     let mut value = String::new();
     while let Some(character) = characters.next() {
-        if character == '\'' {
-            if characters.next() != Some('\'') {
+        if character == quote {
+            if characters.next() != Some(quote) {
                 return None;
             }
-            value.push('\'');
+            value.push(quote);
         } else {
             value.push(character);
         }
@@ -205,18 +279,19 @@ fn split_members(value: &str) -> Option<Vec<&str>> {
     let mut square_depth = 0_u32;
     let mut parenthesis_depth = 0_u32;
     let mut curly_depth = 0_u32;
-    let mut in_string = false;
+    let mut quote = None;
     let mut start = 0;
     for (index, character) in value.char_indices() {
         match character {
-            '\'' => in_string = !in_string,
-            '[' if !in_string => square_depth += 1,
-            ']' if !in_string => square_depth = square_depth.checked_sub(1)?,
-            '(' if !in_string => parenthesis_depth += 1,
-            ')' if !in_string => parenthesis_depth = parenthesis_depth.checked_sub(1)?,
-            '{' if !in_string => curly_depth += 1,
-            '}' if !in_string => curly_depth = curly_depth.checked_sub(1)?,
-            ',' if !in_string
+            '\'' | '"' if quote.is_none() => quote = Some(character),
+            character if quote == Some(character) => quote = None,
+            '[' if quote.is_none() => square_depth += 1,
+            ']' if quote.is_none() => square_depth = square_depth.checked_sub(1)?,
+            '(' if quote.is_none() => parenthesis_depth += 1,
+            ')' if quote.is_none() => parenthesis_depth = parenthesis_depth.checked_sub(1)?,
+            '{' if quote.is_none() => curly_depth += 1,
+            '}' if quote.is_none() => curly_depth = curly_depth.checked_sub(1)?,
+            ',' if quote.is_none()
                 && square_depth == 0
                 && parenthesis_depth == 0
                 && curly_depth == 0 =>
@@ -227,7 +302,7 @@ fn split_members(value: &str) -> Option<Vec<&str>> {
             _ => {}
         }
     }
-    if in_string || square_depth != 0 || parenthesis_depth != 0 || curly_depth != 0 {
+    if quote.is_some() || square_depth != 0 || parenthesis_depth != 0 || curly_depth != 0 {
         return None;
     }
     members.push(&value[start..]);
@@ -345,5 +420,13 @@ mod tests {
             assert!(equals(&parse(left).unwrap(), &parse(right).unwrap(), &mut control).unwrap());
         }
         assert!(parse("map{1e999999999:true()}").is_none());
+    }
+
+    #[test]
+    fn folds_bounded_literal_composite_updates() {
+        assert!(parse("['a', 'b', 'd'] => array:put(3, 'c')").is_some());
+        assert!(parse("['a', 'b', 'c', 'd'] => array:remove(4)").is_some());
+        assert!(parse("map:remove(map{1:\"A\", 2:\"B\"}, 2)").is_some());
+        assert!(parse("([['a', 'b', 'd'] => array:put(3, 'c')], [], [1])").is_some());
     }
 }
