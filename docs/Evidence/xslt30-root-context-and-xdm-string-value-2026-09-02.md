@@ -17,10 +17,13 @@ the complete native case identity set before it imports the selected source and
 stylesheet into a bounded sealed snapshot, compiles once, and executes through
 the normal transform-set path.
 
-The implementation admits exactly `root(.)` in `xsl:value-of`. It walks from
-the current source node through parent relationships to the root, charging one
-XPath node visit for each inspected node, and then obtains that node's XDM
-string value through the existing controlled visitor. The equivalent
+The implementation first admitted `root(.)`, then generalized that private
+variant to one bounded location-path argument. It evaluates the argument with
+the shared path evaluator, returns empty for an empty selection, reports
+`XPTY0004` for more than one selected node, and otherwise walks parent
+relationships to the root while charging one XPath node visit for each
+inspected node. It obtains that node's XDM string value through the existing
+controlled visitor. The equivalent
 `document-node()` match spelling compiles to the same document-node pattern as
 `/`; it does not create a second selection rule.
 
@@ -33,22 +36,22 @@ has its own content as its string value.
 ## Results
 
 - Complete conserved denominator: 10 cases.
-- Selected and passed: 1 (`root-0101`).
-- Visible default not run: 9.
+- Selected and passed: 3 (`root-0101`, `root-0103`, and `root-0201`).
+- Visible default not run: 7.
 - Engine unsupported: 0.
 - Profile excluded: 0.
 - The unchanged assertion passes after the shared XDM string-value correction.
 
-This raises conserved XSLT30 accounting to 577 cases: 412 passed comparisons,
-3 engine-unsupported cases, 54 profile exclusions, and 108 visible default
+This raises conserved XSLT30 accounting to 577 cases: 414 passed comparisons,
+3 engine-unsupported cases, 54 profile exclusions, and 106 visible default
 not-run cases.
 
 ## Limitations
 
-This evidence does not admit arbitrary `root()` arguments. The remaining nine
-cases require function-argument location paths, empty sequences, variables,
-generated node identity, temporary trees, dynamic resource acquisition, or
-broader kind-test expressions. They remain individually visible under the
+This evidence does not admit arbitrary `root()` arguments. The remaining seven
+cases require namespace-aware or variable function arguments, generated node
+identity, temporary trees, dynamic resource acquisition, or broader kind-test
+expressions. They remain individually visible under the
 denominator default rather than being reported as engine failures. The result
 also does not claim a general XPath function-call representation; `root(.)` is
 a typed private expression variant in the current reference engine.

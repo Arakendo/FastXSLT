@@ -13,3 +13,15 @@ case_name = "root-0101"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged XSLT 2.0 case evaluates root(.) from the principal document-node context, charges every inspected ancestor, and matches the native XML assertion."
+
+[[case_override]]
+case_name = "root-0103"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case applies root() to two empty child paths and the explicit empty sequence; every call returns the empty sequence and the native empty result matches."
+
+[[case_override]]
+case_name = "root-0201"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case selects the principal element, walks to its document root, and matches the native empty string-value result."

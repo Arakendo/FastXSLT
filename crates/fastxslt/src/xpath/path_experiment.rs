@@ -248,6 +248,9 @@ pub(crate) fn parse_location_path(
     if expression == "/" {
         return Ok(origin_only_path(PathOrigin::DocumentNode, location));
     }
+    if expression == "()" {
+        return Ok(origin_only_path(PathOrigin::EmptySequence, location));
+    }
     let (expression, final_context_predicate) = parse_final_context_predicate(expression);
     let (expression, final_predicate) = parse_final_axis_predicate(expression);
     let (expression, origin) = parse_path_origin(expression);

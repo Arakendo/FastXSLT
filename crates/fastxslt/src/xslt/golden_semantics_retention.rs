@@ -429,10 +429,10 @@ fn literal_element_owned(
 
 fn value_expression_owned(value: &ValueExpression) -> usize {
     match value {
-        ValueExpression::LocationPath(path) => path.known_owned_capacity_bytes(),
-        ValueExpression::RootContextNode
-        | ValueExpression::ContextNodeName
-        | ValueExpression::UpperCaseContextString => 0,
+        ValueExpression::LocationPath(path) | ValueExpression::RootPath(path) => {
+            path.known_owned_capacity_bytes()
+        }
+        ValueExpression::ContextNodeName | ValueExpression::UpperCaseContextString => 0,
         ValueExpression::Variable(name) => name.capacity(),
         ValueExpression::IntegerFor(expression) => {
             size_of::<IntegerForExpression>() + expression.known_owned_capacity_bytes()

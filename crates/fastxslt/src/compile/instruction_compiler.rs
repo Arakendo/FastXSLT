@@ -666,8 +666,8 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
                 location: failure.location,
             })?,
         ))
-    } else if expression.trim() == "root(.)" {
-        ValueExpression::RootContextNode
+    } else if let Some(argument) = root_argument(expression) {
+        compile_root_path(argument, &location)?
     } else if expression.trim() == "name(.)" {
         ValueExpression::ContextNodeName
     } else if expression.trim() == "upper-case(.)" {
@@ -694,6 +694,23 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
         separator,
         location,
     })
+}
+
+fn root_argument(expression: &str) -> Option<&str> {
+    expression
+        .trim()
+        .strip_prefix("root(")?
+        .strip_suffix(')')
+        .map(str::trim)
+}
+
+fn compile_root_path(
+    argument: &str,
+    location: &SourceLocation,
+) -> Result<ValueExpression, CompileFailure> {
+    parse_location_path(argument, location.clone())
+        .map(ValueExpression::RootPath)
+        .map_err(map_path_failure)
 }
 
 fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {

@@ -12,7 +12,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/fn/root/_root-test-set.xml";
-const PASSED_CASE: &str = "root-0101";
+const PASSED_CASES: [&str; 3] = ["root-0101", "root-0103", "root-0201"];
 const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/root-denominator-v0.toml");
 
 #[test]
@@ -33,16 +33,67 @@ fn inventories_complete_root_denominator_before_selection() {
     assert_eq!(names.last(), Some(&"root-0601"));
     assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
     assert!(OVERLAY.contains("case_count = 10"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 1);
-    assert!(names.contains(PASSED_CASE));
-    assert!(OVERLAY.contains("case_name = \"root-0101\""));
-    assert!(OVERLAY.contains("execution = \"passed\""));
+    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 3);
+    for case_name in PASSED_CASES {
+        assert!(names.contains(case_name));
+        let record = overlay_case(case_name);
+        assert!(record.contains("selection = \"selected\""));
+        assert!(record.contains("execution = \"passed\""));
+    }
 }
 
 #[test]
-fn executes_unchanged_root_context_case() {
+fn executes_unchanged_root_location_path_cases() {
+    for case_name in PASSED_CASES {
+        execute_case(case_name);
+    }
+}
+
+#[test]
+fn root_path_rejects_more_than_one_argument_node() {
+    let source_id = "urn:fastxslt:fn-root:cardinality:source";
+    let stylesheet_id = "urn:fastxslt:fn-root:cardinality:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(source_id, b"<doc><item/><item/></doc>".to_vec())
+        .expect("admit cardinality source");
+    resources
+        .admit(
+            stylesheet_id,
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><out><xsl:value-of select="root(doc/item)"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit cardinality stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, stylesheet_id).expect("compile cardinality control");
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 4_096,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    set.add(TransformRequest {
+        identity: "cardinality".to_owned(),
+        result_identity: "urn:fastxslt:fn-root:cardinality:result".to_owned(),
+        entry: InvocationEntry::PrincipalSource {
+            resource: source_id.to_owned(),
+        },
+        parameters: BTreeMap::new(),
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    })
+    .expect("admit cardinality request");
+
+    let failure = execute_transform_set(set.seal()).expect_err("two root arguments must fail");
+    assert_eq!(failure.code, "XPTY0004");
+}
+
+fn execute_case(case_name: &str) {
     let document = load_test_set();
-    let case = case_named(&document, PASSED_CASE);
+    let case = case_named(&document, case_name);
     let environment_ref = child_named(&document, case, "environment")
         .and_then(|node| attribute(&document, node, "ref"))
         .expect("environment reference");
@@ -53,9 +104,7 @@ fn executes_unchanged_root_context_case() {
                 && attribute(&document, *node, "name") == Some(environment_ref)
         })
         .expect("referenced environment");
-    let source_file = child_named(&document, environment, "source")
-        .and_then(|node| attribute(&document, node, "file"))
-        .expect("source file");
+    let source = child_named(&document, environment, "source").expect("source metadata");
     let stylesheet_file = child_named(&document, case, "test")
         .and_then(|node| child_named(&document, node, "stylesheet"))
         .and_then(|node| attribute(&document, node, "file"))
@@ -68,13 +117,13 @@ fn executes_unchanged_root_context_case() {
         || document.string_value(assertion),
         |file| fs::read_to_string(directory.join(file)).expect("read expected XML"),
     );
-    let source_id = format!("urn:w3c:xslt30:fn:root:{PASSED_CASE}:source");
+    let source_id = format!("urn:w3c:xslt30:fn:root:{case_name}:source");
     let stylesheet_id = format!("https://example.invalid/xslt30/fn/root/{stylesheet_file}");
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 65_536, 131_072));
     resources
         .admit(
             source_id.clone(),
-            fs::read(directory.join(source_file)).expect("read source and close handle"),
+            source_bytes(&document, source, &directory),
         )
         .expect("admit source");
     resources
@@ -96,8 +145,8 @@ fn executes_unchanged_root_context_case() {
         },
     );
     set.add(TransformRequest {
-        identity: PASSED_CASE.to_owned(),
-        result_identity: format!("urn:w3c:xslt30:fn:root:{PASSED_CASE}:result"),
+        identity: case_name.to_owned(),
+        result_identity: format!("urn:w3c:xslt30:fn:root:{case_name}:result"),
         entry: InvocationEntry::PrincipalSource {
             resource: source_id,
         },
@@ -107,10 +156,26 @@ fn executes_unchanged_root_context_case() {
     })
     .expect("admit request");
     let results = execute_transform_set(set.seal()).expect("execute root case");
-    assert_eq!(
-        normalized_assert_xml(&results.by_request[PASSED_CASE].serialized),
-        normalized_assert_xml(&expected)
+    assert_xml_equivalent(
+        &results.by_request[case_name].serialized,
+        &expected,
+        case_name,
     );
+}
+
+fn source_bytes(document: &Document, source: NodeId, directory: &std::path::Path) -> Vec<u8> {
+    if let Some(file) = attribute(document, source, "file") {
+        return fs::read(directory.join(file)).expect("read source and close handle");
+    }
+    let content = child_named(document, source, "content").expect("inline source content");
+    document.string_value(content).into_bytes()
+}
+
+fn overlay_case(case_name: &str) -> &str {
+    OVERLAY
+        .split("[[case_override]]")
+        .find(|record| record.contains(&format!("case_name = \"{case_name}\"")))
+        .expect("case override")
 }
 
 fn corpus_directory() -> PathBuf {
@@ -179,14 +244,86 @@ fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'
     })
 }
 
-fn without_xml_declaration(xml: &str) -> &str {
-    if xml.starts_with("<?xml") {
-        xml.find("?>").map_or(xml, |end| &xml[end + 2..])
-    } else {
-        xml
-    }
+fn assert_xml_equivalent(actual: &str, expected: &str, case_name: &str) {
+    let limits = ParseLimits {
+        max_events: 4_096,
+        max_depth: 64,
+    };
+    let actual = Document::from_parsed(
+        parse_document(
+            &format!("urn:fastxslt:fn-root:{case_name}:actual"),
+            actual.as_bytes(),
+            limits,
+        )
+        .expect("actual result should parse"),
+    )
+    .expect("actual result should build");
+    let expected = Document::from_parsed(
+        parse_document(
+            &format!("urn:fastxslt:fn-root:{case_name}:expected"),
+            expected.as_bytes(),
+            limits,
+        )
+        .expect("expected result should parse"),
+    )
+    .expect("expected result should build");
+    assert_xml_nodes_equal(
+        &actual,
+        actual.document_node(),
+        &expected,
+        expected.document_node(),
+        case_name,
+    );
 }
 
-fn normalized_assert_xml(xml: &str) -> String {
-    without_xml_declaration(xml.trim()).replace("\r\n", "\n")
+fn assert_xml_nodes_equal(
+    actual: &Document,
+    actual_node: NodeId,
+    expected: &Document,
+    expected_node: NodeId,
+    case_name: &str,
+) {
+    assert_eq!(
+        actual.kind(actual_node),
+        expected.kind(expected_node),
+        "{case_name}"
+    );
+    assert_eq!(
+        actual.name(actual_node),
+        expected.name(expected_node),
+        "{case_name}"
+    );
+    assert_eq!(
+        actual.value(actual_node),
+        expected.value(expected_node),
+        "{case_name}"
+    );
+    let actual_attributes = actual.attributes(actual_node);
+    let expected_attributes = expected.attributes(expected_node);
+    assert_eq!(
+        actual_attributes.len(),
+        expected_attributes.len(),
+        "{case_name}"
+    );
+    for actual_attribute in actual_attributes {
+        let name = actual.name(*actual_attribute);
+        let value = actual.value(*actual_attribute);
+        assert!(
+            expected_attributes.iter().any(|expected_attribute| {
+                expected.name(*expected_attribute) == name
+                    && expected.value(*expected_attribute) == value
+            }),
+            "{case_name}: missing expected attribute {name:?}={value:?}"
+        );
+    }
+    let actual_children = actual.children(actual_node);
+    let expected_children = expected.children(expected_node);
+    assert_eq!(
+        actual_children.len(),
+        expected_children.len(),
+        "{case_name}"
+    );
+    for (actual_child, expected_child) in actual_children.iter().zip(expected_children) {
+        assert_xml_nodes_equal(actual, *actual_child, expected, *expected_child, case_name);
+    }
 }

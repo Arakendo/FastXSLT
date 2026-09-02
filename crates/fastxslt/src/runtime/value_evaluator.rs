@@ -52,8 +52,8 @@ pub(super) fn execute_value_of(
                 append_source_string_value(inputs, *node, result, control)?;
             }
         }
-        ValueExpression::RootContextNode => {
-            append_root_context_string(inputs, context, result, control)?;
+        ValueExpression::RootPath(path) => {
+            append_root_path_string(inputs, path, context, result, control)?;
         }
         ValueExpression::ContextNodeName => {
             append_context_node_name(inputs, context, result, control)?;
@@ -137,13 +137,27 @@ pub(super) fn execute_value_of(
     Ok(())
 }
 
-fn append_root_context_string(
+fn append_root_path_string(
     inputs: &SequenceInputs<'_>,
+    path: &crate::xpath::path_experiment::LocationPath,
     context: Option<NodeId>,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
-    let (source, mut root) = required_source_context(inputs, context)?;
+    let (source, context) = required_source_context(inputs, context)?;
+    let selected = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    if selected.len() > 1 {
+        return Err(failure(
+            "XPTY0004",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            "root() requires a zero-or-one node argument",
+        ));
+    }
+    let Some(mut root) = selected.first().copied() else {
+        return Ok(());
+    };
     loop {
         control
             .charge(WorkDomain::XPathNodeVisit, 1)

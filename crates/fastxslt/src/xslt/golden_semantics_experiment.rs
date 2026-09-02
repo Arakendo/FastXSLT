@@ -411,7 +411,7 @@ pub(crate) enum Instruction {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ValueExpression {
     LocationPath(LocationPath),
-    RootContextNode,
+    RootPath(LocationPath),
     ContextNodeName,
     UpperCaseContextString,
     Variable(String),
