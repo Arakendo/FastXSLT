@@ -1,5 +1,7 @@
 //! Private serialization of the golden slice's semantic result.
 
+#[cfg(test)]
+use super::byte_encoding::{encode_us_ascii_cdata, serialize_utf16_be};
 use super::{
     ExecutionFailure, FailureCategory, ResultAttribute, ResultNode, SemanticResult,
     control_failure, failure,
@@ -1078,6 +1080,9 @@ pub(in crate::runtime) fn serialize_xml_bytes(
     if encoding.eq_ignore_ascii_case("UTF-8") {
         return serialize_utf8_bytes(result, settings, request_id, byte_limit, control);
     }
+    if encoding.eq_ignore_ascii_case("UTF-16") {
+        return serialize_utf16_be(result, settings, request_id, byte_limit, control);
+    }
     serialize_single_byte_bytes(result, settings, request_id, byte_limit, control, encoding)
 }
 
@@ -1207,47 +1212,6 @@ fn serialize_single_byte_bytes(
     let mut bytes = declaration.into_bytes();
     bytes.extend_from_slice(encoded_body.as_bytes());
     Ok(bytes)
-}
-
-#[cfg(test)]
-fn encode_us_ascii_cdata(value: &str, request_id: &str) -> Result<String, ExecutionFailure> {
-    use std::fmt::Write as _;
-
-    let mut output = String::with_capacity(value.len());
-    let mut remaining = value;
-    let mut in_cdata = false;
-    while !remaining.is_empty() {
-        if remaining.starts_with("<![CDATA[") {
-            output.push_str("<![CDATA[");
-            remaining = &remaining[9..];
-            in_cdata = true;
-            continue;
-        }
-        if remaining.starts_with("]]>") {
-            output.push_str("]]>");
-            remaining = &remaining[3..];
-            in_cdata = false;
-            continue;
-        }
-        let character = remaining.chars().next().expect("nonempty remainder");
-        remaining = &remaining[character.len_utf8()..];
-        if character.is_ascii() {
-            output.push(character);
-        } else if in_cdata {
-            output.push_str("]]>&#x");
-            write!(&mut output, "{:X}", u32::from(character))
-                .expect("writing to a String cannot fail");
-            output.push_str(";<![CDATA[");
-        } else {
-            return Err(failure(
-                "FXSR1009",
-                FailureCategory::Unsupported,
-                Some(request_id),
-                "the bounded US-ASCII lane admits non-ASCII characters only inside selected CDATA text",
-            ));
-        }
-    }
-    Ok(output)
 }
 
 fn validate_serialization_preconditions(

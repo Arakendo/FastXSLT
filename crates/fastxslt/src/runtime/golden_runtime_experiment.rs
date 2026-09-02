@@ -14,6 +14,9 @@ use crate::xslt::golden_semantics_experiment::{
     SequenceItemExpression, SourceWhitespacePolicy, StylesheetProgram, TemplateArgument,
 };
 
+#[cfg(test)]
+#[path = "golden_runtime_experiment/byte_encoding.rs"]
+mod byte_encoding;
 #[path = "resource_compiler.rs"]
 mod resource_compiler;
 #[path = "result_tree.rs"]

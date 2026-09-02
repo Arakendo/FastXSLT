@@ -1245,6 +1245,16 @@ function dispatch remain unsupported. The output denominator advances to 197
 passes, one profile exclusion, and 34 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-comment-carriage-return-2026-09-02.md)
 
+The unchanged `output-0140` case now executes through a deterministic
+BOM-prefixed UTF-16BE byte lane, retaining the requested `UTF-16` declaration
+and non-ASCII XHTML text. The public/private string result remains UTF-8-only.
+Before this addition, `serialization.rs` reached ADR-0004's 2,000-line
+calibration trigger; physical US-ASCII and UTF-16 conversion moved into a
+private one-way `byte_encoding` module, returning the semantic serializer to
+1,973 lines. The output denominator advances to 198 passes, one profile
+exclusion, and 33 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-utf16-byte-lane-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1286,8 +1296,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 197 | 0 | 1 | 34 |
-| **Conserved total** | **531** | **395** | **3** | **51** | **82** |
+| `decl/output` | 232 | 198 | 0 | 1 | 33 |
+| **Conserved total** | **531** | **396** | **3** | **51** | **81** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

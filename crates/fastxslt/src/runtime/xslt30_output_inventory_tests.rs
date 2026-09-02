@@ -1381,6 +1381,20 @@ fn executes_literal_escape_html_uri_independently_of_serializer_uri_escaping() {
 }
 
 #[test]
+fn executes_bounded_utf16_xhtml_bytes() {
+    let bytes = execute_output_bytes_case_with_encoding("output-0140", "UTF-16");
+    assert!(bytes.starts_with(&[0xfe, 0xff]));
+    assert_eq!(bytes.len() % 2, 0);
+    let units = bytes[2..]
+        .chunks_exact(2)
+        .map(|pair| u16::from_be_bytes([pair[0], pair[1]]))
+        .collect::<Vec<_>>();
+    let actual = String::from_utf16(&units).expect("valid UTF-16BE output");
+    assert!(actual.starts_with("<?xml version=\"1.0\" encoding=\"UTF-16\"?>"));
+    assert!(actual.contains("<body>Hello\u{c1}</body>"));
+}
+
+#[test]
 fn serializes_a_static_carriage_return_inside_a_comment() {
     let execution = execute_output_case("output-0723", None);
     assert_eq!(execution.method.as_deref(), Some("xml"));

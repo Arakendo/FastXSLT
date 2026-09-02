@@ -387,8 +387,9 @@ The first slice may implement them together, but tests and future APIs must be
 able to distinguish semantic result correctness from serialization correctness.
 The private string result remains UTF-8-only. A separate bounded byte lane
 admits UTF-8, including an explicitly requested three-byte UTF-8 byte-order
-mark, the ASCII subset of ISO-8859-1, and one bounded US-ASCII XHTML CDATA
-profile. The US-ASCII profile closes CDATA around each nonrepresentable
+mark, deterministic BOM-prefixed UTF-16BE for the `UTF-16` label, the ASCII
+subset of ISO-8859-1, and one bounded US-ASCII XHTML CDATA profile. The
+US-ASCII profile closes CDATA around each nonrepresentable
 character, emits an uppercase hexadecimal character reference, and reopens the
 section; non-ASCII content elsewhere remains unsupported. It charges marks,
 declarations, body bytes, and encoding expansion and rejects non-ASCII
