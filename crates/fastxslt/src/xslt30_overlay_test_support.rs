@@ -10,6 +10,8 @@ const OUTPUT_OVERLAY_SOURCE: &str =
     include_str!("../../../corpus/overlays/xslt30/output-denominator-v0.toml");
 const STRIP_SPACE_OVERLAY_SOURCE: &str =
     include_str!("../../../corpus/overlays/xslt30/strip-space-denominator-v0.toml");
+const BUILT_IN_TEMPLATES_OVERLAY_SOURCE: &str =
+    include_str!("../../../corpus/overlays/xslt30/built-in-templates-denominator-v0.toml");
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
@@ -260,6 +262,17 @@ fn strip_space_overlay() -> &'static DenominatorOverlay {
     })
 }
 
+fn built_in_templates_overlay() -> &'static DenominatorOverlay {
+    static OVERLAY: OnceLock<DenominatorOverlay> = OnceLock::new();
+    OVERLAY.get_or_init(|| {
+        parse_denominator_overlay(
+            BUILT_IN_TEMPLATES_OVERLAY_SOURCE,
+            "built-in-templates denominator",
+        )
+        .unwrap_or_else(|error| panic!("invalid built-in-templates XSLT30 overlay: {error}"))
+    })
+}
+
 fn require_private_case_passed(
     overlay: &PrivateOverlay,
     set_file: &str,
@@ -314,6 +327,20 @@ pub(crate) fn assert_strip_space_case_passed(case_name: &str) {
     assert_eq!(case.execution, ExecutionDisposition::Passed, "{case_name}");
 }
 
+pub(crate) fn assert_built_in_templates_case_passed(case_name: &str) {
+    let case = built_in_templates_overlay()
+        .case_override
+        .iter()
+        .find(|case| case.case_name == case_name)
+        .unwrap_or_else(|| panic!("missing built-in-templates overlay override {case_name}"));
+    assert_eq!(
+        case.selection,
+        SelectionDisposition::Selected,
+        "{case_name}"
+    );
+    assert_eq!(case.execution, ExecutionDisposition::Passed, "{case_name}");
+}
+
 #[test]
 fn xslt30_overlays_are_typed_unique_and_complete() {
     assert!(!private_overlay().case.is_empty());
@@ -326,6 +353,12 @@ fn xslt30_overlays_are_typed_unique_and_complete() {
         "tests/decl/strip-space/_strip-space-test-set.xml"
     );
     assert_eq!(strip_space.case_count, 30);
+    let built_in_templates = built_in_templates_overlay();
+    assert_eq!(
+        built_in_templates.set_file,
+        "tests/misc/built-in-templates/_built-in-templates-test-set.xml"
+    );
+    assert_eq!(built_in_templates.case_count, 6);
 }
 
 #[test]

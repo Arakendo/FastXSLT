@@ -2261,5 +2261,9 @@ mod xslt30_mode_qname_tests;
 mod xslt30_strip_space_tests;
 
 #[cfg(test)]
+#[path = "xslt30_built_in_templates_tests.rs"]
+mod xslt30_built_in_templates_tests;
+
+#[cfg(test)]
 #[path = "xslt30_deep_equal_inventory_tests.rs"]
 mod xslt30_deep_equal_inventory_tests;

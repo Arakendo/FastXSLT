@@ -1348,6 +1348,14 @@ exact `xsl:strip-space elements="*"` and does not infer name tests,
 `xml:space`, or temporary-tree whitespace rules.
 [Evidence](../Evidence/xslt30-strip-space-denominator-and-strip-all-2026-09-02.md)
 
+The complete six-case `misc/built-in-templates` denominator is now conserved.
+The unchanged `built-in-templates-0101` and `0102` cases execute through the
+normal source, compilation, transform-set, and XML-comparison path, proving
+`#current` and `#default` propagation through recursive built-in document and
+element rules. The four parameter-typing and schema-annotation cases remain
+visible defaults rather than being approximated.
+[Evidence](../Evidence/xslt30-built-in-template-mode-propagation-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1361,7 +1369,7 @@ conformance percentage or a promise about unselected cases.
 | --- | --- | --- |
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 408 explicitly selected cases execute through two suite-specific XPath adapters. |
-| XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 12 complete test-set denominators plus one separate AVT pressure case have first-party records. |
+| XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 13 complete test-set denominators plus one separate AVT pressure case have first-party records. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -1391,11 +1399,12 @@ The XSLT30 work currently conserves these complete native denominators:
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 198 | 0 | 1 | 33 |
 | `decl/strip-space` | 30 | 1 | 0 | 0 | 29 |
-| **Conserved total** | **561** | **407** | **3** | **54** | **97** |
+| `misc/built-in-templates` | 6 | 2 | 0 | 0 | 4 |
+| **Conserved total** | **567** | **409** | **3** | **54** | **101** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
-Across the full XSLT30 suite, 14,038 other cases are catalog-inventoried but do
+Across the full XSLT30 suite, 14,032 other cases are catalog-inventoried but do
 not yet have individual first-party dispositions. This distinction matters:
 catalog discovery conserves the source inventory, while only a complete
 test-set overlay conserves a reportable case denominator.
@@ -1471,7 +1480,7 @@ count:
    identities. Explicit selection takes priority over a dependency rule.
 4. [ ] Add complete denominators deliberately, selected by standards and
    implementation pressure rather than easy-case sampling. The remaining
-   14,038 XSLT30 and 31,209 QT3 catalog-only cases must stay outside pass/fail
+   14,032 XSLT30 and 31,209 QT3 catalog-only cases must stay outside pass/fail
    totals until individually classified.
 5. [ ] Replace string-scanned experimental overlays with a validated internal
    loader and derive one immutable run report carrying suite/engine/harness
