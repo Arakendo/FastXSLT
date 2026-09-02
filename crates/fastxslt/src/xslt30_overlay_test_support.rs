@@ -8,6 +8,8 @@ const PRIVATE_OVERLAY_SOURCE: &str =
     include_str!("../../../corpus/overlays/xslt30/private-slice-v0.toml");
 const OUTPUT_OVERLAY_SOURCE: &str =
     include_str!("../../../corpus/overlays/xslt30/output-denominator-v0.toml");
+const STRIP_SPACE_OVERLAY_SOURCE: &str =
+    include_str!("../../../corpus/overlays/xslt30/strip-space-denominator-v0.toml");
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
@@ -79,6 +81,17 @@ struct OutputOverlay {
     default_disposition: DefaultDisposition,
     case_override: Vec<CaseOverride>,
     assertion_family: Vec<AssertionFamily>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DenominatorOverlay {
+    suite: String,
+    revision: String,
+    set_file: String,
+    case_count: usize,
+    default_disposition: DefaultDisposition,
+    case_override: Vec<CaseOverride>,
 }
 
 fn validate_header(suite: &str, revision: &str) -> Result<(), String> {
@@ -190,6 +203,39 @@ fn parse_output_overlay(source: &str) -> Result<OutputOverlay, String> {
     Ok(overlay)
 }
 
+fn parse_denominator_overlay(source: &str, identity: &str) -> Result<DenominatorOverlay, String> {
+    let overlay: DenominatorOverlay = toml::from_str(source).map_err(|error| error.to_string())?;
+    validate_header(&overlay.suite, &overlay.revision)?;
+    validate_text(&overlay.set_file, "set_file", identity)?;
+    validate_text(
+        &overlay.default_disposition.rationale,
+        "default rationale",
+        identity,
+    )?;
+    validate_disposition(
+        overlay.default_disposition.selection,
+        overlay.default_disposition.execution,
+    )?;
+
+    let mut names = BTreeSet::new();
+    for case in &overlay.case_override {
+        validate_text(&case.case_name, "case_name", identity)?;
+        validate_text(&case.rationale, "rationale", &case.case_name)?;
+        validate_disposition(case.selection, case.execution)?;
+        if !names.insert(case.case_name.as_str()) {
+            return Err(format!("duplicate {identity} override {}", case.case_name));
+        }
+    }
+    if overlay.case_override.len() > overlay.case_count {
+        return Err(format!(
+            "{} overrides exceed the {}-case {identity}",
+            overlay.case_override.len(),
+            overlay.case_count
+        ));
+    }
+    Ok(overlay)
+}
+
 fn private_overlay() -> &'static PrivateOverlay {
     static OVERLAY: OnceLock<PrivateOverlay> = OnceLock::new();
     OVERLAY.get_or_init(|| {
@@ -203,6 +249,14 @@ fn output_overlay() -> &'static OutputOverlay {
     OVERLAY.get_or_init(|| {
         parse_output_overlay(OUTPUT_OVERLAY_SOURCE)
             .unwrap_or_else(|error| panic!("invalid output XSLT30 overlay: {error}"))
+    })
+}
+
+fn strip_space_overlay() -> &'static DenominatorOverlay {
+    static OVERLAY: OnceLock<DenominatorOverlay> = OnceLock::new();
+    OVERLAY.get_or_init(|| {
+        parse_denominator_overlay(STRIP_SPACE_OVERLAY_SOURCE, "strip-space denominator")
+            .unwrap_or_else(|error| panic!("invalid strip-space XSLT30 overlay: {error}"))
     })
 }
 
@@ -246,12 +300,32 @@ pub(crate) fn assert_output_case_passed(case_name: &str) {
     assert_eq!(case.execution, ExecutionDisposition::Passed, "{case_name}");
 }
 
+pub(crate) fn assert_strip_space_case_passed(case_name: &str) {
+    let case = strip_space_overlay()
+        .case_override
+        .iter()
+        .find(|case| case.case_name == case_name)
+        .unwrap_or_else(|| panic!("missing strip-space overlay override {case_name}"));
+    assert_eq!(
+        case.selection,
+        SelectionDisposition::Selected,
+        "{case_name}"
+    );
+    assert_eq!(case.execution, ExecutionDisposition::Passed, "{case_name}");
+}
+
 #[test]
 fn xslt30_overlays_are_typed_unique_and_complete() {
     assert!(!private_overlay().case.is_empty());
     let output = output_overlay();
     assert_eq!(output.set_file, "tests/decl/output/_output-test-set.xml");
     assert_eq!(output.case_count, 232);
+    let strip_space = strip_space_overlay();
+    assert_eq!(
+        strip_space.set_file,
+        "tests/decl/strip-space/_strip-space-test-set.xml"
+    );
+    assert_eq!(strip_space.case_count, 30);
 }
 
 #[test]
