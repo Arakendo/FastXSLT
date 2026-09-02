@@ -1173,6 +1173,12 @@ execution = "passed"
 rationale = "Preserves raw script/style text and significant pre/textarea whitespace in the exact bounded HTML hierarchy under indent=no."
 
 [[case_override]]
+case_name = "output-0723"
+selection = "selected"
+execution = "passed"
+rationale = "Constant-folds the source-free comment select expression and serializes its XML-valid carriage return directly between the authored brackets."
+
+[[case_override]]
 case_name = "output-0724"
 selection = "selected"
 execution = "passed"

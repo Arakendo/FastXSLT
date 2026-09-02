@@ -469,6 +469,11 @@ URI attribute escaping.
 The predefined XML namespace serializes attributes with the reserved `xml`
 prefix without requiring an authored declaration. Other namespaced literal
 result attributes remain outside the current private compilation slice.
+Static `xsl:comment` content may be literal sequence-constructor text or a
+compile-time concatenation of single-quoted strings and single-integer
+`codepoints-to-string()` calls. Generated codepoints must be XML 1.0
+characters; comment data containing `--` or ending in `-` remains unsupported
+rather than receiving implicit lexical recovery.
 For XHTML output, `include-content-type` defaults to enabled. An XHTML `head`
 receives one serializer-owned empty `meta` whose content combines the explicit
 media type or `text/html` default with UTF-8; an existing Content-Type meta is

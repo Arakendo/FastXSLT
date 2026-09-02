@@ -29,3 +29,4 @@ pub(crate) mod path_experiment;
 mod qt3_axis_tests;
 #[cfg(test)]
 mod qt3_deep_equal_tests;
+pub(crate) mod static_string_experiment;

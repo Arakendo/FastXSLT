@@ -1236,6 +1236,15 @@ advances to 196 passes, one profile exclusion, and 35 visible default not-run
 cases.
 [Evidence](../Evidence/xslt30-output-escape-html-uri-2026-09-02.md)
 
+The unchanged source-free `output-0723` case now constant-folds its bounded
+comment select expression from literal strings plus
+`codepoints-to-string(13)`. XML serialization preserves the carriage return
+directly and matches the exact native assertion. Generated codepoints are
+restricted to XML 1.0 characters, while dynamic operands and general string
+function dispatch remain unsupported. The output denominator advances to 197
+passes, one profile exclusion, and 34 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-comment-carriage-return-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1277,8 +1286,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 196 | 0 | 1 | 35 |
-| **Conserved total** | **531** | **394** | **3** | **51** | **83** |
+| `decl/output` | 232 | 197 | 0 | 1 | 34 |
+| **Conserved total** | **531** | **395** | **3** | **51** | **82** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

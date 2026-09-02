@@ -111,6 +111,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 Static Range and Inherited Suppress Indentation](xslt30-output-static-range-suppress-indentation-2026-09-02.md)
 - [XSLT30 Unused Named Output Declaration](xslt30-output-unused-named-declaration-2026-09-02.md)
 - [XSLT30 Literal `escape-html-uri`](xslt30-output-escape-html-uri-2026-09-02.md)
+- [XSLT30 Comment Carriage Return](xslt30-output-comment-carriage-return-2026-09-02.md)
 - [XSLT30 `template-006` Private Execution](xslt30-template-006-private-execution-2026-08-25.md)
 - [Peer AR-0010 Review: Monday](peer-ar-0010-review-monday-2026-08-25.md)
 - [Private Invocation-Control Charge Points](private-invocation-control-charge-points-2026-08-25.md)

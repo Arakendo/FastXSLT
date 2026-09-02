@@ -1381,6 +1381,13 @@ fn executes_literal_escape_html_uri_independently_of_serializer_uri_escaping() {
 }
 
 #[test]
+fn serializes_a_static_carriage_return_inside_a_comment() {
+    let execution = execute_output_case("output-0723", None);
+    assert_eq!(execution.method.as_deref(), Some("xml"));
+    assert_eq!(execution.actual, "<a><!--[\r]--></a>");
+}
+
+#[test]
 fn preserves_html_ins_and_del_content_whitespace_without_indent() {
     let execution = execute_output_case("output-0160", None);
     assert_eq!(execution.method.as_deref(), Some("html"));

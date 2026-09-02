@@ -417,28 +417,40 @@ fn compile_processing_instruction(
 }
 
 fn compile_comment(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
-    ensure_only_attributes(document, element, &[], "xsl:comment")?;
-    let mut value = String::new();
-    for child in document.children(element).iter().copied() {
-        match document.kind(child) {
-            NodeKind::Text => value.push_str(document.value(child).unwrap_or_default()),
-            NodeKind::Comment | NodeKind::ProcessingInstruction => {}
-            NodeKind::Element => {
-                return Err(unsupported(
-                    "FXST1036",
-                    "computed comment content is outside the private slice",
-                    document.location(child),
-                ));
-            }
-            NodeKind::Document | NodeKind::Attribute => {
-                return Err(invalid(
-                    "FXST0006",
-                    "unexpected node kind in xsl:comment",
-                    document.location(child),
-                ));
+    ensure_only_attributes(document, element, &["select"], "xsl:comment")?;
+    let value = if let Some(select) = optional_attribute(document, element, None, "select") {
+        ensure_no_meaningful_children(document, element, "xsl:comment")?;
+        crate::xpath::static_string_experiment::fold(select).ok_or_else(|| {
+            unsupported(
+                "FXXP1013",
+                format!("unsupported static comment expression: {select}"),
+                document.location(element),
+            )
+        })?
+    } else {
+        let mut value = String::new();
+        for child in document.children(element).iter().copied() {
+            match document.kind(child) {
+                NodeKind::Text => value.push_str(document.value(child).unwrap_or_default()),
+                NodeKind::Comment | NodeKind::ProcessingInstruction => {}
+                NodeKind::Element => {
+                    return Err(unsupported(
+                        "FXST1036",
+                        "computed comment content is outside the private slice",
+                        document.location(child),
+                    ));
+                }
+                NodeKind::Document | NodeKind::Attribute => {
+                    return Err(invalid(
+                        "FXST0006",
+                        "unexpected node kind in xsl:comment",
+                        document.location(child),
+                    ));
+                }
             }
         }
-    }
+        value
+    };
     if value.contains("--") || value.ends_with('-') {
         return Err(unsupported(
             "FXST1037",
