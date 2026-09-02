@@ -106,7 +106,7 @@ const SELECTED_CASES: [&str; 86] = [
     "mode-1901",
     "mode-1904",
 ];
-const STREAMING_EXCLUDED_CASES: [&str; 26] = [
+const STREAMING_EXCLUDED_CASES: [&str; 29] = [
     "mode-0002",
     "mode-0004",
     "mode-0006",
@@ -114,6 +114,9 @@ const STREAMING_EXCLUDED_CASES: [&str; 26] = [
     "mode-0010",
     "mode-0012",
     "mode-0014",
+    "mode-1107a",
+    "mode-1107b",
+    "mode-1107c",
     "mode-1406",
     "mode-1408",
     "mode-1410",
@@ -200,9 +203,15 @@ fn inventories_the_complete_mode_denominator_before_selection() {
             .copied()
             .find(|case| attribute(&document, *case, "name") == Some(case_name))
             .expect("streaming-excluded case");
-        assert_eq!(
-            case_dependency(&document, case, "feature"),
-            Some("streaming")
+        let declares_streaming_dependency =
+            case_dependency(&document, case, "feature") == Some("streaming");
+        let supplies_streamed_source = case_environment(&document, case)
+            .and_then(|environment| child_named(&document, environment, "source"))
+            .and_then(|source| attribute(&document, source, "streaming"))
+            == Some("true");
+        assert!(
+            declares_streaming_dependency || supplies_streamed_source,
+            "{case_name} must retain native streaming metadata"
         );
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
@@ -233,7 +242,7 @@ fn inventories_the_complete_mode_denominator_before_selection() {
         OVERLAY
             .matches("selection = \"excluded-by-profile\"")
             .count(),
-        45
+        48
     );
 }
 

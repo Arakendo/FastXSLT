@@ -567,6 +567,24 @@ execution = "passed"
 rationale = "The principal stylesheet's higher-precedence on-no-match=fail declaration overrides the imported shallow-copy policy for named mode s and reports the unchanged XTDE0555 result."
 
 [[case_override]]
+case_name = "mode-1107a"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native environment marks its principal source streaming=true and the case explicitly tests a streamable mode. ADR-0007 excludes XSLT streaming conformance from the current profile."
+
+[[case_override]]
+case_name = "mode-1107b"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native environment marks its principal source streaming=true and the case explicitly tests accumulator availability in a streamable mode. ADR-0007 excludes XSLT streaming conformance from the current profile."
+
+[[case_override]]
+case_name = "mode-1107c"
+selection = "excluded-by-profile"
+execution = "not-run"
+rationale = "The native environment marks its principal source streaming=true and the case explicitly tests a streamable mode with all accumulators. ADR-0007 excludes XSLT streaming conformance from the current profile."
+
+[[case_override]]
 case_name = "mode-1406"
 selection = "excluded-by-profile"
 execution = "not-run"

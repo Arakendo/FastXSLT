@@ -1329,6 +1329,16 @@ accumulator semantics. The mode denominator advances to 86 passes, 45 profile
 exclusions, and 38 visible default not-run cases.
 [Evidence](../Evidence/xslt30-mode-1901-imported-policy-override-2026-09-02.md)
 
+The unchanged `mode-1107a`, `mode-1107b`, and `mode-1107c` cases are now
+explicit streaming-profile exclusions rather than generic defaults. Their
+native environments mark the principal source `streaming="true"` and enable
+the stylesheet's streamable mode, so ordinary tree execution would not be
+streaming-conformance evidence. The ledger now validates either an upstream
+streaming feature dependency or streamed-source metadata for every such
+exclusion. The mode denominator remains at 86 passes, advances to 48 profile
+exclusions, and leaves 35 visible default not-run cases.
+[Evidence](../Evidence/xslt30-mode-1107-streaming-profile-classification-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1368,10 +1378,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 86 | 0 | 45 | 38 |
+| `attr/mode` | 169 | 86 | 0 | 48 | 35 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 198 | 0 | 1 | 33 |
-| **Conserved total** | **531** | **406** | **3** | **51** | **71** |
+| **Conserved total** | **531** | **406** | **3** | **54** | **68** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -2458,6 +2468,10 @@ failed, and harness-error cases without an unqualified conformance claim.
   higher-precedence `on-no-match="fail"` policy to the imported named-template
   execution. Preserve the native `XTDE0555` outcome without claiming general
   package, visibility, or accumulator component merging.
+- [x] Classify `mode-1107a` through `mode-1107c` as streaming-profile
+  exclusions from their native streamed-source and static streamable-mode
+  metadata. Validate that metadata in the conserved ledger rather than
+  treating tree-evaluator output as XSLT streaming evidence.
 - [ ] Establish explicit URI/resource resolution and execution limits.
   - [x] Route private principal-stylesheet acquisition through an exact,
     qualified-identity resolver over one sealed snapshot. Charge a fixed attempt
