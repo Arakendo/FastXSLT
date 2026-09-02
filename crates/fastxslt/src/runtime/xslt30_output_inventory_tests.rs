@@ -1046,6 +1046,28 @@ fn serializes_html5_void_elements_without_end_tags() {
 }
 
 #[test]
+fn normalizes_html5_svg_mathml_and_preserves_foreign_element_namespaces() {
+    let svg = execute_output_case("output-0602a", None);
+    assert!(
+        svg.actual
+            .contains("<svg xmlns=\"http://www.w3.org/2000/svg\"")
+    );
+    assert!(!svg.actual.contains("xmlns:svg="));
+
+    let mathml = execute_output_case("output-0602b", None);
+    assert!(
+        mathml
+            .actual
+            .contains("<math xmlns=\"http://www.w3.org/1998/Math/MathML\"")
+    );
+    assert!(!mathml.actual.contains("xmlns:mathML="));
+
+    let foreign = execute_output_case("output-0602c", None);
+    assert!(foreign.actual.contains("xmlns:n=\"NamespaceN\""));
+    assert!(foreign.actual.contains("<n:zzz>"));
+}
+
+#[test]
 fn resolves_imported_character_maps_and_higher_precedence_override() {
     let imported_only = execute_assert_serialization_case("output-0204", "xml");
     assert_eq!(
@@ -1372,6 +1394,21 @@ fn execute_output_case(case_name: &str, assertion_method: Option<&str>) -> Seria
     try_execute_output_case(case_name, assertion_method).expect("execute output case")
 }
 
+fn output_stylesheet_nodes(document: &Document, test: NodeId, environment: NodeId) -> Vec<NodeId> {
+    let local = element_children(document, test)
+        .into_iter()
+        .filter(|node| local_name(document, *node) == "stylesheet")
+        .collect::<Vec<_>>();
+    if local.is_empty() {
+        element_children(document, environment)
+            .into_iter()
+            .filter(|node| local_name(document, *node) == "stylesheet")
+            .collect()
+    } else {
+        local
+    }
+}
+
 fn try_execute_output_case(
     case_name: &str,
     assertion_method: Option<&str>,
@@ -1389,16 +1426,13 @@ fn try_execute_output_case(
         })
         .expect("pinned output case");
     let test = child_named(&test_set, case, "test").expect("output test");
-    let stylesheet_nodes = element_children(&test_set, test)
-        .into_iter()
-        .filter(|node| local_name(&test_set, *node) == "stylesheet")
-        .collect::<Vec<_>>();
+    let environment = resolve_environment(&test_set, root, case).expect("output environment");
+    let stylesheet_nodes = output_stylesheet_nodes(&test_set, test, environment);
     let stylesheet_file = stylesheet_nodes
         .first()
         .copied()
         .and_then(|node| attribute(&test_set, node, "file"))
         .expect("output stylesheet file");
-    let environment = resolve_environment(&test_set, root, case).expect("output environment");
     let source = child_named(&test_set, environment, "source").expect("output source");
     let source_bytes = if let Some(file) = attribute(&test_set, source, "file") {
         fs::read(directory.join(file)).expect("read source and close handle")

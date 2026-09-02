@@ -101,12 +101,12 @@ pub(in crate::runtime) fn serialize_xml(
     }
     let xhtml_media_type = (xhtml && settings.include_content_type != Some(false))
         .then(|| settings.media_type.as_deref().unwrap_or("text/html"));
-    let xhtml_mode = if !xhtml {
-        XhtmlMode::None
-    } else if settings.html_version.as_deref() == Some("5") {
+    let xhtml_mode = if settings.html_version.as_deref() == Some("5") && (xhtml || html) {
         XhtmlMode::DefaultNamespace
-    } else {
+    } else if xhtml {
         XhtmlMode::PreservePrefixes
+    } else {
+        XhtmlMode::None
     };
     let options = SerializationOptions {
         cdata_section_elements: &settings.cdata_section_elements,
@@ -178,19 +178,48 @@ fn is_bounded_html5_node(node: &ResultNode, root: bool) -> bool {
             attributes,
             children,
         } => {
-            name.namespace.is_none()
-                && namespaces.is_empty()
-                && attributes.is_empty()
-                && if root {
-                    name.local == "html"
-                } else {
-                    matches!(name.local.as_str(), "head" | "title" | "body" | "p")
-                        || is_html_void_element(name)
-                }
+            is_bounded_html5_element_name(name, root)
+                && namespaces.iter().all(|binding| {
+                    is_xhtml5_default_namespace(Some(&binding.namespace))
+                        || binding.namespace == "NamespaceN"
+                })
+                && attributes.iter().all(|attribute| {
+                    attribute.name.namespace.is_none()
+                        && matches!(
+                            attribute.name.local.as_str(),
+                            "width" | "height" | "fill" | "cx" | "cy" | "r"
+                        )
+                })
                 && children
                     .iter()
                     .all(|child| is_bounded_html5_node(child, false))
         }
+    }
+}
+
+fn is_bounded_html5_element_name(
+    name: &crate::xml::quick_xml_experiment::ExpandedName,
+    root: bool,
+) -> bool {
+    if root {
+        return name.namespace.is_none() && name.local == "html";
+    }
+    match name.namespace.as_deref() {
+        None => {
+            matches!(name.local.as_str(), "head" | "title" | "body" | "p")
+                || is_html_void_element(name)
+        }
+        Some("http://www.w3.org/2000/svg") => {
+            matches!(name.local.as_str(), "svg" | "rect" | "circle")
+        }
+        Some("http://www.w3.org/1998/Math/MathML") => {
+            matches!(
+                name.local.as_str(),
+                "math" | "mrow" | "mi" | "msup" | "mn" | "mo"
+            )
+        }
+        Some("NamespaceN") => name.local == "zzz",
+        Some(_) => false,
     }
 }
 
@@ -660,13 +689,12 @@ fn serialize_element(
         unreachable!("serialize_element receives an element")
     };
     let normalized_namespaces;
-    let namespaces = if options.xhtml_mode == XhtmlMode::DefaultNamespace
-        && is_xhtml5_default_namespace(name.namespace.as_deref())
-    {
-        normalized_namespaces = normalize_xhtml5_namespace_bindings(
-            name.namespace.as_deref().expect("recognized namespace"),
-            namespaces,
-        );
+    let namespaces = if options.xhtml_mode == XhtmlMode::DefaultNamespace {
+        let default_namespace = name
+            .namespace
+            .as_deref()
+            .filter(|namespace| is_xhtml5_default_namespace(Some(namespace)));
+        normalized_namespaces = normalize_xhtml5_namespace_bindings(default_namespace, namespaces);
         normalized_namespaces.as_slice()
     } else {
         namespaces
@@ -782,7 +810,7 @@ fn is_xhtml5_default_namespace(namespace: Option<&str>) -> bool {
 }
 
 fn normalize_xhtml5_namespace_bindings(
-    default_namespace: &str,
+    default_namespace: Option<&str>,
     namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
 ) -> Vec<crate::xml::quick_xml_experiment::NamespaceBinding> {
     let mut normalized = namespaces
@@ -790,10 +818,12 @@ fn normalize_xhtml5_namespace_bindings(
         .filter(|binding| !is_xhtml5_default_namespace(Some(&binding.namespace)))
         .cloned()
         .collect::<Vec<_>>();
-    normalized.push(crate::xml::quick_xml_experiment::NamespaceBinding {
-        prefix: None,
-        namespace: default_namespace.to_owned(),
-    });
+    if let Some(default_namespace) = default_namespace {
+        normalized.push(crate::xml::quick_xml_experiment::NamespaceBinding {
+            prefix: None,
+            namespace: default_namespace.to_owned(),
+        });
+    }
     normalized
 }
 

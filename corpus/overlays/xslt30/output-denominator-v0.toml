@@ -860,6 +860,24 @@ selection = "selected"
 execution = "passed"
 rationale = "Serializes the complete unchanged HTML 5 void-element list without end tags through an attribute-free bounded document shape."
 
+[[case_override]]
+case_name = "output-0602a"
+selection = "selected"
+execution = "passed"
+rationale = "Normalizes unprefixed and prefixed SVG elements to the SVG default namespace in bounded HTML 5 output."
+
+[[case_override]]
+case_name = "output-0602b"
+selection = "selected"
+execution = "passed"
+rationale = "Normalizes prefixed and unprefixed MathML elements to the MathML default namespace in bounded HTML 5 output."
+
+[[case_override]]
+case_name = "output-0602c"
+selection = "selected"
+execution = "passed"
+rationale = "Preserves an element in an arbitrary foreign namespace with a qualified prefix during bounded HTML 5 output."
+
 [[assertion_family]]
 name = "all-of"
 count = 89

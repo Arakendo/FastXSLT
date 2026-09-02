@@ -403,11 +403,11 @@ only XML `1.0`. XHTML-only content-type metadata remains inert for XML output.
 An explicit XML output declaration may also carry a valid
 `escape-uri-attributes` boolean; the current bounded compiler validates and
 then discards it because it has no effect on XML serialization. Explicit HTML
-5 output may carry the property only while the admitted result shape has no
-attributes, making it equally inert. The property remains unsupported for
-absent or XHTML output methods, and HTML result attributes remain rejected
-until the compiled representation owns the corresponding URI-escaping
-semantics.
+5 output may carry the property only while every admitted result attribute is
+outside the bounded URI-attribute vocabulary, making it equally inert. The
+property remains unsupported for absent or XHTML output methods, and HTML URI
+attributes remain rejected until the compiled representation owns the
+corresponding escaping semantics.
 Invalid boolean values on admitted `xsl:output` properties are static
 stylesheet errors reported as `XTSE0020`, with the structured invalid category
 and stylesheet source location preserved. XSLT 2.0 accepts only `yes`/`no`;
@@ -417,11 +417,13 @@ Requested indentation currently adds newline plus two-space depth prefixes only
 around non-empty element-only child sequences. Text-only and mixed-content
 elements remain inline so indentation does not alter their string values; wider
 pretty-printing choices remain implementation-defined and unclaimed.
-The private HTML 5 lane admits one no-namespace document element with a bounded,
-attribute-free vocabulary. Its standard void-element list serializes without
-end tags. HTML attributes, URI escaping, raw-text handling, arbitrary element
-vocabularies, namespace fixup, and other HTML versions remain outside this
-successful slice.
+The private HTML 5 lane admits one no-namespace document element with a bounded
+HTML/SVG/MathML vocabulary and a fixed set of non-URI attributes. Its standard
+void-element list serializes without end tags. Known XHTML, SVG, and MathML
+prefix bindings normalize to the required default namespace while an admitted
+arbitrary foreign namespace retains its prefix. HTML URI attributes, raw-text
+handling, arbitrary element and attribute vocabularies, general namespace
+fixup, and other HTML versions remain outside this successful slice.
 The predefined XML namespace serializes attributes with the reserved `xml`
 prefix without requiring an authored declaration. Other namespaced literal
 result attributes remain outside the current private compilation slice.
