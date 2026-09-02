@@ -4,6 +4,13 @@ set_file = "fn/deep-equal.xml"
 case_count = 263
 selected_source = "private-ledger-v0.toml"
 
+[[dependency_rule]]
+dependency_type = "spec"
+values = ["XQ10", "XQ10+", "XQ30+", "XQ31+"]
+selection = "profile-excluded"
+execution = "not-run"
+rationale = "An unselected case carrying an upstream XQuery-only specification dependency is outside FastXSLT's XPath 3.1-in-XSLT profile. An explicit private-ledger selection takes precedence when the individual expression is admitted independently."
+
 [default_disposition]
 selection = "harness-unsupported"
 execution = "not-run"

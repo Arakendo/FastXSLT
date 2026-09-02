@@ -1315,17 +1315,22 @@ catalog discovery conserves the source inventory, while only a complete
 test-set overlay conserves a reportable case denominator.
 
 QT3 now has complete parent overlays for the two test sets under active
-execution. Typed validation composes the selected private-ledger records with a
-visible `harness-unsupported/not-run` default for every remaining sibling:
+execution. Typed validation composes explicit selected private-ledger records,
+native XQuery-only dependency exclusions, and a visible
+`harness-unsupported/not-run` default for every other sibling. Explicit
+selection wins over the dependency rule so a case whose individual XPath
+expression has been admitted is not hidden by broader upstream metadata:
 
-| QT3 test set | Native cases | Selected and passed | Visible default not run |
-| --- | ---: | ---: | ---: |
-| `prod/AxisStep.xml` | 349 | 182 | 167 |
-| `fn/deep-equal.xml` | 263 | 151 | 112 |
-| **Audited subtotal** | **612** | **333** | **279** |
+| QT3 test set | Native cases | Selected and passed | Profile excluded | Visible default not run |
+| --- | ---: | ---: | ---: | ---: |
+| `prod/AxisStep.xml` | 349 | 182 | 112 | 55 |
+| `fn/deep-equal.xml` | 263 | 151 | 67 | 45 |
+| **Audited subtotal** | **612** | **333** | **179** | **100** |
 
-The 612-case subtotal is therefore conserved without relabeling the 279
-unselected siblings as engine failures. The other 31,209 QT3 cases remain
+The 612-case subtotal is therefore conserved without relabeling the 100
+unclassified siblings as engine failures. The 179 exclusions describe the
+current XPath-in-XSLT profile and remain overridable by explicit case admission.
+The other 31,209 QT3 cases remain
 structural catalog inventory only and still lack first-party selection
 dispositions.
 [Evidence](../Evidence/qt3-axis-deep-equal-conserved-denominators-2026-09-02.md)
@@ -1371,8 +1376,9 @@ count:
    execution.
 3. [x] Give `AxisStep.xml` and `fn/deep-equal.xml` complete QT3 overlays so all
    612 parent-set cases receive a selection disposition. The typed verifier
-   now conserves 333 selected passes plus 279 visible default not-run cases
-   against the immutable upstream case identities.
+   now conserves 333 selected passes, 179 native-dependency profile exclusions,
+   and 100 visible default not-run cases against the immutable upstream case
+   identities. Explicit selection takes priority over a dependency rule.
 4. [ ] Add complete denominators deliberately, selected by standards and
    implementation pressure rather than easy-case sampling. The remaining
    14,068 XSLT30 and 31,209 QT3 catalog-only cases must stay outside pass/fail
