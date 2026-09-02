@@ -28,6 +28,10 @@ parent set, and accounts for the remaining 279 cases through the visible
 default. The private ledger is also checked to contain exactly those 333 cases
 and no third test-set family.
 
+The AxisStep and deep-equal execution adapters now ask this typed loader for
+their selected/pass authority. They no longer establish admission by splitting
+TOML text or searching for a case-name substring.
+
 ## Boundary
 
 This change does not convert the 279 defaults into engine failures, assert that

@@ -314,30 +314,14 @@ fn load_axis_test_set() -> (Document, PathBuf) {
 
 #[test]
 fn executes_qt3_axes001_through_axes084_admitted_location_path_groups() {
-    let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
-    let selected_records: Vec<_> = overlay
-        .split("[[case]]")
-        .filter(|record| {
-            CASES
-                .iter()
-                .any(|(case_name, _, _)| record.contains(&format!("case_name = \"{case_name}\"")))
-        })
-        .collect();
-    assert_eq!(selected_records.len(), CASES.len());
-    assert_eq!(
-        selected_records
-            .iter()
-            .filter(|record| record.contains("execution = \"passed\""))
-            .count(),
-        CASES.len()
-    );
+    crate::qt3_overlay_test_support::assert_selected_count("prod/AxisStep.xml", CASES.len());
     let (test_set, set_path) = load_axis_test_set();
     let set_directory = set_path
         .parent()
         .expect("QT3 test set should have a directory");
 
     for (case_name, expected_expression, expected_count) in CASES {
-        assert!(overlay.contains(&format!("case_name = \"{case_name}\"")));
+        crate::qt3_overlay_test_support::assert_private_case_passed("prod/AxisStep.xml", case_name);
         let test_case = find_element(
             &test_set,
             test_set.document_node(),

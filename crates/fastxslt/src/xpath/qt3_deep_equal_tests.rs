@@ -272,7 +272,6 @@ fn executes_complete_qt3_deep_equal_xs_double_group() {
 
 #[test]
 fn classifies_selected_qt3_deep_equal_arity_errors() {
-    let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
     let test_set = load_test_set();
     let cases = descendants_named(&test_set, test_set.document_node(), "test-case");
     assert_eq!(
@@ -287,9 +286,7 @@ fn classifies_selected_qt3_deep_equal_arity_errors() {
     );
 
     for name in ARITY_ERROR_CASES {
-        let record = overlay_case(overlay, name);
-        assert!(record.contains("selection = \"selected\""));
-        assert!(record.contains("execution = \"passed\""));
+        crate::qt3_overlay_test_support::assert_private_case_passed(SET_FILE, name);
         let case = cases
             .iter()
             .copied()
@@ -360,7 +357,6 @@ fn executes_qt3_literal_range_tranche() {
 }
 
 fn execute_named_true_cases(expected_cases: &[(&str, usize)]) {
-    let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
     let test_set = load_test_set();
     let cases = descendants_named(&test_set, test_set.document_node(), "test-case");
     assert_eq!(
@@ -376,9 +372,7 @@ fn execute_named_true_cases(expected_cases: &[(&str, usize)]) {
     );
 
     for (name, expected_operations) in expected_cases.iter().copied() {
-        let record = overlay_case(overlay, name);
-        assert!(record.contains("selection = \"selected\""));
-        assert!(record.contains("execution = \"passed\""));
+        crate::qt3_overlay_test_support::assert_private_case_passed(SET_FILE, name);
         let case = cases
             .iter()
             .copied()
@@ -412,7 +406,6 @@ fn execute_named_true_cases(expected_cases: &[(&str, usize)]) {
 
 #[test]
 fn executes_complete_qt3_deep_equal_mixed_atomic_group() {
-    let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
     let test_set = load_test_set();
     let cases = descendants_named(&test_set, test_set.document_node(), "test-case");
     assert_eq!(
@@ -425,17 +418,8 @@ fn executes_complete_qt3_deep_equal_mixed_atomic_group() {
             .count(),
         MIXED_ATOMIC_CASES.len()
     );
-    assert_eq!(
-        overlay
-            .matches("case_name = \"fn-deep-equal-mix-args-")
-            .count(),
-        MIXED_ATOMIC_CASES.len()
-    );
-
     for (name, expected, expected_operations) in MIXED_ATOMIC_CASES {
-        let record = overlay_case(overlay, name);
-        assert!(record.contains("selection = \"selected\""));
-        assert!(record.contains("execution = \"passed\""));
+        crate::qt3_overlay_test_support::assert_private_case_passed(SET_FILE, name);
         let case = cases
             .iter()
             .copied()
@@ -476,11 +460,6 @@ fn executes_complete_qt3_deep_equal_mixed_atomic_group() {
 }
 
 fn execute_group(prefix: &str, expected_cases: &[(&str, bool)], expected_operations: usize) {
-    let overlay = include_str!("../../../../corpus/overlays/qt3/private-ledger-v0.toml");
-    assert_eq!(
-        overlay.matches(&format!("case_name = \"{prefix}")).count(),
-        expected_cases.len()
-    );
     let test_set = load_test_set();
     let cases = descendants_named(&test_set, test_set.document_node(), "test-case")
         .into_iter()
@@ -491,9 +470,7 @@ fn execute_group(prefix: &str, expected_cases: &[(&str, bool)], expected_operati
     assert_eq!(cases.len(), expected_cases.len());
 
     for (name, expected) in expected_cases.iter().copied() {
-        let record = overlay_case(overlay, name);
-        assert!(record.contains("selection = \"selected\""));
-        assert!(record.contains("execution = \"passed\""));
+        crate::qt3_overlay_test_support::assert_private_case_passed(SET_FILE, name);
         let case = cases
             .iter()
             .copied()
@@ -548,16 +525,6 @@ fn load_test_set() -> Document {
     )
     .expect("parse QT3 deep-equal test set");
     Document::from_parsed(parsed).expect("build QT3 deep-equal catalog document")
-}
-
-fn overlay_case<'a>(overlay: &'a str, name: &str) -> &'a str {
-    overlay
-        .split("[[case]]")
-        .find(|section| {
-            section.contains(&format!("set_file = \"{SET_FILE}\""))
-                && section.contains(&format!("case_name = \"{name}\""))
-        })
-        .expect("overlay must contain one typed deep-equal disposition")
 }
 
 fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'a str> {

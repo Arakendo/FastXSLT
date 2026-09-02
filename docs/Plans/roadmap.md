@@ -1380,7 +1380,9 @@ count:
 5. [ ] Replace string-scanned experimental overlays with a validated internal
    loader and derive one immutable run report carrying suite/engine/harness
    revisions, profile, target/toolchain/features, selection reasons, outcomes,
-   and conservation totals. Do not stabilize it as a public API prematurely.
+   and conservation totals. The two active QT3 adapters now use a typed private
+   ledger/denominator loader; XSLT30 adapters and the unified immutable report
+   remain. Do not stabilize it as a public API prematurely.
 6. [ ] Define fast pull-request, focused semantic, and reproducible full-corpus
    CI tiers. A shard, retry, feature flag, or unavailable corpus must never
    silently shrink the denominator.

@@ -138,6 +138,32 @@ fn private_ledger() -> &'static PrivateLedger {
     })
 }
 
+pub(crate) fn assert_private_case_passed(set_file: &str, case_name: &str) {
+    let case = private_ledger()
+        .case
+        .iter()
+        .find(|case| case.set_file == set_file && case.case_name == case_name)
+        .unwrap_or_else(|| panic!("missing private QT3 case {set_file}::{case_name}"));
+    assert_eq!(
+        case.selection,
+        SelectionDisposition::Selected,
+        "{case_name}"
+    );
+    assert_eq!(case.execution, ExecutionDisposition::Passed, "{case_name}");
+}
+
+pub(crate) fn assert_selected_count(set_file: &str, expected: usize) {
+    assert_eq!(
+        private_ledger()
+            .case
+            .iter()
+            .filter(|case| case.set_file == set_file)
+            .count(),
+        expected,
+        "{set_file} selected count"
+    );
+}
+
 fn catalog_case_names(set_file: &str) -> BTreeSet<String> {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../vendor/qt3tests")
