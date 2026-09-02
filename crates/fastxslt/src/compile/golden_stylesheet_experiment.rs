@@ -1281,8 +1281,12 @@ fn is_ascii_ncname(value: &str) -> bool {
 
 fn map_path_failure(failure: PathFailure) -> CompileFailure {
     match failure {
-        PathFailure::Invalid { detail, location } => CompileFailure {
-            code: "FXXP0001",
+        PathFailure::Invalid {
+            standard_code,
+            detail,
+            location,
+        } => CompileFailure {
+            code: standard_code,
             category: CompileCategory::Invalid,
             detail,
             location,

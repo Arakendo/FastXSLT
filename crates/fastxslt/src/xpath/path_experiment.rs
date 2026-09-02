@@ -226,6 +226,7 @@ enum PositionPredicate {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum PathFailure {
     Invalid {
+        standard_code: &'static str,
         detail: String,
         location: SourceLocation,
     },
@@ -240,10 +241,7 @@ pub(crate) fn parse_location_path(
     location: SourceLocation,
 ) -> Result<LocationPath, PathFailure> {
     if expression.is_empty() {
-        return Err(PathFailure::Invalid {
-            detail: "the path expression is empty".to_owned(),
-            location,
-        });
+        return Err(invalid_syntax("the path expression is empty", &location));
     }
     if expression == "." {
         return Ok(origin_only_path(PathOrigin::ContextItem, location));
@@ -254,6 +252,12 @@ pub(crate) fn parse_location_path(
     let (expression, final_context_predicate) = parse_final_context_predicate(expression);
     let (expression, final_predicate) = parse_final_axis_predicate(expression);
     let (expression, origin) = parse_path_origin(expression);
+    if expression.is_empty() {
+        return Err(invalid_syntax(
+            "the descendant path separator must be followed by a step",
+            &location,
+        ));
+    }
     let parsed_steps = if final_predicate.is_none() {
         parse_position_steps(expression)
     } else {
@@ -262,8 +266,13 @@ pub(crate) fn parse_location_path(
             vec![None; expression.split('/').count()],
         ))
     };
+    if expression.ends_with('/') {
+        return Err(invalid_syntax(
+            format!("the location path ends with an empty step: {expression}"),
+            &location,
+        ));
+    }
     if expression.starts_with('/')
-        || expression.ends_with('/')
         || (final_predicate.is_some() && expression.contains("//"))
         || parsed_steps.is_none()
     {
@@ -285,6 +294,7 @@ pub(crate) fn parse_location_path(
     }
 
     let (steps, step_position_predicates) = parsed_steps.expect("checked above");
+    validate_unambiguous_step_syntax(&steps, expression, &location)?;
     if steps.iter().any(|step| step == ".") {
         return Err(PathFailure::Unsupported {
             detail: format!(
@@ -317,10 +327,10 @@ pub(crate) fn parse_location_path(
                 location,
             });
         }
-        return Err(PathFailure::Invalid {
-            detail: format!("the private slice found an invalid name test in: {expression}"),
-            location,
-        });
+        return Err(invalid_syntax(
+            format!("the private slice found an invalid name test in: {expression}"),
+            &location,
+        ));
     }
     let steps = lower_validated_steps(&steps, &location)?;
     Ok(LocationPath {
@@ -331,6 +341,54 @@ pub(crate) fn parse_location_path(
         step_position_predicates,
         location,
     })
+}
+
+fn validate_unambiguous_step_syntax(
+    steps: &[String],
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<(), PathFailure> {
+    let has_unknown_axis = steps.iter().any(|step| {
+        step.split_once("::").is_some_and(|(axis, _)| {
+            !matches!(
+                axis,
+                "ancestor"
+                    | "ancestor-or-self"
+                    | "attribute"
+                    | "child"
+                    | "descendant"
+                    | "descendant-or-self"
+                    | "following"
+                    | "following-sibling"
+                    | "namespace"
+                    | "parent"
+                    | "preceding"
+                    | "preceding-sibling"
+                    | "self"
+            )
+        })
+    });
+    if has_unknown_axis {
+        return Err(invalid_syntax(
+            format!("the location path uses an unknown axis name: {expression}"),
+            location,
+        ));
+    }
+    if steps.iter().any(|step| step.ends_with(':')) {
+        return Err(invalid_syntax(
+            format!("the location path contains an incomplete QName: {expression}"),
+            location,
+        ));
+    }
+    Ok(())
+}
+
+fn invalid_syntax(detail: impl Into<String>, location: &SourceLocation) -> PathFailure {
+    PathFailure::Invalid {
+        standard_code: "XPST0003",
+        detail: detail.into(),
+        location: location.clone(),
+    }
 }
 
 fn origin_only_path(origin: PathOrigin, location: SourceLocation) -> LocationPath {

@@ -185,9 +185,9 @@ fn parse_absolute_path(
         .strip_prefix('/')
         .ok_or_else(|| unsupported(expression, &location))?;
     parse_location_path(relative, location).map_err(|failure| match failure {
-        PathFailure::Invalid { detail, location } => {
-            ForExpressionFailure::Invalid { detail, location }
-        }
+        PathFailure::Invalid {
+            detail, location, ..
+        } => ForExpressionFailure::Invalid { detail, location },
         PathFailure::Unsupported { detail, location } => {
             ForExpressionFailure::Unsupported { detail, location }
         }

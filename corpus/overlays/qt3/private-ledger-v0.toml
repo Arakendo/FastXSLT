@@ -2331,3 +2331,52 @@ case_name = "Axes084-5"
 selection = "selected"
 execution = "passed"
 rationale = "Filters leading descendant text nodes by the effective boolean value of zero-argument normalize-space under bounded large-source admission."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "Axes088"
+selection = "selected"
+execution = "passed"
+rationale = "Reports the trailing empty path step as the standard XPST0003 static syntax error."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-34"
+selection = "selected"
+execution = "passed"
+rationale = "Reports a trailing descendant separator as the permitted XPST0003 static syntax error."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-35"
+selection = "selected"
+execution = "passed"
+rationale = "Reports a trailing child separator as the permitted XPST0003 static syntax error."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-46"
+selection = "selected"
+execution = "passed"
+rationale = "Reports a descendant separator without a step as the standard XPST0003 static syntax error."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-77"
+selection = "selected"
+execution = "passed"
+rationale = "Reports an unknown axis name as the standard XPST0003 static syntax error."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-90"
+selection = "selected"
+execution = "passed"
+rationale = "Reports an incomplete QName name test as the standard XPST0003 static syntax error."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-91"
+selection = "selected"
+execution = "passed"
+rationale = "Reports the independently identified incomplete QName case as the standard XPST0003 static syntax error."

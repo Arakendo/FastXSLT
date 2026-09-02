@@ -10,6 +10,15 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use super::count_experiment;
 
 const QT3_NAMESPACE: &str = "http://www.w3.org/2010/09/qt-fots-catalog";
+const STATIC_SYNTAX_ERROR_CASES: [(&str, &str); 7] = [
+    ("Axes088", "/*/"),
+    ("K2-Axes-34", "nametest//"),
+    ("K2-Axes-35", "nametest/"),
+    ("K2-Axes-46", "//"),
+    ("K2-Axes-77", "preceeding::node()"),
+    ("K2-Axes-90", "prefix:"),
+    ("K2-Axes-91", "prefix:"),
+];
 const CASES: [(&str, &str, usize); 182] = [
     ("Axes001-1", "fn:count(//center/child::*)", 0),
     ("Axes001-2", "fn:count(//center/child::*)", 1),
@@ -314,7 +323,10 @@ fn load_axis_test_set() -> (Document, PathBuf) {
 
 #[test]
 fn executes_qt3_axes001_through_axes084_admitted_location_path_groups() {
-    crate::qt3_overlay_test_support::assert_selected_count("prod/AxisStep.xml", CASES.len());
+    crate::qt3_overlay_test_support::assert_selected_count(
+        "prod/AxisStep.xml",
+        CASES.len() + STATIC_SYNTAX_ERROR_CASES.len(),
+    );
     let (test_set, set_path) = load_axis_test_set();
     let set_directory = set_path
         .parent()
@@ -399,5 +411,51 @@ fn executes_qt3_axes001_through_axes084_admitted_location_path_groups() {
 
         assert_eq!(actual, asserted, "native QT3 assertion for {case_name}");
         assert!(control.consumed(WorkDomain::XPathNodeVisit) > 0);
+    }
+}
+
+#[test]
+fn reports_admitted_qt3_axis_static_syntax_errors() {
+    use super::path_experiment::{PathFailure, parse_location_path};
+
+    let (test_set, _) = load_axis_test_set();
+    for (case_name, expected_expression) in STATIC_SYNTAX_ERROR_CASES {
+        crate::qt3_overlay_test_support::assert_private_case_passed("prod/AxisStep.xml", case_name);
+        let test_case = find_element(
+            &test_set,
+            test_set.document_node(),
+            "test-case",
+            Some(("name", case_name)),
+        )
+        .expect("admitted QT3 syntax case");
+        let expression = find_element(&test_set, test_case, "test", None)
+            .map(|node| test_set.string_value(node).trim().to_owned())
+            .expect("QT3 syntax expression");
+        assert_eq!(expression, expected_expression, "{case_name}");
+        let asserted_error = find_element(&test_set, test_case, "error", None)
+            .and_then(|node| attribute(&test_set, node, "code"))
+            .expect("QT3 static error assertion");
+        assert_eq!(asserted_error, "XPST0003", "{case_name}");
+
+        let location = SourceLocation {
+            resource: format!("urn:w3c:qt3:{case_name}:expression"),
+            span: 0..expression.len(),
+        };
+        let failure = parse_location_path(&expression, location.clone())
+            .expect_err("invalid QT3 path syntax must fail");
+        match failure {
+            PathFailure::Invalid {
+                standard_code,
+                detail,
+                location: actual_location,
+            } => {
+                assert_eq!(standard_code, "XPST0003", "{case_name}");
+                assert!(!detail.is_empty(), "{case_name}");
+                assert_eq!(actual_location, location, "{case_name}");
+            }
+            PathFailure::Unsupported { .. } => {
+                panic!("{case_name} must be classified as invalid syntax")
+            }
+        }
     }
 }
