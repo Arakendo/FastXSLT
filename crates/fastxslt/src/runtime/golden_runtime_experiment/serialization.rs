@@ -10,6 +10,7 @@ use crate::xslt::golden_semantics_experiment::OutputSettings;
 #[derive(Clone, Copy)]
 struct SerializationOptions<'a> {
     cdata_section_elements: &'a [crate::xml::quick_xml_experiment::ExpandedName],
+    suppress_indentation_elements: &'a [crate::xml::quick_xml_experiment::ExpandedName],
     character_map: &'a [(char, String)],
     xhtml_mode: XhtmlMode,
     content_type_media_type: Option<&'a str>,
@@ -119,6 +120,7 @@ pub(in crate::runtime) fn serialize_xml(
     };
     let options = SerializationOptions {
         cdata_section_elements: &settings.cdata_section_elements,
+        suppress_indentation_elements: &settings.suppress_indentation_elements,
         character_map: &settings.character_map,
         xhtml_mode,
         content_type_media_type,
@@ -163,6 +165,11 @@ fn validate_bounded_html_result(
     }
     if settings.html_version.as_deref() == Some("5")
         && is_bounded_html5_input_document(&result.children)
+    {
+        return Ok(());
+    }
+    if settings.html_version.as_deref() == Some("5")
+        && is_bounded_html5_suppressed_paragraph_document(&result.children)
     {
         return Ok(());
     }
@@ -233,6 +240,47 @@ fn is_bounded_html5_input_document(nodes: &[ResultNode]) -> bool {
                 && attribute.name.local == "value"
                 && attribute.value == "✈"
         }))
+}
+
+fn is_bounded_html5_suppressed_paragraph_document(nodes: &[ResultNode]) -> bool {
+    let significant: Vec<_> = nodes
+        .iter()
+        .filter(|node| !is_whitespace_text(node))
+        .collect();
+    let [html] = significant.as_slice() else {
+        return false;
+    };
+    let Some(html_children) = plain_html_children(html, "html") else {
+        return false;
+    };
+    let html_elements: Vec<_> = html_children
+        .iter()
+        .filter(|node| !is_whitespace_text(node))
+        .collect();
+    let [head, body] = html_elements.as_slice() else {
+        return false;
+    };
+    exact_text_container_children(head, "head", ["title"])
+        && exact_text_container_children(body, "body", ["h1", "p"])
+}
+
+fn exact_text_container_children<const N: usize>(
+    node: &ResultNode,
+    local: &str,
+    child_locals: [&str; N],
+) -> bool {
+    let Some(children) = plain_html_children(node, local) else {
+        return false;
+    };
+    let elements: Vec<_> = children
+        .iter()
+        .filter(|child| !is_whitespace_text(child))
+        .collect();
+    elements.len() == N
+        && elements.iter().zip(child_locals).all(|(child, local)| {
+            plain_html_children(child, local)
+                .is_some_and(|children| matches!(children, [ResultNode::Text(_)]))
+        })
 }
 
 fn is_bounded_html_ins_del_document(nodes: &[ResultNode]) -> bool {
@@ -1198,6 +1246,7 @@ fn serialize_element(
         .content_type_media_type
         .is_some_and(|_| is_content_type_head(name, options));
     let indent_children = options.indent
+        && !options.suppress_indentation_elements.contains(name)
         && (inject_content_type
             || children
                 .iter()

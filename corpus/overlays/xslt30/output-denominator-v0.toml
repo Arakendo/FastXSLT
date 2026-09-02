@@ -1082,6 +1082,18 @@ selection = "selected"
 execution = "passed"
 rationale = "Serializes the exact source-free HTML 5 input element as a void tag and preserves the non-URI airplane value without percent encoding."
 
+[[case_override]]
+case_name = "output-0725"
+selection = "selected"
+execution = "passed"
+rationale = "Retains the unnamespaced suppress-indentation p name and preserves the complete paragraph content under bounded HTML 5 indentation."
+
+[[case_override]]
+case_name = "output-0726"
+selection = "selected"
+execution = "passed"
+rationale = "Retains the unnamespaced suppress-indentation p name and preserves the complete paragraph content under XML-compatible XHTML indentation."
+
 [[assertion_family]]
 name = "all-of"
 count = 89

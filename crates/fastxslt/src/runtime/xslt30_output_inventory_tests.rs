@@ -1333,6 +1333,24 @@ fn serializes_bounded_html5_input_value_without_uri_escaping() {
 }
 
 #[test]
+fn suppresses_indentation_inside_bounded_html_and_xhtml_paragraphs() {
+    let paragraph = "<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>";
+    for (case_name, method) in [("output-0725", "html"), ("output-0726", "xhtml")] {
+        let execution = execute_output_case(case_name, None);
+        assert_eq!(execution.method.as_deref(), Some(method), "{case_name}");
+        assert_eq!(
+            execution.suppress_indentation_elements,
+            [crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: None,
+                local: "p".to_owned(),
+            }],
+            "{case_name}"
+        );
+        assert!(execution.actual.contains(paragraph), "{case_name}");
+    }
+}
+
+#[test]
 fn reports_inconsistent_xml_serialization_parameters_as_sepm0009() {
     for case_name in ["output-0186", "output-0187"] {
         let (test_set, _) = load_test_set();
@@ -1576,6 +1594,7 @@ struct SerializationExecution {
     doctype_public: Option<String>,
     include_content_type: Option<bool>,
     byte_order_mark: Option<bool>,
+    suppress_indentation_elements: Vec<crate::xml::quick_xml_experiment::ExpandedName>,
     omit_xml_declaration: bool,
     indent: Option<bool>,
     actual: String,
@@ -1714,6 +1733,7 @@ fn try_execute_output_case(
         doctype_public: output_settings.doctype_public,
         include_content_type: output_settings.include_content_type,
         byte_order_mark: output_settings.byte_order_mark,
+        suppress_indentation_elements: output_settings.suppress_indentation_elements,
         omit_xml_declaration: output_settings.omit_xml_declaration,
         indent: output_settings.indent,
         actual,

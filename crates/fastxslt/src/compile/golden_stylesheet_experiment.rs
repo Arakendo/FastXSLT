@@ -1388,6 +1388,28 @@ mod tests {
     }
 
     #[test]
+    fn retains_suppress_indentation_as_expanded_names() {
+        let stylesheet = parse_stylesheet(
+            "memory:suppress-indentation.xsl",
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:z="http://example.com/z"><xsl:output method="xml" suppress-indentation="p z:p"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
+        );
+        let program = compile_stylesheet(&stylesheet).expect("compile suppress-indentation names");
+        assert_eq!(
+            program.output.suppress_indentation_elements,
+            [
+                crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: None,
+                    local: "p".to_owned(),
+                },
+                crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: Some("http://example.com/z".to_owned()),
+                    local: "p".to_owned(),
+                },
+            ]
+        );
+    }
+
+    #[test]
     fn retains_xml_10_serialization_version_and_rejects_unadmitted_versions() {
         let xml_10 = parse_stylesheet(
             "memory:xml-10-output.xsl",

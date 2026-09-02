@@ -437,6 +437,12 @@ the corpus `type` and `value` attributes, emits void-element syntax, and keeps
 the non-URI value out of URI percent encoding. HTML 4 serialization remains
 excluded from the selected profile, and an
 environment-supplied default HTML version is not inferred by this evidence.
+`suppress-indentation` is retained as a list of expanded element names in
+compiled output settings and merged by expanded-name identity. When indentation
+is enabled, the serializer does not add child indentation inside a matching
+element. The current unchanged corpus evidence covers an unnamespaced `p` in
+bounded HTML 5 and XML-compatible XHTML results; it does not claim a general
+pretty-printing or word-wrapping algorithm.
 XML-compatible attribute serialization emits C1 controls as hexadecimal numeric
 character references. XHTML evidence covers a bounded non-URI `accesskey`
 attribute independently of the inert URI-escaping property; it does not admit

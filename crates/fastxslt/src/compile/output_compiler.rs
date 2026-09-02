@@ -26,6 +26,7 @@ const OUTPUT_ATTRIBUTES: &[&str] = &[
     "undeclare-prefixes",
     "standalone",
     "cdata-section-elements",
+    "suppress-indentation",
     "omit-xml-declaration",
     "indent",
     "html-version",
@@ -48,6 +49,7 @@ pub(in crate::compile) fn default_output_settings() -> OutputSettings {
         undeclare_prefixes: None,
         standalone: None,
         cdata_section_elements: Vec::new(),
+        suppress_indentation_elements: Vec::new(),
         omit_xml_declaration: false,
         indent: None,
     }
@@ -147,6 +149,7 @@ pub(super) fn compile_output(
         undeclare_prefixes,
         standalone,
         cdata_section_elements: compile_cdata_section_elements(document, element)?,
+        suppress_indentation_elements: compile_suppress_indentation_elements(document, element)?,
         omit_xml_declaration,
         indent,
     };
@@ -359,6 +362,15 @@ pub(super) fn merge_output(
             existing.settings.cdata_section_elements.push(name);
         }
     }
+    for name in next.settings.suppress_indentation_elements {
+        if !existing
+            .settings
+            .suppress_indentation_elements
+            .contains(&name)
+        {
+            existing.settings.suppress_indentation_elements.push(name);
+        }
+    }
     existing.specified.extend(next.specified);
     Ok(existing)
 }
@@ -492,6 +504,41 @@ fn compile_cdata_section_elements(
                 invalid(
                     "FXST1020",
                     format!("unbound cdata-section-elements prefix: {lexical}"),
+                    document.location(element),
+                )
+            })?;
+            Ok(ExpandedName {
+                namespace: (!namespace.is_empty()).then(|| namespace.to_owned()),
+                local: local.to_owned(),
+            })
+        })
+        .collect()
+}
+
+fn compile_suppress_indentation_elements(
+    document: &Document,
+    element: NodeId,
+) -> Result<Vec<ExpandedName>, CompileFailure> {
+    let Some(value) = optional_attribute(document, element, None, "suppress-indentation") else {
+        return Ok(Vec::new());
+    };
+    value
+        .split_whitespace()
+        .map(|lexical| {
+            let (prefix, local) = lexical
+                .split_once(':')
+                .map_or((None, lexical), |(prefix, local)| (Some(prefix), local));
+            if !is_ascii_ncname(local) || prefix.is_some_and(|prefix| !is_ascii_ncname(prefix)) {
+                return Err(invalid(
+                    "FXST1021",
+                    format!("invalid suppress-indentation QName: {lexical}"),
+                    document.location(element),
+                ));
+            }
+            let namespace = namespace_for_prefix(document, element, prefix).ok_or_else(|| {
+                invalid(
+                    "FXST1022",
+                    format!("unbound suppress-indentation prefix: {lexical}"),
                     document.location(element),
                 )
             })?;

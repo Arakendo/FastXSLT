@@ -125,6 +125,7 @@ pub(crate) struct OutputSettings {
     pub(crate) undeclare_prefixes: Option<bool>,
     pub(crate) standalone: Option<String>,
     pub(crate) cdata_section_elements: Vec<ExpandedName>,
+    pub(crate) suppress_indentation_elements: Vec<ExpandedName>,
     pub(crate) omit_xml_declaration: bool,
     pub(crate) indent: Option<bool>,
 }

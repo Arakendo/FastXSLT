@@ -63,6 +63,7 @@ struct OutputInspection {
     undeclare_prefixes: Option<bool>,
     standalone: Option<String>,
     cdata_section_elements: Vec<crate::xml::quick_xml_experiment::ExpandedName>,
+    suppress_indentation_elements: Vec<crate::xml::quick_xml_experiment::ExpandedName>,
     omit_xml_declaration: bool,
     indent: Option<bool>,
 }
@@ -215,6 +216,7 @@ fn inspect_output(output: &OutputSettings) -> OutputInspection {
         undeclare_prefixes: output.undeclare_prefixes,
         standalone: output.standalone.clone(),
         cdata_section_elements: output.cdata_section_elements.clone(),
+        suppress_indentation_elements: output.suppress_indentation_elements.clone(),
         omit_xml_declaration: output.omit_xml_declaration,
         indent: output.indent,
     }
@@ -360,6 +362,7 @@ mod tests {
                     undeclare_prefixes: None,
                     standalone: None,
                     cdata_section_elements: Vec::new(),
+                    suppress_indentation_elements: Vec::new(),
                     omit_xml_declaration: true,
                     indent: None,
                 },

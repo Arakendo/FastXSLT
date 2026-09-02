@@ -1170,6 +1170,15 @@ URI percent encoding. The validator admits only the case's `type="text"` and
 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-html5-input-value-2026-09-01.md)
 
+The unchanged `output-0725` and `output-0726` cases now retain
+`suppress-indentation="p"` as an expanded name and consult that list at the
+serializer's child-indentation decision. The complete long paragraph remains
+unbroken under both bounded HTML 5 and XML-compatible XHTML output. A compiler
+sentinel additionally distinguishes unprefixed `p` from namespaced `z:p`; this
+does not claim general word wrapping. The output denominator advances to 180
+passes and 51 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-suppress-indentation-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1211,8 +1220,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 178 | 0 | 1 | 53 |
-| **Conserved total** | **531** | **376** | **3** | **51** | **101** |
+| `decl/output` | 232 | 180 | 0 | 1 | 51 |
+| **Conserved total** | **531** | **378** | **3** | **51** | **99** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
