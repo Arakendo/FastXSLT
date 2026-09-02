@@ -1352,17 +1352,16 @@ mod tests {
     }
 
     #[test]
-    fn html_output_remains_unsupported_without_the_bounded_character_map_slice() {
+    fn html_method_is_retained_without_claiming_general_serializer_support() {
         let stylesheet = parse_stylesheet(
             "memory:unsupported-general-html.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="html"/><xsl:template match="/"><html/></xsl:template></xsl:stylesheet>"#,
         );
 
-        let failure = compile_stylesheet(&stylesheet)
-            .expect_err("general HTML serialization must remain explicit");
-
-        assert_eq!(failure.code, "FXST1004");
-        assert_eq!(failure.category, CompileCategory::Unsupported);
+        let program = compile_stylesheet(&stylesheet)
+            .expect("known output methods are retained for serialization-time selection");
+        assert_eq!(program.output.method.as_deref(), Some("html"));
+        assert!(program.output.character_map.is_empty());
     }
 
     #[test]

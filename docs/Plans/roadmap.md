@@ -1003,6 +1003,14 @@ participate in invocation work accounting; computed comment content and HTML
 passes and 97 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-root-misc-doctype-order-2026-09-01.md)
 
+Three unchanged HTML negative cases—`output-0184`, `output-0191`, and
+`output-0194`—now distinguish recognition of the standard HTML method from
+successful serializer capability. Unsupported encoding, normalization, and
+explicit version report native `SESU0007`, `SESU0011`, and `SESU0013` before
+the bounded HTML result-shape gate. General HTML output remains unadmitted. The
+output denominator advances to 138 passes and 94 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-html-parameter-errors-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1044,8 +1052,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 135 | 0 | 0 | 97 |
-| **Conserved total** | **531** | **333** | **3** | **50** | **145** |
+| `decl/output` | 232 | 138 | 0 | 0 | 94 |
+| **Conserved total** | **531** | **336** | **3** | **50** | **142** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1099,7 +1107,7 @@ count:
    `apply-templates` case is schema-aware and the two remaining `include` cases
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
-2. [ ] Continue coherent semantic slices through the 97 visible `output`
+2. [ ] Continue coherent semantic slices through the 94 visible `output`
    gaps and 48 visible `mode` gaps. Each promotion still requires native
    metadata validation, a focused control, and an owned comparator or exact
    diagnostic—not merely successful stylesheet execution.

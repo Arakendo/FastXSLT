@@ -813,6 +813,24 @@ execution = "passed"
 rationale = "Serializes a static root comment and processing instruction before the XML doctype, which remains immediately before the document element."
 
 [[case_override]]
+case_name = "output-0184"
+selection = "selected"
+execution = "passed"
+rationale = "Reports SESU0007 at serialization for an unavailable encoding on the recognized HTML method."
+
+[[case_override]]
+case_name = "output-0191"
+selection = "selected"
+execution = "passed"
+rationale = "Reports SESU0011 at serialization for an unsupported normalization form on the recognized HTML method."
+
+[[case_override]]
+case_name = "output-0194"
+selection = "selected"
+execution = "passed"
+rationale = "Reports SESU0013 at serialization for an unsupported explicit HTML version."
+
+[[case_override]]
 case_name = "output-0501"
 selection = "selected"
 execution = "passed"

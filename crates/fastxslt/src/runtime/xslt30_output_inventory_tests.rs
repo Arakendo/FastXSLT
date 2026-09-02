@@ -984,6 +984,29 @@ fn places_xml_doctype_after_root_misc_and_before_document_element() {
 }
 
 #[test]
+fn reports_html_serialization_parameter_failures_before_shape_selection() {
+    for (case_name, code) in [
+        ("output-0184", "SESU0007"),
+        ("output-0191", "SESU0011"),
+        ("output-0194", "SESU0013"),
+    ] {
+        let failure = try_execute_output_case(case_name, None)
+            .expect_err("unsupported HTML serialization parameter must fail");
+        assert_eq!(failure.code, code, "{case_name}");
+        assert_eq!(
+            failure.category,
+            FailureCategory::Unsupported,
+            "{case_name}"
+        );
+        assert_eq!(
+            failure.request_id.as_deref(),
+            Some(case_name),
+            "{case_name}"
+        );
+    }
+}
+
+#[test]
 fn resolves_imported_character_maps_and_higher_precedence_override() {
     let imported_only = execute_assert_serialization_case("output-0204", "xml");
     assert_eq!(

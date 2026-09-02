@@ -33,6 +33,7 @@ pub(in crate::runtime) fn serialize_xml(
     validate_serialization_preconditions(result, settings, request_id)?;
     validate_normalization_form(settings, request_id)?;
     validate_string_encoding(settings, request_id)?;
+    validate_html_version(settings, request_id)?;
     if settings.byte_order_mark == Some(true) {
         return Err(failure(
             "FXSR1005",
@@ -233,6 +234,28 @@ fn validate_normalization_form(
         ));
     }
     Ok(())
+}
+
+fn validate_html_version(
+    settings: &OutputSettings,
+    request_id: &str,
+) -> Result<(), ExecutionFailure> {
+    if settings.method.as_deref() != Some("html") {
+        return Ok(());
+    }
+    let Some(version) = settings.version.as_deref() else {
+        return Ok(());
+    };
+    let normalized = version.trim().trim_start_matches('+');
+    if normalized == "5" || normalized == "5.0" {
+        return Ok(());
+    }
+    Err(failure(
+        "SESU0013",
+        FailureCategory::Unsupported,
+        Some(request_id),
+        format!("the requested HTML output version is not supported: {version}"),
+    ))
 }
 
 fn serialize_doctype(

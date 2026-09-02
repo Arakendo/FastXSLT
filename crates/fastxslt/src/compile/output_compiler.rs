@@ -68,11 +68,7 @@ pub(super) fn compile_output(
     ensure_no_meaningful_children(document, element, "xsl:output")?;
     let html_version = compile_html_version(document, element)?;
     let method = optional_attribute(document, element, None, "method").map(str::trim);
-    let bounded_character_map_html = method == Some("html")
-        && optional_attribute(document, element, None, "use-character-maps").is_some();
-    if method.is_some_and(|method| !matches!(method, "xml" | "text" | "xhtml"))
-        && !bounded_character_map_html
-    {
+    if method.is_some_and(|method| !matches!(method, "xml" | "text" | "xhtml" | "html")) {
         return Err(unsupported(
             "FXST1004",
             format!("unsupported output method: {}", method.unwrap_or_default()),
@@ -130,6 +126,7 @@ pub(super) fn compile_output(
     let version = compile_serialization_version(
         document,
         element,
+        method,
         omit_xml_declaration && doctype_system.is_some(),
     )?;
     let settings = OutputSettings {
@@ -441,13 +438,17 @@ fn validate_doctype_public(
     Ok(())
 }
 
-fn compile_serialization_version(
-    document: &Document,
+fn compile_serialization_version<'a>(
+    document: &'a Document,
     element: NodeId,
+    method: Option<&str>,
     admitted_inconsistent_error_path: bool,
-) -> Result<Option<&str>, CompileFailure> {
+) -> Result<Option<&'a str>, CompileFailure> {
     let version = optional_attribute(document, element, None, "version");
-    if version.is_some_and(|value| value != "1.0") && !admitted_inconsistent_error_path {
+    if version.is_some_and(|value| value != "1.0")
+        && method != Some("html")
+        && !admitted_inconsistent_error_path
+    {
         return Err(unsupported(
             "FXST1021",
             format!(
