@@ -854,6 +854,12 @@ selection = "selected"
 execution = "passed"
 rationale = "Reports the native static error XTSE0010 because the unchanged xsl:character-map declaration omits its required name, without admitting character-map execution."
 
+[[case_override]]
+case_name = "output-0601"
+selection = "selected"
+execution = "passed"
+rationale = "Serializes the complete unchanged HTML 5 void-element list without end tags through an attribute-free bounded document shape."
+
 [[assertion_family]]
 name = "all-of"
 count = 89

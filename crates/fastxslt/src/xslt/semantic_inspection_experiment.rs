@@ -268,7 +268,9 @@ fn observe_instructions(
             Instruction::Choose { .. } => (SemanticFeature::Choose, None),
             Instruction::CallTemplate { .. } => (SemanticFeature::CallTemplate, None),
             Instruction::Copy { .. } => (SemanticFeature::Copy, None),
-            Instruction::CopyOfCurrent { .. } => (SemanticFeature::CopyOf, None),
+            Instruction::CopyOfCurrent { .. } | Instruction::CopyOfChildElements { .. } => {
+                (SemanticFeature::CopyOf, None)
+            }
         };
         let occurrences = feature_counts.entry(feature).or_default();
         *occurrences = occurrences

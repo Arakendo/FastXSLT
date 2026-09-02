@@ -219,16 +219,19 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
     ensure_only_attributes(document, element, &["select"], "xsl:copy-of")?;
     ensure_no_meaningful_children(document, element, "xsl:copy-of")?;
     let select = required_attribute(document, element, None, "select")?;
-    if select.trim() != "." {
-        return Err(unsupported(
+    match select.trim() {
+        "." => Ok(Instruction::CopyOfCurrent {
+            location: document.location(element).clone(),
+        }),
+        "*" => Ok(Instruction::CopyOfChildElements {
+            location: document.location(element).clone(),
+        }),
+        _ => Err(unsupported(
             "FXXP1003",
             format!("unsupported xsl:copy-of selection: {select}"),
             document.location(element),
-        ));
+        )),
     }
-    Ok(Instruction::CopyOfCurrent {
-        location: document.location(element).clone(),
-    })
 }
 
 fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {

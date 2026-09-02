@@ -1033,6 +1033,19 @@ fn places_automatic_html5_doctype_after_root_comment() {
 }
 
 #[test]
+fn serializes_html5_void_elements_without_end_tags() {
+    let execution = execute_output_case("output-0601", None);
+    for name in [
+        "area", "base", "br", "col", "command", "embed", "hr", "img", "input", "keygen", "link",
+        "meta", "param", "source", "track", "wbr",
+    ] {
+        assert!(execution.actual.contains(&format!("<{name}>")), "{name}");
+        assert!(!execution.actual.contains(&format!("</{name}>")), "{name}");
+        assert!(!execution.actual.contains(&format!("<{name}/>")), "{name}");
+    }
+}
+
+#[test]
 fn resolves_imported_character_maps_and_higher_precedence_override() {
     let imported_only = execute_assert_serialization_case("output-0204", "xml");
     assert_eq!(
@@ -1387,7 +1400,12 @@ fn try_execute_output_case(
         .expect("output stylesheet file");
     let environment = resolve_environment(&test_set, root, case).expect("output environment");
     let source = child_named(&test_set, environment, "source").expect("output source");
-    let source_content = child_named(&test_set, source, "content").expect("inline source content");
+    let source_bytes = if let Some(file) = attribute(&test_set, source, "file") {
+        fs::read(directory.join(file)).expect("read source and close handle")
+    } else {
+        let content = child_named(&test_set, source, "content").expect("inline source content");
+        test_set.string_value(content).into_bytes()
+    };
     let expected_file =
         assertion_method.map(|method| expected_serialization_file(&test_set, case, method));
 
@@ -1400,10 +1418,7 @@ fn try_execute_output_case(
         resource_count * 65_536,
     ));
     resources
-        .admit(
-            source_id.clone(),
-            test_set.string_value(source_content).into_bytes(),
-        )
+        .admit(source_id.clone(), source_bytes)
         .expect("admit output source");
     resources
         .admit(

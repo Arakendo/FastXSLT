@@ -98,7 +98,7 @@ pub(super) fn compile_output(
             )
         })
         .transpose()?;
-    compile_inert_xml_escape_uri_attributes(document, element, method, declared_version)?;
+    compile_bounded_escape_uri_attributes(document, element, method, declared_version)?;
     let byte_order_mark = optional_attribute(document, element, None, "byte-order-mark")
         .map(|value| {
             parse_output_boolean(
@@ -264,7 +264,7 @@ fn ensure_output_attributes(document: &Document, element: NodeId) -> Result<(), 
     Ok(())
 }
 
-fn compile_inert_xml_escape_uri_attributes(
+fn compile_bounded_escape_uri_attributes(
     document: &Document,
     element: NodeId,
     method: Option<&str>,
@@ -279,10 +279,10 @@ fn compile_inert_xml_escape_uri_attributes(
         declared_version,
         document.location(element),
     )?;
-    if method != Some("xml") {
+    if !matches!(method, Some("xml" | "html")) {
         return Err(unsupported(
             "FXST1036",
-            "escape-uri-attributes is currently admitted only as an inert explicit XML property",
+            "escape-uri-attributes is admitted only for explicit XML or attribute-free bounded HTML output",
             document.location(element),
         ));
     }

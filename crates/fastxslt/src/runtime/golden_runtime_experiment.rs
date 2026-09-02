@@ -602,6 +602,7 @@ fn execute_instruction(
         | Instruction::Choose { .. }
         | Instruction::CallTemplate { .. }
         | Instruction::CopyOfCurrent { .. }
+        | Instruction::CopyOfChildElements { .. }
         | Instruction::Copy { .. } => result.extend(execute_result_instruction(
             inputs,
             instruction,
@@ -641,6 +642,9 @@ fn execute_result_instruction<'a>(
         Instruction::CopyOfCurrent { .. } => {
             execute_copy_of_current(inputs, execution.node, control)
         }
+        Instruction::CopyOfChildElements { .. } => {
+            execute_copy_of_child_elements(inputs, execution.node, control)
+        }
         Instruction::Copy { .. } => execute_copy(inputs, instruction, execution, scope, control),
         _ => unreachable!("result dispatch receives only result-producing instructions"),
     }
@@ -653,6 +657,24 @@ fn execute_copy_of_current(
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let (source, node) = required_source_context(inputs, context)?;
     copy_source_node(source, inputs.request_id, node, control)
+}
+
+fn execute_copy_of_child_elements(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let (source, node) = required_source_context(inputs, context)?;
+    let mut copied = Vec::new();
+    for child in source.children(node).iter().copied() {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        if source.kind(child) == NodeKind::Element {
+            copied.extend(copy_source_node(source, inputs.request_id, child, control)?);
+        }
+    }
+    Ok(copied)
 }
 
 fn execute_for_each_temporary_root<'a>(

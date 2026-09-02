@@ -12,6 +12,7 @@ struct SerializationOptions<'a> {
     character_map: &'a [(char, String)],
     xhtml_mode: XhtmlMode,
     xhtml_media_type: Option<&'a str>,
+    html: bool,
     xml_empty_element_tag: bool,
     indent: bool,
 }
@@ -112,6 +113,7 @@ pub(in crate::runtime) fn serialize_xml(
         character_map: &settings.character_map,
         xhtml_mode,
         xhtml_media_type,
+        html,
         xml_empty_element_tag: settings.doctype_system.is_some() && !xhtml && !html,
         indent: settings.indent == Some(true),
     };
@@ -183,6 +185,7 @@ fn is_bounded_html5_node(node: &ResultNode, root: bool) -> bool {
                     name.local == "html"
                 } else {
                     matches!(name.local.as_str(), "head" | "title" | "body" | "p")
+                        || is_html_void_element(name)
                 }
                 && children
                     .iter()
@@ -693,6 +696,9 @@ fn serialize_element(
     if options.xml_empty_element_tag && children.is_empty() {
         return output.push_str("/>");
     }
+    if options.html && children.is_empty() && is_html_void_element(name) {
+        return output.push('>');
+    }
     if options.xhtml_mode != XhtmlMode::None
         && children.is_empty()
         && is_xhtml_void_element(name, options.xhtml_mode)
@@ -739,6 +745,29 @@ fn serialize_element(
     output.push_str("</")?;
     write_name(prefix, &name.local, output)?;
     output.push('>')
+}
+
+fn is_html_void_element(name: &crate::xml::quick_xml_experiment::ExpandedName) -> bool {
+    name.namespace.is_none()
+        && matches!(
+            name.local.as_str(),
+            "area"
+                | "base"
+                | "br"
+                | "col"
+                | "command"
+                | "embed"
+                | "hr"
+                | "img"
+                | "input"
+                | "keygen"
+                | "link"
+                | "meta"
+                | "param"
+                | "source"
+                | "track"
+                | "wbr"
+        )
 }
 
 fn is_xhtml5_default_namespace(namespace: Option<&str>) -> bool {

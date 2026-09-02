@@ -277,7 +277,9 @@ fn instruction_owned(value: &Instruction) -> usize {
             arguments,
             location,
         } => vec_owned(arguments, template_argument_owned) + location_owned(location),
-        Instruction::CopyOfCurrent { location } => location_owned(location),
+        Instruction::CopyOfCurrent { location } | Instruction::CopyOfChildElements { location } => {
+            location_owned(location)
+        }
         Instruction::If {
             test,
             body,
