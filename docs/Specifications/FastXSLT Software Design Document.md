@@ -422,7 +422,12 @@ bytes while existing ASCII percent sequences remain unchanged; when disabled,
 ordinary XML-compatible attribute escaping applies. Character maps do not
 rewrite an enabled URI-expansion path. The property remains unsupported for an
 absent output method. The wider HTML/XHTML URI-attribute vocabulary remains
-outside this slice.
+outside this slice. A separate bounded XPath `escape-html-uri()` path
+constant-folds one single-quoted literal used by a leading computed attribute.
+It preserves printable ASCII and percent-escapes every other character's UTF-8
+bytes without Unicode normalization. This remains distinct from
+serializer-owned URI attribute escaping and does not admit dynamic arguments or
+general function dispatch.
 Invalid boolean values on admitted `xsl:output` properties are static
 stylesheet errors reported as `XTSE0020`, with the structured invalid category
 and stylesheet source location preserved. XSLT 2.0 accepts only `yes`/`no`;

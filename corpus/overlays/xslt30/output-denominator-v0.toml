@@ -237,6 +237,24 @@ execution = "passed"
 rationale = "Executes XML-compatible XHTML serialization with explicit UTF-8 and verifies the exact declaration, namespace, and multibyte encoding of the non-ASCII result text."
 
 [[case_override]]
+case_name = "output-0141"
+selection = "selected"
+execution = "passed"
+rationale = "Executes XSLT 2.0 escape-uri-attributes=no while constant-folding the literal escape-html-uri call without Unicode normalization and verifies escaped and unescaped href values."
+
+[[case_override]]
+case_name = "output-0141a"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the XSLT 3.0 false lexical for the same independent serializer-property and escape-html-uri function behavior."
+
+[[case_override]]
+case_name = "output-0141b"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the whitespace-normalized XSLT 3.0 numeric-zero lexical for the same independent serializer-property and escape-html-uri function behavior."
+
+[[case_override]]
 case_name = "output-0142"
 selection = "selected"
 execution = "passed"

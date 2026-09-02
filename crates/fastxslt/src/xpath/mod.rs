@@ -15,6 +15,7 @@ mod deep_equal_atomic;
 pub(crate) mod deep_equal_boolean_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod deep_equal_experiment;
+pub(crate) mod escape_html_uri_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod focus_sum_for_experiment;
 #[cfg(any(test, feature = "workbench"))]

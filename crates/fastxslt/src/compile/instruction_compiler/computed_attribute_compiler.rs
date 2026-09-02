@@ -65,22 +65,27 @@ fn compile_computed_attribute(
     ensure_only_attributes(document, *value_of, &["select"], "xsl:value-of")?;
     ensure_no_meaningful_children(document, *value_of, "xsl:value-of")?;
     let select = required_attribute(document, *value_of, None, "select")?;
-    let Some(variable) = select
+    let value = if let Some(variable) = select
         .strip_prefix('$')
         .filter(|name| is_ascii_ncname(name))
-    else {
-        return Err(unsupported(
-            "FXXP1012",
-            format!("unsupported computed-attribute value expression: {select}"),
-            document.location(*value_of),
-        ));
+    {
+        LiteralAttributeValue::Variable(variable.to_owned())
+    } else {
+        let Some(escaped) = crate::xpath::escape_html_uri_experiment::fold_literal(select) else {
+            return Err(unsupported(
+                "FXXP1012",
+                format!("unsupported computed-attribute value expression: {select}"),
+                document.location(*value_of),
+            ));
+        };
+        LiteralAttributeValue::Text(escaped)
     };
     Ok(ComputedAttribute {
         name: ExpandedName {
             namespace: None,
             local: name.to_owned(),
         },
-        value: LiteralAttributeValue::Variable(variable.to_owned()),
+        value,
         location: document.location(element).clone(),
     })
 }

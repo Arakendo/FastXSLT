@@ -1225,6 +1225,17 @@ duplicate named-declaration merging, named character-map resolution, or
 profile exclusion, and 38 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-unused-named-declaration-2026-09-02.md)
 
+The unchanged `output-0141`, `output-0141a`, and `output-0141b` cases now
+execute the XSLT 2.0 `no` and XSLT 3.0 `false`/numeric-zero serializer-property
+lexicals together with an independently constant-folded literal
+`escape-html-uri()` computed attribute. Literal URI attributes remain
+unescaped, while the function result receives uppercase UTF-8 percent escapes
+without NFC normalization, preserving decomposed `a%CC%8A`. Dynamic arguments
+and general function dispatch remain outside the slice. The output denominator
+advances to 196 passes, one profile exclusion, and 35 visible default not-run
+cases.
+[Evidence](../Evidence/xslt30-output-escape-html-uri-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1266,8 +1277,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 193 | 0 | 1 | 38 |
-| **Conserved total** | **531** | **391** | **3** | **51** | **86** |
+| `decl/output` | 232 | 196 | 0 | 1 | 35 |
+| **Conserved total** | **531** | **394** | **3** | **51** | **83** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

@@ -1365,6 +1365,22 @@ fn executes_principal_result_with_an_unused_named_output_declaration() {
 }
 
 #[test]
+fn executes_literal_escape_html_uri_independently_of_serializer_uri_escaping() {
+    let unescaped = "href=\"http://iri.example.org/\u{fb4f}/\u{e5}rsrapport/a\u{30a}r/2005?x=y\"";
+    let escaped = "href=\"http://iri.example.org/%EF%AD%8F/%C3%A5rsrapport/a%CC%8Ar/2005?x=y\"";
+    for case_name in ["output-0141", "output-0141a", "output-0141b"] {
+        let execution = execute_output_case(case_name, None);
+        assert_eq!(execution.method.as_deref(), Some("xhtml"), "{case_name}");
+        assert!(execution.actual.contains(unescaped), "{case_name}");
+        assert!(execution.actual.contains(escaped), "{case_name}");
+        assert!(
+            !execution.actual.contains("a%CC%8Arsrapport"),
+            "{case_name}"
+        );
+    }
+}
+
+#[test]
 fn preserves_html_ins_and_del_content_whitespace_without_indent() {
     let execution = execute_output_case("output-0160", None);
     assert_eq!(execution.method.as_deref(), Some("html"));
