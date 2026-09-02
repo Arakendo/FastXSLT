@@ -1349,6 +1349,22 @@ fn executes_static_ranges_with_expanded_name_indentation_suppression() {
 }
 
 #[test]
+fn executes_principal_result_with_an_unused_named_output_declaration() {
+    let execution = execute_output_case("output-0134", None);
+    assert_eq!(execution.method.as_deref(), Some("xhtml"));
+    assert!(
+        execution
+            .actual
+            .contains("<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><br />")
+    );
+    assert!(
+        execution
+            .actual
+            .contains("<Option selected=\"selected\"></Option></body></html>")
+    );
+}
+
+#[test]
 fn preserves_html_ins_and_del_content_whitespace_without_indent() {
     let execution = execute_output_case("output-0160", None);
     assert_eq!(execution.method.as_deref(), Some("html"));

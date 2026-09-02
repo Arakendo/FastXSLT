@@ -108,6 +108,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     validate_same_precedence_mode_declaration_conflicts(document, &top_level_children)?;
 
     let mut output = None;
+    let mut named_output_names = Vec::new();
     let mut source_whitespace = SourceWhitespacePolicy::Preserve;
     let mut modes = CompiledModes::default();
     let mut root_template = None;
@@ -124,10 +125,28 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         match (name.namespace.as_deref(), name.local.as_str()) {
             (Some(XSLT_NAMESPACE), "output") => {
                 let declaration = compile_output(document, child, &declared_version)?;
-                output = Some(match output {
-                    Some(existing) => merge_output(existing, declaration)?,
-                    None => declaration,
-                });
+                if let Some(name) = &declaration.name {
+                    if named_output_names.contains(name) {
+                        return Err(unsupported(
+                            "FXST1055",
+                            "merging duplicate named output declarations is outside the private slice",
+                            document.location(child),
+                        ));
+                    }
+                    if !declaration.character_map_names.is_empty() {
+                        return Err(unsupported(
+                            "FXST1056",
+                            "character maps on unused named output declarations are outside the private slice",
+                            document.location(child),
+                        ));
+                    }
+                    named_output_names.push(name.clone());
+                } else {
+                    output = Some(match output {
+                        Some(existing) => merge_output(existing, declaration)?,
+                        None => declaration,
+                    });
+                }
             }
             (Some(XSLT_NAMESPACE), "template") => {
                 compile_top_level_template(
@@ -1466,6 +1485,18 @@ mod tests {
             .expect_err("repeated scalar properties remain outside bounded merging");
         assert_eq!(failure.code, "FXST1018");
         assert_eq!(failure.category, CompileCategory::Unsupported);
+    }
+
+    #[test]
+    fn unused_named_output_does_not_change_principal_output_settings() {
+        let stylesheet = parse_stylesheet(
+            "memory:named-output.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output name="secondary" method="text"/><xsl:output method="xhtml" indent="no"/><xsl:template match="/"><html xmlns="http://www.w3.org/1999/xhtml"/></xsl:template></xsl:stylesheet>"#,
+        );
+        let program =
+            compile_stylesheet(&stylesheet).expect("unused named output should remain separate");
+        assert_eq!(program.output.method.as_deref(), Some("xhtml"));
+        assert_eq!(program.output.indent, Some(false));
     }
 
     #[test]

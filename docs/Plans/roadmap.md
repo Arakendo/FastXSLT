@@ -1216,6 +1216,15 @@ one level below the match. The output denominator advances to 192 passes, one
 profile exclusion, and 39 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-static-range-suppress-indentation-2026-09-02.md)
 
+The unchanged `output-0134` case now validates its unused named text output
+declaration independently of the unnamed principal XHTML declaration. The
+implicit final result consequently uses the principal format and satisfies both
+native serialization patterns. This does not admit a named-format table,
+duplicate named-declaration merging, named character-map resolution, or
+`xsl:result-document`. The output denominator advances to 193 passes, one
+profile exclusion, and 38 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-unused-named-declaration-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1257,8 +1266,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 192 | 0 | 1 | 39 |
-| **Conserved total** | **531** | **390** | **3** | **51** | **87** |
+| `decl/output` | 232 | 193 | 0 | 1 | 38 |
+| **Conserved total** | **531** | **391** | **3** | **51** | **86** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

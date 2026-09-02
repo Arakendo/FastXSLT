@@ -407,6 +407,11 @@ The XML-compatible lane also retains canonical standalone `yes`, `no`, and
 `omit` emits none. An explicit serialization version is retained separately
 from the stylesheet language version; the current bounded lane admits and emits
 only XML `1.0`. XHTML-only content-type metadata remains inert for XML output.
+An unused, uniquely named output declaration may be validated separately from
+the unnamed principal declaration and has no effect on implicit final-result
+serialization. Duplicate named-declaration merging, named character-map
+resolution, a retained named-format table, and `xsl:result-document` remain
+outside the private compiled slice.
 An explicit XML, XHTML, or HTML output declaration may carry a valid
 `escape-uri-attributes` boolean, which the compiled output settings retain.
 The property has no effect on XML output. The bounded XHTML and HTML lanes

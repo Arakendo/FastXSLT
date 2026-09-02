@@ -183,6 +183,12 @@ execution = "passed"
 rationale = "Executes the upstream any-of through its exact file-backed XHTML alternative, preserving two top-level result elements, intervening text, and namespace fixup after the explicit checkout-EOL correction."
 
 [[case_override]]
+case_name = "output-0134"
+selection = "selected"
+execution = "passed"
+rationale = "Validates one unused named text output declaration without merging it into the unnamed principal XHTML output, then verifies both native serialization patterns."
+
+[[case_override]]
 case_name = "output-0136"
 selection = "selected"
 execution = "passed"

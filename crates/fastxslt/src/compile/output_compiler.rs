@@ -12,6 +12,7 @@ use super::{
 };
 
 const OUTPUT_ATTRIBUTES: &[&str] = &[
+    "name",
     "method",
     "version",
     "encoding",
@@ -56,6 +57,7 @@ pub(in crate::compile) fn default_output_settings() -> OutputSettings {
 }
 
 pub(super) struct OutputDeclaration {
+    pub(super) name: Option<ExpandedName>,
     pub(super) settings: OutputSettings,
     pub(super) character_map_names: Vec<ExpandedName>,
     pub(super) specified: BTreeSet<String>,
@@ -69,6 +71,9 @@ pub(super) fn compile_output(
 ) -> Result<OutputDeclaration, CompileFailure> {
     ensure_output_attributes(document, element)?;
     ensure_no_meaningful_children(document, element, "xsl:output")?;
+    let name = optional_attribute(document, element, None, "name")
+        .map(|value| compile_expanded_qname(document, element, value, "xsl:output name"))
+        .transpose()?;
     let html_version = compile_html_version(document, element)?;
     let method = optional_attribute(document, element, None, "method").map(str::trim);
     if method.is_some_and(|method| !matches!(method, "xml" | "text" | "xhtml" | "html")) {
@@ -153,19 +158,24 @@ pub(super) fn compile_output(
         omit_xml_declaration,
         indent,
     };
-    let specified = document
-        .attributes(element)
-        .iter()
-        .filter_map(|attribute| document.name(*attribute))
-        .filter(|name| name.namespace.is_none())
-        .map(|name| name.local.clone())
-        .collect();
+    let specified = compile_specified_properties(document, element);
     Ok(OutputDeclaration {
+        name,
         settings,
         character_map_names,
         specified,
         location: document.location(element).clone(),
     })
+}
+
+fn compile_specified_properties(document: &Document, element: NodeId) -> BTreeSet<String> {
+    document
+        .attributes(element)
+        .iter()
+        .filter_map(|attribute| document.name(*attribute))
+        .filter(|name| name.namespace.is_none() && name.local != "name")
+        .map(|name| name.local.clone())
+        .collect()
 }
 
 fn compile_html_version(
@@ -299,6 +309,7 @@ pub(super) fn merge_output(
     mut existing: OutputDeclaration,
     next: OutputDeclaration,
 ) -> Result<OutputDeclaration, CompileFailure> {
+    debug_assert!(existing.name.is_none() && next.name.is_none());
     let overlaps = existing
         .specified
         .intersection(&next.specified)
