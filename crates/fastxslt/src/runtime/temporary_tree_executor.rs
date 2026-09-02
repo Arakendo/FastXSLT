@@ -28,7 +28,6 @@ pub(super) fn apply_temporary_template(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     charge_xslt_instruction(control, inputs.request_id)?;
-    let temporary = &tree.nodes[node];
     let template = select_temporary_template(inputs, tree, node, mode, control)?;
     if let Some((template_index, template)) = template {
         let variables = bind_template_parameters(
@@ -50,37 +49,13 @@ pub(super) fn apply_temporary_template(
             control,
         );
     }
-    if inputs.program.mode_on_no_match.iter().any(|policy| {
-        policy.name.as_deref() == mode && policy.policy == OnNoMatchPolicy::ShallowSkip
-    }) {
-        return apply_temporary_builtin(
-            inputs,
-            TemporaryFocus::Node(tree, node),
-            mode,
-            parameters,
-            control,
-        );
-    }
-    if let TemporaryNodeKind::Text(value) = &temporary.kind {
-        return copy_temporary_text(value, inputs.request_id, control);
-    }
-    let mut result = Vec::new();
-    let child_count = temporary.children.len();
-    for (offset, child) in temporary.children.iter().enumerate() {
-        result.extend(apply_temporary_template(
-            inputs,
-            tree,
-            *child,
-            mode,
-            parameters,
-            SequenceFocus {
-                position: offset + 1,
-                size: child_count,
-            },
-            control,
-        )?);
-    }
-    Ok(result)
+    apply_temporary_builtin(
+        inputs,
+        TemporaryFocus::Node(tree, node),
+        mode,
+        parameters,
+        control,
+    )
 }
 
 fn select_temporary_template<'a>(
@@ -332,6 +307,56 @@ pub(super) fn apply_temporary_builtin(
     parameters: &BTreeMap<String, InvocationParameter>,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let policy = inputs
+        .program
+        .mode_on_no_match
+        .iter()
+        .find(|policy| policy.name.as_deref() == mode);
+    if let Some(policy) = policy {
+        match policy.policy {
+            OnNoMatchPolicy::Fail => {
+                return Err(failure_at(
+                    "XTDE0555",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    policy.location.clone(),
+                    "the active mode's on-no-match='fail' policy rejected an unmatched temporary node",
+                ));
+            }
+            OnNoMatchPolicy::ShallowCopy => {
+                return copy_temporary_focus(inputs, focus, mode, parameters, control);
+            }
+            OnNoMatchPolicy::ShallowSkip => {
+                return apply_temporary_children(inputs, focus, mode, parameters, control);
+            }
+            OnNoMatchPolicy::TextOnlyCopy => {}
+        }
+    }
+    match focus {
+        TemporaryFocus::Node(tree, node) => match &tree.nodes[node].kind {
+            TemporaryNodeKind::Text(value) => {
+                copy_temporary_text(value, inputs.request_id, control)
+            }
+            TemporaryNodeKind::Element { .. } => {
+                apply_temporary_children(inputs, focus, mode, parameters, control)
+            }
+            TemporaryNodeKind::Comment(_) | TemporaryNodeKind::ProcessingInstruction { .. } => {
+                Ok(Vec::new())
+            }
+        },
+        TemporaryFocus::Document(_) => {
+            apply_temporary_children(inputs, focus, mode, parameters, control)
+        }
+    }
+}
+
+fn apply_temporary_children(
+    inputs: &SequenceInputs<'_>,
+    focus: TemporaryFocus<'_>,
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let mut result = Vec::new();
     let (tree, children) = match focus {
         TemporaryFocus::Document(tree) => (tree, tree.roots.as_slice()),
@@ -355,6 +380,38 @@ pub(super) fn apply_temporary_builtin(
     Ok(result)
 }
 
+fn copy_temporary_focus(
+    inputs: &SequenceInputs<'_>,
+    focus: TemporaryFocus<'_>,
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let TemporaryFocus::Node(tree, node) = focus else {
+        return apply_temporary_children(inputs, focus, mode, parameters, control);
+    };
+    match &tree.nodes[node].kind {
+        TemporaryNodeKind::Text(value) => copy_temporary_text(value, inputs.request_id, control),
+        TemporaryNodeKind::Comment(value) => {
+            copy_temporary_comment(value, inputs.request_id, control)
+        }
+        TemporaryNodeKind::ProcessingInstruction { target, value } => {
+            copy_temporary_processing_instruction(target, value, inputs.request_id, control)
+        }
+        TemporaryNodeKind::Element { name, namespaces } => {
+            control
+                .charge(WorkDomain::ResultNode, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            Ok(vec![ResultNode::Element {
+                name: name.clone(),
+                namespaces: namespaces.clone(),
+                attributes: Vec::new(),
+                children: apply_temporary_children(inputs, focus, mode, parameters, control)?,
+            }])
+        }
+    }
+}
+
 pub(super) fn execute_temporary_copy(
     inputs: &SequenceInputs<'_>,
     attributes: &[LiteralAttribute],
@@ -372,6 +429,12 @@ pub(super) fn execute_temporary_copy(
     let temporary = &tree.nodes[node];
     match &temporary.kind {
         TemporaryNodeKind::Text(value) => copy_temporary_text(value, inputs.request_id, control),
+        TemporaryNodeKind::Comment(value) => {
+            copy_temporary_comment(value, inputs.request_id, control)
+        }
+        TemporaryNodeKind::ProcessingInstruction { target, value } => {
+            copy_temporary_processing_instruction(target, value, inputs.request_id, control)
+        }
         TemporaryNodeKind::Element { name, namespaces } => {
             control
                 .charge(WorkDomain::ResultNode, 1)
@@ -409,7 +472,12 @@ fn temporary_matches(
             name.local == *local
         }
         (TemporaryNodeKind::Element { .. }, MatchPattern::AnyElement | MatchPattern::AnyNode)
-        | (TemporaryNodeKind::Text(_), MatchPattern::Text | MatchPattern::AnyNode) => true,
+        | (TemporaryNodeKind::Text(_), MatchPattern::Text | MatchPattern::AnyNode)
+        | (TemporaryNodeKind::Comment(_), MatchPattern::Comment | MatchPattern::AnyNode)
+        | (
+            TemporaryNodeKind::ProcessingInstruction { .. },
+            MatchPattern::ProcessingInstruction | MatchPattern::AnyNode,
+        ) => true,
         (_, MatchPattern::QualifiedElementPathAlternatives(alternatives)) => {
             return matches_temporary_path_alternatives(
                 tree,
@@ -470,4 +538,36 @@ fn copy_temporary_text(
         .charge(WorkDomain::ResultTextByte, value.len())
         .map_err(|failure| control_failure(failure, request_id))?;
     Ok(vec![ResultNode::Text(value.to_owned())])
+}
+
+fn copy_temporary_comment(
+    value: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    control
+        .charge(WorkDomain::ResultNode, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    control
+        .charge(WorkDomain::ResultTextByte, value.len())
+        .map_err(|failure| control_failure(failure, request_id))?;
+    Ok(vec![ResultNode::Comment(value.to_owned())])
+}
+
+fn copy_temporary_processing_instruction(
+    target: &str,
+    value: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    control
+        .charge(WorkDomain::ResultNode, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    control
+        .charge(WorkDomain::ResultTextByte, target.len() + value.len())
+        .map_err(|failure| control_failure(failure, request_id))?;
+    Ok(vec![ResultNode::ProcessingInstruction {
+        target: target.to_owned(),
+        value: value.to_owned(),
+    }])
 }

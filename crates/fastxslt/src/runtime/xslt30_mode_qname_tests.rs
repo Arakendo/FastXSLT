@@ -18,7 +18,10 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
-const SELECTED_CASES: [&str; 76] = [
+const SELECTED_CASES: [&str; 79] = [
+    "mode-0001",
+    "mode-0003",
+    "mode-0005",
     "mode-0101",
     "mode-0102",
     "mode-0103",
@@ -214,7 +217,10 @@ fn inventories_the_complete_mode_denominator_before_selection() {
         );
         assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
     }
-    assert_eq!(OVERLAY.matches("selection = \"selected\"").count(), 76);
+    assert_eq!(
+        OVERLAY.matches("selection = \"selected\"").count(),
+        SELECTED_CASES.len()
+    );
     assert_eq!(
         OVERLAY
             .matches("selection = \"excluded-by-profile\"")
@@ -658,6 +664,14 @@ fn executes_all_and_current_modes_across_copied_node_kinds() {
     assert!(actual.contains("<?pi PI ?>"));
 }
 
+#[test]
+fn executes_parentless_temporary_node_on_no_match_policies() {
+    for case_name in ["mode-0001", "mode-0003", "mode-0005"] {
+        let (actual, expected) = execute_case(case_name);
+        assert_xml_equivalent(&actual, &expected);
+    }
+}
+
 fn execute_case(case_name: &str) -> (String, String) {
     let (actual, expected) = execute_case_with_policy(case_name, MultipleMatchPolicy::UseLast)
         .expect("selected mode case should execute");
@@ -676,7 +690,7 @@ fn execute_case_with_policy(
     let document = load_test_set();
     let case = find_case(&document, case_name);
     let environment = case_environment(&document, case);
-    let source = child_named(&document, environment, "source").expect("principal source");
+    let source = environment.and_then(|environment| child_named(&document, environment, "source"));
     let test = child_named(&document, case, "test").expect("test metadata");
     let stylesheet_files = element_children(&document, test)
         .into_iter()
@@ -700,17 +714,19 @@ fn execute_case_with_policy(
 
     let source_id = format!("urn:w3c:xslt30:attr:mode:{case_name}:source");
     let stylesheet_id = format!("https://example.invalid/xslt30/attr/mode/{stylesheet_file}");
-    let source_bytes = child_named(&document, source, "content").map_or_else(
-        || {
-            let file = attribute(&document, source, "file").expect("source content or file");
-            fs::read(directory.join(file)).expect("read source and close handle")
-        },
-        |content| document.string_value(content).into_bytes(),
-    );
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(4, 32_768, 65_536));
-    resources
-        .admit(source_id.clone(), source_bytes)
-        .expect("admit source");
+    if let Some(source) = source {
+        let source_bytes = child_named(&document, source, "content").map_or_else(
+            || {
+                let file = attribute(&document, source, "file").expect("source content or file");
+                fs::read(directory.join(file)).expect("read source and close handle")
+            },
+            |content| document.string_value(content).into_bytes(),
+        );
+        resources
+            .admit(source_id.clone(), source_bytes)
+            .expect("admit source");
+    }
     resources
         .admit(
             stylesheet_id.clone(),
@@ -802,17 +818,28 @@ fn case_dependency<'a>(document: &'a Document, case: NodeId, name: &str) -> Opti
 fn case_entry(
     document: &Document,
     test: NodeId,
-    source: NodeId,
+    source: Option<NodeId>,
     source_id: &str,
 ) -> InvocationEntry {
+    if let Some(name) = child_named(document, test, "initial-template")
+        .and_then(|initial_template| attribute(document, initial_template, "name"))
+    {
+        return InvocationEntry::InitialTemplate {
+            name: normalize_catalog_qname(document, test, name),
+        };
+    }
     child_named(document, test, "initial-mode").map_or_else(
-        || InvocationEntry::PrincipalSource {
-            resource: source_id.to_owned(),
+        || {
+            assert!(source.is_some(), "principal-source entry requires a source");
+            InvocationEntry::PrincipalSource {
+                resource: source_id.to_owned(),
+            }
         },
         |initial_mode| {
             let lexical_name =
                 attribute(document, initial_mode, "name").expect("initial mode name");
             let name = normalize_catalog_qname(document, initial_mode, lexical_name);
+            let source = source.expect("initial-mode entry requires a source");
             match attribute(document, source, "select") {
                 None => InvocationEntry::InitialMode {
                     resource: source_id.to_owned(),
@@ -850,17 +877,19 @@ fn normalize_catalog_qname(document: &Document, node: NodeId, lexical: &str) -> 
     panic!("unbound catalog QName prefix: {prefix}");
 }
 
-fn case_environment(document: &Document, case: NodeId) -> NodeId {
-    let declaration = child_named(document, case, "environment").expect("case environment");
-    attribute(document, declaration, "ref").map_or(declaration, |reference| {
-        element_children(document, document_element(document))
-            .into_iter()
-            .find(|node| {
-                local_name(document, *node) == "environment"
-                    && attribute(document, *node, "name") == Some(reference)
-            })
-            .expect("referenced environment")
-    })
+fn case_environment(document: &Document, case: NodeId) -> Option<NodeId> {
+    let declaration = child_named(document, case, "environment")?;
+    Some(
+        attribute(document, declaration, "ref").map_or(declaration, |reference| {
+            element_children(document, document_element(document))
+                .into_iter()
+                .find(|node| {
+                    local_name(document, *node) == "environment"
+                        && attribute(document, *node, "name") == Some(reference)
+                })
+                .expect("referenced environment")
+        }),
+    )
 }
 
 fn case_parameters(document: &Document, test: NodeId) -> BTreeMap<String, InvocationParameter> {

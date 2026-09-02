@@ -93,6 +93,9 @@ pub(crate) enum GlobalBindingDefault {
     LocationPath(LocationPath),
     Variable(String),
     TemporaryTree(Vec<ConstructedElement>),
+    TemporaryText(String),
+    TemporaryComment(String),
+    TemporaryProcessingInstruction { target: String, value: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

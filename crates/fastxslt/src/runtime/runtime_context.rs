@@ -8,8 +8,8 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    ConstructedElement, ConstructedNode, GlobalBindingDefault, StylesheetProgram, Template,
-    TemplateArgument, TemplateArgumentValue, TemplateParameterDefault,
+    ConstructedElement, ConstructedNode, GlobalBinding, GlobalBindingDefault, StylesheetProgram,
+    Template, TemplateArgument, TemplateArgumentValue, TemplateParameterDefault,
 };
 
 use super::template_selector::DocumentRootedMatchCache;
@@ -54,6 +54,11 @@ pub(super) enum TemporaryNodeKind {
         namespaces: Vec<NamespaceBinding>,
     },
     Text(String),
+    Comment(String),
+    ProcessingInstruction {
+        target: String,
+        value: String,
+    },
 }
 
 #[derive(Debug, Clone, Default)]
@@ -153,59 +158,111 @@ pub(super) fn materialize_global_defaults(
                 ));
             }
         }
-        match &binding.default {
-            GlobalBindingDefault::Text(value) => {
-                Arc::make_mut(&mut globals.atomics)
-                    .insert(binding.name.clone(), AtomicValue::untyped(value.clone()));
-            }
-            GlobalBindingDefault::Integer(value) => {
-                Arc::make_mut(&mut globals.atomics).insert(
-                    binding.name.clone(),
-                    AtomicValue::from_validated_lexical(
-                        crate::xdm::atomic_value_experiment::BuiltinAtomicType::Integer,
-                        value.to_string(),
-                    ),
-                );
-            }
-            GlobalBindingDefault::LocationPath(path) => {
-                let source = source.ok_or_else(|| {
-                    failure(
-                        "FXRT1004",
-                        FailureCategory::Unsupported,
-                        Some(request_id),
-                        "a source-dependent global binding requires a principal source",
-                    )
-                })?;
-                let nodes = evaluate_location_path_controlled(
-                    source,
-                    source.document_node(),
-                    path,
-                    control,
-                )
-                .map_err(|failure| control_failure(failure, request_id))?;
-                globals.nodes.insert(binding.name.clone(), nodes);
-            }
-            GlobalBindingDefault::Variable(name) => {
-                if let Some(value) = globals.atomics.get(name).cloned() {
-                    Arc::make_mut(&mut globals.atomics).insert(binding.name.clone(), value);
-                } else if let Some(nodes) = globals.nodes.get(name).cloned() {
-                    globals.nodes.insert(binding.name.clone(), nodes);
-                } else {
-                    return Err(failure(
-                        "FXRT0002",
-                        FailureCategory::Invalid,
-                        Some(request_id),
-                        format!("unbound global dependency: ${name}"),
-                    ));
-                }
-            }
-            GlobalBindingDefault::TemporaryTree(elements) => {
-                let tree = materialize_temporary_tree(elements, request_id, control)?;
-                globals.temporary_trees.insert(binding.name.clone(), tree);
-            }
-        }
+        materialize_global_default(&mut globals, binding, source, request_id, control)?;
     }
     Ok(globals)
+}
+
+fn materialize_global_default(
+    globals: &mut RuntimeGlobals,
+    binding: &GlobalBinding,
+    source: Option<&Document>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    match &binding.default {
+        GlobalBindingDefault::Text(value) => {
+            Arc::make_mut(&mut globals.atomics)
+                .insert(binding.name.clone(), AtomicValue::untyped(value.clone()));
+        }
+        GlobalBindingDefault::Integer(value) => {
+            Arc::make_mut(&mut globals.atomics).insert(
+                binding.name.clone(),
+                AtomicValue::from_validated_lexical(
+                    crate::xdm::atomic_value_experiment::BuiltinAtomicType::Integer,
+                    value.to_string(),
+                ),
+            );
+        }
+        GlobalBindingDefault::LocationPath(path) => {
+            let source = source.ok_or_else(|| {
+                failure(
+                    "FXRT1004",
+                    FailureCategory::Unsupported,
+                    Some(request_id),
+                    "a source-dependent global binding requires a principal source",
+                )
+            })?;
+            let nodes =
+                evaluate_location_path_controlled(source, source.document_node(), path, control)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+            globals.nodes.insert(binding.name.clone(), nodes);
+        }
+        GlobalBindingDefault::Variable(name) => {
+            if let Some(value) = globals.atomics.get(name).cloned() {
+                Arc::make_mut(&mut globals.atomics).insert(binding.name.clone(), value);
+            } else if let Some(nodes) = globals.nodes.get(name).cloned() {
+                globals.nodes.insert(binding.name.clone(), nodes);
+            } else {
+                return Err(failure(
+                    "FXRT0002",
+                    FailureCategory::Invalid,
+                    Some(request_id),
+                    format!("unbound global dependency: ${name}"),
+                ));
+            }
+        }
+        GlobalBindingDefault::TemporaryTree(elements) => {
+            let tree = materialize_temporary_tree(elements, request_id, control)?;
+            globals.temporary_trees.insert(binding.name.clone(), tree);
+        }
+        GlobalBindingDefault::TemporaryText(value) => {
+            let tree = materialize_parentless_temporary_node(
+                TemporaryNodeKind::Text(value.clone()),
+                request_id,
+                control,
+            )?;
+            globals.temporary_trees.insert(binding.name.clone(), tree);
+        }
+        GlobalBindingDefault::TemporaryComment(value) => {
+            let tree = materialize_parentless_temporary_node(
+                TemporaryNodeKind::Comment(value.clone()),
+                request_id,
+                control,
+            )?;
+            globals.temporary_trees.insert(binding.name.clone(), tree);
+        }
+        GlobalBindingDefault::TemporaryProcessingInstruction { target, value } => {
+            let tree = materialize_parentless_temporary_node(
+                TemporaryNodeKind::ProcessingInstruction {
+                    target: target.clone(),
+                    value: value.clone(),
+                },
+                request_id,
+                control,
+            )?;
+            globals.temporary_trees.insert(binding.name.clone(), tree);
+        }
+    }
+    Ok(())
+}
+
+fn materialize_parentless_temporary_node(
+    kind: TemporaryNodeKind,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<TemporaryTree, ExecutionFailure> {
+    control
+        .charge(WorkDomain::XdmNode, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    Ok(TemporaryTree {
+        roots: vec![0],
+        nodes: vec![TemporaryNode {
+            kind,
+            parent: None,
+            children: Vec::new(),
+        }],
+    })
 }
 
 pub(super) fn materialize_temporary_tree(

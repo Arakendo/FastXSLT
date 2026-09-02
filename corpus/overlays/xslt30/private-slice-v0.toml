@@ -1420,3 +1420,23 @@ case_name = "mode-1421"
 selection = "selected"
 execution = "passed"
 rationale = "Named shallow-copy mode s preserves the source structure while its v rule applies shallow-skip mode t, producing empty copied v elements and the complete unchanged native XML result."
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0001"
+selection = "selected"
+execution = "passed"
+rationale = "A source-free initial-template invocation applies the three native on-no-match policies to an immutable parentless temporary comment node and matches the unchanged suite result."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0003"
+selection = "selected"
+execution = "passed"
+rationale = "A source-free initial-template invocation applies the three native on-no-match policies to an immutable parentless temporary processing-instruction node and matches the unchanged suite result."
+
+[[case]]
+set_file = "tests/attr/mode/_mode-test-set.xml"
+case_name = "mode-0005"
+selection = "selected"
+execution = "passed"
+rationale = "A source-free initial-template invocation applies the three native on-no-match policies to an immutable parentless temporary text node and matches the unchanged suite result."

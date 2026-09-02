@@ -3,9 +3,9 @@ use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::path_experiment::{PathFailure, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
     CharacterMapDefinition, ConstructedElement, ConstructedNode, GlobalBinding,
-    GlobalBindingDefault, GlobalBindingKind, MatchPattern, MatchedTemplate, NamedTemplate,
-    STANDARD_INITIAL_TEMPLATE_NAME, SourceWhitespacePolicy, StylesheetProgram, Template,
-    TemplateParameter, TemplateParameterDefault, TemplatePriority,
+    GlobalBindingDefault, GlobalBindingKind, Instruction, MatchPattern, MatchedTemplate,
+    NamedTemplate, STANDARD_INITIAL_TEMPLATE_NAME, SourceWhitespacePolicy, StylesheetProgram,
+    Template, TemplateParameter, TemplateParameterDefault, TemplatePriority,
 };
 
 #[path = "instruction_compiler.rs"]
@@ -34,7 +34,8 @@ use stylesheet_validation::validate_named_template_references;
 use template_pattern_compiler::compile_match_pattern;
 
 use instruction_compiler::{
-    compile_sequence_excluding, literal_result_namespaces, parse_template_modes,
+    compile_comment, compile_processing_instruction, compile_sequence_excluding, compile_text,
+    literal_result_namespaces, parse_template_modes,
 };
 use mode_declaration_compiler::{
     validate_mode_declaration as validate_mode, validate_same_precedence_mode_declaration_conflicts,
@@ -591,7 +592,7 @@ fn compile_global_binding(
         GlobalBindingKind::Parameter => "xsl:param",
     };
     let allowed_attributes = match kind {
-        GlobalBindingKind::Variable => &["name", "select"][..],
+        GlobalBindingKind::Variable => &["name", "select", "as"][..],
         GlobalBindingKind::Parameter => &["name", "select", "required"][..],
     };
     ensure_only_attributes(document, element, allowed_attributes, label)?;
@@ -624,7 +625,29 @@ fn compile_global_binding(
             document.location(element),
         ));
     }
-    let default = if let Some(select) = optional_attribute(document, element, None, "select") {
+    let default = compile_global_default(document, element, label)?;
+    Ok(GlobalBinding {
+        kind,
+        name: name.to_owned(),
+        required,
+        default,
+    })
+}
+
+fn compile_global_default(
+    document: &Document,
+    element: NodeId,
+    label: &str,
+) -> Result<GlobalBindingDefault, CompileFailure> {
+    let declared_type = optional_attribute(document, element, None, "as");
+    if let Some(select) = optional_attribute(document, element, None, "select") {
+        if declared_type.is_some() {
+            return Err(unsupported(
+                "FXST1016",
+                "typed select-based global variables are outside the private slice",
+                document.location(element),
+            ));
+        }
         ensure_no_meaningful_children(document, element, label)?;
         if let Some(variable) = select.strip_prefix('$') {
             if !is_ascii_ncname(variable) {
@@ -634,35 +657,90 @@ fn compile_global_binding(
                     document.location(element),
                 ));
             }
-            GlobalBindingDefault::Variable(variable.to_owned())
+            Ok(GlobalBindingDefault::Variable(variable.to_owned()))
         } else if let Some(value) = select
             .strip_prefix('\'')
             .and_then(|value| value.strip_suffix('\''))
         {
-            GlobalBindingDefault::Text(value.to_owned())
+            Ok(GlobalBindingDefault::Text(value.to_owned()))
         } else if let Ok(value) = select.parse::<i64>() {
-            GlobalBindingDefault::Integer(value)
+            Ok(GlobalBindingDefault::Integer(value))
         } else {
-            GlobalBindingDefault::LocationPath(
+            Ok(GlobalBindingDefault::LocationPath(
                 parse_location_path(select, document.location(element).clone())
                     .map_err(map_path_failure)?,
-            )
+            ))
         }
     } else if document
         .children(element)
         .iter()
         .any(|node| document.kind(*node) == NodeKind::Element)
     {
-        GlobalBindingDefault::TemporaryTree(compile_constructed_elements(document, element)?)
+        if let Some(temporary) =
+            compile_parentless_temporary_node(document, element, declared_type)?
+        {
+            Ok(temporary)
+        } else {
+            if declared_type.is_some() {
+                return Err(unsupported(
+                    "FXST1016",
+                    "the private typed global-variable slice requires one static parentless node constructor",
+                    document.location(element),
+                ));
+            }
+            Ok(GlobalBindingDefault::TemporaryTree(
+                compile_constructed_elements(document, element)?,
+            ))
+        }
     } else {
-        GlobalBindingDefault::Text(document.string_value(element))
+        if declared_type.is_some() {
+            return Err(unsupported(
+                "FXST1016",
+                "typed text global variables are outside the private slice",
+                document.location(element),
+            ));
+        }
+        Ok(GlobalBindingDefault::Text(document.string_value(element)))
+    }
+}
+
+fn compile_parentless_temporary_node(
+    document: &Document,
+    element: NodeId,
+    declared_type: Option<&str>,
+) -> Result<Option<GlobalBindingDefault>, CompileFailure> {
+    let children = meaningful_children(document, element);
+    let [constructor] = children.as_slice() else {
+        return Ok(None);
     };
-    Ok(GlobalBinding {
-        kind,
-        name: name.to_owned(),
-        required,
-        default,
-    })
+    let (expected_type, instruction) = if is_xslt_element(document, *constructor, "text") {
+        ("text()", compile_text(document, *constructor)?)
+    } else if is_xslt_element(document, *constructor, "comment") {
+        ("comment()", compile_comment(document, *constructor)?)
+    } else if is_xslt_element(document, *constructor, "processing-instruction") {
+        (
+            "processing-instruction()",
+            compile_processing_instruction(document, *constructor)?,
+        )
+    } else {
+        return Ok(None);
+    };
+    if declared_type != Some(expected_type) {
+        return Err(unsupported(
+            "FXST1016",
+            format!("the private parentless-node global slice requires as='{expected_type}'"),
+            document.location(element),
+        ));
+    }
+    let default = match instruction {
+        Instruction::Text { value, .. } => GlobalBindingDefault::TemporaryText(value),
+        Instruction::CommentNode { value, .. } => GlobalBindingDefault::TemporaryComment(value),
+        Instruction::ProcessingInstructionNode { target, value, .. } => {
+            GlobalBindingDefault::TemporaryProcessingInstruction { target, value }
+        }
+        _ => unreachable!("the selected static constructor has one known instruction shape"),
+    };
+    Ok(Some(default))
 }
 
 fn compile_constructed_elements(

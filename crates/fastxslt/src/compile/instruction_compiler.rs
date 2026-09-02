@@ -346,7 +346,10 @@ fn ensure_literal_result_control_attributes(
     Ok(())
 }
 
-fn compile_text(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
+pub(super) fn compile_text(
+    document: &Document,
+    element: NodeId,
+) -> Result<Instruction, CompileFailure> {
     ensure_only_attributes(document, element, &[], "xsl:text")?;
     let mut value = String::new();
     for child in document.children(element).iter().copied() {
@@ -368,7 +371,7 @@ fn compile_text(document: &Document, element: NodeId) -> Result<Instruction, Com
     })
 }
 
-fn compile_processing_instruction(
+pub(super) fn compile_processing_instruction(
     document: &Document,
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
@@ -416,7 +419,10 @@ fn compile_processing_instruction(
     })
 }
 
-fn compile_comment(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
+pub(super) fn compile_comment(
+    document: &Document,
+    element: NodeId,
+) -> Result<Instruction, CompileFailure> {
     ensure_only_attributes(document, element, &["select"], "xsl:comment")?;
     let value = if let Some(select) = optional_attribute(document, element, None, "select") {
         ensure_no_meaningful_children(document, element, "xsl:comment")?;

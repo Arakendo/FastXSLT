@@ -1255,6 +1255,14 @@ private one-way `byte_encoding` module, returning the semantic serializer to
 exclusion, and 33 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-utf16-byte-lane-2026-09-02.md)
 
+The unchanged source-free `mode-0001`, `mode-0003`, and `mode-0005` cases now
+enter their catalog-named initial template without a manufactured source,
+materialize one typed parentless comment, processing-instruction, or text node,
+and apply native shallow-copy, shallow-skip, and text-only-copy policies. The
+mode denominator advances to 79 passes, 45 profile exclusions, and 45 visible
+default not-run cases.
+[Evidence](../Evidence/xslt30-mode-parentless-comment-pi-text-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1294,10 +1302,10 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/deep-equal` | 2 | 2 | 0 | 0 | 0 |
 | `misc/initial-mode` | 5 | 5 | 0 | 0 | 0 |
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
-| `attr/mode` | 169 | 76 | 0 | 45 | 48 |
+| `attr/mode` | 169 | 79 | 0 | 45 | 45 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
 | `decl/output` | 232 | 198 | 0 | 1 | 33 |
-| **Conserved total** | **531** | **396** | **3** | **51** | **81** |
+| **Conserved total** | **531** | **399** | **3** | **51** | **78** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1351,10 +1359,14 @@ count:
    `apply-templates` case is schema-aware and the two remaining `include` cases
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
-2. [ ] Continue coherent semantic slices through the 60 visible `output`
-   gaps and 48 visible `mode` gaps. Each promotion still requires native
-   metadata validation, a focused control, and an owned comparator or exact
-   diagnostic—not merely successful stylesheet execution.
+2. [ ] Continue coherent semantic slices through the 33 visible `output`
+   gaps and 45 visible `mode` gaps. The output remainder is now an explicit
+   feature frontier: 10 cases require secondary-result ownership, 22 require
+   XDM 3.1 maps/arrays plus JSON, adaptive, or serialization-parameter
+   semantics, and one depends on a host-supplied default HTML version. Each
+   promotion still requires native metadata validation, a focused control, and
+   an owned comparator or exact diagnostic—not merely successful stylesheet
+   execution.
 3. [ ] Give `AxisStep.xml` and `fn/deep-equal.xml` complete QT3 overlays so all
    612 parent-set cases receive a selection disposition. Only after that should
    aggregate QT3 progress be described as a conserved denominator.

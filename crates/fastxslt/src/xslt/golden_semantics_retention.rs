@@ -122,6 +122,11 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
             GlobalBindingDefault::TemporaryTree(elements) => {
                 vec_owned(elements, constructed_element_owned)
             }
+            GlobalBindingDefault::TemporaryText(value)
+            | GlobalBindingDefault::TemporaryComment(value) => value.capacity(),
+            GlobalBindingDefault::TemporaryProcessingInstruction { target, value } => {
+                target.capacity() + value.capacity()
+            }
         }
 }
 

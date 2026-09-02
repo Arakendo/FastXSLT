@@ -179,6 +179,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 `include-0702` Positive Conflict-Policy Variants](xslt30-include-0702-positive-conflict-policy-variants-2026-08-29.md)
 - [XSLT30 `include-0702b` Multiple-Match Error](xslt30-include-0702b-multiple-match-error-2026-08-29.md)
 - [XSLT30 Mode Denominator and QName Identity](xslt30-mode-denominator-and-qname-identity-2026-08-29.md)
+- [XSLT30 Parentless Comment, PI, and Text Mode Policies](xslt30-mode-parentless-comment-pi-text-2026-09-02.md)
 - [XSLT30 Basic Mode Dispatch Tranche](xslt30-basic-mode-dispatch-tranche-2026-08-30.md)
 - [XSLT30 Initial and All-Mode Tranche](xslt30-initial-and-all-mode-tranche-2026-08-30.md)
 - [XSLT30 Mode Multiple-Match Policy Tranche](xslt30-mode-multiple-match-policy-tranche-2026-08-30.md)

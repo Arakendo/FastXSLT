@@ -9,6 +9,24 @@ execution = "not-run"
 rationale = "Unless overridden below, the mode case has not been admitted through the private metadata-driven execution slice. Missing mode, package, streaming, schema, typing, temporary-tree, and assertion semantics remain visible rather than being guessed as engine failures."
 
 [[case_override]]
+case_name = "mode-0001"
+selection = "selected"
+execution = "passed"
+rationale = "The initial-template entry applies shallow-copy, shallow-skip, and text-only-copy built-in policies to one parentless temporary comment node and matches the unchanged XML assertion."
+
+[[case_override]]
+case_name = "mode-0003"
+selection = "selected"
+execution = "passed"
+rationale = "The initial-template entry applies shallow-copy, shallow-skip, and text-only-copy built-in policies to one parentless temporary processing-instruction node and matches the unchanged XML assertion."
+
+[[case_override]]
+case_name = "mode-0005"
+selection = "selected"
+execution = "passed"
+rationale = "The initial-template entry applies shallow-copy, shallow-skip, and text-only-copy built-in policies to one parentless temporary text node and matches the unchanged XML assertion."
+
+[[case_override]]
 case_name = "mode-0101"
 selection = "selected"
 execution = "passed"
