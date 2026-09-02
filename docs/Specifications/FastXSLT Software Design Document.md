@@ -445,6 +445,10 @@ For XHTML output, `include-content-type` defaults to enabled. An XHTML `head`
 receives one serializer-owned empty `meta` whose content combines the explicit
 media type or `text/html` default with UTF-8; an existing Content-Type meta is
 replaced for serialization rather than mutating the semantic result tree.
+The bounded HTML lane applies the same enabled-by-default policy to its exact
+text-only `HTML/HEAD/BODY` corpus shape, but emits the injected `meta` using
+HTML void-element syntax rather than XHTML empty-element syntax. Explicit false
+lexicals suppress injection without altering the semantic result tree.
 Disabling the property retains authored metadata. This does not extend the
 private lane to general HTML serialization. XHTML `script` and `style` text
 continues to use XML escaping; the raw-text conventions of the HTML method are

@@ -12,7 +12,7 @@ struct SerializationOptions<'a> {
     cdata_section_elements: &'a [crate::xml::quick_xml_experiment::ExpandedName],
     character_map: &'a [(char, String)],
     xhtml_mode: XhtmlMode,
-    xhtml_media_type: Option<&'a str>,
+    content_type_media_type: Option<&'a str>,
     html_mode: HtmlMode,
     escape_uri_attributes: bool,
     xml_empty_element_tag: bool,
@@ -108,7 +108,7 @@ pub(in crate::runtime) fn serialize_xml(
         }
         output.push_str("?>")?;
     }
-    let xhtml_media_type = (xhtml && settings.include_content_type != Some(false))
+    let content_type_media_type = ((xhtml || html) && settings.include_content_type != Some(false))
         .then(|| settings.media_type.as_deref().unwrap_or("text/html"));
     let xhtml_mode = if settings.html_version.as_deref() == Some("5") && (xhtml || html) {
         XhtmlMode::DefaultNamespace
@@ -121,7 +121,7 @@ pub(in crate::runtime) fn serialize_xml(
         cdata_section_elements: &settings.cdata_section_elements,
         character_map: &settings.character_map,
         xhtml_mode,
-        xhtml_media_type,
+        content_type_media_type,
         html_mode: select_html_mode(settings, html),
         escape_uri_attributes: (xhtml || html) && settings.escape_uri_attributes.unwrap_or(true),
         xml_empty_element_tag: settings.doctype_system.is_some() && !xhtml && !html,
@@ -175,6 +175,9 @@ fn validate_bounded_html_character_map_result(
     {
         return Ok(());
     }
+    if is_bounded_html_content_type_document(&result.children) {
+        return Ok(());
+    }
     let significant: Vec<_> = result
         .children
         .iter()
@@ -189,6 +192,45 @@ fn validate_bounded_html_character_map_result(
         return Err(unsupported_html_result(request_id));
     }
     Ok(())
+}
+
+fn is_bounded_html_content_type_document(nodes: &[ResultNode]) -> bool {
+    let significant: Vec<_> = nodes
+        .iter()
+        .filter(|node| {
+            !matches!(node, ResultNode::Text(value) if value.chars().all(char::is_whitespace))
+        })
+        .collect();
+    let [root] = significant.as_slice() else {
+        return false;
+    };
+    is_bounded_html_content_type_node(root, true)
+}
+
+fn is_bounded_html_content_type_node(node: &ResultNode, root: bool) -> bool {
+    let ResultNode::Element {
+        name,
+        namespaces,
+        attributes,
+        children,
+    } = node
+    else {
+        return matches!(node, ResultNode::Text(_));
+    };
+    name.namespace.is_none()
+        && namespaces.is_empty()
+        && attributes.is_empty()
+        && if root {
+            name.local.eq_ignore_ascii_case("html") && children.iter().all(|child| {
+                matches!(child, ResultNode::Text(value) if value.chars().all(char::is_whitespace))
+                    || is_bounded_html_content_type_node(child, false)
+            })
+        } else {
+            matches!(name.local.to_ascii_lowercase().as_str(), "head" | "body")
+                && children
+                    .iter()
+                    .all(|child| matches!(child, ResultNode::Text(_)))
+        }
 }
 
 fn is_bounded_html5_control_character_document(nodes: &[ResultNode]) -> bool {
@@ -863,8 +905,8 @@ fn serialize_element(
     }
     output.push('>')?;
     let inject_content_type = options
-        .xhtml_media_type
-        .is_some_and(|_| is_xhtml_head(name));
+        .content_type_media_type
+        .is_some_and(|_| is_content_type_head(name, options));
     let indent_children = options.indent
         && (inject_content_type
             || children
@@ -874,12 +916,7 @@ fn serialize_element(
             .iter()
             .filter(|child| !is_replaced_content_type_meta(child, inject_content_type))
             .all(|child| matches!(child, ResultNode::Element { .. }));
-    if let Some(media_type) = options.xhtml_media_type.filter(|_| inject_content_type) {
-        if indent_children {
-            write_indentation(depth + 1, output)?;
-        }
-        serialize_xhtml_content_type_meta(media_type, output)?;
-    }
+    serialize_content_type_if_needed(options, inject_content_type, indent_children, depth, output)?;
     for child in children {
         if is_replaced_content_type_meta(child, inject_content_type) {
             continue;
@@ -901,6 +938,22 @@ fn serialize_element(
     output.push_str("</")?;
     write_name(prefix, &name.local, output)?;
     output.push('>')
+}
+
+fn serialize_content_type_if_needed(
+    options: SerializationOptions<'_>,
+    inject: bool,
+    indent: bool,
+    depth: usize,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    let Some(media_type) = options.content_type_media_type.filter(|_| inject) else {
+        return Ok(());
+    };
+    if indent {
+        write_indentation(depth + 1, output)?;
+    }
+    serialize_content_type_meta(media_type, options.html_mode == HtmlMode::None, output)
 }
 
 fn is_html_void_element(name: &crate::xml::quick_xml_experiment::ExpandedName) -> bool {
@@ -1048,13 +1101,29 @@ fn is_replaced_content_type_meta(node: &ResultNode, replace: bool) -> bool {
         )
 }
 
-fn serialize_xhtml_content_type_meta(
+fn is_content_type_head(
+    name: &crate::xml::quick_xml_experiment::ExpandedName,
+    options: SerializationOptions<'_>,
+) -> bool {
+    if options.html_mode == HtmlMode::None {
+        is_xhtml_head(name)
+    } else {
+        name.namespace.is_none() && name.local.eq_ignore_ascii_case("head")
+    }
+}
+
+fn serialize_content_type_meta(
     media_type: &str,
+    xhtml: bool,
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
     output.push_str("<meta http-equiv=\"Content-Type\" content=\"")?;
     escape_attribute(media_type, output)?;
-    output.push_str("; charset=UTF-8\" />")
+    output.push_str(if xhtml {
+        "; charset=UTF-8\" />"
+    } else {
+        "; charset=UTF-8\">"
+    })
 }
 
 fn write_indentation(depth: usize, output: &mut BudgetedString) -> Result<(), ExecutionFailure> {

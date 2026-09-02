@@ -855,6 +855,48 @@ execution = "not-run"
 rationale = "Requires HTML 4 serialization, which remains outside FastXSLT's selected output profile."
 
 [[case_override]]
+case_name = "output-0123"
+selection = "selected"
+execution = "passed"
+rationale = "Injects the default HTML content-type meta into the bounded uppercase HEAD result using the declared media type."
+
+[[case_override]]
+case_name = "output-0124"
+selection = "selected"
+execution = "passed"
+rationale = "Injects the HTML content-type meta when the XSLT 2.0 yes lexical explicitly enables it."
+
+[[case_override]]
+case_name = "output-0124a"
+selection = "selected"
+execution = "passed"
+rationale = "Injects the HTML content-type meta when the XSLT 3.0 true lexical explicitly enables it."
+
+[[case_override]]
+case_name = "output-0124b"
+selection = "selected"
+execution = "passed"
+rationale = "Injects the HTML content-type meta when the XSLT 3.0 numeric one lexical explicitly enables it."
+
+[[case_override]]
+case_name = "output-0125"
+selection = "selected"
+execution = "passed"
+rationale = "Omits the HTML content-type meta when the XSLT 2.0 no lexical disables it."
+
+[[case_override]]
+case_name = "output-0125a"
+selection = "selected"
+execution = "passed"
+rationale = "Omits the HTML content-type meta when the XSLT 3.0 false lexical disables it."
+
+[[case_override]]
+case_name = "output-0125b"
+selection = "selected"
+execution = "passed"
+rationale = "Omits the HTML content-type meta when the XSLT 3.0 numeric zero lexical disables it."
+
+[[case_override]]
 case_name = "output-0195b"
 selection = "selected"
 execution = "passed"

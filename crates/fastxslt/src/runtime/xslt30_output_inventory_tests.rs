@@ -771,6 +771,25 @@ fn applies_source_free_xhtml_uri_attribute_escaping() {
 }
 
 #[test]
+fn applies_bounded_html_content_type_meta_controls() {
+    for case_name in ["output-0123", "output-0124", "output-0124a", "output-0124b"] {
+        let execution = execute_output_case(case_name, None);
+        assert_eq!(execution.method.as_deref(), Some("html"));
+        assert!(execution.actual.contains(
+            "<meta http-equiv=\"Content-Type\" content=\"application/xhtml-xml; charset=UTF-8\">"
+        ));
+        assert!(!execution.actual.contains("charset=UTF-8\" />"));
+    }
+
+    for case_name in ["output-0125", "output-0125a", "output-0125b"] {
+        let execution = execute_output_case(case_name, None);
+        assert_eq!(execution.method.as_deref(), Some("html"));
+        assert!(!execution.actual.to_ascii_lowercase().contains("http-equiv"));
+        assert!(!execution.actual.contains("charset=UTF-8"));
+    }
+}
+
+#[test]
 fn applies_multiple_character_maps_to_xml_output() {
     let execution = execute_assert_serialization_case("output-0309", "xml");
     assert_eq!(
