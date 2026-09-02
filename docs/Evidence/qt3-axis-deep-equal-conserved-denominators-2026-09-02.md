@@ -14,8 +14,8 @@ selected XPath pass despite its upstream `XQ10+` metadata.
 | QT3 test set | Total | Selected and passed | Profile excluded | Visible default not run |
 | --- | ---: | ---: | ---: | ---: |
 | `prod/AxisStep.xml` | 349 | 224 | 112 | 13 |
-| `fn/deep-equal.xml` | 263 | 183 | 67 | 13 |
-| **Conserved total** | **612** | **407** | **179** | **26** |
+| `fn/deep-equal.xml` | 263 | 184 | 67 | 12 |
+| **Conserved total** | **612** | **408** | **179** | **25** |
 
 ## Mechanical conservation
 
@@ -27,10 +27,10 @@ other than `harness-unsupported/not-run`. It also validates nonempty dependency
 rules and requires them to produce only `profile-excluded/not-run` outcomes.
 
 The verifier parses each immutable upstream test set, checks the exact 349 and
-263 unique case names, proves all 407 selected identities exist in the correct
+263 unique case names, proves all 408 selected identities exist in the correct
 parent set, reads native per-case dependency metadata, and proves the remaining
-179 profile exclusions plus 26 visible defaults. The private ledger is also
-checked to contain exactly those 407 cases and no third test-set family.
+179 profile exclusions plus 25 visible defaults. The private ledger is also
+checked to contain exactly those 408 cases and no third test-set family.
 
 The AxisStep and deep-equal execution adapters now ask this typed loader for
 their selected/pass authority. They no longer establish admission by splitting
@@ -38,7 +38,7 @@ TOML text or searching for a case-name substring.
 
 ## Boundary
 
-This change does not convert the 26 defaults into engine failures, assert that
+This change does not convert the 25 defaults into engine failures, assert that
 their semantics are unsupported by FastXSLT, or classify the other 31,209 QT3
 catalog cases. The 179 exclusions describe the current XPath-in-XSLT profile,
 not an inability to implement an individual expression; an individual case can
@@ -49,11 +49,10 @@ the native assertion shape.
 The 13 remaining AxisStep defaults are now exactly `Axes113` through `Axes116`
 and `Axes118` through `Axes126`. They require namespace nodes, the namespace
 axis, namespace-node identity, name/string behavior, parent navigation, and
-predicates over that node kind. The 13 deep-equal defaults are likewise an
+predicates over that node kind. The 12 deep-equal defaults are likewise an
 explicit frontier: three UCA-collation cases, two QT3-private caseblind
-collation cases, seven invocation-clock/timezone cases, and one remaining
-untyped-atomic/duration comparison. None is being promoted by lexical
-special-casing merely to erase the visible defaults.
+collation cases, and seven invocation-clock/timezone cases. None is being
+promoted by lexical special-casing merely to erase the visible defaults.
 
 The selected total includes 22 static AxisStep syntax-error cases whose
 native `XPST0003` assertions are executed by the location-path parser.
@@ -86,3 +85,6 @@ bounded static recognition above the node-only location-path parser.
 Five source-free expressions now retain `XPDY0002` when their bounded sequence
 or relative-name grammar requires a dynamic context item that was not supplied.
 [Evidence](qt3-axis-missing-dynamic-context-2026-09-02.md)
+The remaining source-free atomic sibling now preserves untyped-atomic and
+year-month-duration type boundaries and its exact early mismatch charge.
+[Evidence](qt3-deep-equal-untyped-duration-boundary-2026-09-02.md)

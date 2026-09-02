@@ -180,6 +180,7 @@ const STANDARD_COLLATION_ERROR_CASES: [(&str, &str); 2] = [
     ("K-SeqDeepEqualFunc-4", "FOCH0002"),
     ("K-SeqDeepEqualFunc-5", "XPTY0004"),
 ];
+const UNTYPED_DURATION_CASES: [(&str, bool, usize); 1] = [("cbcl-deep-equal-008", false, 3)];
 const ARRAY_LITERAL_CASES: [(&str, bool, usize); 7] = [
     ("fn-deep-equal-arrays-1", true, 3),
     ("fn-deep-equal-arrays-2", true, 7),
@@ -472,6 +473,11 @@ fn executes_qt3_map_numeric_equivalence_tranche() {
 #[test]
 fn executes_qt3_literal_composite_update_tranche() {
     execute_named_boolean_cases(&COMPOSITE_UPDATE_CASES);
+}
+
+#[test]
+fn executes_qt3_untyped_atomic_duration_boundary() {
+    execute_named_boolean_cases(&UNTYPED_DURATION_CASES);
 }
 
 fn execute_named_true_cases(expected_cases: &[(&str, usize)]) {

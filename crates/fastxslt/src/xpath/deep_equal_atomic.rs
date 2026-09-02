@@ -45,6 +45,7 @@ enum AtomicValue {
     Double(u64),
     Boolean(bool),
     String(String),
+    UntypedAtomic(String),
     AnyUri(String),
     QName {
         namespace_uri: String,
@@ -58,6 +59,7 @@ enum AtomicValue {
         time: TimeValue,
     },
     Time(TimeValue),
+    YearMonthDuration(i64),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -239,6 +241,14 @@ fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
     {
         return (!value.contains('"')).then(|| AtomicValue::String(value.to_owned()));
     }
+    if let Some(value) = constructor_lexical(expression, "xs:untypedAtomic") {
+        return Some(AtomicValue::UntypedAtomic(value.to_owned()));
+    }
+    if let Some(value) =
+        constructor_lexical(expression, "xs:yearMonthDuration").and_then(parse_year_month_duration)
+    {
+        return Some(AtomicValue::YearMonthDuration(value));
+    }
     if let Some(value) =
         constructor_lexical(expression, "xs:NCName").filter(|value| is_ascii_ncname(value))
     {
@@ -299,7 +309,34 @@ fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
             .map(f64::to_bits)
             .map(AtomicValue::Double);
     }
+    if expression.contains('.') {
+        return parse_decimal_lexical(expression).map(AtomicValue::Decimal);
+    }
     expression.parse::<i128>().ok().map(AtomicValue::Integer)
+}
+
+fn parse_year_month_duration(lexical: &str) -> Option<i64> {
+    let (negative, value) = lexical
+        .strip_prefix('-')
+        .map_or((false, lexical), |value| (true, value));
+    let value = value.strip_prefix('P')?;
+    let (years, months) = if let Some((years, remainder)) = value.split_once('Y') {
+        let years = years.parse::<i64>().ok()?;
+        let months = if remainder.is_empty() {
+            0
+        } else {
+            remainder.strip_suffix('M')?.parse::<i64>().ok()?
+        };
+        (years, months)
+    } else {
+        (0, value.strip_suffix('M')?.parse::<i64>().ok()?)
+    };
+    let total = years.checked_mul(12)?.checked_add(months)?;
+    if negative {
+        total.checked_neg()
+    } else {
+        Some(total)
+    }
 }
 
 fn parse_qname_constructor(expression: &str) -> Option<(String, String)> {
@@ -596,12 +633,18 @@ fn atomic_values_equal_with_collation(
             AtomicCollation::Codepoint => left == right,
             AtomicCollation::HtmlAsciiCaseInsensitive => left.eq_ignore_ascii_case(right),
         },
+        (
+            AtomicValue::UntypedAtomic(left)
+            | AtomicValue::String(left)
+            | AtomicValue::AnyUri(left),
+            AtomicValue::UntypedAtomic(right)
+            | AtomicValue::String(right)
+            | AtomicValue::AnyUri(right),
+        ) => left == right,
         (AtomicValue::Integer(left), AtomicValue::Decimal(right))
         | (AtomicValue::Decimal(right), AtomicValue::Integer(left)) => {
             right.scale == 0 && right.coefficient == *left
         }
-        (AtomicValue::String(left), AtomicValue::AnyUri(right))
-        | (AtomicValue::AnyUri(right), AtomicValue::String(left)) => left == right,
         (AtomicValue::Integer(left), AtomicValue::Float(right))
         | (AtomicValue::Float(right), AtomicValue::Integer(left)) => {
             (*left as f32) == f32::from_bits(*right)
@@ -673,6 +716,29 @@ mod tests {
         assert_eq!(sequences_equal("\"a\"", "xs:NCName(\"a\")"), Some(true));
         assert_eq!(sequences_equal("\"a\"", "xs:NCName(\"b\")"), Some(false));
         assert!(parse_sequence("xs:NCName(\"1bad\")").is_none());
+    }
+
+    #[test]
+    fn preserves_untyped_atomic_and_year_month_duration_type_boundaries() {
+        assert_eq!(
+            sequences_equal("xs:untypedAtomic(\"a\")", "xs:untypedAtomic(\"a\")"),
+            Some(true)
+        );
+        assert_eq!(
+            sequences_equal(
+                "xs:untypedAtomic(\"P1Y\")",
+                "xs:yearMonthDuration(\"P12M\")"
+            ),
+            Some(false)
+        );
+        assert_eq!(
+            sequences_equal(
+                "xs:yearMonthDuration(\"P1Y\")",
+                "xs:yearMonthDuration(\"P12M\")"
+            ),
+            Some(true)
+        );
+        assert!(parse_sequence("xs:yearMonthDuration(\"P\")").is_none());
     }
 
     #[test]

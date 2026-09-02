@@ -2849,3 +2849,10 @@ case_name = "K2-Axes-97"
 selection = "selected"
 execution = "passed"
 rationale = "Selects the native permitted XPST0003 result because an external function declaration is not XPath syntax."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "cbcl-deep-equal-008"
+selection = "selected"
+execution = "passed"
+rationale = "Preserves untyped-atomic versus year-month-duration type boundaries and stops at the second unequal item."

@@ -1283,7 +1283,7 @@ conformance percentage or a promise about unselected cases.
 | Family | Current authority | Current state |
 | --- | --- | --- |
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
-| QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 407 explicitly selected cases execute through two suite-specific XPath adapters. |
+| QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 408 explicitly selected cases execute through two suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 11 complete test-set denominators plus one separate AVT pressure case have first-party records. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
@@ -1332,17 +1332,16 @@ expression has been admitted is not hidden by broader upstream metadata:
 | QT3 test set | Native cases | Selected and passed | Profile excluded | Visible default not run |
 | --- | ---: | ---: | ---: | ---: |
 | `prod/AxisStep.xml` | 349 | 224 | 112 | 13 |
-| `fn/deep-equal.xml` | 263 | 183 | 67 | 13 |
-| **Audited subtotal** | **612** | **407** | **179** | **26** |
+| `fn/deep-equal.xml` | 263 | 184 | 67 | 12 |
+| **Audited subtotal** | **612** | **408** | **179** | **25** |
 
-The 612-case subtotal is therefore conserved without relabeling the 26
+The 612-case subtotal is therefore conserved without relabeling the 25
 unclassified siblings as engine failures. The 179 exclusions describe the
 current XPath-in-XSLT profile and remain overridable by explicit case admission.
 AxisStep's 13 remaining defaults are precisely its namespace-node/namespace-axis
-frontier. Deep-equal's 13 remaining defaults require UCA or suite-private
-collations, invocation clock/timezone semantics, or the final
-untyped-atomic/duration comparison. These are named feature boundaries rather
-than an invitation to add case-specific successful answers.
+frontier. Deep-equal's 12 remaining defaults require UCA or suite-private
+collations or invocation clock/timezone semantics. These are named feature
+boundaries rather than an invitation to add case-specific successful answers.
 The other 31,209 QT3 cases remain
 structural catalog inventory only and still lack first-party selection
 dispositions.
@@ -1389,8 +1388,8 @@ count:
    execution.
 3. [x] Give `AxisStep.xml` and `fn/deep-equal.xml` complete QT3 overlays so all
    612 parent-set cases receive a selection disposition. The typed verifier
-   now conserves 407 selected passes, 179 native-dependency profile exclusions,
-   and 26 visible default not-run cases against the immutable upstream case
+   now conserves 408 selected passes, 179 native-dependency profile exclusions,
+   and 25 visible default not-run cases against the immutable upstream case
    identities. Explicit selection takes priority over a dependency rule.
 4. [ ] Add complete denominators deliberately, selected by standards and
    implementation pressure rather than easy-case sampling. The remaining
@@ -1756,6 +1755,10 @@ implemented behavior belongs to a named standards slice.
   private composite oracle. Preserve one-based positions, member sequences,
   input immutability, exact recursive charging, and explicit rejection of
   invalid positions, missing keys, or nonliteral operations.
+- [x] Execute `cbcl-deep-equal-008` by retaining untyped-atomic identity,
+  checked year-month-duration months, and exact literal decimals. Preserve the
+  second-item type mismatch and exact early-exit charge without admitting
+  implicit untyped casts or general duration arithmetic.
 - [x] Execute QT3 `K-SeqDeepEqualFunc-7`, `-12` through `-16`, and `-18`
   through `-20` through a private boolean-composition owner shared by direct
   XPath and stylesheet execution. Preserve exact inner work charges and early
