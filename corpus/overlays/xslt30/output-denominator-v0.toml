@@ -873,6 +873,30 @@ execution = "passed"
 rationale = "Serializes the complete unchanged HTML 5 void-element list without end tags through an attribute-free bounded document shape."
 
 [[case_override]]
+case_name = "output-0102d"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the source-free named template and leaves non-URI XHTML accesskey content unchanged when URI escaping is enabled."
+
+[[case_override]]
+case_name = "output-0102f"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the source-free named template and leaves an unknown non-URI XHTML attribute unchanged when URI escaping is enabled."
+
+[[case_override]]
+case_name = "output-0103d"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the source-free named template and leaves non-URI XHTML accesskey content unchanged when URI escaping is disabled."
+
+[[case_override]]
+case_name = "output-0103f"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the source-free named template and leaves an unknown non-URI XHTML attribute unchanged when URI escaping is disabled."
+
+[[case_override]]
 case_name = "output-0602a"
 selection = "selected"
 execution = "passed"

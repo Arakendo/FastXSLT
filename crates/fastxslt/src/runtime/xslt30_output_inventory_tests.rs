@@ -720,6 +720,21 @@ fn serializes_an_html5_c1_control_as_a_numeric_reference() {
 }
 
 #[test]
+fn executes_source_free_xhtml_non_uri_attribute_controls() {
+    for case_name in [
+        "output-0102d",
+        "output-0102f",
+        "output-0103d",
+        "output-0103f",
+    ] {
+        let execution = execute_output_case(case_name, None);
+        assert_eq!(execution.method.as_deref(), Some("xhtml"));
+        assert!(execution.actual.contains('¡'));
+        assert!(!execution.actual.contains("%C2%A1"));
+    }
+}
+
+#[test]
 fn applies_multiple_character_maps_to_xml_output() {
     let execution = execute_assert_serialization_case("output-0309", "xml");
     assert_eq!(
@@ -1470,27 +1485,31 @@ fn try_execute_output_case(
         .copied()
         .and_then(|node| attribute(&test_set, node, "file"))
         .expect("output stylesheet file");
-    let source = child_named(&test_set, environment, "source").expect("output source");
-    let source_bytes = if let Some(file) = attribute(&test_set, source, "file") {
-        fs::read(directory.join(file)).expect("read source and close handle")
-    } else {
-        let content = child_named(&test_set, source, "content").expect("inline source content");
-        test_set.string_value(content).into_bytes()
-    };
+    let source = child_named(&test_set, environment, "source");
+    let source_bytes = source.map(|source| {
+        if let Some(file) = attribute(&test_set, source, "file") {
+            fs::read(directory.join(file)).expect("read source and close handle")
+        } else {
+            let content = child_named(&test_set, source, "content").expect("inline source content");
+            test_set.string_value(content).into_bytes()
+        }
+    });
     let expected_file =
         assertion_method.map(|method| expected_serialization_file(&test_set, case, method));
 
     let source_id = format!("urn:w3c:xslt30:{case_name}:source");
     let stylesheet_id = format!("urn:w3c:xslt30:{case_name}:stylesheet");
-    let resource_count = stylesheet_nodes.len() + 1;
+    let resource_count = stylesheet_nodes.len() + usize::from(source_bytes.is_some());
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(
         resource_count,
         65_536,
         resource_count * 65_536,
     ));
-    resources
-        .admit(source_id.clone(), source_bytes)
-        .expect("admit output source");
+    if let Some(source_bytes) = source_bytes {
+        resources
+            .admit(source_id.clone(), source_bytes)
+            .expect("admit output source");
+    }
     resources
         .admit(
             stylesheet_id.clone(),
@@ -1521,7 +1540,7 @@ fn try_execute_output_case(
     set.add(TransformRequest {
         identity: case_name.to_owned(),
         result_identity: format!("result:{case_name}"),
-        entry: output_invocation_entry(&test_set, test, source_id),
+        entry: output_invocation_entry(&test_set, test, source.map(|_| source_id)),
         parameters: BTreeMap::new(),
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
@@ -1589,10 +1608,18 @@ fn admit_secondary_stylesheets(
 fn output_invocation_entry(
     test_set: &Document,
     test: NodeId,
-    source_id: String,
+    source_id: Option<String>,
 ) -> InvocationEntry {
+    if let Some(name) = child_named(test_set, test, "initial-template")
+        .and_then(|node| attribute(test_set, node, "name"))
+    {
+        return InvocationEntry::InitialTemplate {
+            name: name.to_owned(),
+        };
+    }
     let initial_mode = child_named(test_set, test, "initial-mode")
         .and_then(|node| attribute(test_set, node, "name"));
+    let source_id = source_id.expect("source-based output entry requires a principal source");
     match initial_mode {
         Some(name) => InvocationEntry::InitialMode {
             resource: source_id,

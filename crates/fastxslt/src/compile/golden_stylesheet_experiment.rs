@@ -1486,7 +1486,7 @@ mod tests {
     }
 
     #[test]
-    fn validates_escape_uri_attributes_only_for_the_inert_xml_slice() {
+    fn validates_escape_uri_attributes_for_explicit_xml_and_xhtml_methods() {
         let xml = parse_stylesheet(
             "memory:xml-escape-uri.xsl",
             br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" escape-uri-attributes="yes"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
@@ -1497,9 +1497,8 @@ mod tests {
             "memory:xhtml-escape-uri.xsl",
             br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xhtml" escape-uri-attributes="yes"/><xsl:template match="/"><o/></xsl:template></xsl:stylesheet>"#,
         );
-        let failure = compile_stylesheet(&xhtml).expect_err("XHTML URI escaping remains open");
-        assert_eq!(failure.code, "FXST1036");
-        assert_eq!(failure.category, CompileCategory::Unsupported);
+        compile_stylesheet(&xhtml)
+            .expect("the property is inert when the bounded result has no URI attributes");
 
         let invalid = parse_stylesheet(
             "memory:invalid-escape-uri.xsl",

@@ -279,10 +279,10 @@ fn compile_bounded_escape_uri_attributes(
         declared_version,
         document.location(element),
     )?;
-    if !matches!(method, Some("xml" | "html")) {
+    if !matches!(method, Some("xml" | "xhtml" | "html")) {
         return Err(unsupported(
             "FXST1036",
-            "escape-uri-attributes is admitted only for explicit XML or attribute-free bounded HTML output",
+            "escape-uri-attributes is admitted only for explicit XML, XHTML, or bounded HTML output",
             document.location(element),
         ));
     }

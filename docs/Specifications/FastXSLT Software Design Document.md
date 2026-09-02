@@ -403,11 +403,11 @@ only XML `1.0`. XHTML-only content-type metadata remains inert for XML output.
 An explicit XML output declaration may also carry a valid
 `escape-uri-attributes` boolean; the current bounded compiler validates and
 then discards it because it has no effect on XML serialization. Explicit HTML
-5 output may carry the property only while every admitted result attribute is
-outside the bounded URI-attribute vocabulary, making it equally inert. The
-property remains unsupported for absent or XHTML output methods, and HTML URI
-attributes remain rejected until the compiled representation owns the
-corresponding escaping semantics.
+5 and XHTML output may carry the property only while every admitted result
+attribute is outside the bounded URI-attribute vocabulary, making it equally
+inert. The property remains unsupported for an absent output method, and HTML
+or XHTML URI attributes remain unadmitted until the compiled representation
+owns the corresponding normalization and escaping semantics.
 Invalid boolean values on admitted `xsl:output` properties are static
 stylesheet errors reported as `XTSE0020`, with the structured invalid category
 and stylesheet source location preserved. XSLT 2.0 accepts only `yes`/`no`;
