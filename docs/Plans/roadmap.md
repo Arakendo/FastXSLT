@@ -1145,6 +1145,14 @@ than teaching the string-result API to represent a BOM. The output denominator
 advances to 175 passes and 56 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-html-utf8-bom-2026-09-01.md)
 
+The unchanged `output-0154` case now exercises the HTML raw-text rule for one
+manually escaped script in an exact `html/head/script/body` hierarchy. Entity
+references are resolved while constructing the semantic text, and the HTML
+serializer emits that script text without XML escaping; XHTML remains on its
+separate XML-compatible path. The output denominator advances to 176 passes and
+55 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-html-script-raw-text-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1186,8 +1194,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 175 | 0 | 1 | 56 |
-| **Conserved total** | **531** | **373** | **3** | **51** | **104** |
+| `decl/output` | 232 | 176 | 0 | 1 | 55 |
+| **Conserved total** | **531** | **374** | **3** | **51** | **103** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

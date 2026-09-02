@@ -1292,6 +1292,15 @@ fn preserves_html_ins_and_del_content_whitespace_without_indent() {
 }
 
 #[test]
+fn emits_manually_escaped_html_script_as_raw_text() {
+    let execution = execute_output_case("output-0154", None);
+    assert_eq!(execution.method.as_deref(), Some("html"));
+    assert!(execution.actual.contains(
+        "<script type=\"text/javascript\">document.write (\"<EM>This will work<\\/EM>\")</script>"
+    ));
+}
+
+#[test]
 fn reports_inconsistent_xml_serialization_parameters_as_sepm0009() {
     for case_name in ["output-0186", "output-0187"] {
         let (test_set, _) = load_test_set();

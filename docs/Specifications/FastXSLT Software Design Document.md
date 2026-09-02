@@ -456,9 +456,10 @@ Disabling the property retains authored metadata. This does not extend the
 private lane to general HTML serialization. A separate bounded HTML lane admits
 only the exact attribute-free `html/head/body/p/del/ins` hierarchy needed to
 verify preservation of significant `del` and `ins` text under `indent="no"`;
-other HTML hierarchies remain unsupported. XHTML `script` and `style` text
-continues to use XML escaping; the raw-text conventions of the HTML method are
-not inferred from element names. Selected XHTML CDATA elements use the same
+other HTML hierarchies remain unsupported. Another exact HTML lane admits one
+`html/head/script/body` result and emits the manually escaped script value as
+raw text; this does not admit arbitrary script/style structures. XHTML `script`
+and `style` text continues to use XML escaping. Selected XHTML CDATA elements use the same
 expanded-name matching and terminator-splitting behavior as XML output, so a
 literal `]]>` becomes adjacent CDATA sections without changing result text.
 DOCTYPE system and public identifiers are retained as compiled output metadata.

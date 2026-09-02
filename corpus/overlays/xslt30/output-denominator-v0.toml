@@ -1064,6 +1064,12 @@ selection = "selected"
 execution = "passed"
 rationale = "Executes UTF-8 HTML byte serialization with byte-order-mark=no and verifies that the bounded html/body result has no leading mark."
 
+[[case_override]]
+case_name = "output-0154"
+selection = "selected"
+execution = "passed"
+rationale = "Emits the manually escaped script content as HTML raw text in the exact bounded html/head/script/body result shape."
+
 [[assertion_family]]
 name = "all-of"
 count = 89

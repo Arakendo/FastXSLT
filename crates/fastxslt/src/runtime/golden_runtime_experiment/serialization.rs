@@ -178,6 +178,9 @@ fn validate_bounded_html_result(
     if is_bounded_html_content_type_document(&result.children) {
         return Ok(());
     }
+    if is_bounded_html_manual_script_document(&result.children) {
+        return Ok(());
+    }
     if is_bounded_html_ins_del_document(&result.children) {
         return Ok(());
     }
@@ -250,6 +253,59 @@ fn is_bounded_html_ins_del_document(nodes: &[ResultNode]) -> bool {
             matches!(node, ResultNode::Text(_))
                 || embedded.iter().any(|child| std::ptr::eq(*child, node))
         })
+}
+
+fn is_bounded_html_manual_script_document(nodes: &[ResultNode]) -> bool {
+    let significant: Vec<_> = nodes
+        .iter()
+        .filter(|node| !is_whitespace_text(node))
+        .collect();
+    let [html] = significant.as_slice() else {
+        return false;
+    };
+    let Some(html_children) = plain_html_children(html, "html") else {
+        return false;
+    };
+    let html_elements: Vec<_> = html_children
+        .iter()
+        .filter(|node| !is_whitespace_text(node))
+        .collect();
+    let [head, body] = html_elements.as_slice() else {
+        return false;
+    };
+    let Some(head_children) = plain_html_children(head, "head") else {
+        return false;
+    };
+    let significant_head: Vec<_> = head_children
+        .iter()
+        .filter(|node| !is_whitespace_text(node))
+        .collect();
+    let [script] = significant_head.as_slice() else {
+        return false;
+    };
+    is_bounded_manual_script(script)
+        && plain_html_children(body, "body")
+            .is_some_and(|children| children.iter().all(is_whitespace_text))
+}
+
+fn is_bounded_manual_script(node: &ResultNode) -> bool {
+    let ResultNode::Element {
+        name,
+        namespaces,
+        attributes,
+        children,
+    } = node
+    else {
+        return false;
+    };
+    name.namespace.is_none()
+        && name.local == "script"
+        && namespaces.is_empty()
+        && matches!(attributes.as_slice(), [attribute]
+            if attribute.name.namespace.is_none()
+                && attribute.name.local == "type"
+                && attribute.value == "text/javascript")
+        && matches!(children.as_slice(), [ResultNode::Text(_)])
 }
 
 fn plain_html_children<'a>(node: &'a ResultNode, local: &str) -> Option<&'a [ResultNode]> {
@@ -1029,16 +1085,15 @@ fn serialize_element(
         if is_replaced_content_type_meta(child, inject_content_type) {
             continue;
         }
-        if indent_children {
-            write_indentation(depth + 1, output)?;
-        }
-        if options.cdata_section_elements.contains(name)
-            && let ResultNode::Text(value) = child
-        {
-            serialize_cdata(value, output)?;
-            continue;
-        }
-        serialize_node(child, &in_scope, options, depth + 1, output)?;
+        serialize_element_child(
+            child,
+            name,
+            &in_scope,
+            options,
+            depth,
+            indent_children,
+            output,
+        )?;
     }
     if indent_children {
         write_indentation(depth, output)?;
@@ -1046,6 +1101,32 @@ fn serialize_element(
     output.push_str("</")?;
     write_name(prefix, &name.local, output)?;
     output.push('>')
+}
+
+fn serialize_element_child(
+    child: &ResultNode,
+    parent_name: &crate::xml::quick_xml_experiment::ExpandedName,
+    in_scope: &[crate::xml::quick_xml_experiment::NamespaceBinding],
+    options: SerializationOptions<'_>,
+    depth: usize,
+    indent: bool,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    if indent {
+        write_indentation(depth + 1, output)?;
+    }
+    if options.cdata_section_elements.contains(parent_name)
+        && let ResultNode::Text(value) = child
+    {
+        return serialize_cdata(value, output);
+    }
+    if options.html_mode != HtmlMode::None
+        && is_html_raw_text_element(parent_name)
+        && let ResultNode::Text(value) = child
+    {
+        return write_character_mapped(value, options.character_map, output);
+    }
+    serialize_node(child, in_scope, options, depth + 1, output)
 }
 
 fn serialize_content_type_if_needed(
@@ -1085,6 +1166,10 @@ fn is_html_void_element(name: &crate::xml::quick_xml_experiment::ExpandedName) -
                 | "track"
                 | "wbr"
         )
+}
+
+fn is_html_raw_text_element(name: &crate::xml::quick_xml_experiment::ExpandedName) -> bool {
+    name.namespace.is_none() && matches!(name.local.as_str(), "script" | "style")
 }
 
 fn is_xhtml5_default_namespace(namespace: Option<&str>) -> bool {
