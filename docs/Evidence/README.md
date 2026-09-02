@@ -189,6 +189,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 Strip-Space Denominator and Exact Strip-All Execution](xslt30-strip-space-denominator-and-strip-all-2026-09-02.md)
 - [XSLT30 Built-In Template Mode Propagation](xslt30-built-in-template-mode-propagation-2026-09-02.md)
 - [XSLT30 Root Context and XDM String Value](xslt30-root-context-and-xdm-string-value-2026-09-02.md)
+- [XSLT30 Apply-Imports Atomic-Focus Denominator](xslt30-apply-imports-atomic-focus-denominator-2026-09-02.md)
 - [XSLT30 Basic Mode Dispatch Tranche](xslt30-basic-mode-dispatch-tranche-2026-08-30.md)
 - [XSLT30 Initial and All-Mode Tranche](xslt30-initial-and-all-mode-tranche-2026-08-30.md)
 - [XSLT30 Mode Multiple-Match Policy Tranche](xslt30-mode-multiple-match-policy-tranche-2026-08-30.md)
