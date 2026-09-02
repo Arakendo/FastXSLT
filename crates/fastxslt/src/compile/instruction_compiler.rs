@@ -568,6 +568,10 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
                     DeepEqualFailureKind::InvalidArity { .. } => {
                         ("FXXP0005", CompileCategory::Invalid)
                     }
+                    DeepEqualFailureKind::InvalidCollation { standard_code }
+                    | DeepEqualFailureKind::InvalidCollationType { standard_code } => {
+                        (standard_code, CompileCategory::Invalid)
+                    }
                     DeepEqualFailureKind::Unsupported => ("FXXP1010", CompileCategory::Unsupported),
                 };
                 CompileFailure {

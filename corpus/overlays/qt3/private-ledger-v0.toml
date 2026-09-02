@@ -2401,3 +2401,17 @@ case_name = "K-SeqDeepEqualFunc-65"
 selection = "selected"
 execution = "passed"
 rationale = "Reports the second string mismatch under the standard HTML ASCII case-insensitive collation with exact early-exit charging."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-4"
+selection = "selected"
+execution = "passed"
+rationale = "Reports an unknown literal collation URI as the permitted standard FOCH0002 error."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-5"
+selection = "selected"
+execution = "passed"
+rationale = "Reports an empty third argument as the permitted standard XPTY0004 type error."

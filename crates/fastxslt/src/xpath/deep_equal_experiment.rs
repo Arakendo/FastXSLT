@@ -82,6 +82,8 @@ pub(crate) struct DeepEqualFailure {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum DeepEqualFailureKind {
     InvalidArity { standard_code: &'static str },
+    InvalidCollation { standard_code: &'static str },
+    InvalidCollationType { standard_code: &'static str },
     Unsupported,
 }
 
@@ -114,6 +116,10 @@ pub(crate) fn parse(
             }
             "\"http://www.w3.org/2005/xpath-functions/collation/html-ascii-case-insensitive\"" => {
                 AtomicCollation::HtmlAsciiCaseInsensitive
+            }
+            "()" => return Err(invalid_collation_type(expression, location)),
+            value if value.starts_with('"') && value.ends_with('"') => {
+                return Err(invalid_collation(expression, location));
             }
             _ => return Err(unsupported(expression, location)),
         };
@@ -205,6 +211,26 @@ fn invalid_arity(expression: &str, location: &SourceLocation) -> DeepEqualFailur
         location: location.clone(),
         kind: DeepEqualFailureKind::InvalidArity {
             standard_code: "XPST0017",
+        },
+    }
+}
+
+fn invalid_collation(expression: &str, location: &SourceLocation) -> DeepEqualFailure {
+    DeepEqualFailure {
+        detail: format!("deep-equal names an unsupported collation: {expression}"),
+        location: location.clone(),
+        kind: DeepEqualFailureKind::InvalidCollation {
+            standard_code: "FOCH0002",
+        },
+    }
+}
+
+fn invalid_collation_type(expression: &str, location: &SourceLocation) -> DeepEqualFailure {
+    DeepEqualFailure {
+        detail: format!("deep-equal requires one collation URI string: {expression}"),
+        location: location.clone(),
+        kind: DeepEqualFailureKind::InvalidCollationType {
+            standard_code: "XPTY0004",
         },
     }
 }
@@ -456,14 +482,26 @@ mod tests {
             assert_eq!(failure.kind, DeepEqualFailureKind::Unsupported);
         }
 
-        for collation in ["\"http://www.example.com/COLLATION/NOT/SUPPORTED\"", "()"] {
-            let failure = parse(
-                &format!("deep-equal(\"same\", \"same\", {collation})"),
-                &location(),
-            )
-            .expect_err("reject unadmitted collation");
-            assert_eq!(failure.kind, DeepEqualFailureKind::Unsupported);
-        }
+        let unknown = parse(
+            "deep-equal(\"same\", \"same\", \"http://www.example.com/COLLATION/NOT/SUPPORTED\")",
+            &location(),
+        )
+        .expect_err("reject an unknown collation URI");
+        assert_eq!(
+            unknown.kind,
+            DeepEqualFailureKind::InvalidCollation {
+                standard_code: "FOCH0002"
+            }
+        );
+
+        let empty = parse("deep-equal(\"same\", \"same\", ())", &location())
+            .expect_err("reject an empty collation operand");
+        assert_eq!(
+            empty.kind,
+            DeepEqualFailureKind::InvalidCollationType {
+                standard_code: "XPTY0004"
+            }
+        );
     }
 
     #[test]

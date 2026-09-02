@@ -2296,7 +2296,7 @@ mod tests {
     }
 
     #[test]
-    fn separates_invalid_deep_equal_arity_from_unsupported_collation_semantics() {
+    fn separates_invalid_deep_equal_arity_and_collation_semantics() {
         let invalid = parse_stylesheet(
             "memory:deep-equal-arity.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="deep-equal()"/></xsl:template></xsl:stylesheet>"#,
@@ -2308,14 +2308,14 @@ mod tests {
         assert_eq!(failure.location.resource, "memory:deep-equal-arity.xsl");
         assert!(!failure.location.span.is_empty());
 
-        let unsupported = parse_stylesheet(
+        let invalid_collation_type = parse_stylesheet(
             "memory:deep-equal-collation.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="deep-equal(1, 1, ())"/></xsl:template></xsl:stylesheet>"#,
         );
-        let failure = compile_stylesheet(&unsupported)
-            .expect_err("unimplemented deep-equal collation semantics should fail");
-        assert_eq!(failure.category, CompileCategory::Unsupported);
-        assert_eq!(failure.code, "FXXP1010");
+        let failure = compile_stylesheet(&invalid_collation_type)
+            .expect_err("invalid deep-equal collation type should fail");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+        assert_eq!(failure.code, "XPTY0004");
         assert_eq!(failure.location.resource, "memory:deep-equal-collation.xsl");
         assert!(!failure.location.span.is_empty());
 

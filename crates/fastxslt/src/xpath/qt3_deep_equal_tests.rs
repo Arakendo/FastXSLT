@@ -176,6 +176,10 @@ const HTML_ASCII_COLLATION_CASES: [(&str, bool, usize); 2] = [
     ("K-SeqDeepEqualFunc-64", true, 3),
     ("K-SeqDeepEqualFunc-65", false, 3),
 ];
+const STANDARD_COLLATION_ERROR_CASES: [(&str, &str); 2] = [
+    ("K-SeqDeepEqualFunc-4", "FOCH0002"),
+    ("K-SeqDeepEqualFunc-5", "XPTY0004"),
+];
 const MIXED_ATOMIC_CASES: [(&str, bool, usize); 31] = [
     ("fn-deep-equal-mix-args-001", false, 2),
     ("fn-deep-equal-mix-args-002", true, 3),
@@ -369,6 +373,43 @@ fn executes_qt3_string_derived_ncname_case() {
 #[test]
 fn executes_qt3_html_ascii_case_insensitive_collation_cases() {
     execute_named_boolean_cases(&HTML_ASCII_COLLATION_CASES);
+}
+
+#[test]
+fn reports_qt3_standard_collation_errors() {
+    let test_set = load_test_set();
+    let cases = descendants_named(&test_set, test_set.document_node(), "test-case");
+
+    for (name, standard_code) in STANDARD_COLLATION_ERROR_CASES {
+        crate::qt3_overlay_test_support::assert_private_case_passed(SET_FILE, name);
+        let case = cases
+            .iter()
+            .copied()
+            .find(|node| attribute(&test_set, *node, "name") == Some(name))
+            .expect("pinned QT3 collation error case");
+        let expression = child_named(&test_set, case, "test")
+            .map(|node| test_set.string_value(node).trim().to_owned())
+            .expect("QT3 expression");
+        let result = child_named(&test_set, case, "result").expect("QT3 result");
+        let error = descendants_named(&test_set, result, "error")
+            .into_iter()
+            .find(|node| attribute(&test_set, *node, "code") == Some(standard_code))
+            .expect("QT3 any-of permits the selected standard error");
+        assert_eq!(attribute(&test_set, error, "code"), Some(standard_code));
+
+        let location = SourceLocation {
+            resource: format!("urn:w3c:qt3:{name}:expression"),
+            span: 0..expression.len(),
+        };
+        let failure = parse(&expression, &location).expect_err("reject invalid collation");
+        assert_eq!(failure.location, location);
+        let actual_code = match failure.kind {
+            DeepEqualFailureKind::InvalidCollation { standard_code }
+            | DeepEqualFailureKind::InvalidCollationType { standard_code } => standard_code,
+            other => panic!("unexpected collation failure: {other:?}"),
+        };
+        assert_eq!(actual_code, standard_code);
+    }
 }
 
 fn execute_named_true_cases(expected_cases: &[(&str, usize)]) {
