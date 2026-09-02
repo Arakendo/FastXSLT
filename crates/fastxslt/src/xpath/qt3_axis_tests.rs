@@ -33,6 +33,16 @@ const ATOMIC_PATH_TYPE_CASES: [(&str, &str, &str); 10] = [
         "XPTY0019",
     ),
 ];
+const MISSING_CONTEXT_CASES: [(&str, &str); 5] = [
+    ("K2-Axes-43", "(1, 5 * /)[1]"),
+    ("K2-Axes-44", "(1, /)[1]"),
+    ("K2-Axes-45", "(/, 1)[2]"),
+    ("K2-Axes-94", "declare"),
+    (
+        "K2-Axes-98",
+        "xquery, version, encoding, default, declare, function, option, collation, schema, import",
+    ),
+];
 
 const QT3_NAMESPACE: &str = "http://www.w3.org/2010/09/qt-fots-catalog";
 const STATIC_SYNTAX_ERROR_CASES: [(&str, &str); 22] = [
@@ -378,7 +388,8 @@ fn executes_qt3_axes001_through_axes084_admitted_location_path_groups() {
         CASES.len()
             + STATIC_SYNTAX_ERROR_CASES.len()
             + EMPTY_SEQUENCE_PATH_CASES.len()
-            + ATOMIC_PATH_TYPE_CASES.len(),
+            + ATOMIC_PATH_TYPE_CASES.len()
+            + MISSING_CONTEXT_CASES.len(),
     );
     let (test_set, set_path) = load_axis_test_set();
     let set_directory = set_path
@@ -545,6 +556,40 @@ fn reports_qt3_statically_known_atomic_path_type_errors() {
         let failure = path_operand_type_experiment::classify(&expression, location.clone())
             .expect("statically known atomic path must report a type error");
         assert_eq!(failure.standard_code, expected_code, "{case_name}");
+        assert_eq!(failure.location, location, "{case_name}");
+        assert!(!failure.detail.is_empty(), "{case_name}");
+    }
+}
+
+#[test]
+fn reports_qt3_missing_dynamic_context_cases() {
+    use super::context_requirement_experiment;
+
+    let (test_set, _) = load_axis_test_set();
+    for (case_name, expected_expression) in MISSING_CONTEXT_CASES {
+        crate::qt3_overlay_test_support::assert_private_case_passed("prod/AxisStep.xml", case_name);
+        let test_case = find_element(
+            &test_set,
+            test_set.document_node(),
+            "test-case",
+            Some(("name", case_name)),
+        )
+        .expect("admitted QT3 missing-context case");
+        let expression = find_element(&test_set, test_case, "test", None)
+            .map(|node| test_set.string_value(node).trim().to_owned())
+            .expect("QT3 missing-context expression");
+        assert_eq!(expression, expected_expression, "{case_name}");
+        assert!(
+            has_error_code(&test_set, test_case, "XPDY0002"),
+            "{case_name} native assertion must permit XPDY0002"
+        );
+        let location = SourceLocation {
+            resource: format!("urn:w3c:qt3:{case_name}:expression"),
+            span: 0..expression.len(),
+        };
+        let failure = context_requirement_experiment::classify(&expression, location.clone())
+            .expect("bounded expression must require the absent context item");
+        assert_eq!(failure.standard_code, "XPDY0002", "{case_name}");
         assert_eq!(failure.location, location, "{case_name}");
         assert!(!failure.detail.is_empty(), "{case_name}");
     }

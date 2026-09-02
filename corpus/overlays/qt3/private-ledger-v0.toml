@@ -2793,3 +2793,38 @@ case_name = "statictypingaxis-6"
 selection = "selected"
 execution = "passed"
 rationale = "Reports XPTY0019 for a descendant-or-self step whose left operand is a parenthesized integer."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-43"
+selection = "selected"
+execution = "passed"
+rationale = "Reports XPDY0002 because evaluation of the filtered sequence reaches a root path without a supplied context item."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-44"
+selection = "selected"
+execution = "passed"
+rationale = "Reports the native permitted XPDY0002 alternative when a sequence member is a root path and no context item is supplied."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-45"
+selection = "selected"
+execution = "passed"
+rationale = "Reports the native permitted XPDY0002 alternative when the first sequence member is a root path without context."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-94"
+selection = "selected"
+execution = "passed"
+rationale = "Treats declare as a legal relative name test and reports XPDY0002 because no dynamic context item is supplied."
+
+[[case]]
+set_file = "prod/AxisStep.xml"
+case_name = "K2-Axes-98"
+selection = "selected"
+execution = "passed"
+rationale = "Treats the reserved words as relative name tests and reports XPDY0002 because their sequence has no context item."
