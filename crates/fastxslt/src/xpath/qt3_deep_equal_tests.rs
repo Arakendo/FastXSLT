@@ -172,6 +172,10 @@ const LITERAL_RANGE_CASES: [(&str, usize); 4] = [
     ("K-SeqDeepEqualFunc-55", 1),
 ];
 const STRING_DERIVED_CASES: [(&str, usize); 1] = [("K2-SeqDeepEqualFunc-35", 2)];
+const HTML_ASCII_COLLATION_CASES: [(&str, bool, usize); 2] = [
+    ("K-SeqDeepEqualFunc-64", true, 3),
+    ("K-SeqDeepEqualFunc-65", false, 3),
+];
 const MIXED_ATOMIC_CASES: [(&str, bool, usize); 31] = [
     ("fn-deep-equal-mix-args-001", false, 2),
     ("fn-deep-equal-mix-args-002", true, 3),
@@ -362,6 +366,11 @@ fn executes_qt3_string_derived_ncname_case() {
     execute_named_true_cases(&STRING_DERIVED_CASES);
 }
 
+#[test]
+fn executes_qt3_html_ascii_case_insensitive_collation_cases() {
+    execute_named_boolean_cases(&HTML_ASCII_COLLATION_CASES);
+}
+
 fn execute_named_true_cases(expected_cases: &[(&str, usize)]) {
     let test_set = load_test_set();
     let cases = descendants_named(&test_set, test_set.document_node(), "test-case");
@@ -402,6 +411,66 @@ fn execute_named_true_cases(expected_cases: &[(&str, usize)]) {
         .expect("parse admitted named deep-equal expression");
         let mut control = InvocationControl::unbounded();
         assert!(evaluate(&parsed, None, &mut control).expect("evaluate named deep-equal case"));
+        assert_eq!(
+            control.consumed(WorkDomain::XPathOperation),
+            expected_operations
+        );
+        assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 0);
+    }
+}
+
+fn execute_named_boolean_cases(expected_cases: &[(&str, bool, usize)]) {
+    let test_set = load_test_set();
+    let cases = descendants_named(&test_set, test_set.document_node(), "test-case");
+    assert_eq!(
+        cases
+            .iter()
+            .filter(|node| {
+                attribute(&test_set, **node, "name").is_some_and(|name| {
+                    expected_cases
+                        .iter()
+                        .any(|(expected, _, _)| *expected == name)
+                })
+            })
+            .count(),
+        expected_cases.len()
+    );
+
+    for (name, expected, expected_operations) in expected_cases.iter().copied() {
+        crate::qt3_overlay_test_support::assert_private_case_passed(SET_FILE, name);
+        let case = cases
+            .iter()
+            .copied()
+            .find(|node| attribute(&test_set, *node, "name") == Some(name))
+            .expect("pinned QT3 boolean deep-equal case");
+        let expression = child_named(&test_set, case, "test")
+            .map(|node| test_set.string_value(node).trim().to_owned())
+            .expect("QT3 expression");
+        let result = child_named(&test_set, case, "result")
+            .and_then(|node| first_element_child(&test_set, node))
+            .expect("QT3 boolean assertion");
+        assert_eq!(
+            local_name(&test_set, result),
+            if expected {
+                "assert-true"
+            } else {
+                "assert-false"
+            }
+        );
+
+        let parsed = parse(
+            &expression,
+            &SourceLocation {
+                resource: format!("urn:w3c:qt3:{name}:expression"),
+                span: 0..expression.len(),
+            },
+        )
+        .expect("parse admitted boolean deep-equal expression");
+        let mut control = InvocationControl::unbounded();
+        assert_eq!(
+            evaluate(&parsed, None, &mut control).expect("evaluate boolean deep-equal case"),
+            expected
+        );
         assert_eq!(
             control.consumed(WorkDomain::XPathOperation),
             expected_operations

@@ -334,7 +334,7 @@ fn assert_complete_denominator(
 
 #[test]
 fn qt3_axis_and_deep_equal_overlays_conserve_their_parent_sets() {
-    assert_eq!(private_ledger().case.len(), 341);
+    assert_eq!(private_ledger().case.len(), 343);
     assert!(private_ledger().case.iter().all(|case| matches!(
         case.set_file.as_str(),
         "prod/AxisStep.xml" | "fn/deep-equal.xml"
@@ -344,7 +344,7 @@ fn qt3_axis_and_deep_equal_overlays_conserve_their_parent_sets() {
         DEEP_EQUAL_DENOMINATOR_SOURCE,
         "fn/deep-equal.xml",
         263,
-        152,
+        154,
         67,
     );
 }

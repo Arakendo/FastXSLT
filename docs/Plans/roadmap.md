@@ -315,6 +315,9 @@ The next explicit K-family tranche executes case 6 under the exact standard
 codepoint collation URI and cases 8 through 11 through paired float/double NaN
 semantics. Unknown and empty collation arguments remain unsupported rather than
 being optimized around.
+Cases 64 and 65 now add the standard HTML ASCII case-insensitive collation for
+ordered atomic string sequences, retaining exact early-exit charging while
+leaving host-defined, locale, Unicode-folding, and node-collation behavior open.
 The following nine-case tranche executes case 7, cases 12 through 16, and cases
 18 through 20 through one shared compiler/runtime/direct boolean-composition
 owner. Corpus pressure also corrected quoted integer/decimal constructors and
@@ -1280,7 +1283,7 @@ conformance percentage or a promise about unselected cases.
 | Family | Current authority | Current state |
 | --- | --- | --- |
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
-| QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 341 explicitly selected cases execute through two suite-specific XPath adapters. |
+| QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 343 explicitly selected cases execute through two suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 11 complete test-set denominators plus one separate AVT pressure case have first-party records. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
@@ -1329,10 +1332,10 @@ expression has been admitted is not hidden by broader upstream metadata:
 | QT3 test set | Native cases | Selected and passed | Profile excluded | Visible default not run |
 | --- | ---: | ---: | ---: | ---: |
 | `prod/AxisStep.xml` | 349 | 189 | 112 | 48 |
-| `fn/deep-equal.xml` | 263 | 152 | 67 | 44 |
-| **Audited subtotal** | **612** | **341** | **179** | **92** |
+| `fn/deep-equal.xml` | 263 | 154 | 67 | 42 |
+| **Audited subtotal** | **612** | **343** | **179** | **90** |
 
-The 612-case subtotal is therefore conserved without relabeling the 92
+The 612-case subtotal is therefore conserved without relabeling the 90
 unclassified siblings as engine failures. The 179 exclusions describe the
 current XPath-in-XSLT profile and remain overridable by explicit case admission.
 The other 31,209 QT3 cases remain
@@ -1381,8 +1384,8 @@ count:
    execution.
 3. [x] Give `AxisStep.xml` and `fn/deep-equal.xml` complete QT3 overlays so all
    612 parent-set cases receive a selection disposition. The typed verifier
-   now conserves 341 selected passes, 179 native-dependency profile exclusions,
-   and 92 visible default not-run cases against the immutable upstream case
+   now conserves 343 selected passes, 179 native-dependency profile exclusions,
+   and 90 visible default not-run cases against the immutable upstream case
    identities. Explicit selection takes priority over a dependency rule.
 4. [ ] Add complete denominators deliberately, selected by standards and
    implementation pressure rather than easy-case sampling. The remaining
@@ -1697,9 +1700,13 @@ implemented behavior belongs to a named standards slice.
   `-9`, retaining their independent native identities and `XPST0017` source
   locations without admitting adjacent invocation-clock or XQuery cases.
 - [x] Execute QT3 `K-SeqDeepEqualFunc-6` and `-8` through `-11` as an explicit
-  second tranche: admit only the standard codepoint collation URI and verify
+  second tranche: admit the standard codepoint collation URI and verify
   paired NaN across both float/double argument orders. Keep unknown and empty
   collations unsupported and leave outer XPath operator cases unselected.
+- [x] Execute QT3 `K-SeqDeepEqualFunc-64` and `-65` through the standard HTML
+  ASCII case-insensitive collation. Preserve sequence order, ASCII-only case
+  folding, and reached-item work charges without admitting host-defined,
+  locale, Unicode-folding, function-item, or node-collation behavior.
 - [x] Execute QT3 `K-SeqDeepEqualFunc-7`, `-12` through `-16`, and `-18`
   through `-20` through a private boolean-composition owner shared by direct
   XPath and stylesheet execution. Preserve exact inner work charges and early

@@ -11,9 +11,30 @@ impl AtomicSequence {
         self.0.len()
     }
 
-    pub(super) fn item_equals(&self, other: &Self, index: usize) -> bool {
-        atomic_values_equal(&self.0[index], &other.0[index])
+    pub(super) fn item_equals(
+        &self,
+        other: &Self,
+        index: usize,
+        collation: AtomicCollation,
+    ) -> bool {
+        atomic_values_equal_with_collation(&self.0[index], &other.0[index], collation)
     }
+
+    pub(super) fn supports_collation(&self, collation: AtomicCollation) -> bool {
+        match collation {
+            AtomicCollation::Codepoint => true,
+            AtomicCollation::HtmlAsciiCaseInsensitive => self
+                .0
+                .iter()
+                .all(|value| matches!(value, AtomicValue::String(_))),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum AtomicCollation {
+    Codepoint,
+    HtmlAsciiCaseInsensitive,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -547,14 +568,26 @@ pub(super) fn parse_integer(expression: &str) -> Option<i128> {
         })
 }
 
+fn atomic_values_equal(left: &AtomicValue, right: &AtomicValue) -> bool {
+    atomic_values_equal_with_collation(left, right, AtomicCollation::Codepoint)
+}
+
 // XPath numeric promotion requires exact equality after the specified lossy
 // conversion; an epsilon comparison would change the language semantics.
 #[allow(clippy::cast_precision_loss, clippy::float_cmp)]
-fn atomic_values_equal(left: &AtomicValue, right: &AtomicValue) -> bool {
+fn atomic_values_equal_with_collation(
+    left: &AtomicValue,
+    right: &AtomicValue,
+    collation: AtomicCollation,
+) -> bool {
     if atomic_is_nan(left) && atomic_is_nan(right) {
         return true;
     }
     match (left, right) {
+        (AtomicValue::String(left), AtomicValue::String(right)) => match collation {
+            AtomicCollation::Codepoint => left == right,
+            AtomicCollation::HtmlAsciiCaseInsensitive => left.eq_ignore_ascii_case(right),
+        },
         (AtomicValue::Integer(left), AtomicValue::Decimal(right))
         | (AtomicValue::Decimal(right), AtomicValue::Integer(left)) => {
             right.scale == 0 && right.coefficient == *left
@@ -621,7 +654,10 @@ mod tests {
         if left.len() != right.len() {
             return Some(false);
         }
-        Some((0..left.len()).all(|index| left.item_equals(&right, index)))
+        Some(
+            (0..left.len())
+                .all(|index| left.item_equals(&right, index, super::AtomicCollation::Codepoint)),
+        )
     }
 
     #[test]

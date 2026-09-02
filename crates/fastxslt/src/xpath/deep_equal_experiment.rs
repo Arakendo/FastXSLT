@@ -2,7 +2,7 @@ use crate::execution_control_experiment::{ControlFailure, InvocationControl, Wor
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 
 use super::deep_equal_atomic::{
-    AtomicSequence, ExactDecimal, parse_decimal, parse_integer, parse_sequence,
+    AtomicCollation, AtomicSequence, ExactDecimal, parse_decimal, parse_integer, parse_sequence,
     split_top_level_once,
 };
 
@@ -56,6 +56,7 @@ enum DeepEqualOperands {
     AtomicSequences {
         left: AtomicSequence,
         right: AtomicSequence,
+        collation: AtomicCollation,
     },
 }
 
@@ -101,24 +102,46 @@ pub(crate) fn parse(
         .ok_or_else(|| unsupported(expression, location))?;
     let arguments =
         split_top_level_once(body).ok_or_else(|| invalid_arity(expression, location))?;
-    let (left, right) = if let Some((right, collation)) = split_top_level_once(arguments.1) {
+    let (left, right, collation) = if let Some((right, collation)) =
+        split_top_level_once(arguments.1)
+    {
         if split_top_level_once(collation).is_some() {
             return Err(invalid_arity(expression, location));
         }
-        if collation.trim() != "\"http://www.w3.org/2005/xpath-functions/collation/codepoint\"" {
-            return Err(unsupported(expression, location));
-        }
-        (arguments.0.trim(), right.trim())
+        let collation = match collation.trim() {
+            "\"http://www.w3.org/2005/xpath-functions/collation/codepoint\"" => {
+                AtomicCollation::Codepoint
+            }
+            "\"http://www.w3.org/2005/xpath-functions/collation/html-ascii-case-insensitive\"" => {
+                AtomicCollation::HtmlAsciiCaseInsensitive
+            }
+            _ => return Err(unsupported(expression, location)),
+        };
+        (arguments.0.trim(), right.trim(), collation)
     } else {
-        (arguments.0.trim(), arguments.1.trim())
+        (
+            arguments.0.trim(),
+            arguments.1.trim(),
+            AtomicCollation::Codepoint,
+        )
     };
     let operands = if let (Some(left), Some(right)) = (parse_integer(left), parse_integer(right)) {
         DeepEqualOperands::Integers { left, right }
     } else if let (Some(left), Some(right)) = (parse_decimal(left), parse_decimal(right)) {
         DeepEqualOperands::Decimals { left, right }
     } else if let (Some(left), Some(right)) = (parse_sequence(left), parse_sequence(right)) {
-        DeepEqualOperands::AtomicSequences { left, right }
+        if !left.supports_collation(collation) || !right.supports_collation(collation) {
+            return Err(unsupported(expression, location));
+        }
+        DeepEqualOperands::AtomicSequences {
+            left,
+            right,
+            collation,
+        }
     } else {
+        if collation != AtomicCollation::Codepoint {
+            return Err(unsupported(expression, location));
+        }
         DeepEqualOperands::Nodes {
             left: parse_selection(left, location)?,
             right: parse_selection(right, location)?,
@@ -204,7 +227,11 @@ pub(crate) fn evaluate(
                 .map_err(DeepEqualEvaluationFailure::Control)?;
             Ok(left == right)
         }
-        DeepEqualOperands::AtomicSequences { left, right } => {
+        DeepEqualOperands::AtomicSequences {
+            left,
+            right,
+            collation,
+        } => {
             control
                 .charge(WorkDomain::XPathOperation, 1)
                 .map_err(DeepEqualEvaluationFailure::Control)?;
@@ -215,7 +242,7 @@ pub(crate) fn evaluate(
                 control
                     .charge(WorkDomain::XPathOperation, 1)
                     .map_err(DeepEqualEvaluationFailure::Control)?;
-                if !left.item_equals(right, index) {
+                if !left.item_equals(right, index, *collation) {
                     return Ok(false);
                 }
             }
@@ -400,7 +427,7 @@ mod tests {
     }
 
     #[test]
-    fn admits_only_the_explicit_standard_codepoint_collation() {
+    fn admits_only_the_explicit_standard_collations() {
         let codepoint = parse(
             "deep-equal(\"same\", \"same\", \"http://www.w3.org/2005/xpath-functions/collation/codepoint\")",
             &location(),
@@ -410,6 +437,24 @@ mod tests {
             evaluate(&codepoint, None, &mut InvocationControl::unbounded())
                 .expect("compare under codepoint collation")
         );
+        let html_ascii = parse(
+            "deep-equal((\"a\", \"A\"), (\"A\", \"a\"), \"http://www.w3.org/2005/xpath-functions/collation/html-ascii-case-insensitive\")",
+            &location(),
+        )
+        .expect("parse HTML ASCII case-insensitive collation");
+        assert!(
+            evaluate(&html_ascii, None, &mut InvocationControl::unbounded())
+                .expect("compare under HTML ASCII case-insensitive collation")
+        );
+
+        for expression in [
+            "deep-equal(xs:anyURI(\"a\"), xs:anyURI(\"A\"), \"http://www.w3.org/2005/xpath-functions/collation/html-ascii-case-insensitive\")",
+            "deep-equal(//a[1]/@name, //a[2]/@name, \"http://www.w3.org/2005/xpath-functions/collation/html-ascii-case-insensitive\")",
+        ] {
+            let failure = parse(expression, &location())
+                .expect_err("reject HTML ASCII collation outside the admitted string slice");
+            assert_eq!(failure.kind, DeepEqualFailureKind::Unsupported);
+        }
 
         for collation in ["\"http://www.example.com/COLLATION/NOT/SUPPORTED\"", "()"] {
             let failure = parse(

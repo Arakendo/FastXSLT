@@ -14,8 +14,8 @@ selected XPath pass despite its upstream `XQ10+` metadata.
 | QT3 test set | Total | Selected and passed | Profile excluded | Visible default not run |
 | --- | ---: | ---: | ---: | ---: |
 | `prod/AxisStep.xml` | 349 | 189 | 112 | 48 |
-| `fn/deep-equal.xml` | 263 | 152 | 67 | 44 |
-| **Conserved total** | **612** | **341** | **179** | **92** |
+| `fn/deep-equal.xml` | 263 | 154 | 67 | 42 |
+| **Conserved total** | **612** | **343** | **179** | **90** |
 
 ## Mechanical conservation
 
@@ -27,10 +27,10 @@ other than `harness-unsupported/not-run`. It also validates nonempty dependency
 rules and requires them to produce only `profile-excluded/not-run` outcomes.
 
 The verifier parses each immutable upstream test set, checks the exact 349 and
-263 unique case names, proves all 341 selected identities exist in the correct
+263 unique case names, proves all 343 selected identities exist in the correct
 parent set, reads native per-case dependency metadata, and proves the remaining
-179 profile exclusions plus 92 visible defaults. The private ledger is also
-checked to contain exactly those 341 cases and no third test-set family.
+179 profile exclusions plus 90 visible defaults. The private ledger is also
+checked to contain exactly those 343 cases and no third test-set family.
 
 The AxisStep and deep-equal execution adapters now ask this typed loader for
 their selected/pass authority. They no longer establish admission by splitting
@@ -38,7 +38,7 @@ TOML text or searching for a case-name substring.
 
 ## Boundary
 
-This change does not convert the 92 defaults into engine failures, assert that
+This change does not convert the 90 defaults into engine failures, assert that
 their semantics are unsupported by FastXSLT, or classify the other 31,209 QT3
 catalog cases. The 179 exclusions describe the current XPath-in-XSLT profile,
 not an inability to implement an individual expression; an individual case can
@@ -52,3 +52,6 @@ native `XPST0003` assertions are executed by the location-path parser.
 It also includes `K2-SeqDeepEqualFunc-35` as the first deliberately admitted
 string-derived atomic comparison.
 [Evidence](qt3-deep-equal-string-derived-ncname-2026-09-02.md)
+The standard HTML ASCII case-insensitive collation accounts for two further
+atomic-sequence cases.
+[Evidence](qt3-deep-equal-html-ascii-collation-2026-09-02.md)

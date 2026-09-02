@@ -2387,3 +2387,17 @@ case_name = "K2-SeqDeepEqualFunc-35"
 selection = "selected"
 execution = "passed"
 rationale = "Compares the admitted xs:NCName string-derived value with an equal string while validating the NCName lexical form."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-64"
+selection = "selected"
+execution = "passed"
+rationale = "Compares two string sequences with the standard HTML ASCII case-insensitive collation and preserves sequence order."
+
+[[case]]
+set_file = "fn/deep-equal.xml"
+case_name = "K-SeqDeepEqualFunc-65"
+selection = "selected"
+execution = "passed"
+rationale = "Reports the second string mismatch under the standard HTML ASCII case-insensitive collation with exact early-exit charging."
