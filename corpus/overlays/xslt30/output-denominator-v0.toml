@@ -885,6 +885,12 @@ execution = "passed"
 rationale = "Executes the source-free named template and leaves an unknown non-URI XHTML attribute unchanged when URI escaping is enabled."
 
 [[case_override]]
+case_name = "output-0102e"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the source-free named template and emits the C1 control in a non-URI XHTML accesskey attribute as a numeric reference."
+
+[[case_override]]
 case_name = "output-0103d"
 selection = "selected"
 execution = "passed"
@@ -895,6 +901,12 @@ case_name = "output-0103f"
 selection = "selected"
 execution = "passed"
 rationale = "Executes the source-free named template and leaves an unknown non-URI XHTML attribute unchanged when URI escaping is disabled."
+
+[[case_override]]
+case_name = "output-0103e"
+selection = "selected"
+execution = "passed"
+rationale = "Emits the C1 control in a non-URI XHTML accesskey attribute as a numeric reference independently of disabled URI escaping."
 
 [[case_override]]
 case_name = "output-0602a"

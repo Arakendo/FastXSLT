@@ -432,6 +432,10 @@ The explicit HTML serialization version 5 path emits C1 controls (`#x7F` through
 `#x9F`) as hexadecimal numeric character references for the bounded corpus
 shape. HTML 4 serialization remains excluded from the selected profile, and an
 environment-supplied default HTML version is not inferred by this evidence.
+XML-compatible attribute serialization emits C1 controls as hexadecimal numeric
+character references. XHTML evidence covers a bounded non-URI `accesskey`
+attribute independently of the inert URI-escaping property; it does not admit
+URI attribute escaping.
 The predefined XML namespace serializes attributes with the reserved `xml`
 prefix without requiring an authored declaration. Other namespaced literal
 result attributes remain outside the current private compilation slice.

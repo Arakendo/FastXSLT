@@ -1144,6 +1144,9 @@ fn escape_attribute_character(
         '\t' => output.push_str("&#x9;"),
         '\n' => output.push_str("&#xA;"),
         '\r' => output.push_str("&#xD;"),
+        _ if is_c1_control(character) => {
+            output.push_str(&format!("&#x{:X};", u32::from(character)))
+        }
         _ => output.push(character),
     }
 }

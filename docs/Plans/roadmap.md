@@ -1086,6 +1086,13 @@ owns normalization plus percent encoding. The output denominator advances to
 154 passes, 1 profile exclusion, and 77 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-source-free-xhtml-non-uri-attributes-2026-09-01.md)
 
+The adjacent `output-0102e` and `output-0103e` cases now emit a C1 control in
+the non-URI XHTML `accesskey` attribute as a hexadecimal numeric reference,
+independently of whether URI escaping is enabled. This is shared
+XML-compatible attribute escaping, not URI percent encoding. The output
+denominator advances to 156 passes and 75 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-xhtml-c1-attributes-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1127,8 +1134,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 154 | 0 | 1 | 77 |
-| **Conserved total** | **531** | **352** | **3** | **51** | **125** |
+| `decl/output` | 232 | 156 | 0 | 1 | 75 |
+| **Conserved total** | **531** | **354** | **3** | **51** | **123** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1182,7 +1189,7 @@ count:
    `apply-templates` case is schema-aware and the two remaining `include` cases
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
-2. [ ] Continue coherent semantic slices through the 77 visible `output`
+2. [ ] Continue coherent semantic slices through the 75 visible `output`
    gaps and 48 visible `mode` gaps. Each promotion still requires native
    metadata validation, a focused control, and an owned comparator or exact
    diagnostic—not merely successful stylesheet execution.

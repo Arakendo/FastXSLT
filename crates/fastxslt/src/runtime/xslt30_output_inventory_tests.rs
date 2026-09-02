@@ -735,6 +735,15 @@ fn executes_source_free_xhtml_non_uri_attribute_controls() {
 }
 
 #[test]
+fn escapes_source_free_xhtml_c1_non_uri_attributes() {
+    for case_name in ["output-0102e", "output-0103e"] {
+        let execution = execute_output_case(case_name, None);
+        assert_eq!(execution.method.as_deref(), Some("xhtml"));
+        assert!(execution.actual.contains("accesskey=\"&#x96;\""));
+    }
+}
+
+#[test]
 fn applies_multiple_character_maps_to_xml_output() {
     let execution = execute_assert_serialization_case("output-0309", "xml");
     assert_eq!(
