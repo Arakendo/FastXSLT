@@ -1026,6 +1026,15 @@ namespace nodes; general HTML serialization remains unadmitted. The output
 denominator advances to 140 passes and 92 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-html5-doctype-placement-2026-09-01.md)
 
+The unchanged `output-0312` case now retains explicit output-property presence
+across compilation and permits a lower-precedence unnamed output declaration
+only when the principal declaration explicitly shadows every imported
+property. Empty principal doctype identifiers suppress the imported identifiers
+and emit the exact `<a><b/></a>` result. Partial cross-precedence merging, named
+outputs, and `xsl:result-document` remain separate. The output denominator
+advances to 141 passes and 91 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-imported-empty-doctype-override-2026-09-01.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1067,8 +1076,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 140 | 0 | 0 | 92 |
-| **Conserved total** | **531** | **338** | **3** | **50** | **140** |
+| `decl/output` | 232 | 141 | 0 | 0 | 91 |
+| **Conserved total** | **531** | **339** | **3** | **50** | **139** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1122,7 +1131,7 @@ count:
    `apply-templates` case is schema-aware and the two remaining `include` cases
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
-2. [ ] Continue coherent semantic slices through the 92 visible `output`
+2. [ ] Continue coherent semantic slices through the 91 visible `output`
    gaps and 48 visible `mode` gaps. Each promotion still requires native
    metadata validation, a focused control, and an owned comparator or exact
    diagnostic—not merely successful stylesheet execution.

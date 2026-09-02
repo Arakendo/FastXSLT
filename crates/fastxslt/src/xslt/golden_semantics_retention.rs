@@ -22,6 +22,7 @@ impl StylesheetProgram {
                 option_string_owned(item.name.as_ref()) + location_owned(&item.location)
             })
             + output_owned(&self.output)
+            + vec_owned(&self.output_specified_properties, String::capacity)
             + vec_owned(&self.character_maps, character_map_owned)
             + vec_owned(&self.output_character_map_names, name_owned)
             + self

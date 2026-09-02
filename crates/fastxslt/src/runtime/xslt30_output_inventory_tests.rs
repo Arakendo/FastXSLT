@@ -1051,6 +1051,18 @@ fn resolves_imported_character_maps_and_higher_precedence_override() {
 }
 
 #[test]
+fn higher_precedence_empty_doctype_identifiers_suppress_imported_values() {
+    let execution = execute_assert_serialization_case("output-0312", "xml");
+    assert_eq!(execution.expected.as_deref(), Some("<a><b/></a>"));
+    assert_eq!(
+        execution.expected.as_deref(),
+        Some(execution.actual.as_str())
+    );
+    assert_eq!(execution.doctype_public.as_deref(), Some(""));
+    assert_eq!(execution.doctype_system.as_deref(), Some(""));
+}
+
+#[test]
 fn executes_xhtml_standalone_yes_no_and_omit_variants() {
     for case_name in [
         "output-0149",

@@ -55,7 +55,7 @@ pub(in crate::compile) fn default_output_settings() -> OutputSettings {
 pub(super) struct OutputDeclaration {
     pub(super) settings: OutputSettings,
     pub(super) character_map_names: Vec<ExpandedName>,
-    specified: BTreeSet<String>,
+    pub(super) specified: BTreeSet<String>,
     pub(super) location: SourceLocation,
 }
 

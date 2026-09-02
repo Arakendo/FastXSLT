@@ -247,6 +247,11 @@ pub(crate) fn compile_stylesheet_with_import_and_include(
     )?;
 
     let mut imported_program = compile_imported_program(imported.0, imported.1, -1)?;
+    validate_fully_shadowed_imported_output(
+        &program,
+        &imported_program,
+        principal.location(*import),
+    )?;
     imported_program
         .matched_templates
         .append(&mut program.matched_templates);
@@ -303,6 +308,13 @@ pub(crate) fn compile_stylesheet_with_imports(
             compile_imported_program(document, *root, precedence)
         })
         .collect::<Result<Vec<_>, _>>()?;
+    for program in &imported_programs {
+        validate_fully_shadowed_imported_output(
+            &principal_program,
+            program,
+            principal.location(root),
+        )?;
+    }
 
     let mut matched_templates = Vec::new();
     for program in &mut imported_programs {
@@ -355,6 +367,13 @@ pub(crate) fn compile_stylesheet_with_two_imported_programs_at(
     for (program, shift) in imported_programs.iter_mut().zip([-3, -1]) {
         rebase_imported_program(program, shift, principal.location(principal_root))?;
     }
+    for program in &imported_programs {
+        validate_fully_shadowed_imported_output(
+            &principal_program,
+            program,
+            principal.location(principal_root),
+        )?;
+    }
 
     let mut matched_templates = Vec::new();
     for program in &mut imported_programs {
@@ -404,6 +423,11 @@ pub(crate) fn compile_stylesheet_with_single_imported_program_at(
         -1,
         principal.location(principal_root),
     )?;
+    validate_fully_shadowed_imported_output(
+        &principal_program,
+        &imported_program,
+        principal.location(principal_root),
+    )?;
 
     let mut matched_templates = imported_program.matched_templates;
     matched_templates.append(&mut principal_program.matched_templates);
@@ -421,13 +445,6 @@ fn rebase_imported_program(
     shift: i32,
     location: &SourceLocation,
 ) -> Result<(), CompileFailure> {
-    if program.output != default_output_settings() {
-        return Err(unsupported(
-            "FXST1024",
-            "imported output declarations are outside the bounded import slice",
-            location,
-        ));
-    }
     if program
         .matched_templates
         .iter()
@@ -463,13 +480,6 @@ fn compile_imported_program(
     import_precedence: i32,
 ) -> Result<StylesheetProgram, CompileFailure> {
     let mut imported_program = compile_dependency_module(imported, imported_root)?;
-    if imported_program.output != default_output_settings() {
-        return Err(unsupported(
-            "FXST1024",
-            "imported output declarations are outside the bounded import slice",
-            imported.location(imported.document_node()),
-        ));
-    }
     if let Some(template) = imported_program.root_template.take() {
         imported_program.matched_templates.insert(
             0,
@@ -486,6 +496,30 @@ fn compile_imported_program(
         template.import_precedence = import_precedence;
     }
     Ok(imported_program)
+}
+
+fn validate_fully_shadowed_imported_output(
+    principal: &StylesheetProgram,
+    imported: &StylesheetProgram,
+    location: &SourceLocation,
+) -> Result<(), CompileFailure> {
+    let unshadowed = imported
+        .output_specified_properties
+        .iter()
+        .filter(|property| !principal.output_specified_properties.contains(property))
+        .cloned()
+        .collect::<Vec<_>>();
+    if unshadowed.is_empty() {
+        return Ok(());
+    }
+    Err(unsupported(
+        "FXST1024",
+        format!(
+            "imported output properties not explicitly shadowed by the principal declaration are outside the bounded import slice: {}",
+            unshadowed.join(", ")
+        ),
+        location,
+    ))
 }
 
 fn compile_dependency_module(
@@ -617,6 +651,7 @@ fn compile_simplified_stylesheet_at(
         typed_mode_requirements: Vec::new(),
         mode_on_no_match: Vec::new(),
         output: default_output_settings(),
+        output_specified_properties: Vec::new(),
         character_maps: Vec::new(),
         output_character_map_names: Vec::new(),
         output_character_map_location: None,

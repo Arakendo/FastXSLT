@@ -202,6 +202,10 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     let output_character_map_location = output.as_ref().and_then(|declaration| {
         (!declaration.character_map_names.is_empty()).then(|| declaration.location.clone())
     });
+    let output_specified_properties = output
+        .as_ref()
+        .map(|declaration| declaration.specified.iter().cloned().collect())
+        .unwrap_or_default();
 
     Ok(StylesheetProgram {
         declared_version,
@@ -210,6 +214,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         typed_mode_requirements: modes.typed,
         mode_on_no_match: modes.on_no_match,
         output: output.map_or_else(default_output_settings, |declaration| declaration.settings),
+        output_specified_properties,
         character_maps,
         output_character_map_names,
         output_character_map_location,

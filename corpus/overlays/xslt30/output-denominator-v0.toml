@@ -603,6 +603,12 @@ execution = "passed"
 rationale = "Combines three unprefixed character maps in declaration order and applies them to the exact file-backed text serialization."
 
 [[case_override]]
+case_name = "output-0312"
+selection = "selected"
+execution = "passed"
+rationale = "Uses explicit empty higher-precedence doctype identifiers to suppress imported values while retaining the other local unnamed output properties."
+
+[[case_override]]
 case_name = "output-0280"
 selection = "selected"
 execution = "passed"

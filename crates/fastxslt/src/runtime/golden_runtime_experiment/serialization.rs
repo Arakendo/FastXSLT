@@ -12,7 +12,7 @@ struct SerializationOptions<'a> {
     character_map: &'a [(char, String)],
     xhtml_mode: XhtmlMode,
     xhtml_media_type: Option<&'a str>,
-    xml_empty_document_element_tag: bool,
+    xml_empty_element_tag: bool,
     indent: bool,
 }
 
@@ -112,7 +112,7 @@ pub(in crate::runtime) fn serialize_xml(
         character_map: &settings.character_map,
         xhtml_mode,
         xhtml_media_type,
-        xml_empty_document_element_tag: settings.doctype_system.is_some() && !xhtml && !html,
+        xml_empty_element_tag: settings.doctype_system.is_some() && !xhtml && !html,
         indent: settings.indent == Some(true),
     };
     let mut doctype_written = false;
@@ -343,7 +343,10 @@ fn serialize_doctype(
     let automatic_xhtml5 = xhtml && settings.html_version.as_deref() == Some("5");
     let html_doctype_required =
         settings.method.as_deref() == Some("html") && settings.html_version.as_deref() == Some("5");
-    let system = settings.doctype_system.as_deref();
+    let system = settings
+        .doctype_system
+        .as_deref()
+        .filter(|value| !value.is_empty());
     if system.is_none() && !automatic_xhtml5 && !html_doctype_required {
         return Ok(());
     }
@@ -687,7 +690,7 @@ fn serialize_element(
         escape_attribute_with_character_map(&attribute.value, options.character_map, output)?;
         output.push('"')?;
     }
-    if options.xml_empty_document_element_tag && depth == 0 && children.is_empty() {
+    if options.xml_empty_element_tag && children.is_empty() {
         return output.push_str("/>");
     }
     if options.xhtml_mode != XhtmlMode::None

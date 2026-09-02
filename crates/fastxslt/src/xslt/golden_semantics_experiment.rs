@@ -24,6 +24,7 @@ pub(crate) struct StylesheetProgram {
     pub(crate) typed_mode_requirements: Vec<TypedModeRequirement>,
     pub(crate) mode_on_no_match: Vec<ModeOnNoMatch>,
     pub(crate) output: OutputSettings,
+    pub(crate) output_specified_properties: Vec<String>,
     pub(crate) character_maps: Vec<CharacterMapDefinition>,
     pub(crate) output_character_map_names: Vec<ExpandedName>,
     pub(crate) output_character_map_location: Option<SourceLocation>,
