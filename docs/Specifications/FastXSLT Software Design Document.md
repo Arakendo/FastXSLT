@@ -392,9 +392,12 @@ body bytes and rejects non-ASCII ISO-8859-1 output rather than substituting
 characters or returning a mislabeled UTF-8 string. This is executable
 serialization evidence, not selection of a public byte-result contract or
 general encoding support. Compiled output metadata may explicitly retain
-`normalization-form="none"`, which preserves result characters byte-for-byte;
-other normalization forms remain unsupported until backed by a complete
-Unicode normalization implementation rather than case-specific substitutions.
+`normalization-form="none"`, which preserves result characters byte-for-byte,
+or `normalization-form="NFC"`, which uses an exact-pinned UAX #15
+implementation during private XML, XHTML, HTML, and text serialization.
+Character mapping precedes requested normalization and mapped replacement
+strings bypass it; CDATA-selected text normalizes before CDATA construction.
+NFD, NFKC, NFKD, and fully-normalized output remain unsupported.
 The XML-compatible lane also retains canonical standalone `yes`, `no`, and
 `omit` metadata; `yes` and `no` become declaration pseudo-attributes, while
 `omit` emits none. An explicit serialization version is retained separately
@@ -402,14 +405,15 @@ from the stylesheet language version; the current bounded lane admits and emits
 only XML `1.0`. XHTML-only content-type metadata remains inert for XML output.
 An explicit XML, XHTML, or HTML output declaration may carry a valid
 `escape-uri-attributes` boolean, which the compiled output settings retain.
-The property has no effect on XML output. The bounded XHTML lane recognizes
-only an unnamespaced `href` on an XHTML element as URI-valued: when enabled or
-defaulted, each non-ASCII character is encoded as its uppercase percent-escaped
-UTF-8 bytes, while existing ASCII percent sequences remain unchanged; when
-disabled, ordinary XML-compatible attribute escaping applies. The property
-remains unsupported for an absent output method. NFC normalization, the wider
-HTML/XHTML URI-attribute vocabulary, and character-map composition with URI
-escaping remain outside this slice.
+The property has no effect on XML output. The bounded XHTML and HTML lanes
+recognize only an unnamespaced `href` on an XHTML or null-namespace element as
+URI-valued: when enabled or defaulted, the complete value first normalizes to
+NFC, then each non-ASCII character becomes its uppercase percent-escaped UTF-8
+bytes while existing ASCII percent sequences remain unchanged; when disabled,
+ordinary XML-compatible attribute escaping applies. Character maps do not
+rewrite an enabled URI-expansion path. The property remains unsupported for an
+absent output method. The wider HTML/XHTML URI-attribute vocabulary remains
+outside this slice.
 Invalid boolean values on admitted `xsl:output` properties are static
 stylesheet errors reported as `XTSE0020`, with the structured invalid category
 and stylesheet source location preserved. XSLT 2.0 accepts only `yes`/`no`;

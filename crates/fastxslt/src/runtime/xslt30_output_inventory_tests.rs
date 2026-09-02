@@ -1282,6 +1282,28 @@ fn executes_xml_and_text_with_normalization_form_none() {
 }
 
 #[test]
+fn executes_nfc_normalization_and_uri_expansion() {
+    let composed = "\u{c1}";
+    let xhtml = String::from_utf8(execute_output_bytes_case("output-0146"))
+        .expect("XHTML NFC output must be UTF-8");
+    assert!(xhtml.contains(&format!("<body>{composed}</body>")));
+
+    let xml = execute_assert_serialization_case("output-0167", "xml");
+    assert_eq!(xml.expected.as_deref(), Some(xml.actual.as_str()));
+
+    let text = execute_assert_serialization_case("output-0169", "text");
+    assert_eq!(text.expected.as_deref(), Some(text.actual.as_str()));
+    assert_eq!(text.actual.as_bytes(), composed.as_bytes());
+
+    let escaped = "href=\"http://iri.example.org/%EF%AD%8F/%C3%A5rsrapport/%C3%A5r/2005?x=y\"";
+    for case_name in ["output-0101", "output-0101a", "output-0101b", "output-0164"] {
+        let execution = execute_output_case(case_name, None);
+        assert!(execution.actual.contains(escaped), "{case_name}");
+        assert!(!execution.actual.contains("%61%CC%8A"), "{case_name}");
+    }
+}
+
+#[test]
 fn preserves_html_ins_and_del_content_whitespace_without_indent() {
     let execution = execute_output_case("output-0160", None);
     assert_eq!(execution.method.as_deref(), Some("html"));

@@ -1179,6 +1179,21 @@ does not claim general word wrapping. The output denominator advances to 180
 passes and 51 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-suppress-indentation-2026-09-01.md)
 
+Seven unchanged normalization and URI-expansion cases now execute through one
+exact-pinned UAX #15 implementation. `output-0146`, `output-0167`, and
+`output-0169` apply `normalization-form="NFC"` to XHTML, XML, and text output;
+`output-0101`, `output-0101a`, `output-0101b`, and `output-0164` normalize URI
+values to NFC before percent-encoding. Character-map substitutions remain
+outside requested normalization, enabled URI expansion bypasses character
+maps, and the HTML validator admits only the unchanged
+`html/body/div/a[@href]` result shape. NFD, compatibility forms,
+fully-normalized output, and the wider URI-attribute vocabulary remain visible
+future work. The dependency review records the exact package, licenses,
+transitive graph, Unicode version, and its dependency-owned Hangul unsafe
+surface. The output denominator advances to 187 passes, one profile exclusion,
+and 44 visible default not-run cases.
+[Evidence](../Evidence/xslt30-output-unicode-normalization-and-uri-expansion-2026-09-02.md)
+
 ## Corpus audit -- 2026-08-30
 
 This audit reconciles the pinned suite catalogs, first-party overlays,
@@ -1220,8 +1235,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `insn/apply-templates` | 50 | 49 | 0 | 1 | 0 |
 | `attr/mode` | 169 | 76 | 0 | 45 | 48 |
 | `decl/include` | 16 | 14 | 0 | 2 | 0 |
-| `decl/output` | 232 | 180 | 0 | 1 | 51 |
-| **Conserved total** | **531** | **378** | **3** | **51** | **99** |
+| `decl/output` | 232 | 187 | 0 | 1 | 44 |
+| **Conserved total** | **531** | **385** | **3** | **51** | **92** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1776,10 +1791,10 @@ failed, and harness-error cases without an unqualified conformance claim.
   ledger now records 21 passes and 211 visible harness gaps.
 - [x] Execute `output-0168` and `output-0170` by retaining
   `normalization-form="none"` in compiled output metadata and preserving the
-  exact decomposed `41 CC 81` UTF-8 bytes for XML and text methods. Keep NFC
-  cases `0167` and `0169` explicitly unsupported until a real Unicode
-  normalization implementation and dependency review exist. The output ledger
-  now records 23 passes and 209 visible harness gaps.
+  exact decomposed `41 CC 81` UTF-8 bytes for XML and text methods. The later
+  exact-pinned Unicode-normalization tranche executes NFC siblings `0167` and
+  `0169` without weakening these byte-preserving controls. At this checkpoint,
+  the output ledger recorded 23 passes and 209 visible harness gaps.
 - [x] Execute `output-0131` through the file-backed branch of its native
   `any-of`, preserving two top-level XHTML elements, authored interstitial text,
   ordering, and namespace fixup. Admit only the exact composite assertion shape
@@ -1794,9 +1809,9 @@ failed, and harness-error cases without an unqualified conformance claim.
   31 passes and 201 visible harness gaps.
 - [x] Execute `output-0147` by composing `normalization-form="none"` with the
   XML-compatible XHTML byte lane and preserving the exact decomposed
-  `41 CC 81` sequence. Keep NFC sibling `0146` unsupported until real Unicode
-  normalization exists. The output ledger now records 32 passes and 200 visible
-  harness gaps.
+  `41 CC 81` sequence. The later exact-pinned Unicode-normalization tranche
+  executes NFC sibling `0146` against its native assertion. At this checkpoint,
+  the output ledger recorded 32 passes and 200 visible harness gaps.
 - [x] Execute `output-0122` and `output-0173` through bounded unnamed
   output-declaration merging. Allow non-overlapping scalar properties, reject
   repeated scalar properties as `FXST1018`, union expanded

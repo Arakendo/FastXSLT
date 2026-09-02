@@ -106,6 +106,7 @@ pressure architecture but does not silently create a public guarantee.
 - [Host-Neutral Structured Diagnostic Location](host-neutral-structured-diagnostic-location-2026-08-27.md)
 - [Private Output Media-Type Retention](private-output-media-type-retention-2026-08-27.md)
 - [XSLT30 Output Denominator Admission](xslt30-output-denominator-admission-2026-08-27.md)
+- [XSLT30 Unicode Normalization and URI Expansion](xslt30-output-unicode-normalization-and-uri-expansion-2026-09-02.md)
 - [XSLT30 `template-006` Private Execution](xslt30-template-006-private-execution-2026-08-25.md)
 - [Peer AR-0010 Review: Monday](peer-ar-0010-review-monday-2026-08-25.md)
 - [Private Invocation-Control Charge Points](private-invocation-control-charge-points-2026-08-25.md)

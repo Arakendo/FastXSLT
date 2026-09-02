@@ -963,6 +963,48 @@ execution = "passed"
 rationale = "Executes the source-free named template and emits the C1 control in a non-URI XHTML accesskey attribute as a numeric reference."
 
 [[case_override]]
+case_name = "output-0101"
+selection = "selected"
+execution = "passed"
+rationale = "Normalizes an HTML href value to NFC before percent-encoding non-ASCII UTF-8 bytes with escape-uri-attributes=yes."
+
+[[case_override]]
+case_name = "output-0101a"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the XSLT 3.0 whitespace-normalized true lexical while applying NFC-before-percent URI expansion."
+
+[[case_override]]
+case_name = "output-0101b"
+selection = "selected"
+execution = "passed"
+rationale = "Executes the XSLT 3.0 numeric-one lexical while applying NFC-before-percent URI expansion."
+
+[[case_override]]
+case_name = "output-0146"
+selection = "selected"
+execution = "passed"
+rationale = "Applies normalization-form=NFC to XHTML text before XML-compatible character escaping and verifies the composed UTF-8 result."
+
+[[case_override]]
+case_name = "output-0164"
+selection = "selected"
+execution = "passed"
+rationale = "Applies the default HTML URI-attribute policy, including mandatory NFC normalization before percent-encoding."
+
+[[case_override]]
+case_name = "output-0167"
+selection = "selected"
+execution = "passed"
+rationale = "Applies normalization-form=NFC to XML text and verifies the composed UTF-8 serialization bytes."
+
+[[case_override]]
+case_name = "output-0169"
+selection = "selected"
+execution = "passed"
+rationale = "Applies normalization-form=NFC to the descendant text selected by the text output method and verifies the composed UTF-8 bytes."
+
+[[case_override]]
 case_name = "output-0103d"
 selection = "selected"
 execution = "passed"

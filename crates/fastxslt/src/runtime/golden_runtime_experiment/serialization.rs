@@ -6,6 +6,7 @@ use super::{
 };
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xslt::golden_semantics_experiment::OutputSettings;
+use unicode_normalization::UnicodeNormalization;
 
 #[derive(Clone, Copy)]
 struct SerializationOptions<'a> {
@@ -16,6 +17,7 @@ struct SerializationOptions<'a> {
     content_type_media_type: Option<&'a str>,
     html_mode: HtmlMode,
     escape_uri_attributes: bool,
+    normalization_form: NormalizationForm,
     xml_empty_element_tag: bool,
     indent: bool,
 }
@@ -34,6 +36,12 @@ enum HtmlMode {
     Five,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum NormalizationForm {
+    None,
+    Nfc,
+}
+
 pub(in crate::runtime) fn serialize_xml(
     result: &SemanticResult,
     settings: &OutputSettings,
@@ -42,7 +50,7 @@ pub(in crate::runtime) fn serialize_xml(
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
     validate_serialization_preconditions(result, settings, request_id)?;
-    validate_normalization_form(settings, request_id)?;
+    let normalization_form = validate_normalization_form(settings, request_id)?;
     validate_string_encoding(settings, request_id)?;
     validate_html_version(settings, request_id)?;
     validate_string_byte_order_mark(settings, request_id)?;
@@ -51,13 +59,10 @@ pub(in crate::runtime) fn serialize_xml(
         ResultNode::Element { .. } => true,
         ResultNode::ProcessingInstruction { .. } | ResultNode::Comment(_) => false,
     });
-    let unsupported_adaptive_html = settings.method.is_none()
-        && matches!(
-            first_significant,
-            Some(ResultNode::Element { name, .. })
-                if name.namespace.is_none() && name.local.eq_ignore_ascii_case("html")
-        );
-    if unsupported_adaptive_html {
+    if settings.method.is_none()
+        && matches!(first_significant, Some(ResultNode::Element { name, .. })
+            if name.namespace.is_none() && name.local.eq_ignore_ascii_case("html"))
+    {
         return Err(failure(
             "FXSR1001",
             FailureCategory::Unsupported,
@@ -73,11 +78,14 @@ pub(in crate::runtime) fn serialize_xml(
                     && name.local.eq_ignore_ascii_case("html")
         );
     if settings.method.as_deref() == Some("text") {
-        let mut output = BudgetedString::new(byte_limit, request_id, control);
-        for node in &result.children {
-            serialize_text_node(node, &settings.character_map, &mut output)?;
-        }
-        return Ok(output.finish());
+        return serialize_text_result(
+            result,
+            settings,
+            normalization_form,
+            request_id,
+            byte_limit,
+            control,
+        );
     }
     let html = settings.method.as_deref() == Some("html");
     if html {
@@ -126,6 +134,7 @@ pub(in crate::runtime) fn serialize_xml(
         content_type_media_type,
         html_mode: select_html_mode(settings, html),
         escape_uri_attributes: (xhtml || html) && settings.escape_uri_attributes.unwrap_or(true),
+        normalization_form,
         xml_empty_element_tag: settings.doctype_system.is_some() && !xhtml && !html,
         indent: settings.indent == Some(true),
     };
@@ -136,6 +145,26 @@ pub(in crate::runtime) fn serialize_xml(
             doctype_written = true;
         }
         serialize_node(node, &[], options, 0, &mut output)?;
+    }
+    Ok(output.finish())
+}
+
+fn serialize_text_result(
+    result: &SemanticResult,
+    settings: &OutputSettings,
+    normalization_form: NormalizationForm,
+    request_id: &str,
+    byte_limit: usize,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let mut output = BudgetedString::new(byte_limit, request_id, control);
+    for node in &result.children {
+        serialize_text_node(
+            node,
+            &settings.character_map,
+            normalization_form,
+            &mut output,
+        )?;
     }
     Ok(output.finish())
 }
@@ -197,6 +226,11 @@ fn validate_bounded_html_result(
         return Ok(());
     }
     if is_bounded_html_ins_del_document(&result.children) {
+        return Ok(());
+    }
+    if settings.escape_uri_attributes.unwrap_or(true)
+        && is_bounded_html_uri_document(&result.children)
+    {
         return Ok(());
     }
     let significant: Vec<_> = result
@@ -336,6 +370,68 @@ fn is_bounded_html_ins_del_document(nodes: &[ResultNode]) -> bool {
             matches!(node, ResultNode::Text(_))
                 || embedded.iter().any(|child| std::ptr::eq(*child, node))
         })
+}
+
+fn is_bounded_html_uri_document(nodes: &[ResultNode]) -> bool {
+    let significant: Vec<_> = nodes
+        .iter()
+        .filter(|node| !is_whitespace_text(node))
+        .collect();
+    let [html] = significant.as_slice() else {
+        return false;
+    };
+    let Some(html_children) = plain_html_children(html, "html") else {
+        return false;
+    };
+    let significant_html: Vec<_> = html_children
+        .iter()
+        .filter(|node| !is_whitespace_text(node))
+        .collect();
+    let [body] = significant_html.as_slice() else {
+        return false;
+    };
+    let Some(body_children) = plain_html_children(body, "body") else {
+        return false;
+    };
+    let significant_body: Vec<_> = body_children
+        .iter()
+        .filter(|node| !is_whitespace_text(node))
+        .collect();
+    let [division] = significant_body.as_slice() else {
+        return false;
+    };
+    let Some(division_children) = plain_html_children(division, "div") else {
+        return false;
+    };
+    let links: Vec<_> = division_children
+        .iter()
+        .filter(|node| matches!(node, ResultNode::Element { .. }))
+        .collect();
+    matches!(links.as_slice(), [link] if is_bounded_html_uri_link(link))
+        && division_children.iter().all(|node| {
+            matches!(node, ResultNode::Text(_))
+                || links.iter().any(|link| std::ptr::eq(*link, node))
+        })
+}
+
+fn is_bounded_html_uri_link(node: &ResultNode) -> bool {
+    let ResultNode::Element {
+        name,
+        namespaces,
+        attributes,
+        children,
+    } = node
+    else {
+        return false;
+    };
+    name.namespace.is_none()
+        && name.local == "a"
+        && namespaces.is_empty()
+        && matches!(attributes.as_slice(), [attribute]
+            if attribute.name.namespace.is_none() && attribute.name.local == "href")
+        && children
+            .iter()
+            .all(|child| matches!(child, ResultNode::Text(_)))
 }
 
 fn is_bounded_html_manual_script_document(nodes: &[ResultNode]) -> bool {
@@ -821,20 +917,17 @@ fn validate_string_encoding(
 fn validate_normalization_form(
     settings: &OutputSettings,
     request_id: &str,
-) -> Result<(), ExecutionFailure> {
-    if let Some(normalization_form) = settings
-        .normalization_form
-        .as_deref()
-        .filter(|value| *value != "none")
-    {
-        return Err(failure(
+) -> Result<NormalizationForm, ExecutionFailure> {
+    match settings.normalization_form.as_deref().unwrap_or("none") {
+        "none" => Ok(NormalizationForm::None),
+        "NFC" => Ok(NormalizationForm::Nfc),
+        normalization_form => Err(failure(
             "SESU0011",
             FailureCategory::Unsupported,
             Some(request_id),
             format!("the requested normalization form is not supported: {normalization_form}"),
-        ));
+        )),
     }
-    Ok(())
 }
 
 fn validate_html_version(
@@ -1098,14 +1191,17 @@ fn validate_serialization_preconditions(
 fn serialize_text_node(
     node: &ResultNode,
     character_map: &[(char, String)],
+    normalization_form: NormalizationForm,
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
     match node {
-        ResultNode::Text(value) => write_character_mapped(value, character_map, output),
+        ResultNode::Text(value) => {
+            write_character_mapped(value, character_map, normalization_form, output)
+        }
         ResultNode::ProcessingInstruction { .. } | ResultNode::Comment(_) => Ok(()),
         ResultNode::Element { children, .. } => {
             for child in children {
-                serialize_text_node(child, character_map, output)?;
+                serialize_text_node(child, character_map, normalization_form, output)?;
             }
             Ok(())
         }
@@ -1115,19 +1211,16 @@ fn serialize_text_node(
 fn write_character_mapped(
     value: &str,
     character_map: &[(char, String)],
+    normalization_form: NormalizationForm,
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
-    for character in value.chars() {
-        if let Some((_, replacement)) = character_map
-            .iter()
-            .find(|(candidate, _)| *candidate == character)
-        {
-            output.push_str(replacement)?;
-        } else {
-            output.push(character)?;
-        }
-    }
-    Ok(())
+    write_character_expansion(
+        value,
+        character_map,
+        normalization_form,
+        |character, output| output.push(character),
+        output,
+    )
 }
 
 fn serialize_node(
@@ -1142,6 +1235,7 @@ fn serialize_node(
             escape_text(
                 value,
                 options.character_map,
+                options.normalization_form,
                 options.html_mode == HtmlMode::Five,
                 output,
             )?;
@@ -1223,9 +1317,14 @@ fn serialize_element(
         write_name(prefix, &attribute.name.local, output)?;
         output.push_str("=\"")?;
         if options.escape_uri_attributes && is_uri_attribute(name, attribute) {
-            escape_uri_attribute(&attribute.value, options.character_map, output)?;
+            escape_uri_attribute(&attribute.value, output)?;
         } else {
-            escape_attribute_with_character_map(&attribute.value, options.character_map, output)?;
+            escape_attribute_with_character_map(
+                &attribute.value,
+                options.character_map,
+                options.normalization_form,
+                output,
+            )?;
         }
         output.push('"')?;
     }
@@ -1293,13 +1392,18 @@ fn serialize_element_child(
     if options.cdata_section_elements.contains(parent_name)
         && let ResultNode::Text(value) = child
     {
-        return serialize_cdata(value, output);
+        return serialize_cdata(value, options.normalization_form, output);
     }
     if options.html_mode != HtmlMode::None
         && is_html_raw_text_element(parent_name)
         && let ResultNode::Text(value) = child
     {
-        return write_character_mapped(value, options.character_map, output);
+        return write_character_mapped(
+            value,
+            options.character_map,
+            options.normalization_form,
+            output,
+        );
     }
     serialize_node(child, in_scope, options, depth + 1, output)
 }
@@ -1502,9 +1606,14 @@ fn write_indentation(depth: usize, output: &mut BudgetedString) -> Result<(), Ex
     Ok(())
 }
 
-fn serialize_cdata(value: &str, output: &mut BudgetedString) -> Result<(), ExecutionFailure> {
+fn serialize_cdata(
+    value: &str,
+    normalization_form: NormalizationForm,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
     output.push_str("<![CDATA[")?;
-    output.push_str(&value.replace("]]>", "]]]]><![CDATA[>"))?;
+    let normalized = normalize_to_string(value, normalization_form);
+    output.push_str(&normalized.replace("]]>", "]]]]><![CDATA[>"))?;
     output.push_str("]]>")
 }
 
@@ -1598,19 +1707,16 @@ fn escape_attribute_character(
 fn escape_attribute_with_character_map(
     value: &str,
     character_map: &[(char, String)],
+    normalization_form: NormalizationForm,
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
-    for character in value.chars() {
-        if let Some((_, replacement)) = character_map
-            .iter()
-            .find(|(candidate, _)| *candidate == character)
-        {
-            output.push_str(replacement)?;
-        } else {
-            escape_attribute_character(character, output)?;
-        }
-    }
-    Ok(())
+    write_character_expansion(
+        value,
+        character_map,
+        normalization_form,
+        escape_attribute_character,
+        output,
+    )
 }
 
 fn is_uri_attribute(
@@ -1625,18 +1731,9 @@ fn is_uri_attribute(
         )
 }
 
-fn escape_uri_attribute(
-    value: &str,
-    character_map: &[(char, String)],
-    output: &mut BudgetedString,
-) -> Result<(), ExecutionFailure> {
-    for character in value.chars() {
-        if let Some((_, replacement)) = character_map
-            .iter()
-            .find(|(candidate, _)| *candidate == character)
-        {
-            output.push_str(replacement)?;
-        } else if character.is_ascii() {
+fn escape_uri_attribute(value: &str, output: &mut BudgetedString) -> Result<(), ExecutionFailure> {
+    for character in value.nfc() {
+        if character.is_ascii() {
             escape_attribute_character(character, output)?;
         } else {
             let mut encoded = [0_u8; 4];
@@ -1651,28 +1748,93 @@ fn escape_uri_attribute(
 fn escape_text(
     value: &str,
     character_map: &[(char, String)],
+    normalization_form: NormalizationForm,
     html5: bool,
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
+    write_character_expansion(
+        value,
+        character_map,
+        normalization_form,
+        |character, output| {
+            match character {
+                '&' => output.push_str("&amp;")?,
+                '<' => output.push_str("&lt;")?,
+                '>' => output.push_str("&gt;")?,
+                _ if html5 && is_c1_control(character) => {
+                    output.push_str(&format!("&#x{:X};", u32::from(character)))?;
+                }
+                _ => output.push(character)?,
+            }
+            Ok(())
+        },
+        output,
+    )
+}
+
+fn write_character_expansion(
+    value: &str,
+    character_map: &[(char, String)],
+    normalization_form: NormalizationForm,
+    mut write_character: impl FnMut(char, &mut BudgetedString) -> Result<(), ExecutionFailure>,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    if normalization_form == NormalizationForm::None {
+        for character in value.chars() {
+            if let Some((_, replacement)) = character_map
+                .iter()
+                .find(|(candidate, _)| *candidate == character)
+            {
+                output.push_str(replacement)?;
+            } else {
+                write_character(character, output)?;
+            }
+        }
+        return Ok(());
+    }
+
+    let mut unmapped = String::new();
     for character in value.chars() {
         if let Some((_, replacement)) = character_map
             .iter()
             .find(|(candidate, _)| *candidate == character)
         {
+            write_normalized_characters(
+                &unmapped,
+                normalization_form,
+                &mut write_character,
+                output,
+            )?;
+            unmapped.clear();
             output.push_str(replacement)?;
-            continue;
-        }
-        match character {
-            '&' => output.push_str("&amp;")?,
-            '<' => output.push_str("&lt;")?,
-            '>' => output.push_str("&gt;")?,
-            _ if html5 && is_c1_control(character) => {
-                output.push_str(&format!("&#x{:X};", u32::from(character)))?;
-            }
-            _ => output.push(character)?,
+        } else {
+            unmapped.push(character);
         }
     }
-    Ok(())
+    write_normalized_characters(&unmapped, normalization_form, &mut write_character, output)
+}
+
+fn write_normalized_characters(
+    value: &str,
+    normalization_form: NormalizationForm,
+    write_character: &mut impl FnMut(char, &mut BudgetedString) -> Result<(), ExecutionFailure>,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    match normalization_form {
+        NormalizationForm::None => value
+            .chars()
+            .try_for_each(|character| write_character(character, output)),
+        NormalizationForm::Nfc => value
+            .nfc()
+            .try_for_each(|character| write_character(character, output)),
+    }
+}
+
+fn normalize_to_string(value: &str, normalization_form: NormalizationForm) -> String {
+    match normalization_form {
+        NormalizationForm::None => value.to_owned(),
+        NormalizationForm::Nfc => value.nfc().collect(),
+    }
 }
 
 struct BudgetedString<'a> {
