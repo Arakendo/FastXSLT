@@ -227,10 +227,39 @@ fn is_bounded_html_content_type_node(node: &ResultNode, root: bool) -> bool {
             })
         } else {
             matches!(name.local.to_ascii_lowercase().as_str(), "head" | "body")
-                && children
-                    .iter()
-                    .all(|child| matches!(child, ResultNode::Text(_)))
+                && children.iter().all(|child| {
+                    matches!(child, ResultNode::Text(_))
+                        || (name.local.eq_ignore_ascii_case("head")
+                            && is_bounded_existing_html_content_type_meta(child))
+                })
         }
+}
+
+fn is_bounded_existing_html_content_type_meta(node: &ResultNode) -> bool {
+    let ResultNode::Element {
+        name,
+        namespaces,
+        attributes,
+        children,
+    } = node
+    else {
+        return false;
+    };
+    name.namespace.is_none()
+        && name.local.eq_ignore_ascii_case("meta")
+        && namespaces.is_empty()
+        && children.is_empty()
+        && attributes.len() == 2
+        && attributes.iter().any(|attribute| {
+            attribute.name.namespace.is_none()
+                && attribute.name.local.eq_ignore_ascii_case("http-equiv")
+                && attribute.value.eq_ignore_ascii_case("Content-Type")
+        })
+        && attributes.iter().any(|attribute| {
+            attribute.name.namespace.is_none()
+                && attribute.name.local.eq_ignore_ascii_case("content")
+                && attribute.value.starts_with("text/html")
+        })
 }
 
 fn is_bounded_html5_control_character_document(nodes: &[ResultNode]) -> bool {
@@ -1091,8 +1120,8 @@ fn is_replaced_content_type_meta(node: &ResultNode, replace: bool) -> bool {
                 name,
                 attributes,
                 ..
-            } if name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml")
-                && name.local == "meta"
+            } if matches!(name.namespace.as_deref(), None | Some("http://www.w3.org/1999/xhtml"))
+                && name.local.eq_ignore_ascii_case("meta")
                 && attributes.iter().any(|attribute| {
                     attribute.name.namespace.is_none()
                         && attribute.name.local.eq_ignore_ascii_case("http-equiv")

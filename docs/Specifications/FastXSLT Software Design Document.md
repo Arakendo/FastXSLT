@@ -448,7 +448,10 @@ replaced for serialization rather than mutating the semantic result tree.
 The bounded HTML lane applies the same enabled-by-default policy to its exact
 text-only `HTML/HEAD/BODY` corpus shape, but emits the injected `meta` using
 HTML void-element syntax rather than XHTML empty-element syntax. Explicit false
-lexicals suppress injection without altering the semantic result tree.
+lexicals suppress injection without altering the semantic result tree. That
+shape may contain one existing two-attribute Content-Type `meta`; serialization
+replaces it with one UTF-8 meta, discarding the authored charset or additional
+content parameters without mutating the result tree.
 Disabling the property retains authored metadata. This does not extend the
 private lane to general HTML serialization. XHTML `script` and `style` text
 continues to use XML escaping; the raw-text conventions of the HTML method are

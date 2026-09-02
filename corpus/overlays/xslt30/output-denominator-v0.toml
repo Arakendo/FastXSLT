@@ -897,6 +897,18 @@ execution = "passed"
 rationale = "Omits the HTML content-type meta when the XSLT 3.0 numeric zero lexical disables it."
 
 [[case_override]]
+case_name = "output-0157"
+selection = "selected"
+execution = "passed"
+rationale = "Replaces an existing uppercase HTML Content-Type meta and its UTF-16 charset with one UTF-8 serializer-owned meta."
+
+[[case_override]]
+case_name = "output-0158"
+selection = "selected"
+execution = "passed"
+rationale = "Replaces a case-varied HTML Content-Type meta containing additional parameters with one canonical UTF-8 meta."
+
+[[case_override]]
 case_name = "output-0195b"
 selection = "selected"
 execution = "passed"

@@ -790,6 +790,28 @@ fn applies_bounded_html_content_type_meta_controls() {
 }
 
 #[test]
+fn replaces_bounded_existing_html_content_type_meta() {
+    for case_name in ["output-0157", "output-0158"] {
+        let execution = execute_output_case(case_name, None);
+        assert_eq!(execution.method.as_deref(), Some("html"));
+        assert_eq!(
+            execution
+                .actual
+                .matches("http-equiv=\"Content-Type\"")
+                .count(),
+            1
+        );
+        assert!(
+            execution
+                .actual
+                .contains("content=\"text/html; charset=UTF-8\"")
+        );
+        assert!(!execution.actual.contains("UTF-16"));
+        assert!(!execution.actual.contains("version='3.0'"));
+    }
+}
+
+#[test]
 fn applies_multiple_character_maps_to_xml_output() {
     let execution = execute_assert_serialization_case("output-0309", "xml");
     assert_eq!(
