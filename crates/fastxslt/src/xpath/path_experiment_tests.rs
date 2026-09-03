@@ -982,6 +982,32 @@ fn applies_positions_to_individual_steps_and_last_to_the_matched_sequence() {
 }
 
 #[test]
+fn following_sibling_axis_filters_then_applies_position() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><a/><skip/><target/><target/></doc>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let a = document.children(doc)[0];
+    let any = parse_location_path("following-sibling::*[1]", location())
+        .expect("following sibling wildcard should parse");
+    let named = parse_location_path("following-sibling::target[2]", location())
+        .expect("following sibling name should parse");
+
+    let first = evaluate_location_path(&document, a, &any);
+    let second_target = evaluate_location_path(&document, a, &named);
+
+    assert_eq!(document.name(first[0]).expect("element name").local, "skip");
+    assert_eq!(second_target, [document.children(doc)[3]]);
+}
+
+#[test]
 fn evaluation_preserves_document_order_and_requires_no_namespace() {
     let parsed = parse_document(
         "memory:source.xml",

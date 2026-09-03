@@ -81,6 +81,9 @@ pub(crate) enum PathStep {
     DescendantOrSelfNamed(String),
     DescendantOrSelfAnyElement,
     DescendantOrSelfAnyNode,
+    FollowingSiblingNamed(String),
+    FollowingSiblingAnyElement,
+    FollowingSiblingAnyNode,
 }
 
 impl PathStep {
@@ -92,7 +95,8 @@ impl PathStep {
             | Self::ParentNamed(value)
             | Self::SelfNamed(value)
             | Self::DescendantNamed(value)
-            | Self::DescendantOrSelfNamed(value) => value.capacity(),
+            | Self::DescendantOrSelfNamed(value)
+            | Self::FollowingSiblingNamed(value) => value.capacity(),
             Self::ChildExpandedName(name) => {
                 name.local.capacity()
                     + name
@@ -150,6 +154,14 @@ impl PathStep {
                 _ => Some(Self::DescendantOrSelfNamed(name_test.to_owned())),
             };
         }
+        if let Some(name_test) = value.strip_prefix("following-sibling::") {
+            return match name_test {
+                "*" => Some(Self::FollowingSiblingAnyElement),
+                "node()" => Some(Self::FollowingSiblingAnyNode),
+                "text()" => None,
+                _ => Some(Self::FollowingSiblingNamed(name_test.to_owned())),
+            };
+        }
         let name_test = value.strip_prefix("child::").unwrap_or(value);
         Some(match name_test {
             "*" | "element()" => Self::ChildAnyElement,
@@ -194,6 +206,15 @@ impl PathStep {
                 | Self::DescendantOrSelfAnyNode
         )
     }
+
+    fn uses_following_sibling_axis(&self) -> bool {
+        matches!(
+            self,
+            Self::FollowingSiblingNamed(_)
+                | Self::FollowingSiblingAnyElement
+                | Self::FollowingSiblingAnyNode
+        )
+    }
 }
 
 impl PartialEq<&str> for PathStep {
@@ -204,18 +225,21 @@ impl PartialEq<&str> for PathStep {
             | Self::ParentNamed(value)
             | Self::SelfNamed(value)
             | Self::DescendantNamed(value)
-            | Self::DescendantOrSelfNamed(value) => value == *other,
+            | Self::DescendantOrSelfNamed(value)
+            | Self::FollowingSiblingNamed(value) => value == *other,
             Self::ChildExpandedName(value) => value.namespace.is_none() && value.local == *other,
             Self::ChildAnyElement
             | Self::ParentAnyElement
             | Self::SelfAnyElement
             | Self::DescendantAnyElement
-            | Self::DescendantOrSelfAnyElement => *other == "*",
+            | Self::DescendantOrSelfAnyElement
+            | Self::FollowingSiblingAnyElement => *other == "*",
             Self::ChildAnyNode
             | Self::ParentAnyNode
             | Self::SelfAnyNode
             | Self::DescendantAnyNode
-            | Self::DescendantOrSelfAnyNode => *other == "node()",
+            | Self::DescendantOrSelfAnyNode
+            | Self::FollowingSiblingAnyNode => *other == "node()",
             Self::ChildText => *other == "text()",
             Self::ChildComment => *other == "comment()",
             Self::ChildProcessingInstruction => *other == "processing-instruction()",
@@ -433,6 +457,7 @@ fn has_unadmitted_name_test(step: &str) -> bool {
         .or_else(|| step.strip_prefix("self::"))
         .or_else(|| step.strip_prefix("descendant::"))
         .or_else(|| step.strip_prefix("descendant-or-self::"))
+        .or_else(|| step.strip_prefix("following-sibling::"))
         .or_else(|| step.strip_prefix('@'))
         .unwrap_or(if step == ".." { "node()" } else { step });
     let admitted_child_kind = (!step.contains("::") || step.starts_with("child::"))
@@ -864,6 +889,8 @@ fn step_candidates(
         descendant_nodes(document, node, control)
     } else if step.uses_descendant_or_self_axis() {
         descendant_or_self_nodes(document, node, control)
+    } else if step.uses_following_sibling_axis() {
+        Ok(following_siblings(document, node))
     } else {
         Ok(document.children(node).to_vec())
     }
@@ -884,12 +911,14 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
         | PathStep::ParentAnyElement
         | PathStep::SelfAnyElement
         | PathStep::DescendantAnyElement
-        | PathStep::DescendantOrSelfAnyElement => document.kind(child) == NodeKind::Element,
+        | PathStep::DescendantOrSelfAnyElement
+        | PathStep::FollowingSiblingAnyElement => document.kind(child) == NodeKind::Element,
         PathStep::ChildAnyNode
         | PathStep::ParentAnyNode
         | PathStep::SelfAnyNode
         | PathStep::DescendantAnyNode
-        | PathStep::DescendantOrSelfAnyNode => true,
+        | PathStep::DescendantOrSelfAnyNode
+        | PathStep::FollowingSiblingAnyNode => true,
         PathStep::ChildText => document.kind(child) == NodeKind::Text,
         PathStep::ChildComment => document.kind(child) == NodeKind::Comment,
         PathStep::ChildProcessingInstruction => {
@@ -914,13 +943,28 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
                     .name(child)
                     .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
         }
-        PathStep::DescendantNamed(required) | PathStep::DescendantOrSelfNamed(required) => {
+        PathStep::DescendantNamed(required)
+        | PathStep::DescendantOrSelfNamed(required)
+        | PathStep::FollowingSiblingNamed(required) => {
             document.kind(child) == NodeKind::Element
                 && document
                     .name(child)
                     .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
         }
     }
+}
+
+fn following_siblings(document: &Document, context: NodeId) -> Vec<NodeId> {
+    let Some(parent) = document.parent(context) else {
+        return Vec::new();
+    };
+    document
+        .children(parent)
+        .iter()
+        .copied()
+        .skip_while(|candidate| *candidate != context)
+        .skip(1)
+        .collect()
 }
 
 fn descendant_or_self_nodes(

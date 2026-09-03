@@ -12,8 +12,8 @@ Date: 2026-09-02
   `choose-0401`, `choose-0402`,
   `choose-0403`, `choose-0404`, `choose-0501`, `choose-0502`, `choose-0601`,
   `choose-0602`, `choose-0605`, `choose-0701`, `choose-0702`, `choose-0801`,
-  `choose-0901`, `choose-1001`, `choose-1101`, `choose-1202`, `choose-1203`,
-  `choose-1301`, and `choose-1401`.
+  `choose-0901`, `choose-1001`, `choose-1101`, `choose-1201`, `choose-1202`,
+  `choose-1203`, `choose-1301`, and `choose-1401`.
 - Unchanged negative cases `choose-1801` through `choose-1804`.
 
 ## Method
@@ -51,11 +51,11 @@ introduced.
 ## Result
 
 - Complete conserved denominator: 55 cases.
-- Selected and passed: 27, comprising 23 result comparisons and 4 expected
+- Selected and passed: 28, comprising 24 result comparisons and 4 expected
   static-error comparisons.
 - Engine unsupported: 0.
 - Excluded by profile: 0.
-- Visible default not run: 28.
+- Visible default not run: 27.
 
 The unchanged cases cover ordered first-match branch selection, an
 `xsl:otherwise` branch, empty fall-through when no branch matches, two true
@@ -96,6 +96,13 @@ arithmetic, literal and context string comparisons, and `name(..)` against an
 unqualified literal. A focused control proves the name comparison does not
 equate a namespaced parent with the same local name.
 
+`choose-1201` walks context-relative `title` descendants and nests choices that
+look ahead at successively higher tree levels. Its `following-sibling::*[1]`
+steps filter the forward sibling axis to elements before applying the position,
+then feed the selected expanded name into the existing exact unqualified
+`name(path)` comparison. A focused path control separately covers named and
+wildcard following-sibling selection.
+
 `choose-1202` evaluates `.//*` relative to the current `doc` element, preserving
 descendant document order without escaping to sibling or ancestor subtrees. Its
 26-way choose compares unqualified node names and stops at the first match. A
@@ -113,13 +120,13 @@ focus, charges one XPath operation, and supplies the resulting integer to the
 already admitted variable comparison. A focused two-item `xsl:for-each`
 control proves that successive local bindings observe positions one and two.
 
-Current conserved XSLT30 accounting is 675 cases: 469 passed comparisons, 3
-engine-unsupported cases, 55 profile exclusions, and 148 visible default
+Current conserved XSLT30 accounting is 675 cases: 470 passed comparisons, 3
+engine-unsupported cases, 55 profile exclusions, and 147 visible default
 not-run cases across 17 complete test-set denominators.
 
 ## Limitation
 
-This evidence does not admit the other 28 cases. In particular, it makes no
+This evidence does not admit the other 27 cases. In particular, it makes no
 claim for general comparisons, boolean functions beyond the exact `not()`
 form and admitted `or` composition, collations, schema-aware cases,
 static typing, user functions, import composition, or arbitrary assertion
