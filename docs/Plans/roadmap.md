@@ -1467,10 +1467,12 @@ composing one nested conditional. Five more cases use a distinct typed-path
 conditional plan: schema-namespace-resolved integer casts feed equality or
 ordering conditions, and only the selected path, division, or nested
 conditional branch executes. Dead division-by-zero branches in two unchanged
-cases make lazy selection observable. The other 9
-cases remain visible defaults while their expression, type, namespace,
-collation, import, function, initial-template, schema, or assertion requirements
-are classified and admitted deliberately.
+cases make lazy selection observable. The remaining nine cases now execute a
+compile-only classification lane and report structured engine-unsupported
+outcomes for typed template contracts, typed parameters and arithmetic AVTs,
+QName construction/comparison, UCA collation and variable concatenation,
+constructed-tree navigation and dynamic elements, or mixed node-and-atomic
+sequences. No case remains under the denominator's default disposition.
 [Evidence](../Evidence/xslt30-choose-and-if-initial-denominator-2026-09-02.md)
 
 The complete 42-case `insn/call-template` denominator is now conserved before
@@ -1538,9 +1540,9 @@ The XSLT30 work currently conserves these complete native denominators:
 | `misc/built-in-templates` | 6 | 2 | 0 | 0 | 4 |
 | `fn/root` | 10 | 10 | 0 | 0 | 0 |
 | `insn/apply-imports` | 1 | 1 | 0 | 0 | 0 |
-| `insn/choose` | 55 | 46 | 0 | 0 | 9 |
+| `insn/choose` | 55 | 46 | 9 | 0 | 0 |
 | `insn/call-template` | 42 | 20 | 0 | 1 | 21 |
-| **Conserved total** | **675** | **488** | **3** | **55** | **129** |
+| **Conserved total** | **675** | **488** | **12** | **55** | **120** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

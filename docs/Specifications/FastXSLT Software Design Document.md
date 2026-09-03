@@ -429,6 +429,12 @@ division by zero reports `FOAR0001`, while a selected non-integral quotient
 remains explicitly unsupported. This form does not admit general casting,
 numeric promotion, conditional operands, or branch expressions.
 
+Recognized valid expression families that exceed the admitted evaluator remain
+engine-unsupported rather than being forced through the location-path parser.
+The global `QName()` constructor is one such boundary: it is classified before
+path parsing so punctuation in a valid but unsupported function call does not
+produce a misleading invalid-XPath diagnostic.
+
 Compiled mode names use expanded QName identity. An unprefixed lexical mode is
 in no namespace; a prefixed mode is resolved against the namespace context of
 the containing stylesheet instruction and retained in canonical expanded form.

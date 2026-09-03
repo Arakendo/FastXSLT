@@ -19,6 +19,8 @@ Date: 2026-09-02
   `choose-1502`, `choose-1601`, `choose-1701`, `choose-1702`, `choose-1703`,
   `choose-1704`, `choose-1706`, and `choose-1901` through `choose-1905`.
 - Unchanged negative cases `choose-1801` through `choose-1804`.
+- Explicitly unsupported unchanged cases `choose-0103` through `choose-0107`,
+  `choose-0202`, `choose-0607`, `choose-0608`, and `choose-1705`.
 
 ## Method
 
@@ -57,9 +59,9 @@ introduced.
 - Complete conserved denominator: 55 cases.
 - Selected and passed: 46, comprising 42 result comparisons and 4 expected
   static-error comparisons.
-- Engine unsupported: 0.
+- Engine unsupported: 9.
 - Excluded by profile: 0.
-- Visible default not run: 9.
+- Visible default not run: 0.
 
 The unchanged cases cover ordered first-match branch selection, an
 `xsl:otherwise` branch, empty fall-through when no branch matches, two true
@@ -196,13 +198,24 @@ executes: two unchanged cases would report division by zero under eager branch
 evaluation. A focused compiler control accepts an alternate prefix bound to the
 XML Schema namespace and rejects the conventional `xs` prefix when rebound.
 
-Current conserved XSLT30 accounting is 675 cases: 488 passed comparisons, 3
-engine-unsupported cases, 55 profile exclusions, and 129 visible default
+The remaining nine cases are now selected and executed through a compile-only
+classification lane. Each returns a structured engine-unsupported outcome for
+a specific unimplemented boundary: typed template result checking; typed
+parameters and arithmetic AVTs; QName construction and comparison; UCA
+collation with variable concatenation; navigation of constructed temporary
+trees with dynamic element construction; or mixed node-and-atomic sequence
+construction and effective boolean value. In particular, the valid `QName()`
+global expression is recognized as unsupported before location-path parsing, so
+it is not mislabeled as invalid XPath.
+
+Current conserved XSLT30 accounting is 675 cases: 488 passed comparisons, 12
+engine-unsupported cases, 55 profile exclusions, and 120 visible default
 not-run cases across 17 complete test-set denominators.
 
 ## Limitation
 
-This evidence does not admit the other 9 cases. In particular, it makes no
+This evidence does not claim passing semantics for the 9 explicitly unsupported
+cases. In particular, it makes no
 claim for general comparisons beyond the exact admitted variable and path
 forms, boolean functions beyond the exact `not()` form and admitted `or`
 composition, collations beyond the two retained strategies, schema-aware cases,

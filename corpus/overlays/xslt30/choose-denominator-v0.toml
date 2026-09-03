@@ -283,3 +283,57 @@ case_name = "choose-1905"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged XSLT 2.0 case lazily evaluates nested typed-path conditional expressions and returns only the selected location-path value."
+
+[[case_override]]
+case_name = "choose-0103"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The unchanged case requires typed template result contracts, general sequence comparisons, and boolean sequence construction beyond the admitted engine surface."
+
+[[case_override]]
+case_name = "choose-0104"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The unchanged negative case requires static type checking of an empty choose branch against a declared template result type, which the engine does not yet implement."
+
+[[case_override]]
+case_name = "choose-0105"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The unchanged case requires typed template parameters, variable arithmetic in AVTs, and a general XPath assertion beyond the admitted engine surface."
+
+[[case_override]]
+case_name = "choose-0106"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The unchanged case requires QName construction and namespace-sensitive untypedAtomic-to-QName comparison beyond the admitted engine surface."
+
+[[case_override]]
+case_name = "choose-0107"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The unchanged case requires concat over variables and the UCA collation, neither of which is admitted by the current conditional evaluator."
+
+[[case_override]]
+case_name = "choose-0202"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The unchanged case requires navigation of a constructed temporary tree, dynamic element construction, and untypedAtomic-to-integer general comparison beyond the admitted engine surface."
+
+[[case_override]]
+case_name = "choose-0607"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The unchanged case constructs and tests mixed node-and-atomic sequences, whose sequence constructors and effective boolean value are outside the admitted engine surface."
+
+[[case_override]]
+case_name = "choose-0608"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The unchanged case constructs a mixed sequence containing repeated temporary elements and an integer, beyond the admitted sequence and effective-boolean-value surface."
+
+[[case_override]]
+case_name = "choose-1705"
+selection = "selected"
+execution = "engine-unsupported"
+rationale = "The unchanged case repeats mixed node-and-atomic sequence construction and effective boolean value through xsl:choose, beyond the admitted engine surface."

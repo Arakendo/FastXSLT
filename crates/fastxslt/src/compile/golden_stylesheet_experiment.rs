@@ -680,6 +680,12 @@ fn compile_global_default(
                 parse_location_path(path.trim(), document.location(element).clone())
                     .map_err(map_path_failure)?,
             ))
+        } else if select.trim_start().starts_with("QName(") {
+            Err(unsupported(
+                "FXXP1011",
+                "QName construction is outside the admitted global expression slice",
+                document.location(element),
+            ))
         } else {
             Ok(GlobalBindingDefault::LocationPath(
                 parse_location_path(select, document.location(element).clone())

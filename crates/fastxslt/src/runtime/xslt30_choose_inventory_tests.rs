@@ -57,6 +57,17 @@ const PASSED_CASES: [&str; 42] = [
     "choose-1905",
 ];
 const ERROR_CASES: [&str; 4] = ["choose-1801", "choose-1802", "choose-1803", "choose-1804"];
+const UNSUPPORTED_CASES: [&str; 9] = [
+    "choose-0103",
+    "choose-0104",
+    "choose-0105",
+    "choose-0106",
+    "choose-0107",
+    "choose-0202",
+    "choose-0607",
+    "choose-0608",
+    "choose-1705",
+];
 const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/choose-denominator-v0.toml");
 
 #[test]
@@ -72,13 +83,55 @@ fn inventories_complete_choose_denominator_before_selection() {
     assert_eq!(names.len(), cases.len());
     assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
     assert!(OVERLAY.contains("case_count = 55"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 46);
+    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 55);
     for case_name in PASSED_CASES.into_iter().chain(ERROR_CASES) {
         assert!(names.contains(case_name));
         let record = overlay_case(case_name);
         assert!(record.contains("selection = \"selected\""));
         assert!(record.contains("execution = \"passed\""));
     }
+    for case_name in UNSUPPORTED_CASES {
+        assert!(names.contains(case_name));
+        let record = overlay_case(case_name);
+        assert!(record.contains("selection = \"selected\""));
+        assert!(record.contains("execution = \"engine-unsupported\""));
+    }
+}
+
+#[test]
+fn reports_remaining_choose_cases_as_explicitly_unsupported() {
+    let document = load_test_set();
+    for case_name in UNSUPPORTED_CASES {
+        let (snapshot, stylesheet_id) = sealed_stylesheet_resource(&document, case_name);
+        let failure = compile_resource(&snapshot, &stylesheet_id)
+            .expect_err("unsupported choose case should not compile as partial semantics");
+        assert_eq!(
+            failure.category,
+            super::FailureCategory::Unsupported,
+            "{case_name}: {failure:?}"
+        );
+    }
+}
+
+fn sealed_stylesheet_resource(
+    document: &Document,
+    case_name: &str,
+) -> (crate::resources::ResourceSnapshot, String) {
+    let case = case_named(document, case_name);
+    let stylesheet_file = child_named(document, case, "test")
+        .and_then(|node| child_named(document, node, "stylesheet"))
+        .and_then(|node| attribute(document, node, "file"))
+        .expect("stylesheet file");
+    let stylesheet_id = format!("https://example.invalid/xslt30/insn/choose/{stylesheet_file}");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, 65_536, 65_536));
+    resources
+        .admit(
+            stylesheet_id.clone(),
+            fs::read(corpus_directory().join(stylesheet_file))
+                .expect("read stylesheet and close handle"),
+        )
+        .expect("admit stylesheet");
+    (resources.seal(), stylesheet_id)
 }
 
 #[test]
