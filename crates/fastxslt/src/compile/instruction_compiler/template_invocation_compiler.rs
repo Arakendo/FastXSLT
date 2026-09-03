@@ -121,9 +121,11 @@ fn compile_selected_argument_value(
         }
         return Ok(TemplateArgumentValue::Variable(variable.to_owned()));
     }
-    select
-        .parse::<i64>()
-        .map(TemplateArgumentValue::Integer)
+    if let Ok(value) = select.parse::<i64>() {
+        return Ok(TemplateArgumentValue::Integer(value));
+    }
+    parse_location_path(select, document.location(element).clone())
+        .map(TemplateArgumentValue::SourcePath)
         .map_err(|_| {
             unsupported(
                 "FXXP1011",

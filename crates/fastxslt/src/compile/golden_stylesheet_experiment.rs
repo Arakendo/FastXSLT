@@ -999,7 +999,6 @@ fn compile_template(document: &Document, element: NodeId) -> Result<Template, Co
                 &["name", "tunnel", "select", "required"],
                 "xsl:param",
             )?;
-            ensure_no_meaningful_children(document, child, "xsl:param")?;
             let lexical_name = required_attribute(document, child, None, "name")?;
             let name = normalize_variable_qname(document, child, lexical_name)?;
             if parameters
@@ -1024,28 +1023,18 @@ fn compile_template(document: &Document, element: NodeId) -> Result<Template, Co
                 }
             };
             let required = parse_template_parameter_required(document, child)?;
-            if required && optional_attribute(document, child, None, "select").is_some() {
+            let children = meaningful_children(document, child);
+            if required
+                && (optional_attribute(document, child, None, "select").is_some()
+                    || !children.is_empty())
+            {
                 return Err(invalid(
                     "XTSE0010",
                     "a required template parameter cannot declare a default value",
                     document.location(child),
                 ));
             }
-            let default = optional_attribute(document, child, None, "select").map_or_else(
-                || Ok(TemplateParameterDefault::Text(String::new())),
-                |select| {
-                    select
-                        .parse::<i64>()
-                        .map(TemplateParameterDefault::Integer)
-                        .map_err(|_| {
-                            unsupported(
-                                "FXST1032",
-                                format!("unsupported template parameter default: {select}"),
-                                document.location(child),
-                            )
-                        })
-                },
-            )?;
+            let default = compile_template_parameter_default(document, child, &children)?;
             parameters.push(TemplateParameter {
                 name,
                 tunnel,
@@ -1160,7 +1149,7 @@ fn compile_named_template_parameter(
             document.location(child),
         ));
     }
-    let default = compile_named_template_parameter_default(document, child, &children)?;
+    let default = compile_template_parameter_default(document, child, &children)?;
     Ok(TemplateParameter {
         name: parameter.to_owned(),
         tunnel,
@@ -1169,7 +1158,7 @@ fn compile_named_template_parameter(
     })
 }
 
-fn compile_named_template_parameter_default(
+fn compile_template_parameter_default(
     document: &Document,
     child: NodeId,
     children: &[NodeId],
@@ -1181,7 +1170,7 @@ fn compile_named_template_parameter_default(
         {
             return Err(unsupported(
                 "FXST1032",
-                "the private named-template parameter default slice permits only literal text",
+                "the private template parameter default slice permits only literal text",
                 document.location(child),
             ));
         }
@@ -1196,7 +1185,7 @@ fn compile_named_template_parameter_default(
     }
     Err(unsupported(
         "FXST1032",
-        format!("unsupported named-template parameter default: {select}"),
+        format!("unsupported template parameter default: {select}"),
         document.location(child),
     ))
 }

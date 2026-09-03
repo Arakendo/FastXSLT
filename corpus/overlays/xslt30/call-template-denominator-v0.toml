@@ -81,6 +81,12 @@ execution = "passed"
 rationale = "The unchanged XSLT 3.0 negative case reports XTDE0700 when the selected initial template declares a required template parameter, because host stylesheet parameters do not supply initial-template parameters."
 
 [[case_override]]
+case_name = "call-template-0402"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged case passes the current doc element's child node into a named template; match, mode, and priority on that declaration do not affect named invocation."
+
+[[case_override]]
 case_name = "call-template-0801"
 selection = "selected"
 execution = "passed"

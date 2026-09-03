@@ -13,11 +13,12 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/insn/call-template/_call-template-test-set.xml";
-const RESULT_CASES: [&str; 13] = [
+const RESULT_CASES: [&str; 14] = [
     "call-template-0101",
     "call-template-0102",
     "call-template-0103",
     "call-template-0201",
+    "call-template-0402",
     "call-template-0801",
     "call-template-0802",
     "call-template-0109",
@@ -52,7 +53,7 @@ fn inventories_complete_call_template_denominator_before_selection() {
     assert_eq!(names.len(), cases.len());
     assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
     assert!(OVERLAY.contains("case_count = 42"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 20);
+    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 21);
     for case_name in RESULT_CASES
         .into_iter()
         .chain(ERROR_CASES.into_iter().map(|(case_name, _)| case_name))
@@ -298,7 +299,7 @@ fn case_parameters(document: &Document, test: NodeId) -> BTreeMap<String, Invoca
             (
                 name,
                 InvocationParameter {
-                    value: AtomicValue::string(value),
+                    value: AtomicValue::string(value).into(),
                     tunnel: false,
                 },
             )

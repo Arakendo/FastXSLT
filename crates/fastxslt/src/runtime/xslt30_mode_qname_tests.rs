@@ -1068,7 +1068,7 @@ fn case_parameters(document: &Document, test: NodeId) -> BTreeMap<String, Invoca
             (
                 name,
                 InvocationParameter {
-                    value: AtomicValue::string(value),
+                    value: AtomicValue::string(value).into(),
                     tunnel: false,
                 },
             )

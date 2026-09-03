@@ -939,7 +939,7 @@ fn executes_xslt30_empty_global_parameter_filtered_paths() {
     parameters.insert(
         "type".to_owned(),
         InvocationParameter {
-            value: AtomicValue::string("enfant"),
+            value: AtomicValue::string("enfant").into(),
             tunnel: false,
         },
     );

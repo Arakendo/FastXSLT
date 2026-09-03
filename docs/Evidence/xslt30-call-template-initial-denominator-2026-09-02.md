@@ -10,7 +10,8 @@ Date: 2026-09-02
   `tests/insn/call-template/_call-template-test-set.xml` with 42 cases.
 - Unchanged case `call-template-0001`, `call-template-0101` through
   `call-template-0107`, plus
-  `call-template-0109`, `call-template-0201`, `call-template-0401a`, `call-template-0801`,
+  `call-template-0109`, `call-template-0201`, `call-template-0401a`,
+  `call-template-0402`, `call-template-0801`,
   `call-template-0802`, `call-template-1101`, `call-template-1501`,
   `call-template-1701`, and `call-template-1801` through `call-template-1803`.
 
@@ -38,10 +39,10 @@ remain limited to the standard initial-template name.
 ## Result
 
 - Complete conserved denominator: 42 cases.
-- Selected and passed: 19.
+- Selected and passed: 20.
 - Engine unsupported: 0.
 - Excluded by profile: 1.
-- Visible default not run: 22.
+- Visible default not run: 21.
 
 `call-template-0101` enters `temp` directly as the initial template and proves
 the document-matching template is not selected instead. `call-template-0801`
@@ -77,6 +78,12 @@ copies the current document with `xsl:copy-of select="."`. The document node
 acts as a sequence boundary: its children are copied into the containing
 literal result element without manufacturing a nested result document.
 
+`call-template-0402` evaluates the relative child path `a` at the call site and
+passes the resulting source-node sequence without losing node identity. The
+callee obtains its string value through the invocation-local node frame. Its
+`match`, `mode`, and `priority` attributes do not participate in named-template
+selection.
+
 `call-template-0109` normalizes whitespace around EQNames and gives `Q{}temp`
 the same identity as unqualified `temp`. `call-template-1701` proves two
 different prefixes bound to the same namespace select one expanded named
@@ -94,15 +101,15 @@ one and selects the later sibling import where two imports declare the same
 name. All secondary modules come from explicit catalog metadata and are sealed
 before compilation; execution performs no acquisition.
 
-Adding this denominator changes conserved XSLT30 accounting to 675 cases: 459
-passed comparisons, 3 engine-unsupported cases, 55 profile exclusions, and 158
+Adding this denominator changes conserved XSLT30 accounting to 675 cases: 460
+passed comparisons, 3 engine-unsupported cases, 55 profile exclusions, and 157
 visible default not-run cases across 17 complete test-set denominators.
 
 ## Limitation
 
-This evidence does not admit the other 22 cases. Catalog QName resolution is
+This evidence does not admit the other 21 cases. Catalog QName resolution is
 test-adapter evidence rather than a selected public host API. The slice does
 not establish host-supplied initial-template parameters, typed parameters,
-node-sequence or general XPath arguments, deep/tail recursion
+general XPath arguments or arbitrary node-sequence construction, deep/tail recursion
 behavior, arbitrary focus access, or the other assertion families used by the
 set.

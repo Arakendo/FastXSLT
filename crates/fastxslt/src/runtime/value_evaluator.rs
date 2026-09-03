@@ -454,7 +454,11 @@ fn append_variable_value(
         }
         return Ok(());
     }
-    if let Some(nodes) = inputs.globals.nodes.get(name) {
+    if let Some(nodes) = variables
+        .source_nodes
+        .get(name)
+        .or_else(|| inputs.globals.nodes.get(name))
+    {
         for (index, node) in nodes.iter().enumerate() {
             if index > 0 {
                 append_text(result, separator, inputs.request_id, control)?;

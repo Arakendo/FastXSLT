@@ -86,34 +86,66 @@ pub(super) struct RuntimeVariables {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct InvocationParameter {
-    pub(super) value: AtomicValue,
+    pub(super) value: InvocationParameterValue,
     pub(super) tunnel: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum InvocationParameterValue {
+    Atomic(AtomicValue),
+    SourceNodes(Vec<NodeId>),
+}
+
+impl From<AtomicValue> for InvocationParameterValue {
+    fn from(value: AtomicValue) -> Self {
+        Self::Atomic(value)
+    }
 }
 
 pub(super) fn evaluate_template_arguments(
     arguments: &[TemplateArgument],
     variables: &RuntimeVariables,
-    request_id: &str,
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
 ) -> Result<BTreeMap<String, InvocationParameter>, ExecutionFailure> {
     arguments
         .iter()
         .map(|argument| {
             let value = match &argument.value {
-                TemplateArgumentValue::Text(value) => AtomicValue::string(value.clone()),
-                TemplateArgumentValue::Integer(value) => AtomicValue::from_validated_lexical(
-                    BuiltinAtomicType::Integer,
-                    value.to_string(),
-                ),
+                TemplateArgumentValue::Text(value) => {
+                    InvocationParameterValue::Atomic(AtomicValue::string(value.clone()))
+                }
+                TemplateArgumentValue::Integer(value) => {
+                    InvocationParameterValue::Atomic(AtomicValue::from_validated_lexical(
+                        BuiltinAtomicType::Integer,
+                        value.to_string(),
+                    ))
+                }
                 TemplateArgumentValue::Variable(name) => {
-                    variables.atomics.get(name).cloned().ok_or_else(|| {
-                        failure_at(
+                    if let Some(value) = variables.atomics.get(name) {
+                        InvocationParameterValue::Atomic(value.clone())
+                    } else if let Some(nodes) = variables
+                        .source_nodes
+                        .get(name)
+                        .or_else(|| inputs.globals.nodes.get(name))
+                    {
+                        InvocationParameterValue::SourceNodes(nodes.clone())
+                    } else {
+                        return Err(failure_at(
                             "FXRT0002",
                             FailureCategory::Invalid,
-                            Some(request_id),
+                            Some(inputs.request_id),
                             argument.location.clone(),
                             format!("unbound template argument variable: ${name}"),
-                        )
-                    })?
+                        ));
+                    }
+                }
+                TemplateArgumentValue::SourcePath(path) => {
+                    let (source, context) = required_source_context(inputs, context)?;
+                    let nodes = evaluate_location_path_controlled(source, context, path, control)
+                        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                    InvocationParameterValue::SourceNodes(nodes)
                 }
             };
             Ok((
@@ -159,8 +191,23 @@ pub(super) fn materialize_global_defaults(
                 .get(&binding.name)
                 .filter(|parameter| !parameter.tunnel)
             {
-                Arc::make_mut(&mut globals.atomics)
-                    .insert(binding.name.clone(), parameter.value.clone());
+                Arc::make_mut(&mut globals.atomics).insert(
+                    binding.name.clone(),
+                    match &parameter.value {
+                        InvocationParameterValue::Atomic(value) => value.clone(),
+                        InvocationParameterValue::SourceNodes(_) => {
+                            return Err(failure(
+                                "XTTE0590",
+                                FailureCategory::Invalid,
+                                Some(request_id),
+                                format!(
+                                    "global parameter requires an atomic host value: ${}",
+                                    binding.name
+                                ),
+                            ));
+                        }
+                    },
+                );
                 continue;
             }
             if binding.required {
@@ -513,11 +560,20 @@ pub(super) fn bind_template_parameters(
                 ),
             ));
         }
-        let value = supplied
+        let supplied = supplied
             .get(&parameter.name)
-            .filter(|supplied| supplied.tunnel == parameter.tunnel)
-            .map_or_else(
-                || match &parameter.default {
+            .filter(|supplied| supplied.tunnel == parameter.tunnel);
+        match supplied.map(|supplied| &supplied.value) {
+            Some(InvocationParameterValue::Atomic(value)) => {
+                Arc::make_mut(&mut frame.atomics).insert(parameter.name.clone(), value.clone());
+            }
+            Some(InvocationParameterValue::SourceNodes(nodes)) => {
+                frame
+                    .source_nodes
+                    .insert(parameter.name.clone(), nodes.clone());
+            }
+            None => {
+                let value = match &parameter.default {
                     TemplateParameterDefault::Text(value) => AtomicValue::string(value.clone()),
                     TemplateParameterDefault::Integer(value) => {
                         AtomicValue::from_validated_lexical(
@@ -525,10 +581,10 @@ pub(super) fn bind_template_parameters(
                             value.to_string(),
                         )
                     }
-                },
-                |supplied| supplied.value.clone(),
-            );
-        Arc::make_mut(&mut frame.atomics).insert(parameter.name.clone(), value);
+                };
+                Arc::make_mut(&mut frame.atomics).insert(parameter.name.clone(), value);
+            }
+        }
     }
     Ok(frame)
 }

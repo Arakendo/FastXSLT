@@ -895,7 +895,7 @@ fn invocation_parameters_override_global_defaults_without_cross_request_state() 
     overridden.parameters.insert(
         "message".to_owned(),
         InvocationParameter {
-            value: AtomicValue::string("host supplied"),
+            value: AtomicValue::string("host supplied").into(),
             tunnel: false,
         },
     );

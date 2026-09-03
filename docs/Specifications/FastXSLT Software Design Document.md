@@ -260,10 +260,13 @@ string or integer `select` defaults. Required template parameters are retained
 separately from defaults and report `XTDE0700` when a matching non-tunnel or
 tunnel argument is absent.
 Named calls may supply literal content, integer `select` values, or references
-to one caller-visible atomic variable. Defaults and supplied arguments are
+to one caller-visible atomic variable. They may also evaluate a relative
+location path against a source context and retain the resulting source-node
+sequence in the invocation-local frame; variable forwarding preserves that
+node sequence without stringification. Defaults and supplied arguments are
 bound through the same invocation-local copy-on-write frame machinery used by
 matched templates. This does not admit node-sequence arguments, general XPath
-argument expressions, typed parameters, or host-supplied
+construction, general XPath argument expressions, typed parameters, or host-supplied
 initial-template parameters. An initial-template invocation may still bind
 host-supplied stylesheet parameters into the global frame and independently
 apply its declared template-parameter defaults.

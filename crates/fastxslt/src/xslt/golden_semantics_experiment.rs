@@ -511,6 +511,7 @@ pub(crate) enum TemplateArgumentValue {
     Text(String),
     Integer(i64),
     Variable(String),
+    SourcePath(LocationPath),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

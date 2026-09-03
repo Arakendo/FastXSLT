@@ -524,6 +524,7 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
                 text.capacity()
             }
             TemplateArgumentValue::Integer(_) => 0,
+            TemplateArgumentValue::SourcePath(path) => path.known_owned_capacity_bytes(),
         }
         + location_owned(&value.location)
 }

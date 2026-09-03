@@ -498,14 +498,14 @@ fn initial_mode_004_request(identity: &str, b_value: &str, b_tunnel: bool) -> Tr
             (
                 "a".to_owned(),
                 InvocationParameter {
-                    value: AtomicValue::string("1234"),
+                    value: AtomicValue::string("1234").into(),
                     tunnel: false,
                 },
             ),
             (
                 "Q{http://my.net/}b".to_owned(),
                 InvocationParameter {
-                    value: AtomicValue::string(b_value),
+                    value: AtomicValue::string(b_value).into(),
                     tunnel: b_tunnel,
                 },
             ),
