@@ -5966,6 +5966,448 @@ execution = "passed"
 rationale = "The unchanged expression verifies typed duration day-component extraction through the bounded native duration evaluator."
 
 [[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-8"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-9"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-10"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-11"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-12"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-13"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-14"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-15"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-16"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-17"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-18"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-19"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "fn-hours-from-duration-20"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "K-HoursFromDurationFunc-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "K-HoursFromDurationFunc-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "K-HoursFromDurationFunc-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "K-HoursFromDurationFunc-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "K-HoursFromDurationFunc-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "K-HoursFromDurationFunc-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "K-HoursFromDurationFunc-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/hours-from-duration.xml"
+case_name = "cbcl-hours-from-duration-001"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration hour-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-8"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-9"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-10"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-11"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-12"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-13"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-14"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-15"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-16"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-17"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-18"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-19"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-20"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "fn-minutes-from-duration-21"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "K-MinutesFromDurationFunc-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "K-MinutesFromDurationFunc-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "K-MinutesFromDurationFunc-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "K-MinutesFromDurationFunc-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "K-MinutesFromDurationFunc-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "K-MinutesFromDurationFunc-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "K-MinutesFromDurationFunc-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/minutes-from-duration.xml"
+case_name = "cbcl-minutes-from-duration-001"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration minute-component extraction through the bounded native duration evaluator."
+
+
+[[case]]
 set_file = "fn/days-from-duration.xml"
 case_name = "fn-days-from-duration1args-2"
 selection = "selected"

@@ -152,6 +152,24 @@ fn evaluate_function(
             let duration = require_duration(evaluate_value(argument, control)?)?;
             Ok(DurationValue::Integer(duration.whole_seconds / 86_400))
         }
+        "hours-from-duration" | "fn:hours-from-duration" => {
+            require_one_argument(argument)?;
+            if argument.trim() == "()" {
+                return Ok(DurationValue::Empty);
+            }
+            let duration = require_duration(evaluate_value(argument, control)?)?;
+            Ok(DurationValue::Integer(
+                (duration.whole_seconds / 3_600) % 24,
+            ))
+        }
+        "minutes-from-duration" | "fn:minutes-from-duration" => {
+            require_one_argument(argument)?;
+            if argument.trim() == "()" {
+                return Ok(DurationValue::Empty);
+            }
+            let duration = require_duration(evaluate_value(argument, control)?)?;
+            Ok(DurationValue::Integer((duration.whole_seconds / 60) % 60))
+        }
         "xs:yearMonthDuration" | "xs:duration" | "xs:dayTimeDuration" => {
             require_one_argument(argument)?;
             let lexical = parse_quoted(argument).ok_or(DurationFailure::Unsupported)?;
@@ -426,6 +444,30 @@ mod tests {
                 -8,
             ),
             ("days-from-duration(xs:yearMonthDuration(\"P1Y\"))", 0),
+        ] {
+            assert_eq!(
+                evaluate(source, &mut InvocationControl::unbounded()),
+                Ok(DurationValue::Integer(expected))
+            );
+        }
+    }
+
+    #[test]
+    fn extracts_signed_normalized_hour_and_minute_components() {
+        for (source, expected) in [
+            ("hours-from-duration(xs:dayTimeDuration(\"PT123H\"))", 3),
+            (
+                "hours-from-duration(xs:duration(\"-P3Y4M8DT1H23M2.34S\"))",
+                -1,
+            ),
+            (
+                "minutes-from-duration(xs:dayTimeDuration(\"P21DT10H65M\"))",
+                5,
+            ),
+            (
+                "minutes-from-duration(xs:duration(\"-P3Y4M8DT1H23M2.34S\"))",
+                -23,
+            ),
         ] {
             assert_eq!(
                 evaluate(source, &mut InvocationControl::unbounded()),

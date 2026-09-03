@@ -10,28 +10,40 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 #[test]
 fn executes_complete_qt3_years_from_duration_denominator() {
-    execute_duration_denominator("years", "Years");
+    execute_duration_denominator("years", "Years", 20);
 }
 
 #[test]
 fn executes_complete_qt3_months_from_duration_denominator() {
-    execute_duration_denominator("months", "Months");
+    execute_duration_denominator("months", "Months", 20);
 }
 
 #[test]
 fn executes_complete_qt3_days_from_duration_denominator() {
-    execute_duration_denominator("days", "Days");
+    execute_duration_denominator("days", "Days", 20);
 }
 
-fn execute_duration_denominator(component: &str, component_title: &str) {
+#[test]
+fn executes_complete_qt3_hours_from_duration_denominator() {
+    execute_duration_denominator("hours", "Hours", 20);
+}
+
+#[test]
+fn executes_complete_qt3_minutes_from_duration_denominator() {
+    execute_duration_denominator("minutes", "Minutes", 21);
+}
+
+fn execute_duration_denominator(component: &str, component_title: &str, numbered_cases: usize) {
     let set_file = format!("fn/{component}-from-duration.xml");
     let mut selected = (1..=3)
         .map(|suffix| format!("fn-{component}-from-duration1args-{suffix}"))
         .collect::<Vec<_>>();
-    selected.extend((1..=20).map(|suffix| format!("fn-{component}-from-duration-{suffix}")));
+    selected.extend(
+        (1..=numbered_cases).map(|suffix| format!("fn-{component}-from-duration-{suffix}")),
+    );
     selected.extend((1..=7).map(|suffix| format!("K-{component_title}FromDurationFunc-{suffix}")));
     selected.push(format!("cbcl-{component}-from-duration-001"));
-    assert_eq!(selected.len(), 31);
+    assert_eq!(selected.len(), numbered_cases + 11);
     assert_selected_count(&set_file, selected.len());
 
     let document = load_test_set(&set_file);

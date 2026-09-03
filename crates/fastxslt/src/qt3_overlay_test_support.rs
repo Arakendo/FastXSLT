@@ -54,6 +54,10 @@ const MONTHS_FROM_DURATION_DENOMINATOR_SOURCE: &str =
     include_str!("../../../corpus/overlays/qt3/months-from-duration-denominator-v0.toml");
 const DAYS_FROM_DURATION_DENOMINATOR_SOURCE: &str =
     include_str!("../../../corpus/overlays/qt3/days-from-duration-denominator-v0.toml");
+const HOURS_FROM_DURATION_DENOMINATOR_SOURCE: &str =
+    include_str!("../../../corpus/overlays/qt3/hours-from-duration-denominator-v0.toml");
+const MINUTES_FROM_DURATION_DENOMINATOR_SOURCE: &str =
+    include_str!("../../../corpus/overlays/qt3/minutes-from-duration-denominator-v0.toml");
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
@@ -393,14 +397,32 @@ fn assert_days_from_duration_denominator() {
     );
 }
 
+fn assert_time_duration_component_denominators() {
+    assert_complete_denominator(
+        HOURS_FROM_DURATION_DENOMINATOR_SOURCE,
+        "fn/hours-from-duration.xml",
+        31,
+        31,
+        0,
+    );
+    assert_complete_denominator(
+        MINUTES_FROM_DURATION_DENOMINATOR_SOURCE,
+        "fn/minutes-from-duration.xml",
+        32,
+        32,
+        0,
+    );
+}
+
 fn assert_duration_component_denominators() {
     assert_years_from_duration_denominator();
     assert_months_from_duration_denominator();
     assert_days_from_duration_denominator();
+    assert_time_duration_component_denominators();
 }
 
 fn assert_private_ledger_sets() {
-    assert_eq!(private_ledger().case.len(), 1_107);
+    assert_eq!(private_ledger().case.len(), 1_170);
     assert!(private_ledger().case.iter().all(|case| matches!(
         case.set_file.as_str(),
         "prod/AxisStep.xml"
@@ -423,6 +445,8 @@ fn assert_private_ledger_sets() {
             | "fn/years-from-duration.xml"
             | "fn/months-from-duration.xml"
             | "fn/days-from-duration.xml"
+            | "fn/hours-from-duration.xml"
+            | "fn/minutes-from-duration.xml"
     )));
 }
 
