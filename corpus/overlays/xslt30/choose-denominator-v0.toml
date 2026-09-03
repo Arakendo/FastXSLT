@@ -201,6 +201,18 @@ execution = "passed"
 rationale = "The unchanged XSLT 2.0 case applies numeric effective-boolean-value rules to NaN, zero, and a nonzero xs:double across three xsl:if instructions."
 
 [[case_override]]
+case_name = "choose-1701"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case uses a source-dependent XPath conditional integer expression both as the effective boolean value of xsl:if and as xsl:value-of content."
+
+[[case_override]]
+case_name = "choose-1702"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case lazily evaluates nested XPath conditional integer expressions in an xsl:when test and xsl:value-of instruction."
+
+[[case_override]]
 case_name = "choose-1703"
 selection = "selected"
 execution = "passed"

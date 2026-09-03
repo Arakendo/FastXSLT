@@ -1412,7 +1412,7 @@ general atomic pattern or import-ancestry representation.
 [Evidence](../Evidence/xslt30-apply-imports-atomic-focus-denominator-2026-09-02.md)
 
 The complete 55-case `insn/choose` denominator is now conserved before case
-selection. Thirty-five unchanged XSLT 1.0/2.0 cases execute through the
+selection. Thirty-seven unchanged XSLT 1.0/2.0 cases execute through the
 normal principal-source path: true and false child-existence tests, ordered
 `xsl:when` selection, `xsl:otherwise`, empty fall-through, constant numeric and
 string equality, effective boolean values for non-empty strings and zero,
@@ -1459,7 +1459,11 @@ reset `xpath-default-namespace` values to exact descendant `count()`
 expressions. Their mixed-namespace source makes namespace matching observable.
 The descendant/name branch family additionally executes under the first
 available member of an explicit default-collation list, applying HTML ASCII
-case-insensitive comparison without changing QName identity. The other 16
+case-insensitive comparison without changing QName identity. Two further cases
+use a narrow XPath conditional-expression plan from both
+conditional tests and `xsl:value-of`, selecting integer branches through an
+exact source `contains()` condition or constant integer comparison and lazily
+composing one nested conditional. The other 14
 cases remain visible defaults while their expression, type, namespace,
 collation, import, function, initial-template, schema, or assertion requirements
 are classified and admitted deliberately.
@@ -1530,9 +1534,9 @@ The XSLT30 work currently conserves these complete native denominators:
 | `misc/built-in-templates` | 6 | 2 | 0 | 0 | 4 |
 | `fn/root` | 10 | 10 | 0 | 0 | 0 |
 | `insn/apply-imports` | 1 | 1 | 0 | 0 | 0 |
-| `insn/choose` | 55 | 39 | 0 | 0 | 16 |
+| `insn/choose` | 55 | 41 | 0 | 0 | 14 |
 | `insn/call-template` | 42 | 20 | 0 | 1 | 21 |
-| **Conserved total** | **675** | **481** | **3** | **55** | **136** |
+| **Conserved total** | **675** | **483** | **3** | **55** | **134** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

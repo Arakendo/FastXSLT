@@ -466,6 +466,26 @@ pub(crate) enum ValueExpression {
     FormatNumber(Box<FormatNumberExpression>),
     Castable(Box<CastableExpression>),
     DeepEqual(Box<DeepEqualBooleanExpression>),
+    ConditionalInteger(Box<ConditionalIntegerExpression>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ConditionalIntegerExpression {
+    pub(crate) condition: ConditionalIntegerCondition,
+    pub(crate) when_true: ConditionalIntegerBranch,
+    pub(crate) when_false: ConditionalIntegerBranch,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ConditionalIntegerCondition {
+    Constant(bool),
+    Contains { path: LocationPath, needle: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ConditionalIntegerBranch {
+    Integer(i64),
+    Conditional(Box<ConditionalIntegerExpression>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -496,6 +516,7 @@ pub(crate) enum BooleanExpression {
         right: String,
         comparison: StringComparison,
     },
+    ConditionalInteger(Box<ConditionalIntegerExpression>),
     NodeExists(LocationPath),
     NodeStringEquals {
         path: LocationPath,

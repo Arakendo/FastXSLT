@@ -2,10 +2,11 @@ use std::mem::size_of;
 
 use super::{
     ApplySelection, BooleanExpression, CastExpression, CastableExpression, CharacterMapDefinition,
-    ChildPresenceTest, ChooseBranch, ComputedAttribute, ConstructedAttribute, ConstructedElement,
-    ConstructedNode, DecimalSumForExpression, DeepEqualBooleanExpression, ExpandedName,
-    FocusSumForExpression, ForDistinctValuesExpression, FormatNumberExpression, GlobalBinding,
-    GlobalBindingDefault, Instruction, IntegerForExpression, LiteralAttribute,
+    ChildPresenceTest, ChooseBranch, ComputedAttribute, ConditionalIntegerBranch,
+    ConditionalIntegerCondition, ConditionalIntegerExpression, ConstructedAttribute,
+    ConstructedElement, ConstructedNode, DecimalSumForExpression, DeepEqualBooleanExpression,
+    ExpandedName, FocusSumForExpression, ForDistinctValuesExpression, FormatNumberExpression,
+    GlobalBinding, GlobalBindingDefault, Instruction, IntegerForExpression, LiteralAttribute,
     LiteralAttributeValue, MatchPattern, MatchedTemplate, NamedTemplate, NamespaceBinding,
     OutputSettings, SequenceItemExpression, SourceLocation, StylesheetProgram, Template,
     TemplateArgument, TemplateArgumentValue, TemplateParameter, TemplateParameterDefault,
@@ -483,6 +484,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::DeepEqual(expression) => {
             size_of::<DeepEqualBooleanExpression>() + expression.known_owned_capacity_bytes()
         }
+        ValueExpression::ConditionalInteger(expression) => conditional_integer_owned(expression),
     }
 }
 
@@ -503,6 +505,7 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
             right,
             comparison: _,
         } => left.capacity() + right.capacity(),
+        BooleanExpression::ConditionalInteger(expression) => conditional_integer_owned(expression),
         BooleanExpression::NodeExists(path)
         | BooleanExpression::NodeIntegerLessThan { path, .. } => path.known_owned_capacity_bytes(),
         BooleanExpression::NodeStringEquals { path, value } => {
@@ -534,6 +537,25 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
                 + right.descendant_local.as_ref().map_or(0, String::capacity)
         }
         BooleanExpression::ContextStringLengthEquals(_) | BooleanExpression::Constant(_) => 0,
+    }
+}
+
+fn conditional_integer_owned(value: &ConditionalIntegerExpression) -> usize {
+    let condition = match &value.condition {
+        ConditionalIntegerCondition::Constant(_) => 0,
+        ConditionalIntegerCondition::Contains { path, needle } => {
+            path.known_owned_capacity_bytes() + needle.capacity()
+        }
+    };
+    condition
+        + conditional_integer_branch_owned(&value.when_true)
+        + conditional_integer_branch_owned(&value.when_false)
+}
+
+fn conditional_integer_branch_owned(value: &ConditionalIntegerBranch) -> usize {
+    match value {
+        ConditionalIntegerBranch::Integer(_) => 0,
+        ConditionalIntegerBranch::Conditional(expression) => conditional_integer_owned(expression),
     }
 }
 

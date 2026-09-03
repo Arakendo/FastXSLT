@@ -1725,6 +1725,10 @@ fn evaluate_boolean(
         } => {
             evaluate_variable_string_equality(inputs, left, right, *comparison, variables, control)
         }
+        BooleanExpression::ConditionalInteger(expression) => {
+            value_evaluator::evaluate_conditional_integer(inputs, expression, context, control)
+                .map(|value| value != 0)
+        }
     }
 }
 

@@ -410,6 +410,16 @@ are compiled. Missing `test`, `xsl:when` after `xsl:otherwise`, repeated
 standard static error `XTSE0010`; an unsupported expression in an earlier branch
 cannot mask a structural error elsewhere in the same `xsl:choose`.
 
+An exact XPath conditional-expression slice may compile integer-valued branches
+for shared use by a conditional test and `xsl:value-of`. Its admitted conditions
+are a constant integer less-than comparison and `contains(location-path,
+string-literal)`; a branch may contain one recursively compiled expression of
+the same form. Execution evaluates only the selected branch, applies numeric
+effective boolean value when used as a test, and accounts for path traversal,
+XDM string-value derivation, and containment work. This does not admit a
+general conditional-expression grammar, general function calls, or arbitrary
+branch sequence types.
+
 Compiled mode names use expanded QName identity. An unprefixed lexical mode is
 in no namespace; a prefixed mode is resolved against the namespace context of
 the containing stylesheet instruction and retained in canonical expanded form.

@@ -20,7 +20,10 @@ use crate::xpath::format_number_experiment::{
 };
 use crate::xpath::integer_for_experiment::evaluate as evaluate_integer_for;
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
-use crate::xslt::golden_semantics_experiment::ValueExpression;
+use crate::xslt::golden_semantics_experiment::{
+    ConditionalIntegerBranch, ConditionalIntegerCondition, ConditionalIntegerExpression,
+    ValueExpression,
+};
 
 use super::{
     ExecutionFailure, FailureCategory, ResultNode, RuntimeVariables, SequenceInputs, append_text,
@@ -127,8 +130,63 @@ pub(super) fn execute_value_of(
                 control,
             )?;
         }
+        ValueExpression::ConditionalInteger(expression) => {
+            let value = evaluate_conditional_integer(inputs, expression, context, control)?;
+            append_text(result, &value.to_string(), inputs.request_id, control)?;
+        }
     }
     Ok(())
+}
+
+pub(super) fn evaluate_conditional_integer(
+    inputs: &SequenceInputs<'_>,
+    expression: &ConditionalIntegerExpression,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<i64, ExecutionFailure> {
+    let condition = match &expression.condition {
+        ConditionalIntegerCondition::Constant(value) => *value,
+        ConditionalIntegerCondition::Contains { path, needle } => {
+            let (source, context) = required_source_context(inputs, context)?;
+            let selected = evaluate_location_path_controlled(source, context, path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let value = if let Some(node) = selected.first() {
+                source
+                    .string_value_controlled(*node, control)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?
+            } else {
+                String::new()
+            };
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            value.contains(needle)
+        }
+    };
+    evaluate_conditional_integer_branch(
+        inputs,
+        if condition {
+            &expression.when_true
+        } else {
+            &expression.when_false
+        },
+        context,
+        control,
+    )
+}
+
+fn evaluate_conditional_integer_branch(
+    inputs: &SequenceInputs<'_>,
+    branch: &ConditionalIntegerBranch,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<i64, ExecutionFailure> {
+    match branch {
+        ConditionalIntegerBranch::Integer(value) => Ok(*value),
+        ConditionalIntegerBranch::Conditional(expression) => {
+            evaluate_conditional_integer(inputs, expression, context, control)
+        }
+    }
 }
 
 fn append_location_path_count(

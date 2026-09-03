@@ -16,7 +16,7 @@ Date: 2026-09-02
   `choose-0702`, `choose-0801`, `choose-0901`, `choose-1001`, `choose-1101`,
   `choose-1201`, `choose-1202`,
   `choose-1203`, `choose-1204`, `choose-1301`, `choose-1401`, `choose-1501`,
-  `choose-1502`, `choose-1601`, `choose-1703`, `choose-1704`, and
+  `choose-1502`, `choose-1601`, `choose-1701`, `choose-1702`, `choose-1703`, `choose-1704`, and
   `choose-1706`.
 - Unchanged negative cases `choose-1801` through `choose-1804`.
 
@@ -55,11 +55,11 @@ introduced.
 ## Result
 
 - Complete conserved denominator: 55 cases.
-- Selected and passed: 39, comprising 35 result comparisons and 4 expected
+- Selected and passed: 41, comprising 37 result comparisons and 4 expected
   static-error comparisons.
 - Engine unsupported: 0.
 - Excluded by profile: 0.
-- Visible default not run: 16.
+- Visible default not run: 14.
 
 The unchanged cases cover ordered first-match branch selection, an
 `xsl:otherwise` branch, empty fall-through when no branch matches, two true
@@ -179,13 +179,21 @@ boolean value, and the tiny nonzero double remains true. A focused compiler
 control also proves that constructor prefixes are resolved through the XML
 Schema namespace rather than trusted by spelling.
 
-Current conserved XSLT30 accounting is 675 cases: 481 passed comparisons, 3
-engine-unsupported cases, 55 profile exclusions, and 136 visible default
+`choose-1701` and `choose-1702` retain a narrow XPath conditional-expression
+plan shared by conditional tests and `xsl:value-of`. Exact `contains(path,
+string-literal)` and constant integer less-than conditions select integer
+branches lazily, including one nested conditional. Path traversal, string-value
+derivation, and the string containment operation remain work-accounted. A
+focused compiler control rejects the unadmitted `lt` spelling instead of
+silently widening the grammar.
+
+Current conserved XSLT30 accounting is 675 cases: 483 passed comparisons, 3
+engine-unsupported cases, 55 profile exclusions, and 134 visible default
 not-run cases across 17 complete test-set denominators.
 
 ## Limitation
 
-This evidence does not admit the other 16 cases. In particular, it makes no
+This evidence does not admit the other 14 cases. In particular, it makes no
 claim for general comparisons beyond the exact admitted variable and path
 forms, boolean functions beyond the exact `not()` form and admitted `or`
 composition, collations beyond the two retained strategies, schema-aware cases,

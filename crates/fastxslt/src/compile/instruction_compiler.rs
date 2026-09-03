@@ -19,7 +19,8 @@ use crate::xpath::path_experiment::{
     PathFailure, PathStep, parse_location_path, parse_qualified_child_path,
 };
 use crate::xslt::golden_semantics_experiment::{
-    BooleanExpression, ChooseBranch, ComputedAttribute, EqualityTest, Instruction,
+    BooleanExpression, ChooseBranch, ComputedAttribute, ConditionalIntegerBranch,
+    ConditionalIntegerCondition, ConditionalIntegerExpression, EqualityTest, Instruction,
     LiteralAttributeValue, SequenceItemExpression, StringComparison, TemplateArgument,
     ValueExpression,
 };
@@ -640,6 +641,9 @@ fn compile_value_expression(
     }
     if let Some(count) = compile_count_value(document, element, expression, location)? {
         return Ok(count);
+    }
+    if let Some(conditional) = parse_conditional_integer(expression, location)? {
+        return Ok(ValueExpression::ConditionalInteger(Box::new(conditional)));
     }
     Ok(if recognizes_deep_equal(expression) {
         ValueExpression::DeepEqual(Box::new(parse_deep_equal(expression, location).map_err(
@@ -1334,6 +1338,9 @@ fn parse_boolean_expression(
         return Ok(BooleanExpression::Constant(false));
     }
     let parsed = strip_enclosing_parentheses(expression.trim());
+    if let Some(conditional) = parse_conditional_integer(parsed, location)? {
+        return Ok(BooleanExpression::ConditionalInteger(Box::new(conditional)));
+    }
     if let Some(variable) = parsed
         .strip_prefix("boolean(")
         .and_then(|value| value.strip_suffix(')'))
@@ -1385,6 +1392,111 @@ fn parse_boolean_expression(
         });
     }
     parse_scalar_boolean_expression(parsed, expression, location, comparison)
+}
+
+fn parse_conditional_integer(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<ConditionalIntegerExpression>, CompileFailure> {
+    let expression = expression.trim();
+    if !expression.starts_with("if (") {
+        return Ok(None);
+    }
+    let closing = matching_parenthesis(expression, 3)
+        .ok_or_else(|| unsupported_boolean_expression(expression, location))?;
+    let condition = parse_conditional_integer_condition(&expression[4..closing], location)?;
+    let branches = expression[closing + 1..]
+        .trim_start()
+        .strip_prefix("then ")
+        .ok_or_else(|| unsupported_boolean_expression(expression, location))?;
+    let (when_true, when_false) = split_top_level_else(branches)
+        .ok_or_else(|| unsupported_boolean_expression(expression, location))?;
+    Ok(Some(ConditionalIntegerExpression {
+        condition,
+        when_true: parse_conditional_integer_branch(when_true, location)?,
+        when_false: parse_conditional_integer_branch(when_false, location)?,
+    }))
+}
+
+fn parse_conditional_integer_condition(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<ConditionalIntegerCondition, CompileFailure> {
+    let expression = expression.trim();
+    if let Some(arguments) = expression
+        .strip_prefix("contains(")
+        .and_then(|value| value.strip_suffix(')'))
+        && let Some((path, needle)) = arguments.split_once(',')
+        && let Some(needle) = xpath_string_literal(needle.trim())
+    {
+        let path = parse_location_path(path.trim(), location.clone()).map_err(map_path_failure)?;
+        return Ok(ConditionalIntegerCondition::Contains {
+            path,
+            needle: needle.to_owned(),
+        });
+    }
+    if let Some((left, right)) = expression.split_once('<') {
+        let ordering = constant_numeric_experiment::compare(left.trim(), right.trim())
+            .map_err(|_| unsupported_boolean_expression(expression, location))?;
+        return Ok(ConditionalIntegerCondition::Constant(ordering.is_lt()));
+    }
+    Err(unsupported_boolean_expression(expression, location))
+}
+
+fn parse_conditional_integer_branch(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<ConditionalIntegerBranch, CompileFailure> {
+    if let Some(conditional) = parse_conditional_integer(expression, location)? {
+        return Ok(ConditionalIntegerBranch::Conditional(Box::new(conditional)));
+    }
+    expression
+        .trim()
+        .parse::<i64>()
+        .map(ConditionalIntegerBranch::Integer)
+        .map_err(|_| unsupported_boolean_expression(expression, location))
+}
+
+fn matching_parenthesis(expression: &str, opening: usize) -> Option<usize> {
+    let mut depth = 0_usize;
+    let mut quote = None;
+    for (index, byte) in expression.bytes().enumerate().skip(opening) {
+        if let Some(expected) = quote {
+            if byte == expected {
+                quote = None;
+            }
+            continue;
+        }
+        match byte {
+            b'\'' | b'"' => quote = Some(byte),
+            b'(' => depth += 1,
+            b')' if depth == 1 => return Some(index),
+            b')' => depth = depth.checked_sub(1)?,
+            _ => {}
+        }
+    }
+    None
+}
+
+fn split_top_level_else(expression: &str) -> Option<(&str, &str)> {
+    let bytes = expression.as_bytes();
+    let mut depth = 0_usize;
+    let mut quote = None;
+    let mut index = 0_usize;
+    while index + 6 <= bytes.len() {
+        match bytes[index] {
+            byte if quote == Some(byte) => quote = None,
+            b'\'' | b'"' if quote.is_none() => quote = Some(bytes[index]),
+            b'(' if quote.is_none() => depth += 1,
+            b')' if quote.is_none() => depth = depth.saturating_sub(1),
+            b' ' if quote.is_none() && depth == 0 && expression[index..].starts_with(" else ") => {
+                return Some((expression[..index].trim(), expression[index + 6..].trim()));
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+    None
 }
 
 fn split_top_level_or(expression: &str) -> Option<(&str, &str)> {

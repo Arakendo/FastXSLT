@@ -1782,8 +1782,8 @@ mod tests {
     use crate::xdm::owned_tree_experiment::Document;
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
     use crate::xslt::golden_semantics_experiment::{
-        GlobalBindingDefault, Instruction, MatchPattern, STANDARD_INITIAL_TEMPLATE_NAME,
-        TemplatePriority, ValueExpression,
+        BooleanExpression, GlobalBindingDefault, Instruction, MatchPattern,
+        STANDARD_INITIAL_TEMPLATE_NAME, TemplatePriority, ValueExpression,
     };
 
     use super::{CompileCategory, compile_stylesheet};
@@ -1934,6 +1934,37 @@ mod tests {
             program.global_bindings[0].default,
             GlobalBindingDefault::TemporaryText("text".to_owned())
         );
+    }
+
+    #[test]
+    fn conditional_integer_expression_is_shared_by_test_and_value_compilation() {
+        let document = parse_stylesheet(
+            "memory:conditional-integer.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:if test="if (contains(doc, 'yes')) then 1 else 0"><xsl:value-of select="if (1 lt 0) then 1 else 2"/></xsl:if></xsl:template></xsl:stylesheet>"#,
+        );
+
+        let failure = compile_stylesheet(&document)
+            .expect_err("the unadmitted XPath lt spelling must not be approximated");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+
+        let document = parse_stylesheet(
+            "memory:conditional-integer.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:if test="if (contains(doc, 'yes')) then 1 else 0"><xsl:value-of select="if (1 &lt; 0) then 1 else 2"/></xsl:if></xsl:template></xsl:stylesheet>"#,
+        );
+        let program =
+            compile_stylesheet(&document).expect("exact conditional forms should compile");
+
+        assert!(matches!(
+            program.root_template.expect("root template").body.as_slice(),
+            [Instruction::If {
+                test: BooleanExpression::ConditionalInteger(_),
+                body,
+                ..
+            }] if matches!(body.as_slice(), [Instruction::ValueOf {
+                select: ValueExpression::ConditionalInteger(_),
+                ..
+            }])
+        ));
     }
 
     #[test]
