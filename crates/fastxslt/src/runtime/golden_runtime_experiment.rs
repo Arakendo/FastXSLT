@@ -1,7 +1,6 @@
 use std::{
     cell::RefCell,
     collections::{BTreeMap, HashSet},
-    sync::Arc,
 };
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
@@ -867,9 +866,7 @@ fn execute_for_each_temporary_root<'a>(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let tree = variables
-        .temporary_trees
-        .get(variable)
-        .or_else(|| inputs.globals.temporary_trees.get(variable))
+        .temporary_tree(inputs.globals, variable)
         .ok_or_else(|| {
             failure(
                 "FXRT0002",
@@ -1021,7 +1018,7 @@ fn execute_binding(
     match instruction {
         Instruction::Variable { name, select, .. } => {
             let value = execute_variable_binding(inputs, name, select, execution.node, control)?;
-            Arc::make_mut(&mut scope.atomics).insert(name.clone(), value);
+            scope.bind_atomic(name.clone(), value);
         }
         Instruction::ContextPositionVariable { name, .. } => {
             control
@@ -1031,23 +1028,23 @@ fn execute_binding(
                 BuiltinAtomicType::Integer,
                 execution.focus_position.to_string(),
             );
-            Arc::make_mut(&mut scope.atomics).insert(name.clone(), value);
+            scope.bind_atomic(name.clone(), value);
         }
         Instruction::SourceNodeVariable { name, select, .. } => {
             let (source, context) = required_source_context(inputs, execution.node)?;
             let nodes = evaluate_location_path_controlled(source, context, select, control)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            scope.source_nodes.insert(name.clone(), nodes);
+            scope.bind_source_nodes(name.clone(), nodes);
         }
         Instruction::IntegerRangeVariable {
             name, start, end, ..
         } => {
             let values = materialize_integer_range(*start, *end, inputs.request_id, control)?;
-            scope.atomic_sequences.insert(name.clone(), values);
+            scope.bind_atomic_sequence(name.clone(), values);
         }
         Instruction::TemporaryTreeVariable { name, elements, .. } => {
             let tree = materialize_temporary_tree(elements, inputs.request_id, control)?;
-            scope.temporary_trees.insert(name.clone(), tree);
+            scope.bind_temporary_tree(name.clone(), tree);
         }
         _ => unreachable!("execute_binding receives a variable instruction"),
     }
@@ -1307,9 +1304,7 @@ fn execute_apply_templates(
     }
     if let Some(ApplySelection::TemporaryRoot(name)) = select {
         let tree = variables
-            .temporary_trees
-            .get(name)
-            .or_else(|| inputs.globals.temporary_trees.get(name))
+            .temporary_tree(inputs.globals, name)
             .ok_or_else(|| {
                 failure(
                     "FXRT0002",
@@ -1322,9 +1317,7 @@ fn execute_apply_templates(
     }
     if let Some(ApplySelection::TemporaryPath { variable, steps }) = select {
         let tree = variables
-            .temporary_trees
-            .get(variable)
-            .or_else(|| inputs.globals.temporary_trees.get(variable))
+            .temporary_tree(inputs.globals, variable)
             .ok_or_else(|| {
                 failure(
                     "FXRT0002",
@@ -1782,9 +1775,7 @@ fn variable_string_value(
         return Ok(value.lexical().to_owned());
     }
     let tree = variables
-        .temporary_trees
-        .get(variable)
-        .or_else(|| inputs.globals.temporary_trees.get(variable))
+        .temporary_tree(inputs.globals, variable)
         .ok_or_else(|| {
             failure(
                 "FXRT0002",
@@ -1851,16 +1842,22 @@ fn evaluate_variable_effective_boolean_value(
     if let Some(nodes) = variables.source_nodes.get(variable) {
         return Ok(!nodes.is_empty());
     }
-    if let Some(nodes) = inputs.globals.nodes.get(variable) {
+    if variables.allows_global_fallback(variable)
+        && let Some(nodes) = inputs.globals.nodes.get(variable)
+    {
         return Ok(!nodes.is_empty());
     }
     if variables.temporary_trees.contains_key(variable) {
         return Ok(true);
     }
-    if inputs.globals.temporary_trees.contains_key(variable) {
+    if variables.allows_global_fallback(variable)
+        && inputs.globals.temporary_trees.contains_key(variable)
+    {
         return Ok(true);
     }
-    if inputs.globals.empty_sequences.contains(variable) {
+    if variables.allows_global_fallback(variable)
+        && inputs.globals.empty_sequences.contains(variable)
+    {
         return Ok(false);
     }
     if let Some(values) = variables.atomic_sequences.get(variable) {
@@ -1970,9 +1967,7 @@ fn evaluate_temporary_root_identity_equal(
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
     let tree = variables
-        .temporary_trees
-        .get(variable)
-        .or_else(|| inputs.globals.temporary_trees.get(variable))
+        .temporary_tree(inputs.globals, variable)
         .ok_or_else(|| {
             failure(
                 "FXRT0002",

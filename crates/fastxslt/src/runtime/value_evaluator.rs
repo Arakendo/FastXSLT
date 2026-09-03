@@ -358,11 +358,7 @@ fn append_format_number(
     let mut atomic_values = variables.atomics.as_ref().clone();
     for name in expression.variable_names() {
         if !atomic_values.contains_key(name) {
-            if let Some(tree) = variables
-                .temporary_trees
-                .get(name)
-                .or_else(|| inputs.globals.temporary_trees.get(name))
-            {
+            if let Some(tree) = variables.temporary_tree(inputs.globals, name) {
                 let value =
                     runtime_context::temporary_tree_string_value(tree, inputs.request_id, control)?;
                 atomic_values.insert(name.to_owned(), AtomicValue::untyped(value));
@@ -424,9 +420,7 @@ fn append_generated_temporary_root_identity(
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     let tree = variables
-        .temporary_trees
-        .get(variable)
-        .or_else(|| inputs.globals.temporary_trees.get(variable))
+        .temporary_tree(inputs.globals, variable)
         .ok_or_else(|| {
             failure(
                 "FXRT0002",
@@ -497,9 +491,7 @@ fn append_root_variable_string(
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     let nodes = variables
-        .source_nodes
-        .get(name)
-        .or_else(|| inputs.globals.nodes.get(name))
+        .source_nodes(inputs.globals, name)
         .ok_or_else(|| {
             failure(
                 "FXRT0002",
@@ -672,11 +664,7 @@ fn append_variable_value(
         }
         return Ok(());
     }
-    if let Some(nodes) = variables
-        .source_nodes
-        .get(name)
-        .or_else(|| inputs.globals.nodes.get(name))
-    {
+    if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
         for (index, node) in nodes.iter().enumerate() {
             if index > 0 {
                 append_text(result, separator, inputs.request_id, control)?;
@@ -685,11 +673,7 @@ fn append_variable_value(
         }
         return Ok(());
     }
-    if let Some(tree) = variables
-        .temporary_trees
-        .get(name)
-        .or_else(|| inputs.globals.temporary_trees.get(name))
-    {
+    if let Some(tree) = variables.temporary_tree(inputs.globals, name) {
         let value = runtime_context::temporary_tree_string_value(tree, inputs.request_id, control)?;
         return append_text(result, &value, inputs.request_id, control);
     }

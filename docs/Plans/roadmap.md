@@ -6,6 +6,26 @@ standards scope are decided.
 
 ## Current critical path
 
+The
+[second adversarial engine review](../Reviews/adversarial-engine-review-2026-09-03.md)
+found seven new mechanisms after confirming the earlier twelve repairs remain
+closed. Its first remediation tranche has removed eager atomic-range retention,
+repaired cross-kind lexical shadowing, reclaimed engines abandoned through
+untaken native creation outcomes, and bounded the isolated worker's decoded
+event queue. The production-path regression uses a billion-item range with a
+zero XPath budget; the binding regression executes through shared and
+complete-clone frames; native take/release races retain one owner; and the
+worker queue now backpressures after one waiting event.
+[Evidence](../Evidence/adversarial-review-second-remediation-tranche-2026-09-03.md)
+
+The remaining review order is character-map scaling measurement, promotion of
+one complete QT3 family into the production XPath path, and current ADR-0004
+cohesion reviews for the fired source-unit triggers. Do not add another
+family-specific test-only QT3 semantic evaluator before the production-path
+migration establishes the parity pattern. Exact fractional
+`seconds-from-duration` work is therefore paused at this boundary rather than
+extending the private whole-second representation.
+
 The first
 [adversarial engine review](../Reviews/adversarial-engine-review-2026-08-30.md)
 found a misleading-green corpus overlay and six reproducible semantic

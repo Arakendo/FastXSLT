@@ -2,12 +2,12 @@
 
 use std::collections::BTreeMap;
 
-use crate::execution_control_experiment::InvocationControl;
+use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xslt::golden_semantics_experiment::{MatchPattern, MatchedTemplate};
 
 use super::{
-    ExecutionFailure, InvocationParameter, ResultNode, SequenceContext, SequenceFocus,
-    SequenceInputs, append_text, bind_template_parameters, execute_sequence,
+    ExecutionFailure, FailureCategory, InvocationParameter, ResultNode, SequenceContext,
+    SequenceFocus, SequenceInputs, append_text, bind_template_parameters, execute_sequence,
 };
 
 pub(super) fn apply_integer_range(
@@ -18,14 +18,26 @@ pub(super) fn apply_integer_range(
     parameters: &BTreeMap<String, InvocationParameter>,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    let values = if start <= end {
-        (start..=end).collect::<Vec<_>>()
-    } else {
-        Vec::new()
-    };
-    let focus_size = values.len();
+    if start > end {
+        return Ok(Vec::new());
+    }
+    let focus_size = end
+        .checked_sub(start)
+        .and_then(|difference| difference.checked_add(1))
+        .and_then(|span| usize::try_from(span).ok())
+        .ok_or_else(|| {
+            super::failure(
+                "FXRT0007",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                "integer range cannot be represented by this host",
+            )
+        })?;
     let mut result = Vec::new();
-    for (offset, value) in values.into_iter().enumerate() {
+    for (offset, value) in (start..=end).enumerate() {
+        control
+            .charge(WorkDomain::XPathOperation, 1)
+            .map_err(|failure| super::control_failure(failure, inputs.request_id))?;
         result.extend(apply_integer_template(
             inputs,
             value,

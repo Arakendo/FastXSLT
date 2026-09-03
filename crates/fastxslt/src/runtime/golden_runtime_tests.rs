@@ -878,6 +878,63 @@ fn named_template_parameters_apply_defaults_and_integer_select_arguments() {
 }
 
 #[test]
+fn node_template_parameter_shadows_same_named_global_atomic_in_both_frame_paths() {
+    const SOURCE: &str = "urn:fastxslt:parameter-shadow:source";
+    const STYLESHEET: &str = "urn:fastxslt:parameter-shadow:stylesheet";
+    let source_bytes = b"<doc><a>node</a></doc>";
+    let stylesheet = br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:variable name="value">global</xsl:variable><xsl:template match="/"><xsl:call-template name="emit"><xsl:with-param name="value" select="doc/a"/></xsl:call-template></xsl:template><xsl:template name="emit"><xsl:param name="value" select="0"/><out><xsl:value-of select="$value"/></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, source_bytes.to_vec())
+        .expect("admit parameter-shadow source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit parameter-shadow stylesheet");
+    let program = compile_resource(&resources.seal(), STYLESHEET)
+        .expect("compile parameter-shadow stylesheet");
+    let parsed = parse_document(
+        SOURCE,
+        source_bytes,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("parse parameter-shadow source");
+    let source = Document::from_parsed(parsed).expect("prepare parameter-shadow source");
+
+    for mut control in [
+        InvocationControl::unbounded(),
+        InvocationControl::unbounded().with_complete_atomic_frame_clones(),
+    ] {
+        let result = execute_program_with_parameters_using(
+            &program,
+            &source,
+            &BTreeMap::new(),
+            MultipleMatchPolicy::UseLast,
+            "parameter-shadow",
+            WhitespaceRepresentation::VisibilityView,
+            None,
+            None,
+            &mut control,
+        )
+        .expect("execute parameter-shadow stylesheet");
+        assert_eq!(
+            result.children,
+            [ResultNode::Element {
+                name: ExpandedName {
+                    namespace: None,
+                    local: "out".to_owned(),
+                },
+                namespaces: Vec::new(),
+                attributes: Vec::new(),
+                children: vec![ResultNode::Text("node".to_owned())],
+            }]
+        );
+    }
+}
+
+#[test]
 fn batch_of_one_matches_the_same_semantic_and_serialization_path() {
     let snapshot = snapshot();
     let program = compile_resource(&snapshot, STYLESHEET_ID).expect("compile once");
@@ -1862,6 +1919,44 @@ fn integer_range_materialization_charges_each_atomic_item_before_retention() {
     assert_eq!(failure.category, FailureCategory::Limit);
     assert_eq!(failure.work_domain, Some(WorkDomain::XPathOperation));
     assert_eq!(failure.request_id.as_deref(), Some("range-request"));
+}
+
+#[test]
+fn atomic_apply_range_observes_control_before_span_proportional_retention() {
+    const SOURCE: &str = "urn:fastxslt:controlled-atomic-range:source";
+    const STYLESHEET: &str = "urn:fastxslt:controlled-atomic-range:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:apply-templates select="1 to 1000000000"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit controlled range source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit controlled range stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile controlled range");
+    let mut work_limits = WorkLimits::unbounded();
+    work_limits.xpath_operations = 0;
+    let mut builder = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 4_096,
+            work_limits,
+        },
+    );
+    builder
+        .add(request("controlled-range", "result", SOURCE))
+        .expect("admit controlled range request");
+
+    let failure = execute_transform_set(builder.seal())
+        .expect_err("control must stop before retaining the hostile range");
+
+    assert_eq!(failure.category, FailureCategory::Limit);
+    assert_eq!(failure.work_domain, Some(WorkDomain::XPathOperation));
+    assert_eq!(failure.request_id.as_deref(), Some("controlled-range"));
 }
 
 #[test]

@@ -83,6 +83,7 @@ pub(super) struct RuntimeVariables {
     pub(super) atomic_sequences: BTreeMap<String, Vec<AtomicValue>>,
     pub(super) source_nodes: BTreeMap<String, Vec<NodeId>>,
     pub(super) temporary_trees: BTreeMap<String, TemporaryTree>,
+    local_bindings: HashSet<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -126,11 +127,7 @@ pub(super) fn evaluate_template_arguments(
                 TemplateArgumentValue::Variable(name) => {
                     if let Some(value) = variables.atomics.get(name) {
                         InvocationParameterValue::Atomic(value.clone())
-                    } else if let Some(nodes) = variables
-                        .source_nodes
-                        .get(name)
-                        .or_else(|| inputs.globals.nodes.get(name))
-                    {
+                    } else if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
                         InvocationParameterValue::SourceNodes(nodes.clone())
                     } else {
                         return Err(failure_at(
@@ -174,7 +171,64 @@ impl RuntimeVariables {
             atomic_sequences: BTreeMap::new(),
             source_nodes: BTreeMap::new(),
             temporary_trees: BTreeMap::new(),
+            local_bindings: HashSet::new(),
         }
+    }
+
+    fn clear_value_kinds(&mut self, name: &str) {
+        Arc::make_mut(&mut self.atomics).remove(name);
+        self.atomic_sequences.remove(name);
+        self.source_nodes.remove(name);
+        self.temporary_trees.remove(name);
+        self.local_bindings.insert(name.to_owned());
+    }
+
+    pub(super) fn bind_atomic(&mut self, name: String, value: AtomicValue) {
+        self.clear_value_kinds(&name);
+        Arc::make_mut(&mut self.atomics).insert(name, value);
+    }
+
+    pub(super) fn bind_atomic_sequence(&mut self, name: String, values: Vec<AtomicValue>) {
+        self.clear_value_kinds(&name);
+        self.atomic_sequences.insert(name, values);
+    }
+
+    pub(super) fn bind_source_nodes(&mut self, name: String, nodes: Vec<NodeId>) {
+        self.clear_value_kinds(&name);
+        self.source_nodes.insert(name, nodes);
+    }
+
+    pub(super) fn bind_temporary_tree(&mut self, name: String, tree: TemporaryTree) {
+        self.clear_value_kinds(&name);
+        self.temporary_trees.insert(name, tree);
+    }
+
+    pub(super) fn source_nodes<'a>(
+        &'a self,
+        globals: &'a RuntimeGlobals,
+        name: &str,
+    ) -> Option<&'a Vec<NodeId>> {
+        self.source_nodes.get(name).or_else(|| {
+            (!self.local_bindings.contains(name))
+                .then(|| globals.nodes.get(name))
+                .flatten()
+        })
+    }
+
+    pub(super) fn temporary_tree<'a>(
+        &'a self,
+        globals: &'a RuntimeGlobals,
+        name: &str,
+    ) -> Option<&'a TemporaryTree> {
+        self.temporary_trees.get(name).or_else(|| {
+            (!self.local_bindings.contains(name))
+                .then(|| globals.temporary_trees.get(name))
+                .flatten()
+        })
+    }
+
+    pub(super) fn allows_global_fallback(&self, name: &str) -> bool {
+        !self.local_bindings.contains(name)
     }
 }
 
@@ -681,12 +735,10 @@ pub(super) fn bind_template_parameters(
             .filter(|supplied| supplied.tunnel == parameter.tunnel);
         match supplied.map(|supplied| &supplied.value) {
             Some(InvocationParameterValue::Atomic(value)) => {
-                Arc::make_mut(&mut frame.atomics).insert(parameter.name.clone(), value.clone());
+                frame.bind_atomic(parameter.name.clone(), value.clone());
             }
             Some(InvocationParameterValue::SourceNodes(nodes)) => {
-                frame
-                    .source_nodes
-                    .insert(parameter.name.clone(), nodes.clone());
+                frame.bind_source_nodes(parameter.name.clone(), nodes.clone());
             }
             None => {
                 let value = match &parameter.default {
@@ -698,7 +750,7 @@ pub(super) fn bind_template_parameters(
                         )
                     }
                 };
-                Arc::make_mut(&mut frame.atomics).insert(parameter.name.clone(), value);
+                frame.bind_atomic(parameter.name.clone(), value);
             }
         }
     }

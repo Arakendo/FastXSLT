@@ -261,6 +261,9 @@ impl State {
         let Ok(mut accounting) = self.accounting() else {
             return false;
         };
+        let Ok(mut engines) = self.engines() else {
+            return false;
+        };
         let Ok(mut outcomes) = self.outcomes() else {
             return false;
         };
@@ -271,7 +274,30 @@ impl State {
             .outcome_payload_bytes
             .checked_sub(outcome.payload_bytes())
             .expect("registered outcome charge must be conserved");
+        if let Outcome::Engine(engine_handle) = outcome {
+            let engine = engines
+                .remove(&engine_handle)
+                .expect("an untaken creation outcome must own a registered engine");
+            accounting.engine_known_capacity_bytes = accounting
+                .engine_known_capacity_bytes
+                .checked_sub(engine.known_capacity_bytes)
+                .expect("registered engine charge must be conserved");
+        }
         true
+    }
+
+    fn take_engine_outcome(&self, outcome_handle: u64) -> Option<u64> {
+        let Ok(mut outcomes) = self.outcomes() else {
+            return None;
+        };
+        match outcomes.remove(&outcome_handle) {
+            Some(Outcome::Engine(engine_handle)) => Some(engine_handle),
+            Some(other) => {
+                outcomes.insert(outcome_handle, other);
+                None
+            }
+            None => None,
+        }
     }
 
     fn release_engine(&self, engine_handle: u64) -> bool {
@@ -281,6 +307,15 @@ impl State {
         let Ok(mut engines) = self.engines() else {
             return false;
         };
+        let Ok(outcomes) = self.outcomes() else {
+            return false;
+        };
+        if outcomes
+            .values()
+            .any(|outcome| matches!(outcome, Outcome::Engine(pending) if *pending == engine_handle))
+        {
+            return false;
+        }
         let Some(engine) = engines.remove(&engine_handle) else {
             return false;
         };
@@ -1040,17 +1075,7 @@ pub extern "C" fn fastxslt_workbench_v0_outcome_copy(
 #[unsafe(no_mangle)]
 pub extern "C" fn fastxslt_workbench_v0_outcome_take_engine(outcome_handle: u64) -> u64 {
     guarded(0, |state| {
-        let Ok(mut outcomes) = state.outcomes() else {
-            return 0;
-        };
-        match outcomes.remove(&outcome_handle) {
-            Some(Outcome::Engine(engine_handle)) => engine_handle,
-            Some(other) => {
-                outcomes.insert(outcome_handle, other);
-                0
-            }
-            None => 0,
-        }
+        state.take_engine_outcome(outcome_handle).unwrap_or(0)
     })
 }
 
@@ -1228,14 +1253,9 @@ mod tests {
     }
 
     fn take_local_engine(state: &State, creation_outcome: u64) -> u64 {
-        let Some(Outcome::Engine(engine_handle)) = state
-            .outcomes()
-            .expect("take local creation outcome")
-            .remove(&creation_outcome)
-        else {
-            panic!("creation outcome must carry an engine handle");
-        };
-        engine_handle
+        state
+            .take_engine_outcome(creation_outcome)
+            .expect("creation outcome must carry an engine handle")
     }
 
     #[test]
@@ -1559,6 +1579,74 @@ mod tests {
         assert_eq!(state.insert_created_engine(reference_engine_value()), 0);
         assert!(state.engines.lock().expect("inspect engines").is_empty());
         assert!(state.is_quarantined());
+    }
+
+    #[test]
+    fn releasing_untaken_creation_outcome_reclaims_engine_and_capacity() {
+        let state = configured_test_state();
+        let creation = state.insert_created_engine(reference_engine_value());
+        let retained = state.registry_observation();
+        assert_eq!(retained.engine_count, 1);
+        assert_eq!(retained.outcome_count, 1);
+        assert!(retained.engine_capacity > 0);
+        let pending_engine = state
+            .outcomes()
+            .expect("inspect pending creation outcome")
+            .get(&creation)
+            .and_then(|outcome| match outcome {
+                Outcome::Engine(engine) => Some(*engine),
+                Outcome::Bytes { .. } => None,
+            })
+            .expect("creation outcome owns pending engine");
+        assert!(!state.release_engine(pending_engine));
+
+        assert!(state.release_outcome(creation));
+        let released = state.registry_observation();
+        assert_eq!(released.engine_count, 0);
+        assert_eq!(released.outcome_count, 0);
+        assert_eq!(
+            state
+                .accounting()
+                .expect("inspect released accounting")
+                .engine_known_capacity_bytes,
+            0
+        );
+
+        let replacement = state.insert_created_engine(reference_engine_value());
+        assert!(state.release_outcome(replacement));
+    }
+
+    #[test]
+    fn taking_and_releasing_creation_outcome_have_one_linearized_owner() {
+        let state = Arc::new(configured_test_state());
+        let creation = state.insert_created_engine(reference_engine_value());
+        let barrier = Arc::new(Barrier::new(3));
+        let take_state = Arc::clone(&state);
+        let take_barrier = Arc::clone(&barrier);
+        let take = thread::spawn(move || {
+            take_barrier.wait();
+            take_state.take_engine_outcome(creation)
+        });
+        let release_state = Arc::clone(&state);
+        let release_barrier = Arc::clone(&barrier);
+        let release = thread::spawn(move || {
+            release_barrier.wait();
+            release_state.release_outcome(creation)
+        });
+        barrier.wait();
+        let taken = take.join().expect("take thread joins");
+        let outcome_released = release.join().expect("release thread joins");
+
+        match taken {
+            Some(engine) => {
+                assert!(!outcome_released);
+                assert!(state.release_engine(engine));
+            }
+            None => assert!(outcome_released),
+        }
+        let observation = state.registry_observation();
+        assert_eq!(observation.engine_count, 0);
+        assert_eq!(observation.outcome_count, 0);
     }
 
     #[test]

@@ -28,11 +28,12 @@ const TRANSFORM_STARTED: u8 = 0x85;
 const ERROR: u8 = 0xff;
 const MAX_IDENTITY_BYTES: usize = 4_096;
 const MAX_RESOURCE_BYTES: usize = 1_048_576;
+const EVENT_QUEUE_CAPACITY: usize = 1;
 
 fn main() -> io::Result<()> {
     let stdout = io::stdout();
     let mut output = BufWriter::new(stdout.lock());
-    let (events, incoming) = mpsc::channel();
+    let (events, incoming) = mpsc::sync_channel(EVENT_QUEUE_CAPACITY);
     let reader_events = events.clone();
     std::thread::spawn(move || read_commands(&reader_events));
     let mut supervisor = Supervisor::new(events);
@@ -49,11 +50,11 @@ struct Supervisor {
     engine: Option<Arc<ExperimentalEngine>>,
     active: Option<ActiveInvocation>,
     stop_after_active: bool,
-    events: mpsc::Sender<Event>,
+    events: mpsc::SyncSender<Event>,
 }
 
 impl Supervisor {
-    fn new(events: mpsc::Sender<Event>) -> Self {
+    fn new(events: mpsc::SyncSender<Event>) -> Self {
         Self {
             engine: None,
             active: None,
@@ -242,7 +243,7 @@ fn start_transform(
     engine: Arc<ExperimentalEngine>,
     request_id: String,
     cancellation: WorkbenchCancellation,
-    events: mpsc::Sender<Event>,
+    events: mpsc::SyncSender<Event>,
 ) {
     std::thread::spawn(move || {
         let result = engine.transform_with_cancellation(&request_id, cancellation);
@@ -266,7 +267,7 @@ fn write_transform_result(
     }
 }
 
-fn read_commands(events: &mpsc::Sender<Event>) {
+fn read_commands(events: &mpsc::SyncSender<Event>) {
     let stdin = io::stdin();
     let mut input = BufReader::new(stdin.lock());
     loop {
@@ -513,8 +514,8 @@ mod tests {
     use std::{io::Cursor, sync::mpsc};
 
     use super::{
-        ERROR, INITIALIZE_WITH_STYLESHEET_DEPENDENCY, MAX_IDENTITY_BYTES, READY, Supervisor,
-        read_byte, read_command, read_string,
+        Command, ERROR, EVENT_QUEUE_CAPACITY, Event, INITIALIZE_WITH_STYLESHEET_DEPENDENCY,
+        MAX_IDENTITY_BYTES, READY, Supervisor, read_byte, read_command, read_string,
     };
 
     fn push_bytes(frame: &mut Vec<u8>, value: &[u8]) {
@@ -553,7 +554,7 @@ mod tests {
             let command = read_command(&mut Cursor::new(initialize_frame(&[], false, denied)))
                 .expect("read initialization")
                 .expect("initialization command");
-            let (events, _) = mpsc::channel();
+            let (events, _) = mpsc::sync_channel(EVENT_QUEUE_CAPACITY);
             let mut supervisor = Supervisor::new(events);
             let mut encoded = Vec::new();
             supervisor
@@ -577,7 +578,7 @@ mod tests {
         let command = read_command(&mut Cursor::new(initialize_frame(dependency, true, false)))
             .expect("read initialization")
             .expect("initialization command");
-        let (events, _) = mpsc::channel();
+        let (events, _) = mpsc::sync_channel(EVENT_QUEUE_CAPACITY);
         let mut supervisor = Supervisor::new(events);
         let mut encoded = Vec::new();
         supervisor
@@ -610,5 +611,15 @@ mod tests {
             panic!("unadmitted bytes must reject framing");
         };
         assert_eq!(unadmitted_bytes.kind(), std::io::ErrorKind::InvalidData);
+    }
+
+    #[test]
+    fn worker_event_queue_applies_backpressure_after_one_decoded_event() {
+        let (events, _incoming) = mpsc::sync_channel(EVENT_QUEUE_CAPACITY);
+        assert!(events.try_send(Event::Command(Command::Shutdown)).is_ok());
+        assert!(matches!(
+            events.try_send(Event::Command(Command::Shutdown)),
+            Err(mpsc::TrySendError::Full(Event::Command(Command::Shutdown)))
+        ));
     }
 }
