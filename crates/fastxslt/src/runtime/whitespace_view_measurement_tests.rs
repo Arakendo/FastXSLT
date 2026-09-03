@@ -109,6 +109,8 @@ fn run_transform(
         MultipleMatchPolicy::UseLast,
         request_id,
         representation,
+        None,
+        None,
         &mut control,
     )
     .expect("measurement transform should execute")
@@ -216,6 +218,8 @@ fn measures_whitespace_reference_against_visibility_view() {
             MultipleMatchPolicy::UseLast,
             request_id,
             representation,
+            None,
+            None,
             &mut control,
         )
         .expect("measurement transform should execute")

@@ -1,8 +1,13 @@
 //! Invocation-local globals, variable frames, and temporary-tree preparation.
 
-use std::{cell::RefCell, collections::BTreeMap, sync::Arc};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, HashSet},
+    sync::Arc,
+};
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
+use crate::resources::ResourceSnapshot;
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
@@ -12,6 +17,7 @@ use crate::xslt::golden_semantics_experiment::{
     Template, TemplateArgument, TemplateArgumentValue, TemplateParameterDefault,
 };
 
+use super::dynamic_document::DynamicDocument;
 use super::template_selector::DocumentRootedMatchCache;
 use super::{
     ExecutionFailure, FailureCategory, MultipleMatchPolicy, control_failure, failure, failure_at,
@@ -25,6 +31,9 @@ pub(super) struct SequenceInputs<'a> {
     pub(super) multiple_match_policy: MultipleMatchPolicy,
     pub(super) document_rooted_matches: RefCell<DocumentRootedMatchCache>,
     pub(super) complete_atomic_frame_clones: bool,
+    pub(super) resource_snapshot: Option<&'a ResourceSnapshot>,
+    pub(super) denied_resources: Option<&'a HashSet<String>>,
+    pub(super) dynamic_documents: RefCell<BTreeMap<String, DynamicDocument>>,
 }
 
 #[derive(Debug, Default)]

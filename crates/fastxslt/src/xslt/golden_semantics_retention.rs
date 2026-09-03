@@ -444,6 +444,14 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
             variable,
             descendant_local,
         } => variable.capacity() + descendant_local.as_ref().map_or(0, String::capacity),
+        ValueExpression::GeneratedDocumentRootIdentity(reference) => {
+            reference.base.capacity()
+                + reference.reference.capacity()
+                + reference
+                    .descendant_local
+                    .as_ref()
+                    .map_or(0, String::capacity)
+        }
         ValueExpression::IntegerFor(expression) => {
             size_of::<IntegerForExpression>() + expression.known_owned_capacity_bytes()
         }
@@ -483,6 +491,14 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
             variable,
             descendant_local,
         } => variable.capacity() + descendant_local.capacity(),
+        BooleanExpression::DocumentRootIdentityEqual { left, right } => {
+            left.base.capacity()
+                + left.reference.capacity()
+                + left.descendant_local.as_ref().map_or(0, String::capacity)
+                + right.base.capacity()
+                + right.reference.capacity()
+                + right.descendant_local.as_ref().map_or(0, String::capacity)
+        }
         BooleanExpression::Constant(_) => 0,
     }
 }

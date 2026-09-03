@@ -711,6 +711,15 @@ fn compile_root_value(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<Option<ValueExpression>, CompileFailure> {
+    if let Some((reference, descendant_local)) = parse_generated_document_root(expression) {
+        return Ok(Some(ValueExpression::GeneratedDocumentRootIdentity(
+            crate::xslt::golden_semantics_experiment::DocumentRootReference {
+                base: location.resource.clone(),
+                reference: reference.to_owned(),
+                descendant_local: descendant_local.map(str::to_owned),
+            },
+        )));
+    }
     if let Some((variable, descendant_local)) = parse_generated_temporary_root(expression) {
         return Ok(Some(ValueExpression::GeneratedTemporaryRootIdentity {
             variable: variable.to_owned(),
@@ -1089,6 +1098,20 @@ fn parse_boolean_expression(
     location: &SourceLocation,
 ) -> Result<BooleanExpression, CompileFailure> {
     let parsed = strip_enclosing_parentheses(expression.trim());
+    if let Some((left, right)) = parse_document_root_identity_test(parsed) {
+        return Ok(BooleanExpression::DocumentRootIdentityEqual {
+            left: crate::xslt::golden_semantics_experiment::DocumentRootReference {
+                base: location.resource.clone(),
+                reference: left.0.to_owned(),
+                descendant_local: left.1.map(str::to_owned),
+            },
+            right: crate::xslt::golden_semantics_experiment::DocumentRootReference {
+                base: location.resource.clone(),
+                reference: right.0.to_owned(),
+                descendant_local: right.1.map(str::to_owned),
+            },
+        });
+    }
     if let Some((variable, descendant_local)) = parse_temporary_root_identity_test(parsed) {
         return Ok(BooleanExpression::TemporaryRootIdentityEqual {
             variable: variable.to_owned(),
@@ -1170,6 +1193,39 @@ fn parse_generated_temporary_root(expression: &str) -> Option<(&str, Option<&str
         return None;
     }
     Some((variable, descendant))
+}
+
+type ParsedDocumentRootReference<'a> = (&'a str, Option<&'a str>);
+
+fn parse_document_root_identity_test(
+    expression: &str,
+) -> Option<(
+    ParsedDocumentRootReference<'_>,
+    ParsedDocumentRootReference<'_>,
+)> {
+    let (left, right) = expression.split_once('=')?;
+    Some((
+        parse_generated_document_root(left.trim())?,
+        parse_generated_document_root(right.trim())?,
+    ))
+}
+
+fn parse_generated_document_root(expression: &str) -> Option<(&str, Option<&str>)> {
+    let argument = generated_root_argument(expression)?;
+    let argument = argument.strip_prefix("document('")?;
+    let (reference, suffix) = argument.split_once("')")?;
+    if reference.is_empty() || reference.contains('\'') {
+        return None;
+    }
+    let descendant = if suffix.is_empty() {
+        None
+    } else {
+        Some(suffix.strip_prefix("//")?)
+    };
+    if descendant.is_some_and(|name| !is_ascii_ncname(name)) {
+        return None;
+    }
+    Some((reference, descendant))
 }
 
 fn parse_generated_root_identity_test(expression: &str) -> Option<(&str, &str)> {

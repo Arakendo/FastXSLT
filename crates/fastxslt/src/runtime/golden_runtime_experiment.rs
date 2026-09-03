@@ -1,6 +1,11 @@
-use std::{cell::RefCell, collections::BTreeMap, sync::Arc};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, HashSet},
+    sync::Arc,
+};
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
+use crate::resources::ResourceSnapshot;
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits};
@@ -18,6 +23,8 @@ use crate::xslt::golden_semantics_experiment::{
 #[cfg(test)]
 #[path = "golden_runtime_experiment/byte_encoding.rs"]
 mod byte_encoding;
+#[path = "dynamic_document.rs"]
+mod dynamic_document;
 #[path = "resource_compiler.rs"]
 mod resource_compiler;
 #[path = "result_tree.rs"]
@@ -109,6 +116,29 @@ fn execute_program_with_parameters(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
+    execute_program_with_parameters_and_resources(
+        program,
+        source,
+        parameters,
+        multiple_match_policy,
+        request_id,
+        None,
+        None,
+        control,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn execute_program_with_parameters_and_resources(
+    program: &StylesheetProgram,
+    source: &Document,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    multiple_match_policy: MultipleMatchPolicy,
+    request_id: &str,
+    resource_snapshot: Option<&ResourceSnapshot>,
+    denied_resources: Option<&HashSet<String>>,
+    control: &mut InvocationControl,
+) -> Result<SemanticResult, ExecutionFailure> {
     execute_program_with_parameters_using(
         program,
         source,
@@ -116,6 +146,8 @@ fn execute_program_with_parameters(
         multiple_match_policy,
         request_id,
         WhitespaceRepresentation::VisibilityView,
+        resource_snapshot,
+        denied_resources,
         control,
     )
 }
@@ -159,6 +191,8 @@ fn execute_program_with_parameters_using(
     multiple_match_policy: MultipleMatchPolicy,
     request_id: &str,
     representation: WhitespaceRepresentation,
+    resource_snapshot: Option<&ResourceSnapshot>,
+    denied_resources: Option<&HashSet<String>>,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
     if let Some(name) = program.default_initial_mode.as_deref() {
@@ -207,6 +241,9 @@ fn execute_program_with_parameters_using(
         multiple_match_policy,
         document_rooted_matches: RefCell::default(),
         complete_atomic_frame_clones: control.complete_atomic_frame_clones(),
+        resource_snapshot,
+        denied_resources,
+        dynamic_documents: RefCell::default(),
     };
     let children = if let Some(root_template) = program
         .root_template
@@ -303,6 +340,9 @@ fn execute_initial_mode(
         multiple_match_policy,
         document_rooted_matches: RefCell::default(),
         complete_atomic_frame_clones: control.complete_atomic_frame_clones(),
+        resource_snapshot: None,
+        denied_resources: None,
+        dynamic_documents: RefCell::default(),
     };
     let children = if initial_node == source.document_node()
         && program.root_template_modes.iter().any(|mode| mode == name)
@@ -456,6 +496,9 @@ fn execute_initial_template_with_optional_source(
         multiple_match_policy,
         document_rooted_matches: RefCell::default(),
         complete_atomic_frame_clones: control.complete_atomic_frame_clones(),
+        resource_snapshot: None,
+        denied_resources: None,
+        dynamic_documents: RefCell::default(),
     };
     let children = execute_sequence(
         &inputs,
@@ -1508,6 +1551,11 @@ fn evaluate_boolean(
             variables,
             control,
         ),
+        BooleanExpression::DocumentRootIdentityEqual { left, right } => {
+            let left = dynamic_document::document_root_identity(inputs, left, control)?;
+            let right = dynamic_document::document_root_identity(inputs, right, control)?;
+            Ok(left == right)
+        }
         BooleanExpression::VariableEqualsInteger(test) => {
             let value = variables.atomics.get(&test.variable).ok_or_else(|| {
                 failure(

@@ -12,8 +12,8 @@ use crate::xslt::golden_semantics_experiment::StylesheetProgram;
 
 use super::{
     ExecutionFailure, FailureCategory, InvocationParameter, MultipleMatchPolicy, SemanticResult,
-    XML_LIMITS, control_failure, execute_initial_mode, execute_initial_template,
-    execute_program_with_parameters, failure, failure_at, program_has_mode, serialize_xml,
+    XML_LIMITS, control_failure, execute_initial_mode, execute_initial_template, failure,
+    failure_at, program_has_mode, serialize_xml,
 };
 
 #[derive(Debug)]
@@ -295,12 +295,14 @@ fn execute_request(
         InvocationEntry::PrincipalSource { resource } => {
             let source =
                 prepare_request_source(snapshot, resource, &request.identity, &mut control)?;
-            execute_program_with_parameters(
+            super::execute_program_with_parameters_and_resources(
                 stylesheet,
                 &source,
                 &request.parameters,
                 multiple_match_policy,
                 &request.identity,
+                Some(snapshot),
+                Some(&policy.denied_sources),
                 &mut control,
             )?
         }

@@ -424,6 +424,7 @@ pub(crate) enum ValueExpression {
         variable: String,
         descendant_local: Option<String>,
     },
+    GeneratedDocumentRootIdentity(DocumentRootReference),
     ContextNodeName,
     UpperCaseContextString,
     Variable(String),
@@ -459,7 +460,18 @@ pub(crate) enum BooleanExpression {
         variable: String,
         descendant_local: String,
     },
+    DocumentRootIdentityEqual {
+        left: DocumentRootReference,
+        right: DocumentRootReference,
+    },
     Constant(bool),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DocumentRootReference {
+    pub(crate) base: String,
+    pub(crate) reference: String,
+    pub(crate) descendant_local: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -164,6 +164,8 @@ fn one_prepared_source_supports_preserving_and_stripping_stylesheets_without_mut
         MultipleMatchPolicy::UseLast,
         "stripping-reference-request",
         WhitespaceRepresentation::CompleteReference,
+        None,
+        None,
         &mut reference_control,
     )
     .expect("complete reference should execute");

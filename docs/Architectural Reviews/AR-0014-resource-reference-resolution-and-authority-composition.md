@@ -259,3 +259,9 @@ resolver trait, URI type, catalog representation, live authority, or cache.
   precedence strata now survive graph preparation and execution without
   changing resource authority; general recursive graph assembly remains
   unselected.
+- 2026-09-02 -- Unchanged XSLT30 `root-0502` reopened the review for one runtime
+  `document()` call. A private literal-reference slice now resolves against the
+  stylesheet base, denies before membership disclosure, prepares only admitted
+  sealed-snapshot bytes under invocation work control, and reuses one
+  invocation-local document identity. No computed reference, fragment, live
+  acquisition, cross-invocation cache, or public resolver contract was selected.

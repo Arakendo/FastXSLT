@@ -12,7 +12,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/fn/root/_root-test-set.xml";
-const PASSED_CASES: [&str; 9] = [
+const PASSED_CASES: [&str; 10] = [
     "root-0101",
     "root-0102",
     "root-0103",
@@ -21,6 +21,7 @@ const PASSED_CASES: [&str; 9] = [
     "root-0301",
     "root-0401",
     "root-0501",
+    "root-0502",
     "root-0601",
 ];
 const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/root-denominator-v0.toml");
@@ -43,7 +44,7 @@ fn inventories_complete_root_denominator_before_selection() {
     assert_eq!(names.last(), Some(&"root-0601"));
     assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
     assert!(OVERLAY.contains("case_count = 10"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 9);
+    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 10);
     for case_name in PASSED_CASES {
         assert!(names.contains(case_name));
         let record = overlay_case(case_name);
@@ -68,6 +69,67 @@ fn generated_root_identity_is_stable_for_element_and_document_arguments() {
 #[test]
 fn generated_root_identity_is_stable_for_a_temporary_document() {
     execute_case("root-0501");
+}
+
+#[test]
+fn generated_root_identity_is_stable_for_a_sealed_secondary_document() {
+    execute_case("root-0502");
+}
+
+#[test]
+fn secondary_document_resolution_distinguishes_denied_from_missing() {
+    assert_eq!(secondary_document_failure(false, false), "FXRS0001");
+    assert_eq!(secondary_document_failure(true, true), "FXRS0003");
+}
+
+fn secondary_document_failure(admit_secondary: bool, deny_secondary: bool) -> String {
+    let source_id = "urn:fastxslt:fn-root:secondary-policy:source";
+    let stylesheet_id = "https://example.invalid/xslt30/fn/root/policy.xsl";
+    let secondary_id = "https://example.invalid/xslt30/fn/root/extradoc.xml";
+    let stylesheet = br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><out><xsl:value-of select="generate-id(root(document('extradoc.xml')))"/></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 16_384));
+    resources
+        .admit(source_id, b"<doc/>".to_vec())
+        .expect("admit policy source");
+    resources
+        .admit(stylesheet_id, stylesheet.to_vec())
+        .expect("admit policy stylesheet");
+    if admit_secondary {
+        resources
+            .admit(secondary_id, b"<extra/>".to_vec())
+            .expect("admit policy secondary resource");
+    }
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, stylesheet_id).expect("compile policy stylesheet");
+    let mut denied_sources = HashSet::new();
+    if deny_secondary {
+        denied_sources.insert(secondary_id.to_owned());
+    }
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources,
+            serialized_byte_limit: 4_096,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    set.add(TransformRequest {
+        identity: "secondary-policy".to_owned(),
+        result_identity: "urn:fastxslt:fn-root:secondary-policy:result".to_owned(),
+        entry: InvocationEntry::PrincipalSource {
+            resource: source_id.to_owned(),
+        },
+        parameters: BTreeMap::new(),
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    })
+    .expect("admit policy request");
+    execute_transform_set(set.seal())
+        .expect_err("secondary resource policy must fail")
+        .code
+        .to_owned()
 }
 
 #[test]
@@ -144,7 +206,18 @@ fn execute_case(case_name: &str) {
     );
     let source_id = format!("urn:w3c:xslt30:fn:root:{case_name}:source");
     let stylesheet_id = format!("https://example.invalid/xslt30/fn/root/{stylesheet_file}");
-    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 65_536, 131_072));
+    let secondary_sources = element_children(&document, environment)
+        .into_iter()
+        .filter(|node| {
+            local_name(&document, *node) == "source"
+                && attribute(&document, *node, "role") != Some(".")
+        })
+        .collect::<Vec<_>>();
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(
+        2 + secondary_sources.len(),
+        65_536,
+        196_608,
+    ));
     resources
         .admit(
             source_id.clone(),
@@ -157,6 +230,22 @@ fn execute_case(case_name: &str) {
             fs::read(directory.join(stylesheet_file)).expect("read stylesheet and close handle"),
         )
         .expect("admit stylesheet");
+    for secondary in secondary_sources {
+        let file = attribute(&document, secondary, "file").expect("secondary source file");
+        let reference = attribute(&document, secondary, "uri").unwrap_or(file);
+        let (identity, fragment) = crate::resources::resolve_reference(&stylesheet_id, reference)
+            .expect("resolve secondary source identity");
+        assert_eq!(
+            fragment, None,
+            "secondary source identity must not use a fragment"
+        );
+        resources
+            .admit(
+                identity,
+                fs::read(directory.join(file)).expect("read secondary source and close handle"),
+            )
+            .expect("admit secondary source");
+    }
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, &stylesheet_id).expect("compile root case");
     let mut set = TransformSetBuilder::new(

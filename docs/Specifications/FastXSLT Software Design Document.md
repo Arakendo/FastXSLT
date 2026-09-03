@@ -589,6 +589,14 @@ extensions. The engine reports an explicit missing/denied-resource condition.
 An optional live resolver may be studied later, but must be an explicit
 capability and cannot become ambient disk or network access.
 
+The current private reference engine admits one narrower runtime form: a
+literal `document()` reference may be resolved against the stylesheet's
+absolute logical identity and looked up only in the transform set's sealed
+snapshot. Its parsed XDM document and opaque identity belong to that invocation
+and repeated access reuses them. This does not admit computed references,
+fragments, live acquisition, cross-invocation caching, or a public resolver
+contract; those remain governed by AR-0014.
+
 Under ADR-0005, a transform set contains only independently executable requests.
 Submission, start, execution, and completion order have no semantic meaning;
 results correlate by logical request/result identity. One request cannot observe

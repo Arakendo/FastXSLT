@@ -44,6 +44,8 @@ fn execute_with(
         MultipleMatchPolicy::UseLast,
         request_id,
         representation,
+        None,
+        None,
         &mut control,
     )
     .expect("AR-0016 differential transform should execute");
@@ -208,6 +210,8 @@ fn strip_all_rejects_sources_with_unadmitted_xml_space_semantics() {
             MultipleMatchPolicy::UseLast,
             &format!("xml-space-{value}"),
             WhitespaceRepresentation::VisibilityView,
+            None,
+            None,
             &mut control,
         )
         .expect_err("xml:space requires broader whitespace semantics");

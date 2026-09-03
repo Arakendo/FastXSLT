@@ -7,13 +7,13 @@ Date: 2026-09-02
 - W3C XSLT 3.0 test-suite revision
   `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b`.
 - Complete native test set `tests/fn/root/_root-test-set.xml`.
-- Unchanged `root-0101` through `root-0501` and `root-0601` sources,
+- Unchanged `root-0101` through `root-0601` sources,
   stylesheets, and native assertions.
 
 ## Method
 
 A first-party overlay conserves all ten native `fn/root` cases. Its default is
-`harness-unsupported/not-run`; nine cases are selected. The adapter checks the
+`harness-unsupported/not-run`; all ten cases are selected. The adapter checks the
 complete native case identity set before it imports each selected source and
 stylesheet into a bounded sealed snapshot, compiles once, and executes through
 the normal transform-set path.
@@ -56,6 +56,15 @@ descendant search and its ancestor walk are charged before the engine compares
 the virtual document identities. No allocation address or variable spelling is
 used as semantic identity.
 
+The final case resolves the literal `extradoc.xml` reference against the
+stylesheet's absolute logical identity, and only then looks up the resulting
+fragment-free identity in the sealed snapshot. The secondary bytes are parsed
+under the invocation's XML/XDM work control and retained in an invocation-local
+document map, so repeated `document()` calls observe one document identity.
+Denial is checked before snapshot membership. Missing, denied, malformed, and
+fragment-bearing references remain distinct structured failures; execution has
+no filesystem or network fallback.
+
 The first unchanged execution found that container string values included
 descendant comment and processing-instruction content. A focused XDM regression
 now proves that document and element string values contain descendant text
@@ -65,8 +74,8 @@ has its own content as its string value.
 ## Results
 
 - Complete conserved denominator: 10 cases.
-- Selected and passed: 9 (`root-0101` through `root-0501` and `root-0601`).
-- Visible default not run: 1.
+- Selected and passed: 10 (`root-0101` through `root-0601`).
+- Visible default not run: 0.
 - Engine unsupported: 0.
 - Profile excluded: 0.
 - The unchanged assertion passes after the shared XDM string-value correction.
@@ -76,18 +85,17 @@ The fourth case also admits typed child `element()`, `comment()`, and
 steps. A focused mixed-child test proves that each kind test selects only its
 declared XDM node kind.
 
-This raises conserved XSLT30 accounting within this denominator to nine passes
-and one visible default. With the subsequently conserved `insn/apply-imports`
-case, current XSLT30 accounting is 578 cases: 420 passed comparisons, 3
-engine-unsupported cases, 54 profile exclusions, and 101 visible default
+This raises conserved XSLT30 accounting within this denominator to ten passes
+and no visible defaults. With the subsequently conserved `insn/apply-imports`
+case, current XSLT30 accounting is 578 cases: 421 passed comparisons, 3
+engine-unsupported cases, 54 profile exclusions, and 100 visible default
 not-run cases.
 
 ## Limitations
 
-This evidence does not admit arbitrary `root()` arguments or general
-`generate-id()` expressions. The remaining case requires dynamic resource
-acquisition through `document()`. It
-remain individually visible under the
-denominator default rather than being reported as engine failures. The result
-also does not claim a general XPath function-call representation; `root(.)` is
-a typed private expression variant in the current reference engine.
+This evidence does not admit arbitrary `root()` arguments, general
+`generate-id()` expressions, dynamic document references, fragments, or live
+resource acquisition. It admits only a literal single-quoted `document()`
+reference through the private sealed-snapshot transform-set path. The result
+also does not claim a general XPath function-call representation or settle the
+public resolver/cache policy under AR-0014.

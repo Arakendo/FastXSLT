@@ -57,6 +57,12 @@ execution = "passed"
 rationale = "The unchanged XSLT 2.0 case gives its invocation-local temporary tree a first-class document identity and proves root() returns that same identity for both the tree variable and its selected descendant element."
 
 [[case_override]]
+case_name = "root-0502"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case resolves a literal document() reference only against the sealed snapshot, prepares one invocation-owned secondary document, and preserves its root identity across repeated access and descendant selection."
+
+[[case_override]]
 case_name = "root-0601"
 selection = "selected"
 execution = "passed"

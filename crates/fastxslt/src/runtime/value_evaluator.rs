@@ -59,6 +59,9 @@ pub(super) fn execute_value_of(
             result,
             control,
         )?,
+        ValueExpression::GeneratedDocumentRootIdentity(reference) => {
+            append_generated_document_root_identity(inputs, reference, result, control)?;
+        }
         ValueExpression::ContextNodeName => {
             append_context_node_name(inputs, context, result, control)?;
         }
@@ -132,6 +135,16 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_generated_document_root_identity(
+    inputs: &SequenceInputs<'_>,
+    reference: &crate::xslt::golden_semantics_experiment::DocumentRootReference,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let identity = super::dynamic_document::document_root_identity(inputs, reference, control)?;
+    append_text(result, &identity, inputs.request_id, control)
 }
 
 fn append_integer_for(
