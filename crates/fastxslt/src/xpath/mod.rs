@@ -46,4 +46,8 @@ mod qt3_boolean_constant_tests;
 mod qt3_deep_equal_tests;
 #[cfg(test)]
 mod qt3_empty_sequence_tests;
+#[cfg(test)]
+mod qt3_string_length_tests;
 pub(crate) mod static_string_experiment;
+#[cfg(test)]
+pub(crate) mod string_length_experiment;

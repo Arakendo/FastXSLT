@@ -1,0 +1,17 @@
+suite = "QT3"
+revision = "83993587711dbd5c18ed846385ec37d079d6e492"
+set_file = "fn/string-length.xml"
+case_count = 36
+selected_source = "private-ledger-v0.toml"
+
+[[dependency_rule]]
+dependency_type = "feature"
+values = ["higherOrderFunctions", "schemaValidation"]
+selection = "profile-excluded"
+execution = "not-run"
+rationale = "The case requires higher-order function items or schema validation outside the current XPath-in-XSLT profile."
+
+[default_disposition]
+selection = "harness-unsupported"
+execution = "not-run"
+rationale = "Unless selected in the private ledger or excluded by the feature rule, the case requires document atomization or range-predicate context semantics outside the admitted source-free string-length adapter; no unexecuted case is inferred to pass or fail."

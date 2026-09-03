@@ -5299,3 +5299,213 @@ case_name = "boolean-002"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged namespace-wildcard descendant path finds no element with the requested local name and has effective boolean value false."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged explicit xs:string singleton executes with Unicode-codepoint string-length semantics."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged explicit xs:string singleton executes with Unicode-codepoint string-length semantics."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged explicit xs:string singleton executes with Unicode-codepoint string-length semantics."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged string literal executes with Unicode-codepoint string-length semantics."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged empty sequence is converted to the zero-length string by fn:string-length."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged string literal executes with Unicode-codepoint string-length semantics."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged string literal executes with Unicode-codepoint string-length semantics."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged string literal executes with Unicode-codepoint string-length semantics."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged string literal executes with Unicode-codepoint string-length semantics."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged string literal executes with Unicode-codepoint string-length semantics."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-8"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged empty string executes with Unicode-codepoint string-length semantics."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-9"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged nested fn:string projection retains its string value before measuring length."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-10"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged string literal executes with Unicode-codepoint string-length semantics."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-11"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression adds two integer string-length results."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-12"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged fn:boolean composition applies numeric effective-boolean-value semantics to string length."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-13"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged fn:concat composition converts two integer string-length results to strings."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-14"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged fn:not composition negates the numeric effective boolean value of string length."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-15"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged punctuation string executes with Unicode-codepoint string-length semantics."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-16"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged string literal executes with Unicode-codepoint string-length semantics."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-17"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged and expression applies numeric effective-boolean-value semantics to both string lengths."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-18"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged zero-argument call with no context item reports the native XPDY0002 dynamic error."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-20"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged non-BMP string confirms that length counts Unicode codepoints rather than UTF-8 bytes or UTF-16 code units."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "K-StringLengthFunc-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged two-argument call reports the native XPST0017 arity error."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "K-StringLengthFunc-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression compares the integer string-length result by value."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "K-StringLengthFunc-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression retains the native xs:integer result type of fn:string-length."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "K-StringLengthFunc-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged empty-sequence length compares equal to integer zero."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "K-StringLengthFunc-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged empty-string length compares equal to integer zero."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "K-StringLengthFunc-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged empty-sequence call retains the native xs:integer result type."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "K-StringLengthFunc-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged false conditional does not evaluate the context-dependent branch and returns true."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "K-StringLengthFunc-8"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression compares the integer string-length result by value."
