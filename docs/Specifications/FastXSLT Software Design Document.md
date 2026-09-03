@@ -312,8 +312,9 @@ branches from one compiled representation. It admits a bare unprefixed child
 name as a relative existence test, constant numeric and string equality,
 effective boolean values for the admitted numeric/string literals, and an exact
 context-item string comparison optionally wrapped in `not()`. It also admits a
-relative location path compared with one string literal using XPath general
-comparison semantics over the selected node string values. Node selection and
+relative child or attribute location path compared with one string literal
+using XPath general comparison semantics over the selected node string values.
+Present nonmatching and absent attributes therefore both evaluate false. Node selection and
 string values are evaluated through controlled traversal so cancellation and
 work accounting remain active. This is not a general XPath boolean grammar;
 compound expressions, arbitrary comparisons, functions, namespaces, and

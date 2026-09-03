@@ -1206,16 +1206,6 @@ fn parse_scalar_boolean_expression(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<BooleanExpression, CompileFailure> {
-    if parsed.starts_with('/') || parsed.starts_with('@') {
-        return parse_location_path(parsed, location.clone())
-            .map(BooleanExpression::NodeExists)
-            .map_err(map_path_failure);
-    }
-    if is_ascii_ncname(parsed) {
-        return parse_location_path(parsed, location.clone())
-            .map(BooleanExpression::NodeExists)
-            .map_err(map_path_failure);
-    }
     if let Some(value) = xpath_string_literal(parsed) {
         return Ok(BooleanExpression::Constant(!value.is_empty()));
     }
@@ -1226,6 +1216,22 @@ fn parse_scalar_boolean_expression(
         )
     {
         return Ok(BooleanExpression::Constant(left == right));
+    }
+    if let Some((path, value)) = parse_path_string_equality(parsed) {
+        return Ok(BooleanExpression::NodeStringEquals {
+            path: parse_location_path(path, location.clone()).map_err(map_path_failure)?,
+            value: value.to_owned(),
+        });
+    }
+    if parsed.starts_with('/') || parsed.starts_with('@') {
+        return parse_location_path(parsed, location.clone())
+            .map(BooleanExpression::NodeExists)
+            .map_err(map_path_failure);
+    }
+    if is_ascii_ncname(parsed) {
+        return parse_location_path(parsed, location.clone())
+            .map(BooleanExpression::NodeExists)
+            .map_err(map_path_failure);
     }
     if let Some((left, right)) = parsed.split_once('=') {
         let (context, literal) = if left.trim() == "." {
@@ -1240,12 +1246,6 @@ fn parse_scalar_boolean_expression(
         {
             return Ok(BooleanExpression::ContextStringEquals(literal.to_owned()));
         }
-    }
-    if let Some((path, value)) = parse_path_string_equality(parsed) {
-        return Ok(BooleanExpression::NodeStringEquals {
-            path: parse_location_path(path, location.clone()).map_err(map_path_failure)?,
-            value: value.to_owned(),
-        });
     }
     if let Some((variable, integer)) = parsed.split_once('=') {
         let variable = variable.trim().strip_prefix('$').unwrap_or_default();
