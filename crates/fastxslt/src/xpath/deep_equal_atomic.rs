@@ -42,6 +42,12 @@ pub(super) enum AtomicCollation {
     HtmlAsciiCaseInsensitive,
 }
 
+#[cfg(test)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum EffectiveBooleanValueFailure {
+    InvalidTypeOrCardinality,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum AtomicValue {
     Integer(i128),
@@ -115,27 +121,29 @@ pub(super) fn parse_sequence(expression: &str) -> Option<AtomicSequence> {
 }
 
 #[cfg(test)]
-pub(super) fn parse_effective_boolean_value(expression: &str) -> Option<bool> {
+pub(super) fn parse_effective_boolean_value(
+    expression: &str,
+) -> Option<Result<bool, EffectiveBooleanValueFailure>> {
     let sequence = parse_atomic_sequence(expression)?;
     match sequence.as_slice() {
-        [] => Some(false),
-        [AtomicValue::Boolean(value)] => Some(*value),
+        [] => Some(Ok(false)),
+        [AtomicValue::Boolean(value)] => Some(Ok(*value)),
         [
             AtomicValue::String(value)
             | AtomicValue::UntypedAtomic(value)
             | AtomicValue::AnyUri(value),
-        ] => Some(!value.is_empty()),
-        [AtomicValue::Integer(value)] => Some(*value != 0),
-        [AtomicValue::Decimal(value)] => Some(value.coefficient != 0),
+        ] => Some(Ok(!value.is_empty())),
+        [AtomicValue::Integer(value)] => Some(Ok(*value != 0)),
+        [AtomicValue::Decimal(value)] => Some(Ok(value.coefficient != 0)),
         [AtomicValue::Float(bits)] => {
             let value = f32::from_bits(*bits);
-            Some(value != 0.0 && !value.is_nan())
+            Some(Ok(value != 0.0 && !value.is_nan()))
         }
         [AtomicValue::Double(bits)] => {
             let value = f64::from_bits(*bits);
-            Some(value != 0.0 && !value.is_nan())
+            Some(Ok(value != 0.0 && !value.is_nan()))
         }
-        _ => None,
+        _ => Some(Err(EffectiveBooleanValueFailure::InvalidTypeOrCardinality)),
     }
 }
 
@@ -400,6 +408,14 @@ fn parse_year_month_duration(lexical: &str) -> Option<i64> {
 }
 
 fn parse_qname_constructor(expression: &str) -> Option<(String, String)> {
+    if let Some(lexical) = expression
+        .strip_prefix("xs:QName(")
+        .and_then(|value| value.strip_suffix(')'))
+        .and_then(parse_quoted_string)
+    {
+        return (is_ascii_ncname(lexical) && !lexical.contains(':'))
+            .then(|| (String::new(), lexical.to_owned()));
+    }
     let inner = expression.strip_prefix("QName(")?.strip_suffix(')')?;
     let (namespace_uri, lexical_qname) = split_top_level_once(inner)?;
     let namespace_uri = parse_quoted_string(namespace_uri.trim())?;
@@ -420,8 +436,16 @@ fn parse_qname_constructor(expression: &str) -> Option<(String, String)> {
 }
 
 fn parse_quoted_string(value: &str) -> Option<&str> {
-    let value = value.strip_prefix('"')?.strip_suffix('"')?;
-    (!value.contains('"')).then_some(value)
+    if let Some(value) = value
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+    {
+        return (!value.contains('"')).then_some(value);
+    }
+    value
+        .strip_prefix('\'')
+        .and_then(|value| value.strip_suffix('\''))
+        .filter(|value| !value.contains('\''))
 }
 
 fn is_ascii_ncname(value: &str) -> bool {

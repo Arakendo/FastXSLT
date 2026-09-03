@@ -75,9 +75,10 @@ fn executes_qt3_source_free_not_effective_boolean_value_tranche() {
         .collect::<Vec<_>>();
     selected.extend((1..=21).map(|suffix| format!("fn-not-{suffix}")));
     selected.extend((24..=26).map(|suffix| format!("fn-not-{suffix}")));
+    selected.push("fn-not-27".to_owned());
     selected.extend((1..=9).map(|suffix| format!("K-NotFunc-{suffix}")));
     selected.push("cbcl-not-002".to_owned());
-    assert_eq!(selected.len(), 73);
+    assert_eq!(selected.len(), 74);
     assert_selected_count(set_file, selected.len());
     let document = load_test_set(set_file);
     let catalog_names = descendants_named(&document, document.document_node(), "test-case")
@@ -104,14 +105,14 @@ fn executes_qt3_source_free_boolean_effective_boolean_value_tranche() {
         .flat_map(|stem| (1..=3).map(move |suffix| format!("{stem}-{suffix}")))
         .collect::<Vec<_>>();
     selected.extend((1..=49).map(|suffix| format!("fn-boolean-mixed-args-{suffix:03}")));
+    selected.push("fn-boolean-050".to_owned());
+    selected.extend((5..=7).map(|suffix| format!("boolean-{suffix:03}")));
     selected.extend(
-        [1, 2]
-            .into_iter()
-            .chain(7..=15)
+        (1..=15)
             .chain(17..=31)
             .map(|suffix| format!("K-SeqBooleanFunc-{suffix}")),
     );
-    assert_eq!(selected.len(), 114);
+    assert_eq!(selected.len(), 122);
     assert_selected_count(set_file, selected.len());
     let document = load_test_set(set_file);
     let catalog_names = descendants_named(&document, document.document_node(), "test-case")
@@ -146,6 +147,9 @@ fn execute_not_case(document: &Document, case_name: &str) {
                 .next()
                 .expect("invalid-arity case must expect an error");
             assert_eq!(attribute(document, error, "code"), Some("XPST0017"));
+        }
+        Err(BooleanParseFailure::InvalidEffectiveBooleanValue) => {
+            assert_expected_error(document, result, "FORG0006");
         }
         Err(BooleanParseFailure::Unsupported) => {
             panic!("selected QT3 expression is outside the admitted grammar: {case_name}: {source}")
@@ -192,6 +196,9 @@ fn execute_case(document: &Document, case_name: &str, expected_constant: bool) {
                 .expect("invalid-arity case must expect an error");
             assert_eq!(attribute(document, error, "code"), Some("XPST0017"));
         }
+        Err(BooleanParseFailure::InvalidEffectiveBooleanValue) => {
+            assert_expected_error(document, result, "FORG0006");
+        }
         Err(BooleanParseFailure::Unsupported) => {
             panic!("selected QT3 expression is outside the admitted grammar: {case_name}: {source}")
         }
@@ -210,6 +217,14 @@ fn execute_case(document: &Document, case_name: &str, expected_constant: bool) {
             }
         }
     }
+}
+
+fn assert_expected_error(document: &Document, result: NodeId, expected_code: &str) {
+    let error = descendants_named(document, result, "error")
+        .into_iter()
+        .next()
+        .expect("selected error case must own a native error assertion");
+    assert_eq!(attribute(document, error, "code"), Some(expected_code));
 }
 
 fn assert_native_result(

@@ -5166,3 +5166,66 @@ case_name = "K-SeqBooleanFunc-31"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/not.xml"
+case_name = "fn-not-27"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged two-boolean atomic sequence has no effective boolean value and reports the native FORG0006 dynamic error."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-050"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged dateTime singleton has no effective boolean value and reports the native FORG0006 dynamic error."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged multi-atomic sequence has no effective boolean value and reports the native FORG0006 dynamic error."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged QName singleton has no effective boolean value and reports the native FORG0006 dynamic error."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged hexBinary singleton has no effective boolean value and reports the native FORG0006 dynamic error."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged base64Binary singleton has no effective boolean value and reports the native FORG0006 dynamic error."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "boolean-005"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged two-boolean atomic sequence has no effective boolean value and reports the native FORG0006 dynamic error."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "boolean-006"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged two-integer atomic sequence has no effective boolean value and reports the native FORG0006 dynamic error."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "boolean-007"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged two-string atomic sequence has no effective boolean value and reports the native FORG0006 dynamic error."

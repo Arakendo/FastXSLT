@@ -3,7 +3,8 @@
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 
 use super::deep_equal_atomic::{
-    parse_effective_boolean_value, parse_sequence, split_top_level_once,
+    EffectiveBooleanValueFailure, parse_effective_boolean_value, parse_sequence,
+    split_top_level_once,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -32,6 +33,7 @@ pub(crate) enum BooleanComparison {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum BooleanParseFailure {
     InvalidArity,
+    InvalidEffectiveBooleanValue,
     Unsupported,
 }
 
@@ -146,11 +148,14 @@ fn parse_inner(expression: &str) -> Result<BooleanExpression, BooleanParseFailur
         if inner.trim().is_empty() || split_top_level_once(inner).is_some() {
             return Err(BooleanParseFailure::InvalidArity);
         }
-        let inner = parse_inner(inner).or_else(|_| {
-            parse_effective_boolean_value(inner)
-                .map(BooleanExpression::Constant)
-                .ok_or(BooleanParseFailure::Unsupported)
-        })?;
+        let inner = match parse_effective_boolean_value(inner) {
+            Some(value) => value.map(BooleanExpression::Constant).map_err(
+                |EffectiveBooleanValueFailure::InvalidTypeOrCardinality| {
+                    BooleanParseFailure::InvalidEffectiveBooleanValue
+                },
+            )?,
+            None => parse_inner(inner)?,
+        };
         return if expression.trim_start().starts_with("not(")
             || expression.trim_start().starts_with("fn:not(")
         {
@@ -168,7 +173,11 @@ fn parse_inner(expression: &str) -> Result<BooleanExpression, BooleanParseFailur
             .ok_or(BooleanParseFailure::Unsupported);
     }
     if let Some(value) = parse_effective_boolean_value(expression) {
-        return Ok(BooleanExpression::Constant(value));
+        return value.map(BooleanExpression::Constant).map_err(
+            |EffectiveBooleanValueFailure::InvalidTypeOrCardinality| {
+                BooleanParseFailure::InvalidEffectiveBooleanValue
+            },
+        );
     }
     Err(BooleanParseFailure::Unsupported)
 }
@@ -363,6 +372,14 @@ mod tests {
         assert_eq!(parse("true(1)"), Err(BooleanParseFailure::InvalidArity));
         assert_eq!(parse("not()"), Err(BooleanParseFailure::InvalidArity));
         assert_eq!(parse("not(1, 2)"), Err(BooleanParseFailure::InvalidArity));
+        assert_eq!(
+            parse("boolean((1, 2))"),
+            Err(BooleanParseFailure::InvalidEffectiveBooleanValue)
+        );
+        assert_eq!(
+            parse("boolean(xs:dateTime(\"1999-12-31T00:00:00\"))"),
+            Err(BooleanParseFailure::InvalidEffectiveBooleanValue)
+        );
         assert_eq!(
             parse("contains('a', 'a')"),
             Err(BooleanParseFailure::Unsupported)
