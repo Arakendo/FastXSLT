@@ -353,6 +353,15 @@ The binding materializes the current sequence-focus position as an integer in
 invocation-local state and charges one XPath operation. It does not establish
 general focus-function expressions, `last()` variable bindings, or retention
 of focus in compiled or prepared state.
+Global variables may retain exact schema-namespace-resolved `xs:string` and
+`xs:untypedAtomic` values from literal text content or a string-literal
+`select`. The compiled atomic identity is materialized independently for each
+invocation and included in prepared-engine retention accounting. A bare
+variable conditional applies effective boolean value to atomic string families,
+singleton supported numerics and booleans, source-node sequences, temporary
+trees, and bounded atomic sequences; values without a defined effective boolean
+value report `FORG0006`. This does not admit arbitrary typed global expressions,
+constructors, sequence types, or general variable XPath expressions.
 
 Conditional structure is validated before branch expressions or constructors
 are compiled. Missing `test`, `xsl:when` after `xsl:otherwise`, repeated

@@ -1719,17 +1719,91 @@ fn evaluate_boolean(
             Ok(left == right)
         }
         BooleanExpression::VariableEqualsInteger(test) => {
-            let value = variables.atomics.get(&test.variable).ok_or_else(|| {
-                failure(
-                    "FXRT0002",
-                    FailureCategory::Invalid,
-                    Some(inputs.request_id),
-                    format!("unbound variable: ${}", test.variable),
-                )
-            })?;
-            Ok(value.lexical().trim().parse::<i64>() == Ok(test.integer))
+            evaluate_variable_integer_equality(inputs, test, variables)
+        }
+        BooleanExpression::VariableEffectiveBooleanValue(variable) => {
+            evaluate_variable_effective_boolean_value(inputs, variable, variables, control)
         }
     }
+}
+
+fn evaluate_variable_integer_equality(
+    inputs: &SequenceInputs<'_>,
+    test: &crate::xslt::golden_semantics_experiment::EqualityTest,
+    variables: &RuntimeVariables,
+) -> Result<bool, ExecutionFailure> {
+    let value = variables.atomics.get(&test.variable).ok_or_else(|| {
+        failure(
+            "FXRT0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            format!("unbound variable: ${}", test.variable),
+        )
+    })?;
+    Ok(value.lexical().trim().parse::<i64>() == Ok(test.integer))
+}
+
+fn evaluate_variable_effective_boolean_value(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    if let Some(value) = variables.atomics.get(variable) {
+        return atomic_effective_boolean_value(value, inputs.request_id);
+    }
+    if let Some(nodes) = variables.source_nodes.get(variable) {
+        return Ok(!nodes.is_empty());
+    }
+    if variables.temporary_trees.contains_key(variable) {
+        return Ok(true);
+    }
+    if let Some(values) = variables.atomic_sequences.get(variable) {
+        return match values.as_slice() {
+            [] => Ok(false),
+            [value] => atomic_effective_boolean_value(value, inputs.request_id),
+            _ => Err(invalid_effective_boolean_value(inputs.request_id)),
+        };
+    }
+    Err(failure(
+        "FXRT0002",
+        FailureCategory::Invalid,
+        Some(inputs.request_id),
+        format!("unbound variable: ${variable}"),
+    ))
+}
+
+fn atomic_effective_boolean_value(
+    value: &AtomicValue,
+    request_id: &str,
+) -> Result<bool, ExecutionFailure> {
+    match value.atomic_type() {
+        BuiltinAtomicType::String | BuiltinAtomicType::UntypedAtomic => {
+            Ok(!value.lexical().is_empty())
+        }
+        BuiltinAtomicType::Boolean => Ok(matches!(value.lexical(), "true" | "1")),
+        BuiltinAtomicType::Integer
+        | BuiltinAtomicType::Decimal
+        | BuiltinAtomicType::Float
+        | BuiltinAtomicType::Double => value
+            .lexical()
+            .parse::<f64>()
+            .map(|number| number != 0.0 && !number.is_nan())
+            .map_err(|_| invalid_effective_boolean_value(request_id)),
+        _ => Err(invalid_effective_boolean_value(request_id)),
+    }
+}
+
+fn invalid_effective_boolean_value(request_id: &str) -> ExecutionFailure {
+    failure(
+        "FORG0006",
+        FailureCategory::Invalid,
+        Some(request_id),
+        "the variable value has no effective boolean value",
+    )
 }
 
 fn evaluate_context_string_equals(

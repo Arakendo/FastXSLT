@@ -239,6 +239,9 @@ fn materialize_global_default(
             Arc::make_mut(&mut globals.atomics)
                 .insert(binding.name.clone(), AtomicValue::untyped(value.clone()));
         }
+        GlobalBindingDefault::Atomic(value) => {
+            Arc::make_mut(&mut globals.atomics).insert(binding.name.clone(), value.clone());
+        }
         GlobalBindingDefault::Integer(value) => {
             Arc::make_mut(&mut globals.atomics).insert(
                 binding.name.clone(),

@@ -1,3 +1,4 @@
+use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::path_experiment::{PathFailure, parse_location_path};
@@ -646,12 +647,9 @@ fn compile_global_default(
 ) -> Result<GlobalBindingDefault, CompileFailure> {
     let declared_type = optional_attribute(document, element, None, "as");
     if let Some(select) = optional_attribute(document, element, None, "select") {
-        if declared_type.is_some() {
-            return Err(unsupported(
-                "FXST1016",
-                "typed select-based global variables are outside the private slice",
-                document.location(element),
-            ));
+        if let Some(declared_type) = declared_type {
+            ensure_no_meaningful_children(document, element, label)?;
+            return compile_typed_atomic_global(document, element, declared_type, select, true);
         }
         ensure_no_meaningful_children(document, element, label)?;
         if let Some(variable) = select.strip_prefix('$') {
@@ -707,15 +705,74 @@ fn compile_global_default(
             Ok(GlobalBindingDefault::TemporaryTree(elements))
         }
     } else {
-        if declared_type.is_some() {
-            return Err(unsupported(
-                "FXST1016",
-                "typed text global variables are outside the private slice",
-                document.location(element),
-            ));
+        if let Some(declared_type) = declared_type {
+            return compile_typed_atomic_global(
+                document,
+                element,
+                declared_type,
+                document.string_value(element).as_str(),
+                false,
+            );
         }
         Ok(GlobalBindingDefault::Text(document.string_value(element)))
     }
+}
+
+fn compile_typed_atomic_global(
+    document: &Document,
+    element: NodeId,
+    declared_type: &str,
+    expression_or_content: &str,
+    is_select: bool,
+) -> Result<GlobalBindingDefault, CompileFailure> {
+    let Some((prefix, local)) = declared_type.split_once(':') else {
+        return Err(unsupported_typed_global(document, element, declared_type));
+    };
+    if namespace_for_prefix(document, element, prefix) != Some(XML_SCHEMA_NAMESPACE) {
+        return Err(unsupported_typed_global(document, element, declared_type));
+    }
+    let atomic_type = match local {
+        "string" => BuiltinAtomicType::String,
+        "untypedAtomic" => BuiltinAtomicType::UntypedAtomic,
+        _ => return Err(unsupported_typed_global(document, element, declared_type)),
+    };
+    let lexical = if is_select {
+        xpath_string_literal(expression_or_content).ok_or_else(|| {
+            unsupported(
+                "FXST1016",
+                "the private typed atomic global slice requires a string literal select",
+                document.location(element),
+            )
+        })?
+    } else {
+        expression_or_content
+    };
+    Ok(GlobalBindingDefault::Atomic(
+        AtomicValue::from_validated_lexical(atomic_type, lexical),
+    ))
+}
+
+fn unsupported_typed_global(
+    document: &Document,
+    element: NodeId,
+    declared_type: &str,
+) -> CompileFailure {
+    unsupported(
+        "FXST1016",
+        format!("unsupported typed global variable: {declared_type}"),
+        document.location(element),
+    )
+}
+
+fn xpath_string_literal(expression: &str) -> Option<&str> {
+    expression
+        .strip_prefix('\'')
+        .and_then(|value| value.strip_suffix('\''))
+        .or_else(|| {
+            expression
+                .strip_prefix('"')
+                .and_then(|value| value.strip_suffix('"'))
+        })
 }
 
 fn compile_parentless_temporary_node(
@@ -1573,11 +1630,12 @@ pub(super) fn unsupported(
 
 #[cfg(test)]
 mod tests {
+    use crate::xdm::atomic_value_experiment::BuiltinAtomicType;
     use crate::xdm::owned_tree_experiment::Document;
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
     use crate::xslt::golden_semantics_experiment::{
-        Instruction, MatchPattern, STANDARD_INITIAL_TEMPLATE_NAME, TemplatePriority,
-        ValueExpression,
+        GlobalBindingDefault, Instruction, MatchPattern, STANDARD_INITIAL_TEMPLATE_NAME,
+        TemplatePriority, ValueExpression,
     };
 
     use super::{CompileCategory, compile_stylesheet};
@@ -1677,6 +1735,28 @@ mod tests {
         let program = compile_stylesheet(&document).expect("backward dependency should compile");
 
         assert_eq!(program.global_bindings.len(), 2);
+    }
+
+    #[test]
+    fn typed_string_globals_resolve_the_schema_namespace_not_the_prefix_spelling() {
+        let valid = parse_stylesheet(
+            "memory:typed-string-global.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:s="http://www.w3.org/2001/XMLSchema"><xsl:variable name="value" as="s:string" select="'kept'"/><xsl:template match="/"/></xsl:stylesheet>"#,
+        );
+        let invalid = parse_stylesheet(
+            "memory:false-schema-prefix.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:xs="urn:not-schema"><xsl:variable name="value" as="xs:string" select="'wrong'"/><xsl:template match="/"/></xsl:stylesheet>"#,
+        );
+
+        let program = compile_stylesheet(&valid).expect("schema-qualified string should compile");
+        let GlobalBindingDefault::Atomic(value) = &program.global_bindings[0].default else {
+            panic!("typed global should retain atomic identity");
+        };
+        assert_eq!(value.atomic_type(), BuiltinAtomicType::String);
+        assert_eq!(value.lexical(), "kept");
+        let failure = compile_stylesheet(&invalid).expect_err("a rebound xs prefix is not schema");
+        assert_eq!(failure.code, "FXST1016");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
     }
 
     #[test]

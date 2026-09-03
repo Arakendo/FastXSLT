@@ -87,6 +87,12 @@ execution = "passed"
 rationale = "The unchanged XSLT 1.0-compatible case uses the already admitted exact round() constant evaluator in an xsl:when comparison."
 
 [[case_override]]
+case_name = "choose-0606"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case applies effective boolean value to non-empty xs:untypedAtomic and empty xs:string global variables."
+
+[[case_override]]
 case_name = "choose-0701"
 selection = "selected"
 execution = "passed"
@@ -151,6 +157,18 @@ case_name = "choose-1401"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged XSLT 1.0-compatible case skips a false numeric xsl:when, enters xsl:otherwise, and executes a nested xsl:if whose exact modulo comparison is true."
+
+[[case_override]]
+case_name = "choose-1703"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case selects an xsl:when through the effective boolean value of a non-empty xs:untypedAtomic global variable."
+
+[[case_override]]
+case_name = "choose-1704"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case selects xsl:otherwise through the false effective boolean value of an empty xs:string global variable."
 
 [[case_override]]
 case_name = "choose-1801"

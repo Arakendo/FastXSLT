@@ -1314,6 +1314,13 @@ fn parse_scalar_boolean_expression(
             }));
         }
     }
+    if let Some(variable) = parsed.strip_prefix('$')
+        && is_ascii_ncname(variable)
+    {
+        return Ok(BooleanExpression::VariableEffectiveBooleanValue(
+            variable.to_owned(),
+        ));
+    }
     if !parsed.contains('=') && !parsed.contains('>') {
         let ordering =
             constant_numeric_experiment::compare(parsed, "0").map_err(|failure| match failure {

@@ -456,6 +456,40 @@ fn local_position_variable_uses_each_selected_source_node_focus() {
 }
 
 #[test]
+fn typed_string_globals_retain_atomic_identity_for_effective_boolean_value() {
+    const SOURCE: &str = "urn:fastxslt:typed-global-ebv:source";
+    const STYLESHEET: &str = "urn:fastxslt:typed-global-ebv:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="2.0"
+        xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+        xmlns:xs="http://www.w3.org/2001/XMLSchema"
+        exclude-result-prefixes="xs">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:variable name="present" as="xs:untypedAtomic">value</xsl:variable>
+        <xsl:variable name="empty" as="xs:string" select="''"/>
+        <xsl:template match="/"><out><xsl:if test="$present">yes</xsl:if><xsl:if test="$empty">no</xsl:if></out></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit typed-global source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit typed-global stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile typed globals");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("typed-global-ebv", "result", SOURCE))
+        .expect("admit typed-global request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute typed global EBV");
+    assert_eq!(
+        results.by_request["typed-global-ebv"].serialized,
+        "<out>yes</out>"
+    );
+}
+
+#[test]
 fn qualified_temporary_path_dispatches_a_matching_union_alternative() {
     const PATH_SOURCE: &str = "urn:fastxslt:temporary-path:source";
     const PATH_STYLESHEET: &str = "urn:fastxslt:temporary-path:stylesheet";

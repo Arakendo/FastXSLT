@@ -1,3 +1,4 @@
+use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::castable_experiment::{CastExpression, CastableExpression};
@@ -102,6 +103,7 @@ pub(crate) struct GlobalBinding {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum GlobalBindingDefault {
     Text(String),
+    Atomic(AtomicValue),
     Integer(i64),
     LocationPath(LocationPath),
     SourceNodeIdentity(LocationPath),
@@ -468,6 +470,7 @@ pub(crate) struct EqualityTest {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum BooleanExpression {
     VariableEqualsInteger(EqualityTest),
+    VariableEffectiveBooleanValue(String),
     NodeExists(LocationPath),
     NodeStringEquals {
         path: LocationPath,

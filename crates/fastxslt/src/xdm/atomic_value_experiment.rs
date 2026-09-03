@@ -49,4 +49,9 @@ impl AtomicValue {
     pub(crate) fn lexical(&self) -> &str {
         &self.lexical
     }
+
+    #[cfg(feature = "workbench")]
+    pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
+        self.lexical.capacity()
+    }
 }
