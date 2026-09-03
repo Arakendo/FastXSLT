@@ -9,9 +9,10 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const EXPECTED_SUITE: &str = "W3C XSLT 3.0 test suite";
 const EXPECTED_REVISION: &str = "6f8fd9e966ae74a251a2604abef9d904c7bc5c9b";
-const OVERLAYS: [&str; 2] = [
+const OVERLAYS: [&str; 3] = [
     include_str!("../../../corpus/overlays/xslt30/treat-as-denominator-v0.toml"),
     include_str!("../../../corpus/overlays/xslt30/type-expr-denominator-v0.toml"),
+    include_str!("../../../corpus/overlays/xslt30/type-functions-denominator-v0.toml"),
 ];
 
 #[derive(Debug, Deserialize)]
