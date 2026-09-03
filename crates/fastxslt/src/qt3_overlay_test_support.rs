@@ -38,6 +38,8 @@ const ESCAPE_HTML_URI_DENOMINATOR_SOURCE: &str =
     include_str!("../../../corpus/overlays/qt3/escape-html-uri-denominator-v0.toml");
 const IRI_TO_URI_DENOMINATOR_SOURCE: &str =
     include_str!("../../../corpus/overlays/qt3/iri-to-uri-denominator-v0.toml");
+const LOWER_CASE_DENOMINATOR_SOURCE: &str =
+    include_str!("../../../corpus/overlays/qt3/lower-case-denominator-v0.toml");
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
@@ -349,7 +351,7 @@ fn assert_complete_denominator(
 
 #[test]
 fn qt3_denominator_overlays_conserve_their_parent_sets() {
-    assert_eq!(private_ledger().case.len(), 896);
+    assert_eq!(private_ledger().case.len(), 923);
     assert!(private_ledger().case.iter().all(|case| matches!(
         case.set_file.as_str(),
         "prod/AxisStep.xml"
@@ -364,6 +366,7 @@ fn qt3_denominator_overlays_conserve_their_parent_sets() {
             | "fn/encode-for-uri.xml"
             | "fn/escape-html-uri.xml"
             | "fn/iri-to-uri.xml"
+            | "fn/lower-case.xml"
     )));
     assert_complete_denominator(AXIS_DENOMINATOR_SOURCE, "prod/AxisStep.xml", 349, 224, 112);
     assert_complete_denominator(
@@ -405,6 +408,13 @@ fn qt3_denominator_overlays_conserve_their_parent_sets() {
         "fn/iri-to-uri.xml",
         47,
         45,
+        1,
+    );
+    assert_complete_denominator(
+        LOWER_CASE_DENOMINATOR_SOURCE,
+        "fn/lower-case.xml",
+        28,
+        27,
         1,
     );
 }

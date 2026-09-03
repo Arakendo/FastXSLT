@@ -6253,6 +6253,195 @@ execution = "passed"
 rationale = "The unchanged bounded codepoint range verifies exact UTF-8 percent encoding."
 
 [[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged xs:string constructor argument is converted to lower case."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged xs:string constructor argument is converted to lower case."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged xs:string constructor argument is converted to lower case."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises lower-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises lower-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises lower-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises lower-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises lower-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises lower-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises lower-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-8"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises lower-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-9"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises lower-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-10"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises lower-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-11"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises lower-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-12"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises lower-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-13"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises lower-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-14"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises lower-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-15"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises lower-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-16"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises lower-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-17"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises lower-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-18"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged Latin-1 codepoint range verifies the exact expanding and one-to-one lower-case mapping."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-20"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged codepoint expression verifies a title-case or expanding lower-case mapping."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "fn-lower-case-21"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged codepoint expression verifies a title-case or expanding lower-case mapping."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "K-LowerCaseFunc-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity call reports the native XPST0017 error."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "K-LowerCaseFunc-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity call reports the native XPST0017 error."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "K-LowerCaseFunc-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies empty-sequence lower-case or nested upper-case equality."
+
+[[case]]
+set_file = "fn/lower-case.xml"
+case_name = "K-LowerCaseFunc-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies empty-sequence lower-case or nested upper-case equality."
+
+[[case]]
 set_file = "fn/iri-to-uri.xml"
 case_name = "K2-IRIToURIfunc-10"
 selection = "selected"
