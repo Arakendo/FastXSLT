@@ -81,6 +81,12 @@ execution = "passed"
 rationale = "The unchanged XSLT 1.0-compatible case applies effective boolean value to non-empty string and zero numeric literals and matches the native XML assertion."
 
 [[case_override]]
+case_name = "choose-0603"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case constructs two independent temporary document nodes and compares their atomized string values both directly and through explicit string()."
+
+[[case_override]]
 case_name = "choose-0604"
 selection = "selected"
 execution = "passed"

@@ -11,7 +11,7 @@ Date: 2026-09-02
 - Unchanged cases `choose-0101`, `choose-0102`, `choose-0201`, `choose-0301`,
   `choose-0401`, `choose-0402`,
   `choose-0403`, `choose-0404`, `choose-0501`, `choose-0502`, `choose-0601`,
-  `choose-0602`, `choose-0604`, `choose-0605`, `choose-0606`, `choose-0609`,
+  `choose-0602`, `choose-0603`, `choose-0604`, `choose-0605`, `choose-0606`, `choose-0609`,
   `choose-0701`,
   `choose-0702`, `choose-0801`, `choose-0901`, `choose-1001`, `choose-1101`,
   `choose-1201`, `choose-1202`,
@@ -55,11 +55,11 @@ introduced.
 ## Result
 
 - Complete conserved denominator: 55 cases.
-- Selected and passed: 38, comprising 34 result comparisons and 4 expected
+- Selected and passed: 39, comprising 35 result comparisons and 4 expected
   static-error comparisons.
 - Engine unsupported: 0.
 - Excluded by profile: 0.
-- Visible default not run: 17.
+- Visible default not run: 16.
 
 The unchanged cases cover ordered first-match branch selection, an
 `xsl:otherwise` branch, empty fall-through when no branch matches, two true
@@ -80,6 +80,14 @@ result nodes.
 Two cases reuse the existing exact constant numeric evaluator: one tests
 `round(3.7) > 3`, while the other reaches a nested `xsl:if` through
 `xsl:otherwise` and tests `9 mod 3 = 0`.
+
+`choose-0603` constructs two distinct temporary document nodes from untyped
+global sequence constructors. Direct variable comparison and explicit
+`string()` comparison both derive their atomized string values under XDM work
+accounting rather than equating node identity or approximating the globals as
+compiled atomic strings. A focused compiler control preserves the temporary
+document form, and unrelated temporary globals are not materialized while
+resolving a narrow value expression.
 
 `choose-0604` applies `xml:space="preserve"` to `xsl:choose`. Whitespace-only
 stylesheet text within the selected `xsl:when` and nested `xsl:if` sequence
@@ -171,15 +179,16 @@ boolean value, and the tiny nonzero double remains true. A focused compiler
 control also proves that constructor prefixes are resolved through the XML
 Schema namespace rather than trusted by spelling.
 
-Current conserved XSLT30 accounting is 675 cases: 480 passed comparisons, 3
-engine-unsupported cases, 55 profile exclusions, and 137 visible default
+Current conserved XSLT30 accounting is 675 cases: 481 passed comparisons, 3
+engine-unsupported cases, 55 profile exclusions, and 136 visible default
 not-run cases across 17 complete test-set denominators.
 
 ## Limitation
 
-This evidence does not admit the other 17 cases. In particular, it makes no
-claim for general comparisons, boolean functions beyond the exact `not()`
-form and admitted `or` composition, collations, schema-aware cases,
+This evidence does not admit the other 16 cases. In particular, it makes no
+claim for general comparisons beyond the exact admitted variable and path
+forms, boolean functions beyond the exact `not()` form and admitted `or`
+composition, collations beyond the two retained strategies, schema-aware cases,
 static typing, user functions, import composition, or arbitrary assertion
 families. Those cases remain individually visible under the denominator's
 default disposition rather than being inferred from the admitted tranche.

@@ -454,6 +454,30 @@ pub(super) fn source_node_identity(node: NodeId) -> String {
     format!("fastxslt-principal-n{}", node.index())
 }
 
+pub(super) fn temporary_tree_string_value(
+    tree: &TemporaryTree,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let mut value = String::new();
+    let mut pending = tree.roots.iter().rev().copied().collect::<Vec<_>>();
+    while let Some(node) = pending.pop() {
+        control
+            .charge(WorkDomain::XdmStringValueNode, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        match &tree.nodes[node].kind {
+            TemporaryNodeKind::Text(text) => value.push_str(text),
+            TemporaryNodeKind::Element { .. } => {
+                pending.extend(tree.nodes[node].children.iter().rev().copied());
+            }
+            TemporaryNodeKind::Attribute { .. }
+            | TemporaryNodeKind::Comment(_)
+            | TemporaryNodeKind::ProcessingInstruction { .. } => {}
+        }
+    }
+    Ok(value)
+}
+
 pub(super) fn temporary_document_identity(
     tree: &TemporaryTree,
     descendant_local: Option<&str>,

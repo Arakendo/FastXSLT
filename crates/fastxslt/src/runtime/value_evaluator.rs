@@ -1,6 +1,7 @@
 //! Private dynamic value evaluation for admitted `xsl:value-of` expressions.
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
+use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{NodeId, StringValueVisitFailure};
 use crate::xpath::castable_experiment::{
     CastableExpression, evaluate as evaluate_castable, evaluate_value as evaluate_castable_value,
@@ -175,8 +176,22 @@ fn append_format_number(
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
+    let mut atomic_values = variables.atomics.as_ref().clone();
+    for name in expression.variable_names() {
+        if !atomic_values.contains_key(name) {
+            if let Some(tree) = variables
+                .temporary_trees
+                .get(name)
+                .or_else(|| inputs.globals.temporary_trees.get(name))
+            {
+                let value =
+                    runtime_context::temporary_tree_string_value(tree, inputs.request_id, control)?;
+                atomic_values.insert(name.to_owned(), AtomicValue::untyped(value));
+            }
+        }
+    }
     let formatted =
-        evaluate_format_number(expression, &variables.atomics).map_err(|error| match error {
+        evaluate_format_number(expression, &atomic_values).map_err(|error| match error {
             FormatNumberEvaluationFailure::UnboundVariable(name) => failure(
                 "FXRT0002",
                 FailureCategory::Invalid,
@@ -490,6 +505,14 @@ fn append_variable_value(
             append_source_string_value(inputs, *node, result, control)?;
         }
         return Ok(());
+    }
+    if let Some(tree) = variables
+        .temporary_trees
+        .get(name)
+        .or_else(|| inputs.globals.temporary_trees.get(name))
+    {
+        let value = runtime_context::temporary_tree_string_value(tree, inputs.request_id, control)?;
+        return append_text(result, &value, inputs.request_id, control);
     }
     Err(failure(
         "FXRT0002",

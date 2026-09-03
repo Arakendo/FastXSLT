@@ -394,8 +394,15 @@ An untyped global whose complete sequence constructor is exact
 empty string or temporary document. Exact empty-sequence conditional forms and
 `boolean($variable)` observe that identity; comparison with `()` is false after
 verifying the variable is bound. `xsl:value-of` separately admits a static
-XPath string literal. These forms do not imply general sequence constructors,
-function calls, comparisons, or literal-expression evaluation.
+XPath string literal. An untyped text-only global sequence constructor instead
+materializes an invocation-local temporary document, preserving distinct node
+identity between independently evaluated bindings. Exact direct variable and
+`string($variable)` equality derive temporary-document string values through
+controlled descendant-text traversal and apply the compiled codepoint or HTML
+ASCII case-insensitive comparison strategy. Narrow value expressions may use
+the same conversion, but only referenced temporary bindings are traversed.
+These forms do not imply general sequence constructors, atomization, function
+calls, comparisons, or literal-expression evaluation.
 
 Conditional structure is validated before branch expressions or constructors
 are compiled. Missing `test`, `xsl:when` after `xsl:otherwise`, repeated

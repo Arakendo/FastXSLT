@@ -1412,7 +1412,7 @@ general atomic pattern or import-ancestry representation.
 [Evidence](../Evidence/xslt30-apply-imports-atomic-focus-denominator-2026-09-02.md)
 
 The complete 55-case `insn/choose` denominator is now conserved before case
-selection. Thirty-four unchanged XSLT 1.0/2.0 cases execute through the
+selection. Thirty-five unchanged XSLT 1.0/2.0 cases execute through the
 normal principal-source path: true and false child-existence tests, ordered
 `xsl:when` selection, `xsl:otherwise`, empty fall-through, constant numeric and
 string equality, effective boolean values for non-empty strings and zero,
@@ -1440,6 +1440,10 @@ integer for ordered branch comparison; a focused control observes distinct
 positions across a two-node `xsl:for-each`. Three further cases preserve
 schema-namespace-resolved `xs:string` and `xs:untypedAtomic` global values and
 apply string-family effective boolean value to bare variable tests. A further
+case constructs two independent temporary document nodes from untyped global
+sequence constructors and compares their atomized string values both directly
+and through `string()`, without collapsing their distinct node identities into
+compiled atomic values. A further
 case keeps an empty-sequence global distinct from an empty atomic value
 and composes exact `()`, `$variable=()`, and `boolean($variable)` tests without
 approximating empty sequences as strings or temporary trees. Two numeric cases
@@ -1455,7 +1459,7 @@ reset `xpath-default-namespace` values to exact descendant `count()`
 expressions. Their mixed-namespace source makes namespace matching observable.
 The descendant/name branch family additionally executes under the first
 available member of an explicit default-collation list, applying HTML ASCII
-case-insensitive comparison without changing QName identity. The other 17
+case-insensitive comparison without changing QName identity. The other 16
 cases remain visible defaults while their expression, type, namespace,
 collation, import, function, initial-template, schema, or assertion requirements
 are classified and admitted deliberately.
@@ -1526,9 +1530,9 @@ The XSLT30 work currently conserves these complete native denominators:
 | `misc/built-in-templates` | 6 | 2 | 0 | 0 | 4 |
 | `fn/root` | 10 | 10 | 0 | 0 | 0 |
 | `insn/apply-imports` | 1 | 1 | 0 | 0 | 0 |
-| `insn/choose` | 55 | 38 | 0 | 0 | 17 |
+| `insn/choose` | 55 | 39 | 0 | 0 | 16 |
 | `insn/call-template` | 42 | 20 | 0 | 1 | 21 |
-| **Conserved total** | **675** | **480** | **3** | **55** | **137** |
+| **Conserved total** | **675** | **481** | **3** | **55** | **136** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

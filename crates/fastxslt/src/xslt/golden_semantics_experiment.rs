@@ -491,6 +491,11 @@ pub(crate) enum BooleanExpression {
     VariableEqualsInteger(EqualityTest),
     VariableEqualsEmptySequence(String),
     VariableEffectiveBooleanValue(String),
+    VariableStringEquals {
+        left: String,
+        right: String,
+        comparison: StringComparison,
+    },
     NodeExists(LocationPath),
     NodeStringEquals {
         path: LocationPath,

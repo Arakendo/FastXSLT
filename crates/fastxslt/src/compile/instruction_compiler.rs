@@ -1449,6 +1449,13 @@ fn parse_scalar_boolean_expression(
     if let Some(expression) = parse_path_boolean_expression(parsed, location, comparison)? {
         return Ok(expression);
     }
+    if let Some((left, right)) = parse_variable_string_equality(parsed) {
+        return Ok(BooleanExpression::VariableStringEquals {
+            left: left.to_owned(),
+            right: right.to_owned(),
+            comparison,
+        });
+    }
     if parsed.starts_with('/') || parsed.starts_with('@') {
         return parse_location_path(parsed, location.clone())
             .map(BooleanExpression::NodeExists)
@@ -1459,19 +1466,8 @@ fn parse_scalar_boolean_expression(
             .map(BooleanExpression::NodeExists)
             .map_err(map_path_failure);
     }
-    if let Some((left, right)) = parsed.split_once('=') {
-        let (context, literal) = if left.trim() == "." {
-            (left, xpath_string_literal(right.trim()))
-        } else if right.trim() == "." {
-            (right, xpath_string_literal(left.trim()))
-        } else {
-            (left, None)
-        };
-        if context.trim() == "."
-            && let Some(literal) = literal
-        {
-            return Ok(BooleanExpression::ContextStringEquals(literal.to_owned()));
-        }
+    if let Some(literal) = parse_context_string_equality(parsed) {
+        return Ok(BooleanExpression::ContextStringEquals(literal.to_owned()));
     }
     if let Some((variable, integer)) = parsed.split_once('=') {
         let variable = variable.trim().strip_prefix('$').unwrap_or_default();
@@ -1539,6 +1535,17 @@ fn parse_scalar_boolean_expression(
     }))
 }
 
+fn parse_context_string_equality(expression: &str) -> Option<&str> {
+    let (left, right) = expression.split_once('=')?;
+    if left.trim() == "." {
+        xpath_string_literal(right.trim())
+    } else if right.trim() == "." {
+        xpath_string_literal(left.trim())
+    } else {
+        None
+    }
+}
+
 fn parse_context_string_length_equality(expression: &str) -> Option<usize> {
     let (left, right) = expression.split_once('=')?;
     (left.trim() == "string-length(.)")
@@ -1599,6 +1606,25 @@ fn parse_constant_string_boolean(expression: &str) -> Option<bool> {
     }
     let (left, right) = expression.split_once('=')?;
     Some(xpath_string_literal(left.trim())? == xpath_string_literal(right.trim())?)
+}
+
+fn parse_variable_string_equality(expression: &str) -> Option<(&str, &str)> {
+    let (left, right) = expression.split_once('=')?;
+    Some((
+        variable_string_operand(left)?,
+        variable_string_operand(right)?,
+    ))
+}
+
+fn variable_string_operand(expression: &str) -> Option<&str> {
+    let expression = expression.trim();
+    let expression = expression
+        .strip_prefix("string(")
+        .and_then(|value| value.strip_suffix(')'))
+        .unwrap_or(expression)
+        .trim();
+    let variable = expression.strip_prefix('$')?;
+    is_ascii_ncname(variable).then_some(variable)
 }
 
 fn parse_path_context_string_predicate(expression: &str) -> Option<(&str, &str)> {

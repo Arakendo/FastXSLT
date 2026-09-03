@@ -113,7 +113,7 @@ fn executes_include_0401_through_one_sealed_relative_module() {
         binding.name == "greeting"
             && matches!(
                 &binding.default,
-                crate::xslt::golden_semantics_experiment::GlobalBindingDefault::Text(value)
+                crate::xslt::golden_semantics_experiment::GlobalBindingDefault::TemporaryText(value)
                     if value == "Hi there!"
             )
     }));
@@ -491,9 +491,10 @@ fn observe_dependency_program(
         .global_bindings
         .iter()
         .filter_map(|binding| match &binding.default {
-            crate::xslt::golden_semantics_experiment::GlobalBindingDefault::Text(value) => {
-                Some((binding.name.clone(), value.clone()))
-            }
+            crate::xslt::golden_semantics_experiment::GlobalBindingDefault::Text(value)
+            | crate::xslt::golden_semantics_experiment::GlobalBindingDefault::TemporaryText(
+                value,
+            ) => Some((binding.name.clone(), value.clone())),
             _ => None,
         })
         .collect();

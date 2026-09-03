@@ -17,6 +17,17 @@ enum Operand {
     Variable(String),
 }
 
+impl FormatNumberExpression {
+    pub(crate) fn variable_names(&self) -> impl Iterator<Item = &str> {
+        [&self.number, &self.picture]
+            .into_iter()
+            .filter_map(|operand| match operand {
+                Operand::Variable(name) => Some(name.as_str()),
+                Operand::Literal(_) => None,
+            })
+    }
+}
+
 #[cfg(feature = "workbench")]
 impl FormatNumberExpression {
     pub(crate) fn known_owned_capacity_bytes(&self) -> usize {

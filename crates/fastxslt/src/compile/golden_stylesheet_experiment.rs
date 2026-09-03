@@ -718,7 +718,9 @@ fn compile_global_default(
                 false,
             );
         }
-        Ok(GlobalBindingDefault::Text(document.string_value(element)))
+        Ok(GlobalBindingDefault::TemporaryText(
+            document.string_value(element),
+        ))
     }
 }
 
@@ -1917,6 +1919,21 @@ mod tests {
         let failure = compile_stylesheet(&invalid).expect_err("a rebound xs prefix is not schema");
         assert_eq!(failure.code, "FXST1016");
         assert_eq!(failure.category, CompileCategory::Unsupported);
+    }
+
+    #[test]
+    fn untyped_text_global_retains_temporary_document_semantics() {
+        let document = parse_stylesheet(
+            "memory:temporary-text-global.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:variable name="value">text</xsl:variable><xsl:template match="/"/></xsl:stylesheet>"#,
+        );
+
+        let program = compile_stylesheet(&document).expect("temporary text global should compile");
+
+        assert_eq!(
+            program.global_bindings[0].default,
+            GlobalBindingDefault::TemporaryText("text".to_owned())
+        );
     }
 
     #[test]

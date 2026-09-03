@@ -498,6 +498,11 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         BooleanExpression::VariableEqualsInteger(test) => test.variable.capacity(),
         BooleanExpression::VariableEqualsEmptySequence(variable)
         | BooleanExpression::VariableEffectiveBooleanValue(variable) => variable.capacity(),
+        BooleanExpression::VariableStringEquals {
+            left,
+            right,
+            comparison: _,
+        } => left.capacity() + right.capacity(),
         BooleanExpression::NodeExists(path)
         | BooleanExpression::NodeIntegerLessThan { path, .. } => path.known_owned_capacity_bytes(),
         BooleanExpression::NodeStringEquals { path, value } => {

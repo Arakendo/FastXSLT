@@ -1641,18 +1641,7 @@ fn evaluate_boolean(
                 .map_err(|failure| control_failure(failure, inputs.request_id))
         }
         BooleanExpression::NodeStringEquals { path, value } => {
-            let (source, context) = required_source_context(inputs, context)?;
-            let nodes = evaluate_location_path_controlled(source, context, path, control)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            for node in nodes {
-                let actual = source
-                    .string_value_controlled(node, control)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
-                if actual == *value {
-                    return Ok(true);
-                }
-            }
-            Ok(false)
+            evaluate_node_string_equals(inputs, path, value, context, control)
         }
         BooleanExpression::NodeIntegerLessThan { path, value } => {
             let (source, context) = required_source_context(inputs, context)?;
@@ -1729,7 +1718,78 @@ fn evaluate_boolean(
         BooleanExpression::VariableEffectiveBooleanValue(variable) => {
             evaluate_variable_effective_boolean_value(inputs, variable, variables, control)
         }
+        BooleanExpression::VariableStringEquals {
+            left,
+            right,
+            comparison,
+        } => {
+            evaluate_variable_string_equality(inputs, left, right, *comparison, variables, control)
+        }
     }
+}
+
+fn evaluate_node_string_equals(
+    inputs: &SequenceInputs<'_>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    expected: &str,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let nodes = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    for node in nodes {
+        let actual = source
+            .string_value_controlled(node, control)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        if actual == expected {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn evaluate_variable_string_equality(
+    inputs: &SequenceInputs<'_>,
+    left: &str,
+    right: &str,
+    comparison: StringComparison,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let left = variable_string_value(inputs, left, variables, control)?;
+    let right = variable_string_value(inputs, right, variables, control)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(match comparison {
+        StringComparison::Codepoint => left == right,
+        StringComparison::HtmlAsciiCaseInsensitive => left.eq_ignore_ascii_case(&right),
+    })
+}
+
+fn variable_string_value(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    if let Some(value) = variables.atomics.get(variable) {
+        return Ok(value.lexical().to_owned());
+    }
+    let tree = variables
+        .temporary_trees
+        .get(variable)
+        .or_else(|| inputs.globals.temporary_trees.get(variable))
+        .ok_or_else(|| {
+            failure(
+                "FXRT0002",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("unbound string-compatible variable: ${variable}"),
+            )
+        })?;
+    runtime_context::temporary_tree_string_value(tree, inputs.request_id, control)
 }
 
 fn evaluate_unqualified_node_name_equals(
