@@ -1574,19 +1574,25 @@ expression has been admitted is not hidden by broader upstream metadata:
 | --- | ---: | ---: | ---: | ---: |
 | `prod/AxisStep.xml` | 349 | 224 | 112 | 13 |
 | `fn/deep-equal.xml` | 263 | 184 | 67 | 12 |
-| **Audited subtotal** | **612** | **408** | **179** | **25** |
+| `fn/true.xml` | 25 | 0 | 0 | 25 |
+| `fn/false.xml` | 25 | 0 | 0 | 25 |
+| **Audited subtotal** | **662** | **408** | **179** | **75** |
 
-The 612-case subtotal is therefore conserved without relabeling the 25
-unclassified siblings as engine failures. The 179 exclusions describe the
-current XPath-in-XSLT profile and remain overridable by explicit case admission.
+The 662-case subtotal is therefore conserved without relabeling the 75
+unexecuted cases as engine failures. The 179 exclusions describe the current
+XPath-in-XSLT profile and remain overridable by explicit case admission.
 AxisStep's 13 remaining defaults are precisely its namespace-node/namespace-axis
 frontier. Deep-equal's 12 remaining defaults require UCA or suite-private
 collations or invocation clock/timezone semantics. These are named feature
 boundaries rather than an invitation to add case-specific successful answers.
-The other 31,209 QT3 cases remain
+The complete 50-case `fn/true.xml` and `fn/false.xml` denominators are also
+typed and conserved before execution. Their visible defaults are deliberate
+pressure for one genuine constant-boolean XPath adapter rather than inferred
+passes from related compiler logic. The other 31,159 QT3 cases remain
 structural catalog inventory only and still lack first-party selection
 dispositions.
 [Evidence](../Evidence/qt3-axis-deep-equal-conserved-denominators-2026-09-02.md)
+[Boolean function denominator evidence](../Evidence/qt3-boolean-function-initial-denominators-2026-09-03.md)
 [Schema-aware XSLT30 profile evidence](../Evidence/xslt30-schema-aware-expression-profile-denominators-2026-09-03.md)
 [Streaming XSLT30 profile evidence](../Evidence/xslt30-streaming-profile-denominators-2026-09-03.md)
 [Dynamic-evaluation XSLT30 profile evidence](../Evidence/xslt30-dynamic-evaluation-profile-denominator-2026-09-03.md)
@@ -1630,14 +1636,17 @@ count:
    promotion still requires native metadata validation, a focused control, and
    an owned comparator or exact diagnostic—not merely successful stylesheet
    execution.
-3. [x] Give `AxisStep.xml` and `fn/deep-equal.xml` complete QT3 overlays so all
-   612 parent-set cases receive a selection disposition. The typed verifier
-   now conserves 408 selected passes, 179 native-dependency profile exclusions,
-   and 25 visible default not-run cases against the immutable upstream case
-   identities. Explicit selection takes priority over a dependency rule.
+3. [x] Give `AxisStep.xml`, `fn/deep-equal.xml`, `fn/true.xml`, and
+   `fn/false.xml` complete QT3 overlays so all 662 parent-set cases receive a
+   selection disposition. The typed verifier now conserves 408 selected
+   passes, 179 native-dependency profile exclusions, and 75 visible default
+   not-run cases against the immutable upstream case identities. Explicit
+   selection takes priority over a dependency rule. The two boolean-function
+   sets deliberately begin with no inferred passes and provide the next exact
+   implementation denominator.
 4. [ ] Add complete denominators deliberately, selected by standards and
    implementation pressure rather than easy-case sampling. The remaining
-   11,101 XSLT30 and 31,209 QT3 catalog-only cases must stay outside pass/fail
+   11,101 XSLT30 and 31,159 QT3 catalog-only cases must stay outside pass/fail
    totals until individually classified.
 5. [ ] Replace string-scanned experimental overlays with a validated internal
    loader and derive one immutable run report carrying suite/engine/harness

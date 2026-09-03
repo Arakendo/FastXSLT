@@ -18,6 +18,10 @@ const AXIS_DENOMINATOR_SOURCE: &str =
     include_str!("../../../corpus/overlays/qt3/axis-step-denominator-v0.toml");
 const DEEP_EQUAL_DENOMINATOR_SOURCE: &str =
     include_str!("../../../corpus/overlays/qt3/deep-equal-denominator-v0.toml");
+const TRUE_DENOMINATOR_SOURCE: &str =
+    include_str!("../../../corpus/overlays/qt3/true-denominator-v0.toml");
+const FALSE_DENOMINATOR_SOURCE: &str =
+    include_str!("../../../corpus/overlays/qt3/false-denominator-v0.toml");
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
@@ -78,6 +82,7 @@ struct DenominatorOverlay {
     set_file: String,
     case_count: usize,
     selected_source: String,
+    #[serde(default)]
     dependency_rule: Vec<DependencyRule>,
     default_disposition: DefaultDisposition,
 }
@@ -141,12 +146,6 @@ fn parse_denominator(source: &str) -> Result<DenominatorOverlay, String> {
     {
         return Err(format!(
             "{} default must remain harness-unsupported/not-run",
-            overlay.set_file
-        ));
-    }
-    if overlay.dependency_rule.is_empty() {
-        return Err(format!(
-            "{} must declare at least one dependency classification rule",
             overlay.set_file
         ));
     }
@@ -333,7 +332,7 @@ fn assert_complete_denominator(
 }
 
 #[test]
-fn qt3_axis_and_deep_equal_overlays_conserve_their_parent_sets() {
+fn qt3_denominator_overlays_conserve_their_parent_sets() {
     assert_eq!(private_ledger().case.len(), 408);
     assert!(private_ledger().case.iter().all(|case| matches!(
         case.set_file.as_str(),
@@ -347,6 +346,8 @@ fn qt3_axis_and_deep_equal_overlays_conserve_their_parent_sets() {
         184,
         67,
     );
+    assert_complete_denominator(TRUE_DENOMINATOR_SOURCE, "fn/true.xml", 25, 0, 0);
+    assert_complete_denominator(FALSE_DENOMINATOR_SOURCE, "fn/false.xml", 25, 0, 0);
 }
 
 #[test]
