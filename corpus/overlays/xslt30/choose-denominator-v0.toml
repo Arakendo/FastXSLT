@@ -135,6 +135,12 @@ execution = "passed"
 rationale = "The unchanged XSLT 1.0-compatible case iterates context-relative descendants and selects the first of 26 exact context string-length branches."
 
 [[case_override]]
+case_name = "choose-1301"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case binds the current source-template focus position to a local variable and selects the matching ordered branch."
+
+[[case_override]]
 case_name = "choose-1401"
 selection = "selected"
 execution = "passed"

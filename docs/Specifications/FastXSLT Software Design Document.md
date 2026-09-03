@@ -342,6 +342,11 @@ The exact `string-length(.) = nonnegative-integer` conditional form counts
 Unicode codepoints in the controlled context string value and charges the scan
 to XPath work. It does not admit general string functions, alternate operands,
 Unicode grapheme counting, or arbitrary numeric comparisons.
+An untyped local `xsl:variable` may select the exact expression `position()`.
+The binding materializes the current sequence-focus position as an integer in
+invocation-local state and charges one XPath operation. It does not establish
+general focus-function expressions, `last()` variable bindings, or retention
+of focus in compiled or prepared state.
 
 Conditional structure is validated before branch expressions or constructors
 are compiled. Missing `test`, `xsl:when` after `xsl:otherwise`, repeated

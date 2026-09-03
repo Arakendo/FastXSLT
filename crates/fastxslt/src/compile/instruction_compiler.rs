@@ -95,13 +95,7 @@ pub(super) fn compile_sequence_excluding(
                         instructions.push(compile_value_of(document, child)?);
                     } else if name.local == "variable" {
                         let variable = compile_variable(document, child)?;
-                        let (Instruction::Variable { name, .. }
-                        | Instruction::SourceNodeVariable { name, .. }
-                        | Instruction::IntegerRangeVariable { name, .. }
-                        | Instruction::TemporaryTreeVariable { name, .. }) = &variable
-                        else {
-                            unreachable!("compile_variable returns a variable instruction")
-                        };
+                        let name = local_variable_name(&variable);
                         if local_variables.contains(name) {
                             return Err(invalid(
                                 "FXST0017",
@@ -161,6 +155,18 @@ pub(super) fn compile_sequence_excluding(
         }
     }
     Ok(instructions)
+}
+
+fn local_variable_name(variable: &Instruction) -> &String {
+    let (Instruction::Variable { name, .. }
+    | Instruction::ContextPositionVariable { name, .. }
+    | Instruction::SourceNodeVariable { name, .. }
+    | Instruction::IntegerRangeVariable { name, .. }
+    | Instruction::TemporaryTreeVariable { name, .. }) = variable
+    else {
+        unreachable!("compile_variable returns a variable instruction")
+    };
+    name
 }
 
 fn compile_attribute(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
@@ -840,6 +846,12 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
             "typed select-based local variables are outside the private slice",
             &location,
         ));
+    }
+    if expression.trim() == "position()" {
+        return Ok(Instruction::ContextPositionVariable {
+            name: name.to_owned(),
+            location,
+        });
     }
     let node_path = match parse_location_path(expression, location.clone()) {
         Ok(path) => Some(path),

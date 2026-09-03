@@ -338,6 +338,10 @@ pub(crate) enum Instruction {
         select: Box<CastExpression>,
         location: SourceLocation,
     },
+    ContextPositionVariable {
+        name: String,
+        location: SourceLocation,
+    },
     SourceNodeVariable {
         name: String,
         select: LocationPath,

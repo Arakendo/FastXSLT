@@ -76,6 +76,7 @@ fn validate_named_calls(
             | Instruction::Attribute { .. }
             | Instruction::ValueOf { .. }
             | Instruction::Variable { .. }
+            | Instruction::ContextPositionVariable { .. }
             | Instruction::SourceNodeVariable { .. }
             | Instruction::IntegerRangeVariable { .. }
             | Instruction::TemporaryTreeVariable { .. }

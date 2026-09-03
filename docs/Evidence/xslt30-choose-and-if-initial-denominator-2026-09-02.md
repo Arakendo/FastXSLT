@@ -13,7 +13,7 @@ Date: 2026-09-02
   `choose-0403`, `choose-0404`, `choose-0501`, `choose-0502`, `choose-0601`,
   `choose-0602`, `choose-0605`, `choose-0701`, `choose-0702`, `choose-0801`,
   `choose-0901`, `choose-1001`, `choose-1101`, `choose-1202`, `choose-1203`,
-  and `choose-1401`.
+  `choose-1301`, and `choose-1401`.
 - Unchanged negative cases `choose-1801` through `choose-1804`.
 
 ## Method
@@ -51,11 +51,11 @@ introduced.
 ## Result
 
 - Complete conserved denominator: 55 cases.
-- Selected and passed: 26, comprising 22 result comparisons and 4 expected
+- Selected and passed: 27, comprising 23 result comparisons and 4 expected
   static-error comparisons.
 - Engine unsupported: 0.
 - Excluded by profile: 0.
-- Visible default not run: 29.
+- Visible default not run: 28.
 
 The unchanged cases cover ordered first-match branch selection, an
 `xsl:otherwise` branch, empty fall-through when no branch matches, two true
@@ -107,13 +107,19 @@ among 26 exact `string-length(.) = integer` branches. String length counts
 Unicode codepoints rather than UTF-8 bytes, scans under invocation work
 accounting, and retains the suite's exact root-string comparison.
 
-Current conserved XSLT30 accounting is 675 cases: 468 passed comparisons, 3
-engine-unsupported cases, 55 profile exclusions, and 149 visible default
+`choose-1301` binds `position()` to an invocation-local variable inside the
+matched `doc` template. The binding reads the existing source-template sequence
+focus, charges one XPath operation, and supplies the resulting integer to the
+already admitted variable comparison. A focused two-item `xsl:for-each`
+control proves that successive local bindings observe positions one and two.
+
+Current conserved XSLT30 accounting is 675 cases: 469 passed comparisons, 3
+engine-unsupported cases, 55 profile exclusions, and 148 visible default
 not-run cases across 17 complete test-set denominators.
 
 ## Limitation
 
-This evidence does not admit the other 29 cases. In particular, it makes no
+This evidence does not admit the other 28 cases. In particular, it makes no
 claim for general comparisons, boolean functions beyond the exact `not()`
 form and admitted `or` composition, collations, schema-aware cases,
 static typing, user functions, import composition, or arbitrary assertion

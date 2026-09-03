@@ -687,10 +687,11 @@ fn execute_instruction(
             )?);
         }
         Instruction::Variable { .. }
+        | Instruction::ContextPositionVariable { .. }
         | Instruction::SourceNodeVariable { .. }
         | Instruction::IntegerRangeVariable { .. }
         | Instruction::TemporaryTreeVariable { .. } => {
-            execute_binding(inputs, instruction, execution.node, scope, control)?;
+            execute_binding(inputs, instruction, execution, scope, control)?;
         }
         Instruction::ApplyTemplates {
             select,
@@ -1013,17 +1014,27 @@ fn execute_continuation_instruction(
 fn execute_binding(
     inputs: &SequenceInputs<'_>,
     instruction: &Instruction,
-    context: Option<NodeId>,
+    execution: SequenceContext<'_>,
     scope: &mut RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     match instruction {
         Instruction::Variable { name, select, .. } => {
-            let value = execute_variable_binding(inputs, name, select, context, control)?;
+            let value = execute_variable_binding(inputs, name, select, execution.node, control)?;
+            Arc::make_mut(&mut scope.atomics).insert(name.clone(), value);
+        }
+        Instruction::ContextPositionVariable { name, .. } => {
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let value = AtomicValue::from_validated_lexical(
+                BuiltinAtomicType::Integer,
+                execution.focus_position.to_string(),
+            );
             Arc::make_mut(&mut scope.atomics).insert(name.clone(), value);
         }
         Instruction::SourceNodeVariable { name, select, .. } => {
-            let (source, context) = required_source_context(inputs, context)?;
+            let (source, context) = required_source_context(inputs, execution.node)?;
             let nodes = evaluate_location_path_controlled(source, context, select, control)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
             scope.source_nodes.insert(name.clone(), nodes);

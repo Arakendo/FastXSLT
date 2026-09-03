@@ -257,14 +257,15 @@ fn instruction_owned(value: &Instruction) -> usize {
                 + select.known_owned_capacity_bytes()
                 + location_owned(location)
         }
+        Instruction::ContextPositionVariable { name, location }
+        | Instruction::IntegerRangeVariable { name, location, .. } => {
+            name.capacity() + location_owned(location)
+        }
         Instruction::SourceNodeVariable {
             name,
             select,
             location,
         } => name.capacity() + select.known_owned_capacity_bytes() + location_owned(location),
-        Instruction::IntegerRangeVariable { name, location, .. } => {
-            name.capacity() + location_owned(location)
-        }
         Instruction::TemporaryTreeVariable {
             name,
             elements,

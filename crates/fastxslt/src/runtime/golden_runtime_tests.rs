@@ -427,6 +427,35 @@ fn temporary_path_templates_receive_the_selected_sequence_focus() {
 }
 
 #[test]
+fn local_position_variable_uses_each_selected_source_node_focus() {
+    const SOURCE: &str = "urn:fastxslt:position-variable:source";
+    const STYLESHEET: &str = "urn:fastxslt:position-variable:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:template match="/"><out><xsl:for-each select="doc/item"><xsl:variable name="p" select="position()"/><xsl:value-of select="$p"/></xsl:for-each></out></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc><item/><item/></doc>".to_vec())
+        .expect("admit position-variable source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit position-variable stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile position variable");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("position-variable", "result", SOURCE))
+        .expect("admit position-variable request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute position variable");
+    assert_eq!(
+        results.by_request["position-variable"].serialized,
+        "<out>12</out>"
+    );
+}
+
+#[test]
 fn qualified_temporary_path_dispatches_a_matching_union_alternative() {
     const PATH_SOURCE: &str = "urn:fastxslt:temporary-path:source";
     const PATH_STYLESHEET: &str = "urn:fastxslt:temporary-path:stylesheet";
