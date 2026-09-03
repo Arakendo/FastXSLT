@@ -165,6 +165,12 @@ execution = "passed"
 rationale = "The unchanged XSLT 1.0-compatible case skips a false numeric xsl:when, enters xsl:otherwise, and executes a nested xsl:if whose exact modulo comparison is true."
 
 [[case_override]]
+case_name = "choose-1601"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case applies numeric effective-boolean-value rules to NaN, zero, and a nonzero xs:double across three xsl:if instructions."
+
+[[case_override]]
 case_name = "choose-1703"
 selection = "selected"
 execution = "passed"
@@ -175,6 +181,12 @@ case_name = "choose-1704"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged XSLT 2.0 case selects xsl:otherwise through the false effective boolean value of an empty xs:string global variable."
+
+[[case_override]]
+case_name = "choose-1706"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case applies effective-boolean-value rules to an empty source-dependent numeric sequence, zero, and a nonzero xs:double across ordered choices."
 
 [[case_override]]
 case_name = "choose-1801"

@@ -14,8 +14,8 @@ Date: 2026-09-02
   `choose-0602`, `choose-0605`, `choose-0606`, `choose-0609`, `choose-0701`,
   `choose-0702`, `choose-0801`, `choose-0901`, `choose-1001`, `choose-1101`,
   `choose-1201`, `choose-1202`,
-  `choose-1203`, `choose-1301`, `choose-1401`, `choose-1703`, and
-  `choose-1704`.
+  `choose-1203`, `choose-1301`, `choose-1401`, `choose-1601`, `choose-1703`,
+  `choose-1704`, and `choose-1706`.
 - Unchanged negative cases `choose-1801` through `choose-1804`.
 
 ## Method
@@ -53,11 +53,11 @@ introduced.
 ## Result
 
 - Complete conserved denominator: 55 cases.
-- Selected and passed: 32, comprising 28 result comparisons and 4 expected
+- Selected and passed: 34, comprising 30 result comparisons and 4 expected
   static-error comparisons.
 - Engine unsupported: 0.
 - Excluded by profile: 0.
-- Visible default not run: 23.
+- Visible default not run: 21.
 
 The unchanged cases cover ordered first-match branch selection, an
 `xsl:otherwise` branch, empty fall-through when no branch matches, two true
@@ -136,13 +136,22 @@ all produce false without constructing result content. Its unexecuted branch
 also proves that literal-string `xsl:value-of` compiles without being mistaken
 for a location path.
 
-Current conserved XSLT30 accounting is 675 cases: 474 passed comparisons, 3
-engine-unsupported cases, 55 profile exclusions, and 143 visible default
+`choose-1601` and `choose-1706` retain literal `xs:integer` and `xs:double`
+constructor values and the exact source-dependent
+`xs:double(path div path)` global form. Controlled path selection and string
+conversion precede one charged division. A missing operand produces the empty
+sequence, `0 div 0` produces typed `NaN`, numeric zero has false effective
+boolean value, and the tiny nonzero double remains true. A focused compiler
+control also proves that constructor prefixes are resolved through the XML
+Schema namespace rather than trusted by spelling.
+
+Current conserved XSLT30 accounting is 675 cases: 476 passed comparisons, 3
+engine-unsupported cases, 55 profile exclusions, and 141 visible default
 not-run cases across 17 complete test-set denominators.
 
 ## Limitation
 
-This evidence does not admit the other 23 cases. In particular, it makes no
+This evidence does not admit the other 21 cases. In particular, it makes no
 claim for general comparisons, boolean functions beyond the exact `not()`
 form and admitted `or` composition, collations, schema-aware cases,
 static typing, user functions, import composition, or arbitrary assertion

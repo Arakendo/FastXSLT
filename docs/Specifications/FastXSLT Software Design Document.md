@@ -353,15 +353,21 @@ The binding materializes the current sequence-focus position as an integer in
 invocation-local state and charges one XPath operation. It does not establish
 general focus-function expressions, `last()` variable bindings, or retention
 of focus in compiled or prepared state.
-Global variables may retain exact schema-namespace-resolved `xs:string` and
-`xs:untypedAtomic` values from literal text content or a string-literal
-`select`. The compiled atomic identity is materialized independently for each
-invocation and included in prepared-engine retention accounting. A bare
+Global variables may retain exact schema-namespace-resolved `xs:string`,
+`xs:untypedAtomic`, `xs:integer`, and `xs:double` values from admitted literal
+content or constructor forms. The exact source-dependent
+`xs:double(path div path)` form evaluates controlled singleton source paths;
+either empty operand yields the empty sequence, while two numeric operands
+produce a typed double including `NaN`. Path traversal, string-value access,
+and division remain cancellable and work-accounted. The compiled atomic or
+path identity is materialized independently for each invocation and included
+in prepared-engine retention accounting. A bare
 variable conditional applies effective boolean value to atomic string families,
 singleton supported numerics and booleans, source-node sequences, temporary
 trees, and bounded atomic sequences; values without a defined effective boolean
 value report `FORG0006`. This does not admit arbitrary typed global expressions,
-constructors, sequence types, or general variable XPath expressions.
+numeric promotion, general arithmetic, constructors, sequence types, or
+general variable XPath expressions.
 An untyped global whose complete sequence constructor is exact
 `xsl:sequence select="()"` retains an empty-sequence binding rather than an
 empty string or temporary document. Exact empty-sequence conditional forms and

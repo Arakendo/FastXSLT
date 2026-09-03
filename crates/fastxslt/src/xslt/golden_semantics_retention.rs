@@ -123,6 +123,10 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
             }
             GlobalBindingDefault::Atomic(value) => value.known_owned_capacity_bytes(),
             GlobalBindingDefault::EmptySequence | GlobalBindingDefault::Integer(_) => 0,
+            GlobalBindingDefault::DoubleDivision {
+                numerator,
+                denominator,
+            } => numerator.known_owned_capacity_bytes() + denominator.known_owned_capacity_bytes(),
             GlobalBindingDefault::LocationPath(path)
             | GlobalBindingDefault::SourceNodeIdentity(path) => path.known_owned_capacity_bytes(),
             GlobalBindingDefault::TemporaryTree(elements) => {

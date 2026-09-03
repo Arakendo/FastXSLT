@@ -255,6 +255,9 @@ fn materialize_global_default(
                 ),
             );
         }
+        GlobalBindingDefault::DoubleDivision { .. } => {
+            materialize_double_division(globals, binding, source, request_id, control)?;
+        }
         GlobalBindingDefault::LocationPath(path) => {
             let source = source.ok_or_else(|| {
                 failure(
@@ -329,6 +332,88 @@ fn materialize_global_default(
             globals.temporary_trees.insert(binding.name.clone(), tree);
         }
     }
+    Ok(())
+}
+
+fn materialize_double_division(
+    globals: &mut RuntimeGlobals,
+    binding: &GlobalBinding,
+    source: Option<&Document>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let GlobalBindingDefault::DoubleDivision {
+        numerator,
+        denominator,
+    } = &binding.default
+    else {
+        unreachable!("double-division materialization requires its compiled representation");
+    };
+    let source = source.ok_or_else(|| {
+        failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "a source-dependent numeric global requires a principal source",
+        )
+    })?;
+    let numerator =
+        evaluate_location_path_controlled(source, source.document_node(), numerator, control)
+            .map_err(|failure| control_failure(failure, request_id))?;
+    let denominator =
+        evaluate_location_path_controlled(source, source.document_node(), denominator, control)
+            .map_err(|failure| control_failure(failure, request_id))?;
+    if numerator.is_empty() || denominator.is_empty() {
+        globals.empty_sequences.insert(binding.name.clone());
+        return Ok(());
+    }
+    let ([numerator], [denominator]) = (numerator.as_slice(), denominator.as_slice()) else {
+        return Err(failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "the private numeric-global slice requires singleton path operands",
+        ));
+    };
+    let numerator = source
+        .string_value_controlled(*numerator, control)
+        .map_err(|failure| control_failure(failure, request_id))?
+        .trim()
+        .parse::<f64>()
+        .map_err(|_| {
+            failure(
+                "FORG0001",
+                FailureCategory::Invalid,
+                Some(request_id),
+                "the numeric global numerator cannot be converted to xs:double",
+            )
+        })?;
+    let denominator = source
+        .string_value_controlled(*denominator, control)
+        .map_err(|failure| control_failure(failure, request_id))?
+        .trim()
+        .parse::<f64>()
+        .map_err(|_| {
+            failure(
+                "FORG0001",
+                FailureCategory::Invalid,
+                Some(request_id),
+                "the numeric global denominator cannot be converted to xs:double",
+            )
+        })?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    let quotient = numerator / denominator;
+    let lexical = if quotient.is_nan() {
+        "NaN".to_owned()
+    } else {
+        quotient.to_string()
+    };
+    Arc::make_mut(&mut globals.atomics).insert(
+        binding.name.clone(),
+        AtomicValue::from_validated_lexical(BuiltinAtomicType::Double, lexical),
+    );
     Ok(())
 }
 

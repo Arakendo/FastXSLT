@@ -652,7 +652,11 @@ fn compile_global_default(
             return compile_typed_atomic_global(document, element, declared_type, select, true);
         }
         ensure_no_meaningful_children(document, element, label)?;
-        if let Some(variable) = select.strip_prefix('$') {
+        if let Some(division) = compile_double_division_global(document, element, select)? {
+            Ok(division)
+        } else if let Some(atomic) = compile_atomic_constructor_global(document, element, select)? {
+            Ok(atomic)
+        } else if let Some(variable) = select.strip_prefix('$') {
             if !is_ascii_ncname(variable) {
                 return Err(invalid(
                     "FXXP0002",
@@ -734,6 +738,8 @@ fn compile_typed_atomic_global(
     let atomic_type = match local {
         "string" => BuiltinAtomicType::String,
         "untypedAtomic" => BuiltinAtomicType::UntypedAtomic,
+        "integer" => BuiltinAtomicType::Integer,
+        "double" => BuiltinAtomicType::Double,
         _ => return Err(unsupported_typed_global(document, element, declared_type)),
     };
     let lexical = if is_select {
@@ -749,9 +755,94 @@ fn compile_typed_atomic_global(
     } else {
         expression_or_content
     };
+    if !typed_atomic_lexical_is_admitted(atomic_type, lexical) {
+        return Err(unsupported(
+            "FXST1016",
+            "the typed atomic global literal is outside the admitted lexical value space",
+            document.location(element),
+        ));
+    }
     Ok(GlobalBindingDefault::Atomic(
         AtomicValue::from_validated_lexical(atomic_type, lexical),
     ))
+}
+
+fn typed_atomic_lexical_is_admitted(atomic_type: BuiltinAtomicType, lexical: &str) -> bool {
+    match atomic_type {
+        BuiltinAtomicType::String | BuiltinAtomicType::UntypedAtomic => true,
+        BuiltinAtomicType::Integer => lexical.parse::<i64>().is_ok(),
+        BuiltinAtomicType::Double => lexical.parse::<f64>().is_ok(),
+        _ => false,
+    }
+}
+
+fn compile_atomic_constructor_global(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Result<Option<GlobalBindingDefault>, CompileFailure> {
+    let Some((constructor, argument)) = expression.split_once('(') else {
+        return Ok(None);
+    };
+    let Some(argument) = argument.strip_suffix(')') else {
+        return Ok(None);
+    };
+    let Some((prefix, local)) = constructor.split_once(':') else {
+        return Ok(None);
+    };
+    if namespace_for_prefix(document, element, prefix) != Some(XML_SCHEMA_NAMESPACE) {
+        return Ok(None);
+    }
+    let atomic_type = match local {
+        "string" => BuiltinAtomicType::String,
+        "untypedAtomic" => BuiltinAtomicType::UntypedAtomic,
+        "integer" => BuiltinAtomicType::Integer,
+        "double" => BuiltinAtomicType::Double,
+        _ => return Ok(None),
+    };
+    let Some(lexical) = xpath_string_literal(argument.trim()) else {
+        return Ok(None);
+    };
+    if !typed_atomic_lexical_is_admitted(atomic_type, lexical) {
+        return Err(unsupported(
+            "FXST1016",
+            "the atomic constructor literal is outside the admitted lexical value space",
+            document.location(element),
+        ));
+    }
+    Ok(Some(GlobalBindingDefault::Atomic(
+        AtomicValue::from_validated_lexical(atomic_type, lexical),
+    )))
+}
+
+fn compile_double_division_global(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Result<Option<GlobalBindingDefault>, CompileFailure> {
+    let Some((constructor, argument)) = expression.split_once('(') else {
+        return Ok(None);
+    };
+    let Some(argument) = argument.strip_suffix(')') else {
+        return Ok(None);
+    };
+    let Some((prefix, local)) = constructor.split_once(':') else {
+        return Ok(None);
+    };
+    if local != "double"
+        || namespace_for_prefix(document, element, prefix) != Some(XML_SCHEMA_NAMESPACE)
+    {
+        return Ok(None);
+    }
+    let Some((numerator, denominator)) = argument.split_once(" div ") else {
+        return Ok(None);
+    };
+    let location = document.location(element).clone();
+    Ok(Some(GlobalBindingDefault::DoubleDivision {
+        numerator: parse_location_path(numerator.trim(), location.clone())
+            .map_err(map_path_failure)?,
+        denominator: parse_location_path(denominator.trim(), location).map_err(map_path_failure)?,
+    }))
 }
 
 fn typed_atomic_select_lexical<'a>(
@@ -1805,6 +1896,31 @@ mod tests {
         let failure = compile_stylesheet(&invalid).expect_err("a rebound xs prefix is not schema");
         assert_eq!(failure.code, "FXST1016");
         assert_eq!(failure.category, CompileCategory::Unsupported);
+    }
+
+    #[test]
+    fn retains_narrow_numeric_globals_without_erasing_atomic_types_or_path_operands() {
+        let document = parse_stylesheet(
+            "memory:numeric-globals.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:s="http://www.w3.org/2001/XMLSchema"><xsl:variable name="zero" select="s:integer('0')"/><xsl:variable name="tiny" select="s:double('0.0001')"/><xsl:variable name="quotient" select="s:double(/doc/a div /doc/b)"/><xsl:template match="/"/></xsl:stylesheet>"#,
+        );
+
+        let program = compile_stylesheet(&document).expect("numeric globals should compile");
+
+        let GlobalBindingDefault::Atomic(zero) = &program.global_bindings[0].default else {
+            panic!("integer constructor should retain atomic identity");
+        };
+        assert_eq!(zero.atomic_type(), BuiltinAtomicType::Integer);
+        assert_eq!(zero.lexical(), "0");
+        let GlobalBindingDefault::Atomic(tiny) = &program.global_bindings[1].default else {
+            panic!("double constructor should retain atomic identity");
+        };
+        assert_eq!(tiny.atomic_type(), BuiltinAtomicType::Double);
+        assert_eq!(tiny.lexical(), "0.0001");
+        assert!(matches!(
+            program.global_bindings[2].default,
+            GlobalBindingDefault::DoubleDivision { .. }
+        ));
     }
 
     #[test]

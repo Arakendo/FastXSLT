@@ -106,14 +106,24 @@ pub(crate) enum GlobalBindingDefault {
     Text(String),
     Atomic(AtomicValue),
     Integer(i64),
+    DoubleDivision {
+        numerator: LocationPath,
+        denominator: LocationPath,
+    },
     LocationPath(LocationPath),
     SourceNodeIdentity(LocationPath),
     Variable(String),
     TemporaryTree(Vec<ConstructedElement>),
     TemporaryText(String),
-    TemporaryAttribute { name: ExpandedName, value: String },
+    TemporaryAttribute {
+        name: ExpandedName,
+        value: String,
+    },
     TemporaryComment(String),
-    TemporaryProcessingInstruction { target: String, value: String },
+    TemporaryProcessingInstruction {
+        target: String,
+        value: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
