@@ -67,6 +67,23 @@ pub(crate) fn evaluate(
 }
 
 #[cfg(test)]
+pub(crate) fn evaluate_encode_for_uri(
+    expression: &str,
+    control: &mut InvocationControl,
+) -> Result<EscapeHtmlUriValue, EscapeHtmlUriFailure> {
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(EscapeHtmlUriFailure::Control)?;
+    let expression = expression.trim();
+    if let Some((left, right)) = split_top_level(expression, " eq ") {
+        return Ok(EscapeHtmlUriValue::Boolean(
+            evaluate_encode_string(left, control)? == evaluate_encode_string(right, control)?,
+        ));
+    }
+    evaluate_encode_string(expression, control).map(EscapeHtmlUriValue::String)
+}
+
+#[cfg(test)]
 fn evaluate_string(
     expression: &str,
     control: &mut InvocationControl,
@@ -98,6 +115,73 @@ fn evaluate_string(
 }
 
 #[cfg(test)]
+fn evaluate_encode_string(
+    expression: &str,
+    control: &mut InvocationControl,
+) -> Result<String, EscapeHtmlUriFailure> {
+    let expression = strip_outer_parentheses(expression.trim());
+    if let Some(value) = parse_quoted(expression) {
+        return Ok(value.to_owned());
+    }
+    if let Some(arguments) = function_argument(expression, &["concat", "fn:concat"]) {
+        let (left, right) =
+            split_top_level(arguments, ",").ok_or(EscapeHtmlUriFailure::InvalidArity)?;
+        if split_top_level(right, ",").is_some() {
+            return Err(EscapeHtmlUriFailure::InvalidArity);
+        }
+        return Ok(format!(
+            "{}{}",
+            evaluate_encode_string(left, control)?,
+            evaluate_encode_string(right, control)?
+        ));
+    }
+    let argument = function_argument(expression, &["encode-for-uri", "fn:encode-for-uri"])
+        .ok_or(EscapeHtmlUriFailure::Unsupported)?;
+    if argument.trim().is_empty() || split_top_level(argument, ",").is_some() {
+        return Err(EscapeHtmlUriFailure::InvalidArity);
+    }
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(EscapeHtmlUriFailure::Control)?;
+    let value = if argument.trim() == "()" {
+        String::new()
+    } else if let Some(value) = parse_quoted(argument.trim()) {
+        value.to_owned()
+    } else if argument.trim().parse::<i128>().is_ok() {
+        return Err(EscapeHtmlUriFailure::InvalidArgumentType);
+    } else {
+        return Err(EscapeHtmlUriFailure::Unsupported);
+    };
+    Ok(encode_for_uri(&value))
+}
+
+#[cfg(test)]
+fn encode_for_uri(value: &str) -> String {
+    let mut encoded = String::with_capacity(value.len());
+    for byte in value.as_bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
+            encoded.push(char::from(*byte));
+        } else {
+            encoded.push('%');
+            encoded.push(hex_digit(byte >> 4));
+            encoded.push(hex_digit(byte & 0x0f));
+        }
+    }
+    encoded
+}
+
+#[cfg(test)]
+fn strip_outer_parentheses(mut expression: &str) -> &str {
+    while expression.starts_with('(')
+        && expression.ends_with(')')
+        && balanced(&expression[1..expression.len() - 1])
+    {
+        expression = expression[1..expression.len() - 1].trim();
+    }
+    expression
+}
+
+#[cfg(test)]
 fn parse_codepoints_to_string(expression: &str) -> Option<String> {
     let inner = function_argument(
         expression,
@@ -117,6 +201,7 @@ fn function_argument<'a>(expression: &'a str, names: &[&str]) -> Option<&'a str>
     names.iter().find_map(|name| {
         expression
             .strip_prefix(name)
+            .map(str::trim_start)
             .and_then(|tail| tail.strip_prefix('('))
             .and_then(|tail| tail.strip_suffix(')'))
             .filter(|inner| balanced(inner))
@@ -210,7 +295,9 @@ fn hex_digit(value: u8) -> char {
 
 #[cfg(test)]
 mod tests {
-    use super::{EscapeHtmlUriFailure, EscapeHtmlUriValue, evaluate, fold_literal};
+    use super::{
+        EscapeHtmlUriFailure, EscapeHtmlUriValue, evaluate, evaluate_encode_for_uri, fold_literal,
+    };
     use crate::execution_control_experiment::InvocationControl;
 
     #[test]
@@ -252,5 +339,29 @@ mod tests {
             evaluate("escape-html-uri()", &mut InvocationControl::unbounded()),
             Err(EscapeHtmlUriFailure::InvalidArity)
         );
+    }
+
+    #[test]
+    fn evaluates_encode_for_uri_unreserved_and_composed_values() {
+        for (source, expected) in [
+            (
+                "encode-for-uri(\"100% organic\")",
+                EscapeHtmlUriValue::String("100%25%20organic".to_owned()),
+            ),
+            (
+                "(fn:encode-for-uri(\"examples~example\"))",
+                EscapeHtmlUriValue::String("examples~example".to_owned()),
+            ),
+            (
+                "concat(\"http://www.example.com/\", encode-for-uri(\"bébé\")) eq \"http://www.example.com/b%C3%A9b%C3%A9\"",
+                EscapeHtmlUriValue::Boolean(true),
+            ),
+        ] {
+            assert_eq!(
+                evaluate_encode_for_uri(source, &mut InvocationControl::unbounded()),
+                Ok(expected),
+                "{source}"
+            );
+        }
     }
 }

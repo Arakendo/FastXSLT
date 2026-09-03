@@ -47,6 +47,8 @@ mod qt3_deep_equal_tests;
 #[cfg(test)]
 mod qt3_empty_sequence_tests;
 #[cfg(test)]
+mod qt3_encode_for_uri_tests;
+#[cfg(test)]
 mod qt3_escape_html_uri_tests;
 #[cfg(test)]
 mod qt3_string_length_tests;

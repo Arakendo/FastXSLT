@@ -5761,3 +5761,199 @@ case_name = "cbcl-escape-html-uri-001"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged codepoint sequence constructs tab, ASCII, and non-ASCII input and verifies their exact percent-encoded result."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged argument exercises encode-for-uri string conversion and percent encoding."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged argument exercises encode-for-uri string conversion and percent encoding."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged argument exercises encode-for-uri string conversion and percent encoding."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri1args-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged argument exercises encode-for-uri string conversion and percent encoding."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri1args-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged argument exercises encode-for-uri string conversion and percent encoding."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri1args-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged numeric argument reports the native XPTY0004 type error."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri1args-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged two-argument call reports the native XPST0017 arity error."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises the standard unreserved-character or UTF-8 percent-encoding rule."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises the standard unreserved-character or UTF-8 percent-encoding rule."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises the standard unreserved-character or UTF-8 percent-encoding rule."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises the standard unreserved-character or UTF-8 percent-encoding rule."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises the standard unreserved-character or UTF-8 percent-encoding rule."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises the standard unreserved-character or UTF-8 percent-encoding rule."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises the standard unreserved-character or UTF-8 percent-encoding rule."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri-8"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises the standard unreserved-character or UTF-8 percent-encoding rule."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri-9"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises the standard unreserved-character or UTF-8 percent-encoding rule."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri-10"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises the standard unreserved-character or UTF-8 percent-encoding rule."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri-11"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises the standard unreserved-character or UTF-8 percent-encoding rule."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri-12"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises the standard unreserved-character or UTF-8 percent-encoding rule."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri-13"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises the standard unreserved-character or UTF-8 percent-encoding rule."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri-14"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises the standard unreserved-character or UTF-8 percent-encoding rule."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri-15"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises the standard unreserved-character or UTF-8 percent-encoding rule."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "fn-encode-for-uri-16"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises the standard unreserved-character or UTF-8 percent-encoding rule."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "K-EncodeURIfunc-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity call reports the native XPST0017 error."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "K-EncodeURIfunc-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity call reports the native XPST0017 error."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "K-EncodeURIfunc-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies encode-for-uri through its native equality composition."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "K-EncodeURIfunc-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies encode-for-uri through its native equality composition."
+
+[[case]]
+set_file = "fn/encode-for-uri.xml"
+case_name = "K-EncodeURIfunc-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies encode-for-uri through its native equality composition."
