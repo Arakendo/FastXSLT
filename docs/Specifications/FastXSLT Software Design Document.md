@@ -327,6 +327,9 @@ An exact final `[. = string-literal]` predicate may filter a relative child path
 for conditional effective boolean value. Explicit context-child paths beginning
 with `./` share ordinary relative-child navigation. These forms do not admit a
 general predicate grammar or arbitrary comparison operands.
+Top-level XPath `or` composes admitted boolean operands and evaluates them
+left-to-right with short-circuiting. This does not imply support for `and`, a
+general operator grammar, or operands beyond the individually admitted forms.
 
 Conditional structure is validated before branch expressions or constructors
 are compiled. Missing `test`, `xsl:when` after `xsl:otherwise`, repeated

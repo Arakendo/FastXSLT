@@ -1164,6 +1164,12 @@ fn parse_boolean_expression(
     location: &SourceLocation,
 ) -> Result<BooleanExpression, CompileFailure> {
     let parsed = strip_enclosing_parentheses(expression.trim());
+    if let Some((left, right)) = split_top_level_or(parsed) {
+        return Ok(BooleanExpression::Or {
+            left: Box::new(parse_boolean_expression(left, location)?),
+            right: Box::new(parse_boolean_expression(right, location)?),
+        });
+    }
     if let Some(inner) = parsed
         .strip_prefix("not(")
         .and_then(|inner| inner.strip_suffix(')'))
@@ -1199,6 +1205,50 @@ fn parse_boolean_expression(
         });
     }
     parse_scalar_boolean_expression(parsed, expression, location)
+}
+
+fn split_top_level_or(expression: &str) -> Option<(&str, &str)> {
+    let bytes = expression.as_bytes();
+    let mut quote = None;
+    let mut parentheses = 0_usize;
+    let mut brackets = 0_usize;
+    let mut index = 0_usize;
+    while index + 1 < bytes.len() {
+        let byte = bytes[index];
+        if let Some(expected) = quote {
+            if byte == expected {
+                quote = None;
+            }
+            index += 1;
+            continue;
+        }
+        match byte {
+            b'\'' | b'"' => quote = Some(byte),
+            b'(' => parentheses += 1,
+            b')' => parentheses = parentheses.saturating_sub(1),
+            b'[' => brackets += 1,
+            b']' => brackets = brackets.saturating_sub(1),
+            b'o' if bytes[index + 1] == b'r' && parentheses == 0 && brackets == 0 => {
+                let left_boundary = index == 0 || !is_xpath_name_byte(bytes[index - 1]);
+                let right_boundary = index + 2 == bytes.len()
+                    || !is_xpath_name_byte(bytes.get(index + 2).copied().unwrap_or_default());
+                if left_boundary && right_boundary {
+                    let left = expression[..index].trim();
+                    let right = expression[index + 2..].trim();
+                    if !left.is_empty() && !right.is_empty() {
+                        return Some((left, right));
+                    }
+                }
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+    None
+}
+
+fn is_xpath_name_byte(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b'.' | b':')
 }
 
 fn parse_scalar_boolean_expression(

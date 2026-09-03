@@ -1668,6 +1668,13 @@ fn evaluate_boolean(
                 .map(|actual| actual == *expected)
                 .map_err(|failure| control_failure(failure, inputs.request_id))
         }
+        BooleanExpression::Or { left, right } => {
+            if evaluate_boolean(inputs, left, context, variables, control)? {
+                Ok(true)
+            } else {
+                evaluate_boolean(inputs, right, context, variables, control)
+            }
+        }
         BooleanExpression::Not(expression) => {
             evaluate_boolean(inputs, expression, context, variables, control).map(|value| !value)
         }

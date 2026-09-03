@@ -105,6 +105,12 @@ execution = "passed"
 rationale = "The unchanged XSLT 1.0-compatible case filters a relative child path by context string equality and emits values from the matching parent context."
 
 [[case_override]]
+case_name = "choose-0901"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 1.0-compatible case short-circuits a two-operand or expression over attribute string comparisons while iterating source children."
+
+[[case_override]]
 case_name = "choose-1001"
 selection = "selected"
 execution = "passed"

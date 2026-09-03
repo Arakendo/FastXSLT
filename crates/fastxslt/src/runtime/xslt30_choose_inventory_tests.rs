@@ -12,7 +12,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/insn/choose/_choose-test-set.xml";
-const PASSED_CASES: [&str; 18] = [
+const PASSED_CASES: [&str; 19] = [
     "choose-0101",
     "choose-0102",
     "choose-0201",
@@ -29,6 +29,7 @@ const PASSED_CASES: [&str; 18] = [
     "choose-0701",
     "choose-0702",
     "choose-0801",
+    "choose-0901",
     "choose-1001",
     "choose-1401",
 ];
@@ -48,7 +49,7 @@ fn inventories_complete_choose_denominator_before_selection() {
     assert_eq!(names.len(), cases.len());
     assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
     assert!(OVERLAY.contains("case_count = 55"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 22);
+    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 23);
     for case_name in PASSED_CASES.into_iter().chain(ERROR_CASES) {
         assert!(names.contains(case_name));
         let record = overlay_case(case_name);

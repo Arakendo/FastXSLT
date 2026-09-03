@@ -474,6 +474,10 @@ pub(crate) enum BooleanExpression {
         value: i64,
     },
     ContextStringEquals(String),
+    Or {
+        left: Box<BooleanExpression>,
+        right: Box<BooleanExpression>,
+    },
     Not(Box<BooleanExpression>),
     RootIdentityEqualsVariable {
         path: LocationPath,
