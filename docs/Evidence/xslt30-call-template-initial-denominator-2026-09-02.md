@@ -8,17 +8,19 @@ Date: 2026-09-02
   `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b`.
 - Complete native test set
   `tests/insn/call-template/_call-template-test-set.xml` with 42 cases.
-- Unchanged cases `call-template-0101`, `call-template-0801`, and
-  `call-template-0802`.
+- Unchanged cases `call-template-0101`, `call-template-0104`,
+  `call-template-0106`, `call-template-0801`,
+  `call-template-0802`, and `call-template-1801` through
+  `call-template-1803`.
 
 ## Method
 
 A first-party denominator overlay records all 42 catalog cases before
 selection. The executable adapter parses the pinned catalog, verifies unique
 case identities and the complete count, imports each selected principal source
-and stylesheet into a bounded sealed resource snapshot, compiles once, and
-executes through the ordinary transform-set path. Native XML assertions are
-compared structurally.
+and every catalog-declared principal or secondary stylesheet into a bounded
+sealed resource snapshot, compiles once, and executes through the ordinary
+transform-set path. Native XML assertions are compared structurally.
 
 Named-template declarations and calls now share one static QName
 normalization path. An unprefixed name remains in no namespace. A prefixed name
@@ -29,10 +31,10 @@ remain limited to the standard initial-template name.
 ## Result
 
 - Complete conserved denominator: 42 cases.
-- Selected and passed: 3.
+- Selected and passed: 8.
 - Engine unsupported: 0.
 - Excluded by profile: 0.
-- Visible default not run: 39.
+- Visible default not run: 34.
 
 `call-template-0101` enters `temp` directly as the initial template and proves
 the document-matching template is not selected instead. `call-template-0801`
@@ -40,13 +42,24 @@ resolves `foo:a` to the qualified declaration. `call-template-0802` calls the
 unqualified `a` declaration while the qualified declaration with the same local
 part remains present and distinct.
 
-Adding this denominator changes conserved XSLT30 accounting to 675 cases: 443
-passed comparisons, 3 engine-unsupported cases, 54 profile exclusions, and 175
+The negative cases conserve error behavior as evidence too:
+`call-template-0104` reports `XTDE0040` when an unqualified requested initial
+template is absent, and `call-template-0106` reports `XTSE0080` when a named
+template uses the reserved XSLT namespace.
+
+`call-template-1801` through `1803` reuse the existing stylesheet dependency
+loader. Named-template lookup selects a principal declaration over an imported
+one and selects the later sibling import where two imports declare the same
+name. All secondary modules come from explicit catalog metadata and are sealed
+before compilation; execution performs no acquisition.
+
+Adding this denominator changes conserved XSLT30 accounting to 675 cases: 448
+passed comparisons, 3 engine-unsupported cases, 54 profile exclusions, and 170
 visible default not-run cases across 17 complete test-set denominators.
 
 ## Limitation
 
-This evidence does not admit the other 39 cases. In particular, it does not
+This evidence does not admit the other 34 cases. In particular, it does not
 establish catalog/host resolution of a qualified initial-template name, EQName
 syntax, required or typed parameters, deep/tail recursion behavior, arbitrary
 focus access, or the other assertion families used by the set. The unchanged

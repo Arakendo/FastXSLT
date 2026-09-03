@@ -1770,7 +1770,7 @@ fn initial_template_entry_rejects_an_unknown_compiled_name_without_a_source() {
         })
         .expect_err("unknown initial-template entry should fail admission");
 
-    assert_eq!(failure.code, "FXRT0004");
+    assert_eq!(failure.code, "XTDE0040");
     assert_eq!(failure.category, FailureCategory::Invalid);
     assert_eq!(failure.request_id.as_deref(), Some("unknown-entry"));
 }

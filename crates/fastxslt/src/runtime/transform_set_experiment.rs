@@ -219,7 +219,7 @@ impl TransformSetBuilder {
                     .any(|template| template.name == *name)
                 {
                     return Some(failure(
-                        "FXRT0004",
+                        "XTDE0040",
                         FailureCategory::Invalid,
                         Some(&request.identity),
                         format!("unknown initial template: {name}"),

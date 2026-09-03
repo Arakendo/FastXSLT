@@ -12,10 +12,17 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/insn/call-template/_call-template-test-set.xml";
-const PASSED_CASES: [&str; 3] = [
+const RESULT_CASES: [&str; 6] = [
     "call-template-0101",
     "call-template-0801",
     "call-template-0802",
+    "call-template-1801",
+    "call-template-1802",
+    "call-template-1803",
+];
+const ERROR_CASES: [(&str, &str); 2] = [
+    ("call-template-0104", "XTDE0040"),
+    ("call-template-0106", "XTSE0080"),
 ];
 const OVERLAY: &str =
     include_str!("../../../../corpus/overlays/xslt30/call-template-denominator-v0.toml");
@@ -32,8 +39,11 @@ fn inventories_complete_call_template_denominator_before_selection() {
     assert_eq!(names.len(), cases.len());
     assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
     assert!(OVERLAY.contains("case_count = 42"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 3);
-    for case_name in PASSED_CASES {
+    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 8);
+    for case_name in RESULT_CASES
+        .into_iter()
+        .chain(ERROR_CASES.into_iter().map(|(case_name, _)| case_name))
+    {
         assert!(names.contains(case_name));
         let record = overlay_case(case_name);
         assert!(record.contains("selection = \"selected\""));
@@ -43,8 +53,15 @@ fn inventories_complete_call_template_denominator_before_selection() {
 
 #[test]
 fn executes_unchanged_initial_and_called_named_templates() {
-    for case_name in PASSED_CASES {
+    for case_name in RESULT_CASES {
         execute_case(case_name);
+    }
+}
+
+#[test]
+fn reports_unchanged_initial_template_errors() {
+    for (case_name, expected_code) in ERROR_CASES {
+        execute_error_case(case_name, expected_code);
     }
 }
 
@@ -65,22 +82,31 @@ fn execute_case(case_name: &str) {
         .expect("referenced environment");
     let source = child_named(&document, environment, "source").expect("principal source");
     let source_id = format!("urn:w3c:xslt30:insn:call-template:{case_name}:source");
-    let stylesheet_file = child_named(&document, test, "stylesheet")
+    let stylesheets = element_children(&document, test)
+        .into_iter()
+        .filter(|node| local_name(&document, *node) == "stylesheet")
+        .collect::<Vec<_>>();
+    let stylesheet_file = stylesheets
+        .first()
+        .copied()
         .and_then(|node| attribute(&document, node, "file"))
         .expect("stylesheet file");
     let stylesheet_id =
         format!("https://example.invalid/xslt30/insn/call-template/{stylesheet_file}");
-    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 65_536, 131_072));
+    let mut resources =
+        ResourceSetBuilder::new(ResourceLimits::new(1 + stylesheets.len(), 65_536, 262_144));
     resources
         .admit(source_id.clone(), source_bytes(&document, source))
         .expect("admit principal source");
-    resources
-        .admit(
-            stylesheet_id.clone(),
-            fs::read(corpus_directory().join(stylesheet_file))
-                .expect("read stylesheet and close handle"),
-        )
-        .expect("admit stylesheet");
+    for stylesheet in stylesheets {
+        let file = attribute(&document, stylesheet, "file").expect("stylesheet file");
+        resources
+            .admit(
+                format!("https://example.invalid/xslt30/insn/call-template/{file}"),
+                fs::read(corpus_directory().join(file)).expect("read stylesheet and close handle"),
+            )
+            .expect("admit stylesheet");
+    }
     let snapshot = resources.seal();
     let program = compile_resource(&snapshot, &stylesheet_id).expect("compile call-template case");
     let entry = child_named(&document, test, "initial-template").map_or_else(
@@ -119,6 +145,72 @@ fn execute_case(case_name: &str) {
         &expected,
         case_name,
     );
+}
+
+fn execute_error_case(case_name: &str, expected_code: &str) {
+    let document = load_test_set();
+    let case = case_named(&document, case_name);
+    let test = child_named(&document, case, "test").expect("test metadata");
+    let environment_ref = child_named(&document, case, "environment")
+        .and_then(|node| attribute(&document, node, "ref"))
+        .expect("environment reference");
+    let environment = descendants_named(&document, document.document_node(), "environment")
+        .into_iter()
+        .find(|node| attribute(&document, *node, "name") == Some(environment_ref))
+        .expect("referenced environment");
+    let source = child_named(&document, environment, "source").expect("principal source");
+    let source_id = format!("urn:w3c:xslt30:insn:call-template:{case_name}:source");
+    let stylesheet = child_named(&document, test, "stylesheet").expect("principal stylesheet");
+    let stylesheet_file = attribute(&document, stylesheet, "file").expect("stylesheet file");
+    let stylesheet_id =
+        format!("https://example.invalid/xslt30/insn/call-template/{stylesheet_file}");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 65_536, 131_072));
+    resources
+        .admit(source_id.clone(), source_bytes(&document, source))
+        .expect("admit principal source");
+    resources
+        .admit(
+            stylesheet_id.clone(),
+            fs::read(corpus_directory().join(stylesheet_file))
+                .expect("read stylesheet and close handle"),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+
+    let program = match compile_resource(&snapshot, &stylesheet_id) {
+        Ok(program) => program,
+        Err(failure) => {
+            assert_eq!(failure.code, expected_code, "{case_name}");
+            return;
+        }
+    };
+    let initial_template = child_named(&document, test, "initial-template")
+        .and_then(|node| attribute(&document, node, "name"))
+        .expect("dynamic error case should name an initial template");
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 8_192,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    let failure = set
+        .add(TransformRequest {
+            identity: case_name.to_owned(),
+            result_identity: format!("urn:w3c:xslt30:insn:call-template:{case_name}:result"),
+            entry: InvocationEntry::InitialTemplateWithSource {
+                resource: source_id,
+                name: initial_template.to_owned(),
+            },
+            parameters: BTreeMap::new(),
+            cancellation: CancellationToken::new(),
+            cancellation_fault: None,
+        })
+        .expect_err("dynamic initial-template error should reject admission");
+    assert_eq!(failure.code, expected_code, "{case_name}");
 }
 
 fn source_bytes(document: &Document, source: NodeId) -> Vec<u8> {
