@@ -1576,6 +1576,20 @@ fn evaluate_boolean(
                 .map(|nodes| !nodes.is_empty())
                 .map_err(|failure| control_failure(failure, inputs.request_id))
         }
+        BooleanExpression::NodeStringEquals { path, value } => {
+            let (source, context) = required_source_context(inputs, context)?;
+            let nodes = evaluate_location_path_controlled(source, context, path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            for node in nodes {
+                let actual = source
+                    .string_value_controlled(node, control)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                if actual == *value {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
         BooleanExpression::ContextStringEquals(expected) => {
             let (source, context) = required_source_context(inputs, context)?;
             source

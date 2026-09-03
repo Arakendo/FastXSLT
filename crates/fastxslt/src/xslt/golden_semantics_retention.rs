@@ -485,6 +485,9 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
     match value {
         BooleanExpression::VariableEqualsInteger(test) => test.variable.capacity(),
         BooleanExpression::NodeExists(path) => path.known_owned_capacity_bytes(),
+        BooleanExpression::NodeStringEquals { path, value } => {
+            path.known_owned_capacity_bytes() + value.capacity()
+        }
         BooleanExpression::ContextStringEquals(value) => value.capacity(),
         BooleanExpression::Not(expression) => boolean_expression_owned(expression),
         BooleanExpression::RootIdentityEqualsVariable { path, variable } => {

@@ -281,11 +281,19 @@ The private conditional slice executes `xsl:if` and ordered `xsl:choose`
 branches from one compiled representation. It admits a bare unprefixed child
 name as a relative existence test, constant numeric and string equality,
 effective boolean values for the admitted numeric/string literals, and an exact
-context-item string comparison optionally wrapped in `not()`. Context string
-values are evaluated through the controlled XDM traversal so cancellation and
+context-item string comparison optionally wrapped in `not()`. It also admits a
+relative location path compared with one string literal using XPath general
+comparison semantics over the selected node string values. Node selection and
+string values are evaluated through controlled traversal so cancellation and
 work accounting remain active. This is not a general XPath boolean grammar;
 compound expressions, arbitrary comparisons, functions, namespaces, and
 collations require separate admission.
+
+Conditional structure is validated before branch expressions or constructors
+are compiled. Missing `test`, `xsl:when` after `xsl:otherwise`, repeated
+`xsl:otherwise`, absent `xsl:when`, and non-conditional children report the
+standard static error `XTSE0010`; an unsupported expression in an earlier branch
+cannot mask a structural error elsewhere in the same `xsl:choose`.
 
 Compiled mode names use expanded QName identity. An unprefixed lexical mode is
 in no namespace; a prefixed mode is resolved against the namespace context of

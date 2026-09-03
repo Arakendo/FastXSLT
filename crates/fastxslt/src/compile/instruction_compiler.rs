@@ -1034,7 +1034,7 @@ fn compile_sequence_nodes(
 fn compile_if(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
     ensure_only_attributes(document, element, &["test", "default-mode"], "xsl:if")?;
     let location = document.location(element).clone();
-    let expression = required_attribute(document, element, None, "test")?;
+    let expression = required_conditional_test(document, element)?;
     Ok(Instruction::If {
         test: parse_boolean_expression(expression, &location)?,
         body: compile_sequence(document, element)?,
@@ -1044,52 +1044,84 @@ fn compile_if(document: &Document, element: NodeId) -> Result<Instruction, Compi
 
 fn compile_choose(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
     ensure_only_attributes(document, element, &[], "xsl:choose")?;
+    let children = meaningful_children(document, element);
+    validate_choose_structure(document, element, &children)?;
     let mut branches = Vec::new();
     let mut otherwise = None;
-    for child in meaningful_children(document, element) {
+    for child in children {
         if is_xslt_element(document, child, "when") {
-            if otherwise.is_some() {
-                return Err(invalid(
-                    "FXST0018",
-                    "xsl:when cannot follow xsl:otherwise",
-                    document.location(child),
-                ));
-            }
             ensure_only_attributes(document, child, &["test"], "xsl:when")?;
-            let expression = required_attribute(document, child, None, "test")?;
+            let expression = required_conditional_test(document, child)?;
             branches.push(ChooseBranch {
                 test: parse_boolean_expression(expression, document.location(child))?,
                 body: compile_sequence(document, child)?,
             });
         } else if is_xslt_element(document, child, "otherwise") {
-            if otherwise.is_some() {
-                return Err(invalid(
-                    "FXST0019",
-                    "xsl:choose permits at most one xsl:otherwise",
-                    document.location(child),
-                ));
-            }
             ensure_only_attributes(document, child, &[], "xsl:otherwise")?;
             otherwise = Some(compile_sequence(document, child)?);
         } else {
-            return Err(invalid(
-                "FXST0020",
-                "xsl:choose permits only xsl:when and xsl:otherwise children",
-                document.location(child),
-            ));
+            unreachable!("validate_choose_structure rejects other children")
         }
-    }
-    if branches.is_empty() {
-        return Err(invalid(
-            "FXST0021",
-            "xsl:choose requires at least one xsl:when",
-            document.location(element),
-        ));
     }
     Ok(Instruction::Choose {
         branches,
         otherwise: otherwise.unwrap_or_default(),
         location: document.location(element).clone(),
+    })
+}
+
+fn validate_choose_structure(
+    document: &Document,
+    element: NodeId,
+    children: &[NodeId],
+) -> Result<(), CompileFailure> {
+    let mut when_count = 0_usize;
+    let mut saw_otherwise = false;
+    for child in children {
+        if is_xslt_element(document, *child, "when") {
+            if saw_otherwise {
+                return Err(invalid(
+                    "XTSE0010",
+                    "xsl:when cannot follow xsl:otherwise",
+                    document.location(*child),
+                ));
+            }
+            required_conditional_test(document, *child)?;
+            when_count += 1;
+        } else if is_xslt_element(document, *child, "otherwise") {
+            if saw_otherwise {
+                return Err(invalid(
+                    "XTSE0010",
+                    "xsl:choose permits at most one xsl:otherwise",
+                    document.location(*child),
+                ));
+            }
+            saw_otherwise = true;
+        } else {
+            return Err(invalid(
+                "XTSE0010",
+                "xsl:choose permits only xsl:when and xsl:otherwise children",
+                document.location(*child),
+            ));
+        }
+    }
+    if when_count == 0 {
+        return Err(invalid(
+            "XTSE0010",
+            "xsl:choose requires at least one xsl:when",
+            document.location(element),
+        ));
+    }
+    Ok(())
+}
+
+fn required_conditional_test(document: &Document, element: NodeId) -> Result<&str, CompileFailure> {
+    optional_attribute(document, element, None, "test").ok_or_else(|| {
+        invalid(
+            "XTSE0010",
+            "xsl:if and xsl:when require a test attribute",
+            document.location(element),
+        )
     })
 }
 
@@ -1175,6 +1207,12 @@ fn parse_scalar_boolean_expression(
             return Ok(BooleanExpression::ContextStringEquals(literal.to_owned()));
         }
     }
+    if let Some((path, value)) = parse_path_string_equality(parsed) {
+        return Ok(BooleanExpression::NodeStringEquals {
+            path: parse_location_path(path, location.clone()).map_err(map_path_failure)?,
+            value: value.to_owned(),
+        });
+    }
     if let Some((variable, integer)) = parsed.split_once('=') {
         let variable = variable.trim().strip_prefix('$').unwrap_or_default();
         if is_ascii_ncname(variable) {
@@ -1227,6 +1265,20 @@ fn parse_scalar_boolean_expression(
     } else {
         ordering.is_eq()
     }))
+}
+
+fn parse_path_string_equality(expression: &str) -> Option<(&str, &str)> {
+    let (left, right) = expression.split_once('=')?;
+    let left = left.trim();
+    let right = right.trim();
+    if let Some(value) = xpath_string_literal(right)
+        && left != "."
+        && !left.starts_with('$')
+    {
+        return Some((left, value));
+    }
+    let value = xpath_string_literal(left)?;
+    (right != "." && !right.starts_with('$')).then_some((right, value))
 }
 
 fn xpath_string_literal(expression: &str) -> Option<&str> {

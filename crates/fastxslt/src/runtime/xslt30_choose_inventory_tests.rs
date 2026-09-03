@@ -12,7 +12,9 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/insn/choose/_choose-test-set.xml";
-const PASSED_CASES: [&str; 10] = [
+const PASSED_CASES: [&str; 14] = [
+    "choose-0101",
+    "choose-0102",
     "choose-0401",
     "choose-0402",
     "choose-0403",
@@ -21,9 +23,12 @@ const PASSED_CASES: [&str; 10] = [
     "choose-0502",
     "choose-0601",
     "choose-0602",
+    "choose-0605",
     "choose-0701",
     "choose-0702",
+    "choose-1401",
 ];
+const ERROR_CASES: [&str; 4] = ["choose-1801", "choose-1802", "choose-1803", "choose-1804"];
 const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/choose-denominator-v0.toml");
 
 #[test]
@@ -39,12 +44,28 @@ fn inventories_complete_choose_denominator_before_selection() {
     assert_eq!(names.len(), cases.len());
     assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
     assert!(OVERLAY.contains("case_count = 55"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 10);
-    for case_name in PASSED_CASES {
+    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 18);
+    for case_name in PASSED_CASES.into_iter().chain(ERROR_CASES) {
         assert!(names.contains(case_name));
         let record = overlay_case(case_name);
         assert!(record.contains("selection = \"selected\""));
         assert!(record.contains("execution = \"passed\""));
+    }
+}
+
+#[test]
+fn reports_unchanged_invalid_choose_structures() {
+    let document = load_test_set();
+    for case_name in ERROR_CASES {
+        let case = case_named(&document, case_name);
+        let expected_code = child_named(&document, case, "result")
+            .and_then(|node| child_named(&document, node, "error"))
+            .and_then(|node| attribute(&document, node, "code"))
+            .expect("expected error code");
+        let (snapshot, stylesheet_id, _) = sealed_case_resources(&document, case_name);
+        let failure = compile_resource(&snapshot, &stylesheet_id)
+            .expect_err("invalid choose structure must fail during compilation");
+        assert_eq!(failure.code, expected_code, "{case_name}");
     }
 }
 
@@ -57,45 +78,12 @@ fn executes_unchanged_choose_and_if_cases() {
 
 fn execute_case(case_name: &str) {
     let document = load_test_set();
-    let case = descendants_named(&document, document.document_node(), "test-case")
-        .into_iter()
-        .find(|node| attribute(&document, *node, "name") == Some(case_name))
-        .expect("pinned test case");
-    let environment_ref = child_named(&document, case, "environment")
-        .and_then(|node| attribute(&document, node, "ref"))
-        .expect("environment reference");
-    let environment = descendants_named(&document, document.document_node(), "environment")
-        .into_iter()
-        .find(|node| attribute(&document, *node, "name") == Some(environment_ref))
-        .expect("referenced environment");
-    let source = child_named(&document, environment, "source")
-        .and_then(|node| child_named(&document, node, "content"))
-        .expect("inline principal source");
-    let stylesheet_file = child_named(&document, case, "test")
-        .and_then(|node| child_named(&document, node, "stylesheet"))
-        .and_then(|node| attribute(&document, node, "file"))
-        .expect("stylesheet file");
+    let case = case_named(&document, case_name);
     let expected = child_named(&document, case, "result")
         .and_then(|node| child_named(&document, node, "assert-xml"))
         .map(|node| document.string_value(node))
         .expect("inline XML assertion");
-    let source_id = format!("urn:w3c:xslt30:insn:choose:{case_name}:source");
-    let stylesheet_id = format!("https://example.invalid/xslt30/insn/choose/{stylesheet_file}");
-    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 65_536, 131_072));
-    resources
-        .admit(
-            source_id.clone(),
-            document.string_value(source).into_bytes(),
-        )
-        .expect("admit inline source");
-    resources
-        .admit(
-            stylesheet_id.clone(),
-            fs::read(corpus_directory().join(stylesheet_file))
-                .expect("read stylesheet and close handle"),
-        )
-        .expect("admit stylesheet");
-    let snapshot = resources.seal();
+    let (snapshot, stylesheet_id, source_id) = sealed_case_resources(&document, case_name);
     let program = compile_resource(&snapshot, &stylesheet_id).expect("compile choose case");
     let mut set = TransformSetBuilder::new(
         snapshot,
@@ -124,6 +112,54 @@ fn execute_case(case_name: &str) {
         &expected,
         case_name,
     );
+}
+
+fn sealed_case_resources(
+    document: &Document,
+    case_name: &str,
+) -> (crate::resources::ResourceSnapshot, String, String) {
+    let case = case_named(document, case_name);
+    let environment_ref = child_named(document, case, "environment")
+        .and_then(|node| attribute(document, node, "ref"))
+        .expect("environment reference");
+    let environment = descendants_named(document, document.document_node(), "environment")
+        .into_iter()
+        .find(|node| attribute(document, *node, "name") == Some(environment_ref))
+        .expect("referenced environment");
+    let source = child_named(document, environment, "source").expect("principal source");
+    let stylesheet_file = child_named(document, case, "test")
+        .and_then(|node| child_named(document, node, "stylesheet"))
+        .and_then(|node| attribute(document, node, "file"))
+        .expect("stylesheet file");
+    let source_id = format!("urn:w3c:xslt30:insn:choose:{case_name}:source");
+    let stylesheet_id = format!("https://example.invalid/xslt30/insn/choose/{stylesheet_file}");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 65_536, 131_072));
+    resources
+        .admit(source_id.clone(), source_bytes(document, source))
+        .expect("admit principal source");
+    resources
+        .admit(
+            stylesheet_id.clone(),
+            fs::read(corpus_directory().join(stylesheet_file))
+                .expect("read stylesheet and close handle"),
+        )
+        .expect("admit stylesheet");
+    (resources.seal(), stylesheet_id, source_id)
+}
+
+fn case_named(document: &Document, case_name: &str) -> NodeId {
+    descendants_named(document, document.document_node(), "test-case")
+        .into_iter()
+        .find(|node| attribute(document, *node, "name") == Some(case_name))
+        .expect("pinned test case")
+}
+
+fn source_bytes(document: &Document, source: NodeId) -> Vec<u8> {
+    if let Some(file) = attribute(document, source, "file") {
+        return fs::read(corpus_directory().join(file)).expect("read source and close handle");
+    }
+    let content = child_named(document, source, "content").expect("inline source content");
+    document.string_value(content).into_bytes()
 }
 
 fn overlay_case(case_name: &str) -> &str {
