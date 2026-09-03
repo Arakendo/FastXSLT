@@ -433,6 +433,10 @@ pub(crate) enum ValueExpression {
     ContextNodeName,
     UpperCaseContextString,
     Variable(String),
+    LiteralVariableConcat {
+        literal: String,
+        variable: String,
+    },
     IntegerFor(Box<IntegerForExpression>),
     FocusSumFor(Box<FocusSumForExpression>),
     DecimalSumFor(Box<DecimalSumForExpression>),

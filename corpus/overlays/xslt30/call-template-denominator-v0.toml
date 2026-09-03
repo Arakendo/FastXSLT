@@ -15,16 +15,40 @@ execution = "passed"
 rationale = "The unchanged XSLT 2.0 case enters an unprefixed named template directly as the initial template and does not run the competing document rule."
 
 [[case_override]]
+case_name = "call-template-0102"
+selection = "selected"
+execution = "passed"
+rationale = "The adapter resolves the catalog-supplied initial-template QName to the matching expanded declaration; template-local exclude-result-prefixes prevents its static prefix from leaking into the result."
+
+[[case_override]]
+case_name = "call-template-0103"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case supplies one stylesheet parameter while the source-aware initial template independently applies its declared template-parameter default."
+
+[[case_override]]
 case_name = "call-template-0104"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged XSLT 2.0 negative case reports XTDE0040 when the requested unqualified initial-template name has no compiled declaration."
 
 [[case_override]]
+case_name = "call-template-0105"
+selection = "selected"
+execution = "passed"
+rationale = "The adapter resolves the catalog-supplied initial-template QName to its expanded identity; the unchanged XSLT 2.0 negative case reports XTDE0040 because no declaration has that identity."
+
+[[case_override]]
 case_name = "call-template-0106"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged XSLT 2.0 negative case reports XTSE0080 when a named template uses the reserved XSLT namespace."
+
+[[case_override]]
+case_name = "call-template-0107"
+selection = "selected"
+execution = "passed"
+rationale = "The adapter resolves the catalog prefix independently from the stylesheet prefix; the unchanged XSLT 2.0 negative case reports XTDE0040 for the resulting nonmatching expanded identity."
 
 [[case_override]]
 case_name = "call-template-0109"
@@ -55,6 +79,12 @@ case_name = "call-template-1101"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged XSLT 1.0-compatible case performs six bounded nested named-template calls and supplies integer select arguments to each declared parameter."
+
+[[case_override]]
+case_name = "call-template-1501"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 1.0-compatible case combines descendant-existence choices with three named calls, proving supplied literal content and omitted default parameters remain isolated per call."
 
 [[case_override]]
 case_name = "call-template-1701"

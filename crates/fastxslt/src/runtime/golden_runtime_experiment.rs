@@ -433,6 +433,7 @@ fn program_has_mode(program: &StylesheetProgram, name: &str) -> bool {
 fn execute_initial_template(
     program: &StylesheetProgram,
     name: &str,
+    parameters: &BTreeMap<String, InvocationParameter>,
     multiple_match_policy: MultipleMatchPolicy,
     request_id: &str,
     control: &mut InvocationControl,
@@ -441,6 +442,7 @@ fn execute_initial_template(
         program,
         name,
         None,
+        parameters,
         multiple_match_policy,
         request_id,
         control,
@@ -452,6 +454,7 @@ fn execute_initial_template_with_source(
     program: &StylesheetProgram,
     name: &str,
     source: &Document,
+    parameters: &BTreeMap<String, InvocationParameter>,
     multiple_match_policy: MultipleMatchPolicy,
     request_id: &str,
     control: &mut InvocationControl,
@@ -460,6 +463,7 @@ fn execute_initial_template_with_source(
         program,
         name,
         Some(source),
+        parameters,
         multiple_match_policy,
         request_id,
         control,
@@ -471,6 +475,7 @@ fn execute_initial_template_with_optional_source(
     program: &StylesheetProgram,
     name: &str,
     source: Option<&Document>,
+    parameters: &BTreeMap<String, InvocationParameter>,
     multiple_match_policy: MultipleMatchPolicy,
     request_id: &str,
     control: &mut InvocationControl,
@@ -480,16 +485,7 @@ fn execute_initial_template_with_optional_source(
         .iter()
         .find(|template| template.name == name)
         .expect("initial-template entries are validated during request admission");
-    if !template.parameters.is_empty() {
-        return Err(failure(
-            "FXRT1003",
-            FailureCategory::Unsupported,
-            Some(request_id),
-            "initial-template parameters are outside the private invocation-entry slice",
-        ));
-    }
-    let globals =
-        materialize_global_defaults(program, source, &BTreeMap::new(), request_id, control)?;
+    let globals = materialize_global_defaults(program, source, parameters, request_id, control)?;
     let inputs = SequenceInputs {
         program,
         source,
@@ -502,11 +498,17 @@ fn execute_initial_template_with_optional_source(
         denied_resources: None,
         dynamic_documents: RefCell::default(),
     };
+    let variables = bind_template_parameters(
+        &template.template,
+        &BTreeMap::new(),
+        &globals.atomics,
+        inputs.complete_atomic_frame_clones,
+    );
     let children = execute_sequence(
         &inputs,
         &template.template.body,
         SequenceContext::new(source.map(Document::document_node), None),
-        &RuntimeVariables::from_atomics(&globals.atomics, inputs.complete_atomic_frame_clones),
+        &variables,
         control,
     )?;
     Ok(SemanticResult { children })

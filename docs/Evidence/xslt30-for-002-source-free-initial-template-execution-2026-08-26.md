@@ -25,7 +25,7 @@ resource, document, or context item.
 The entry choice is invocation state. The compiled stylesheet owns the static
 named-template definition but does not acquire a mutable or default invocation
 entry. Unknown initial-template names fail request admission with structured
-identity `XTDE0040`; initial-template parameters remain explicitly unsupported
+identity `XTDE0040`; host-supplied initial-template parameters remain explicitly unsupported
 in this private seam.
 
 ## Expression and result behavior

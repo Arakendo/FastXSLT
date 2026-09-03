@@ -3,30 +3,36 @@
 use std::{collections::BTreeMap, collections::BTreeSet, collections::HashSet, fs, path::PathBuf};
 
 use super::{
-    ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, compile_resource,
-    execute_transform_set,
+    ExecutionPolicy, InvocationEntry, InvocationParameter, TransformRequest, TransformSetBuilder,
+    compile_resource, execute_transform_set,
 };
 use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
+use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/insn/call-template/_call-template-test-set.xml";
-const RESULT_CASES: [&str; 10] = [
+const RESULT_CASES: [&str; 13] = [
     "call-template-0101",
+    "call-template-0102",
+    "call-template-0103",
     "call-template-0201",
     "call-template-0801",
     "call-template-0802",
     "call-template-0109",
     "call-template-1101",
+    "call-template-1501",
     "call-template-1701",
     "call-template-1801",
     "call-template-1802",
     "call-template-1803",
 ];
-const ERROR_CASES: [(&str, &str); 2] = [
+const ERROR_CASES: [(&str, &str); 4] = [
     ("call-template-0104", "XTDE0040"),
+    ("call-template-0105", "XTDE0040"),
     ("call-template-0106", "XTSE0080"),
+    ("call-template-0107", "XTDE0040"),
 ];
 const OVERLAY: &str =
     include_str!("../../../../corpus/overlays/xslt30/call-template-denominator-v0.toml");
@@ -43,7 +49,7 @@ fn inventories_complete_call_template_denominator_before_selection() {
     assert_eq!(names.len(), cases.len());
     assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
     assert!(OVERLAY.contains("case_count = 42"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 12);
+    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 17);
     for case_name in RESULT_CASES
         .into_iter()
         .chain(ERROR_CASES.into_iter().map(|(case_name, _)| case_name))
@@ -119,9 +125,11 @@ fn execute_case(case_name: &str) {
         },
         |node| InvocationEntry::InitialTemplateWithSource {
             resource: source_id.clone(),
-            name: attribute(&document, node, "name")
-                .expect("initial template name")
-                .to_owned(),
+            name: catalog_eqname(
+                &document,
+                node,
+                attribute(&document, node, "name").expect("initial template name"),
+            ),
         },
     );
     let mut set = TransformSetBuilder::new(
@@ -138,7 +146,7 @@ fn execute_case(case_name: &str) {
         identity: case_name.to_owned(),
         result_identity: format!("urn:w3c:xslt30:insn:call-template:{case_name}:result"),
         entry,
-        parameters: BTreeMap::new(),
+        parameters: case_parameters(&document, test),
         cancellation: CancellationToken::new(),
         cancellation_fault: None,
     })
@@ -188,9 +196,14 @@ fn execute_error_case(case_name: &str, expected_code: &str) {
             return;
         }
     };
-    let initial_template = child_named(&document, test, "initial-template")
-        .and_then(|node| attribute(&document, node, "name"))
-        .expect("dynamic error case should name an initial template");
+    let initial_template_node =
+        child_named(&document, test, "initial-template").expect("dynamic error initial template");
+    let initial_template = catalog_eqname(
+        &document,
+        initial_template_node,
+        attribute(&document, initial_template_node, "name")
+            .expect("dynamic error case should name an initial template"),
+    );
     let mut set = TransformSetBuilder::new(
         snapshot,
         program,
@@ -207,7 +220,7 @@ fn execute_error_case(case_name: &str, expected_code: &str) {
             result_identity: format!("urn:w3c:xslt30:insn:call-template:{case_name}:result"),
             entry: InvocationEntry::InitialTemplateWithSource {
                 resource: source_id,
-                name: initial_template.to_owned(),
+                name: initial_template,
             },
             parameters: BTreeMap::new(),
             cancellation: CancellationToken::new(),
@@ -217,12 +230,54 @@ fn execute_error_case(case_name: &str, expected_code: &str) {
     assert_eq!(failure.code, expected_code, "{case_name}");
 }
 
+fn catalog_eqname(document: &Document, element: NodeId, lexical: &str) -> String {
+    let Some((prefix, local)) = lexical.split_once(':') else {
+        return lexical.to_owned();
+    };
+    let mut current = Some(element);
+    while let Some(node) = current {
+        if let Some(binding) = document
+            .namespace_declarations(node)
+            .iter()
+            .find(|binding| binding.prefix.as_deref() == Some(prefix))
+        {
+            return format!("Q{{{}}}{local}", binding.namespace);
+        }
+        current = document.parent(node);
+    }
+    panic!("catalog QName prefix should be bound: {lexical}");
+}
+
 fn source_bytes(document: &Document, source: NodeId) -> Vec<u8> {
     if let Some(file) = attribute(document, source, "file") {
         return fs::read(corpus_directory().join(file)).expect("read source and close handle");
     }
     let content = child_named(document, source, "content").expect("inline source content");
     document.string_value(content).into_bytes()
+}
+
+fn case_parameters(document: &Document, test: NodeId) -> BTreeMap<String, InvocationParameter> {
+    element_children(document, test)
+        .into_iter()
+        .filter(|node| local_name(document, *node) == "param")
+        .map(|parameter| {
+            let name = attribute(document, parameter, "name")
+                .expect("parameter name")
+                .to_owned();
+            let select = attribute(document, parameter, "select").expect("parameter select");
+            let value = select
+                .strip_prefix('\'')
+                .and_then(|value| value.strip_suffix('\''))
+                .expect("admitted call-template parameter is one quoted string");
+            (
+                name,
+                InvocationParameter {
+                    value: AtomicValue::string(value),
+                    tunnel: false,
+                },
+            )
+        })
+        .collect()
 }
 
 fn case_named(document: &Document, case_name: &str) -> NodeId {

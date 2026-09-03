@@ -441,6 +441,9 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::GeneratedRootIdentity(path) => path.known_owned_capacity_bytes(),
         ValueExpression::ContextNodeName | ValueExpression::UpperCaseContextString => 0,
         ValueExpression::Variable(name) | ValueExpression::RootVariable(name) => name.capacity(),
+        ValueExpression::LiteralVariableConcat { literal, variable } => {
+            literal.capacity() + variable.capacity()
+        }
         ValueExpression::GeneratedTemporaryRootIdentity {
             variable,
             descendant_local,

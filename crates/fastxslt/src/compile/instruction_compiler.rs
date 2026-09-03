@@ -600,8 +600,25 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
     ensure_no_meaningful_children(document, element, "xsl:value-of")?;
     let location = document.location(element).clone();
     let expression = required_attribute(document, element, None, "select")?;
-    let select = if recognizes_deep_equal(expression) {
-        ValueExpression::DeepEqual(Box::new(parse_deep_equal(expression, &location).map_err(
+    let select = compile_value_expression(document, element, expression, &location)?;
+    let separator = optional_attribute(document, element, None, "separator")
+        .unwrap_or(" ")
+        .to_owned();
+    Ok(Instruction::ValueOf {
+        select,
+        separator,
+        location,
+    })
+}
+
+fn compile_value_expression(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<ValueExpression, CompileFailure> {
+    Ok(if recognizes_deep_equal(expression) {
+        ValueExpression::DeepEqual(Box::new(parse_deep_equal(expression, location).map_err(
             |failure| {
                 let (code, category) = match failure.kind {
                     DeepEqualFailureKind::InvalidArity { .. } => {
@@ -622,7 +639,7 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
             },
         )?))
     } else if expression.contains(" castable as ") {
-        ValueExpression::Castable(Box::new(parse_castable(expression, &location).map_err(
+        ValueExpression::Castable(Box::new(parse_castable(expression, location).map_err(
             |failure| CompileFailure {
                 code: "FXXP1007",
                 category: CompileCategory::Unsupported,
@@ -634,7 +651,7 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
         && expression.contains("sum(for $")
     {
         ValueExpression::DecimalSumFor(Box::new(
-            parse_decimal_sum_for(expression, &location).map_err(|failure| CompileFailure {
+            parse_decimal_sum_for(expression, location).map_err(|failure| CompileFailure {
                 code: "FXXP1006",
                 category: CompileCategory::Unsupported,
                 detail: failure.detail,
@@ -643,7 +660,7 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
         ))
     } else if expression.trim_start().starts_with("format-number(") {
         ValueExpression::FormatNumber(Box::new(
-            parse_format_number(expression, &location).map_err(|failure| CompileFailure {
+            parse_format_number(expression, location).map_err(|failure| CompileFailure {
                 code: "FXXP1009",
                 category: CompileCategory::Unsupported,
                 detail: failure.detail,
@@ -652,7 +669,7 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
         ))
     } else if expression.trim_start().starts_with("sum(for $") {
         ValueExpression::FocusSumFor(Box::new(
-            parse_focus_sum_for(expression, &location).map_err(|failure| CompileFailure {
+            parse_focus_sum_for(expression, location).map_err(|failure| CompileFailure {
                 code: "FXXP1005",
                 category: CompileCategory::Unsupported,
                 detail: failure.detail,
@@ -668,18 +685,20 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
                 location: failure.location,
             })?,
         ))
-    } else if let Some(root) = compile_root_value(document, element, expression, &location)? {
+    } else if let Some(root) = compile_root_value(document, element, expression, location)? {
         root
     } else if expression.trim() == "name(.)" {
         ValueExpression::ContextNodeName
     } else if expression.trim() == "upper-case(.)" {
         ValueExpression::UpperCaseContextString
+    } else if let Some((literal, variable)) = parse_literal_variable_concat(expression) {
+        ValueExpression::LiteralVariableConcat { literal, variable }
     } else if let Some(variable) = expression.strip_prefix('$') {
         if !is_ascii_ncname(variable) {
             return Err(invalid(
                 "FXXP0002",
                 format!("invalid variable reference: {expression}"),
-                &location,
+                location,
             ));
         }
         ValueExpression::Variable(variable.to_owned())
@@ -687,15 +706,26 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
         ValueExpression::LocationPath(
             parse_location_path(expression, location.clone()).map_err(map_path_failure)?,
         )
-    };
-    let separator = optional_attribute(document, element, None, "separator")
-        .unwrap_or(" ")
-        .to_owned();
-    Ok(Instruction::ValueOf {
-        select,
-        separator,
-        location,
     })
+}
+
+fn parse_literal_variable_concat(expression: &str) -> Option<(String, String)> {
+    let arguments = expression
+        .trim()
+        .strip_prefix("concat(")?
+        .strip_suffix(')')?;
+    let (literal, variable) = arguments.rsplit_once(',')?;
+    let literal = literal.trim();
+    let literal = literal
+        .strip_prefix('\'')
+        .and_then(|value| value.strip_suffix('\''))
+        .or_else(|| {
+            literal
+                .strip_prefix('"')
+                .and_then(|value| value.strip_suffix('"'))
+        })?;
+    let variable = variable.trim().strip_prefix('$')?;
+    is_ascii_ncname(variable).then(|| (literal.to_owned(), variable.to_owned()))
 }
 
 fn root_argument(expression: &str) -> Option<&str> {

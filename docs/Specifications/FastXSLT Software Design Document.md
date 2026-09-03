@@ -255,13 +255,21 @@ admits only the standard initial-template name. This private canonical spelling
 is not a public QName API, and initial-template catalog/host QName resolution
 remains a separate host boundary concern.
 
-Named-template parameters currently admit literal-text or integer defaults.
+Named-template parameters currently admit literal-text defaults and literal
+string or integer `select` defaults.
 Named calls may supply literal content, integer `select` values, or references
 to one caller-visible atomic variable. Defaults and supplied arguments are
 bound through the same invocation-local copy-on-write frame machinery used by
 matched templates. This does not admit node-sequence arguments, general XPath
-argument expressions, required or typed parameters, or initial-template
-parameters.
+argument expressions, required or typed parameters, or host-supplied
+initial-template parameters. An initial-template invocation may still bind
+host-supplied stylesheet parameters into the global frame and independently
+apply its declared template-parameter defaults.
+
+The private value constructor also admits the exact two-argument
+`concat('literal', $atomic)` shape. It retains the literal and variable name in
+the compiled plan and requires a caller-visible singleton atomic at execution;
+this does not select general function-call or sequence-conversion semantics.
 
 For the selected XSLT 3.0 profile, `xsl:import` is not required to precede
 other top-level declarations. Imported named templates with the same expanded

@@ -291,10 +291,39 @@ fn execute_request(
     if let Some((domain, accepted_charges_before_signal)) = request.cancellation_fault {
         control = control.cancelling_on_charge(domain, accepted_charges_before_signal);
     }
-    let semantic = match &request.entry {
+    let semantic = execute_request_semantics(
+        snapshot,
+        stylesheet,
+        policy,
+        multiple_match_policy,
+        request,
+        &mut control,
+    )?;
+    let serialized = serialize_xml(
+        &semantic,
+        &stylesheet.output,
+        &request.identity,
+        policy.serialized_byte_limit,
+        &mut control,
+    )?;
+    Ok(ResultEntry {
+        result_id: request.result_identity.clone(),
+        semantic,
+        serialized,
+    })
+}
+
+fn execute_request_semantics(
+    snapshot: &ResourceSnapshot,
+    stylesheet: &StylesheetProgram,
+    policy: &ExecutionPolicy,
+    multiple_match_policy: MultipleMatchPolicy,
+    request: &TransformRequest,
+    control: &mut InvocationControl,
+) -> Result<SemanticResult, ExecutionFailure> {
+    match &request.entry {
         InvocationEntry::PrincipalSource { resource } => {
-            let source =
-                prepare_request_source(snapshot, resource, &request.identity, &mut control)?;
+            let source = prepare_request_source(snapshot, resource, &request.identity, control)?;
             super::execute_program_with_parameters_and_resources(
                 stylesheet,
                 &source,
@@ -303,12 +332,11 @@ fn execute_request(
                 &request.identity,
                 Some(snapshot),
                 Some(&policy.denied_sources),
-                &mut control,
-            )?
+                control,
+            )
         }
         InvocationEntry::InitialMode { resource, name } => {
-            let source =
-                prepare_request_source(snapshot, resource, &request.identity, &mut control)?;
+            let source = prepare_request_source(snapshot, resource, &request.identity, control)?;
             execute_initial_mode(
                 super::InitialModeInvocation {
                     program: stylesheet,
@@ -319,16 +347,15 @@ fn execute_request(
                     multiple_match_policy,
                     request_id: &request.identity,
                 },
-                &mut control,
-            )?
+                control,
+            )
         }
         InvocationEntry::InitialModeElement {
             resource,
             name,
             element,
         } => {
-            let source =
-                prepare_request_source(snapshot, resource, &request.identity, &mut control)?;
+            let source = prepare_request_source(snapshot, resource, &request.identity, control)?;
             let node = source
                 .children(source.document_node())
                 .iter()
@@ -352,41 +379,30 @@ fn execute_request(
                     multiple_match_policy,
                     request_id: &request.identity,
                 },
-                &mut control,
-            )?
+                control,
+            )
         }
         InvocationEntry::InitialTemplate { name } => execute_initial_template(
             stylesheet,
             name,
+            &request.parameters,
             multiple_match_policy,
             &request.identity,
-            &mut control,
-        )?,
+            control,
+        ),
         InvocationEntry::InitialTemplateWithSource { resource, name } => {
-            let source =
-                prepare_request_source(snapshot, resource, &request.identity, &mut control)?;
+            let source = prepare_request_source(snapshot, resource, &request.identity, control)?;
             super::execute_initial_template_with_source(
                 stylesheet,
                 name,
                 &source,
+                &request.parameters,
                 multiple_match_policy,
                 &request.identity,
-                &mut control,
-            )?
+                control,
+            )
         }
-    };
-    let serialized = serialize_xml(
-        &semantic,
-        &stylesheet.output,
-        &request.identity,
-        policy.serialized_byte_limit,
-        &mut control,
-    )?;
-    Ok(ResultEntry {
-        result_id: request.result_identity.clone(),
-        semantic,
-        serialized,
-    })
+    }
 }
 
 fn prepare_request_source(

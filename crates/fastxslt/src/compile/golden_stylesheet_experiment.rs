@@ -1065,6 +1065,7 @@ fn compile_named_template(
             "priority",
             "xpath-default-namespace",
             "default-mode",
+            "exclude-result-prefixes",
         ],
         "xsl:template",
     )?;
@@ -1107,16 +1108,17 @@ fn compile_named_template(
             let default = if let Some(select) = optional_attribute(document, child, None, "select")
             {
                 ensure_no_meaningful_children(document, child, "xsl:param")?;
-                select
-                    .parse::<i64>()
-                    .map(TemplateParameterDefault::Integer)
-                    .map_err(|_| {
-                        unsupported(
-                            "FXST1032",
-                            format!("unsupported named-template parameter default: {select}"),
-                            document.location(child),
-                        )
-                    })?
+                if let Ok(value) = select.parse::<i64>() {
+                    TemplateParameterDefault::Integer(value)
+                } else if let Some(value) = static_string_literal(select) {
+                    TemplateParameterDefault::Text(value.to_owned())
+                } else {
+                    return Err(unsupported(
+                        "FXST1032",
+                        format!("unsupported named-template parameter default: {select}"),
+                        document.location(child),
+                    ));
+                }
             } else {
                 if meaningful_children(document, child)
                     .into_iter()
@@ -1240,6 +1242,17 @@ fn normalize_expanded_named_template_name(
     } else {
         Ok(format!("Q{{{namespace}}}{local}"))
     }
+}
+
+fn static_string_literal(expression: &str) -> Option<&str> {
+    expression
+        .strip_prefix('\'')
+        .and_then(|value| value.strip_suffix('\''))
+        .or_else(|| {
+            expression
+                .strip_prefix('"')
+                .and_then(|value| value.strip_suffix('"'))
+        })
 }
 
 fn normalize_variable_qname(

@@ -339,6 +339,7 @@ fn shared_global_atomic_frames_match_the_complete_clone_reference() {
     let reference_result = super::execute_initial_template(
         &program,
         "t0",
+        &BTreeMap::new(),
         super::MultipleMatchPolicy::UseLast,
         "global-clone-reference",
         &mut reference_control,
@@ -348,6 +349,7 @@ fn shared_global_atomic_frames_match_the_complete_clone_reference() {
     let shared_result = super::execute_initial_template(
         &program,
         "t0",
+        &BTreeMap::new(),
         super::MultipleMatchPolicy::UseLast,
         "global-clone-shared",
         &mut shared_control,
@@ -383,6 +385,7 @@ fn measure_named_template_global_frame_cloning() {
             let reference_result = super::execute_initial_template(
                 &program,
                 "t0",
+                &BTreeMap::new(),
                 super::MultipleMatchPolicy::UseLast,
                 "global-clone-reference",
                 &mut reference_control,
@@ -396,6 +399,7 @@ fn measure_named_template_global_frame_cloning() {
             let shared_result = super::execute_initial_template(
                 &program,
                 "t0",
+                &BTreeMap::new(),
                 super::MultipleMatchPolicy::UseLast,
                 "global-clone-shared",
                 &mut shared_control,
@@ -414,6 +418,7 @@ fn measure_named_template_global_frame_cloning() {
             let result = super::execute_initial_template(
                 &program,
                 "t0",
+                &BTreeMap::new(),
                 super::MultipleMatchPolicy::UseLast,
                 "global-clone-allocation-reference",
                 &mut reference_allocation_control,
@@ -426,6 +431,7 @@ fn measure_named_template_global_frame_cloning() {
             let result = super::execute_initial_template(
                 &program,
                 "t0",
+                &BTreeMap::new(),
                 super::MultipleMatchPolicy::UseLast,
                 "global-clone-allocation-shared",
                 &mut shared_allocation_control,

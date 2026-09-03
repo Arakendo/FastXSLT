@@ -1428,19 +1428,16 @@ assertion requirements are classified and admitted deliberately.
 [Evidence](../Evidence/xslt30-choose-and-if-initial-denominator-2026-09-02.md)
 
 The complete 42-case `insn/call-template` denominator is now conserved before
-selection. Twelve unchanged cases pass: direct entry through one unprefixed
-initial template, a qualified named-template call resolved by expanded QName,
-and an unqualified call that remains distinct from a qualified declaration with
-the same local part. Three further cases compose named-template lookup with
-principal-over-import and sibling-import precedence using catalog-declared
-secondary modules sealed before compilation. Two negative cases conserve
-`XTDE0040` for an absent requested initial template and `XTSE0080` for a named
-template in the reserved XSLT namespace. One source-supplied initial-template
-case copies the current document node's children without constructing a nested
-result document. EQName normalization, prefix-independent expanded-name
-identity, and six nested calls with integer arguments supply three more passing
-cases. The other 30 cases remain visible defaults for host-supplied
-initial-template QName resolution, broader parameters and typing, recursion,
+selection. Seventeen unchanged cases pass. Initial-template entry now covers
+unqualified and catalog-resolved qualified identities, an independently bound
+global stylesheet parameter and template default, and source-aware copying of
+a current document's children. Three correctly resolved absent-name cases
+report `XTDE0040`; a reserved-namespace declaration reports `XTSE0080`.
+Named calls cover QName and EQName identity, literal and default parameters,
+integer `select` arguments, six nested calls, repeated calls under conditional
+branches, and principal/import precedence. Catalog-declared secondary modules
+remain sealed before compilation. The other 25 cases remain visible defaults
+for a public host QName contract, broader parameters and typing, recursion,
 focus, and expression or assertion semantics.
 [Evidence](../Evidence/xslt30-call-template-initial-denominator-2026-09-02.md)
 
@@ -1491,8 +1488,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/root` | 10 | 10 | 0 | 0 | 0 |
 | `insn/apply-imports` | 1 | 1 | 0 | 0 | 0 |
 | `insn/choose` | 55 | 18 | 0 | 0 | 37 |
-| `insn/call-template` | 42 | 12 | 0 | 0 | 30 |
-| **Conserved total** | **675** | **452** | **3** | **54** | **166** |
+| `insn/call-template` | 42 | 17 | 0 | 0 | 25 |
+| **Conserved total** | **675** | **457** | **3** | **54** | **161** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
