@@ -14,6 +14,21 @@ const SELECTED_SUFFIXES: [&str; 24] = [
     "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17",
     "18", "19", "20", "21", "K1", "K2", "K3",
 ];
+const NOT_NUMERIC_STEMS: [&str; 13] = [
+    "fn-notint1args",
+    "fn-notintg1args",
+    "fn-notdec1args",
+    "fn-notdbl1args",
+    "fn-notflt1args",
+    "fn-notlng1args",
+    "fn-notusht1args",
+    "fn-notnint1args",
+    "fn-notpint1args",
+    "fn-notulng1args",
+    "fn-notnpi1args",
+    "fn-notnni1args",
+    "fn-notsht1args",
+];
 
 #[test]
 fn executes_qt3_true_and_false_constant_boolean_groups() {
@@ -32,6 +47,66 @@ fn executes_qt3_true_and_false_constant_boolean_groups() {
             assert!(catalog_names.contains(case_name.as_str()), "{case_name}");
             assert_private_case_passed(set_file, &case_name);
             execute_case(&document, &case_name, expected_constant);
+        }
+    }
+}
+
+#[test]
+fn executes_qt3_source_free_not_effective_boolean_value_tranche() {
+    let set_file = "fn/not.xml";
+    let mut selected = NOT_NUMERIC_STEMS
+        .into_iter()
+        .flat_map(|stem| (1..=3).map(move |suffix| format!("{stem}-{suffix}")))
+        .collect::<Vec<_>>();
+    selected.extend((1..=21).map(|suffix| format!("fn-not-{suffix}")));
+    selected.extend((24..=26).map(|suffix| format!("fn-not-{suffix}")));
+    selected.extend((1..=9).map(|suffix| format!("K-NotFunc-{suffix}")));
+    selected.push("cbcl-not-002".to_owned());
+    assert_eq!(selected.len(), 73);
+    assert_selected_count(set_file, selected.len());
+    let document = load_test_set(set_file);
+    let catalog_names = descendants_named(&document, document.document_node(), "test-case")
+        .into_iter()
+        .map(|case| {
+            attribute(&document, case, "name")
+                .expect("case name")
+                .to_owned()
+        })
+        .collect::<BTreeSet<_>>();
+
+    for case_name in selected {
+        assert!(catalog_names.contains(&case_name), "{case_name}");
+        assert_private_case_passed(set_file, &case_name);
+        execute_not_case(&document, &case_name);
+    }
+}
+
+fn execute_not_case(document: &Document, case_name: &str) {
+    let case = descendants_named(document, document.document_node(), "test-case")
+        .into_iter()
+        .find(|case| attribute(document, *case, "name") == Some(case_name))
+        .expect("selected QT3 case");
+    let test = child_named(document, case, "test").expect("test expression");
+    let source = document.string_value(test).trim().to_owned();
+    let result = child_named(document, case, "result").expect("result metadata");
+
+    match parse_scalar(&source) {
+        Err(BooleanParseFailure::InvalidArity) => {
+            let error = descendants_named(document, result, "error")
+                .into_iter()
+                .next()
+                .expect("invalid-arity case must expect an error");
+            assert_eq!(attribute(document, error, "code"), Some("XPST0017"));
+        }
+        Err(BooleanParseFailure::Unsupported) => {
+            panic!("selected QT3 expression is outside the admitted grammar: {case_name}: {source}")
+        }
+        Ok(expression) => {
+            let mut control = InvocationControl::unbounded();
+            let actual =
+                evaluate_scalar(&expression, &mut control).expect("evaluate scalar expression");
+            assert_native_result(document, result, &actual, case_name, &source);
+            assert!(control.consumed(WorkDomain::XPathOperation) > 0);
         }
     }
 }
@@ -113,7 +188,7 @@ fn assert_native_result(
         })
         .unwrap_or_else(|| panic!("selected case lacks an admitted assertion: {case_name}"));
     let expected = document.string_value(assertion);
-    let expected = expected.trim().trim_matches('"');
+    let expected = expected.trim().trim_matches(['"', '\'']);
     let actual = match actual {
         ScalarValue::Boolean(value) => value.to_string(),
         ScalarValue::String(value) => value.clone(),

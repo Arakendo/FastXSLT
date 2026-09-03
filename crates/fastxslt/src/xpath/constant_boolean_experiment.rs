@@ -2,6 +2,8 @@
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 
+use super::deep_equal_atomic::{parse_effective_boolean_value, split_top_level_once};
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum BooleanExpression {
     Constant(bool),
@@ -136,12 +138,22 @@ fn parse_inner(expression: &str) -> Result<BooleanExpression, BooleanParseFailur
         return Err(BooleanParseFailure::InvalidArity);
     }
     if let Some(inner) = function_argument(expression, &["not", "fn:not", "xs:boolean"]) {
-        let inner = parse_inner(inner)?;
+        if inner.trim().is_empty() || split_top_level_once(inner).is_some() {
+            return Err(BooleanParseFailure::InvalidArity);
+        }
+        let inner = parse_inner(inner).or_else(|_| {
+            parse_effective_boolean_value(inner)
+                .map(BooleanExpression::Constant)
+                .ok_or(BooleanParseFailure::Unsupported)
+        })?;
         return if expression.trim_start().starts_with("xs:boolean(") {
             Ok(inner)
         } else {
             Ok(BooleanExpression::Not(Box::new(inner)))
         };
+    }
+    if let Some(value) = parse_effective_boolean_value(expression) {
+        return Ok(BooleanExpression::Constant(value));
     }
     Err(BooleanParseFailure::Unsupported)
 }
@@ -312,6 +324,10 @@ mod tests {
             ("false() lt true()", true),
             ("true() >= false()", true),
             ("xs:boolean(fn:false())", false),
+            ("fn:not(xs:int(\"0\"))", true),
+            ("not(xs:double('NaN'))", true),
+            ("not(xs:anyURI(\"example.com/\"))", false),
+            ("fn:not(())", true),
         ] {
             let expression = parse(source).expect("parse admitted boolean expression");
             let mut control = InvocationControl::unbounded();
@@ -327,6 +343,8 @@ mod tests {
     #[test]
     fn distinguishes_invalid_arity_from_unsupported_syntax() {
         assert_eq!(parse("true(1)"), Err(BooleanParseFailure::InvalidArity));
+        assert_eq!(parse("not()"), Err(BooleanParseFailure::InvalidArity));
+        assert_eq!(parse("not(1, 2)"), Err(BooleanParseFailure::InvalidArity));
         assert_eq!(
             parse("contains('a', 'a')"),
             Err(BooleanParseFailure::Unsupported)

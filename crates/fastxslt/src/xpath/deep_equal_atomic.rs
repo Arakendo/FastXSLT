@@ -114,6 +114,31 @@ pub(super) fn parse_sequence(expression: &str) -> Option<AtomicSequence> {
     parse_atomic_sequence(expression).map(AtomicSequence)
 }
 
+#[cfg(test)]
+pub(super) fn parse_effective_boolean_value(expression: &str) -> Option<bool> {
+    let sequence = parse_atomic_sequence(expression)?;
+    match sequence.as_slice() {
+        [] => Some(false),
+        [AtomicValue::Boolean(value)] => Some(*value),
+        [
+            AtomicValue::String(value)
+            | AtomicValue::UntypedAtomic(value)
+            | AtomicValue::AnyUri(value),
+        ] => Some(!value.is_empty()),
+        [AtomicValue::Integer(value)] => Some(*value != 0),
+        [AtomicValue::Decimal(value)] => Some(value.coefficient != 0),
+        [AtomicValue::Float(bits)] => {
+            let value = f32::from_bits(*bits);
+            Some(value != 0.0 && !value.is_nan())
+        }
+        [AtomicValue::Double(bits)] => {
+            let value = f64::from_bits(*bits);
+            Some(value != 0.0 && !value.is_nan())
+        }
+        _ => None,
+    }
+}
+
 fn parse_atomic_sequence(expression: &str) -> Option<Vec<AtomicValue>> {
     let expression = expression.trim();
     if let Some(indexes) = parse_literal_index_of(expression) {
@@ -474,6 +499,12 @@ fn constructor_lexical<'a>(expression: &'a str, name: &str) -> Option<&'a str> {
         .and_then(|value| value.strip_suffix('"'))
     {
         return (!quoted.contains('"')).then_some(quoted);
+    }
+    if let Some(quoted) = inner
+        .strip_prefix('\'')
+        .and_then(|value| value.strip_suffix('\''))
+    {
+        return (!quoted.contains('\'')).then_some(quoted);
     }
     Some(inner)
 }
