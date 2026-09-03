@@ -494,6 +494,38 @@ fn context_node_name_refuses_to_fabricate_a_namespaced_lexical_qname() {
 }
 
 #[test]
+fn unqualified_name_comparison_does_not_match_a_namespaced_parent() {
+    const SOURCE: &str = "urn:fastxslt:parent-name:source";
+    const STYLESHEET: &str = "urn:fastxslt:parent-name:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            br#"<outer xmlns:p="urn:example"><item/><p:holder><p:item/></p:holder></outer>"#
+                .to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="outer/item"/><xsl:apply-templates select="outer/*/*"/></out></xsl:template><xsl:template match="*"><xsl:if test="name(..)='outer'"><hit/></xsl:if><xsl:if test="name(..)='holder'"><bad/></xsl:if></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile parent-name tests");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("parent-name", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute parent-name tests");
+    assert_eq!(
+        results.by_request["parent-name"].serialized,
+        "<out><hit></hit></out>"
+    );
+}
+
+#[test]
 fn default_selection_uses_built_in_element_and_text_rules() {
     const BUILT_IN_SOURCE: &str = "urn:fastxslt:golden:built-in-rules:source";
     const BUILT_IN_STYLESHEET: &str = "urn:fastxslt:golden:built-in-rules:stylesheet";

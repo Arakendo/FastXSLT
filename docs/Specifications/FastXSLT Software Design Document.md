@@ -330,6 +330,10 @@ general predicate grammar or arbitrary comparison operands.
 Top-level XPath `or` composes admitted boolean operands and evaluates them
 left-to-right with short-circuiting. This does not imply support for `and`, a
 general operator grammar, or operands beyond the individually admitted forms.
+The exact `name(relative-path) = unqualified-string-literal` conditional form
+compares only a selected node whose expanded name has no namespace. It does not
+fabricate lexical QNames for namespaced nodes or admit general `fn:name`, QName,
+prefix, or computed-operand comparison semantics.
 
 Conditional structure is validated before branch expressions or constructors
 are compiled. Missing `test`, `xsl:when` after `xsl:otherwise`, repeated

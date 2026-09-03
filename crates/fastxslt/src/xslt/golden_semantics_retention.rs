@@ -493,6 +493,9 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         BooleanExpression::NodeStringEquals { path, value } => {
             path.known_owned_capacity_bytes() + value.capacity()
         }
+        BooleanExpression::UnqualifiedNodeNameEquals { path, local } => {
+            path.known_owned_capacity_bytes() + local.capacity()
+        }
         BooleanExpression::ContextStringEquals(value) => value.capacity(),
         BooleanExpression::Or { left, right } => {
             boolean_expression_owned(left) + boolean_expression_owned(right)

@@ -1259,23 +1259,8 @@ fn parse_scalar_boolean_expression(
     if let Some(value) = parse_constant_string_boolean(parsed) {
         return Ok(BooleanExpression::Constant(value));
     }
-    if let Some((path, value)) = parse_path_context_string_predicate(parsed) {
-        return Ok(BooleanExpression::NodeStringEquals {
-            path: parse_location_path(path, location.clone()).map_err(map_path_failure)?,
-            value: value.to_owned(),
-        });
-    }
-    if let Some((path, value)) = parse_path_string_equality(parsed) {
-        return Ok(BooleanExpression::NodeStringEquals {
-            path: parse_location_path(path, location.clone()).map_err(map_path_failure)?,
-            value: value.to_owned(),
-        });
-    }
-    if let Some((path, value)) = parse_path_integer_less_than(parsed) {
-        return Ok(BooleanExpression::NodeIntegerLessThan {
-            path: parse_location_path(path, location.clone()).map_err(map_path_failure)?,
-            value,
-        });
+    if let Some(expression) = parse_path_boolean_expression(parsed, location)? {
+        return Ok(expression);
     }
     if parsed.starts_with('/') || parsed.starts_with('@') {
         return parse_location_path(parsed, location.clone())
@@ -1355,6 +1340,48 @@ fn parse_scalar_boolean_expression(
     }))
 }
 
+fn parse_path_boolean_expression(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<BooleanExpression>, CompileFailure> {
+    if let Some((path, value)) = parse_path_context_string_predicate(expression) {
+        return parse_location_path(path, location.clone())
+            .map(|path| {
+                Some(BooleanExpression::NodeStringEquals {
+                    path,
+                    value: value.to_owned(),
+                })
+            })
+            .map_err(map_path_failure);
+    }
+    if let Some((path, local)) = parse_unqualified_name_equality(expression) {
+        return parse_location_path(path, location.clone())
+            .map(|path| {
+                Some(BooleanExpression::UnqualifiedNodeNameEquals {
+                    path,
+                    local: local.to_owned(),
+                })
+            })
+            .map_err(map_path_failure);
+    }
+    if let Some((path, value)) = parse_path_string_equality(expression) {
+        return parse_location_path(path, location.clone())
+            .map(|path| {
+                Some(BooleanExpression::NodeStringEquals {
+                    path,
+                    value: value.to_owned(),
+                })
+            })
+            .map_err(map_path_failure);
+    }
+    if let Some((path, value)) = parse_path_integer_less_than(expression) {
+        return parse_location_path(path, location.clone())
+            .map(|path| Some(BooleanExpression::NodeIntegerLessThan { path, value }))
+            .map_err(map_path_failure);
+    }
+    Ok(None)
+}
+
 fn parse_constant_string_boolean(expression: &str) -> Option<bool> {
     if let Some(value) = xpath_string_literal(expression) {
         return Some(!value.is_empty());
@@ -1386,6 +1413,13 @@ fn parse_path_integer_less_than(expression: &str) -> Option<(&str, i64)> {
         return None;
     }
     Some((path, value.trim().parse().ok()?))
+}
+
+fn parse_unqualified_name_equality(expression: &str) -> Option<(&str, &str)> {
+    let (left, right) = expression.split_once('=')?;
+    let path = left.trim().strip_prefix("name(")?.strip_suffix(')')?.trim();
+    let local = xpath_string_literal(right.trim())?;
+    (!path.is_empty() && is_ascii_ncname(local)).then_some((path, local))
 }
 
 fn parse_path_string_equality(expression: &str) -> Option<(&str, &str)> {

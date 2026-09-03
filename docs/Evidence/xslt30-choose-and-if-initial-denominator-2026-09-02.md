@@ -12,7 +12,7 @@ Date: 2026-09-02
   `choose-0401`, `choose-0402`,
   `choose-0403`, `choose-0404`, `choose-0501`, `choose-0502`, `choose-0601`,
   `choose-0602`, `choose-0605`, `choose-0701`, `choose-0702`, `choose-0801`,
-  `choose-0901`, `choose-1001`, and `choose-1401`.
+  `choose-0901`, `choose-1001`, `choose-1101`, and `choose-1401`.
 - Unchanged negative cases `choose-1801` through `choose-1804`.
 
 ## Method
@@ -50,11 +50,11 @@ introduced.
 ## Result
 
 - Complete conserved denominator: 55 cases.
-- Selected and passed: 23, comprising 19 result comparisons and 4 expected
+- Selected and passed: 24, comprising 20 result comparisons and 4 expected
   static-error comparisons.
 - Engine unsupported: 0.
 - Excluded by profile: 0.
-- Visible default not run: 32.
+- Visible default not run: 31.
 
 The unchanged cases cover ordered first-match branch selection, an
 `xsl:otherwise` branch, empty fall-through when no branch matches, two true
@@ -90,13 +90,18 @@ semantics as `Name`; this does not admit general predicate expressions.
 the XPath `or` operator. Evaluation is left-to-right and short-circuits after a
 true operand while preserving work accounting in every evaluated operand.
 
-Current conserved XSLT30 accounting is 675 cases: 465 passed comparisons, 3
-engine-unsupported cases, 55 profile exclusions, and 152 visible default
+`choose-1101` nests seven `xsl:if` instructions and combines exact constant
+arithmetic, literal and context string comparisons, and `name(..)` against an
+unqualified literal. A focused control proves the name comparison does not
+equate a namespaced parent with the same local name.
+
+Current conserved XSLT30 accounting is 675 cases: 466 passed comparisons, 3
+engine-unsupported cases, 55 profile exclusions, and 151 visible default
 not-run cases across 17 complete test-set denominators.
 
 ## Limitation
 
-This evidence does not admit the other 32 cases. In particular, it makes no
+This evidence does not admit the other 31 cases. In particular, it makes no
 claim for general comparisons, boolean functions beyond the exact `not()`
 form and admitted `or` composition, collations, schema-aware cases,
 static typing, user functions, import composition, or arbitrary assertion

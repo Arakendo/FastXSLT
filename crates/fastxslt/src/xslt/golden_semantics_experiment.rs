@@ -473,6 +473,10 @@ pub(crate) enum BooleanExpression {
         path: LocationPath,
         value: i64,
     },
+    UnqualifiedNodeNameEquals {
+        path: LocationPath,
+        local: String,
+    },
     ContextStringEquals(String),
     Or {
         left: Box<BooleanExpression>,
