@@ -6435,6 +6435,202 @@ execution = "passed"
 rationale = "The unchanged expression verifies empty-sequence lower-case or nested upper-case equality."
 
 [[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged xs:string constructor argument is converted to upper case."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged xs:string constructor argument is converted to upper case."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged xs:string constructor argument is converted to upper case."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises upper-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises upper-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises upper-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises upper-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises upper-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises upper-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises upper-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-8"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises upper-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-9"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises upper-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-10"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises upper-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-11"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises upper-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-12"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises upper-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-13"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises upper-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-14"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises upper-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-15"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises upper-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-16"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises upper-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-17"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression exercises upper-case literal or bounded function composition."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-18"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged Latin-1 codepoint range verifies exact expanding and one-to-one upper-case mappings."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-20"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged codepoint expression verifies a title-case or expanding upper-case mapping."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-21"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged codepoint expression verifies a title-case or expanding upper-case mapping."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "fn-upper-case-22"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged codepoint expression verifies a title-case or expanding upper-case mapping."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "K-UpperCaseFunc-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity call reports the native XPST0017 error."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "K-UpperCaseFunc-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity call reports the native XPST0017 error."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "K-UpperCaseFunc-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies empty-sequence upper-case or nested lower-case equality."
+
+[[case]]
+set_file = "fn/upper-case.xml"
+case_name = "K-UpperCaseFunc-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies empty-sequence upper-case or nested lower-case equality."
+
+[[case]]
 set_file = "fn/lower-case.xml"
 case_name = "K-LowerCaseFunc-4"
 selection = "selected"

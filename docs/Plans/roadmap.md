@@ -1513,7 +1513,7 @@ conformance percentage or a promise about unselected cases.
 | Family | Current authority | Current state |
 | --- | --- | --- |
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
-| QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 923 explicitly selected cases execute through suite-specific XPath adapters. |
+| QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 951 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
@@ -1563,7 +1563,7 @@ not yet have individual first-party dispositions. This distinction matters:
 catalog discovery conserves the source inventory, while only a complete
 test-set overlay conserves a reportable case denominator.
 
-QT3 now has complete parent overlays for the thirteen test sets under active
+QT3 now has complete parent overlays for the fourteen test sets under active
 execution. Typed validation composes explicit selected private-ledger records,
 native XQuery-only dependency exclusions, and a visible
 `harness-unsupported/not-run` default for every other sibling. Explicit
@@ -1585,10 +1585,11 @@ expression has been admitted is not hidden by broader upstream metadata:
 | `fn/escape-html-uri.xml` | 34 | 33 | 0 | 1 |
 | `fn/iri-to-uri.xml` | 47 | 45 | 1 | 1 |
 | `fn/lower-case.xml` | 28 | 27 | 1 | 0 |
-| **Audited subtotal** | **1,174** | **923** | **196** | **55** |
+| `fn/upper-case.xml` | 29 | 28 | 1 | 0 |
+| **Audited subtotal** | **1,203** | **951** | **197** | **55** |
 
-The 1,174-case subtotal is therefore conserved without relabeling the 55
-unexecuted cases as engine failures. The 196 exclusions describe the current
+The 1,203-case subtotal is therefore conserved without relabeling the 55
+unexecuted cases as engine failures. The 197 exclusions describe the current
 XPath-in-XSLT profile and remain overridable by explicit case admission.
 AxisStep's 13 remaining defaults are precisely its namespace-node/namespace-axis
 frontier. Deep-equal's 12 remaining defaults require UCA or suite-private
@@ -1627,7 +1628,10 @@ codepoint-range, string-derived promotion, arity-error, and argument-type-error
 passes, one XQuery-only profile exclusion, and one visible clock-composition
 default. The complete `fn/lower-case.xml` denominator adds 27 unchanged ASCII,
 Latin-1, title-case, expanding-mapping, composition, and arity-error passes plus
-one explicit Unicode-7.0 profile exclusion. The other 30,647 QT3 cases
+one explicit Unicode-7.0 profile exclusion. The complete
+`fn/upper-case.xml` denominator adds 28 unchanged ASCII, Latin-1,
+title-case, expanding-mapping, composition, and arity-error passes plus one
+explicit Unicode-7.0 profile exclusion. The other 30,618 QT3 cases
 remain structural catalog inventory only and still lack first-party selection
 dispositions.
 [Evidence](../Evidence/qt3-axis-deep-equal-conserved-denominators-2026-09-02.md)
@@ -1643,6 +1647,7 @@ dispositions.
 [Escape-HTML-URI denominator evidence](../Evidence/qt3-escape-html-uri-denominator-2026-09-03.md)
 [IRI-to-URI denominator evidence](../Evidence/qt3-iri-to-uri-denominator-2026-09-03.md)
 [Lower-case denominator evidence](../Evidence/qt3-lower-case-denominator-2026-09-03.md)
+[Upper-case denominator evidence](../Evidence/qt3-upper-case-denominator-2026-09-03.md)
 [Schema-aware XSLT30 profile evidence](../Evidence/xslt30-schema-aware-expression-profile-denominators-2026-09-03.md)
 [Streaming XSLT30 profile evidence](../Evidence/xslt30-streaming-profile-denominators-2026-09-03.md)
 [Dynamic-evaluation XSLT30 profile evidence](../Evidence/xslt30-dynamic-evaluation-profile-denominator-2026-09-03.md)
@@ -1690,9 +1695,10 @@ count:
    `fn/false.xml`, `fn/empty.xml`, `fn/exists.xml`, `fn/not.xml`, and
    `fn/boolean.xml` complete QT3 overlays, then extend the same accounting to
    `fn/string-length.xml`, `fn/encode-for-uri.xml`, and
-   `fn/escape-html-uri.xml`, `fn/iri-to-uri.xml`, and `fn/lower-case.xml`, so all
-   1,174 parent-set cases receive a selection disposition. The typed verifier
-   now conserves 923 selected passes, 196 native-dependency profile exclusions,
+   `fn/escape-html-uri.xml`, `fn/iri-to-uri.xml`, `fn/lower-case.xml`, and
+   `fn/upper-case.xml`, so all 1,203 parent-set cases receive a selection
+   disposition. The typed verifier now conserves 951 selected passes, 197
+   native-dependency profile exclusions,
    and 55 visible
    default not-run cases against the immutable upstream case identities. Explicit
    selection takes priority over
@@ -1717,10 +1723,12 @@ count:
    adds 45 passes, one XQuery-only exclusion, and one visible clock-composition
    default, including exact large codepoint-range assertions. The lower-case
    set adds 27 passes while explicitly excluding the one Unicode-7.0-pinned
-   case from the toolchain-supplied Unicode mapping claim.
+   case from the toolchain-supplied Unicode mapping claim. The upper-case set
+   adds 28 passes under the same version boundary, including two expanding
+   mappings.
 4. [ ] Add complete denominators deliberately, selected by standards and
    implementation pressure rather than easy-case sampling. The remaining
-   11,101 XSLT30 and 30,647 QT3 catalog-only cases must stay outside pass/fail
+   11,101 XSLT30 and 30,618 QT3 catalog-only cases must stay outside pass/fail
    totals until individually classified.
 5. [ ] Replace string-scanned experimental overlays with a validated internal
    loader and derive one immutable run report carrying suite/engine/harness
