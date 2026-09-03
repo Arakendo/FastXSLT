@@ -1,0 +1,17 @@
+suite = "QT3"
+revision = "83993587711dbd5c18ed846385ec37d079d6e492"
+set_file = "fn/normalize-space.xml"
+case_count = 39
+selected_source = "private-ledger-v0.toml"
+
+[[dependency_rule]]
+dependency_type = "feature"
+values = ["schemaValidation"]
+selection = "profile-excluded"
+execution = "not-run"
+rationale = "The case requires schema-aware typed nodes outside FastXSLT's current profile."
+
+[default_disposition]
+selection = "harness-unsupported"
+execution = "not-run"
+rationale = "The remaining cases require a supplied focus for the zero-argument form or invocation-clock/sequence composition; they remain visible and no result is inferred."

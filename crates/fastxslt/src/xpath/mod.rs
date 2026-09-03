@@ -59,6 +59,8 @@ mod qt3_iri_to_uri_tests;
 #[cfg(test)]
 mod qt3_lower_case_tests;
 #[cfg(test)]
+mod qt3_normalize_space_tests;
+#[cfg(test)]
 mod qt3_string_length_tests;
 #[cfg(test)]
 mod qt3_upper_case_tests;

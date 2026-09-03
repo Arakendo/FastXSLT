@@ -44,6 +44,8 @@ const UPPER_CASE_DENOMINATOR_SOURCE: &str =
     include_str!("../../../corpus/overlays/qt3/upper-case-denominator-v0.toml");
 const CODEPOINT_EQUAL_DENOMINATOR_SOURCE: &str =
     include_str!("../../../corpus/overlays/qt3/codepoint-equal-denominator-v0.toml");
+const NORMALIZE_SPACE_DENOMINATOR_SOURCE: &str =
+    include_str!("../../../corpus/overlays/qt3/normalize-space-denominator-v0.toml");
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
@@ -355,7 +357,7 @@ fn assert_complete_denominator(
 
 #[test]
 fn qt3_denominator_overlays_conserve_their_parent_sets() {
-    assert_eq!(private_ledger().case.len(), 974);
+    assert_eq!(private_ledger().case.len(), 1_007);
     assert!(private_ledger().case.iter().all(|case| matches!(
         case.set_file.as_str(),
         "prod/AxisStep.xml"
@@ -373,6 +375,7 @@ fn qt3_denominator_overlays_conserve_their_parent_sets() {
             | "fn/lower-case.xml"
             | "fn/upper-case.xml"
             | "fn/codepoint-equal.xml"
+            | "fn/normalize-space.xml"
     )));
     assert_complete_denominator(AXIS_DENOMINATOR_SOURCE, "prod/AxisStep.xml", 349, 224, 112);
     assert_complete_denominator(
@@ -436,6 +439,13 @@ fn qt3_denominator_overlays_conserve_their_parent_sets() {
         36,
         23,
         6,
+    );
+    assert_complete_denominator(
+        NORMALIZE_SPACE_DENOMINATOR_SOURCE,
+        "fn/normalize-space.xml",
+        39,
+        33,
+        4,
     );
 }
 

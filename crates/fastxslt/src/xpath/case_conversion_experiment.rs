@@ -16,6 +16,7 @@ pub(crate) enum CaseFailure {
     Control(ControlFailure),
     InvalidArity,
     InvalidArgumentType,
+    MissingContext,
     Unsupported,
 }
 
@@ -34,6 +35,10 @@ fn evaluate_value(
     control: &mut InvocationControl,
 ) -> Result<CaseValue, CaseFailure> {
     let expression = strip_outer_parentheses(expression.trim());
+    if let Some(rest) = expression.strip_prefix("if(false()) then ") {
+        let (_, otherwise) = split_top_level(rest, " else ").ok_or(CaseFailure::Unsupported)?;
+        return evaluate_value(otherwise, control);
+    }
     if let Some((left, right)) = split_top_level(expression, " and ") {
         return Ok(CaseValue::Boolean(
             effective_boolean(&evaluate_value(left, control)?)
@@ -150,10 +155,25 @@ fn evaluate_function(
                 _ => Ok(CaseValue::Empty),
             }
         }
+        "normalize-space" | "fn:normalize-space" => {
+            if argument.trim().is_empty() {
+                return Err(CaseFailure::MissingContext);
+            }
+            let value = optional_string_argument(argument, control)?;
+            Ok(CaseValue::String(normalize_xml_space(&value)))
+        }
         "true" | "fn:true" if argument.trim().is_empty() => Ok(CaseValue::Boolean(true)),
         "false" | "fn:false" if argument.trim().is_empty() => Ok(CaseValue::Boolean(false)),
         _ => Err(CaseFailure::Unsupported),
     }
+}
+
+fn normalize_xml_space(value: &str) -> String {
+    value
+        .split(['\u{9}', '\u{a}', '\u{d}', '\u{20}'])
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn optional_comparison_string(
