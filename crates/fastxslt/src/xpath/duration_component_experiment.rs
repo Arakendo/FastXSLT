@@ -5,9 +5,15 @@ use crate::execution_control_experiment::{ControlFailure, InvocationControl, Wor
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum DurationValue {
     Boolean(bool),
-    DurationMonths(i128),
+    Duration(Duration),
     Empty,
     Integer(i128),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct Duration {
+    months: i128,
+    whole_seconds: i128,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -127,23 +133,29 @@ fn evaluate_function(
             if argument.trim() == "()" {
                 return Ok(DurationValue::Empty);
             }
-            let months = require_duration(evaluate_value(argument, control)?)?;
-            Ok(DurationValue::Integer(months / 12))
+            let duration = require_duration(evaluate_value(argument, control)?)?;
+            Ok(DurationValue::Integer(duration.months / 12))
         }
         "months-from-duration" | "fn:months-from-duration" => {
             require_one_argument(argument)?;
             if argument.trim() == "()" {
                 return Ok(DurationValue::Empty);
             }
-            let months = require_duration(evaluate_value(argument, control)?)?;
-            Ok(DurationValue::Integer(months % 12))
+            let duration = require_duration(evaluate_value(argument, control)?)?;
+            Ok(DurationValue::Integer(duration.months % 12))
+        }
+        "days-from-duration" | "fn:days-from-duration" => {
+            require_one_argument(argument)?;
+            if argument.trim() == "()" {
+                return Ok(DurationValue::Empty);
+            }
+            let duration = require_duration(evaluate_value(argument, control)?)?;
+            Ok(DurationValue::Integer(duration.whole_seconds / 86_400))
         }
         "xs:yearMonthDuration" | "xs:duration" | "xs:dayTimeDuration" => {
             require_one_argument(argument)?;
             let lexical = parse_quoted(argument).ok_or(DurationFailure::Unsupported)?;
-            Ok(DurationValue::DurationMonths(parse_duration_months(
-                &lexical,
-            )?))
+            Ok(DurationValue::Duration(parse_duration(&lexical)?))
         }
         "count" | "fn:count" => {
             require_one_argument(argument)?;
@@ -185,23 +197,61 @@ fn checked_binary(
     ))
 }
 
-fn parse_duration_months(lexical: &str) -> Result<i128, DurationFailure> {
+fn parse_duration(lexical: &str) -> Result<Duration, DurationFailure> {
     let (sign, lexical) = lexical
         .strip_prefix('-')
         .map_or((1_i128, lexical), |value| (-1, value));
     let body = lexical
         .strip_prefix('P')
         .ok_or(DurationFailure::Unsupported)?;
-    let date = body.split_once('T').map_or(body, |(date, _)| date);
+    let (date, time) = body.split_once('T').map_or((body, ""), |parts| parts);
     let (years, after_years) = take_component(date, 'Y')?;
-    let (months, _) = take_component(after_years, 'M')?;
-    sign.checked_mul(
-        years
-            .checked_mul(12)
-            .and_then(|value| value.checked_add(months))
+    let (months, after_months) = take_component(after_years, 'M')?;
+    let (days, _) = take_component(after_months, 'D')?;
+    let (hours, after_hours) = take_component(time, 'H')?;
+    let (minutes, after_minutes) = take_component(after_hours, 'M')?;
+    let seconds = take_whole_seconds(after_minutes)?;
+    let months = years
+        .checked_mul(12)
+        .and_then(|value| value.checked_add(months))
+        .ok_or(DurationFailure::Unsupported)?;
+    let whole_seconds = days
+        .checked_mul(86_400)
+        .and_then(|value| {
+            hours
+                .checked_mul(3_600)
+                .and_then(|hours| value.checked_add(hours))
+        })
+        .and_then(|value| {
+            minutes
+                .checked_mul(60)
+                .and_then(|minutes| value.checked_add(minutes))
+        })
+        .and_then(|value| value.checked_add(seconds))
+        .ok_or(DurationFailure::Unsupported)?;
+    Ok(Duration {
+        months: sign
+            .checked_mul(months)
             .ok_or(DurationFailure::Unsupported)?,
-    )
-    .ok_or(DurationFailure::Unsupported)
+        whole_seconds: sign
+            .checked_mul(whole_seconds)
+            .ok_or(DurationFailure::Unsupported)?,
+    })
+}
+
+fn take_whole_seconds(input: &str) -> Result<i128, DurationFailure> {
+    let Some(seconds) = input.strip_suffix('S') else {
+        return if input.is_empty() {
+            Ok(0)
+        } else {
+            Err(DurationFailure::Unsupported)
+        };
+    };
+    seconds
+        .split_once('.')
+        .map_or(seconds, |(whole, _)| whole)
+        .parse::<i128>()
+        .map_err(|_| DurationFailure::Unsupported)
 }
 
 fn take_component(input: &str, marker: char) -> Result<(i128, &str), DurationFailure> {
@@ -214,9 +264,9 @@ fn take_component(input: &str, marker: char) -> Result<(i128, &str), DurationFai
     Ok((value, &input[index + marker.len_utf8()..]))
 }
 
-fn require_duration(value: DurationValue) -> Result<i128, DurationFailure> {
+fn require_duration(value: DurationValue) -> Result<Duration, DurationFailure> {
     match value {
-        DurationValue::DurationMonths(value) => Ok(value),
+        DurationValue::Duration(value) => Ok(value),
         _ => Err(DurationFailure::Unsupported),
     }
 }
@@ -359,6 +409,23 @@ mod tests {
             ("months-from-duration(xs:yearMonthDuration(\"P20Y15M\"))", 3),
             ("months-from-duration(xs:duration(\"-P3Y4M4DT1H\"))", -4),
             ("months-from-duration(xs:dayTimeDuration(\"P1D\"))", 0),
+        ] {
+            assert_eq!(
+                evaluate(source, &mut InvocationControl::unbounded()),
+                Ok(DurationValue::Integer(expected))
+            );
+        }
+    }
+
+    #[test]
+    fn extracts_signed_normalized_day_components() {
+        for (source, expected) in [
+            ("days-from-duration(xs:dayTimeDuration(\"P3DT55H\"))", 5),
+            (
+                "days-from-duration(xs:duration(\"-P3Y4M8DT1H23M2.34S\"))",
+                -8,
+            ),
+            ("days-from-duration(xs:yearMonthDuration(\"P1Y\"))", 0),
         ] {
             assert_eq!(
                 evaluate(source, &mut InvocationControl::unbounded()),

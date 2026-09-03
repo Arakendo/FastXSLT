@@ -18,6 +18,11 @@ fn executes_complete_qt3_months_from_duration_denominator() {
     execute_duration_denominator("months", "Months");
 }
 
+#[test]
+fn executes_complete_qt3_days_from_duration_denominator() {
+    execute_duration_denominator("days", "Days");
+}
+
 fn execute_duration_denominator(component: &str, component_title: &str) {
     let set_file = format!("fn/{component}-from-duration.xml");
     let mut selected = (1..=3)

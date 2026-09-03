@@ -167,6 +167,7 @@ pressure architecture but does not silently create a public guarantee.
 - [QT3 Boolean Function Initial Denominators](qt3-boolean-function-initial-denominators-2026-09-03.md)
 - [QT3 Years-From-Duration Denominator](qt3-years-from-duration-denominator-2026-09-03.md)
 - [QT3 Months-From-Duration Denominator](qt3-months-from-duration-denominator-2026-09-03.md)
+- [QT3 Days-From-Duration Denominator](qt3-days-from-duration-denominator-2026-09-03.md)
 - [XSLT30 Include Denominator Inventory](xslt30-include-denominator-inventory-2026-08-28.md)
 - [Peer AR-0014 Review: Monday](peer-ar-0014-review-monday-2026-08-28.md)
 - [RFC 3986 Relative-Reference Mechanics](rfc3986-relative-reference-mechanics-2026-08-28.md)
