@@ -5530,3 +5530,234 @@ case_name = "fn-string-length-25"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged integer-range predicate passes its atomic context item explicitly and reports the native XPTY0004 type error."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal URI preserves printable ASCII characters through native escape-html-uri semantics."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged mixed ASCII and Unicode literal percent-encodes non-ASCII UTF-8 bytes without changing printable ASCII."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged empty string remains empty through native escape-html-uri semantics."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri1args-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged empty sequence is converted to the optional-string default and remains empty."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri1args-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged integer argument reports the native XPTY0004 function-conversion type error."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri1args-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged two-argument call reports the native XPST0017 arity error."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-8"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-9"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-10"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-11"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-12"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-13"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-14"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-15"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-16"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-17"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-18"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-19"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII literal is preserved exactly by escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-20"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged Unicode literal percent-encodes each non-ASCII UTF-8 byte with uppercase hexadecimal digits."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "fn-escape-html-uri-21"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged Unicode literal percent-encodes each non-ASCII UTF-8 byte with uppercase hexadecimal digits."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "K-EscapeHTMLURIFunc-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged zero-argument call reports the native XPST0017 arity error."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "K-EscapeHTMLURIFunc-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged two-argument call reports the native XPST0017 arity error."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "K-EscapeHTMLURIFunc-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged empty-sequence result compares equal to the empty string."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "K-EscapeHTMLURIFunc-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged printable ASCII URI compares equal after escape-html-uri."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "K-EscapeHTMLURIFunc-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged mixed ASCII and Unicode URI compares equal to its expected UTF-8 percent encoding."
+
+[[case]]
+set_file = "fn/escape-html-uri.xml"
+case_name = "cbcl-escape-html-uri-001"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged codepoint sequence constructs tab, ASCII, and non-ASCII input and verifies their exact percent-encoded result."

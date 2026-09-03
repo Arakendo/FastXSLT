@@ -1,0 +1,10 @@
+suite = "QT3"
+revision = "83993587711dbd5c18ed846385ec37d079d6e492"
+set_file = "fn/escape-html-uri.xml"
+case_count = 34
+selected_source = "private-ledger-v0.toml"
+
+[default_disposition]
+selection = "harness-unsupported"
+execution = "not-run"
+rationale = "The remaining case exercises invocation-clock, sequence-index, treat-as, whitespace-normalization, and iri-to-uri composition rather than the escape-html-uri operation; it remains visible and no result is inferred."
