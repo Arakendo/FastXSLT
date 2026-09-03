@@ -31,9 +31,10 @@ stylesheet text, or expected results.
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Native test sets declaring `feature="streaming"` | 91 | 2,746 | 0 | 0 | 2,746 | 0 |
 
-The conserved XSLT30 denominator total is now 3,441 cases: 488 passed
-comparisons, 12 engine-unsupported cases, 2,821 profile exclusions, and 120
-visible default not-run cases across 111 complete test sets.
+Together with the subsequently conserved dynamic-evaluation set, the XSLT30
+denominator total is now 3,498 cases: 488 passed comparisons, 12
+engine-unsupported cases, 2,878 profile exclusions, and 120 visible default
+not-run cases across 112 complete test sets.
 
 ## Claim boundary
 

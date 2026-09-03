@@ -16,6 +16,8 @@ const OVERLAYS: [&str; 3] = [
 ];
 const STREAMING_OVERLAY: &str =
     include_str!("../../../corpus/overlays/xslt30/streaming-profile-denominators-v0.toml");
+const DYNAMIC_EVALUATION_OVERLAY: &str =
+    include_str!("../../../corpus/overlays/xslt30/dynamic-evaluation-profile-denominator-v0.toml");
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -69,13 +71,22 @@ fn conserves_complete_schema_aware_expression_denominators() {
 
 #[test]
 fn conserves_every_test_set_with_inherited_streaming_dependency() {
+    assert_aggregate_profile_exclusion(STREAMING_OVERLAY, "streaming");
+}
+
+#[test]
+fn conserves_every_test_set_with_inherited_dynamic_evaluation_dependency() {
+    assert_aggregate_profile_exclusion(DYNAMIC_EVALUATION_OVERLAY, "dynamic_evaluation");
+}
+
+fn assert_aggregate_profile_exclusion(source: &str, expected_feature: &str) {
     let overlay: AggregateProfileExclusion =
-        toml::from_str(STREAMING_OVERLAY).expect("typed streaming profile overlay");
+        toml::from_str(source).expect("typed aggregate profile overlay");
     assert_eq!(overlay.suite, EXPECTED_SUITE);
     assert_eq!(overlay.revision, EXPECTED_REVISION);
     assert_eq!(overlay.catalog, "catalog.xml");
     assert_eq!(overlay.scope, "test-sets-with-inherited-feature");
-    assert_eq!(overlay.feature, "streaming");
+    assert_eq!(overlay.feature, expected_feature);
     assert_eq!(overlay.selection, "excluded-profile");
     assert_eq!(overlay.execution, "not-run");
     assert!(!overlay.rationale.trim().is_empty());

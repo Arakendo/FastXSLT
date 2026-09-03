@@ -32,10 +32,10 @@ it is not inferred from stylesheet filenames, keywords, or expected results.
 | `expr/type-functions` | 12 | 0 | 0 | 12 | 0 |
 | **Total** | **20** | **0** | **0** | **20** | **0** |
 
-Together with the subsequently conserved streaming-profile sets, the XSLT30
-denominator total is now 3,441 cases: 488 passed comparisons, 12
-engine-unsupported cases, 2,821 profile exclusions, and 120 visible default
-not-run cases across 111 complete test sets.
+Together with the subsequently conserved streaming and dynamic-evaluation
+profile sets, the XSLT30 denominator total is now 3,498 cases: 488 passed
+comparisons, 12 engine-unsupported cases, 2,878 profile exclusions, and 120
+visible default not-run cases across 112 complete test sets.
 
 ## Claim boundary
 
