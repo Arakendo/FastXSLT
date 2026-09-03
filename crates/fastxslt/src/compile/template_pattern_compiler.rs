@@ -18,6 +18,11 @@ pub(super) fn compile_match_pattern(
     lexical_pattern: &str,
 ) -> Result<(MatchPattern, TemplatePriority), CompileFailure> {
     let pattern = match lexical_pattern {
+        atomic if parse_atomic_integer_threshold(atomic).is_some() => {
+            MatchPattern::AtomicIntegerGreaterOrEqual(
+                parse_atomic_integer_threshold(atomic).expect("atomic threshold shape was checked"),
+            )
+        }
         "/" | "document-node()" => MatchPattern::Document,
         "/*" => MatchPattern::DocumentElement(None),
         "comment()" => MatchPattern::Comment,
@@ -389,6 +394,7 @@ fn compile_template_priority(
                 TemplatePriority::EXACT_NAME_DEFAULT
             }
             MatchPattern::Path(_)
+            | MatchPattern::AtomicIntegerGreaterOrEqual(_)
             | MatchPattern::QualifiedElementPathAlternatives(_)
             | MatchPattern::DescendantAnyElement
             | MatchPattern::ElementWithAttribute { .. }
@@ -438,6 +444,15 @@ fn compile_template_priority(
         format!("invalid template priority: {lexical}"),
         document.location(element),
     ))
+}
+
+fn parse_atomic_integer_threshold(pattern: &str) -> Option<i64> {
+    pattern
+        .strip_prefix(".[. ge ")?
+        .strip_suffix(']')?
+        .trim()
+        .parse()
+        .ok()
 }
 
 fn parse_bounded_decimal_millionths(value: &str) -> Option<i64> {

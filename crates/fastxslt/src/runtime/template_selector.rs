@@ -210,6 +210,7 @@ fn matches_pattern(
     let variables = selection.variables;
     let request_id = selection.request_id;
     match pattern {
+        MatchPattern::AtomicIntegerGreaterOrEqual(_) => Ok(false),
         MatchPattern::Document => Ok(source.kind(node) == NodeKind::Document),
         MatchPattern::DocumentElement(required) => {
             matches_document_element(source, node, required.as_ref(), request_id, control)

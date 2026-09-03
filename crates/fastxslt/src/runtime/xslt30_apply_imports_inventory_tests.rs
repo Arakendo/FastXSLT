@@ -1,10 +1,17 @@
 //! Conserved inventory of the XSLT30 `insn/apply-imports` denominator.
 
-use std::{fs, path::PathBuf};
+use std::{collections::BTreeMap, collections::HashSet, fs, path::PathBuf};
+
+use super::{
+    ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, compile_resource,
+    execute_transform_set,
+};
+use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xslt::golden_semantics_experiment::STANDARD_INITIAL_TEMPLATE_NAME;
 
 const TEST_SET: &str = "tests/insn/apply-imports/_apply-imports-test-set.xml";
 const OVERLAY: &str =
@@ -23,8 +30,8 @@ fn inventories_and_seals_complete_apply_imports_denominator() {
     assert_eq!(dependency(&document, case, "spec"), Some("XSLT30+"));
     assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
     assert!(OVERLAY.contains("case_count = 1"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 0);
-    assert!(OVERLAY.contains("selection = \"harness-unsupported\""));
+    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 1);
+    assert!(OVERLAY.contains("selection = \"selected\""));
 
     let test = child_named(&document, case, "test").expect("test metadata");
     let stylesheets = element_children(&document, test)
@@ -94,6 +101,54 @@ fn inventories_and_seals_complete_apply_imports_denominator() {
                 .is_some()
         );
     }
+}
+
+#[test]
+fn executes_apply_imports_over_atomic_integer_focus() {
+    let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../vendor/xslt30-test/tests/insn/apply-imports");
+    let stylesheet_id = "https://example.invalid/xslt30/insn/apply-imports/apply-imports-001.xsl";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 65_536, 131_072));
+    for file in [
+        "apply-imports-001.xsl",
+        "apply-imports-001a.xsl",
+        "apply-imports-001b.xsl",
+    ] {
+        resources
+            .admit(
+                format!("https://example.invalid/xslt30/insn/apply-imports/{file}"),
+                fs::read(directory.join(file)).expect("read stylesheet and close handle"),
+            )
+            .expect("admit stylesheet module");
+    }
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, stylesheet_id).expect("compile native case");
+    let mut set = TransformSetBuilder::new(
+        snapshot,
+        program,
+        1,
+        ExecutionPolicy {
+            denied_sources: HashSet::new(),
+            serialized_byte_limit: 4_096,
+            work_limits: WorkLimits::unbounded(),
+        },
+    );
+    set.add(TransformRequest {
+        identity: "apply-imports-001".to_owned(),
+        result_identity: "urn:w3c:xslt30:apply-imports-001:result".to_owned(),
+        entry: InvocationEntry::InitialTemplate {
+            name: STANDARD_INITIAL_TEMPLATE_NAME.to_owned(),
+        },
+        parameters: BTreeMap::new(),
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    })
+    .expect("admit native case");
+    let results = execute_transform_set(set.seal()).expect("execute native case");
+    assert_eq!(
+        results.by_request["apply-imports-001"].serialized,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>R1R2BQ3BQ4AP5</out>"
+    );
 }
 
 fn load_test_set() -> (Document, PathBuf) {

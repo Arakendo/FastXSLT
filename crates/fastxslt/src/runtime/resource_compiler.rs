@@ -535,7 +535,7 @@ mod tests {
     }
 
     #[test]
-    fn compilation_rejects_import_after_another_top_level_declaration() {
+    fn xslt30_compilation_allows_import_after_another_top_level_declaration() {
         const PRINCIPAL: &str = "https://example.invalid/styles/main.xsl";
         const IMPORTED: &str = "https://example.invalid/styles/imported.xsl";
         let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 1_024, 2_048));
@@ -554,14 +554,8 @@ mod tests {
             )
             .expect("admit imported stylesheet");
 
-        let failure = compile_resource(&resources.seal(), PRINCIPAL)
-            .expect_err("late xsl:import must be rejected");
-
-        assert_eq!(failure.code, "XTSE0200");
-        assert_eq!(failure.category, FailureCategory::Invalid);
-        assert_eq!(
-            failure.location.expect("import location").resource,
-            PRINCIPAL
-        );
+        let program = compile_resource(&resources.seal(), PRINCIPAL)
+            .expect("XSLT 3.0 permits imports after other declarations");
+        assert_eq!(program.matched_templates.len(), 2);
     }
 }

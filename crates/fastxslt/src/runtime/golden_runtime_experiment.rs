@@ -20,6 +20,8 @@ use crate::xslt::golden_semantics_experiment::{
     StylesheetProgram, TemplateArgument,
 };
 
+#[path = "atomic_template_executor.rs"]
+mod atomic_template_executor;
 #[cfg(test)]
 #[path = "golden_runtime_experiment/byte_encoding.rs"]
 mod byte_encoding;
@@ -514,6 +516,7 @@ fn execute_initial_template_with_optional_source(
 struct SequenceContext<'a> {
     node: Option<NodeId>,
     temporary_focus: Option<TemporaryFocus<'a>>,
+    atomic_focus: Option<i64>,
     current_mode: Option<&'a str>,
     current_template_index: Option<usize>,
     focus_position: usize,
@@ -526,6 +529,7 @@ impl<'a> SequenceContext<'a> {
         Self {
             node,
             temporary_focus: None,
+            atomic_focus: None,
             current_mode,
             current_template_index: None,
             focus_position: 1,
@@ -566,6 +570,21 @@ impl<'a> SequenceContext<'a> {
             current_template_index: Some(index),
             focus_position: sequence_focus.position,
             focus_size: sequence_focus.size,
+            ..Self::new(None, current_mode)
+        }
+    }
+
+    fn for_atomic_template(
+        value: i64,
+        current_mode: Option<&'a str>,
+        index: usize,
+        focus: SequenceFocus,
+    ) -> Self {
+        Self {
+            atomic_focus: Some(value),
+            current_template_index: Some(index),
+            focus_position: focus.position,
+            focus_size: focus.size,
             ..Self::new(None, current_mode)
         }
     }
@@ -882,6 +901,7 @@ fn execute_for_each_static_integer_range<'a>(
             SequenceContext {
                 node: None,
                 temporary_focus: None,
+                atomic_focus: None,
                 focus_position: index + 1,
                 focus_size,
                 ..execution
@@ -912,6 +932,7 @@ fn execute_for_each_nodes<'a>(
             SequenceContext {
                 node: Some(node),
                 temporary_focus: None,
+                atomic_focus: None,
                 focus_position: index + 1,
                 focus_size,
                 ..execution
@@ -1219,6 +1240,11 @@ fn execute_apply_templates(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    if let Some(ApplySelection::AtomicIntegerRange { start, end }) = select {
+        return atomic_template_executor::apply_integer_range(
+            inputs, *start, *end, mode, parameters, control,
+        );
+    }
     if let Some(ApplySelection::TemporaryRoot(name)) = select {
         let tree = variables
             .temporary_trees
@@ -1384,6 +1410,20 @@ fn execute_apply_imports(
         )
     })?;
     let parameters = evaluate_template_arguments(arguments, variables, inputs.request_id)?;
+    if let Some(value) = execution.atomic_focus {
+        return atomic_template_executor::apply_imports(
+            inputs,
+            value,
+            execution.current_mode,
+            current_index,
+            &parameters,
+            SequenceFocus {
+                position: execution.focus_position,
+                size: execution.focus_size,
+            },
+            control,
+        );
+    }
     if let Some(focus) = execution.temporary_focus {
         return temporary_tree_executor::apply_temporary_builtin(
             inputs,
@@ -1858,7 +1898,8 @@ fn select_apply_nodes(
         ),
         ApplySelection::GlobalTemporaryChildren(_)
         | ApplySelection::TemporaryRoot(_)
-        | ApplySelection::TemporaryPath { .. } => {
+        | ApplySelection::TemporaryPath { .. }
+        | ApplySelection::AtomicIntegerRange { .. } => {
             unreachable!("temporary-tree selection is dispatched before source selection")
         }
     }

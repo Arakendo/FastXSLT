@@ -216,6 +216,7 @@ pub(crate) struct NamedTemplate {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum MatchPattern {
+    AtomicIntegerGreaterOrEqual(i64),
     Document,
     DocumentElement(Option<ExpandedName>),
     Element(ExpandedName),
@@ -267,6 +268,10 @@ pub(crate) enum ChildPresenceTest {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ApplySelection {
+    AtomicIntegerRange {
+        start: i64,
+        end: i64,
+    },
     LocationPath(LocationPath),
     ChildElement(ExpandedName),
     DescendantElement(ExpandedName),

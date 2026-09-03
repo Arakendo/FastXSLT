@@ -87,8 +87,8 @@ declared XDM node kind.
 
 This raises conserved XSLT30 accounting within this denominator to ten passes
 and no visible defaults. With the subsequently conserved `insn/apply-imports`
-case, current XSLT30 accounting is 578 cases: 421 passed comparisons, 3
-engine-unsupported cases, 54 profile exclusions, and 100 visible default
+case, current XSLT30 accounting is 578 cases: 422 passed comparisons, 3
+engine-unsupported cases, 54 profile exclusions, and 99 visible default
 not-run cases.
 
 ## Limitations

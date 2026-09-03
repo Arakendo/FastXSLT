@@ -6,4 +6,10 @@ case_count = 1
 [default_disposition]
 selection = "harness-unsupported"
 execution = "not-run"
-rationale = "The sole native case applies templates and xsl:apply-imports to atomic integer values across three modules. FastXSLT's admitted apply-imports path currently owns source and temporary-tree node focus only; the atomic focus remains visible rather than being approximated or reported as an engine failure."
+rationale = "Unless overridden below, an apply-imports case remains visible until its focus kind, import ancestry, built-in fallback, and native assertion are all owned by the executable harness."
+
+[[case_override]]
+case_name = "apply-imports-001"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 3.0 case dispatches the integer sequence 1 to 5 through atomic threshold patterns and lower import-precedence continuations, preserving built-in atomic string-value behavior."

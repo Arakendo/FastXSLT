@@ -233,7 +233,8 @@ Compiled template rules retain stylesheet-module import precedence separately
 from template priority and declaration order. Ordinary dispatch ranks all three;
 `xsl:next-match` continues to a lower-ranked applicable rule, while
 `xsl:apply-imports` considers only applicable rules at lower import precedence
-before using the built-in rule. Equal-ranked ordinary dispatch uses the later
+within the current stylesheet level's imported descendants before using the
+built-in rule; it does not cross into a sibling import. Equal-ranked ordinary dispatch uses the later
 declaration in the admitted recovery path. The private transform-set path may
 instead request error-on-multiple-match; it reports concrete dynamic error
 `XTDE0540` when ordinary or `xsl:next-match` selection encounters more than one
@@ -244,6 +245,15 @@ before selecting the path, but this does not select a general legacy
 compatibility profile or expose a public or host-configurable policy. The
 current executable slice proves only the bounded module topologies below; it
 does not define a public module graph representation.
+
+For the selected XSLT 3.0 profile, `xsl:import` is not required to precede
+other top-level declarations. Imported named templates with the same expanded
+name are retained only when no higher-precedence declaration already supplies
+that name. The current atomic-focus slice admits a static integer range and
+integer-threshold match patterns through one principal level with two sibling
+leaf imports. Atomic position/size and current-rule identity survive template
+entry and `xsl:apply-imports`; broader atomic patterns, mixed sequences, and a
+general import-ancestry representation remain outside this slice.
 
 The same policy seam has native mode-suite evidence for document-rooted match
 paths. An admitted absolute path is compiled through the existing typed

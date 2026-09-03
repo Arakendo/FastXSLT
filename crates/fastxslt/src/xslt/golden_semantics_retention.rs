@@ -158,7 +158,8 @@ fn constructed_node_owned(value: &ConstructedNode) -> usize {
 
 fn match_pattern_owned(value: &MatchPattern) -> usize {
     match value {
-        MatchPattern::Document
+        MatchPattern::AtomicIntegerGreaterOrEqual(_)
+        | MatchPattern::Document
         | MatchPattern::DescendantAnyElement
         | MatchPattern::ElementWithSameNamedChild
         | MatchPattern::ElementWithSameNamedParent
@@ -215,7 +216,7 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
         ApplySelection::ChildElement(name)
         | ApplySelection::DescendantElement(name)
         | ApplySelection::Attribute(name) => name_owned(name),
-        ApplySelection::ChildNodes(_) => 0,
+        ApplySelection::AtomicIntegerRange { .. } | ApplySelection::ChildNodes(_) => 0,
         ApplySelection::GlobalTemporaryChildren(name) | ApplySelection::TemporaryRoot(name) => {
             name.capacity()
         }

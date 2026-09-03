@@ -233,11 +233,10 @@ pub(crate) fn compile_stylesheet_with_import_and_include(
     };
     if !is_xslt_element(principal, *import, "import")
         || !is_xslt_element(principal, *include, "include")
-        || meaningful_children(principal, root).first() != Some(import)
     {
         return Err(invalid(
-            "XTSE0200",
-            "xsl:import must precede every other top-level declaration",
+            "FXST0033",
+            "mixed compilation requires one xsl:import followed by one xsl:include",
             principal.location(*import),
         ));
     }
@@ -260,7 +259,7 @@ pub(crate) fn compile_stylesheet_with_import_and_include(
         .matched_templates
         .append(&mut program.matched_templates);
     program.matched_templates = imported_program.matched_templates;
-    merge_imported_named_templates(&mut program, imported_program.named_templates)?;
+    merge_imported_named_templates(&mut program, imported_program.named_templates);
     merge_imported_global_bindings(&mut program, imported_program.global_bindings);
     merge_imported_character_maps(&mut program, imported_program.character_maps);
     finalize_character_maps(&mut program)?;
@@ -288,18 +287,6 @@ pub(crate) fn compile_stylesheet_with_imports(
         ));
     }
     let root = document_element(principal)?;
-    let children = meaningful_children(principal, root);
-    if children
-        .iter()
-        .take(import_declarations.len())
-        .ne(import_declarations.iter())
-    {
-        return Err(invalid(
-            "XTSE0200",
-            "xsl:import must precede every other top-level declaration",
-            principal.location(import_declarations[0]),
-        ));
-    }
     let mut principal_program =
         compile_stylesheet_excluding_unvalidated(principal, &import_declarations)?;
     let overridden_visibility_modes = explicit_visibility_mode_names(principal, root);
@@ -338,7 +325,7 @@ pub(crate) fn compile_stylesheet_with_imports(
     matched_templates.append(&mut principal_program.matched_templates);
     principal_program.matched_templates = matched_templates;
     for program in imported_programs.into_iter().rev() {
-        merge_imported_named_templates(&mut principal_program, program.named_templates)?;
+        merge_imported_named_templates(&mut principal_program, program.named_templates);
         merge_imported_global_bindings(&mut principal_program, program.global_bindings);
         merge_imported_character_maps(&mut principal_program, program.character_maps);
     }
@@ -360,19 +347,6 @@ pub(crate) fn compile_stylesheet_with_two_imported_programs_at(
             principal.location(principal_root),
         ));
     }
-    let children = meaningful_children(principal, principal_root);
-    if children
-        .iter()
-        .take(import_declarations.len())
-        .ne(import_declarations.iter())
-    {
-        return Err(invalid(
-            "XTSE0200",
-            "xsl:import must precede every other top-level declaration",
-            principal.location(import_declarations[0]),
-        ));
-    }
-
     let mut principal_program = compile_stylesheet_at_excluding_unvalidated(
         principal,
         principal_root,
@@ -397,7 +371,7 @@ pub(crate) fn compile_stylesheet_with_two_imported_programs_at(
     matched_templates.append(&mut principal_program.matched_templates);
     principal_program.matched_templates = matched_templates;
     for program in imported_programs.into_iter().rev() {
-        merge_imported_named_templates(&mut principal_program, program.named_templates)?;
+        merge_imported_named_templates(&mut principal_program, program.named_templates);
         merge_imported_global_bindings(&mut principal_program, program.global_bindings);
         merge_imported_character_maps(&mut principal_program, program.character_maps);
     }
@@ -419,15 +393,6 @@ pub(crate) fn compile_stylesheet_with_single_imported_program_at(
             principal.location(principal_root),
         ));
     }
-    let children = meaningful_children(principal, principal_root);
-    if children.first() != import_declarations.first() {
-        return Err(invalid(
-            "XTSE0200",
-            "xsl:import must precede every other top-level declaration",
-            principal.location(import_declarations[0]),
-        ));
-    }
-
     let mut principal_program = compile_stylesheet_at_excluding_unvalidated(
         principal,
         principal_root,
@@ -447,7 +412,7 @@ pub(crate) fn compile_stylesheet_with_single_imported_program_at(
     let mut matched_templates = imported_program.matched_templates;
     matched_templates.append(&mut principal_program.matched_templates);
     principal_program.matched_templates = matched_templates;
-    merge_imported_named_templates(&mut principal_program, imported_program.named_templates)?;
+    merge_imported_named_templates(&mut principal_program, imported_program.named_templates);
     merge_imported_global_bindings(&mut principal_program, imported_program.global_bindings);
     merge_imported_character_maps(&mut principal_program, imported_program.character_maps);
     finalize_character_maps(&mut principal_program)?;
@@ -635,22 +600,17 @@ fn compile_dependency_module(
 fn merge_imported_named_templates(
     principal: &mut StylesheetProgram,
     imported: Vec<crate::xslt::golden_semantics_experiment::NamedTemplate>,
-) -> Result<(), CompileFailure> {
+) {
     for template in imported {
         if principal
             .named_templates
             .iter()
             .any(|existing| existing.name == template.name)
         {
-            return Err(unsupported(
-                "FXST1026",
-                "duplicate named templates across import precedence are outside the bounded import slice",
-                &template.template.location,
-            ));
+            continue;
         }
         principal.named_templates.push(template);
     }
-    Ok(())
 }
 
 fn merge_imported_global_bindings(

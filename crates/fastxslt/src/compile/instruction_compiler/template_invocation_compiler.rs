@@ -129,6 +129,14 @@ pub(super) fn parse_apply_selection(
     expression: &str,
     location: SourceLocation,
 ) -> Result<ApplySelection, CompileFailure> {
+    if let Some((start, end)) = expression.split_once(" to ").and_then(|(start, end)| {
+        Some((
+            start.trim().parse::<i64>().ok()?,
+            end.trim().parse::<i64>().ok()?,
+        ))
+    }) {
+        return Ok(ApplySelection::AtomicIntegerRange { start, end });
+    }
     if let Some(path) = parse_variable_filtered_path(expression) {
         return Ok(ApplySelection::VariableFilteredElementPath(path));
     }

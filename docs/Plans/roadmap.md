@@ -1403,11 +1403,12 @@ API.
 
 The complete one-case `insn/apply-imports` denominator is now conserved with
 its inline source, principal plus two secondary stylesheets, initial-template
-entry, and native assertion sealed and validated. It remains one visible
-default: the case applies templates and import-precedence dispatch to atomic
-integers, whereas the admitted instruction currently owns source and
-temporary-tree node focus. This records the missing vertical slice without
-using existing source-node behavior as a proxy.
+entry, and native assertion sealed and validated. The unchanged case now
+dispatches `1 to 5` through integer-threshold patterns, preserves atomic focus,
+and applies imports only down the current stylesheet level's import ancestry.
+It also corrects XSLT 3.0 late-import acceptance and higher-precedence named
+template shadowing. The exact two-sibling-leaf topology passes without claiming
+general atomic pattern or import-ancestry representation.
 [Evidence](../Evidence/xslt30-apply-imports-atomic-focus-denominator-2026-09-02.md)
 
 ## Corpus audit -- 2026-08-30
@@ -1455,8 +1456,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `decl/strip-space` | 30 | 1 | 0 | 0 | 29 |
 | `misc/built-in-templates` | 6 | 2 | 0 | 0 | 4 |
 | `fn/root` | 10 | 10 | 0 | 0 | 0 |
-| `insn/apply-imports` | 1 | 0 | 0 | 0 | 1 |
-| **Conserved total** | **578** | **421** | **3** | **54** | **100** |
+| `insn/apply-imports` | 1 | 1 | 0 | 0 | 0 |
+| **Conserved total** | **578** | **422** | **3** | **54** | **99** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1522,8 +1523,7 @@ count:
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
 2. [ ] Continue coherent semantic slices through the 33 visible `output`
-   gaps, 33 visible `mode` gaps, and the atomic-focus
-   `insn/apply-imports` case. The output remainder is now an explicit
+   gaps and 33 visible `mode` gaps. The output remainder is now an explicit
    feature frontier: 10 cases require secondary-result ownership, 22 require
    XDM 3.1 maps/arrays plus JSON, adaptive, or serialization-parameter
    semantics, and one depends on a host-supplied default HTML version. Each
