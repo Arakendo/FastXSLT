@@ -24,6 +24,8 @@ const INCLUDE_OVERLAY_SOURCE: &str =
     include_str!("../../../corpus/overlays/xslt30/include-denominator-v0.toml");
 const MODE_OVERLAY_SOURCE: &str =
     include_str!("../../../corpus/overlays/xslt30/mode-denominator-v0.toml");
+const APPLY_TEMPLATES_OVERLAY_SOURCE: &str =
+    include_str!("../../../corpus/overlays/xslt30/apply-templates-denominator-v0.toml");
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum DenominatorIdentity {
@@ -35,6 +37,7 @@ pub(crate) enum DenominatorIdentity {
     BuiltInTemplates,
     Include,
     Mode,
+    ApplyTemplates,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
@@ -303,6 +306,11 @@ fn parse_known_denominator(
             "tests/attr/mode/_mode-test-set.xml",
             169,
         ),
+        DenominatorIdentity::ApplyTemplates => (
+            "apply-templates denominator",
+            "tests/insn/apply-templates/_apply-templates-test-set.xml",
+            50,
+        ),
     };
     let overlay = parse_denominator_overlay(source, label)?;
     if overlay.set_file != expected_set || overlay.case_count != expected_count {
@@ -339,6 +347,7 @@ fn known_denominator(identity: DenominatorIdentity) -> &'static DenominatorOverl
     static BUILT_IN_TEMPLATES: OnceLock<DenominatorOverlay> = OnceLock::new();
     static INCLUDE: OnceLock<DenominatorOverlay> = OnceLock::new();
     static MODE: OnceLock<DenominatorOverlay> = OnceLock::new();
+    static APPLY_TEMPLATES: OnceLock<DenominatorOverlay> = OnceLock::new();
     let (cell, source) = match identity {
         DenominatorIdentity::Root => (&ROOT, ROOT_OVERLAY_SOURCE),
         DenominatorIdentity::ApplyImports => (&APPLY_IMPORTS, APPLY_IMPORTS_OVERLAY_SOURCE),
@@ -350,6 +359,7 @@ fn known_denominator(identity: DenominatorIdentity) -> &'static DenominatorOverl
         }
         DenominatorIdentity::Include => (&INCLUDE, INCLUDE_OVERLAY_SOURCE),
         DenominatorIdentity::Mode => (&MODE, MODE_OVERLAY_SOURCE),
+        DenominatorIdentity::ApplyTemplates => (&APPLY_TEMPLATES, APPLY_TEMPLATES_OVERLAY_SOURCE),
     };
     cell.get_or_init(|| {
         parse_known_denominator(source, identity)
@@ -551,6 +561,10 @@ fn xslt30_overlays_are_typed_unique_and_complete() {
         16
     );
     assert_eq!(known_denominator(DenominatorIdentity::Mode).case_count, 169);
+    assert_eq!(
+        known_denominator(DenominatorIdentity::ApplyTemplates).case_count,
+        50
+    );
 }
 
 #[test]

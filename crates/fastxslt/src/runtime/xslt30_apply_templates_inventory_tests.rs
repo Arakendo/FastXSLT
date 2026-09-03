@@ -4,6 +4,11 @@ use std::{collections::BTreeMap, fs, path::PathBuf};
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xslt30_overlay_test_support::{
+    DenominatorIdentity, ExecutionDisposition, SelectionDisposition,
+    assert_denominator_case_disposition, assert_denominator_default_disposition,
+    assert_denominator_override_names,
+};
 
 const CASE_NAMES: [&str; 50] = [
     "apply-templates-001",
@@ -111,9 +116,6 @@ const PASSED_CASES: [&str; 49] = [
 ];
 const EXCLUDED_CASES: [&str; 1] = ["conflict-resolution-1402"];
 
-const OVERLAY: &str =
-    include_str!("../../../../corpus/overlays/xslt30/apply-templates-denominator-v0.toml");
-
 #[test]
 fn inventories_complete_apply_templates_denominator_with_explicit_dispositions() {
     let document = load_test_set();
@@ -162,30 +164,29 @@ fn inventories_complete_apply_templates_denominator_with_explicit_dispositions()
     assert_eq!(principal_stylesheets, 50);
     assert_eq!(secondary_stylesheets, 1);
 
-    assert!(OVERLAY.contains("case_count = 50"));
-    assert!(OVERLAY.contains("selection = \"harness-unsupported\""));
-    assert!(OVERLAY.contains("execution = \"not-run\""));
-    assert_eq!(
-        OVERLAY.matches("[[case_override]]").count(),
-        PASSED_CASES.len() + EXCLUDED_CASES.len()
+    assert_denominator_override_names(DenominatorIdentity::ApplyTemplates, &CASE_NAMES);
+    assert_denominator_default_disposition(
+        DenominatorIdentity::ApplyTemplates,
+        SelectionDisposition::HarnessUnsupported,
+        ExecutionDisposition::NotRun,
     );
     for case_name in PASSED_CASES {
         assert!(names.contains(&case_name));
-        let override_record = OVERLAY
-            .split("[[case_override]]")
-            .find(|section| section.contains(&format!("case_name = \"{case_name}\"")))
-            .expect("passed case override");
-        assert!(override_record.contains("selection = \"selected\""));
-        assert!(override_record.contains("execution = \"passed\""));
+        assert_denominator_case_disposition(
+            DenominatorIdentity::ApplyTemplates,
+            case_name,
+            SelectionDisposition::Selected,
+            ExecutionDisposition::Passed,
+        );
     }
     for case_name in EXCLUDED_CASES {
         assert!(names.contains(&case_name));
-        let override_record = OVERLAY
-            .split("[[case_override]]")
-            .find(|section| section.contains(&format!("case_name = \"{case_name}\"")))
-            .expect("excluded case override");
-        assert!(override_record.contains("selection = \"excluded-by-profile\""));
-        assert!(override_record.contains("execution = \"not-run\""));
+        assert_denominator_case_disposition(
+            DenominatorIdentity::ApplyTemplates,
+            case_name,
+            SelectionDisposition::ExcludedByProfile,
+            ExecutionDisposition::NotRun,
+        );
     }
 
     let schema_aware = cases

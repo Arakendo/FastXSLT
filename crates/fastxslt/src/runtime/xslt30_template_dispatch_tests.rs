@@ -18,7 +18,8 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document, parse_document_controlled};
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
 use crate::xslt30_overlay_test_support::{
-    assert_private_case_passed, assert_private_set_case_names,
+    DenominatorIdentity, assert_denominator_case_passed, assert_private_case_passed,
+    assert_private_set_case_names,
 };
 
 const CASE_NAME: &str = "template-006";
@@ -195,10 +196,7 @@ fn try_execute_apply_templates_case_with_parameters(
     parameters: BTreeMap<String, InvocationParameter>,
     multiple_match_policy: MultipleMatchPolicy,
 ) -> (Result<String, ExecutionFailure>, String, usize) {
-    crate::xslt30_overlay_test_support::assert_private_case_passed(
-        "tests/insn/apply-templates/_apply-templates-test-set.xml",
-        case_name,
-    );
+    assert_denominator_case_passed(DenominatorIdentity::ApplyTemplates, case_name);
     let (test_set, set_path) = apply_templates_test_set();
     let test_case = find_element(
         &test_set,
@@ -400,10 +398,7 @@ fn case_stylesheet_files(test_set: &Document, test_case: NodeId) -> Vec<(&str, O
 }
 
 fn compile_apply_templates_error_case(case_name: &str) -> (ExecutionFailure, String) {
-    assert_private_case_passed(
-        "tests/insn/apply-templates/_apply-templates-test-set.xml",
-        case_name,
-    );
+    assert_denominator_case_passed(DenominatorIdentity::ApplyTemplates, case_name);
     let (test_set, set_path) = apply_templates_test_set();
     let test_case = find_element(
         &test_set,

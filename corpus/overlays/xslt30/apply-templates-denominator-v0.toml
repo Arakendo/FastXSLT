@@ -12,21 +12,25 @@ rationale = "Unless overridden below, the case has not yet been admitted through
 case_name = "apply-templates-001"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case reaches xsl:apply-templates with an atomic default selection and verifies the required structured XTTE0510 type error."
 
 [[case_override]]
 case_name = "apply-templates-002"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case reaches xsl:apply-templates select=\".\" with an atomic focus and verifies the required structured XTTE0510 type error."
 
 [[case_override]]
 case_name = "conflict-resolution-0101"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies explicit template priority over a competing wildcard rule and preserves its native XML assertion."
 
 [[case_override]]
 case_name = "conflict-resolution-0102c"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies default XSLT 3.0 recovery by selecting the later equal-priority wildcard rule."
 
 [[case_override]]
 case_name = "conflict-resolution-0102a"
@@ -38,6 +42,7 @@ rationale = "The harness verifies the XSLT 1.0/2.0 recover dependency before exe
 case_name = "conflict-resolution-0104c"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies default XSLT 3.0 recovery by selecting the later equal-priority node-test rule."
 
 [[case_override]]
 case_name = "conflict-resolution-0104a"
@@ -49,16 +54,19 @@ rationale = "The harness verifies the XSLT 1.0/2.0 recover dependency before exe
 case_name = "conflict-resolution-0106"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies explicit priority relative to the built-in attribute rule and matches its native XML assertion."
 
 [[case_override]]
 case_name = "conflict-resolution-0107"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies the default priority of a non-simple path pattern against its competing rule."
 
 [[case_override]]
 case_name = "conflict-resolution-0108c"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies default XSLT 3.0 recovery for equal-ranked non-simple path patterns."
 
 [[case_override]]
 case_name = "conflict-resolution-0108a"
@@ -70,6 +78,7 @@ rationale = "The explicit recover variant selects the later equal-priority non-s
 case_name = "conflict-resolution-0110c"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies default XSLT 3.0 recovery for equal-ranked attribute-predicate patterns."
 
 [[case_override]]
 case_name = "conflict-resolution-0110a"
@@ -81,16 +90,19 @@ rationale = "The explicit recover variant selects the later equal-priority attri
 case_name = "conflict-resolution-0112"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies descendant-wildcard pattern priority and its native XML result."
 
 [[case_override]]
 case_name = "conflict-resolution-0201"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies priority selection together with an attribute value template in the selected rule."
 
 [[case_override]]
 case_name = "conflict-resolution-0401c"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies default XSLT 3.0 recovery between equal explicitly prioritized namespace-wildcard rules."
 
 [[case_override]]
 case_name = "conflict-resolution-0401a"
@@ -102,76 +114,91 @@ rationale = "The harness verifies the XSLT 2.0 recover dependency and executes t
 case_name = "conflict-resolution-0901"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies parent-child pattern ranking and matches its native XML assertion."
 
 [[case_override]]
 case_name = "conflict-resolution-1001"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies variable-filtered apply-templates paths for both default and supplied global parameter values."
 
 [[case_override]]
 case_name = "conflict-resolution-0701"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies xpath-default-namespace in an apply-templates selection and template match."
 
 [[case_override]]
 case_name = "conflict-resolution-0702"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies that literal-result-element static context is retained for competing template rules."
 
 [[case_override]]
 case_name = "conflict-resolution-0703"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies stylesheet default namespace handling in selection and pattern ranking."
 
 [[case_override]]
 case_name = "conflict-resolution-0801"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies #current mode continuation when apply-templates redispatches the document node."
 
 [[case_override]]
 case_name = "conflict-resolution-0802"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies explicit #default dispatch independently of rules in other modes."
 
 [[case_override]]
 case_name = "conflict-resolution-1701"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies local-name wildcard pattern priority against competing element patterns."
 
 [[case_override]]
 case_name = "conflict-resolution-1801"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies element kind-test pattern priority and its native result."
 
 [[case_override]]
 case_name = "conflict-resolution-1601"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies the priority of a root pattern against competing document-node rules."
 
 [[case_override]]
 case_name = "conflict-resolution-1602"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies document-element path pattern priority against a competing root rule."
 
 [[case_override]]
 case_name = "conflict-resolution-1603"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies the equivalent alternate document-element path form and its priority."
 
 [[case_override]]
 case_name = "conflict-resolution-1201"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies ordered xsl:next-match continuation through decreasing template priorities."
 
 [[case_override]]
 case_name = "conflict-resolution-1205"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies parameter propagation through an xsl:next-match chain and result attribute construction."
 
 [[case_override]]
 case_name = "conflict-resolution-1202c"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies default recovery at an equal-ranked next-match entry followed by lower-ranked continuation."
 
 [[case_override]]
 case_name = "conflict-resolution-1202a"
@@ -207,36 +234,43 @@ rationale = "Typed matching-sibling boundary predicates distinguish the last mem
 case_name = "conflict-resolution-0601"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies a variable-referenced pattern together with recursive source copying."
 
 [[case_override]]
 case_name = "conflict-resolution-0501"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies equivalent pattern normalization before conflict resolution."
 
 [[case_override]]
 case_name = "conflict-resolution-0502"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged companion case verifies equivalent pattern normalization under its alternate lexical form."
 
 [[case_override]]
 case_name = "conflict-resolution-0503"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies a parent pattern evaluated from the current focus."
 
 [[case_override]]
 case_name = "conflict-resolution-1501"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies filtered parent positions and its two-part native all-of assertion."
 
 [[case_override]]
 case_name = "conflict-resolution-1101"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies parameter propagation through built-in rules over a temporary tree."
 
 [[case_override]]
 case_name = "conflict-resolution-1102"
 selection = "selected"
 execution = "passed"
+rationale = "The unchanged case verifies parameter propagation when xsl:apply-imports falls back through built-in rules."
 
 [[case_override]]
 case_name = "conflict-resolution-0102b"
