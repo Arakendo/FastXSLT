@@ -159,6 +159,12 @@ execution = "passed"
 rationale = "The unchanged XSLT 1.0-compatible case iterates context-relative descendants and selects the first of 26 exact context string-length branches."
 
 [[case_override]]
+case_name = "choose-1204"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case selects the first available HTML ASCII case-insensitive default collation and applies it to 26 ordered unqualified name comparisons."
+
+[[case_override]]
 case_name = "choose-1301"
 selection = "selected"
 execution = "passed"

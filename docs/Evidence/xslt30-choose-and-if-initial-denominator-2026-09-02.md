@@ -15,8 +15,9 @@ Date: 2026-09-02
   `choose-0701`,
   `choose-0702`, `choose-0801`, `choose-0901`, `choose-1001`, `choose-1101`,
   `choose-1201`, `choose-1202`,
-  `choose-1203`, `choose-1301`, `choose-1401`, `choose-1501`, `choose-1502`,
-  `choose-1601`, `choose-1703`, `choose-1704`, and `choose-1706`.
+  `choose-1203`, `choose-1204`, `choose-1301`, `choose-1401`, `choose-1501`,
+  `choose-1502`, `choose-1601`, `choose-1703`, `choose-1704`, and
+  `choose-1706`.
 - Unchanged negative cases `choose-1801` through `choose-1804`.
 
 ## Method
@@ -54,11 +55,11 @@ introduced.
 ## Result
 
 - Complete conserved denominator: 55 cases.
-- Selected and passed: 37, comprising 33 result comparisons and 4 expected
+- Selected and passed: 38, comprising 34 result comparisons and 4 expected
   static-error comparisons.
 - Engine unsupported: 0.
 - Excluded by profile: 0.
-- Visible default not run: 18.
+- Visible default not run: 17.
 
 The unchanged cases cover ordered first-match branch selection, an
 `xsl:otherwise` branch, empty fall-through when no branch matches, two true
@@ -133,6 +134,14 @@ among 26 exact `string-length(.) = integer` branches. String length counts
 Unicode codepoints rather than UTF-8 bytes, scans under invocation work
 accounting, and retains the suite's exact root-string comparison.
 
+`choose-1204` reuses that 26-way descendant/name shape under a
+`default-collation` preference list. The compiler selects the first available
+member, the W3C HTML ASCII case-insensitive collation, and records the
+comparison strategy in compiled semantics. Lowercase source names therefore
+match uppercase literals without changing QName identity. A focused negative
+control reports `XTSE0125` when no listed collation is available; this does not
+approximate the later UCA fallback.
+
 `choose-1301` binds `position()` to an invocation-local variable inside the
 matched `doc` template. The binding reads the existing source-template sequence
 focus, charges one XPath operation, and supplies the resulting integer to the
@@ -162,13 +171,13 @@ boolean value, and the tiny nonzero double remains true. A focused compiler
 control also proves that constructor prefixes are resolved through the XML
 Schema namespace rather than trusted by spelling.
 
-Current conserved XSLT30 accounting is 675 cases: 479 passed comparisons, 3
-engine-unsupported cases, 55 profile exclusions, and 138 visible default
+Current conserved XSLT30 accounting is 675 cases: 480 passed comparisons, 3
+engine-unsupported cases, 55 profile exclusions, and 137 visible default
 not-run cases across 17 complete test-set denominators.
 
 ## Limitation
 
-This evidence does not admit the other 18 cases. In particular, it makes no
+This evidence does not admit the other 17 cases. In particular, it makes no
 claim for general comparisons, boolean functions beyond the exact `not()`
 form and admitted `or` composition, collations, schema-aware cases,
 static typing, user functions, import composition, or arbitrary assertion

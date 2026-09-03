@@ -348,7 +348,12 @@ general operator grammar, or operands beyond the individually admitted forms.
 The exact `name(relative-path) = unqualified-string-literal` conditional form
 compares only a selected node whose expanded name has no namespace. It does not
 fabricate lexical QNames for namespaced nodes or admit general `fn:name`, QName,
-prefix, or computed-operand comparison semantics.
+prefix, or computed-operand comparison semantics. On `xsl:choose`, an explicit
+`default-collation` list may select the first available codepoint or W3C HTML
+ASCII case-insensitive member. That comparison policy is retained in compiled
+semantics and applied only to the admitted name/string comparison; a list with
+no available member reports `XTSE0125`. This does not admit UCA, arbitrary
+collation URIs, locale-sensitive comparison, or a general static-context API.
 The `.//` abbreviation begins descendant navigation at the supplied context
 node, unlike leading `//`, which begins at the document node. Both reuse the
 same typed descendant steps, document-order normalization, deduplication, and

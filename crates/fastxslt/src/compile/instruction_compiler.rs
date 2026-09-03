@@ -20,7 +20,8 @@ use crate::xpath::path_experiment::{
 };
 use crate::xslt::golden_semantics_experiment::{
     BooleanExpression, ChooseBranch, ComputedAttribute, EqualityTest, Instruction,
-    LiteralAttributeValue, SequenceItemExpression, TemplateArgument, ValueExpression,
+    LiteralAttributeValue, SequenceItemExpression, StringComparison, TemplateArgument,
+    ValueExpression,
 };
 
 #[path = "instruction_compiler/computed_attribute_compiler.rs"]
@@ -1129,7 +1130,11 @@ fn compile_if(document: &Document, element: NodeId) -> Result<Instruction, Compi
     let location = document.location(element).clone();
     let expression = required_conditional_test(document, element)?;
     Ok(Instruction::If {
-        test: parse_boolean_expression(expression, &location)?,
+        test: parse_boolean_expression(
+            expression,
+            &location,
+            effective_string_comparison(document, element)?,
+        )?,
         body: compile_sequence(document, element)?,
         location,
     })
@@ -1151,7 +1156,11 @@ fn compile_choose(document: &Document, element: NodeId) -> Result<Instruction, C
             )?;
             let expression = required_conditional_test(document, child)?;
             branches.push(ChooseBranch {
-                test: parse_boolean_expression(expression, document.location(child))?,
+                test: parse_boolean_expression(
+                    expression,
+                    document.location(child),
+                    effective_string_comparison(document, child)?,
+                )?,
                 body: compile_sequence(document, child)?,
             });
         } else if is_xslt_element(document, child, "otherwise") {
@@ -1182,6 +1191,9 @@ fn ensure_choose_attributes(document: &Document, element: NodeId) -> Result<(), 
         if name.namespace.is_none() && name.local == "xpath-default-namespace" {
             continue;
         }
+        if name.namespace.is_none() && name.local == "default-collation" {
+            continue;
+        }
         if name.namespace.as_deref() == Some(XML_NAMESPACE) && name.local == "space" {
             match document.value(*attribute).unwrap_or_default() {
                 "default" | "preserve" => continue,
@@ -1205,6 +1217,34 @@ fn ensure_choose_attributes(document: &Document, element: NodeId) -> Result<(), 
         ));
     }
     Ok(())
+}
+
+fn effective_string_comparison(
+    document: &Document,
+    element: NodeId,
+) -> Result<StringComparison, CompileFailure> {
+    const CODEPOINT: &str = "http://www.w3.org/2005/xpath-functions/collation/codepoint";
+    const HTML_ASCII: &str =
+        "http://www.w3.org/2005/xpath-functions/collation/html-ascii-case-insensitive";
+    let mut current = Some(element);
+    while let Some(node) = current {
+        if let Some(collations) = optional_attribute(document, node, None, "default-collation") {
+            for collation in collations.split_whitespace() {
+                match collation {
+                    CODEPOINT => return Ok(StringComparison::Codepoint),
+                    HTML_ASCII => return Ok(StringComparison::HtmlAsciiCaseInsensitive),
+                    _ => {}
+                }
+            }
+            return Err(invalid(
+                "XTSE0125",
+                "default-collation does not name an available collation",
+                document.location(node),
+            ));
+        }
+        current = document.parent(node);
+    }
+    Ok(StringComparison::Codepoint)
 }
 
 fn effective_xml_space_preserved(
@@ -1288,6 +1328,7 @@ fn required_conditional_test(document: &Document, element: NodeId) -> Result<&st
 fn parse_boolean_expression(
     expression: &str,
     location: &SourceLocation,
+    comparison: StringComparison,
 ) -> Result<BooleanExpression, CompileFailure> {
     if expression.trim() == "()" {
         return Ok(BooleanExpression::Constant(false));
@@ -1305,8 +1346,8 @@ fn parse_boolean_expression(
     }
     if let Some((left, right)) = split_top_level_or(parsed) {
         return Ok(BooleanExpression::Or {
-            left: Box::new(parse_boolean_expression(left, location)?),
-            right: Box::new(parse_boolean_expression(right, location)?),
+            left: Box::new(parse_boolean_expression(left, location, comparison)?),
+            right: Box::new(parse_boolean_expression(right, location, comparison)?),
         });
     }
     if let Some(inner) = parsed
@@ -1314,7 +1355,7 @@ fn parse_boolean_expression(
         .and_then(|inner| inner.strip_suffix(')'))
     {
         return Ok(BooleanExpression::Not(Box::new(parse_boolean_expression(
-            inner, location,
+            inner, location, comparison,
         )?)));
     }
     if let Some((left, right)) = parse_document_root_identity_test(parsed) {
@@ -1343,7 +1384,7 @@ fn parse_boolean_expression(
             variable: variable.to_owned(),
         });
     }
-    parse_scalar_boolean_expression(parsed, expression, location)
+    parse_scalar_boolean_expression(parsed, expression, location, comparison)
 }
 
 fn split_top_level_or(expression: &str) -> Option<(&str, &str)> {
@@ -1394,6 +1435,7 @@ fn parse_scalar_boolean_expression(
     parsed: &str,
     expression: &str,
     location: &SourceLocation,
+    comparison: StringComparison,
 ) -> Result<BooleanExpression, CompileFailure> {
     if parsed == "()" {
         return Ok(BooleanExpression::Constant(false));
@@ -1404,7 +1446,7 @@ fn parse_scalar_boolean_expression(
     if let Some(length) = parse_context_string_length_equality(parsed) {
         return Ok(BooleanExpression::ContextStringLengthEquals(length));
     }
-    if let Some(expression) = parse_path_boolean_expression(parsed, location)? {
+    if let Some(expression) = parse_path_boolean_expression(parsed, location, comparison)? {
         return Ok(expression);
     }
     if parsed.starts_with('/') || parsed.starts_with('@') {
@@ -1507,6 +1549,7 @@ fn parse_context_string_length_equality(expression: &str) -> Option<usize> {
 fn parse_path_boolean_expression(
     expression: &str,
     location: &SourceLocation,
+    comparison: StringComparison,
 ) -> Result<Option<BooleanExpression>, CompileFailure> {
     if let Some((path, value)) = parse_path_context_string_predicate(expression) {
         return parse_location_path(path, location.clone())
@@ -1524,6 +1567,7 @@ fn parse_path_boolean_expression(
                 Some(BooleanExpression::UnqualifiedNodeNameEquals {
                     path,
                     local: local.to_owned(),
+                    comparison,
                 })
             })
             .map_err(map_path_failure);

@@ -17,7 +17,7 @@ use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, BooleanExpression, ComputedAttribute, Instruction, NodeTest,
     OnMultipleMatchPolicy, OnNoMatchPolicy, SequenceItemExpression, SourceWhitespacePolicy,
-    StylesheetProgram, TemplateArgument,
+    StringComparison, StylesheetProgram, TemplateArgument,
 };
 
 #[path = "atomic_template_executor.rs"]
@@ -1672,16 +1672,18 @@ fn evaluate_boolean(
             }
             Ok(false)
         }
-        BooleanExpression::UnqualifiedNodeNameEquals { path, local } => {
-            let (source, context) = required_source_context(inputs, context)?;
-            let nodes = evaluate_location_path_controlled(source, context, path, control)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            Ok(nodes.into_iter().any(|node| {
-                source.name(node).is_some_and(|name| {
-                    name.namespace.is_none() && name.local.as_str() == local.as_str()
-                })
-            }))
-        }
+        BooleanExpression::UnqualifiedNodeNameEquals {
+            path,
+            local,
+            comparison,
+        } => evaluate_unqualified_node_name_equals(
+            inputs,
+            path,
+            local,
+            *comparison,
+            context,
+            control,
+        ),
         BooleanExpression::ContextStringEquals(expected) => {
             evaluate_context_string_equals(inputs, context, expected, control)
         }
@@ -1728,6 +1730,30 @@ fn evaluate_boolean(
             evaluate_variable_effective_boolean_value(inputs, variable, variables, control)
         }
     }
+}
+
+fn evaluate_unqualified_node_name_equals(
+    inputs: &SequenceInputs<'_>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    local: &str,
+    comparison: StringComparison,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let nodes = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(nodes.into_iter().any(|node| {
+        source.name(node).is_some_and(|name| {
+            name.namespace.is_none()
+                && match comparison {
+                    StringComparison::Codepoint => name.local == local,
+                    StringComparison::HtmlAsciiCaseInsensitive => {
+                        name.local.eq_ignore_ascii_case(local)
+                    }
+                }
+        })
+    }))
 }
 
 fn evaluate_variable_integer_equality(

@@ -1958,6 +1958,19 @@ mod tests {
     }
 
     #[test]
+    fn rejects_a_choose_default_collation_list_with_no_available_member() {
+        let document = parse_stylesheet(
+            "memory:unavailable-choose-collation.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:choose default-collation="urn:unavailable"><xsl:when test="name(.) = 'A'"/></xsl:choose></xsl:template></xsl:stylesheet>"#,
+        );
+
+        let failure = compile_stylesheet(&document).expect_err("collation must be available");
+
+        assert_eq!(failure.code, "XTSE0125");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+    }
+
+    #[test]
     fn preserves_absent_output_declaration_for_runtime_method_inference() {
         let stylesheet = parse_stylesheet(
             "memory:default-output.xsl",

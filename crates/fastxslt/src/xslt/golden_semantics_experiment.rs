@@ -480,6 +480,12 @@ pub(crate) struct EqualityTest {
     pub(crate) integer: i64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum StringComparison {
+    Codepoint,
+    HtmlAsciiCaseInsensitive,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum BooleanExpression {
     VariableEqualsInteger(EqualityTest),
@@ -497,6 +503,7 @@ pub(crate) enum BooleanExpression {
     UnqualifiedNodeNameEquals {
         path: LocationPath,
         local: String,
+        comparison: StringComparison,
     },
     ContextStringEquals(String),
     ContextStringLengthEquals(usize),
