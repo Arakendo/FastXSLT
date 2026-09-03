@@ -205,6 +205,9 @@ fn materialize_global_default(
                     .map_err(|failure| control_failure(failure, request_id))?;
             globals.nodes.insert(binding.name.clone(), nodes);
         }
+        GlobalBindingDefault::SourceNodeIdentity(path) => {
+            materialize_source_node_identity(globals, binding, path, source, request_id, control)?;
+        }
         GlobalBindingDefault::Variable(name) => {
             if let Some(value) = globals.atomics.get(name).cloned() {
                 Arc::make_mut(&mut globals.atomics).insert(binding.name.clone(), value);
@@ -263,6 +266,43 @@ fn materialize_global_default(
         }
     }
     Ok(())
+}
+
+fn materialize_source_node_identity(
+    globals: &mut RuntimeGlobals,
+    binding: &GlobalBinding,
+    path: &crate::xpath::path_experiment::LocationPath,
+    source: Option<&Document>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let source = source.ok_or_else(|| {
+        failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "a source identity global requires a principal source",
+        )
+    })?;
+    let nodes = evaluate_location_path_controlled(source, source.document_node(), path, control)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    let [node] = nodes.as_slice() else {
+        return Err(failure(
+            "XPTY0004",
+            FailureCategory::Invalid,
+            Some(request_id),
+            "generate-id() requires exactly one source node in this private slice",
+        ));
+    };
+    Arc::make_mut(&mut globals.atomics).insert(
+        binding.name.clone(),
+        AtomicValue::string(source_node_identity(*node)),
+    );
+    Ok(())
+}
+
+pub(super) fn source_node_identity(node: NodeId) -> String {
+    format!("fastxslt-principal-n{}", node.index())
 }
 
 fn materialize_parentless_temporary_node(

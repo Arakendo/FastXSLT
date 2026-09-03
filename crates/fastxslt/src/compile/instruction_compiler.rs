@@ -667,8 +667,8 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
                 location: failure.location,
             })?,
         ))
-    } else if let Some(argument) = root_argument(expression) {
-        compile_root_expression(document, element, argument, &location)?
+    } else if let Some(root) = compile_root_value(document, element, expression, &location)? {
+        root
     } else if expression.trim() == "name(.)" {
         ValueExpression::ContextNodeName
     } else if expression.trim() == "upper-case(.)" {
@@ -702,6 +702,31 @@ fn root_argument(expression: &str) -> Option<&str> {
         .trim()
         .strip_prefix("root(")?
         .strip_suffix(')')
+        .map(str::trim)
+}
+
+fn compile_root_value(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<ValueExpression>, CompileFailure> {
+    if let Some(argument) = generated_root_argument(expression) {
+        return parse_location_path(argument, location.clone())
+            .map(ValueExpression::GeneratedRootIdentity)
+            .map(Some)
+            .map_err(map_path_failure);
+    }
+    root_argument(expression)
+        .map(|argument| compile_root_expression(document, element, argument, location))
+        .transpose()
+}
+
+fn generated_root_argument(expression: &str) -> Option<&str> {
+    expression
+        .trim()
+        .strip_prefix("generate-id(root(")?
+        .strip_suffix("))")
         .map(str::trim)
 }
 
@@ -1058,6 +1083,12 @@ fn parse_boolean_expression(
     location: &SourceLocation,
 ) -> Result<BooleanExpression, CompileFailure> {
     let parsed = strip_enclosing_parentheses(expression.trim());
+    if let Some((path, variable)) = parse_generated_root_identity_test(parsed) {
+        return Ok(BooleanExpression::RootIdentityEqualsVariable {
+            path: parse_location_path(path, location.clone()).map_err(map_path_failure)?,
+            variable: variable.to_owned(),
+        });
+    }
     if parsed.starts_with('/') || parsed.starts_with('@') {
         return parse_location_path(parsed, location.clone())
             .map(BooleanExpression::NodeExists)
@@ -1101,6 +1132,20 @@ fn parse_boolean_expression(
     } else {
         ordering.is_eq()
     }))
+}
+
+fn parse_generated_root_identity_test(expression: &str) -> Option<(&str, &str)> {
+    let (left, right) = expression.split_once('=')?;
+    let variable = right.trim().strip_prefix('$')?;
+    if !is_ascii_ncname(variable) {
+        return None;
+    }
+    let path = left
+        .trim()
+        .strip_prefix("generate-id(root(")?
+        .strip_suffix("))")?
+        .trim();
+    Some((path, variable))
 }
 
 fn strip_enclosing_parentheses(mut expression: &str) -> &str {

@@ -122,7 +122,8 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
                 text.capacity()
             }
             GlobalBindingDefault::Integer(_) => 0,
-            GlobalBindingDefault::LocationPath(path) => path.known_owned_capacity_bytes(),
+            GlobalBindingDefault::LocationPath(path)
+            | GlobalBindingDefault::SourceNodeIdentity(path) => path.known_owned_capacity_bytes(),
             GlobalBindingDefault::TemporaryTree(elements) => {
                 vec_owned(elements, constructed_element_owned)
             }
@@ -434,9 +435,9 @@ fn literal_element_owned(
 
 fn value_expression_owned(value: &ValueExpression) -> usize {
     match value {
-        ValueExpression::LocationPath(path) | ValueExpression::RootPath(path) => {
-            path.known_owned_capacity_bytes()
-        }
+        ValueExpression::LocationPath(path)
+        | ValueExpression::RootPath(path)
+        | ValueExpression::GeneratedRootIdentity(path) => path.known_owned_capacity_bytes(),
         ValueExpression::ContextNodeName | ValueExpression::UpperCaseContextString => 0,
         ValueExpression::Variable(name) | ValueExpression::RootVariable(name) => name.capacity(),
         ValueExpression::IntegerFor(expression) => {
@@ -471,6 +472,9 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
     match value {
         BooleanExpression::VariableEqualsInteger(test) => test.variable.capacity(),
         BooleanExpression::NodeExists(path) => path.known_owned_capacity_bytes(),
+        BooleanExpression::RootIdentityEqualsVariable { path, variable } => {
+            path.known_owned_capacity_bytes() + variable.capacity()
+        }
         BooleanExpression::Constant(_) => 0,
     }
 }

@@ -7,13 +7,13 @@ Date: 2026-09-02
 - W3C XSLT 3.0 test-suite revision
   `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b`.
 - Complete native test set `tests/fn/root/_root-test-set.xml`.
-- Unchanged `root-0101` through `root-0104`, `root-0201`, and `root-0601`
-  sources, stylesheets, and native assertions.
+- Unchanged `root-0101` through `root-0401` and `root-0601` sources,
+  stylesheets, and native assertions.
 
 ## Method
 
 A first-party overlay conserves all ten native `fn/root` cases. Its default is
-`harness-unsupported/not-run`; six cases are selected. The adapter checks the
+`harness-unsupported/not-run`; eight cases are selected. The adapter checks the
 complete native case identity set before it imports each selected source and
 stylesheet into a bounded sealed snapshot, compiles once, and executes through
 the normal transform-set path.
@@ -41,6 +41,13 @@ detach them from their prepared document, or share the binding across
 invocations. Direct and variable arguments share the same zero-or-one
 cardinality check and charged ancestor walk.
 
+Two identity cases retain the generated identity of the principal document
+node as an invocation-local atomic global, then compare it with the generated
+identity obtained after `root()` receives either a selected element or the
+document node itself. The identifier spelling remains private and opaque; only
+node identity within the current principal source is admitted. Both the
+location-path evaluation and ancestor walk retain explicit XPath work charges.
+
 The first unchanged execution found that container string values included
 descendant comment and processing-instruction content. A focused XDM regression
 now proves that document and element string values contain descendant text
@@ -50,9 +57,8 @@ has its own content as its string value.
 ## Results
 
 - Complete conserved denominator: 10 cases.
-- Selected and passed: 6 (`root-0101` through `root-0104`, `root-0201`, and
-  `root-0601`).
-- Visible default not run: 4.
+- Selected and passed: 8 (`root-0101` through `root-0401` and `root-0601`).
+- Visible default not run: 2.
 - Engine unsupported: 0.
 - Profile excluded: 0.
 - The unchanged assertion passes after the shared XDM string-value correction.
@@ -62,17 +68,17 @@ The fourth case also admits typed child `element()`, `comment()`, and
 steps. A focused mixed-child test proves that each kind test selects only its
 declared XDM node kind.
 
-This raises conserved XSLT30 accounting within this denominator to six passes
-and four visible defaults. With the subsequently conserved `insn/apply-imports`
-case, current XSLT30 accounting is 578 cases: 417 passed comparisons, 3
-engine-unsupported cases, 54 profile exclusions, and 104 visible default
+This raises conserved XSLT30 accounting within this denominator to eight passes
+and two visible defaults. With the subsequently conserved `insn/apply-imports`
+case, current XSLT30 accounting is 578 cases: 419 passed comparisons, 3
+engine-unsupported cases, 54 profile exclusions, and 102 visible default
 not-run cases.
 
 ## Limitations
 
-This evidence does not admit arbitrary `root()` arguments. The remaining four
-cases require generated node identity, temporary trees, or dynamic resource
-acquisition. They
+This evidence does not admit arbitrary `root()` arguments or general
+`generate-id()` expressions. The remaining two cases require temporary trees
+or dynamic resource acquisition. They
 remain individually visible under the
 denominator default rather than being reported as engine failures. The result
 also does not claim a general XPath function-call representation; `root(.)` is

@@ -1493,6 +1493,11 @@ fn evaluate_boolean(
                 .map(|nodes| !nodes.is_empty())
                 .map_err(|failure| control_failure(failure, inputs.request_id))
         }
+        BooleanExpression::RootIdentityEqualsVariable { path, variable } => {
+            evaluate_root_identity_equals_variable(
+                inputs, path, variable, variables, context, control,
+            )
+        }
         BooleanExpression::VariableEqualsInteger(test) => {
             let value = variables.atomics.get(&test.variable).ok_or_else(|| {
                 failure(
@@ -1505,6 +1510,46 @@ fn evaluate_boolean(
             Ok(value.lexical().trim().parse::<i64>() == Ok(test.integer))
         }
     }
+}
+
+fn evaluate_root_identity_equals_variable(
+    inputs: &SequenceInputs<'_>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    variable: &str,
+    variables: &RuntimeVariables,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let nodes = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let [node] = nodes.as_slice() else {
+        return Err(failure(
+            "XPTY0004",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            "root() requires a single node in this identity comparison",
+        ));
+    };
+    let mut root = *node;
+    loop {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        let Some(parent) = source.parent(root) else {
+            break;
+        };
+        root = parent;
+    }
+    let expected = variables.atomics.get(variable).ok_or_else(|| {
+        failure(
+            "FXRT0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            format!("unbound variable: ${variable}"),
+        )
+    })?;
+    Ok(expected.lexical() == runtime_context::source_node_identity(root))
 }
 
 fn execute_variable_binding(

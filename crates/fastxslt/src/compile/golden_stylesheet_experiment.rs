@@ -670,6 +670,14 @@ fn compile_global_default(
             Ok(GlobalBindingDefault::Text(value.to_owned()))
         } else if let Ok(value) = select.parse::<i64>() {
             Ok(GlobalBindingDefault::Integer(value))
+        } else if let Some(path) = select
+            .strip_prefix("generate-id(")
+            .and_then(|path| path.strip_suffix(')'))
+        {
+            Ok(GlobalBindingDefault::SourceNodeIdentity(
+                parse_location_path(path.trim(), document.location(element).clone())
+                    .map_err(map_path_failure)?,
+            ))
         } else {
             Ok(GlobalBindingDefault::LocationPath(
                 parse_location_path(select, document.location(element).clone())

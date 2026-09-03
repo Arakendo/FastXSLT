@@ -1386,12 +1386,13 @@ function's zero-or-one cardinality. A fourth case adds typed child
 tests. A fifth resolves a stylesheet prefix into an expanded child name test
 without changing the shared location-path evaluator. A sixth binds source-node
 sequences in an invocation-local frame and applies `root($variable)` without
-copying or detaching their prepared-document identity. The first execution exposed and repaired a
+copying or detaching their prepared-document identity. Two more compare an
+opaque invocation-local generated identity after element- and document-node
+root selection. The first execution exposed and repaired a
 shared XDM defect: document and element string values now exclude descendant
 comment and processing-instruction content, while those nodes retain their own
-string values when selected directly. Six cases pass and four remain visible
-defaults pending generated node identity, temporary trees, or dynamic resource
-acquisition.
+string values when selected directly. Eight cases pass and two remain visible
+defaults pending temporary-tree identity and dynamic resource acquisition.
 [Evidence](../Evidence/xslt30-root-context-and-xdm-string-value-2026-09-02.md)
 
 The complete one-case `insn/apply-imports` denominator is now conserved with
@@ -1447,9 +1448,9 @@ The XSLT30 work currently conserves these complete native denominators:
 | `decl/output` | 232 | 198 | 0 | 1 | 33 |
 | `decl/strip-space` | 30 | 1 | 0 | 0 | 29 |
 | `misc/built-in-templates` | 6 | 2 | 0 | 0 | 4 |
-| `fn/root` | 10 | 6 | 0 | 0 | 4 |
+| `fn/root` | 10 | 8 | 0 | 0 | 2 |
 | `insn/apply-imports` | 1 | 0 | 0 | 0 | 1 |
-| **Conserved total** | **578** | **417** | **3** | **54** | **104** |
+| **Conserved total** | **578** | **419** | **3** | **54** | **102** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1515,7 +1516,7 @@ count:
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
 2. [ ] Continue coherent semantic slices through the 33 visible `output`
-   gaps, 33 visible `mode` gaps, 4 visible `fn/root` gaps, and the atomic-focus
+   gaps, 33 visible `mode` gaps, 2 visible `fn/root` gaps, and the atomic-focus
    `insn/apply-imports` case. The output remainder is now an explicit
    feature frontier: 10 cases require secondary-result ownership, 22 require
    XDM 3.1 maps/arrays plus JSON, adaptive, or serialization-parameter

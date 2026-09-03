@@ -45,6 +45,9 @@ pub(super) fn execute_value_of(
         ValueExpression::RootVariable(name) => {
             append_root_variable_string(inputs, name, variables, result, control)?;
         }
+        ValueExpression::GeneratedRootIdentity(path) => {
+            append_generated_root_identity(inputs, path, context, result, control)?;
+        }
         ValueExpression::ContextNodeName => {
             append_context_node_name(inputs, context, result, control)?;
         }
@@ -192,6 +195,38 @@ fn append_root_nodes_string(
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
+    let Some(root) = root_node(inputs, selected, control)? else {
+        return Ok(());
+    };
+    append_source_string_value(inputs, root, result, control)
+}
+
+fn append_generated_root_identity(
+    inputs: &SequenceInputs<'_>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    context: Option<NodeId>,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let selected = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let Some(root) = root_node(inputs, &selected, control)? else {
+        return Ok(());
+    };
+    append_text(
+        result,
+        &super::runtime_context::source_node_identity(root),
+        inputs.request_id,
+        control,
+    )
+}
+
+fn root_node(
+    inputs: &SequenceInputs<'_>,
+    selected: &[NodeId],
+    control: &mut InvocationControl,
+) -> Result<Option<NodeId>, ExecutionFailure> {
     if selected.len() > 1 {
         return Err(failure(
             "XPTY0004",
@@ -209,7 +244,7 @@ fn append_root_nodes_string(
         )
     })?;
     let Some(mut root) = selected.first().copied() else {
-        return Ok(());
+        return Ok(None);
     };
     loop {
         control
@@ -220,7 +255,7 @@ fn append_root_nodes_string(
         };
         root = parent;
     }
-    append_source_string_value(inputs, root, result, control)
+    Ok(Some(root))
 }
 
 fn append_upper_case_context_string(

@@ -104,6 +104,7 @@ pub(crate) enum GlobalBindingDefault {
     Text(String),
     Integer(i64),
     LocationPath(LocationPath),
+    SourceNodeIdentity(LocationPath),
     Variable(String),
     TemporaryTree(Vec<ConstructedElement>),
     TemporaryText(String),
@@ -418,6 +419,7 @@ pub(crate) enum ValueExpression {
     LocationPath(LocationPath),
     RootPath(LocationPath),
     RootVariable(String),
+    GeneratedRootIdentity(LocationPath),
     ContextNodeName,
     UpperCaseContextString,
     Variable(String),
@@ -445,6 +447,10 @@ pub(crate) struct EqualityTest {
 pub(crate) enum BooleanExpression {
     VariableEqualsInteger(EqualityTest),
     NodeExists(LocationPath),
+    RootIdentityEqualsVariable {
+        path: LocationPath,
+        variable: String,
+    },
     Constant(bool),
 }
 
