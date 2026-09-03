@@ -257,7 +257,8 @@ fn execute_program_with_parameters_using(
             &BTreeMap::new(),
             &globals.atomics,
             inputs.complete_atomic_frame_clones,
-        );
+            request_id,
+        )?;
         execute_sequence(
             &inputs,
             &root_template.body,
@@ -358,7 +359,8 @@ fn execute_initial_mode(
             parameters,
             &globals.atomics,
             inputs.complete_atomic_frame_clones,
-        );
+            request_id,
+        )?;
         execute_sequence(
             &inputs,
             &template.body,
@@ -401,7 +403,8 @@ fn apply_initial_mode_template(
             parameters,
             &inputs.globals.atomics,
             inputs.complete_atomic_frame_clones,
-        );
+            inputs.request_id,
+        )?;
         return execute_sequence(
             inputs,
             &template.template.body,
@@ -503,7 +506,8 @@ fn execute_initial_template_with_optional_source(
         &BTreeMap::new(),
         &globals.atomics,
         inputs.complete_atomic_frame_clones,
-    );
+        request_id,
+    )?;
     let children = execute_sequence(
         &inputs,
         &template.template.body,
@@ -1381,7 +1385,8 @@ fn execute_next_match(
             &parameters,
             &inputs.globals.atomics,
             inputs.complete_atomic_frame_clones,
-        );
+            inputs.request_id,
+        )?;
         return execute_sequence(
             inputs,
             &template.template.body,
@@ -1454,7 +1459,8 @@ fn execute_apply_imports(
             &parameters,
             &inputs.globals.atomics,
             inputs.complete_atomic_frame_clones,
-        );
+            inputs.request_id,
+        )?;
         return execute_sequence(
             inputs,
             &template.template.body,
@@ -1988,7 +1994,8 @@ fn execute_named_call(
         &supplied,
         &inputs.globals.atomics,
         inputs.complete_atomic_frame_clones,
-    );
+        inputs.request_id,
+    )?;
     execute_sequence(
         inputs,
         &target.template.body,
@@ -2044,7 +2051,8 @@ fn apply_template_at(
             parameters,
             &inputs.globals.atomics,
             inputs.complete_atomic_frame_clones,
-        );
+            inputs.request_id,
+        )?;
         return execute_sequence(
             inputs,
             &template.template.body,

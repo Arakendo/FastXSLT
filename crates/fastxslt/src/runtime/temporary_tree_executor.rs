@@ -71,7 +71,8 @@ fn execute_selected_temporary_template(
         parameters,
         &inputs.globals.atomics,
         inputs.complete_atomic_frame_clones,
-    );
+        inputs.request_id,
+    )?;
     execute_sequence(
         inputs,
         &template.template.body,
@@ -156,7 +157,8 @@ pub(super) fn apply_temporary_roots(
             parameters,
             &inputs.globals.atomics,
             inputs.complete_atomic_frame_clones,
-        );
+            inputs.request_id,
+        )?;
         return execute_sequence(
             inputs,
             &template.template.body,
@@ -258,7 +260,8 @@ pub(super) fn apply_temporary_next(
             parameters,
             &inputs.globals.atomics,
             inputs.complete_atomic_frame_clones,
-        );
+            inputs.request_id,
+        )?;
         return execute_sequence(
             inputs,
             &template.template.body,

@@ -256,12 +256,14 @@ is not a public QName API, and initial-template catalog/host QName resolution
 remains a separate host boundary concern.
 
 Named-template parameters currently admit literal-text defaults and literal
-string or integer `select` defaults.
+string or integer `select` defaults. Required template parameters are retained
+separately from defaults and report `XTDE0700` when a matching non-tunnel or
+tunnel argument is absent.
 Named calls may supply literal content, integer `select` values, or references
 to one caller-visible atomic variable. Defaults and supplied arguments are
 bound through the same invocation-local copy-on-write frame machinery used by
 matched templates. This does not admit node-sequence arguments, general XPath
-argument expressions, required or typed parameters, or host-supplied
+argument expressions, typed parameters, or host-supplied
 initial-template parameters. An initial-template invocation may still bind
 host-supplied stylesheet parameters into the global frame and independently
 apply its declared template-parameter defaults.

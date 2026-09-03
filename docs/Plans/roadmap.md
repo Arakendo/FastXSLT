@@ -1428,16 +1428,19 @@ assertion requirements are classified and admitted deliberately.
 [Evidence](../Evidence/xslt30-choose-and-if-initial-denominator-2026-09-02.md)
 
 The complete 42-case `insn/call-template` denominator is now conserved before
-selection. Seventeen unchanged cases pass. Initial-template entry now covers
+selection. Eighteen unchanged cases pass. Initial-template entry now covers
 unqualified and catalog-resolved qualified identities, an independently bound
 global stylesheet parameter and template default, and source-aware copying of
 a current document's children. Three correctly resolved absent-name cases
 report `XTDE0040`; a reserved-namespace declaration reports `XTSE0080`.
+An omitted required initial-template parameter reports `XTDE0700` without
+confusing host-supplied stylesheet parameters with template arguments.
+Its XSLT 2.0-only `XTDE0060` companion is visibly excluded by profile.
 Named calls cover QName and EQName identity, literal and default parameters,
 integer `select` arguments, six nested calls, repeated calls under conditional
 branches, and principal/import precedence. Catalog-declared secondary modules
-remain sealed before compilation. The other 25 cases remain visible defaults
-for a public host QName contract, broader parameters and typing, recursion,
+remain sealed before compilation. The other 23 cases remain visible defaults
+for a public host QName contract, broader parameter values and typing, recursion,
 focus, and expression or assertion semantics.
 [Evidence](../Evidence/xslt30-call-template-initial-denominator-2026-09-02.md)
 
@@ -1488,8 +1491,8 @@ The XSLT30 work currently conserves these complete native denominators:
 | `fn/root` | 10 | 10 | 0 | 0 | 0 |
 | `insn/apply-imports` | 1 | 1 | 0 | 0 | 0 |
 | `insn/choose` | 55 | 18 | 0 | 0 | 37 |
-| `insn/call-template` | 42 | 17 | 0 | 0 | 25 |
-| **Conserved total** | **675** | **457** | **3** | **54** | **161** |
+| `insn/call-template` | 42 | 18 | 0 | 1 | 23 |
+| **Conserved total** | **675** | **458** | **3** | **55** | **159** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.

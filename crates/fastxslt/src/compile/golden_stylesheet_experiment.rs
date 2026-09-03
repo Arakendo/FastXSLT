@@ -993,7 +993,12 @@ fn compile_template(document: &Document, element: NodeId) -> Result<Template, Co
                     document.location(child),
                 ));
             }
-            ensure_only_attributes(document, child, &["name", "tunnel", "select"], "xsl:param")?;
+            ensure_only_attributes(
+                document,
+                child,
+                &["name", "tunnel", "select", "required"],
+                "xsl:param",
+            )?;
             ensure_no_meaningful_children(document, child, "xsl:param")?;
             let lexical_name = required_attribute(document, child, None, "name")?;
             let name = normalize_variable_qname(document, child, lexical_name)?;
@@ -1018,6 +1023,14 @@ fn compile_template(document: &Document, element: NodeId) -> Result<Template, Co
                     ));
                 }
             };
+            let required = parse_template_parameter_required(document, child)?;
+            if required && optional_attribute(document, child, None, "select").is_some() {
+                return Err(invalid(
+                    "XTSE0010",
+                    "a required template parameter cannot declare a default value",
+                    document.location(child),
+                ));
+            }
             let default = optional_attribute(document, child, None, "select").map_or_else(
                 || Ok(TemplateParameterDefault::Text(String::new())),
                 |select| {
@@ -1036,6 +1049,7 @@ fn compile_template(document: &Document, element: NodeId) -> Result<Template, Co
             parameters.push(TemplateParameter {
                 name,
                 tunnel,
+                required,
                 default,
             });
             parameter_nodes.push(child);
@@ -1081,62 +1095,11 @@ fn compile_named_template(
                     document.location(child),
                 ));
             }
-            ensure_only_attributes(document, child, &["name", "tunnel", "select"], "xsl:param")?;
-            let parameter = required_attribute(document, child, None, "name")?;
-            if !is_ascii_ncname(parameter)
-                || parameters
-                    .iter()
-                    .any(|existing: &TemplateParameter| existing.name == parameter)
-            {
-                return Err(invalid(
-                    "FXST0012",
-                    format!("invalid or duplicate named-template parameter: {parameter}"),
-                    document.location(child),
-                ));
-            }
-            let tunnel = match optional_attribute(document, child, None, "tunnel") {
-                None | Some("no") => false,
-                Some("yes") => true,
-                Some(value) => {
-                    return Err(invalid(
-                        "FXST0024",
-                        format!("invalid xsl:param tunnel value: {value}"),
-                        document.location(child),
-                    ));
-                }
-            };
-            let default = if let Some(select) = optional_attribute(document, child, None, "select")
-            {
-                ensure_no_meaningful_children(document, child, "xsl:param")?;
-                if let Ok(value) = select.parse::<i64>() {
-                    TemplateParameterDefault::Integer(value)
-                } else if let Some(value) = static_string_literal(select) {
-                    TemplateParameterDefault::Text(value.to_owned())
-                } else {
-                    return Err(unsupported(
-                        "FXST1032",
-                        format!("unsupported named-template parameter default: {select}"),
-                        document.location(child),
-                    ));
-                }
-            } else {
-                if meaningful_children(document, child)
-                    .into_iter()
-                    .any(|node| document.kind(node) != NodeKind::Text)
-                {
-                    return Err(unsupported(
-                        "FXST1032",
-                        "the private named-template parameter default slice permits only literal text",
-                        document.location(child),
-                    ));
-                }
-                TemplateParameterDefault::Text(document.string_value(child))
-            };
-            parameters.push(TemplateParameter {
-                name: parameter.to_owned(),
-                tunnel,
-                default,
-            });
+            parameters.push(compile_named_template_parameter(
+                document,
+                child,
+                &parameters,
+            )?);
             parameter_nodes.push(child);
         } else {
             body_started = true;
@@ -1154,6 +1117,103 @@ fn compile_named_template(
             location: document.location(element).clone(),
         },
     })
+}
+
+fn compile_named_template_parameter(
+    document: &Document,
+    child: NodeId,
+    preceding: &[TemplateParameter],
+) -> Result<TemplateParameter, CompileFailure> {
+    ensure_only_attributes(
+        document,
+        child,
+        &["name", "tunnel", "select", "required"],
+        "xsl:param",
+    )?;
+    let parameter = required_attribute(document, child, None, "name")?;
+    if !is_ascii_ncname(parameter) || preceding.iter().any(|existing| existing.name == parameter) {
+        return Err(invalid(
+            "FXST0012",
+            format!("invalid or duplicate named-template parameter: {parameter}"),
+            document.location(child),
+        ));
+    }
+    let tunnel = match optional_attribute(document, child, None, "tunnel") {
+        None | Some("no") => false,
+        Some("yes") => true,
+        Some(value) => {
+            return Err(invalid(
+                "FXST0024",
+                format!("invalid xsl:param tunnel value: {value}"),
+                document.location(child),
+            ));
+        }
+    };
+    let required = parse_template_parameter_required(document, child)?;
+    let children = meaningful_children(document, child);
+    if required
+        && (optional_attribute(document, child, None, "select").is_some() || !children.is_empty())
+    {
+        return Err(invalid(
+            "XTSE0010",
+            "a required named-template parameter cannot declare a default value",
+            document.location(child),
+        ));
+    }
+    let default = compile_named_template_parameter_default(document, child, &children)?;
+    Ok(TemplateParameter {
+        name: parameter.to_owned(),
+        tunnel,
+        required,
+        default,
+    })
+}
+
+fn compile_named_template_parameter_default(
+    document: &Document,
+    child: NodeId,
+    children: &[NodeId],
+) -> Result<TemplateParameterDefault, CompileFailure> {
+    let Some(select) = optional_attribute(document, child, None, "select") else {
+        if children
+            .iter()
+            .any(|node| document.kind(*node) != NodeKind::Text)
+        {
+            return Err(unsupported(
+                "FXST1032",
+                "the private named-template parameter default slice permits only literal text",
+                document.location(child),
+            ));
+        }
+        return Ok(TemplateParameterDefault::Text(document.string_value(child)));
+    };
+    ensure_no_meaningful_children(document, child, "xsl:param")?;
+    if let Ok(value) = select.parse::<i64>() {
+        return Ok(TemplateParameterDefault::Integer(value));
+    }
+    if let Some(value) = static_string_literal(select) {
+        return Ok(TemplateParameterDefault::Text(value.to_owned()));
+    }
+    Err(unsupported(
+        "FXST1032",
+        format!("unsupported named-template parameter default: {select}"),
+        document.location(child),
+    ))
+}
+
+fn parse_template_parameter_required(
+    document: &Document,
+    parameter: NodeId,
+) -> Result<bool, CompileFailure> {
+    match optional_attribute(document, parameter, None, "required") {
+        None | Some("no") => Ok(false),
+        Some("yes") => Ok(true),
+        Some(value) => Err(invalid(
+            "XTSE0020",
+            format!("invalid xsl:param required value: {value}"),
+            document.location(parameter),
+        )),
+    }
 }
 
 pub(super) fn normalize_named_template_name(

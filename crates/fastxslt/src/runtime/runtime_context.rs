@@ -494,9 +494,25 @@ pub(super) fn bind_template_parameters(
     supplied: &BTreeMap<String, InvocationParameter>,
     base: &Arc<BTreeMap<String, AtomicValue>>,
     complete_clone: bool,
-) -> RuntimeVariables {
+    request_id: &str,
+) -> Result<RuntimeVariables, ExecutionFailure> {
     let mut frame = RuntimeVariables::from_atomics(base, complete_clone);
     for parameter in &template.parameters {
+        if parameter.required
+            && supplied
+                .get(&parameter.name)
+                .is_none_or(|supplied| supplied.tunnel != parameter.tunnel)
+        {
+            return Err(failure(
+                "XTDE0700",
+                FailureCategory::Invalid,
+                Some(request_id),
+                format!(
+                    "required template parameter was not supplied: ${}",
+                    parameter.name
+                ),
+            ));
+        }
         let value = supplied
             .get(&parameter.name)
             .filter(|supplied| supplied.tunnel == parameter.tunnel)
@@ -514,7 +530,7 @@ pub(super) fn bind_template_parameters(
             );
         Arc::make_mut(&mut frame.atomics).insert(parameter.name.clone(), value);
     }
-    frame
+    Ok(frame)
 }
 
 pub(super) fn required_source_context<'a>(

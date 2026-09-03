@@ -136,7 +136,8 @@ fn execute_selected_or_builtin(
         parameters,
         &inputs.globals.atomics,
         inputs.complete_atomic_frame_clones,
-    );
+        inputs.request_id,
+    )?;
     execute_sequence(
         inputs,
         &template.template.body,

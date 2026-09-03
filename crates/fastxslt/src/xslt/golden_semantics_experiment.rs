@@ -166,6 +166,7 @@ pub(crate) struct Template {
 pub(crate) struct TemplateParameter {
     pub(crate) name: String,
     pub(crate) tunnel: bool,
+    pub(crate) required: bool,
     pub(crate) default: TemplateParameterDefault,
 }
 

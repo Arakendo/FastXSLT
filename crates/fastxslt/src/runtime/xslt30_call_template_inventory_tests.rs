@@ -28,12 +28,14 @@ const RESULT_CASES: [&str; 13] = [
     "call-template-1802",
     "call-template-1803",
 ];
-const ERROR_CASES: [(&str, &str); 4] = [
+const ERROR_CASES: [(&str, &str); 5] = [
     ("call-template-0104", "XTDE0040"),
     ("call-template-0105", "XTDE0040"),
     ("call-template-0106", "XTSE0080"),
     ("call-template-0107", "XTDE0040"),
+    ("call-template-0401a", "XTDE0700"),
 ];
+const PROFILE_EXCLUDED_CASES: [&str; 1] = ["call-template-0401"];
 const OVERLAY: &str =
     include_str!("../../../../corpus/overlays/xslt30/call-template-denominator-v0.toml");
 
@@ -49,7 +51,7 @@ fn inventories_complete_call_template_denominator_before_selection() {
     assert_eq!(names.len(), cases.len());
     assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
     assert!(OVERLAY.contains("case_count = 42"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 17);
+    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 19);
     for case_name in RESULT_CASES
         .into_iter()
         .chain(ERROR_CASES.into_iter().map(|(case_name, _)| case_name))
@@ -58,6 +60,12 @@ fn inventories_complete_call_template_denominator_before_selection() {
         let record = overlay_case(case_name);
         assert!(record.contains("selection = \"selected\""));
         assert!(record.contains("execution = \"passed\""));
+    }
+    for case_name in PROFILE_EXCLUDED_CASES {
+        assert!(names.contains(case_name));
+        let record = overlay_case(case_name);
+        assert!(record.contains("selection = \"excluded-profile\""));
+        assert!(record.contains("execution = \"not-run\""));
     }
 }
 
@@ -214,19 +222,22 @@ fn execute_error_case(case_name: &str, expected_code: &str) {
             work_limits: WorkLimits::unbounded(),
         },
     );
-    let failure = set
-        .add(TransformRequest {
-            identity: case_name.to_owned(),
-            result_identity: format!("urn:w3c:xslt30:insn:call-template:{case_name}:result"),
-            entry: InvocationEntry::InitialTemplateWithSource {
-                resource: source_id,
-                name: initial_template,
-            },
-            parameters: BTreeMap::new(),
-            cancellation: CancellationToken::new(),
-            cancellation_fault: None,
-        })
-        .expect_err("dynamic initial-template error should reject admission");
+    let admission = set.add(TransformRequest {
+        identity: case_name.to_owned(),
+        result_identity: format!("urn:w3c:xslt30:insn:call-template:{case_name}:result"),
+        entry: InvocationEntry::InitialTemplateWithSource {
+            resource: source_id,
+            name: initial_template,
+        },
+        parameters: BTreeMap::new(),
+        cancellation: CancellationToken::new(),
+        cancellation_fault: None,
+    });
+    let failure = match admission {
+        Err(failure) => failure,
+        Ok(()) => execute_transform_set(set.seal())
+            .expect_err("dynamic initial-template error should fail execution"),
+    };
     assert_eq!(failure.code, expected_code, "{case_name}");
 }
 
