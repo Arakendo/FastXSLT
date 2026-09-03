@@ -1,6 +1,6 @@
 //! Compiles template invocation, arguments, selection, and mode controls.
 
-use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
+use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xpath::path_experiment::parse_location_path;
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, Instruction, NodeTest, TemplateArgument, TemplateArgumentValue,
@@ -96,24 +96,7 @@ pub(super) fn compile_with_params(
             ));
         }
         let select = required_attribute(document, child, None, "select")?;
-        let value = if let Some(variable) = select.strip_prefix('$') {
-            if !is_ascii_ncname(variable) {
-                return Err(invalid(
-                    "FXXP0002",
-                    format!("invalid variable reference: {select}"),
-                    document.location(child),
-                ));
-            }
-            TemplateArgumentValue::Variable(variable.to_owned())
-        } else {
-            TemplateArgumentValue::Integer(select.parse::<i64>().map_err(|_| {
-                unsupported(
-                    "FXXP1011",
-                    format!("unsupported template argument expression: {select}"),
-                    document.location(child),
-                )
-            })?)
-        };
+        let value = compile_selected_argument_value(document, child, select)?;
         arguments.push(TemplateArgument {
             name: argument_name.to_owned(),
             value,
@@ -121,6 +104,33 @@ pub(super) fn compile_with_params(
         });
     }
     Ok(arguments)
+}
+
+fn compile_selected_argument_value(
+    document: &Document,
+    element: NodeId,
+    select: &str,
+) -> Result<TemplateArgumentValue, CompileFailure> {
+    if let Some(variable) = select.strip_prefix('$') {
+        if !is_ascii_ncname(variable) {
+            return Err(invalid(
+                "FXXP0002",
+                format!("invalid variable reference: {select}"),
+                document.location(element),
+            ));
+        }
+        return Ok(TemplateArgumentValue::Variable(variable.to_owned()));
+    }
+    select
+        .parse::<i64>()
+        .map(TemplateArgumentValue::Integer)
+        .map_err(|_| {
+            unsupported(
+                "FXXP1011",
+                format!("unsupported template argument expression: {select}"),
+                document.location(element),
+            )
+        })
 }
 
 pub(super) fn parse_apply_selection(
@@ -368,7 +378,7 @@ pub(super) fn compile_call_template(
                 document.location(child),
             ));
         }
-        ensure_only_attributes(document, child, &["name"], "xsl:with-param")?;
+        ensure_only_attributes(document, child, &["name", "select"], "xsl:with-param")?;
         let argument_name = required_attribute(document, child, None, "name")?;
         if !is_ascii_ncname(argument_name)
             || arguments
@@ -381,9 +391,25 @@ pub(super) fn compile_call_template(
                 document.location(child),
             ));
         }
+        let value = if let Some(select) = optional_attribute(document, child, None, "select") {
+            ensure_no_meaningful_children(document, child, "xsl:with-param")?;
+            compile_selected_argument_value(document, child, select)?
+        } else {
+            if meaningful_children(document, child)
+                .into_iter()
+                .any(|node| document.kind(node) != NodeKind::Text)
+            {
+                return Err(unsupported(
+                    "FXST1033",
+                    "the private call-template argument content slice permits only literal text",
+                    document.location(child),
+                ));
+            }
+            TemplateArgumentValue::Text(document.string_value(child))
+        };
         arguments.push(TemplateArgument {
             name: argument_name.to_owned(),
-            value: TemplateArgumentValue::Text(document.string_value(child)),
+            value,
             location: document.location(child).clone(),
         });
     }

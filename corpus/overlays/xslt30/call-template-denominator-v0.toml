@@ -6,7 +6,7 @@ case_count = 42
 [default_disposition]
 selection = "harness-unsupported"
 execution = "not-run"
-rationale = "Unless overridden below, the call-template case requires QName/EQName, parameter typing, required-parameter, recursion, focus, expression, assertion, or initial-template semantics outside the currently admitted private execution slice."
+rationale = "Unless overridden below, the call-template case requires host-side initial-template QName resolution, broader parameter values or typing, required-parameter, recursion, focus, expression, assertion, or initial-template semantics outside the currently admitted private execution slice."
 
 [[case_override]]
 case_name = "call-template-0101"
@@ -27,6 +27,18 @@ execution = "passed"
 rationale = "The unchanged XSLT 2.0 negative case reports XTSE0080 when a named template uses the reserved XSLT namespace."
 
 [[case_override]]
+case_name = "call-template-0109"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged case normalizes whitespace around Q{}temp and resolves a call to Q{http://another/}temp using expanded EQName identities."
+
+[[case_override]]
+case_name = "call-template-0201"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case enters a named template with an explicitly supplied source and copies the preserved context document through select='.'."
+
+[[case_override]]
 case_name = "call-template-0801"
 selection = "selected"
 execution = "passed"
@@ -37,6 +49,18 @@ case_name = "call-template-0802"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged XSLT 1.0-compatible case calls the unqualified named template even while a distinct qualified local name is in scope."
+
+[[case_override]]
+case_name = "call-template-1101"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 1.0-compatible case performs six bounded nested named-template calls and supplies integer select arguments to each declared parameter."
+
+[[case_override]]
+case_name = "call-template-1701"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 1.0-compatible case resolves different lexical prefixes bound to one namespace to the same expanded named-template identity."
 
 [[case_override]]
 case_name = "call-template-1801"

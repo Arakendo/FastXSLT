@@ -1080,17 +1080,61 @@ fn compile_named_template(
                     document.location(child),
                 ));
             }
-            ensure_only_attributes(document, child, &["name"], "xsl:param")?;
-            ensure_no_meaningful_children(document, child, "xsl:param")?;
+            ensure_only_attributes(document, child, &["name", "tunnel", "select"], "xsl:param")?;
             let parameter = required_attribute(document, child, None, "name")?;
-            if !is_ascii_ncname(parameter) || parameters.iter().any(|name| name == parameter) {
+            if !is_ascii_ncname(parameter)
+                || parameters
+                    .iter()
+                    .any(|existing: &TemplateParameter| existing.name == parameter)
+            {
                 return Err(invalid(
                     "FXST0012",
                     format!("invalid or duplicate named-template parameter: {parameter}"),
                     document.location(child),
                 ));
             }
-            parameters.push(parameter.to_owned());
+            let tunnel = match optional_attribute(document, child, None, "tunnel") {
+                None | Some("no") => false,
+                Some("yes") => true,
+                Some(value) => {
+                    return Err(invalid(
+                        "FXST0024",
+                        format!("invalid xsl:param tunnel value: {value}"),
+                        document.location(child),
+                    ));
+                }
+            };
+            let default = if let Some(select) = optional_attribute(document, child, None, "select")
+            {
+                ensure_no_meaningful_children(document, child, "xsl:param")?;
+                select
+                    .parse::<i64>()
+                    .map(TemplateParameterDefault::Integer)
+                    .map_err(|_| {
+                        unsupported(
+                            "FXST1032",
+                            format!("unsupported named-template parameter default: {select}"),
+                            document.location(child),
+                        )
+                    })?
+            } else {
+                if meaningful_children(document, child)
+                    .into_iter()
+                    .any(|node| document.kind(node) != NodeKind::Text)
+                {
+                    return Err(unsupported(
+                        "FXST1032",
+                        "the private named-template parameter default slice permits only literal text",
+                        document.location(child),
+                    ));
+                }
+                TemplateParameterDefault::Text(document.string_value(child))
+            };
+            parameters.push(TemplateParameter {
+                name: parameter.to_owned(),
+                tunnel,
+                default,
+            });
             parameter_nodes.push(child);
         } else {
             body_started = true;
@@ -1098,9 +1142,12 @@ fn compile_named_template(
     }
     Ok(NamedTemplate {
         name: name.to_owned(),
-        parameters,
+        parameters: parameters
+            .iter()
+            .map(|parameter| parameter.name.clone())
+            .collect(),
         template: Template {
-            parameters: Vec::new(),
+            parameters,
             body: compile_sequence_excluding(document, element, &parameter_nodes)?,
             location: document.location(element).clone(),
         },
@@ -1112,8 +1159,26 @@ pub(super) fn normalize_named_template_name(
     element: NodeId,
     name: &str,
 ) -> Result<String, CompileFailure> {
+    let name = name.trim();
     if is_ascii_ncname(name) {
         return Ok(name.to_owned());
+    }
+    if let Some(qualified) = name.strip_prefix("Q{") {
+        let Some((namespace, local)) = qualified.split_once('}') else {
+            return Err(unsupported(
+                "FXST1013",
+                format!("unsupported named-template name: {name}"),
+                document.location(element),
+            ));
+        };
+        if namespace.contains(['{', '}']) || !is_ascii_ncname(local) {
+            return Err(unsupported(
+                "FXST1013",
+                format!("unsupported named-template name: {name}"),
+                document.location(element),
+            ));
+        }
+        return normalize_expanded_named_template_name(document, element, namespace, local, name);
     }
     let Some((prefix, local)) = name.split_once(':') else {
         return Err(unsupported(
@@ -1136,17 +1201,13 @@ pub(super) fn normalize_named_template_name(
             .iter()
             .find(|binding| binding.prefix.as_deref() == Some(prefix))
         {
-            if binding.namespace == XSLT_NAMESPACE {
-                if local == "initial-template" {
-                    return Ok(STANDARD_INITIAL_TEMPLATE_NAME.to_owned());
-                }
-                return Err(invalid(
-                    "XTSE0080",
-                    format!("reserved named-template name: {name}"),
-                    document.location(element),
-                ));
-            }
-            return Ok(format!("Q{{{}}}{local}", binding.namespace));
+            return normalize_expanded_named_template_name(
+                document,
+                element,
+                &binding.namespace,
+                local,
+                name,
+            );
         }
         current = document.parent(node);
     }
@@ -1155,6 +1216,30 @@ pub(super) fn normalize_named_template_name(
         format!("unsupported named-template name: {name}"),
         document.location(element),
     ))
+}
+
+fn normalize_expanded_named_template_name(
+    document: &Document,
+    element: NodeId,
+    namespace: &str,
+    local: &str,
+    lexical_name: &str,
+) -> Result<String, CompileFailure> {
+    if namespace == XSLT_NAMESPACE {
+        if local == "initial-template" {
+            return Ok(STANDARD_INITIAL_TEMPLATE_NAME.to_owned());
+        }
+        return Err(invalid(
+            "XTSE0080",
+            format!("reserved named-template name: {lexical_name}"),
+            document.location(element),
+        ));
+    }
+    if namespace.is_empty() {
+        Ok(local.to_owned())
+    } else {
+        Ok(format!("Q{{{namespace}}}{local}"))
+    }
 }
 
 fn normalize_variable_qname(

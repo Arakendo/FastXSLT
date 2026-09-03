@@ -9,9 +9,9 @@ Date: 2026-09-02
 - Complete native test set
   `tests/insn/call-template/_call-template-test-set.xml` with 42 cases.
 - Unchanged cases `call-template-0101`, `call-template-0104`,
-  `call-template-0106`, `call-template-0801`,
-  `call-template-0802`, and `call-template-1801` through
-  `call-template-1803`.
+  `call-template-0106`, `call-template-0109`, `call-template-0201`,
+  `call-template-0801`, `call-template-0802`, `call-template-1101`,
+  `call-template-1701`, and `call-template-1801` through `call-template-1803`.
 
 ## Method
 
@@ -31,10 +31,10 @@ remain limited to the standard initial-template name.
 ## Result
 
 - Complete conserved denominator: 42 cases.
-- Selected and passed: 8.
+- Selected and passed: 12.
 - Engine unsupported: 0.
 - Excluded by profile: 0.
-- Visible default not run: 34.
+- Visible default not run: 30.
 
 `call-template-0101` enters `temp` directly as the initial template and proves
 the document-matching template is not selected instead. `call-template-0801`
@@ -47,22 +47,35 @@ The negative cases conserve error behavior as evidence too:
 template is absent, and `call-template-0106` reports `XTSE0080` when a named
 template uses the reserved XSLT namespace.
 
+`call-template-0201` supplies a source while entering a named template and
+copies the current document with `xsl:copy-of select="."`. The document node
+acts as a sequence boundary: its children are copied into the containing
+literal result element without manufacturing a nested result document.
+
+`call-template-0109` normalizes whitespace around EQNames and gives `Q{}temp`
+the same identity as unqualified `temp`. `call-template-1701` proves two
+different prefixes bound to the same namespace select one expanded named
+template identity. `call-template-1101` performs six nested named calls with
+integer `select` arguments; the same path has a focused control proving that a
+literal integer default applies when an argument is omitted.
+
 `call-template-1801` through `1803` reuse the existing stylesheet dependency
 loader. Named-template lookup selects a principal declaration over an imported
 one and selects the later sibling import where two imports declare the same
 name. All secondary modules come from explicit catalog metadata and are sealed
 before compilation; execution performs no acquisition.
 
-Adding this denominator changes conserved XSLT30 accounting to 675 cases: 448
-passed comparisons, 3 engine-unsupported cases, 54 profile exclusions, and 170
+Adding this denominator changes conserved XSLT30 accounting to 675 cases: 452
+passed comparisons, 3 engine-unsupported cases, 54 profile exclusions, and 166
 visible default not-run cases across 17 complete test-set denominators.
 
 ## Limitation
 
-This evidence does not admit the other 34 cases. In particular, it does not
-establish catalog/host resolution of a qualified initial-template name, EQName
-syntax, required or typed parameters, deep/tail recursion behavior, arbitrary
-focus access, or the other assertion families used by the set. The unchanged
+This evidence does not admit the other 30 cases. In particular, it does not
+establish catalog/host resolution of a qualified initial-template name,
+required or typed parameters, node-sequence or general XPath arguments,
+deep/tail recursion behavior, arbitrary focus access, or the other assertion
+families used by the set. The unchanged
 `call-template-0102` case also carries `exclude-result-prefixes` on the named
 template; that standard attribute and its namespace-copy consequences remain a
 visible boundary rather than being ignored to obtain a pass.

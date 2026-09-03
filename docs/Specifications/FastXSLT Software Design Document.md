@@ -249,10 +249,19 @@ does not define a public module graph representation.
 Named-template declarations and `xsl:call-template` instructions use the same
 expanded QName identity. Unprefixed names remain in no namespace; prefixed
 names are resolved from the owning stylesheet instruction and stored in
-`Q{namespace}local` form. The reserved XSLT namespace admits only the standard
-initial-template name. This private canonical spelling is not a public QName
-API, and initial-template catalog/host QName resolution remains a separate host
-boundary concern.
+`Q{namespace}local` form. EQNames use the same canonical identity, including
+`Q{}local` normalization to an unqualified name. The reserved XSLT namespace
+admits only the standard initial-template name. This private canonical spelling
+is not a public QName API, and initial-template catalog/host QName resolution
+remains a separate host boundary concern.
+
+Named-template parameters currently admit literal-text or integer defaults.
+Named calls may supply literal content, integer `select` values, or references
+to one caller-visible atomic variable. Defaults and supplied arguments are
+bound through the same invocation-local copy-on-write frame machinery used by
+matched templates. This does not admit node-sequence arguments, general XPath
+argument expressions, required or typed parameters, or initial-template
+parameters.
 
 For the selected XSLT 3.0 profile, `xsl:import` is not required to precede
 other top-level declarations. Imported named templates with the same expanded
@@ -560,6 +569,12 @@ text-method output. Processing instructions do not select an inferred output
 method or disqualify an otherwise valid XHTML document element for bounded
 DOCTYPE emission. Computed targets/content and PI-terminator recovery remain
 explicitly unsupported.
+The bounded `xsl:copy-of select="."` slice treats a source document node as a
+sequence boundary and recursively copies its children; it does not construct a
+nested document node in the result sequence. Element and text descendants use
+the same result-node and retained-text accounting as direct source-node copies.
+Copying source attributes, comments, and processing instructions through this
+specific selection remains outside the private slice.
 When no output method is declared, an XHTML-namespaced `html` document element
 selects the XHTML serializer and its content-type behavior. A null-namespace
 `html` selects the still-unsupported HTML method; the two inference rules must

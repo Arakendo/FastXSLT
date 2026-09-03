@@ -729,6 +729,32 @@ fn named_template_recursion_stops_at_the_private_depth_limit() {
 }
 
 #[test]
+fn named_template_parameters_apply_defaults_and_integer_select_arguments() {
+    const SOURCE: &str = "urn:fastxslt:named-template-parameters:source";
+    const STYLESHEET: &str = "urn:fastxslt:named-template-parameters:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit parameter source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:call-template name="emit"/><xsl:call-template name="emit"><xsl:with-param name="value" select="7"/></xsl:call-template></out></xsl:template><xsl:template name="emit"><xsl:param name="value" select="5"/><xsl:value-of select="$value"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit parameter stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile parameter stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("parameters", "parameters-result", SOURCE))
+        .expect("admit parameter request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute parameter calls");
+
+    assert_eq!(results.by_request["parameters"].serialized, "<out>57</out>");
+}
+
+#[test]
 fn batch_of_one_matches_the_same_semantic_and_serialization_path() {
     let snapshot = snapshot();
     let program = compile_resource(&snapshot, STYLESHEET_ID).expect("compile once");
@@ -1773,6 +1799,45 @@ fn initial_template_entry_rejects_an_unknown_compiled_name_without_a_source() {
     assert_eq!(failure.code, "XTDE0040");
     assert_eq!(failure.category, FailureCategory::Invalid);
     assert_eq!(failure.request_id.as_deref(), Some("unknown-entry"));
+}
+
+#[test]
+fn initial_template_copy_of_current_copies_a_document_nodes_children() {
+    const SOURCE: &str = "urn:fastxslt:initial-template-document-copy:source";
+    const STYLESHEET: &str = "urn:fastxslt:initial-template-document-copy:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc><a/></doc>".to_vec())
+        .expect("admit source document");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template name="start"><out><xsl:copy-of select="."/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(TransformRequest {
+            identity: "document-copy".to_owned(),
+            result_identity: "document-copy-result".to_owned(),
+            entry: InvocationEntry::InitialTemplateWithSource {
+                resource: SOURCE.to_owned(),
+                name: "start".to_owned(),
+            },
+            parameters: BTreeMap::new(),
+            cancellation: CancellationToken::new(),
+            cancellation_fault: None,
+        })
+        .expect("admit initial-template request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute document copy");
+
+    assert_eq!(
+        results.by_request["document-copy"].serialized,
+        "<out><doc><a></a></doc></out>"
+    );
 }
 
 #[test]

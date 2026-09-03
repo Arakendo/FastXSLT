@@ -1785,6 +1785,13 @@ fn copy_source_node(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     match source.kind(node) {
+        NodeKind::Document => {
+            let mut copied = Vec::new();
+            for child in source.children(node).iter().copied() {
+                copied.extend(copy_source_node(source, request_id, child, control)?);
+            }
+            Ok(copied)
+        }
         NodeKind::Element => {
             control
                 .charge(WorkDomain::ResultNode, 1)
@@ -1829,10 +1836,7 @@ fn copy_source_node(
             )?;
             Ok(copied)
         }
-        NodeKind::Document
-        | NodeKind::Attribute
-        | NodeKind::Comment
-        | NodeKind::ProcessingInstruction => Err(failure(
+        NodeKind::Attribute | NodeKind::Comment | NodeKind::ProcessingInstruction => Err(failure(
             "FXRT1002",
             FailureCategory::Unsupported,
             Some(request_id),
@@ -1976,19 +1980,13 @@ fn execute_named_call(
     if inputs.complete_atomic_frame_clones {
         control.observe_global_atomic_frame_clone(inputs.globals.atomics.len());
     }
-    let mut frame = RuntimeVariables::from_atomics(
+    let supplied = evaluate_template_arguments(arguments, variables, inputs.request_id)?;
+    let frame = bind_template_parameters(
+        &target.template,
+        &supplied,
         &inputs.globals.atomics,
         inputs.complete_atomic_frame_clones,
     );
-    Arc::make_mut(&mut frame.atomics).extend(
-        target
-            .parameters
-            .iter()
-            .map(|parameter| (parameter.clone(), AtomicValue::string(""))),
-    );
-    for (name, parameter) in evaluate_template_arguments(arguments, variables, inputs.request_id)? {
-        Arc::make_mut(&mut frame.atomics).insert(name, parameter.value);
-    }
     execute_sequence(
         inputs,
         &target.template.body,
