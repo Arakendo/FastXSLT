@@ -14,6 +14,11 @@ use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xslt30_overlay_test_support::{
+    DenominatorIdentity, ExecutionDisposition, SelectionDisposition,
+    assert_denominator_case_disposition, assert_denominator_default_disposition,
+    assert_denominator_override_names,
+};
 
 const CASE_NAMES: [&str; 16] = [
     "include-0101",
@@ -50,8 +55,6 @@ const PASSED_CASES: [&str; 14] = [
     "include-0801",
 ];
 const EXCLUDED_CASES: [&str; 2] = ["include-0101", "include-0102"];
-const OVERLAY: &str =
-    include_str!("../../../../corpus/overlays/xslt30/include-denominator-v0.toml");
 const PRINCIPAL_ID: &str = "https://example.invalid/xslt30/decl/include/include-0401.xsl";
 const SECONDARY_ID: &str = "https://example.invalid/xslt30/decl/include/include-0401a.xsl";
 const SOURCE_ID: &str = "urn:w3c:xslt30:decl:include:include-0401:source";
@@ -700,28 +703,31 @@ fn inventories_complete_include_denominator_with_explicit_dispositions() {
         ])
     );
 
-    assert!(OVERLAY.contains("case_count = 16"));
-    assert!(OVERLAY.contains("selection = \"harness-unsupported\""));
-    assert!(OVERLAY.contains("execution = \"not-run\""));
-    for case_name in PASSED_CASES {
-        let case_override = OVERLAY
-            .split("[[case_override]]")
-            .find(|section| section.contains(&format!("case_name = \"{case_name}\"")))
-            .expect("passed case overlay override");
-        assert!(case_override.contains("selection = \"selected\""));
-        assert!(case_override.contains("execution = \"passed\""));
-    }
-    assert_eq!(
-        OVERLAY.matches("[[case_override]]").count(),
-        PASSED_CASES.len() + EXCLUDED_CASES.len()
+    let override_names = PASSED_CASES
+        .into_iter()
+        .chain(EXCLUDED_CASES)
+        .collect::<Vec<_>>();
+    assert_denominator_override_names(DenominatorIdentity::Include, &override_names);
+    assert_denominator_default_disposition(
+        DenominatorIdentity::Include,
+        SelectionDisposition::HarnessUnsupported,
+        ExecutionDisposition::NotRun,
     );
+    for case_name in PASSED_CASES {
+        assert_denominator_case_disposition(
+            DenominatorIdentity::Include,
+            case_name,
+            SelectionDisposition::Selected,
+            ExecutionDisposition::Passed,
+        );
+    }
     for case_name in EXCLUDED_CASES {
-        let case_override = OVERLAY
-            .split("[[case_override]]")
-            .find(|section| section.contains(&format!("case_name = \"{case_name}\"")))
-            .expect("excluded case overlay override");
-        assert!(case_override.contains("selection = \"excluded-by-profile\""));
-        assert!(case_override.contains("execution = \"not-run\""));
+        assert_denominator_case_disposition(
+            DenominatorIdentity::Include,
+            case_name,
+            SelectionDisposition::ExcludedByProfile,
+            ExecutionDisposition::NotRun,
+        );
     }
     for case_name in CASE_NAMES {
         assert!(names.contains(&case_name));

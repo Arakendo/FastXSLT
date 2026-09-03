@@ -1929,7 +1929,7 @@ fn output_invocation_entry(
 }
 
 fn compile_output_case_failure(case_name: &str, expected_code: &str) -> super::ExecutionFailure {
-    assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
+    assert_output_case_passed(case_name);
     let (test_set, set_path) = load_test_set();
     let root = document_element(&test_set);
     let case = element_children(&test_set, root)
@@ -1963,7 +1963,7 @@ fn execute_output_bytes_case(case_name: &str) -> Vec<u8> {
 }
 
 fn execute_output_bytes_case_with_encoding(case_name: &str, expected_encoding: &str) -> Vec<u8> {
-    assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
+    assert_output_case_passed(case_name);
     let (test_set, set_path) = load_test_set();
     let directory = set_path.parent().expect("output test-set directory");
     let root = document_element(&test_set);

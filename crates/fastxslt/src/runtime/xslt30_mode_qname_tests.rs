@@ -16,7 +16,11 @@ use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
-use crate::xslt30_overlay_test_support::assert_private_case_passed;
+use crate::xslt30_overlay_test_support::{
+    DenominatorIdentity, ExecutionDisposition, SelectionDisposition,
+    assert_denominator_case_disposition, assert_denominator_default_disposition,
+    assert_denominator_override_names, assert_private_case_passed,
+};
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
 const SELECTED_CASES: [&str; 88] = [
@@ -172,8 +176,6 @@ const LARGE_RESULT_CASES: [&str; 9] = [
     "mode-1445",
     "mode-1446",
 ];
-const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/mode-denominator-v0.toml");
-
 #[test]
 fn inventories_the_complete_mode_denominator_before_selection() {
     let document = load_test_set();
@@ -189,15 +191,25 @@ fn inventories_the_complete_mode_denominator_before_selection() {
     assert_eq!(names.len(), cases.len());
     assert_eq!(names.first(), Some(&"mode-0001"));
     assert_eq!(names.last(), Some(&"mode-1905"));
-    assert!(OVERLAY.contains("case_count = 169"));
-    assert!(OVERLAY.contains("selection = \"harness-unsupported\""));
-    assert_eq!(
-        OVERLAY.matches("[[case_override]]").count(),
-        SELECTED_CASES.len() + STREAMING_EXCLUDED_CASES.len() + PACKAGE_EXCLUDED_CASES.len()
+    let override_names = SELECTED_CASES
+        .into_iter()
+        .chain(STREAMING_EXCLUDED_CASES)
+        .chain(PACKAGE_EXCLUDED_CASES)
+        .collect::<Vec<_>>();
+    assert_denominator_override_names(DenominatorIdentity::Mode, &override_names);
+    assert_denominator_default_disposition(
+        DenominatorIdentity::Mode,
+        SelectionDisposition::HarnessUnsupported,
+        ExecutionDisposition::NotRun,
     );
     for case_name in SELECTED_CASES {
         assert!(names.contains(case_name));
-        assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
+        assert_denominator_case_disposition(
+            DenominatorIdentity::Mode,
+            case_name,
+            SelectionDisposition::Selected,
+            ExecutionDisposition::Passed,
+        );
     }
     for case_name in STREAMING_EXCLUDED_CASES {
         assert!(names.contains(case_name));
@@ -216,7 +228,12 @@ fn inventories_the_complete_mode_denominator_before_selection() {
             declares_streaming_dependency || supplies_streamed_source,
             "{case_name} must retain native streaming metadata"
         );
-        assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
+        assert_denominator_case_disposition(
+            DenominatorIdentity::Mode,
+            case_name,
+            SelectionDisposition::ExcludedByProfile,
+            ExecutionDisposition::NotRun,
+        );
     }
     for case_name in PACKAGE_EXCLUDED_CASES {
         assert!(names.contains(case_name));
@@ -235,18 +252,13 @@ fn inventories_the_complete_mode_denominator_before_selection() {
             has_package_artifact || has_stylesheet_wrapped_package,
             "{case_name} must retain its native package artifact"
         );
-        assert!(OVERLAY.contains(&format!("case_name = \"{case_name}\"")));
+        assert_denominator_case_disposition(
+            DenominatorIdentity::Mode,
+            case_name,
+            SelectionDisposition::ExcludedByProfile,
+            ExecutionDisposition::NotRun,
+        );
     }
-    assert_eq!(
-        OVERLAY.matches("selection = \"selected\"").count(),
-        SELECTED_CASES.len()
-    );
-    assert_eq!(
-        OVERLAY
-            .matches("selection = \"excluded-by-profile\"")
-            .count(),
-        48
-    );
 }
 
 #[test]

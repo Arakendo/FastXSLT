@@ -1651,9 +1651,12 @@ count:
    denominator schema and exact override identities, including selected,
    profile-excluded, passed, and engine-unsupported dispositions. The
    `decl/strip-space` and `misc/built-in-templates` default and override
-   dispositions use that loader as well. Several larger complete-denominator
-   overlays and the unified immutable report remain. Do not stabilize this
-   test-only loader as a public API prematurely.
+   dispositions use that loader as well. The complete `decl/include` and
+   `attr/mode` overlays now use exact typed defaults and overrides, while the
+   richer typed `decl/output` loader owns its direct case checks. The
+   `insn/apply-templates` overlay still needs missing selection rationales
+   repaired before typed admission; the unified immutable report also remains.
+   Do not stabilize this test-only loader as a public API prematurely.
 6. [ ] Define fast pull-request, focused semantic, and reproducible full-corpus
    CI tiers. A shard, retry, feature flag, or unavailable corpus must never
    silently shrink the denominator.
