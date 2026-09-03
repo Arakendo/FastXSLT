@@ -334,6 +334,10 @@ The exact `name(relative-path) = unqualified-string-literal` conditional form
 compares only a selected node whose expanded name has no namespace. It does not
 fabricate lexical QNames for namespaced nodes or admit general `fn:name`, QName,
 prefix, or computed-operand comparison semantics.
+The `.//` abbreviation begins descendant navigation at the supplied context
+node, unlike leading `//`, which begins at the document node. Both reuse the
+same typed descendant steps, document-order normalization, deduplication, and
+work accounting; this does not admit arbitrary primary expressions before `//`.
 
 Conditional structure is validated before branch expressions or constructors
 are compiled. Missing `test`, `xsl:when` after `xsl:otherwise`, repeated

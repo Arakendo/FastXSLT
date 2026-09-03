@@ -75,6 +75,30 @@ fn selects_the_context_item_without_navigation() {
 }
 
 #[test]
+fn explicit_context_descendant_path_stays_inside_the_context_subtree() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root><outside/><scope><inside><leaf/></inside></scope></root>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 5,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let scope = document.children(root)[1];
+    let inside = document.children(scope)[0];
+    let leaf = document.children(inside)[0];
+    let path = parse_location_path(".//*", location()).expect("context descendant path");
+
+    let selected = evaluate_location_path(&document, scope, &path);
+
+    assert_eq!(path.origin, PathOrigin::ContextDescendant);
+    assert_eq!(selected, [inside, leaf]);
+}
+
+#[test]
 fn root_path_selects_the_document_node_from_an_element_context() {
     let parsed = parse_document(
         "memory:source.xml",

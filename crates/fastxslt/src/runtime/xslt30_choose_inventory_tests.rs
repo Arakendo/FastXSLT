@@ -12,7 +12,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/insn/choose/_choose-test-set.xml";
-const PASSED_CASES: [&str; 20] = [
+const PASSED_CASES: [&str; 21] = [
     "choose-0101",
     "choose-0102",
     "choose-0201",
@@ -32,6 +32,7 @@ const PASSED_CASES: [&str; 20] = [
     "choose-0901",
     "choose-1001",
     "choose-1101",
+    "choose-1202",
     "choose-1401",
 ];
 const ERROR_CASES: [&str; 4] = ["choose-1801", "choose-1802", "choose-1803", "choose-1804"];
@@ -50,7 +51,7 @@ fn inventories_complete_choose_denominator_before_selection() {
     assert_eq!(names.len(), cases.len());
     assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
     assert!(OVERLAY.contains("case_count = 55"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 24);
+    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 25);
     for case_name in PASSED_CASES.into_iter().chain(ERROR_CASES) {
         assert!(names.contains(case_name));
         let record = overlay_case(case_name);
@@ -85,10 +86,7 @@ fn executes_unchanged_choose_and_if_cases() {
 fn execute_case(case_name: &str) {
     let document = load_test_set();
     let case = case_named(&document, case_name);
-    let expected = child_named(&document, case, "result")
-        .and_then(|node| child_named(&document, node, "assert-xml"))
-        .map(|node| document.string_value(node))
-        .expect("inline XML assertion");
+    let result = child_named(&document, case, "result").expect("native result assertion");
     let (snapshot, stylesheet_id, source_id) = sealed_case_resources(&document, case_name);
     let program = compile_resource(&snapshot, &stylesheet_id).expect("compile choose case");
     let mut set = TransformSetBuilder::new(
@@ -113,11 +111,39 @@ fn execute_case(case_name: &str) {
     })
     .expect("admit transform request");
     let results = execute_transform_set(set.seal()).expect("execute choose case");
-    assert_xml_equivalent(
-        &results.by_request[case_name].serialized,
-        &expected,
-        case_name,
-    );
+    let actual = &results.by_request[case_name].serialized;
+    if let Some(assertion) = child_named(&document, result, "assert-xml") {
+        assert_xml_equivalent(actual, &document.string_value(assertion), case_name);
+    } else {
+        let assertion = child_named(&document, result, "assert")
+            .map(|node| document.string_value(node))
+            .expect("admitted XML or exact root-string assertion");
+        assert_root_string_equal(actual, &assertion, case_name);
+    }
+}
+
+fn assert_root_string_equal(actual: &str, assertion: &str, case_name: &str) {
+    let expected = assertion
+        .trim()
+        .strip_prefix("/out = \"")
+        .and_then(|value| value.strip_suffix('"'))
+        .expect("admitted exact /out string assertion");
+    let actual_id = format!("urn:w3c:xslt30:insn:choose:{case_name}:actual");
+    let parsed = parse_document(
+        &actual_id,
+        actual.as_bytes(),
+        ParseLimits {
+            max_events: 512,
+            max_depth: 16,
+        },
+    )
+    .expect("actual result XML");
+    let actual = Document::from_parsed(parsed).expect("actual result XDM");
+    let out = descendants_named(&actual, actual.document_node(), "out")
+        .into_iter()
+        .next()
+        .expect("out result element");
+    assert_eq!(actual.string_value(out), expected, "{case_name}");
 }
 
 fn sealed_case_resources(

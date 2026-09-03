@@ -123,6 +123,12 @@ execution = "passed"
 rationale = "The unchanged XSLT 1.0-compatible case nests seven xsl:if instructions over exact constant arithmetic, context string, and unqualified parent-name comparisons."
 
 [[case_override]]
+case_name = "choose-1202"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 1.0-compatible case iterates context-relative descendants and selects the first matching unqualified name branch across a 26-way xsl:choose."
+
+[[case_override]]
 case_name = "choose-1401"
 selection = "selected"
 execution = "passed"

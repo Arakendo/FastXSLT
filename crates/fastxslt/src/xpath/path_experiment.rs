@@ -44,6 +44,13 @@ enum PathOrigin {
     EmptySequence,
     Relative,
     Descendant,
+    ContextDescendant,
+}
+
+impl PathOrigin {
+    fn is_leading_descendant(self) -> bool {
+        matches!(self, Self::Descendant | Self::ContextDescendant)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -575,6 +582,8 @@ fn parse_final_context_predicate(expression: &str) -> (&str, Option<FinalContext
 fn parse_path_origin(expression: &str) -> (&str, PathOrigin) {
     if let Some(expression) = expression.strip_prefix("()/") {
         (expression, PathOrigin::EmptySequence)
+    } else if let Some(expression) = expression.strip_prefix(".//") {
+        (expression, PathOrigin::ContextDescendant)
     } else if let Some(expression) = expression.strip_prefix("./") {
         (expression, PathOrigin::Relative)
     } else if let Some(expression) = expression.strip_prefix("//") {
@@ -743,7 +752,8 @@ pub(crate) fn evaluate_location_path_controlled(
         PathOrigin::DocumentNode
         | PathOrigin::EmptySequence
         | PathOrigin::Relative
-        | PathOrigin::Descendant => {}
+        | PathOrigin::Descendant
+        | PathOrigin::ContextDescendant => {}
     }
     let mut current = if path.origin == PathOrigin::EmptySequence {
         Vec::new()
@@ -762,7 +772,7 @@ pub(crate) fn evaluate_location_path_controlled(
                 step_candidates(document, node, step, step_index, path.origin, control)?;
             let mut named_candidates = Vec::new();
             for child in candidates {
-                if (step_index != 0 || path.origin != PathOrigin::Descendant)
+                if (step_index != 0 || !path.origin.is_leading_descendant())
                     && !step.uses_descendant_axis()
                     && !step.uses_descendant_or_self_axis()
                 {
@@ -838,11 +848,11 @@ fn step_candidates(
     origin: PathOrigin,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ControlFailure> {
-    if step_index == 0 && origin == PathOrigin::Descendant && step.uses_self_axis() {
+    if step_index == 0 && origin.is_leading_descendant() && step.uses_self_axis() {
         descendant_or_self_nodes(document, node, control)
-    } else if step_index == 0 && origin == PathOrigin::Descendant && step.uses_attribute_axis() {
+    } else if step_index == 0 && origin.is_leading_descendant() && step.uses_attribute_axis() {
         descendant_attributes(document, node, control)
-    } else if step_index == 0 && origin == PathOrigin::Descendant {
+    } else if step_index == 0 && origin.is_leading_descendant() {
         descendant_nodes(document, node, control)
     } else if step.uses_attribute_axis() {
         Ok(document.attributes(node).to_vec())
