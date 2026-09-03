@@ -1,0 +1,17 @@
+suite = "QT3"
+revision = "83993587711dbd5c18ed846385ec37d079d6e492"
+set_file = "fn/codepoint-equal.xml"
+case_count = 36
+selected_source = "private-ledger-v0.toml"
+
+[[dependency_rule]]
+dependency_type = "spec"
+values = ["XQ10+"]
+selection = "profile-excluded"
+execution = "not-run"
+rationale = "The case declares a local XQuery function outside FastXSLT's XPath-in-XSLT profile."
+
+[default_disposition]
+selection = "harness-unsupported"
+execution = "not-run"
+rationale = "The remaining cases require Unicode normalization or invocation-clock composition outside the bounded codepoint-equal slice; they remain visible and no result is inferred."

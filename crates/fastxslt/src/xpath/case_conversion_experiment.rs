@@ -5,6 +5,7 @@ use crate::execution_control_experiment::{ControlFailure, InvocationControl, Wor
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum CaseValue {
     Boolean(bool),
+    Empty,
     Integer(i128),
     Integers(Vec<u32>),
     String(String),
@@ -14,6 +15,7 @@ pub(crate) enum CaseValue {
 pub(crate) enum CaseFailure {
     Control(ControlFailure),
     InvalidArity,
+    InvalidArgumentType,
     Unsupported,
 }
 
@@ -38,6 +40,12 @@ fn evaluate_value(
                 && effective_boolean(&evaluate_value(right, control)?),
         ));
     }
+    if let Some((left, right)) = split_top_level(expression, " or ") {
+        return Ok(CaseValue::Boolean(
+            effective_boolean(&evaluate_value(left, control)?)
+                || effective_boolean(&evaluate_value(right, control)?),
+        ));
+    }
     if let Some((left, right)) = split_top_level(expression, " eq ") {
         return Ok(CaseValue::Boolean(
             evaluate_value(left, control)? == evaluate_value(right, control)?,
@@ -54,6 +62,14 @@ fn evaluate_value(
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(CaseFailure::Control)?;
+    evaluate_function(name, argument, control)
+}
+
+fn evaluate_function(
+    name: &str,
+    argument: &str,
+    control: &mut InvocationControl,
+) -> Result<CaseValue, CaseFailure> {
     match name {
         "lower-case" | "fn:lower-case" => {
             let value = optional_string_argument(argument, control)?;
@@ -67,9 +83,24 @@ fn evaluate_value(
                 value.chars().flat_map(char::to_uppercase).collect(),
             ))
         }
-        "xs:string" => {
+        "string" | "fn:string" | "xs:string" => {
             require_one_argument(argument)?;
-            evaluate_value(argument, control)
+            Ok(CaseValue::String(
+                match evaluate_value(argument, control)? {
+                    CaseValue::String(value) => value,
+                    CaseValue::Integer(value) => value.to_string(),
+                    _ => return Err(CaseFailure::Unsupported),
+                },
+            ))
+        }
+        "xs:integer" => {
+            require_one_argument(argument)?;
+            let lexical =
+                parse_quoted(argument.trim()).unwrap_or_else(|| argument.trim().to_owned());
+            let value = lexical
+                .parse::<i128>()
+                .map_err(|_| CaseFailure::Unsupported)?;
+            Ok(CaseValue::Integer(value))
         }
         "count" | "fn:count" => {
             require_one_argument(argument)?;
@@ -79,7 +110,7 @@ fn evaluate_value(
             };
             Ok(CaseValue::Integer(count as i128))
         }
-        "boolean" | "fn:boolean" => {
+        "boolean" | "fn:boolean" | "xs:boolean" => {
             require_one_argument(argument)?;
             Ok(CaseValue::Boolean(effective_boolean(&evaluate_value(
                 argument, control,
@@ -110,7 +141,31 @@ fn evaluate_value(
             let value = require_string(evaluate_value(argument, control)?)?;
             Ok(CaseValue::Integers(value.chars().map(u32::from).collect()))
         }
+        "codepoint-equal" | "fn:codepoint-equal" => {
+            let (left, right) = exactly_two_arguments(argument)?;
+            let left = optional_comparison_string(left, control)?;
+            let right = optional_comparison_string(right, control)?;
+            match (left, right) {
+                (Some(left), Some(right)) => Ok(CaseValue::Boolean(left == right)),
+                _ => Ok(CaseValue::Empty),
+            }
+        }
+        "true" | "fn:true" if argument.trim().is_empty() => Ok(CaseValue::Boolean(true)),
+        "false" | "fn:false" if argument.trim().is_empty() => Ok(CaseValue::Boolean(false)),
         _ => Err(CaseFailure::Unsupported),
+    }
+}
+
+fn optional_comparison_string(
+    expression: &str,
+    control: &mut InvocationControl,
+) -> Result<Option<String>, CaseFailure> {
+    if expression.trim() == "()" {
+        return Ok(None);
+    }
+    match evaluate_value(expression, control)? {
+        CaseValue::String(value) => Ok(Some(value)),
+        _ => Err(CaseFailure::InvalidArgumentType),
     }
 }
 
@@ -135,6 +190,7 @@ fn require_string(value: CaseValue) -> Result<String, CaseFailure> {
 fn effective_boolean(value: &CaseValue) -> bool {
     match value {
         CaseValue::Boolean(value) => *value,
+        CaseValue::Empty => false,
         CaseValue::Integer(value) => *value != 0,
         CaseValue::Integers(values) => !values.is_empty(),
         CaseValue::String(value) => !value.is_empty(),
