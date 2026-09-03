@@ -1643,13 +1643,15 @@ count:
    loader and derive one immutable run report carrying suite/engine/harness
    revisions, profile, target/toolchain/features, selection reasons, outcomes,
    and conservation totals. The two active QT3 adapters now use a typed private
-   ledger/denominator loader. XSLT30's `expr/for`, `expr/path`,
-   Runtime adapters now resolve every use of `private-slice-v0.toml` through
-   the typed private-overlay loader instead of scanning TOML fragments,
-   including the mixed `expr/castable` dispositions and all 88 selected mode
-   cases. Several separate complete-denominator overlays still have
-   string-scanned consumers, and the unified immutable report remains. Do not
-   stabilize this test-only loader as a public API prematurely.
+   ledger/denominator loader. XSLT30 runtime adapters now resolve every use of
+   `private-slice-v0.toml` through the typed private-overlay loader instead of
+   scanning TOML fragments, including mixed `expr/castable` dispositions and
+   all 88 selected mode cases. The `fn/root`, `insn/apply-imports`,
+   `insn/choose`, and `insn/call-template` overlays now use the same typed
+   denominator schema and exact override identities, including selected,
+   profile-excluded, passed, and engine-unsupported dispositions. Several
+   other complete-denominator overlays and the unified immutable report
+   remain. Do not stabilize this test-only loader as a public API prematurely.
 6. [ ] Define fast pull-request, focused semantic, and reproducible full-corpus
    CI tiers. A shard, retry, feature flag, or unavailable corpus must never
    silently shrink the denominator.

@@ -70,7 +70,7 @@ rationale = "The unchanged XSLT 2.0 case enters a named template with an explici
 
 [[case_override]]
 case_name = "call-template-0401"
-selection = "excluded-profile"
+selection = "excluded-by-profile"
 execution = "not-run"
 rationale = "The case is constrained to XSLT 2.0 and expects its edition-specific XTDE0060 code; the adjacent XSLT 3.0 alternative call-template-0401a is selected instead."
 

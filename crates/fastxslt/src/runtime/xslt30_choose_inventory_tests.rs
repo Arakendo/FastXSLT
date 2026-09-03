@@ -10,8 +10,11 @@ use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xslt30_overlay_test_support::{
+    DenominatorIdentity, ExecutionDisposition, SelectionDisposition,
+    assert_denominator_case_disposition, assert_denominator_override_names,
+};
 
-const TEST_SET: &str = "tests/insn/choose/_choose-test-set.xml";
 const PASSED_CASES: [&str; 42] = [
     "choose-0101",
     "choose-0102",
@@ -68,8 +71,6 @@ const UNSUPPORTED_CASES: [&str; 9] = [
     "choose-0608",
     "choose-1705",
 ];
-const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/choose-denominator-v0.toml");
-
 #[test]
 fn inventories_complete_choose_denominator_before_selection() {
     let document = load_test_set();
@@ -81,20 +82,29 @@ fn inventories_complete_choose_denominator_before_selection() {
 
     assert_eq!(cases.len(), 55);
     assert_eq!(names.len(), cases.len());
-    assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
-    assert!(OVERLAY.contains("case_count = 55"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 55);
+    let override_names = PASSED_CASES
+        .into_iter()
+        .chain(ERROR_CASES)
+        .chain(UNSUPPORTED_CASES)
+        .collect::<Vec<_>>();
+    assert_denominator_override_names(DenominatorIdentity::Choose, &override_names);
     for case_name in PASSED_CASES.into_iter().chain(ERROR_CASES) {
         assert!(names.contains(case_name));
-        let record = overlay_case(case_name);
-        assert!(record.contains("selection = \"selected\""));
-        assert!(record.contains("execution = \"passed\""));
+        assert_denominator_case_disposition(
+            DenominatorIdentity::Choose,
+            case_name,
+            SelectionDisposition::Selected,
+            ExecutionDisposition::Passed,
+        );
     }
     for case_name in UNSUPPORTED_CASES {
         assert!(names.contains(case_name));
-        let record = overlay_case(case_name);
-        assert!(record.contains("selection = \"selected\""));
-        assert!(record.contains("execution = \"engine-unsupported\""));
+        assert_denominator_case_disposition(
+            DenominatorIdentity::Choose,
+            case_name,
+            SelectionDisposition::Selected,
+            ExecutionDisposition::EngineUnsupported,
+        );
     }
 }
 
@@ -266,13 +276,6 @@ fn source_bytes(document: &Document, source: NodeId) -> Vec<u8> {
     }
     let content = child_named(document, source, "content").expect("inline source content");
     document.string_value(content).into_bytes()
-}
-
-fn overlay_case(case_name: &str) -> &str {
-    OVERLAY
-        .split("[[case_override]]")
-        .find(|record| record.contains(&format!("case_name = \"{case_name}\"")))
-        .expect("case override")
 }
 
 fn corpus_directory() -> PathBuf {

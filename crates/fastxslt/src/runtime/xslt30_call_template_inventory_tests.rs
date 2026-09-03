@@ -11,8 +11,11 @@ use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xslt30_overlay_test_support::{
+    DenominatorIdentity, ExecutionDisposition, SelectionDisposition,
+    assert_denominator_case_disposition, assert_denominator_override_names,
+};
 
-const TEST_SET: &str = "tests/insn/call-template/_call-template-test-set.xml";
 const RESULT_CASES: [&str; 14] = [
     "call-template-0101",
     "call-template-0102",
@@ -38,9 +41,6 @@ const ERROR_CASES: [(&str, &str); 6] = [
     ("call-template-0401a", "XTDE0700"),
 ];
 const PROFILE_EXCLUDED_CASES: [&str; 1] = ["call-template-0401"];
-const OVERLAY: &str =
-    include_str!("../../../../corpus/overlays/xslt30/call-template-denominator-v0.toml");
-
 #[test]
 fn inventories_complete_call_template_denominator_before_selection() {
     let document = load_test_set();
@@ -51,23 +51,32 @@ fn inventories_complete_call_template_denominator_before_selection() {
         .collect::<BTreeSet<_>>();
     assert_eq!(cases.len(), 42);
     assert_eq!(names.len(), cases.len());
-    assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
-    assert!(OVERLAY.contains("case_count = 42"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 21);
+    let override_names = RESULT_CASES
+        .into_iter()
+        .chain(ERROR_CASES.into_iter().map(|(case_name, _)| case_name))
+        .chain(PROFILE_EXCLUDED_CASES)
+        .collect::<Vec<_>>();
+    assert_denominator_override_names(DenominatorIdentity::CallTemplate, &override_names);
     for case_name in RESULT_CASES
         .into_iter()
         .chain(ERROR_CASES.into_iter().map(|(case_name, _)| case_name))
     {
         assert!(names.contains(case_name));
-        let record = overlay_case(case_name);
-        assert!(record.contains("selection = \"selected\""));
-        assert!(record.contains("execution = \"passed\""));
+        assert_denominator_case_disposition(
+            DenominatorIdentity::CallTemplate,
+            case_name,
+            SelectionDisposition::Selected,
+            ExecutionDisposition::Passed,
+        );
     }
     for case_name in PROFILE_EXCLUDED_CASES {
         assert!(names.contains(case_name));
-        let record = overlay_case(case_name);
-        assert!(record.contains("selection = \"excluded-profile\""));
-        assert!(record.contains("execution = \"not-run\""));
+        assert_denominator_case_disposition(
+            DenominatorIdentity::CallTemplate,
+            case_name,
+            SelectionDisposition::ExcludedByProfile,
+            ExecutionDisposition::NotRun,
+        );
     }
 }
 
@@ -312,13 +321,6 @@ fn case_named(document: &Document, case_name: &str) -> NodeId {
         .into_iter()
         .find(|node| attribute(document, *node, "name") == Some(case_name))
         .expect("pinned test case")
-}
-
-fn overlay_case(case_name: &str) -> &str {
-    OVERLAY
-        .split("[[case_override]]")
-        .find(|record| record.contains(&format!("case_name = \"{case_name}\"")))
-        .expect("case override")
 }
 
 fn corpus_directory() -> PathBuf {

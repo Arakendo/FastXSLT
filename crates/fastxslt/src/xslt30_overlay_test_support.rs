@@ -12,6 +12,22 @@ const STRIP_SPACE_OVERLAY_SOURCE: &str =
     include_str!("../../../corpus/overlays/xslt30/strip-space-denominator-v0.toml");
 const BUILT_IN_TEMPLATES_OVERLAY_SOURCE: &str =
     include_str!("../../../corpus/overlays/xslt30/built-in-templates-denominator-v0.toml");
+const ROOT_OVERLAY_SOURCE: &str =
+    include_str!("../../../corpus/overlays/xslt30/root-denominator-v0.toml");
+const APPLY_IMPORTS_OVERLAY_SOURCE: &str =
+    include_str!("../../../corpus/overlays/xslt30/apply-imports-denominator-v0.toml");
+const CHOOSE_OVERLAY_SOURCE: &str =
+    include_str!("../../../corpus/overlays/xslt30/choose-denominator-v0.toml");
+const CALL_TEMPLATE_OVERLAY_SOURCE: &str =
+    include_str!("../../../corpus/overlays/xslt30/call-template-denominator-v0.toml");
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum DenominatorIdentity {
+    Root,
+    ApplyImports,
+    Choose,
+    CallTemplate,
+}
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
@@ -238,6 +254,38 @@ fn parse_denominator_overlay(source: &str, identity: &str) -> Result<Denominator
     Ok(overlay)
 }
 
+fn parse_known_denominator(
+    source: &str,
+    identity: DenominatorIdentity,
+) -> Result<DenominatorOverlay, String> {
+    let (label, expected_set, expected_count) = match identity {
+        DenominatorIdentity::Root => ("root denominator", "tests/fn/root/_root-test-set.xml", 10),
+        DenominatorIdentity::ApplyImports => (
+            "apply-imports denominator",
+            "tests/insn/apply-imports/_apply-imports-test-set.xml",
+            1,
+        ),
+        DenominatorIdentity::Choose => (
+            "choose denominator",
+            "tests/insn/choose/_choose-test-set.xml",
+            55,
+        ),
+        DenominatorIdentity::CallTemplate => (
+            "call-template denominator",
+            "tests/insn/call-template/_call-template-test-set.xml",
+            42,
+        ),
+    };
+    let overlay = parse_denominator_overlay(source, label)?;
+    if overlay.set_file != expected_set || overlay.case_count != expected_count {
+        return Err(format!(
+            "{label} is {}/{}, expected {expected_set}/{expected_count}",
+            overlay.set_file, overlay.case_count
+        ));
+    }
+    Ok(overlay)
+}
+
 fn private_overlay() -> &'static PrivateOverlay {
     static OVERLAY: OnceLock<PrivateOverlay> = OnceLock::new();
     OVERLAY.get_or_init(|| {
@@ -270,6 +318,23 @@ fn built_in_templates_overlay() -> &'static DenominatorOverlay {
             "built-in-templates denominator",
         )
         .unwrap_or_else(|error| panic!("invalid built-in-templates XSLT30 overlay: {error}"))
+    })
+}
+
+fn known_denominator(identity: DenominatorIdentity) -> &'static DenominatorOverlay {
+    static ROOT: OnceLock<DenominatorOverlay> = OnceLock::new();
+    static APPLY_IMPORTS: OnceLock<DenominatorOverlay> = OnceLock::new();
+    static CHOOSE: OnceLock<DenominatorOverlay> = OnceLock::new();
+    static CALL_TEMPLATE: OnceLock<DenominatorOverlay> = OnceLock::new();
+    let (cell, source) = match identity {
+        DenominatorIdentity::Root => (&ROOT, ROOT_OVERLAY_SOURCE),
+        DenominatorIdentity::ApplyImports => (&APPLY_IMPORTS, APPLY_IMPORTS_OVERLAY_SOURCE),
+        DenominatorIdentity::Choose => (&CHOOSE, CHOOSE_OVERLAY_SOURCE),
+        DenominatorIdentity::CallTemplate => (&CALL_TEMPLATE, CALL_TEMPLATE_OVERLAY_SOURCE),
+    };
+    cell.get_or_init(|| {
+        parse_known_denominator(source, identity)
+            .unwrap_or_else(|error| panic!("invalid {identity:?}: {error}"))
     })
 }
 
@@ -365,6 +430,40 @@ pub(crate) fn assert_private_set_case_names(set_file: &str, expected: &[&str]) {
     assert_eq!(actual, expected, "private overlay set {set_file}");
 }
 
+pub(crate) fn assert_denominator_override_names(identity: DenominatorIdentity, expected: &[&str]) {
+    let actual = known_denominator(identity)
+        .case_override
+        .iter()
+        .map(|case| case.case_name.as_str())
+        .collect::<BTreeSet<_>>();
+    let expected = expected.iter().copied().collect::<BTreeSet<_>>();
+    assert_eq!(actual, expected, "{identity:?} override identities");
+}
+
+pub(crate) fn assert_denominator_case_passed(identity: DenominatorIdentity, case_name: &str) {
+    assert_denominator_case_disposition(
+        identity,
+        case_name,
+        SelectionDisposition::Selected,
+        ExecutionDisposition::Passed,
+    );
+}
+
+pub(crate) fn assert_denominator_case_disposition(
+    identity: DenominatorIdentity,
+    case_name: &str,
+    selection: SelectionDisposition,
+    execution: ExecutionDisposition,
+) {
+    let case = known_denominator(identity)
+        .case_override
+        .iter()
+        .find(|case| case.case_name == case_name)
+        .unwrap_or_else(|| panic!("missing {identity:?} override {case_name}"));
+    assert_eq!(case.selection, selection, "{identity:?}::{case_name}");
+    assert_eq!(case.execution, execution, "{identity:?}::{case_name}");
+}
+
 pub(crate) fn assert_output_case_passed(case_name: &str) {
     let case = output_overlay()
         .case_override
@@ -425,6 +524,19 @@ fn xslt30_overlays_are_typed_unique_and_complete() {
         "tests/misc/built-in-templates/_built-in-templates-test-set.xml"
     );
     assert_eq!(built_in_templates.case_count, 6);
+    assert_eq!(known_denominator(DenominatorIdentity::Root).case_count, 10);
+    assert_eq!(
+        known_denominator(DenominatorIdentity::ApplyImports).case_count,
+        1
+    );
+    assert_eq!(
+        known_denominator(DenominatorIdentity::Choose).case_count,
+        55
+    );
+    assert_eq!(
+        known_denominator(DenominatorIdentity::CallTemplate).case_count,
+        42
+    );
 }
 
 #[test]

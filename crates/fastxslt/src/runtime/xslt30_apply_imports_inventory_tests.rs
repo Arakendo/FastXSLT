@@ -12,10 +12,9 @@ use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use crate::xslt::golden_semantics_experiment::STANDARD_INITIAL_TEMPLATE_NAME;
-
-const TEST_SET: &str = "tests/insn/apply-imports/_apply-imports-test-set.xml";
-const OVERLAY: &str =
-    include_str!("../../../../corpus/overlays/xslt30/apply-imports-denominator-v0.toml");
+use crate::xslt30_overlay_test_support::{
+    DenominatorIdentity, assert_denominator_case_passed, assert_denominator_override_names,
+};
 
 #[test]
 fn inventories_and_seals_complete_apply_imports_denominator() {
@@ -28,10 +27,8 @@ fn inventories_and_seals_complete_apply_imports_denominator() {
         Some("apply-imports-001")
     );
     assert_eq!(dependency(&document, case, "spec"), Some("XSLT30+"));
-    assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
-    assert!(OVERLAY.contains("case_count = 1"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 1);
-    assert!(OVERLAY.contains("selection = \"selected\""));
+    assert_denominator_override_names(DenominatorIdentity::ApplyImports, &["apply-imports-001"]);
+    assert_denominator_case_passed(DenominatorIdentity::ApplyImports, "apply-imports-001");
 
     let test = child_named(&document, case, "test").expect("test metadata");
     let stylesheets = element_children(&document, test)

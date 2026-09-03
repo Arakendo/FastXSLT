@@ -10,8 +10,10 @@ use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xslt30_overlay_test_support::{
+    DenominatorIdentity, assert_denominator_case_passed, assert_denominator_override_names,
+};
 
-const TEST_SET: &str = "tests/fn/root/_root-test-set.xml";
 const PASSED_CASES: [&str; 10] = [
     "root-0101",
     "root-0102",
@@ -24,8 +26,6 @@ const PASSED_CASES: [&str; 10] = [
     "root-0502",
     "root-0601",
 ];
-const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/root-denominator-v0.toml");
-
 #[test]
 fn inventories_complete_root_denominator_before_selection() {
     let document = load_test_set();
@@ -42,14 +42,10 @@ fn inventories_complete_root_denominator_before_selection() {
     assert_eq!(names.len(), cases.len());
     assert_eq!(names.first(), Some(&"root-0101"));
     assert_eq!(names.last(), Some(&"root-0601"));
-    assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
-    assert!(OVERLAY.contains("case_count = 10"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 10);
+    assert_denominator_override_names(DenominatorIdentity::Root, &PASSED_CASES);
     for case_name in PASSED_CASES {
         assert!(names.contains(case_name));
-        let record = overlay_case(case_name);
-        assert!(record.contains("selection = \"selected\""));
-        assert!(record.contains("execution = \"passed\""));
+        assert_denominator_case_passed(DenominatorIdentity::Root, case_name);
     }
 }
 
@@ -283,13 +279,6 @@ fn source_bytes(document: &Document, source: NodeId, directory: &std::path::Path
     }
     let content = child_named(document, source, "content").expect("inline source content");
     document.string_value(content).into_bytes()
-}
-
-fn overlay_case(case_name: &str) -> &str {
-    OVERLAY
-        .split("[[case_override]]")
-        .find(|record| record.contains(&format!("case_name = \"{case_name}\"")))
-        .expect("case override")
 }
 
 fn corpus_directory() -> PathBuf {
