@@ -338,6 +338,10 @@ The `.//` abbreviation begins descendant navigation at the supplied context
 node, unlike leading `//`, which begins at the document node. Both reuse the
 same typed descendant steps, document-order normalization, deduplication, and
 work accounting; this does not admit arbitrary primary expressions before `//`.
+The exact `string-length(.) = nonnegative-integer` conditional form counts
+Unicode codepoints in the controlled context string value and charges the scan
+to XPath work. It does not admit general string functions, alternate operands,
+Unicode grapheme counting, or arbitrary numeric comparisons.
 
 Conditional structure is validated before branch expressions or constructors
 are compiled. Missing `test`, `xsl:when` after `xsl:otherwise`, repeated

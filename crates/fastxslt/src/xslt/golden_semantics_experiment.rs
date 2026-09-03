@@ -478,6 +478,7 @@ pub(crate) enum BooleanExpression {
         local: String,
     },
     ContextStringEquals(String),
+    ContextStringLengthEquals(usize),
     Or {
         left: Box<BooleanExpression>,
         right: Box<BooleanExpression>,

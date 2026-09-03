@@ -1672,11 +1672,10 @@ fn evaluate_boolean(
             }))
         }
         BooleanExpression::ContextStringEquals(expected) => {
-            let (source, context) = required_source_context(inputs, context)?;
-            source
-                .string_value_controlled(context, control)
-                .map(|actual| actual == *expected)
-                .map_err(|failure| control_failure(failure, inputs.request_id))
+            evaluate_context_string_equals(inputs, context, expected, control)
+        }
+        BooleanExpression::ContextStringLengthEquals(expected) => {
+            evaluate_context_string_length(inputs, context, *expected, control)
         }
         BooleanExpression::Or { left, right } => {
             if evaluate_boolean(inputs, left, context, variables, control)? {
@@ -1720,6 +1719,36 @@ fn evaluate_boolean(
             Ok(value.lexical().trim().parse::<i64>() == Ok(test.integer))
         }
     }
+}
+
+fn evaluate_context_string_equals(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expected: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    source
+        .string_value_controlled(context, control)
+        .map(|actual| actual == expected)
+        .map_err(|failure| control_failure(failure, inputs.request_id))
+}
+
+fn evaluate_context_string_length(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expected: usize,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let actual = source
+        .string_value_controlled(context, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let length = actual.chars().count();
+    control
+        .charge(WorkDomain::XPathOperation, length.max(1))
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(length == expected)
 }
 
 fn evaluate_temporary_root_identity_equal(

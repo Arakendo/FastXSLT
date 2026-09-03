@@ -1259,6 +1259,9 @@ fn parse_scalar_boolean_expression(
     if let Some(value) = parse_constant_string_boolean(parsed) {
         return Ok(BooleanExpression::Constant(value));
     }
+    if let Some(length) = parse_context_string_length_equality(parsed) {
+        return Ok(BooleanExpression::ContextStringLengthEquals(length));
+    }
     if let Some(expression) = parse_path_boolean_expression(parsed, location)? {
         return Ok(expression);
     }
@@ -1338,6 +1341,13 @@ fn parse_scalar_boolean_expression(
     } else {
         ordering.is_eq()
     }))
+}
+
+fn parse_context_string_length_equality(expression: &str) -> Option<usize> {
+    let (left, right) = expression.split_once('=')?;
+    (left.trim() == "string-length(.)")
+        .then(|| right.trim().parse().ok())
+        .flatten()
 }
 
 fn parse_path_boolean_expression(
