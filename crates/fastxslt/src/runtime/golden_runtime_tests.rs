@@ -1841,6 +1841,35 @@ fn initial_template_copy_of_current_copies_a_document_nodes_children() {
 }
 
 #[test]
+fn copy_of_ancestor_or_self_elements_preserves_reverse_axis_order() {
+    const SOURCE: &str = "urn:fastxslt:ancestor-copy:source";
+    const STYLESHEET: &str = "urn:fastxslt:ancestor-copy:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<root><mid><leaf/></mid></root>".to_vec())
+        .expect("admit source document");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="root/mid/leaf"/></out></xsl:template><xsl:template match="leaf"><xsl:copy-of select="ancestor-or-self::*"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("ancestor-copy", "ancestor-copy-result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute ancestor copy");
+
+    assert_eq!(
+        results.by_request["ancestor-copy"].serialized,
+        "<out><leaf></leaf><mid><leaf></leaf></mid><root><mid><leaf></leaf></mid></root></out>"
+    );
+}
+
+#[test]
 fn explicit_source_denial_is_distinct_from_missing_resource() {
     let snapshot = snapshot();
     let program = compile_resource(&snapshot, STYLESHEET_ID).expect("compile once");

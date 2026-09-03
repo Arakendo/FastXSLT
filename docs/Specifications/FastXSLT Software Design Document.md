@@ -585,6 +585,12 @@ nested document node in the result sequence. Element and text descendants use
 the same result-node and retained-text accounting as direct source-node copies.
 Copying source attributes, comments, and processing instructions through this
 specific selection remains outside the private slice.
+The exact `xsl:copy-of select="ancestor-or-self::*"` slice walks element nodes
+from the context item toward the document root in reverse-axis order, charging
+each visit and using the same bounded recursive copy path. When an initial
+template enters without a context item, the selection reports `XPDY0002` at the
+instruction location. This does not admit general axis expressions for
+`xsl:copy-of`.
 When no output method is declared, an XHTML-namespaced `html` document element
 selects the XHTML serializer and its content-type behavior. A null-namespace
 `html` selects the still-unsupported HTML method; the two inference rules must

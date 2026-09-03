@@ -302,6 +302,7 @@ fn instruction_owned(value: &Instruction) -> usize {
         Instruction::CopyOfCurrent { location } | Instruction::CopyOfChildElements { location } => {
             location_owned(location)
         }
+        Instruction::CopyOfAncestorOrSelfElements { location } => location_owned(location),
         Instruction::If {
             test,
             body,

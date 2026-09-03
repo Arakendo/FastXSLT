@@ -28,7 +28,8 @@ const RESULT_CASES: [&str; 13] = [
     "call-template-1802",
     "call-template-1803",
 ];
-const ERROR_CASES: [(&str, &str); 5] = [
+const ERROR_CASES: [(&str, &str); 6] = [
+    ("call-template-0001", "XPDY0002"),
     ("call-template-0104", "XTDE0040"),
     ("call-template-0105", "XTDE0040"),
     ("call-template-0106", "XTSE0080"),
@@ -51,7 +52,7 @@ fn inventories_complete_call_template_denominator_before_selection() {
     assert_eq!(names.len(), cases.len());
     assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
     assert!(OVERLAY.contains("case_count = 42"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 19);
+    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 20);
     for case_name in RESULT_CASES
         .into_iter()
         .chain(ERROR_CASES.into_iter().map(|(case_name, _)| case_name))
@@ -171,23 +172,30 @@ fn execute_error_case(case_name: &str, expected_code: &str) {
     let document = load_test_set();
     let case = case_named(&document, case_name);
     let test = child_named(&document, case, "test").expect("test metadata");
-    let environment_ref = child_named(&document, case, "environment")
+    let source = child_named(&document, case, "environment")
         .and_then(|node| attribute(&document, node, "ref"))
-        .expect("environment reference");
-    let environment = descendants_named(&document, document.document_node(), "environment")
-        .into_iter()
-        .find(|node| attribute(&document, *node, "name") == Some(environment_ref))
-        .expect("referenced environment");
-    let source = child_named(&document, environment, "source").expect("principal source");
+        .map(|environment_ref| {
+            descendants_named(&document, document.document_node(), "environment")
+                .into_iter()
+                .find(|node| attribute(&document, *node, "name") == Some(environment_ref))
+                .and_then(|environment| child_named(&document, environment, "source"))
+                .expect("referenced principal source")
+        });
     let source_id = format!("urn:w3c:xslt30:insn:call-template:{case_name}:source");
     let stylesheet = child_named(&document, test, "stylesheet").expect("principal stylesheet");
     let stylesheet_file = attribute(&document, stylesheet, "file").expect("stylesheet file");
     let stylesheet_id =
         format!("https://example.invalid/xslt30/insn/call-template/{stylesheet_file}");
-    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 65_536, 131_072));
-    resources
-        .admit(source_id.clone(), source_bytes(&document, source))
-        .expect("admit principal source");
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(
+        1 + usize::from(source.is_some()),
+        65_536,
+        131_072,
+    ));
+    if let Some(source) = source {
+        resources
+            .admit(source_id.clone(), source_bytes(&document, source))
+            .expect("admit principal source");
+    }
     resources
         .admit(
             stylesheet_id.clone(),
@@ -222,13 +230,20 @@ fn execute_error_case(case_name: &str, expected_code: &str) {
             work_limits: WorkLimits::unbounded(),
         },
     );
+    let entry = if source.is_some() {
+        InvocationEntry::InitialTemplateWithSource {
+            resource: source_id,
+            name: initial_template,
+        }
+    } else {
+        InvocationEntry::InitialTemplate {
+            name: initial_template,
+        }
+    };
     let admission = set.add(TransformRequest {
         identity: case_name.to_owned(),
         result_identity: format!("urn:w3c:xslt30:insn:call-template:{case_name}:result"),
-        entry: InvocationEntry::InitialTemplateWithSource {
-            resource: source_id,
-            name: initial_template,
-        },
+        entry,
         parameters: BTreeMap::new(),
         cancellation: CancellationToken::new(),
         cancellation_fault: None,

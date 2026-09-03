@@ -9,6 +9,12 @@ execution = "not-run"
 rationale = "Unless overridden below, the call-template case requires host-side initial-template QName resolution, broader parameter values or typing, required-parameter, recursion, focus, expression, assertion, or initial-template semantics outside the currently admitted private execution slice."
 
 [[case_override]]
+case_name = "call-template-0001"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free initial-template case reports XPDY0002 when its xsl:copy-of path attempts to reference the absent dynamic focus."
+
+[[case_override]]
 case_name = "call-template-0101"
 selection = "selected"
 execution = "passed"

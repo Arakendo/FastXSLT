@@ -86,6 +86,7 @@ fn validate_named_calls(
             | Instruction::ApplyImports { .. }
             | Instruction::CopyOfCurrent { .. }
             | Instruction::CopyOfChildElements { .. }
+            | Instruction::CopyOfAncestorOrSelfElements { .. }
             | Instruction::Copy { .. } => {}
         }
     }

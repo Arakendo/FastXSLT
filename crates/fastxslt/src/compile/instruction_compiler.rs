@@ -265,6 +265,9 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
         "*" => Ok(Instruction::CopyOfChildElements {
             location: document.location(element).clone(),
         }),
+        "ancestor-or-self::*" => Ok(Instruction::CopyOfAncestorOrSelfElements {
+            location: document.location(element).clone(),
+        }),
         _ => Err(unsupported(
             "FXXP1003",
             format!("unsupported xsl:copy-of selection: {select}"),

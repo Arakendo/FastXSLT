@@ -718,6 +718,7 @@ fn execute_instruction(
         | Instruction::CallTemplate { .. }
         | Instruction::CopyOfCurrent { .. }
         | Instruction::CopyOfChildElements { .. }
+        | Instruction::CopyOfAncestorOrSelfElements { .. }
         | Instruction::Copy { .. } => result.extend(execute_result_instruction(
             inputs,
             instruction,
@@ -783,6 +784,9 @@ fn execute_result_instruction<'a>(
         Instruction::CopyOfChildElements { .. } => {
             execute_copy_of_child_elements(inputs, execution.node, control)
         }
+        Instruction::CopyOfAncestorOrSelfElements { location } => {
+            execute_copy_of_ancestor_or_self(inputs, execution.node, location, control)
+        }
         Instruction::Copy { .. } => execute_copy(inputs, instruction, execution, scope, control),
         _ => unreachable!("result dispatch receives only result-producing instructions"),
     }
@@ -795,6 +799,44 @@ fn execute_copy_of_current(
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let (source, node) = required_source_context(inputs, context)?;
     copy_source_node(source, inputs.request_id, node, control)
+}
+
+fn execute_copy_of_ancestor_or_self(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let Some(source) = inputs.source else {
+        return Err(failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            "ancestor-or-self::* requires a context item",
+        ));
+    };
+    let Some(context) = context else {
+        return Err(failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            "ancestor-or-self::* requires a context item",
+        ));
+    };
+    let mut result = Vec::new();
+    let mut current = Some(context);
+    while let Some(node) = current {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        if source.kind(node) == NodeKind::Element {
+            result.extend(copy_source_node(source, inputs.request_id, node, control)?);
+        }
+        current = source.parent(node);
+    }
+    Ok(result)
 }
 
 fn execute_copy_of_child_elements(

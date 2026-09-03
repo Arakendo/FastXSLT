@@ -398,6 +398,9 @@ pub(crate) enum Instruction {
     CopyOfChildElements {
         location: SourceLocation,
     },
+    CopyOfAncestorOrSelfElements {
+        location: SourceLocation,
+    },
     If {
         test: BooleanExpression,
         body: Vec<Instruction>,
