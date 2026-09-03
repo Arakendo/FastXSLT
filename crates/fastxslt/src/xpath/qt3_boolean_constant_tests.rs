@@ -5,9 +5,13 @@ use std::{collections::BTreeSet, fs, path::PathBuf};
 use super::constant_boolean_experiment::{
     BooleanParseFailure, ScalarValue, evaluate_scalar, parse_scalar,
 };
+use super::effective_boolean_value_experiment::{
+    EffectiveBooleanFailure, evaluate as evaluate_document_ebv,
+};
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::qt3_overlay_test_support::{assert_private_case_passed, assert_selected_count};
-use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
+use crate::resources::{ResourceLimits, ResourceSetBuilder};
+use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const SELECTED_SUFFIXES: [&str; 24] = [
@@ -44,6 +48,17 @@ const BOOLEAN_NUMERIC_STEMS: [&str; 13] = [
     "fn-booleannni1args",
     "fn-booleansht1args",
 ];
+const DOCUMENT_EBV_CASES: [(&str, &str); 9] = [
+    ("fn/not.xml", "fn-not-22"),
+    ("fn/not.xml", "fn-not-23"),
+    ("fn/not.xml", "fn-not-28"),
+    ("fn/not.xml", "fn-not-29"),
+    ("fn/boolean.xml", "boolean-001"),
+    ("fn/boolean.xml", "boolean-002"),
+    ("fn/boolean.xml", "boolean-003"),
+    ("fn/boolean.xml", "boolean-004"),
+    ("fn/boolean.xml", "boolean-008"),
+];
 
 #[test]
 fn executes_qt3_true_and_false_constant_boolean_groups() {
@@ -79,7 +94,7 @@ fn executes_qt3_source_free_not_effective_boolean_value_tranche() {
     selected.extend((1..=9).map(|suffix| format!("K-NotFunc-{suffix}")));
     selected.push("cbcl-not-002".to_owned());
     assert_eq!(selected.len(), 74);
-    assert_selected_count(set_file, selected.len());
+    assert_selected_count(set_file, 78);
     let document = load_test_set(set_file);
     let catalog_names = descendants_named(&document, document.document_node(), "test-case")
         .into_iter()
@@ -107,13 +122,14 @@ fn executes_qt3_source_free_boolean_effective_boolean_value_tranche() {
     selected.extend((1..=49).map(|suffix| format!("fn-boolean-mixed-args-{suffix:03}")));
     selected.push("fn-boolean-050".to_owned());
     selected.extend((5..=7).map(|suffix| format!("boolean-{suffix:03}")));
+    selected.push("boolean-009".to_owned());
     selected.extend(
         (1..=15)
             .chain(17..=31)
             .map(|suffix| format!("K-SeqBooleanFunc-{suffix}")),
     );
-    assert_eq!(selected.len(), 122);
-    assert_selected_count(set_file, selected.len());
+    assert_eq!(selected.len(), 123);
+    assert_selected_count(set_file, 128);
     let document = load_test_set(set_file);
     let catalog_names = descendants_named(&document, document.document_node(), "test-case")
         .into_iter()
@@ -128,6 +144,47 @@ fn executes_qt3_source_free_boolean_effective_boolean_value_tranche() {
         assert!(catalog_names.contains(&case_name), "{case_name}");
         assert_private_case_passed(set_file, &case_name);
         execute_not_case(&document, &case_name);
+    }
+}
+
+#[test]
+fn executes_qt3_document_aware_effective_boolean_value_tranche() {
+    for (set_file, case_name) in DOCUMENT_EBV_CASES {
+        let test_set = load_test_set(set_file);
+        let case = descendants_named(&test_set, test_set.document_node(), "test-case")
+            .into_iter()
+            .find(|case| attribute(&test_set, *case, "name") == Some(case_name))
+            .expect("selected QT3 document-aware EBV case");
+        let expression = child_named(&test_set, case, "test")
+            .map(|test| test_set.string_value(test).trim().to_owned())
+            .expect("QT3 expression");
+        let result = child_named(&test_set, case, "result").expect("QT3 result metadata");
+        let document = load_context_document(&test_set, case, case_name);
+        let mut control = InvocationControl::unbounded();
+
+        assert_private_case_passed(set_file, case_name);
+        match evaluate_document_ebv(
+            &expression,
+            &document,
+            &SourceLocation {
+                resource: format!("urn:w3c:qt3:{case_name}:expression"),
+                span: 0..expression.len(),
+            },
+            &mut control,
+        ) {
+            Ok(actual) => assert_native_result(
+                &test_set,
+                result,
+                &ScalarValue::Boolean(actual),
+                case_name,
+                &expression,
+            ),
+            Err(EffectiveBooleanFailure::InvalidTypeOrCardinality) => {
+                assert_expected_error(&test_set, result, "FORG0006");
+            }
+            Err(failure) => panic!("selected QT3 EBV case failed: {case_name}: {failure:?}"),
+        }
+        assert!(control.consumed(WorkDomain::XPathOperation) > 0);
     }
 }
 
@@ -286,6 +343,46 @@ fn load_test_set(set_file: &str) -> Document {
     )
     .expect("parse pinned QT3 boolean test set");
     Document::from_parsed(parsed).expect("build pinned QT3 boolean test set")
+}
+
+fn load_context_document(test_set: &Document, case: NodeId, case_name: &str) -> Document {
+    let environment_ref = child_named(test_set, case, "environment")
+        .and_then(|environment| attribute(test_set, environment, "ref"))
+        .expect("QT3 document-aware case must reference an environment");
+    let catalog = load_test_set("catalog.xml");
+    let environment = descendants_named(&catalog, catalog.document_node(), "environment")
+        .into_iter()
+        .find(|environment| attribute(&catalog, *environment, "name") == Some(environment_ref))
+        .expect("QT3 catalog environment");
+    let source_file = descendants_named(&catalog, environment, "source")
+        .into_iter()
+        .find(|source| attribute(&catalog, *source, "role") == Some("."))
+        .and_then(|source| attribute(&catalog, source, "file"))
+        .expect("QT3 context source");
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../vendor/qt3tests")
+        .join(source_file);
+    let bytes = fs::read(path).expect("read QT3 context source and close handle");
+    let resource_id = format!("urn:w3c:qt3:{case_name}:source");
+    let byte_limit = bytes.len().max(1);
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, byte_limit, byte_limit));
+    resources
+        .admit(resource_id.clone(), bytes)
+        .expect("admit QT3 context source into bounded memory");
+    let snapshot = resources.seal();
+    let source = snapshot
+        .get(&resource_id)
+        .expect("sealed QT3 context source");
+    let parsed = parse_document(
+        &resource_id,
+        source,
+        ParseLimits {
+            max_events: source.len().max(1),
+            max_depth: 256,
+        },
+    )
+    .expect("parse QT3 context source");
+    Document::from_parsed(parsed).expect("build QT3 context XDM")
 }
 
 fn child_named(document: &Document, parent: NodeId, local: &str) -> Option<NodeId> {

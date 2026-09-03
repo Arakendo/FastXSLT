@@ -273,6 +273,9 @@ fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
     {
         return (!value.contains('"')).then(|| AtomicValue::AnyUri(value.to_owned()));
     }
+    if let Some(value) = parse_boolean_string_projection(expression) {
+        return Some(AtomicValue::String(value));
+    }
     if let Some(value) = parse_string_value(expression) {
         return Some(AtomicValue::String(value));
     }
@@ -340,6 +343,17 @@ fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
         return parse_decimal_lexical(expression).map(AtomicValue::Decimal);
     }
     expression.parse::<i128>().ok().map(AtomicValue::Integer)
+}
+
+fn parse_boolean_string_projection(expression: &str) -> Option<String> {
+    ["string", "fn:string", "xs:string"]
+        .into_iter()
+        .find_map(|name| constructor_lexical(expression, name))
+        .and_then(|inner| match inner.trim() {
+            "true()" | "fn:true()" => Some("true".to_owned()),
+            "false()" | "fn:false()" => Some("false".to_owned()),
+            _ => None,
+        })
 }
 
 fn parse_string_value(expression: &str) -> Option<String> {

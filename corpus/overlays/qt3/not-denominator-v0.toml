@@ -14,4 +14,4 @@ rationale = "The case requires XQuery-only declarations or node constructors out
 [default_disposition]
 selection = "harness-unsupported"
 execution = "not-run"
-rationale = "Unless selected in the private ledger or excluded by the XQuery dependency, the case requires source-node focus, mixed node/atomic sequence EBV, invocation-clock functions, or broader predicate and type semantics outside the admitted source-free fn:not adapter; no unexecuted case is inferred to pass or fail."
+rationale = "Unless selected in the private ledger or excluded by the XQuery dependency, the case requires invocation-clock functions and wider predicate or type semantics outside the admitted fn:not adapters; no unexecuted case is inferred to pass or fail."

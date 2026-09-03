@@ -61,6 +61,7 @@ enum FinalContextPredicate {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum PathStep {
     ChildNamed(String),
+    ChildLocalName(String),
     ChildExpandedName(ExpandedName),
     ChildAnyElement,
     ChildAnyNode,
@@ -91,6 +92,7 @@ impl PathStep {
     fn known_owned_capacity_bytes(&self) -> usize {
         match self {
             Self::ChildNamed(value)
+            | Self::ChildLocalName(value)
             | Self::AttributeNamed(value)
             | Self::ParentNamed(value)
             | Self::SelfNamed(value)
@@ -169,6 +171,9 @@ impl PathStep {
             "text()" => Self::ChildText,
             "comment()" => Self::ChildComment,
             "processing-instruction()" => Self::ChildProcessingInstruction,
+            _ if name_test.strip_prefix("*:").is_some_and(is_ascii_ncname) => {
+                Self::ChildLocalName(name_test[2..].to_owned())
+            }
             _ => Self::ChildNamed(name_test.to_owned()),
         })
     }
@@ -221,6 +226,7 @@ impl PartialEq<&str> for PathStep {
     fn eq(&self, other: &&str) -> bool {
         match self {
             Self::ChildNamed(value)
+            | Self::ChildLocalName(value)
             | Self::AttributeNamed(value)
             | Self::ParentNamed(value)
             | Self::SelfNamed(value)
@@ -465,8 +471,11 @@ fn has_unadmitted_name_test(step: &str) -> bool {
             name_test,
             "element()" | "comment()" | "processing-instruction()"
         );
+    let admitted_local_wildcard = (!step.contains("::") || step.starts_with("child::"))
+        && name_test.strip_prefix("*:").is_some_and(is_ascii_ncname);
     !matches!(name_test, "*" | "node()" | "text()")
         && !admitted_child_kind
+        && !admitted_local_wildcard
         && !is_ascii_ncname(name_test)
 }
 
@@ -903,6 +912,12 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
                 && document
                     .name(child)
                     .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
+        }
+        PathStep::ChildLocalName(required) => {
+            document.kind(child) == NodeKind::Element
+                && document
+                    .name(child)
+                    .is_some_and(|name| name.local == required.as_str())
         }
         PathStep::ChildExpandedName(required) => {
             document.kind(child) == NodeKind::Element && document.name(child) == Some(required)

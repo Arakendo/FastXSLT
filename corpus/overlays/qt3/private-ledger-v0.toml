@@ -5229,3 +5229,73 @@ case_name = "boolean-007"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged two-string atomic sequence has no effective boolean value and reports the native FORG0006 dynamic error."
+
+[[case]]
+set_file = "fn/not.xml"
+case_name = "fn-not-22"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged document-aware descendant selection is empty and its effective boolean value is negated to true."
+
+[[case]]
+set_file = "fn/not.xml"
+case_name = "fn-not-23"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged document-aware wildcard descendant selection contains nodes and its effective boolean value is negated to false."
+
+[[case]]
+set_file = "fn/not.xml"
+case_name = "fn-not-28"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged atomic-first mixed sequence has no effective boolean value and reports the native FORG0006 dynamic error."
+
+[[case]]
+set_file = "fn/not.xml"
+case_name = "fn-not-29"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged node-first mixed sequence has effective boolean value true and is negated to false."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "boolean-003"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged node-first mixed sequence has effective boolean value true."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "boolean-004"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged atomic-first mixed sequence has no effective boolean value and reports the native FORG0006 dynamic error."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "boolean-008"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged empty descendant selection leaves one boolean item whose effective boolean value is true."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "boolean-009"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged string projection of false is the non-empty string false and therefore has effective boolean value true."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "boolean-001"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged namespace-wildcard descendant path selects elements by local name and has effective boolean value true."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "boolean-002"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged namespace-wildcard descendant path finds no element with the requested local name and has effective boolean value false."

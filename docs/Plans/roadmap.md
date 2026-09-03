@@ -1513,7 +1513,7 @@ conformance percentage or a promise about unselected cases.
 | Family | Current authority | Current state |
 | --- | --- | --- |
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
-| QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 747 explicitly selected cases execute through four suite-specific XPath adapters. |
+| QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 757 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
@@ -1578,11 +1578,11 @@ expression has been admitted is not hidden by broader upstream metadata:
 | `fn/false.xml` | 25 | 24 | 0 | 1 |
 | `fn/empty.xml` | 54 | 47 | 2 | 5 |
 | `fn/exists.xml` | 58 | 48 | 2 | 8 |
-| `fn/not.xml` | 83 | 74 | 3 | 6 |
-| `fn/boolean.xml` | 143 | 122 | 5 | 16 |
-| **Audited subtotal** | **1,000** | **747** | **191** | **62** |
+| `fn/not.xml` | 83 | 78 | 3 | 2 |
+| `fn/boolean.xml` | 143 | 128 | 5 | 10 |
+| **Audited subtotal** | **1,000** | **757** | **191** | **52** |
 
-The 1,000-case subtotal is therefore conserved without relabeling the 62
+The 1,000-case subtotal is therefore conserved without relabeling the 52
 unexecuted cases as engine failures. The 191 exclusions describe the current
 XPath-in-XSLT profile and remain overridable by explicit case admission.
 AxisStep's 13 remaining defaults are precisely its namespace-node/namespace-axis
@@ -1599,13 +1599,14 @@ profile exclusions, and five visible defaults for composition outside the
 admitted grammar. Its `fn:exists` complement adds 48 unchanged source-free
 sequence-cardinality, reverse, and arity-error passes, two XQuery profile
 exclusions, and eight visible defaults for invocation-clock and wider sequence
-composition. The complete `fn/not.xml` denominator adds 74 atomic/empty EBV,
-boolean composition, projection, arity-error, and EBV-error passes, three
-XQuery profile exclusions, and six visible node-focus, mixed-sequence, or
-clock-dependent defaults. The `fn:boolean.xml` denominator adds 122 unchanged
-atomic/empty EBV, arity-error, and `FORG0006` passes, five XQuery profile
-exclusions, and 16 visible defaults for node/mixed-sequence EBV, function
-items, maps/arrays, clocks, and wider composition. The other 30,821 QT3 cases
+composition. The complete `fn/not.xml` denominator adds 78 atomic, empty,
+document-node, and mixed-sequence EBV, boolean composition, projection,
+arity-error, and EBV-error passes, three XQuery profile exclusions, and two
+clock-dependent defaults. The `fn:boolean.xml` denominator adds 128 unchanged
+atomic, empty, document-node, and mixed-sequence EBV, arity-error, string
+projection, namespace-wildcard path, and `FORG0006` passes, five XQuery profile
+exclusions, and ten visible defaults for function items, maps/arrays, clocks,
+sequence operations, and wider composition. The other 30,821 QT3 cases
 remain structural catalog inventory only and still lack first-party selection
 dispositions.
 [Evidence](../Evidence/qt3-axis-deep-equal-conserved-denominators-2026-09-02.md)
@@ -1615,6 +1616,7 @@ dispositions.
 [Not function denominator evidence](../Evidence/qt3-not-function-initial-denominator-2026-09-03.md)
 [Boolean EBV denominator evidence](../Evidence/qt3-boolean-effective-value-initial-denominator-2026-09-03.md)
 [EBV error evidence](../Evidence/qt3-effective-boolean-value-errors-2026-09-03.md)
+[Document-aware EBV evidence](../Evidence/qt3-document-aware-effective-boolean-value-2026-09-03.md)
 [Schema-aware XSLT30 profile evidence](../Evidence/xslt30-schema-aware-expression-profile-denominators-2026-09-03.md)
 [Streaming XSLT30 profile evidence](../Evidence/xslt30-streaming-profile-denominators-2026-09-03.md)
 [Dynamic-evaluation XSLT30 profile evidence](../Evidence/xslt30-dynamic-evaluation-profile-denominator-2026-09-03.md)
@@ -1661,8 +1663,8 @@ count:
 3. [x] Give `AxisStep.xml`, `fn/deep-equal.xml`, `fn/true.xml`,
    `fn/false.xml`, `fn/empty.xml`, `fn/exists.xml`, `fn/not.xml`, and
    `fn/boolean.xml` complete QT3 overlays so all 1,000 parent-set cases receive
-   a selection disposition. The typed verifier now conserves 747 selected
-   passes, 191 native-dependency profile exclusions, and 62 visible default
+   a selection disposition. The typed verifier now conserves 757 selected
+   passes, 191 native-dependency profile exclusions, and 52 visible default
    not-run cases against the immutable upstream case identities. Explicit
    selection takes priority over
    a dependency rule. The two boolean-function sets execute 48 unchanged cases
@@ -1671,12 +1673,13 @@ count:
    set executes 47 unchanged atomic-sequence cardinality and arity-error cases
    without inferring the remaining composed XPath cases. Its `fn:exists` complement
    executes another 48 unchanged cardinality, reverse, and arity-error cases.
-   The not-function set executes 74 unchanged atomic/empty EBV, composition,
-   projection, arity-error, and EBV-error cases while retaining six wider
-   semantic cases as visible defaults. The boolean-function set executes 122
-   unchanged atomic/empty EBV, arity-error, and `FORG0006` cases, reaching the
-   first 1,000-case audited QT3 subtotal without claiming its remaining 16
-   semantic gaps.
+   The not-function set executes 78 unchanged atomic/empty, node, and mixed
+   sequence EBV, composition, projection, arity-error, and EBV-error cases
+   while retaining two clock-dependent cases as visible defaults. The
+   boolean-function set executes 128 unchanged atomic/empty, node, mixed
+   sequence, string-projection, namespace-wildcard, arity-error, and
+   `FORG0006` cases, reaching the first 1,000-case audited QT3 subtotal without
+   claiming its remaining ten semantic gaps.
 4. [ ] Add complete denominators deliberately, selected by standards and
    implementation pressure rather than easy-case sampling. The remaining
    11,101 XSLT30 and 30,821 QT3 catalog-only cases must stay outside pass/fail

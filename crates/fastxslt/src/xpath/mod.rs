@@ -22,6 +22,8 @@ mod deep_equal_composite;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod deep_equal_experiment;
 #[cfg(test)]
+pub(crate) mod effective_boolean_value_experiment;
+#[cfg(test)]
 pub(crate) mod empty_experiment;
 pub(crate) mod escape_html_uri_experiment;
 #[cfg(any(test, feature = "workbench"))]

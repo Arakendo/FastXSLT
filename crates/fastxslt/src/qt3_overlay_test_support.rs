@@ -341,7 +341,7 @@ fn assert_complete_denominator(
 
 #[test]
 fn qt3_denominator_overlays_conserve_their_parent_sets() {
-    assert_eq!(private_ledger().case.len(), 747);
+    assert_eq!(private_ledger().case.len(), 757);
     assert!(private_ledger().case.iter().all(|case| matches!(
         case.set_file.as_str(),
         "prod/AxisStep.xml"
@@ -365,8 +365,8 @@ fn qt3_denominator_overlays_conserve_their_parent_sets() {
     assert_complete_denominator(FALSE_DENOMINATOR_SOURCE, "fn/false.xml", 25, 24, 0);
     assert_complete_denominator(EMPTY_DENOMINATOR_SOURCE, "fn/empty.xml", 54, 47, 2);
     assert_complete_denominator(EXISTS_DENOMINATOR_SOURCE, "fn/exists.xml", 58, 48, 2);
-    assert_complete_denominator(NOT_DENOMINATOR_SOURCE, "fn/not.xml", 83, 74, 3);
-    assert_complete_denominator(BOOLEAN_DENOMINATOR_SOURCE, "fn/boolean.xml", 143, 122, 5);
+    assert_complete_denominator(NOT_DENOMINATOR_SOURCE, "fn/not.xml", 83, 78, 3);
+    assert_complete_denominator(BOOLEAN_DENOMINATOR_SOURCE, "fn/boolean.xml", 143, 128, 5);
 }
 
 #[test]

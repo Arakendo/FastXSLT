@@ -64,11 +64,11 @@ pub(crate) fn parse(expression: &str) -> Result<BooleanExpression, BooleanParseF
 
 pub(crate) fn parse_scalar(expression: &str) -> Result<ScalarExpression, BooleanParseFailure> {
     let expression = expression.trim();
+    if let Some(inner) = function_argument(expression, &["string", "fn:string", "xs:string"]) {
+        return parse(inner).map(ScalarExpression::BooleanString);
+    }
     if let Ok(boolean) = parse(expression) {
         return Ok(ScalarExpression::Boolean(boolean));
-    }
-    if let Some(inner) = function_argument(expression, &["fn:string", "xs:string"]) {
-        return parse(inner).map(ScalarExpression::BooleanString);
     }
     if let Some(inner) = function_argument(expression, &["fn:concat"]) {
         let (left, right) = split_top_level(inner, ",").ok_or(BooleanParseFailure::Unsupported)?;
@@ -354,6 +354,7 @@ mod tests {
             ("fn:not(())", true),
             ("fn:boolean(xs:float('NaN'))", false),
             ("boolean(xs:untypedAtomic(\"string\"))", true),
+            ("boolean(string(false()))", true),
             ("not(empty(((), 1, 2)))", true),
         ] {
             let expression = parse(source).expect("parse admitted boolean expression");
