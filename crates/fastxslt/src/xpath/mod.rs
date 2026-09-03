@@ -26,6 +26,7 @@ pub(crate) mod escape_html_uri_experiment;
 pub(crate) mod focus_sum_for_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod for_distinct_values_experiment;
+#[cfg(any(test, feature = "workbench"))]
 pub(crate) mod format_number_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod integer_for_experiment;
