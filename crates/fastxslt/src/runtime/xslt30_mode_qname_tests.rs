@@ -16,6 +16,7 @@ use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
+use crate::xslt30_overlay_test_support::assert_private_case_passed;
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
 const SELECTED_CASES: [&str; 88] = [
@@ -800,8 +801,7 @@ fn execute_case_with_policy(
     case_name: &str,
     multiple_match_policy: MultipleMatchPolicy,
 ) -> Result<(String, Option<String>), ExecutionFailure> {
-    let private_overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
-    assert!(private_overlay.contains(&format!("case_name = \"{case_name}\"")));
+    assert_private_case_passed("tests/attr/mode/_mode-test-set.xml", case_name);
     let document = load_test_set();
     let case = find_case(&document, case_name);
     let environment = case_environment(&document, case);
