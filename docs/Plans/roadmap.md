@@ -1643,8 +1643,12 @@ count:
    loader and derive one immutable run report carrying suite/engine/harness
    revisions, profile, target/toolchain/features, selection reasons, outcomes,
    and conservation totals. The two active QT3 adapters now use a typed private
-   ledger/denominator loader; XSLT30 adapters and the unified immutable report
-   remain. Do not stabilize it as a public API prematurely.
+   ledger/denominator loader. XSLT30's `expr/for`, `expr/path`,
+   `expr/data-manipulation`, `fn/deep-equal`, and `misc/initial-mode` adapters
+   now resolve 49 exact case identities and dispositions through the typed
+   private-overlay loader instead of scanning TOML fragments. Other XSLT30
+   adapters and the unified immutable report remain. Do not stabilize this
+   test-only loader as a public API prematurely.
 6. [ ] Define fast pull-request, focused semantic, and reproducible full-corpus
    CI tiers. A shard, retry, feature flag, or unavailable corpus must never
    silently shrink the denominator.

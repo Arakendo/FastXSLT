@@ -14,6 +14,7 @@ use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xslt30_overlay_test_support::assert_private_set_case_names;
 
 const PATH_CASES: [&str; 10] = [
     "path-001", "path-002", "path-003", "path-004", "path-005", "path-006", "path-007", "path-008",
@@ -194,13 +195,11 @@ fn execute_path_case(case_name: &str) -> (String, String) {
 
 #[test]
 fn inventories_the_complete_pinned_path_test_set_without_denominator_loss() {
-    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
-    let path_set = "set_file = \"tests/expr/path/_path-test-set.xml\"";
-    assert_eq!(overlay.matches(path_set).count(), PATH_CASES.len());
+    const SET_FILE: &str = "tests/expr/path/_path-test-set.xml";
+    assert_private_set_case_names(SET_FILE, &PATH_CASES);
 
     let (test_set, _) = path_test_set();
     for case_name in PATH_CASES {
-        assert!(overlay.contains(&format!("case_name = \"{case_name}\"")));
         let test_case = find_element(
             &test_set,
             test_set.document_node(),

@@ -14,13 +14,16 @@ use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xslt30_overlay_test_support::{
+    assert_private_case_native_pass, assert_private_set_case_names,
+};
 
 const SET_FILE: &str = "tests/fn/deep-equal/_deep-equal-test-set.xml";
 const CASES: [&str; 2] = ["deep-equal-001", "deep-equal-002"];
 
 #[test]
 fn admits_complete_deep_equal_denominator_without_loss() {
-    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
+    assert_private_set_case_names(SET_FILE, &CASES);
     let (test_set, _) = load_test_set();
     let cases = descendants_named(&test_set, test_set.document_node(), "test-case");
     assert_eq!(cases.len(), CASES.len());
@@ -41,9 +44,7 @@ fn admits_complete_deep_equal_denominator_without_loss() {
             .and_then(|node| first_element_child(&test_set, node))
             .expect("result assertion");
         assert_eq!(local_name(&test_set, assertion), "assert-xml");
-        let record = overlay_case(overlay, name);
-        assert!(record.contains("selection = \"selected\""));
-        assert!(record.contains("execution = \"native-pass\""));
+        assert_private_case_native_pass(SET_FILE, name);
     }
 }
 
@@ -155,16 +156,6 @@ fn load_test_set() -> (Document, PathBuf) {
         Document::from_parsed(parsed).expect("build deep-equal catalog document"),
         path,
     )
-}
-
-fn overlay_case<'a>(overlay: &'a str, name: &str) -> &'a str {
-    overlay
-        .split("[[case]]")
-        .find(|section| {
-            section.contains(&format!("set_file = \"{SET_FILE}\""))
-                && section.contains(&format!("case_name = \"{name}\""))
-        })
-        .expect("overlay must contain one deep-equal disposition")
 }
 
 fn dependency<'a>(document: &'a Document, case: NodeId, kind: &str) -> Option<&'a str> {

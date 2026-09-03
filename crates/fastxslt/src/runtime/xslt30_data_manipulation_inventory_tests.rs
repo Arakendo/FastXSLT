@@ -14,6 +14,9 @@ use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xslt30_overlay_test_support::{
+    assert_private_case_passed, assert_private_set_case_names,
+};
 
 const SET_FILE: &str = "tests/expr/data-manipulation/_data-manipulation-test-set.xml";
 const CASE_COUNT: usize = 28;
@@ -30,12 +33,9 @@ fn executes_complete_native_data_manipulation_test_set() {
 
 #[test]
 fn admits_complete_data_manipulation_test_set_without_denominator_loss() {
-    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
-    let admitted: Vec<_> = overlay
-        .split("[[case]]")
-        .filter(|section| section.contains(&format!("set_file = \"{SET_FILE}\"")))
-        .collect();
-    assert_eq!(admitted.len(), CASE_COUNT);
+    let case_names = (1..=CASE_COUNT).map(case_name).collect::<Vec<_>>();
+    let case_name_refs = case_names.iter().map(String::as_str).collect::<Vec<_>>();
+    assert_private_set_case_names(SET_FILE, &case_name_refs);
 
     let (test_set, set_path) = load_test_set();
     let test_cases = descendants_named(&test_set, test_set.document_node(), "test-case");
@@ -45,14 +45,7 @@ fn admits_complete_data_manipulation_test_set_without_denominator_loss() {
 
     for ordinal in 1..=CASE_COUNT {
         let name = case_name(ordinal);
-        let expected_execution = if ordinal <= PASSING_CASE_COUNT {
-            "passed"
-        } else {
-            "engine-unsupported"
-        };
-        let record = overlay_case(overlay, &name);
-        assert!(record.contains("selection = \"selected\""));
-        assert!(record.contains(&format!("execution = \"{expected_execution}\"")));
+        assert_private_case_passed(SET_FILE, &name);
 
         let case = test_cases
             .iter()
@@ -298,14 +291,4 @@ fn dependency<'a>(document: &'a Document, case: NodeId, kind: &str) -> Vec<&'a s
                 .collect()
         })
         .unwrap_or_default()
-}
-
-fn overlay_case<'a>(overlay: &'a str, case_name: &str) -> &'a str {
-    overlay
-        .split("[[case]]")
-        .find(|section| {
-            section.contains(&format!("set_file = \"{SET_FILE}\""))
-                && section.contains(&format!("case_name = \"{case_name}\""))
-        })
-        .expect("admitted case should have one overlay record")
 }

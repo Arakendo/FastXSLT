@@ -16,6 +16,10 @@ use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use crate::xslt::golden_semantics_experiment::MatchPattern;
+use crate::xslt30_overlay_test_support::{
+    assert_private_case_engine_unsupported, assert_private_case_native_pass,
+    assert_private_set_case_names,
+};
 
 const SET_FILE: &str = "tests/misc/initial-mode/_initial-mode-test-set.xml";
 const INITIAL_MODE_004: &str = "initial-mode-004";
@@ -76,20 +80,19 @@ const CASES: [CaseMetadata; 5] = [
 
 #[test]
 fn admits_complete_initial_mode_denominator_and_reaches_engine_boundaries() {
-    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
+    let case_names = CASES.map(|case| case.name);
+    assert_private_set_case_names(SET_FILE, &case_names);
     let (test_set, set_path) = load_test_set();
     let cases = descendants_named(&test_set, test_set.document_node(), "test-case");
     assert_eq!(cases.len(), CASES.len());
     let directory = set_path.parent().expect("initial-mode test-set directory");
 
     for metadata in &CASES {
-        let record = overlay_case(overlay, metadata.name);
-        assert!(record.contains("selection = \"selected\""));
-        assert!(record.contains(if metadata.compile_code.is_some() {
-            "execution = \"engine-unsupported\""
+        if metadata.compile_code.is_some() {
+            assert_private_case_engine_unsupported(SET_FILE, metadata.name);
         } else {
-            "execution = \"native-pass\""
-        }));
+            assert_private_case_native_pass(SET_FILE, metadata.name);
+        }
 
         let case = cases
             .iter()
@@ -533,16 +536,6 @@ fn load_test_set() -> (Document, PathBuf) {
         Document::from_parsed(parsed).expect("build initial-mode catalog document"),
         path,
     )
-}
-
-fn overlay_case<'a>(overlay: &'a str, name: &str) -> &'a str {
-    overlay
-        .split("[[case]]")
-        .find(|section| {
-            section.contains(&format!("set_file = \"{SET_FILE}\""))
-                && section.contains(&format!("case_name = \"{name}\""))
-        })
-        .expect("overlay must contain one initial-mode disposition")
 }
 
 fn descendants_named(document: &Document, parent: NodeId, local: &str) -> Vec<NodeId> {

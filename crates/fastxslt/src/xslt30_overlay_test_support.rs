@@ -294,9 +294,60 @@ fn require_private_case_passed(
     Ok(())
 }
 
+fn require_private_case_execution(
+    overlay: &PrivateOverlay,
+    set_file: &str,
+    case_name: &str,
+    expected: ExecutionDisposition,
+) -> Result<(), String> {
+    let case = overlay
+        .case
+        .iter()
+        .find(|case| case.set_file == set_file && case.case_name == case_name)
+        .ok_or_else(|| format!("missing private overlay case {set_file}::{case_name}"))?;
+    if case.selection != SelectionDisposition::Selected || case.execution != expected {
+        return Err(format!(
+            "{set_file}::{case_name} is {:?}/{:?}, expected selected/{expected:?}",
+            case.selection, case.execution
+        ));
+    }
+    Ok(())
+}
+
 pub(crate) fn assert_private_case_passed(set_file: &str, case_name: &str) {
     require_private_case_passed(private_overlay(), set_file, case_name)
         .unwrap_or_else(|error| panic!("{error}"));
+}
+
+pub(crate) fn assert_private_case_native_pass(set_file: &str, case_name: &str) {
+    require_private_case_execution(
+        private_overlay(),
+        set_file,
+        case_name,
+        ExecutionDisposition::NativePass,
+    )
+    .unwrap_or_else(|error| panic!("{error}"));
+}
+
+pub(crate) fn assert_private_case_engine_unsupported(set_file: &str, case_name: &str) {
+    require_private_case_execution(
+        private_overlay(),
+        set_file,
+        case_name,
+        ExecutionDisposition::EngineUnsupported,
+    )
+    .unwrap_or_else(|error| panic!("{error}"));
+}
+
+pub(crate) fn assert_private_set_case_names(set_file: &str, expected: &[&str]) {
+    let actual = private_overlay()
+        .case
+        .iter()
+        .filter(|case| case.set_file == set_file)
+        .map(|case| case.case_name.as_str())
+        .collect::<BTreeSet<_>>();
+    let expected = expected.iter().copied().collect::<BTreeSet<_>>();
+    assert_eq!(actual, expected, "private overlay set {set_file}");
 }
 
 pub(crate) fn assert_output_case_passed(case_name: &str) {

@@ -7,13 +7,16 @@ use std::{
 };
 
 use super::{
-    ExecutionPolicy, FailureCategory, InvocationEntry, TransformRequest, TransformSetBuilder,
-    compile_resource, execute_transform_set,
+    ExecutionPolicy, InvocationEntry, TransformRequest, TransformSetBuilder, compile_resource,
+    execute_transform_set,
 };
 use crate::execution_control_experiment::{CancellationToken, WorkLimits};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+use crate::xslt30_overlay_test_support::{
+    assert_private_case_passed, assert_private_set_case_names,
+};
 
 const SET_FILE: &str = "tests/expr/for/_for-test-set.xml";
 
@@ -22,7 +25,6 @@ struct CasePressure {
     name: &'static str,
     environment: Option<&'static str>,
     initial_template: Option<&'static str>,
-    execution: &'static str,
 }
 
 const CASES: [CasePressure; 4] = [
@@ -30,25 +32,21 @@ const CASES: [CasePressure; 4] = [
         name: "for-001",
         environment: Some("for01"),
         initial_template: None,
-        execution: "passed",
     },
     CasePressure {
         name: "for-002",
         environment: None,
         initial_template: Some("main"),
-        execution: "passed",
     },
     CasePressure {
         name: "for-003",
         environment: Some("for03"),
         initial_template: None,
-        execution: "passed",
     },
     CasePressure {
         name: "for-004",
         environment: Some("for03"),
         initial_template: None,
-        execution: "passed",
     },
 ];
 
@@ -63,16 +61,14 @@ fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'
 
 #[test]
 fn executes_native_xslt30_for_001_in_order() {
-    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
-    assert!(overlay_case(overlay, "for-001").contains("execution = \"passed\""));
+    assert_private_case_passed(SET_FILE, "for-001");
     let (actual, expected) = execute_principal_case("for-001");
     assert_eq!(actual, expected.trim());
 }
 
 #[test]
 fn executes_native_xslt30_for_003_with_outer_focus_preserved() {
-    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
-    assert!(overlay_case(overlay, "for-003").contains("execution = \"passed\""));
+    assert_private_case_passed(SET_FILE, "for-003");
     let (actual, expected) = execute_principal_case("for-003");
     assert_eq!(expected.trim(), "<out>0</out>");
     assert_eq!(
@@ -83,8 +79,7 @@ fn executes_native_xslt30_for_003_with_outer_focus_preserved() {
 
 #[test]
 fn executes_native_xslt30_for_004_with_exact_decimal_sum() {
-    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
-    assert!(overlay_case(overlay, "for-004").contains("execution = \"passed\""));
+    assert_private_case_passed(SET_FILE, "for-004");
     let (actual, expected) = execute_principal_case("for-004");
     assert_eq!(expected.trim(), "<out>36.02</out>");
     assert_eq!(
@@ -95,8 +90,7 @@ fn executes_native_xslt30_for_004_with_exact_decimal_sum() {
 
 #[test]
 fn executes_source_free_native_xslt30_for_002_initial_template() {
-    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
-    assert!(overlay_case(overlay, "for-002").contains("execution = \"passed\""));
+    assert_private_case_passed(SET_FILE, "for-002");
     let (test_set, set_path) = load_test_set();
     let directory = set_path
         .parent()
@@ -280,24 +274,10 @@ fn execute_principal_case(case_name: &str) -> (String, String) {
     (results.by_request[case_name].serialized.clone(), expected)
 }
 
-fn overlay_case<'a>(overlay: &'a str, case_name: &str) -> &'a str {
-    overlay
-        .split("[[case]]")
-        .find(|section| {
-            section.contains(&format!("set_file = \"{SET_FILE}\""))
-                && section.contains(&format!("case_name = \"{case_name}\""))
-        })
-        .expect("admitted case should have one overlay record")
-}
-
 #[test]
 fn admits_complete_xslt30_for_test_set_without_denominator_loss() {
-    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
-    let admitted: Vec<_> = overlay
-        .split("[[case]]")
-        .filter(|section| section.contains(&format!("set_file = \"{SET_FILE}\"")))
-        .collect();
-    assert_eq!(admitted.len(), CASES.len());
+    let case_names = CASES.map(|case| case.name);
+    assert_private_set_case_names(SET_FILE, &case_names);
 
     let (test_set, set_path) = load_test_set();
     let directory = set_path
@@ -306,9 +286,7 @@ fn admits_complete_xslt30_for_test_set_without_denominator_loss() {
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(7, 8_192, 32_768));
 
     for pressure in CASES {
-        let record = overlay_case(overlay, pressure.name);
-        assert!(record.contains("selection = \"selected\""));
-        assert!(record.contains(&format!("execution = \"{}\"", pressure.execution)));
+        assert_private_case_passed(SET_FILE, pressure.name);
 
         let test_case = find_element(
             &test_set,
@@ -373,15 +351,5 @@ fn admits_complete_xslt30_for_test_set_without_denominator_loss() {
     for pressure in CASES {
         let stylesheet_id = format!("urn:w3c:xslt30:{}:stylesheet", pressure.name);
         assert!(snapshot.get(&stylesheet_id).is_some());
-        if pressure.execution == "engine-unsupported" {
-            let failure = compile_resource(&snapshot, &stylesheet_id)
-                .expect_err("engine-unsupported for case should fail compilation");
-            assert_eq!(
-                failure.category,
-                FailureCategory::Unsupported,
-                "{} should remain valid-but-unsupported: {failure:?}",
-                pressure.name
-            );
-        }
     }
 }
