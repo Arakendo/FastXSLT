@@ -130,6 +130,14 @@ fn evaluate_function(
             let months = require_duration(evaluate_value(argument, control)?)?;
             Ok(DurationValue::Integer(months / 12))
         }
+        "months-from-duration" | "fn:months-from-duration" => {
+            require_one_argument(argument)?;
+            if argument.trim() == "()" {
+                return Ok(DurationValue::Empty);
+            }
+            let months = require_duration(evaluate_value(argument, control)?)?;
+            Ok(DurationValue::Integer(months % 12))
+        }
         "xs:yearMonthDuration" | "xs:duration" | "xs:dayTimeDuration" => {
             require_one_argument(argument)?;
             let lexical = parse_quoted(argument).ok_or(DurationFailure::Unsupported)?;
@@ -337,6 +345,20 @@ mod tests {
             ),
             ("years-from-duration(xs:duration(\"-P3Y4M4DT1H\"))", -3),
             ("years-from-duration(xs:dayTimeDuration(\"P1D\"))", 0),
+        ] {
+            assert_eq!(
+                evaluate(source, &mut InvocationControl::unbounded()),
+                Ok(DurationValue::Integer(expected))
+            );
+        }
+    }
+
+    #[test]
+    fn extracts_signed_normalized_month_components() {
+        for (source, expected) in [
+            ("months-from-duration(xs:yearMonthDuration(\"P20Y15M\"))", 3),
+            ("months-from-duration(xs:duration(\"-P3Y4M4DT1H\"))", -4),
+            ("months-from-duration(xs:dayTimeDuration(\"P1D\"))", 0),
         ] {
             assert_eq!(
                 evaluate(source, &mut InvocationControl::unbounded()),

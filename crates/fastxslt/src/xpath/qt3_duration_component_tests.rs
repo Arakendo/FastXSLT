@@ -1,4 +1,4 @@
-//! Executable QT3 `fn:years-from-duration` denominator.
+//! Executable QT3 duration-component denominators.
 
 use std::{collections::BTreeSet, fs, path::PathBuf};
 
@@ -10,17 +10,26 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 #[test]
 fn executes_complete_qt3_years_from_duration_denominator() {
-    let set_file = "fn/years-from-duration.xml";
-    let mut selected = (1..=3)
-        .map(|suffix| format!("fn-years-from-duration1args-{suffix}"))
-        .collect::<Vec<_>>();
-    selected.extend((1..=20).map(|suffix| format!("fn-years-from-duration-{suffix}")));
-    selected.extend((1..=7).map(|suffix| format!("K-YearsFromDurationFunc-{suffix}")));
-    selected.push("cbcl-years-from-duration-001".to_owned());
-    assert_eq!(selected.len(), 31);
-    assert_selected_count(set_file, selected.len());
+    execute_duration_denominator("years", "Years");
+}
 
-    let document = load_test_set(set_file);
+#[test]
+fn executes_complete_qt3_months_from_duration_denominator() {
+    execute_duration_denominator("months", "Months");
+}
+
+fn execute_duration_denominator(component: &str, component_title: &str) {
+    let set_file = format!("fn/{component}-from-duration.xml");
+    let mut selected = (1..=3)
+        .map(|suffix| format!("fn-{component}-from-duration1args-{suffix}"))
+        .collect::<Vec<_>>();
+    selected.extend((1..=20).map(|suffix| format!("fn-{component}-from-duration-{suffix}")));
+    selected.extend((1..=7).map(|suffix| format!("K-{component_title}FromDurationFunc-{suffix}")));
+    selected.push(format!("cbcl-{component}-from-duration-001"));
+    assert_eq!(selected.len(), 31);
+    assert_selected_count(&set_file, selected.len());
+
+    let document = load_test_set(&set_file);
     let catalog_names = descendants_named(&document, document.document_node(), "test-case")
         .into_iter()
         .map(|case| {
@@ -32,7 +41,7 @@ fn executes_complete_qt3_years_from_duration_denominator() {
 
     for case_name in selected {
         assert!(catalog_names.contains(&case_name), "{case_name}");
-        assert_private_case_passed(set_file, &case_name);
+        assert_private_case_passed(&set_file, &case_name);
         let case = descendants_named(&document, document.document_node(), "test-case")
             .into_iter()
             .find(|case| attribute(&document, *case, "name") == Some(&case_name))
@@ -67,6 +76,14 @@ fn assert_native_result(
         assert_eq!(
             actual,
             &DurationValue::Boolean(true),
+            "{case_name}: {source}"
+        );
+        return;
+    }
+    if !descendants_named(document, result, "assert-false").is_empty() {
+        assert_eq!(
+            actual,
+            &DurationValue::Boolean(false),
             "{case_name}: {source}"
         );
         return;

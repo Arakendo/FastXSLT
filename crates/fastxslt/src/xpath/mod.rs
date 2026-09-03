@@ -53,6 +53,8 @@ mod qt3_deep_equal_tests;
 #[cfg(test)]
 mod qt3_default_collation_tests;
 #[cfg(test)]
+mod qt3_duration_component_tests;
+#[cfg(test)]
 mod qt3_empty_sequence_tests;
 #[cfg(test)]
 mod qt3_encode_for_uri_tests;
@@ -68,8 +70,6 @@ mod qt3_normalize_space_tests;
 mod qt3_string_length_tests;
 #[cfg(test)]
 mod qt3_upper_case_tests;
-#[cfg(test)]
-mod qt3_years_from_duration_tests;
 pub(crate) mod static_string_experiment;
 #[cfg(test)]
 pub(crate) mod string_length_experiment;

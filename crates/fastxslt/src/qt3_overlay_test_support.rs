@@ -50,6 +50,8 @@ const DEFAULT_COLLATION_DENOMINATOR_SOURCE: &str =
     include_str!("../../../corpus/overlays/qt3/default-collation-denominator-v0.toml");
 const YEARS_FROM_DURATION_DENOMINATOR_SOURCE: &str =
     include_str!("../../../corpus/overlays/qt3/years-from-duration-denominator-v0.toml");
+const MONTHS_FROM_DURATION_DENOMINATOR_SOURCE: &str =
+    include_str!("../../../corpus/overlays/qt3/months-from-duration-denominator-v0.toml");
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
@@ -369,9 +371,23 @@ fn assert_years_from_duration_denominator() {
     );
 }
 
-#[test]
-fn qt3_denominator_overlays_conserve_their_parent_sets() {
-    assert_eq!(private_ledger().case.len(), 1_045);
+fn assert_months_from_duration_denominator() {
+    assert_complete_denominator(
+        MONTHS_FROM_DURATION_DENOMINATOR_SOURCE,
+        "fn/months-from-duration.xml",
+        31,
+        31,
+        0,
+    );
+}
+
+fn assert_duration_component_denominators() {
+    assert_years_from_duration_denominator();
+    assert_months_from_duration_denominator();
+}
+
+fn assert_private_ledger_sets() {
+    assert_eq!(private_ledger().case.len(), 1_076);
     assert!(private_ledger().case.iter().all(|case| matches!(
         case.set_file.as_str(),
         "prod/AxisStep.xml"
@@ -392,7 +408,13 @@ fn qt3_denominator_overlays_conserve_their_parent_sets() {
             | "fn/normalize-space.xml"
             | "fn/default-collation.xml"
             | "fn/years-from-duration.xml"
+            | "fn/months-from-duration.xml"
     )));
+}
+
+#[test]
+fn qt3_denominator_overlays_conserve_their_parent_sets() {
+    assert_private_ledger_sets();
     assert_complete_denominator(AXIS_DENOMINATOR_SOURCE, "prod/AxisStep.xml", 349, 224, 112);
     assert_complete_denominator(
         DEEP_EQUAL_DENOMINATOR_SOURCE,
@@ -470,7 +492,7 @@ fn qt3_denominator_overlays_conserve_their_parent_sets() {
         7,
         0,
     );
-    assert_years_from_duration_denominator();
+    assert_duration_component_denominators();
 }
 
 #[test]
