@@ -444,6 +444,7 @@ pub(crate) enum Instruction {
 pub(crate) enum ValueExpression {
     LiteralString(String),
     LocationPath(LocationPath),
+    CountLocationPath(LocationPath),
     RootPath(LocationPath),
     RootVariable(String),
     GeneratedRootIdentity(LocationPath),

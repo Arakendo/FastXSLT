@@ -738,20 +738,34 @@ fn compile_typed_atomic_global(
     let atomic_type = match local {
         "string" => BuiltinAtomicType::String,
         "untypedAtomic" => BuiltinAtomicType::UntypedAtomic,
+        "boolean" => BuiltinAtomicType::Boolean,
         "integer" => BuiltinAtomicType::Integer,
         "double" => BuiltinAtomicType::Double,
         _ => return Err(unsupported_typed_global(document, element, declared_type)),
     };
     let lexical = if is_select {
-        typed_atomic_select_lexical(document, element, local, expression_or_content).ok_or_else(
-            || {
-                unsupported(
-                    "FXST1016",
-                    "the private typed atomic global slice requires a matching constructor or string literal",
-                    document.location(element),
-                )
-            },
-        )?
+        if atomic_type == BuiltinAtomicType::Boolean {
+            match expression_or_content.trim() {
+                "true()" => "true",
+                "false()" => "false",
+                _ => {
+                    return Err(unsupported(
+                        "FXST1016",
+                        "the private typed boolean global slice requires true() or false()",
+                        document.location(element),
+                    ));
+                }
+            }
+        } else {
+            typed_atomic_select_lexical(document, element, local, expression_or_content)
+                .ok_or_else(|| {
+                    unsupported(
+                        "FXST1016",
+                        "the private typed atomic global slice requires a matching constructor or string literal",
+                        document.location(element),
+                    )
+                })?
+        }
     } else {
         expression_or_content
     };
@@ -772,6 +786,7 @@ fn typed_atomic_lexical_is_admitted(atomic_type: BuiltinAtomicType, lexical: &st
         BuiltinAtomicType::String | BuiltinAtomicType::UntypedAtomic => true,
         BuiltinAtomicType::Integer => lexical.parse::<i64>().is_ok(),
         BuiltinAtomicType::Double => lexical.parse::<f64>().is_ok(),
+        BuiltinAtomicType::Boolean => matches!(lexical, "true" | "false" | "1" | "0"),
         _ => false,
     }
 }
@@ -796,6 +811,7 @@ fn compile_atomic_constructor_global(
     let atomic_type = match local {
         "string" => BuiltinAtomicType::String,
         "untypedAtomic" => BuiltinAtomicType::UntypedAtomic,
+        "boolean" => BuiltinAtomicType::Boolean,
         "integer" => BuiltinAtomicType::Integer,
         "double" => BuiltinAtomicType::Double,
         _ => return Ok(None),
@@ -1871,7 +1887,7 @@ mod tests {
     fn typed_string_globals_resolve_the_schema_namespace_not_the_prefix_spelling() {
         let valid = parse_stylesheet(
             "memory:typed-string-global.xsl",
-            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:s="http://www.w3.org/2001/XMLSchema"><xsl:variable name="value" as="s:string" select="'kept'"/><xsl:variable name="constructed" as="s:untypedAtomic" select="s:untypedAtomic('')"/><xsl:variable name="empty"><xsl:sequence select="()"/></xsl:variable><xsl:template match="/"/></xsl:stylesheet>"#,
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:s="http://www.w3.org/2001/XMLSchema"><xsl:variable name="value" as="s:string" select="'kept'"/><xsl:variable name="constructed" as="s:untypedAtomic" select="s:untypedAtomic('')"/><xsl:variable name="empty"><xsl:sequence select="()"/></xsl:variable><xsl:variable name="enabled" as="s:boolean" select="true()"/><xsl:template match="/"/></xsl:stylesheet>"#,
         );
         let invalid = parse_stylesheet(
             "memory:false-schema-prefix.xsl",
@@ -1893,6 +1909,11 @@ mod tests {
             program.global_bindings[2].default,
             GlobalBindingDefault::EmptySequence
         );
+        let GlobalBindingDefault::Atomic(enabled) = &program.global_bindings[3].default else {
+            panic!("typed boolean should retain atomic identity");
+        };
+        assert_eq!(enabled.atomic_type(), BuiltinAtomicType::Boolean);
+        assert_eq!(enabled.lexical(), "true");
         let failure = compile_stylesheet(&invalid).expect_err("a rebound xs prefix is not schema");
         assert_eq!(failure.code, "FXST1016");
         assert_eq!(failure.category, CompileCategory::Unsupported);

@@ -171,6 +171,18 @@ execution = "passed"
 rationale = "The unchanged XSLT 1.0-compatible case skips a false numeric xsl:when, enters xsl:otherwise, and executes a nested xsl:if whose exact modulo comparison is true."
 
 [[case_override]]
+case_name = "choose-1501"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case applies inherited and instruction-local xpath-default-namespace values while counting source descendants under true typed-boolean conditionals."
+
+[[case_override]]
+case_name = "choose-1502"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case applies empty and reset xpath-default-namespace values across xsl:choose, xsl:when, xsl:otherwise, and descendant count expressions."
+
+[[case_override]]
 case_name = "choose-1601"
 selection = "selected"
 execution = "passed"

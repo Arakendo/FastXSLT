@@ -445,6 +445,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
     match value {
         ValueExpression::LiteralString(value) => value.capacity(),
         ValueExpression::LocationPath(path)
+        | ValueExpression::CountLocationPath(path)
         | ValueExpression::RootPath(path)
         | ValueExpression::GeneratedRootIdentity(path) => path.known_owned_capacity_bytes(),
         ValueExpression::ContextNodeName | ValueExpression::UpperCaseContextString => 0,

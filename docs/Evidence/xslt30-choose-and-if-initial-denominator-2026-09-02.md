@@ -15,8 +15,8 @@ Date: 2026-09-02
   `choose-0701`,
   `choose-0702`, `choose-0801`, `choose-0901`, `choose-1001`, `choose-1101`,
   `choose-1201`, `choose-1202`,
-  `choose-1203`, `choose-1301`, `choose-1401`, `choose-1601`, `choose-1703`,
-  `choose-1704`, and `choose-1706`.
+  `choose-1203`, `choose-1301`, `choose-1401`, `choose-1501`, `choose-1502`,
+  `choose-1601`, `choose-1703`, `choose-1704`, and `choose-1706`.
 - Unchanged negative cases `choose-1801` through `choose-1804`.
 
 ## Method
@@ -54,11 +54,11 @@ introduced.
 ## Result
 
 - Complete conserved denominator: 55 cases.
-- Selected and passed: 35, comprising 31 result comparisons and 4 expected
+- Selected and passed: 37, comprising 33 result comparisons and 4 expected
   static-error comparisons.
 - Engine unsupported: 0.
 - Excluded by profile: 0.
-- Visible default not run: 20.
+- Visible default not run: 18.
 
 The unchanged cases cover ordered first-match branch selection, an
 `xsl:otherwise` branch, empty fall-through when no branch matches, two true
@@ -85,6 +85,16 @@ stylesheet text within the selected `xsl:when` and nested `xsl:if` sequence
 constructors is retained through inherited stylesheet-space state instead of
 being discarded as indentation. A focused negative control reports `XTSE0020`
 for an invalid `xml:space` lexical on the admitted instruction.
+
+`choose-1501` and `choose-1502` retain an exact typed `xs:boolean` global and
+apply `xpath-default-namespace` at `xsl:if`, `xsl:choose`, `xsl:when`,
+`xsl:otherwise`, and `xsl:value-of` boundaries. The exact
+`count(location-path)` value form binds unprefixed element tests to the
+effective namespace while leaving an explicit empty value as a reset. The
+unchanged source contains identically named elements in two namespaces and no
+namespace, so the result detects incorrect inheritance rather than merely
+exercising syntax. Selection and counting use the ordinary controlled path
+evaluator.
 
 `choose-1001` applies the exact relative-path-to-integer-less-than form to the
 untyped integer lexical value `5`. Ordered evaluation stops at the first true
@@ -152,13 +162,13 @@ boolean value, and the tiny nonzero double remains true. A focused compiler
 control also proves that constructor prefixes are resolved through the XML
 Schema namespace rather than trusted by spelling.
 
-Current conserved XSLT30 accounting is 675 cases: 477 passed comparisons, 3
-engine-unsupported cases, 55 profile exclusions, and 140 visible default
+Current conserved XSLT30 accounting is 675 cases: 479 passed comparisons, 3
+engine-unsupported cases, 55 profile exclusions, and 138 visible default
 not-run cases across 17 complete test-set denominators.
 
 ## Limitation
 
-This evidence does not admit the other 20 cases. In particular, it makes no
+This evidence does not admit the other 18 cases. In particular, it makes no
 claim for general comparisons, boolean functions beyond the exact `not()`
 form and admitted `or` composition, collations, schema-aware cases,
 static typing, user functions, import composition, or arbitrary assertion

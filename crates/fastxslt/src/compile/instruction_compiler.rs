@@ -1,7 +1,7 @@
 //! Private compilation of XSLT sequence constructors and instructions.
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
-use crate::xml::quick_xml_experiment::NamespaceBinding;
+use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::castable_experiment::{parse as parse_castable, parse_cast};
 use crate::xpath::constant_numeric_experiment::{self, ConstantNumericFailure};
 use crate::xpath::decimal_sum_for_experiment::parse as parse_decimal_sum_for;
@@ -15,7 +15,9 @@ use crate::xpath::for_distinct_values_experiment::{
 };
 use crate::xpath::format_number_experiment::parse as parse_format_number;
 use crate::xpath::integer_for_experiment::parse as parse_integer_for;
-use crate::xpath::path_experiment::{PathFailure, parse_location_path, parse_qualified_child_path};
+use crate::xpath::path_experiment::{
+    PathFailure, PathStep, parse_location_path, parse_qualified_child_path,
+};
 use crate::xslt::golden_semantics_experiment::{
     BooleanExpression, ChooseBranch, ComputedAttribute, EqualityTest, Instruction,
     LiteralAttributeValue, SequenceItemExpression, TemplateArgument, ValueExpression,
@@ -606,7 +608,12 @@ pub(super) fn parse_template_modes(
 }
 
 fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
-    ensure_only_attributes(document, element, &["select", "separator"], "xsl:value-of")?;
+    ensure_only_attributes(
+        document,
+        element,
+        &["select", "separator", "xpath-default-namespace"],
+        "xsl:value-of",
+    )?;
     ensure_no_meaningful_children(document, element, "xsl:value-of")?;
     let location = document.location(element).clone();
     let expression = required_attribute(document, element, None, "select")?;
@@ -629,6 +636,9 @@ fn compile_value_expression(
 ) -> Result<ValueExpression, CompileFailure> {
     if let Some(literal) = xpath_string_literal(expression.trim()) {
         return Ok(ValueExpression::LiteralString(literal.to_owned()));
+    }
+    if let Some(count) = compile_count_value(document, element, expression, location)? {
+        return Ok(count);
     }
     Ok(if recognizes_deep_equal(expression) {
         ValueExpression::DeepEqual(Box::new(parse_deep_equal(expression, location).map_err(
@@ -720,6 +730,34 @@ fn compile_value_expression(
             parse_location_path(expression, location.clone()).map_err(map_path_failure)?,
         )
     })
+}
+
+fn compile_count_value(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<ValueExpression>, CompileFailure> {
+    let Some(argument) = expression
+        .trim()
+        .strip_prefix("count(")
+        .and_then(|value| value.strip_suffix(')'))
+    else {
+        return Ok(None);
+    };
+    let mut path =
+        parse_location_path(argument.trim(), location.clone()).map_err(map_path_failure)?;
+    if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+        for step in &mut path.steps {
+            if let PathStep::ChildNamed(local) = step {
+                *step = PathStep::ChildExpandedName(ExpandedName {
+                    namespace: Some(namespace.to_owned()),
+                    local: local.clone(),
+                });
+            }
+        }
+    }
+    Ok(Some(ValueExpression::CountLocationPath(path)))
 }
 
 fn parse_literal_variable_concat(expression: &str) -> Option<(String, String)> {
@@ -1082,7 +1120,12 @@ fn compile_sequence_nodes(
 }
 
 fn compile_if(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
-    ensure_only_attributes(document, element, &["test", "default-mode"], "xsl:if")?;
+    ensure_only_attributes(
+        document,
+        element,
+        &["test", "default-mode", "xpath-default-namespace"],
+        "xsl:if",
+    )?;
     let location = document.location(element).clone();
     let expression = required_conditional_test(document, element)?;
     Ok(Instruction::If {
@@ -1100,14 +1143,24 @@ fn compile_choose(document: &Document, element: NodeId) -> Result<Instruction, C
     let mut otherwise = None;
     for child in children {
         if is_xslt_element(document, child, "when") {
-            ensure_only_attributes(document, child, &["test"], "xsl:when")?;
+            ensure_only_attributes(
+                document,
+                child,
+                &["test", "xpath-default-namespace"],
+                "xsl:when",
+            )?;
             let expression = required_conditional_test(document, child)?;
             branches.push(ChooseBranch {
                 test: parse_boolean_expression(expression, document.location(child))?,
                 body: compile_sequence(document, child)?,
             });
         } else if is_xslt_element(document, child, "otherwise") {
-            ensure_only_attributes(document, child, &[], "xsl:otherwise")?;
+            ensure_only_attributes(
+                document,
+                child,
+                &["xpath-default-namespace"],
+                "xsl:otherwise",
+            )?;
             otherwise = Some(compile_sequence(document, child)?);
         } else {
             unreachable!("validate_choose_structure rejects other children")
@@ -1126,6 +1179,9 @@ fn ensure_choose_attributes(document: &Document, element: NodeId) -> Result<(), 
         let name = document
             .name(*attribute)
             .expect("attribute nodes have expanded names");
+        if name.namespace.is_none() && name.local == "xpath-default-namespace" {
+            continue;
+        }
         if name.namespace.as_deref() == Some(XML_NAMESPACE) && name.local == "space" {
             match document.value(*attribute).unwrap_or_default() {
                 "default" | "preserve" => continue,
@@ -1491,6 +1547,9 @@ fn parse_path_boolean_expression(
 }
 
 fn parse_constant_string_boolean(expression: &str) -> Option<bool> {
+    if matches!(expression, "true()" | "false()") {
+        return Some(expression == "true()");
+    }
     if let Some(value) = xpath_string_literal(expression) {
         return Some(!value.is_empty());
     }

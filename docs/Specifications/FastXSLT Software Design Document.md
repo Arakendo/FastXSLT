@@ -326,6 +326,14 @@ stylesheet text in those constructors becomes explicit result text; the
 `XTSE0020`. This is stylesheet sequence-constructor whitespace behavior, not
 the source-document whitespace visibility policy, and does not admit
 `xml:space` on every instruction or literal result element.
+The private conditional/value slice also admits `xpath-default-namespace` on
+`xsl:if`, `xsl:choose`, `xsl:when`, `xsl:otherwise`, and `xsl:value-of` for the
+exact `count(location-path)` value form. Unprefixed element steps use the
+nearest effective namespace, an empty declaration resets it, and attribute
+name tests remain outside default element namespace application. Counting
+reuses controlled path traversal and does not admit general aggregate
+functions, arbitrary default-namespace expressions, or namespace-sensitive
+condition operands.
 The exact `relative-path < integer` conditional form parses selected node string
 values as `i64` and uses existential comparison. It preserves ordered branch
 short-circuiting but does not admit decimal, floating-point, promotion, or
@@ -361,8 +369,9 @@ invocation-local state and charges one XPath operation. It does not establish
 general focus-function expressions, `last()` variable bindings, or retention
 of focus in compiled or prepared state.
 Global variables may retain exact schema-namespace-resolved `xs:string`,
-`xs:untypedAtomic`, `xs:integer`, and `xs:double` values from admitted literal
-content or constructor forms. The exact source-dependent
+`xs:untypedAtomic`, `xs:boolean`, `xs:integer`, and `xs:double` values from
+admitted literal content, constructor forms, or exact boolean constant
+functions. The exact source-dependent
 `xs:double(path div path)` form evaluates controlled singleton source paths;
 either empty operand yields the empty sequence, while two numeric operands
 produce a typed double including `NaN`. Path traversal, string-value access,

@@ -42,6 +42,9 @@ pub(super) fn execute_value_of(
         ValueExpression::LocationPath(path) => {
             append_location_path_string(inputs, path, context, result, control)?;
         }
+        ValueExpression::CountLocationPath(path) => {
+            append_location_path_count(inputs, path, context, result, control)?;
+        }
         ValueExpression::RootPath(path) => {
             append_root_path_string(inputs, path, context, result, control)?;
         }
@@ -125,6 +128,24 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_location_path_count(
+    inputs: &SequenceInputs<'_>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    context: Option<NodeId>,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let selected = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    append_text(
+        result,
+        &selected.len().to_string(),
+        inputs.request_id,
+        control,
+    )
 }
 
 fn append_literal_variable_concat(
