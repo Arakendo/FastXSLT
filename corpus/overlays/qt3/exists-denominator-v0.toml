@@ -1,0 +1,17 @@
+suite = "QT3"
+revision = "83993587711dbd5c18ed846385ec37d079d6e492"
+set_file = "fn/exists.xml"
+case_count = 58
+selected_source = "private-ledger-v0.toml"
+
+[[dependency_rule]]
+dependency_type = "spec"
+values = ["XQ10+"]
+selection = "profile-excluded"
+execution = "not-run"
+rationale = "The case requires XQuery-only syntax outside FastXSLT's XPath/XSLT profile."
+
+[default_disposition]
+selection = "harness-unsupported"
+execution = "not-run"
+rationale = "Unless selected in the private ledger or excluded by the XQuery dependency, the case requires invocation-clock functions, remove, range, predicate, for, boolean, or floor semantics outside the admitted source-free fn:exists adapter; no unexecuted case is inferred to pass or fail."

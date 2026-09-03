@@ -3521,3 +3521,339 @@ case_name = "K-SeqEmptyFunc-8"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged source-free sequence expression executes through bounded atomic-sequence cardinality and satisfies its native boolean assertion."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsint1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsint1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsint1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsintg1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsintg1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsintg1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsdec1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsdec1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsdec1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsdbl1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsdbl1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsdbl1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsflt1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsflt1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsflt1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existslng1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existslng1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existslng1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsusht1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsusht1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsusht1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsnint1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsnint1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsnint1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existspint1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existspint1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existspint1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsulng1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsulng1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsulng1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsnpi1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsnpi1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsnpi1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsnni1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsnni1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existsnni1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existssht1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existssht1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "fn-existssht1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton exists and satisfies its native assert-true expectation."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "K-SeqExistsFunc-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity fn:exists call is rejected with the native XPST0017 static error."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "K-SeqExistsFunc-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity fn:exists call is rejected with the native XPST0017 static error."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "K-SeqExistsFunc-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free sequence expression executes through bounded atomic-sequence cardinality and satisfies its native boolean assertion."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "K-SeqExistsFunc-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free sequence expression executes through bounded atomic-sequence cardinality and satisfies its native boolean assertion."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "K-SeqExistsFunc-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free sequence expression executes through bounded atomic-sequence cardinality and satisfies its native boolean assertion."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "K-SeqExistsFunc-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free sequence expression executes through bounded atomic-sequence cardinality and satisfies its native boolean assertion."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "K-SeqExistsFunc-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free sequence expression executes through bounded atomic-sequence cardinality and satisfies its native boolean assertion."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "K-SeqExistsFunc-8"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free sequence expression executes through bounded atomic-sequence cardinality and satisfies its native boolean assertion."
+
+[[case]]
+set_file = "fn/exists.xml"
+case_name = "K-SeqExistsFunc-9"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free sequence expression executes through bounded atomic-sequence cardinality and satisfies its native boolean assertion."

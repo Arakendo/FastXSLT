@@ -24,13 +24,29 @@ const NUMERIC_STEMS: [&str; 13] = [
     "fn-emptynni1args",
     "fn-emptysht1args",
 ];
+const EXISTS_SET_FILE: &str = "fn/exists.xml";
+const EXISTS_NUMERIC_STEMS: [&str; 13] = [
+    "fn-existsint1args",
+    "fn-existsintg1args",
+    "fn-existsdec1args",
+    "fn-existsdbl1args",
+    "fn-existsflt1args",
+    "fn-existslng1args",
+    "fn-existsusht1args",
+    "fn-existsnint1args",
+    "fn-existspint1args",
+    "fn-existsulng1args",
+    "fn-existsnpi1args",
+    "fn-existsnni1args",
+    "fn-existssht1args",
+];
 
 #[test]
 fn executes_qt3_source_free_empty_sequence_tranche() {
     let selected = selected_case_names();
     assert_eq!(selected.len(), 47);
     assert_selected_count(SET_FILE, selected.len());
-    let document = load_test_set();
+    let document = load_test_set(SET_FILE);
     let catalog_names = descendants_named(&document, document.document_node(), "test-case")
         .into_iter()
         .map(|case| {
@@ -43,6 +59,32 @@ fn executes_qt3_source_free_empty_sequence_tranche() {
     for case_name in selected {
         assert!(catalog_names.contains(&case_name), "{case_name}");
         assert_private_case_passed(SET_FILE, &case_name);
+        execute_case(&document, &case_name);
+    }
+}
+
+#[test]
+fn executes_qt3_source_free_exists_sequence_tranche() {
+    let mut selected = EXISTS_NUMERIC_STEMS
+        .into_iter()
+        .flat_map(|stem| (1..=3).map(move |suffix| format!("{stem}-{suffix}")))
+        .collect::<Vec<_>>();
+    selected.extend((1..=9).map(|suffix| format!("K-SeqExistsFunc-{suffix}")));
+    assert_eq!(selected.len(), 48);
+    assert_selected_count(EXISTS_SET_FILE, selected.len());
+    let document = load_test_set(EXISTS_SET_FILE);
+    let catalog_names = descendants_named(&document, document.document_node(), "test-case")
+        .into_iter()
+        .map(|case| {
+            attribute(&document, case, "name")
+                .expect("case name")
+                .to_owned()
+        })
+        .collect::<BTreeSet<_>>();
+
+    for case_name in selected {
+        assert!(catalog_names.contains(&case_name), "{case_name}");
+        assert_private_case_passed(EXISTS_SET_FILE, &case_name);
         execute_case(&document, &case_name);
     }
 }
@@ -96,21 +138,21 @@ fn expected_boolean(document: &Document, result: NodeId) -> Option<bool> {
     }
 }
 
-fn load_test_set() -> Document {
+fn load_test_set(set_file: &str) -> Document {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../vendor/qt3tests")
-        .join(SET_FILE);
-    let bytes = fs::read(path).expect("read pinned QT3 empty test set");
+        .join(set_file);
+    let bytes = fs::read(path).expect("read pinned QT3 cardinality test set");
     let parsed = parse_document(
-        &format!("urn:w3c:qt3:{SET_FILE}"),
+        &format!("urn:w3c:qt3:{set_file}"),
         &bytes,
         ParseLimits {
             max_events: 8_192,
             max_depth: 64,
         },
     )
-    .expect("parse pinned QT3 empty test set");
-    Document::from_parsed(parsed).expect("build pinned QT3 empty test set")
+    .expect("parse pinned QT3 cardinality test set");
+    Document::from_parsed(parsed).expect("build pinned QT3 cardinality test set")
 }
 
 fn child_named(document: &Document, parent: NodeId, local: &str) -> Option<NodeId> {

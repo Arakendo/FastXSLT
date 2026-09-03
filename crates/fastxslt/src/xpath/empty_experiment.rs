@@ -30,8 +30,14 @@ pub(crate) fn evaluate_source_free(
             .map_err(EmptyFailure::Control)?;
         return evaluate_source_free(inner, control).map(|value| !value);
     }
-    let inner =
-        function_argument(expression, &["empty", "fn:empty"]).ok_or(EmptyFailure::Unsupported)?;
+    let (inner, invert_cardinality) =
+        if let Some(inner) = function_argument(expression, &["empty", "fn:empty"]) {
+            (inner, false)
+        } else if let Some(inner) = function_argument(expression, &["exists", "fn:exists"]) {
+            (inner, true)
+        } else {
+            return Err(EmptyFailure::Unsupported);
+        };
     if inner.trim().is_empty() || split_top_level_once(inner).is_some() {
         return Err(EmptyFailure::InvalidArity);
     }
@@ -42,7 +48,7 @@ pub(crate) fn evaluate_source_free(
             1,
         )
         .map_err(EmptyFailure::Control)?;
-    Ok(sequence.is_empty())
+    Ok(sequence.is_empty() ^ invert_cardinality)
 }
 
 fn function_argument<'a>(expression: &'a str, names: &[&str]) -> Option<&'a str> {
@@ -113,6 +119,7 @@ mod tests {
         let mut control = InvocationControl::unbounded();
         assert!(evaluate_source_free("empty(())", &mut control).unwrap());
         assert!(evaluate_source_free("not(empty((1, (), \"string\")))", &mut control).unwrap());
+        assert!(evaluate_source_free("exists(reverse((1, 2, 3)))", &mut control).unwrap());
         assert_eq!(
             evaluate_source_free("empty()", &mut control),
             Err(EmptyFailure::InvalidArity)
@@ -121,6 +128,6 @@ mod tests {
             evaluate_source_free("empty(1, 2)", &mut control),
             Err(EmptyFailure::InvalidArity)
         );
-        assert_eq!(control.consumed(WorkDomain::XPathOperation), 3);
+        assert_eq!(control.consumed(WorkDomain::XPathOperation), 4);
     }
 }
