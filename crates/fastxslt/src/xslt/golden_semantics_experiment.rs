@@ -457,6 +457,8 @@ pub(crate) struct EqualityTest {
 pub(crate) enum BooleanExpression {
     VariableEqualsInteger(EqualityTest),
     NodeExists(LocationPath),
+    ContextStringEquals(String),
+    Not(Box<BooleanExpression>),
     RootIdentityEqualsVariable {
         path: LocationPath,
         variable: String,

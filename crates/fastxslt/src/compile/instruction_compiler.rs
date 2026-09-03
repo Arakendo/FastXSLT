@@ -1098,6 +1098,14 @@ fn parse_boolean_expression(
     location: &SourceLocation,
 ) -> Result<BooleanExpression, CompileFailure> {
     let parsed = strip_enclosing_parentheses(expression.trim());
+    if let Some(inner) = parsed
+        .strip_prefix("not(")
+        .and_then(|inner| inner.strip_suffix(')'))
+    {
+        return Ok(BooleanExpression::Not(Box::new(parse_boolean_expression(
+            inner, location,
+        )?)));
+    }
     if let Some((left, right)) = parse_document_root_identity_test(parsed) {
         return Ok(BooleanExpression::DocumentRootIdentityEqual {
             left: crate::xslt::golden_semantics_experiment::DocumentRootReference {
@@ -1124,10 +1132,48 @@ fn parse_boolean_expression(
             variable: variable.to_owned(),
         });
     }
+    parse_scalar_boolean_expression(parsed, expression, location)
+}
+
+fn parse_scalar_boolean_expression(
+    parsed: &str,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<BooleanExpression, CompileFailure> {
     if parsed.starts_with('/') || parsed.starts_with('@') {
         return parse_location_path(parsed, location.clone())
             .map(BooleanExpression::NodeExists)
             .map_err(map_path_failure);
+    }
+    if is_ascii_ncname(parsed) {
+        return parse_location_path(parsed, location.clone())
+            .map(BooleanExpression::NodeExists)
+            .map_err(map_path_failure);
+    }
+    if let Some(value) = xpath_string_literal(parsed) {
+        return Ok(BooleanExpression::Constant(!value.is_empty()));
+    }
+    if let Some((left, right)) = parsed.split_once('=')
+        && let (Some(left), Some(right)) = (
+            xpath_string_literal(left.trim()),
+            xpath_string_literal(right.trim()),
+        )
+    {
+        return Ok(BooleanExpression::Constant(left == right));
+    }
+    if let Some((left, right)) = parsed.split_once('=') {
+        let (context, literal) = if left.trim() == "." {
+            (left, xpath_string_literal(right.trim()))
+        } else if right.trim() == "." {
+            (right, xpath_string_literal(left.trim()))
+        } else {
+            (left, None)
+        };
+        if context.trim() == "."
+            && let Some(literal) = literal
+        {
+            return Ok(BooleanExpression::ContextStringEquals(literal.to_owned()));
+        }
     }
     if let Some((variable, integer)) = parsed.split_once('=') {
         let variable = variable.trim().strip_prefix('$').unwrap_or_default();
@@ -1141,6 +1187,20 @@ fn parse_boolean_expression(
                 integer,
             }));
         }
+    }
+    if !parsed.contains('=') && !parsed.contains('>') {
+        let ordering =
+            constant_numeric_experiment::compare(parsed, "0").map_err(|failure| match failure {
+                ConstantNumericFailure::Invalid => invalid(
+                    "FXXP0004",
+                    format!("invalid conditional expression: {expression}"),
+                    location,
+                ),
+                ConstantNumericFailure::Unsupported => {
+                    unsupported_boolean_expression(expression, location)
+                }
+            })?;
+        return Ok(BooleanExpression::Constant(!ordering.is_eq()));
     }
     let (left, right, greater_than) = if let Some((left, right)) = parsed.split_once('>') {
         (left, right, true)
@@ -1167,6 +1227,18 @@ fn parse_boolean_expression(
     } else {
         ordering.is_eq()
     }))
+}
+
+fn xpath_string_literal(expression: &str) -> Option<&str> {
+    if expression.len() < 2 {
+        return None;
+    }
+    let quote = expression.as_bytes()[0];
+    if !matches!(quote, b'\'' | b'"') || expression.as_bytes().last() != Some(&quote) {
+        return None;
+    }
+    let value = &expression[1..expression.len() - 1];
+    (!value.as_bytes().contains(&quote)).then_some(value)
 }
 
 fn parse_temporary_root_identity_test(expression: &str) -> Option<(&str, &str)> {

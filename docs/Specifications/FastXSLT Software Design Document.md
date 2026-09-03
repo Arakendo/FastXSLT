@@ -277,6 +277,16 @@ matching named-element sibling sequence, while the exact `{position()}` and
 `{last()}` literal-result AVTs observe the invocation focus. This does not admit
 general focus functions, positional expressions, or arbitrary AVTs.
 
+The private conditional slice executes `xsl:if` and ordered `xsl:choose`
+branches from one compiled representation. It admits a bare unprefixed child
+name as a relative existence test, constant numeric and string equality,
+effective boolean values for the admitted numeric/string literals, and an exact
+context-item string comparison optionally wrapped in `not()`. Context string
+values are evaluated through the controlled XDM traversal so cancellation and
+work accounting remain active. This is not a general XPath boolean grammar;
+compound expressions, arbitrary comparisons, functions, namespaces, and
+collations require separate admission.
+
 Compiled mode names use expanded QName identity. An unprefixed lexical mode is
 in no namespace; a prefixed mode is resolved against the namespace context of
 the containing stylesheet instruction and retained in canonical expanded form.

@@ -1576,6 +1576,16 @@ fn evaluate_boolean(
                 .map(|nodes| !nodes.is_empty())
                 .map_err(|failure| control_failure(failure, inputs.request_id))
         }
+        BooleanExpression::ContextStringEquals(expected) => {
+            let (source, context) = required_source_context(inputs, context)?;
+            source
+                .string_value_controlled(context, control)
+                .map(|actual| actual == *expected)
+                .map_err(|failure| control_failure(failure, inputs.request_id))
+        }
+        BooleanExpression::Not(expression) => {
+            evaluate_boolean(inputs, expression, context, variables, control).map(|value| !value)
+        }
         BooleanExpression::RootIdentityEqualsVariable { path, variable } => {
             evaluate_root_identity_equals_variable(
                 inputs, path, variable, variables, context, control,
@@ -2456,3 +2466,7 @@ mod xslt30_root_inventory_tests;
 #[cfg(test)]
 #[path = "xslt30_apply_imports_inventory_tests.rs"]
 mod xslt30_apply_imports_inventory_tests;
+
+#[cfg(test)]
+#[path = "xslt30_choose_inventory_tests.rs"]
+mod xslt30_choose_inventory_tests;
