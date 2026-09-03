@@ -15,7 +15,7 @@ use crate::xpath::for_distinct_values_experiment::{
 };
 use crate::xpath::format_number_experiment::parse as parse_format_number;
 use crate::xpath::integer_for_experiment::parse as parse_integer_for;
-use crate::xpath::path_experiment::parse_location_path;
+use crate::xpath::path_experiment::{PathFailure, parse_location_path, parse_qualified_child_path};
 use crate::xslt::golden_semantics_experiment::{
     BooleanExpression, ChooseBranch, ComputedAttribute, EqualityTest, Instruction,
     LiteralAttributeValue, SequenceItemExpression, TemplateArgument, ValueExpression,
@@ -667,7 +667,7 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
             })?,
         ))
     } else if let Some(argument) = root_argument(expression) {
-        compile_root_path(argument, &location)?
+        compile_root_path(document, element, argument, &location)?
     } else if expression.trim() == "name(.)" {
         ValueExpression::ContextNodeName
     } else if expression.trim() == "upper-case(.)" {
@@ -705,11 +705,21 @@ fn root_argument(expression: &str) -> Option<&str> {
 }
 
 fn compile_root_path(
+    document: &Document,
+    element: NodeId,
     argument: &str,
     location: &SourceLocation,
 ) -> Result<ValueExpression, CompileFailure> {
-    parse_location_path(argument, location.clone())
-        .map(ValueExpression::RootPath)
+    let path = match parse_location_path(argument, location.clone()) {
+        Ok(path) => Ok(path),
+        Err(PathFailure::Unsupported { .. }) if argument.contains(':') => {
+            parse_qualified_child_path(argument, location.clone(), |prefix| {
+                namespace_for_prefix(document, element, prefix).map(str::to_owned)
+            })
+        }
+        Err(failure) => Err(failure),
+    };
+    path.map(ValueExpression::RootPath)
         .map_err(map_path_failure)
 }
 

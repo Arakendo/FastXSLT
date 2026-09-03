@@ -1383,10 +1383,11 @@ The complete ten-case `fn/root` denominator is now conserved. Unchanged
 the explicit empty sequence, and an element argument while enforcing the
 function's zero-or-one cardinality. A fourth case adds typed child
 `element()`, `comment()`, `processing-instruction()`, `node()`, and `text()`
-tests. The first execution exposed and repaired a
+tests. A fifth resolves a stylesheet prefix into an expanded child name test
+without changing the shared location-path evaluator. The first execution exposed and repaired a
 shared XDM defect: document and element string values now exclude descendant
 comment and processing-instruction content, while those nodes retain their own
-string values when selected directly. Four cases pass and six remain visible
+string values when selected directly. Five cases pass and five remain visible
 defaults pending broader function arguments, variables, node identity,
 temporary trees, or dynamic resource acquisition.
 [Evidence](../Evidence/xslt30-root-context-and-xdm-string-value-2026-09-02.md)
@@ -1444,9 +1445,9 @@ The XSLT30 work currently conserves these complete native denominators:
 | `decl/output` | 232 | 198 | 0 | 1 | 33 |
 | `decl/strip-space` | 30 | 1 | 0 | 0 | 29 |
 | `misc/built-in-templates` | 6 | 2 | 0 | 0 | 4 |
-| `fn/root` | 10 | 4 | 0 | 0 | 6 |
+| `fn/root` | 10 | 5 | 0 | 0 | 5 |
 | `insn/apply-imports` | 1 | 0 | 0 | 0 | 1 |
-| **Conserved total** | **578** | **415** | **3** | **54** | **106** |
+| **Conserved total** | **578** | **416** | **3** | **54** | **105** |
 
 One additional selected `attr/avt` case remains visibly harness-unsupported
 because its compound message/equality assertion is not owned by a comparator.
@@ -1512,7 +1513,7 @@ count:
    require denied DTD/entity behavior, so all three retain native evidence and
    explicit profile exclusions rather than forced execution.
 2. [ ] Continue coherent semantic slices through the 33 visible `output`
-   gaps, 33 visible `mode` gaps, 6 visible `fn/root` gaps, and the atomic-focus
+   gaps, 33 visible `mode` gaps, 5 visible `fn/root` gaps, and the atomic-focus
    `insn/apply-imports` case. The output remainder is now an explicit
    feature frontier: 10 cases require secondary-result ownership, 22 require
    XDM 3.1 maps/arrays plus JSON, adaptive, or serialization-parameter

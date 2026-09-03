@@ -1,6 +1,7 @@
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
+use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::constant_integer_experiment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,6 +54,7 @@ enum FinalContextPredicate {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum PathStep {
     ChildNamed(String),
+    ChildExpandedName(ExpandedName),
     ChildAnyElement,
     ChildAnyNode,
     ChildText,
@@ -84,6 +86,13 @@ impl PathStep {
             | Self::SelfNamed(value)
             | Self::DescendantNamed(value)
             | Self::DescendantOrSelfNamed(value) => value.capacity(),
+            Self::ChildExpandedName(name) => {
+                name.local.capacity()
+                    + name
+                        .namespace
+                        .as_ref()
+                        .map_or(0, std::string::String::capacity)
+            }
             _ => 0,
         }
     }
@@ -189,6 +198,7 @@ impl PartialEq<&str> for PathStep {
             | Self::SelfNamed(value)
             | Self::DescendantNamed(value)
             | Self::DescendantOrSelfNamed(value) => value == *other,
+            Self::ChildExpandedName(value) => value.namespace.is_none() && value.local == *other,
             Self::ChildAnyElement
             | Self::ParentAnyElement
             | Self::SelfAnyElement
@@ -336,6 +346,74 @@ pub(crate) fn parse_location_path(
         final_predicate,
         final_context_predicate,
         step_position_predicates,
+        location,
+    })
+}
+
+/// Parses the deliberately narrow qualified-child path needed by static `XPath`
+/// expressions while preserving the existing location-path execution backend.
+pub(crate) fn parse_qualified_child_path(
+    expression: &str,
+    location: SourceLocation,
+    mut resolve_prefix: impl FnMut(&str) -> Option<String>,
+) -> Result<LocationPath, PathFailure> {
+    validate_expression_opening(expression, &location)?;
+    if !expression.is_ascii()
+        || expression.starts_with('/')
+        || expression.ends_with('/')
+        || expression.contains("//")
+    {
+        return Err(PathFailure::Unsupported {
+            detail: format!(
+                "the private slice does not support this qualified location-path form: {expression}"
+            ),
+            location,
+        });
+    }
+
+    let mut found_qualified_step = false;
+    let mut steps = Vec::new();
+    for step in expression.split('/') {
+        let Some((prefix, local)) = step.split_once(':') else {
+            if !is_ascii_ncname(step) {
+                return Err(invalid_syntax(
+                    format!("the qualified path contains an invalid name test: {expression}"),
+                    &location,
+                ));
+            }
+            steps.push(PathStep::ChildNamed(step.to_owned()));
+            continue;
+        };
+        if !is_ascii_ncname(prefix) || !is_ascii_ncname(local) || local.contains(':') {
+            return Err(invalid_syntax(
+                format!("the qualified path contains an invalid QName: {step}"),
+                &location,
+            ));
+        }
+        let namespace = resolve_prefix(prefix).ok_or_else(|| PathFailure::Invalid {
+            standard_code: "XPST0081",
+            detail: format!("the XPath name test uses an unbound prefix: {prefix}"),
+            location: location.clone(),
+        })?;
+        found_qualified_step = true;
+        steps.push(PathStep::ChildExpandedName(ExpandedName {
+            namespace: Some(namespace),
+            local: local.to_owned(),
+        }));
+    }
+    if !found_qualified_step {
+        return Err(PathFailure::Unsupported {
+            detail: format!("the location path has no qualified child step: {expression}"),
+            location,
+        });
+    }
+    let step_count = steps.len();
+    Ok(LocationPath {
+        steps,
+        origin: PathOrigin::Relative,
+        final_predicate: None,
+        final_context_predicate: None,
+        step_position_predicates: vec![None; step_count],
         location,
     })
 }
@@ -786,6 +864,9 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
                 && document
                     .name(child)
                     .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
+        }
+        PathStep::ChildExpandedName(required) => {
+            document.kind(child) == NodeKind::Element && document.name(child) == Some(required)
         }
         PathStep::ChildAnyElement
         | PathStep::ParentAnyElement

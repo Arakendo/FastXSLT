@@ -3,6 +3,7 @@ use std::ops::Range;
 use super::{
     ExistencePredicate, FinalContextPredicate, PathFailure, PathOrigin, PositionPredicate,
     PredicateAxis, evaluate_location_path, evaluate_location_path_controlled, parse_location_path,
+    parse_qualified_child_path,
 };
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeKind, SourceLocation};
@@ -13,6 +14,43 @@ fn location() -> SourceLocation {
         resource: "memory:stylesheet.xsl".to_owned(),
         span: Range { start: 12, end: 25 },
     }
+}
+
+#[test]
+fn qualified_child_steps_match_expanded_names() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        br#"<doc xmlns:xs="http://www.w3.org/2001/XMLSchema"><string1><xs:a>selected</xs:a><a>other</a></string1></doc>"#,
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let path = parse_qualified_child_path("doc/string1/xs:a", location(), |prefix| {
+        (prefix == "xs").then(|| "http://www.w3.org/2001/XMLSchema".to_owned())
+    })
+    .expect("qualified child path should parse");
+
+    let selected = evaluate_location_path(&document, document.document_node(), &path);
+
+    assert_eq!(selected.len(), 1);
+    assert_eq!(document.string_value(selected[0]), "selected");
+}
+
+#[test]
+fn qualified_child_steps_reject_unbound_prefixes() {
+    let failure = parse_qualified_child_path("doc/missing:a", location(), |_| None)
+        .expect_err("unbound prefix must fail statically");
+
+    assert!(matches!(
+        failure,
+        PathFailure::Invalid {
+            standard_code: "XPST0081",
+            ..
+        }
+    ));
 }
 
 #[test]

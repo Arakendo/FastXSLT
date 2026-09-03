@@ -15,6 +15,12 @@ execution = "passed"
 rationale = "The unchanged XSLT 2.0 case evaluates root(.) from the principal document-node context, charges every inspected ancestor, and matches the native XML assertion."
 
 [[case_override]]
+case_name = "root-0102"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case resolves a stylesheet-bound xs prefix into an expanded child-name test, applies root() to both unqualified and qualified child paths, and matches the native XML assertion."
+
+[[case_override]]
 case_name = "root-0103"
 selection = "selected"
 execution = "passed"
