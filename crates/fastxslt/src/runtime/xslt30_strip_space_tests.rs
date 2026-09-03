@@ -11,14 +11,13 @@ use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use crate::xslt30_overlay_test_support::{
+    DenominatorIdentity, ExecutionDisposition, SelectionDisposition,
+    assert_denominator_default_disposition, assert_denominator_override_names,
     assert_private_case_passed, assert_strip_space_case_passed,
 };
 
 const TEST_SET: &str = "tests/decl/strip-space/_strip-space-test-set.xml";
 const CASE_NAME: &str = "strip-space-012";
-const OVERLAY: &str =
-    include_str!("../../../../corpus/overlays/xslt30/strip-space-denominator-v0.toml");
-
 #[test]
 fn inventories_complete_strip_space_denominator_before_selection() {
     let document = load_test_set();
@@ -36,9 +35,12 @@ fn inventories_complete_strip_space_denominator_before_selection() {
     assert_eq!(names.first(), Some(&"strip-space-001"));
     assert_eq!(names.last(), Some(&"strip-space-029"));
     assert!(names.contains(CASE_NAME));
-    assert!(OVERLAY.contains("case_count = 30"));
-    assert!(OVERLAY.contains("selection = \"harness-unsupported\""));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 1);
+    assert_denominator_override_names(DenominatorIdentity::StripSpace, &[CASE_NAME]);
+    assert_denominator_default_disposition(
+        DenominatorIdentity::StripSpace,
+        SelectionDisposition::HarnessUnsupported,
+        ExecutionDisposition::NotRun,
+    );
     assert_strip_space_case_passed(CASE_NAME);
 }
 

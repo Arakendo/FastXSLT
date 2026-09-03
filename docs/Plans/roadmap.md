@@ -1649,9 +1649,11 @@ count:
    all 88 selected mode cases. The `fn/root`, `insn/apply-imports`,
    `insn/choose`, and `insn/call-template` overlays now use the same typed
    denominator schema and exact override identities, including selected,
-   profile-excluded, passed, and engine-unsupported dispositions. Several
-   other complete-denominator overlays and the unified immutable report
-   remain. Do not stabilize this test-only loader as a public API prematurely.
+   profile-excluded, passed, and engine-unsupported dispositions. The
+   `decl/strip-space` and `misc/built-in-templates` default and override
+   dispositions use that loader as well. Several larger complete-denominator
+   overlays and the unified immutable report remain. Do not stabilize this
+   test-only loader as a public API prematurely.
 6. [ ] Define fast pull-request, focused semantic, and reproducible full-corpus
    CI tiers. A shard, retry, feature flag, or unavailable corpus must never
    silently shrink the denominator.

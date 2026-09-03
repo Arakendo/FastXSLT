@@ -27,6 +27,8 @@ pub(crate) enum DenominatorIdentity {
     ApplyImports,
     Choose,
     CallTemplate,
+    StripSpace,
+    BuiltInTemplates,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
@@ -275,6 +277,16 @@ fn parse_known_denominator(
             "tests/insn/call-template/_call-template-test-set.xml",
             42,
         ),
+        DenominatorIdentity::StripSpace => (
+            "strip-space denominator",
+            "tests/decl/strip-space/_strip-space-test-set.xml",
+            30,
+        ),
+        DenominatorIdentity::BuiltInTemplates => (
+            "built-in-templates denominator",
+            "tests/misc/built-in-templates/_built-in-templates-test-set.xml",
+            6,
+        ),
     };
     let overlay = parse_denominator_overlay(source, label)?;
     if overlay.set_file != expected_set || overlay.case_count != expected_count {
@@ -302,35 +314,22 @@ fn output_overlay() -> &'static OutputOverlay {
     })
 }
 
-fn strip_space_overlay() -> &'static DenominatorOverlay {
-    static OVERLAY: OnceLock<DenominatorOverlay> = OnceLock::new();
-    OVERLAY.get_or_init(|| {
-        parse_denominator_overlay(STRIP_SPACE_OVERLAY_SOURCE, "strip-space denominator")
-            .unwrap_or_else(|error| panic!("invalid strip-space XSLT30 overlay: {error}"))
-    })
-}
-
-fn built_in_templates_overlay() -> &'static DenominatorOverlay {
-    static OVERLAY: OnceLock<DenominatorOverlay> = OnceLock::new();
-    OVERLAY.get_or_init(|| {
-        parse_denominator_overlay(
-            BUILT_IN_TEMPLATES_OVERLAY_SOURCE,
-            "built-in-templates denominator",
-        )
-        .unwrap_or_else(|error| panic!("invalid built-in-templates XSLT30 overlay: {error}"))
-    })
-}
-
 fn known_denominator(identity: DenominatorIdentity) -> &'static DenominatorOverlay {
     static ROOT: OnceLock<DenominatorOverlay> = OnceLock::new();
     static APPLY_IMPORTS: OnceLock<DenominatorOverlay> = OnceLock::new();
     static CHOOSE: OnceLock<DenominatorOverlay> = OnceLock::new();
     static CALL_TEMPLATE: OnceLock<DenominatorOverlay> = OnceLock::new();
+    static STRIP_SPACE: OnceLock<DenominatorOverlay> = OnceLock::new();
+    static BUILT_IN_TEMPLATES: OnceLock<DenominatorOverlay> = OnceLock::new();
     let (cell, source) = match identity {
         DenominatorIdentity::Root => (&ROOT, ROOT_OVERLAY_SOURCE),
         DenominatorIdentity::ApplyImports => (&APPLY_IMPORTS, APPLY_IMPORTS_OVERLAY_SOURCE),
         DenominatorIdentity::Choose => (&CHOOSE, CHOOSE_OVERLAY_SOURCE),
         DenominatorIdentity::CallTemplate => (&CALL_TEMPLATE, CALL_TEMPLATE_OVERLAY_SOURCE),
+        DenominatorIdentity::StripSpace => (&STRIP_SPACE, STRIP_SPACE_OVERLAY_SOURCE),
+        DenominatorIdentity::BuiltInTemplates => {
+            (&BUILT_IN_TEMPLATES, BUILT_IN_TEMPLATES_OVERLAY_SOURCE)
+        }
     };
     cell.get_or_init(|| {
         parse_known_denominator(source, identity)
@@ -464,6 +463,16 @@ pub(crate) fn assert_denominator_case_disposition(
     assert_eq!(case.execution, execution, "{identity:?}::{case_name}");
 }
 
+pub(crate) fn assert_denominator_default_disposition(
+    identity: DenominatorIdentity,
+    selection: SelectionDisposition,
+    execution: ExecutionDisposition,
+) {
+    let default = &known_denominator(identity).default_disposition;
+    assert_eq!(default.selection, selection, "{identity:?} default");
+    assert_eq!(default.execution, execution, "{identity:?} default");
+}
+
 pub(crate) fn assert_output_case_passed(case_name: &str) {
     let case = output_overlay()
         .case_override
@@ -479,31 +488,11 @@ pub(crate) fn assert_output_case_passed(case_name: &str) {
 }
 
 pub(crate) fn assert_strip_space_case_passed(case_name: &str) {
-    let case = strip_space_overlay()
-        .case_override
-        .iter()
-        .find(|case| case.case_name == case_name)
-        .unwrap_or_else(|| panic!("missing strip-space overlay override {case_name}"));
-    assert_eq!(
-        case.selection,
-        SelectionDisposition::Selected,
-        "{case_name}"
-    );
-    assert_eq!(case.execution, ExecutionDisposition::Passed, "{case_name}");
+    assert_denominator_case_passed(DenominatorIdentity::StripSpace, case_name);
 }
 
 pub(crate) fn assert_built_in_templates_case_passed(case_name: &str) {
-    let case = built_in_templates_overlay()
-        .case_override
-        .iter()
-        .find(|case| case.case_name == case_name)
-        .unwrap_or_else(|| panic!("missing built-in-templates overlay override {case_name}"));
-    assert_eq!(
-        case.selection,
-        SelectionDisposition::Selected,
-        "{case_name}"
-    );
-    assert_eq!(case.execution, ExecutionDisposition::Passed, "{case_name}");
+    assert_denominator_case_passed(DenominatorIdentity::BuiltInTemplates, case_name);
 }
 
 #[test]
@@ -512,13 +501,13 @@ fn xslt30_overlays_are_typed_unique_and_complete() {
     let output = output_overlay();
     assert_eq!(output.set_file, "tests/decl/output/_output-test-set.xml");
     assert_eq!(output.case_count, 232);
-    let strip_space = strip_space_overlay();
+    let strip_space = known_denominator(DenominatorIdentity::StripSpace);
     assert_eq!(
         strip_space.set_file,
         "tests/decl/strip-space/_strip-space-test-set.xml"
     );
     assert_eq!(strip_space.case_count, 30);
-    let built_in_templates = built_in_templates_overlay();
+    let built_in_templates = known_denominator(DenominatorIdentity::BuiltInTemplates);
     assert_eq!(
         built_in_templates.set_file,
         "tests/misc/built-in-templates/_built-in-templates-test-set.xml"
