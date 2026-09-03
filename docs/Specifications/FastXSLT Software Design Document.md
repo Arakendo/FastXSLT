@@ -319,6 +319,13 @@ string values are evaluated through controlled traversal so cancellation and
 work accounting remain active. This is not a general XPath boolean grammar;
 compound expressions, arbitrary comparisons, functions, namespaces, and
 collations require separate admission.
+The exact `xml:space="preserve"` declaration is admitted on `xsl:choose` and
+inherited by its selected branch sequence constructors. Whitespace-only
+stylesheet text in those constructors becomes explicit result text; the
+`default` lexical restores ordinary stripping and other lexicals report
+`XTSE0020`. This is stylesheet sequence-constructor whitespace behavior, not
+the source-document whitespace visibility policy, and does not admit
+`xml:space` on every instruction or literal result element.
 The exact `relative-path < integer` conditional form parses selected node string
 values as `i64` and uses existential comparison. It preserves ordered branch
 short-circuiting but does not admit decimal, floating-point, promotion, or

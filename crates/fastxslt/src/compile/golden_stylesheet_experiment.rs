@@ -1924,6 +1924,19 @@ mod tests {
     }
 
     #[test]
+    fn rejects_invalid_xml_space_on_an_admitted_choose_instruction() {
+        let document = parse_stylesheet(
+            "memory:invalid-choose-xml-space.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:choose xml:space="sometimes"><xsl:when test="true()"/></xsl:choose></xsl:template></xsl:stylesheet>"#,
+        );
+
+        let failure = compile_stylesheet(&document).expect_err("invalid xml:space must fail");
+
+        assert_eq!(failure.code, "XTSE0020");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+    }
+
+    #[test]
     fn preserves_absent_output_declaration_for_runtime_method_inference() {
         let stylesheet = parse_stylesheet(
             "memory:default-output.xsl",

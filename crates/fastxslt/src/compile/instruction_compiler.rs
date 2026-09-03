@@ -63,6 +63,7 @@ pub(super) fn compile_sequence_excluding(
 ) -> Result<Vec<Instruction>, CompileFailure> {
     let mut instructions = Vec::new();
     let mut local_variables = Vec::new();
+    let preserve_whitespace = effective_xml_space_preserved(document, parent)?;
     for child in document
         .children(parent)
         .iter()
@@ -72,7 +73,7 @@ pub(super) fn compile_sequence_excluding(
         match document.kind(child) {
             NodeKind::Text => {
                 let value = document.value(child).unwrap_or_default();
-                if !value.chars().all(char::is_whitespace) {
+                if preserve_whitespace || !value.chars().all(char::is_whitespace) {
                     instructions.push(Instruction::Text {
                         value: value.to_owned(),
                         location: document.location(child).clone(),
@@ -1092,7 +1093,7 @@ fn compile_if(document: &Document, element: NodeId) -> Result<Instruction, Compi
 }
 
 fn compile_choose(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
-    ensure_only_attributes(document, element, &[], "xsl:choose")?;
+    ensure_choose_attributes(document, element)?;
     let children = meaningful_children(document, element);
     validate_choose_structure(document, element, &children)?;
     let mut branches = Vec::new();
@@ -1117,6 +1118,60 @@ fn compile_choose(document: &Document, element: NodeId) -> Result<Instruction, C
         otherwise: otherwise.unwrap_or_default(),
         location: document.location(element).clone(),
     })
+}
+
+fn ensure_choose_attributes(document: &Document, element: NodeId) -> Result<(), CompileFailure> {
+    const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
+    for attribute in document.attributes(element) {
+        let name = document
+            .name(*attribute)
+            .expect("attribute nodes have expanded names");
+        if name.namespace.as_deref() == Some(XML_NAMESPACE) && name.local == "space" {
+            match document.value(*attribute).unwrap_or_default() {
+                "default" | "preserve" => continue,
+                _ => {
+                    return Err(invalid(
+                        "XTSE0020",
+                        "xml:space must be 'default' or 'preserve'",
+                        document.location(*attribute),
+                    ));
+                }
+            }
+        }
+        return Err(unsupported(
+            "FXST1009",
+            format!(
+                "unsupported attribute on xsl:choose: {{{}}}{}",
+                name.namespace.as_deref().unwrap_or(""),
+                name.local
+            ),
+            document.location(*attribute),
+        ));
+    }
+    Ok(())
+}
+
+fn effective_xml_space_preserved(
+    document: &Document,
+    element: NodeId,
+) -> Result<bool, CompileFailure> {
+    const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
+    let mut current = Some(element);
+    while let Some(node) = current {
+        if let Some(value) = optional_attribute(document, node, Some(XML_NAMESPACE), "space") {
+            return match value {
+                "preserve" => Ok(true),
+                "default" => Ok(false),
+                _ => Err(invalid(
+                    "XTSE0020",
+                    "xml:space must be 'default' or 'preserve'",
+                    document.location(node),
+                )),
+            };
+        }
+        current = document.parent(node);
+    }
+    Ok(false)
 }
 
 fn validate_choose_structure(

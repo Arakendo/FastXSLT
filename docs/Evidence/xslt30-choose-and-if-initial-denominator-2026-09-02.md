@@ -11,7 +11,8 @@ Date: 2026-09-02
 - Unchanged cases `choose-0101`, `choose-0102`, `choose-0201`, `choose-0301`,
   `choose-0401`, `choose-0402`,
   `choose-0403`, `choose-0404`, `choose-0501`, `choose-0502`, `choose-0601`,
-  `choose-0602`, `choose-0605`, `choose-0606`, `choose-0609`, `choose-0701`,
+  `choose-0602`, `choose-0604`, `choose-0605`, `choose-0606`, `choose-0609`,
+  `choose-0701`,
   `choose-0702`, `choose-0801`, `choose-0901`, `choose-1001`, `choose-1101`,
   `choose-1201`, `choose-1202`,
   `choose-1203`, `choose-1301`, `choose-1401`, `choose-1601`, `choose-1703`,
@@ -53,11 +54,11 @@ introduced.
 ## Result
 
 - Complete conserved denominator: 55 cases.
-- Selected and passed: 34, comprising 30 result comparisons and 4 expected
+- Selected and passed: 35, comprising 31 result comparisons and 4 expected
   static-error comparisons.
 - Engine unsupported: 0.
 - Excluded by profile: 0.
-- Visible default not run: 21.
+- Visible default not run: 20.
 
 The unchanged cases cover ordered first-match branch selection, an
 `xsl:otherwise` branch, empty fall-through when no branch matches, two true
@@ -78,6 +79,12 @@ result nodes.
 Two cases reuse the existing exact constant numeric evaluator: one tests
 `round(3.7) > 3`, while the other reaches a nested `xsl:if` through
 `xsl:otherwise` and tests `9 mod 3 = 0`.
+
+`choose-0604` applies `xml:space="preserve"` to `xsl:choose`. Whitespace-only
+stylesheet text within the selected `xsl:when` and nested `xsl:if` sequence
+constructors is retained through inherited stylesheet-space state instead of
+being discarded as indentation. A focused negative control reports `XTSE0020`
+for an invalid `xml:space` lexical on the admitted instruction.
 
 `choose-1001` applies the exact relative-path-to-integer-less-than form to the
 untyped integer lexical value `5`. Ordered evaluation stops at the first true
@@ -145,13 +152,13 @@ boolean value, and the tiny nonzero double remains true. A focused compiler
 control also proves that constructor prefixes are resolved through the XML
 Schema namespace rather than trusted by spelling.
 
-Current conserved XSLT30 accounting is 675 cases: 476 passed comparisons, 3
-engine-unsupported cases, 55 profile exclusions, and 141 visible default
+Current conserved XSLT30 accounting is 675 cases: 477 passed comparisons, 3
+engine-unsupported cases, 55 profile exclusions, and 140 visible default
 not-run cases across 17 complete test-set denominators.
 
 ## Limitation
 
-This evidence does not admit the other 21 cases. In particular, it makes no
+This evidence does not admit the other 20 cases. In particular, it makes no
 claim for general comparisons, boolean functions beyond the exact `not()`
 form and admitted `or` composition, collations, schema-aware cases,
 static typing, user functions, import composition, or arbitrary assertion
