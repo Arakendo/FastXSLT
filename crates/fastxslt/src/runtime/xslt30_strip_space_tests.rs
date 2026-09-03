@@ -13,10 +13,9 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use crate::xslt30_overlay_test_support::{
     DenominatorIdentity, ExecutionDisposition, SelectionDisposition,
     assert_denominator_default_disposition, assert_denominator_override_names,
-    assert_private_case_passed, assert_strip_space_case_passed,
+    assert_strip_space_case_passed,
 };
 
-const TEST_SET: &str = "tests/decl/strip-space/_strip-space-test-set.xml";
 const CASE_NAME: &str = "strip-space-012";
 #[test]
 fn inventories_complete_strip_space_denominator_before_selection() {
@@ -46,7 +45,7 @@ fn inventories_complete_strip_space_denominator_before_selection() {
 
 #[test]
 fn executes_unchanged_strip_space_012_through_visibility_view() {
-    assert_private_case_passed(TEST_SET, CASE_NAME);
+    assert_strip_space_case_passed(CASE_NAME);
     let document = load_test_set();
     let case = case_named(&document, CASE_NAME);
     let environment_ref = child_named(&document, case, "environment")

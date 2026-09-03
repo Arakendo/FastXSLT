@@ -18,8 +18,8 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits, parse_document};
 use crate::xslt30_overlay_test_support::{
     DenominatorIdentity, ExecutionDisposition, SelectionDisposition,
-    assert_denominator_case_disposition, assert_denominator_default_disposition,
-    assert_denominator_override_names, assert_private_case_passed,
+    assert_denominator_case_disposition, assert_denominator_case_passed,
+    assert_denominator_default_disposition, assert_denominator_override_names,
 };
 
 const TEST_SET: &str = "tests/attr/mode/_mode-test-set.xml";
@@ -813,7 +813,7 @@ fn execute_case_with_policy(
     case_name: &str,
     multiple_match_policy: MultipleMatchPolicy,
 ) -> Result<(String, Option<String>), ExecutionFailure> {
-    assert_private_case_passed("tests/attr/mode/_mode-test-set.xml", case_name);
+    assert_denominator_case_passed(DenominatorIdentity::Mode, case_name);
     let document = load_test_set();
     let case = find_case(&document, case_name);
     let environment = case_environment(&document, case);

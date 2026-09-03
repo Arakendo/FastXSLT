@@ -1655,7 +1655,9 @@ count:
    `attr/mode` overlays now use exact typed defaults and overrides, while the
    richer typed `decl/output` loader owns its direct case checks. The
    `insn/apply-templates` overlay now has explicit selection rationales and uses
-   the same exact typed admission path. The unified immutable report remains.
+   the same exact typed admission path. Runtime checks for complete mode,
+   strip-space, and built-in-template denominators no longer depend on duplicate
+   records in the broad private overlay. The unified immutable report remains.
    Do not stabilize this test-only loader as a public API prematurely.
 6. [ ] Define fast pull-request, focused semantic, and reproducible full-corpus
    CI tiers. A shard, retry, feature flag, or unavailable corpus must never

@@ -12,10 +12,8 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use crate::xslt30_overlay_test_support::{
     DenominatorIdentity, assert_built_in_templates_case_passed, assert_denominator_override_names,
-    assert_private_case_passed,
 };
 
-const TEST_SET: &str = "tests/misc/built-in-templates/_built-in-templates-test-set.xml";
 const PASSED_CASES: [&str; 2] = ["built-in-templates-0101", "built-in-templates-0102"];
 #[test]
 fn inventories_complete_built_in_templates_denominator_before_selection() {
@@ -42,7 +40,7 @@ fn inventories_complete_built_in_templates_denominator_before_selection() {
 #[test]
 fn executes_unchanged_current_and_default_mode_cases() {
     for case_name in PASSED_CASES {
-        assert_private_case_passed(TEST_SET, case_name);
+        assert_built_in_templates_case_passed(case_name);
         let (actual, expected) = execute_case(case_name);
         assert_eq!(
             normalized_assert_xml(&actual),
