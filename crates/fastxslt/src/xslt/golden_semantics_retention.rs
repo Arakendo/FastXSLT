@@ -255,6 +255,11 @@ fn instruction_owned(value: &Instruction) -> usize {
                 + select.known_owned_capacity_bytes()
                 + location_owned(location)
         }
+        Instruction::SourceNodeVariable {
+            name,
+            select,
+            location,
+        } => name.capacity() + select.known_owned_capacity_bytes() + location_owned(location),
         Instruction::IntegerRangeVariable { name, location, .. } => {
             name.capacity() + location_owned(location)
         }
@@ -433,7 +438,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
             path.known_owned_capacity_bytes()
         }
         ValueExpression::ContextNodeName | ValueExpression::UpperCaseContextString => 0,
-        ValueExpression::Variable(name) => name.capacity(),
+        ValueExpression::Variable(name) | ValueExpression::RootVariable(name) => name.capacity(),
         ValueExpression::IntegerFor(expression) => {
             size_of::<IntegerForExpression>() + expression.known_owned_capacity_bytes()
         }

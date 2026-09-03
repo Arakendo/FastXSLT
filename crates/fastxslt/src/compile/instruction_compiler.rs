@@ -95,6 +95,7 @@ pub(super) fn compile_sequence_excluding(
                     } else if name.local == "variable" {
                         let variable = compile_variable(document, child)?;
                         let (Instruction::Variable { name, .. }
+                        | Instruction::SourceNodeVariable { name, .. }
                         | Instruction::IntegerRangeVariable { name, .. }
                         | Instruction::TemporaryTreeVariable { name, .. }) = &variable
                         else {
@@ -667,7 +668,7 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
             })?,
         ))
     } else if let Some(argument) = root_argument(expression) {
-        compile_root_path(document, element, argument, &location)?
+        compile_root_expression(document, element, argument, &location)?
     } else if expression.trim() == "name(.)" {
         ValueExpression::ContextNodeName
     } else if expression.trim() == "upper-case(.)" {
@@ -704,12 +705,22 @@ fn root_argument(expression: &str) -> Option<&str> {
         .map(str::trim)
 }
 
-fn compile_root_path(
+fn compile_root_expression(
     document: &Document,
     element: NodeId,
     argument: &str,
     location: &SourceLocation,
 ) -> Result<ValueExpression, CompileFailure> {
+    if let Some(variable) = argument.strip_prefix('$') {
+        if !is_ascii_ncname(variable) {
+            return Err(invalid(
+                "XPST0003",
+                format!("invalid variable reference in root(): {argument}"),
+                location,
+            ));
+        }
+        return Ok(ValueExpression::RootVariable(variable.to_owned()));
+    }
     let path = match parse_location_path(argument, location.clone()) {
         Ok(path) => Ok(path),
         Err(PathFailure::Unsupported { .. }) if argument.contains(':') => {
@@ -755,6 +766,23 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
             "typed select-based local variables are outside the private slice",
             &location,
         ));
+    }
+    let node_path = match parse_location_path(expression, location.clone()) {
+        Ok(path) => Some(path),
+        Err(PathFailure::Unsupported { .. }) if expression.contains(':') => Some(
+            parse_qualified_child_path(expression, location.clone(), |prefix| {
+                namespace_for_prefix(document, element, prefix).map(str::to_owned)
+            })
+            .map_err(map_path_failure)?,
+        ),
+        Err(_) => None,
+    };
+    if let Some(select) = node_path {
+        return Ok(Instruction::SourceNodeVariable {
+            name: name.to_owned(),
+            select,
+            location,
+        });
     }
     let select = parse_cast(expression, &location).map_err(|failure| CompileFailure {
         code: "FXXP1008",

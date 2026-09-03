@@ -331,6 +331,11 @@ pub(crate) enum Instruction {
         select: Box<CastExpression>,
         location: SourceLocation,
     },
+    SourceNodeVariable {
+        name: String,
+        select: LocationPath,
+        location: SourceLocation,
+    },
     IntegerRangeVariable {
         name: String,
         start: i64,
@@ -412,6 +417,7 @@ pub(crate) enum Instruction {
 pub(crate) enum ValueExpression {
     LocationPath(LocationPath),
     RootPath(LocationPath),
+    RootVariable(String),
     ContextNodeName,
     UpperCaseContextString,
     Variable(String),

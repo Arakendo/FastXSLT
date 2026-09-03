@@ -70,6 +70,7 @@ pub(super) enum TemporaryNodeKind {
 pub(super) struct RuntimeVariables {
     pub(super) atomics: Arc<BTreeMap<String, AtomicValue>>,
     pub(super) atomic_sequences: BTreeMap<String, Vec<AtomicValue>>,
+    pub(super) source_nodes: BTreeMap<String, Vec<NodeId>>,
     pub(super) temporary_trees: BTreeMap<String, TemporaryTree>,
 }
 
@@ -128,6 +129,7 @@ impl RuntimeVariables {
                 Arc::clone(atomics)
             },
             atomic_sequences: BTreeMap::new(),
+            source_nodes: BTreeMap::new(),
             temporary_trees: BTreeMap::new(),
         }
     }

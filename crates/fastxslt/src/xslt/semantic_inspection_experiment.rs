@@ -258,6 +258,7 @@ fn observe_instructions(
             Instruction::Attribute { .. } => (SemanticFeature::ComputedAttribute, None),
             Instruction::ValueOf { .. } => (SemanticFeature::ValueOf, None),
             Instruction::Variable { .. }
+            | Instruction::SourceNodeVariable { .. }
             | Instruction::IntegerRangeVariable { .. }
             | Instruction::TemporaryTreeVariable { .. } => (SemanticFeature::LocalVariable, None),
             Instruction::SequenceNodes { .. } => (SemanticFeature::SequenceNodes, None),

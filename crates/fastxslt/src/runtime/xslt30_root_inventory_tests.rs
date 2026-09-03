@@ -12,10 +12,11 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/fn/root/_root-test-set.xml";
-const PASSED_CASES: [&str; 5] = [
+const PASSED_CASES: [&str; 6] = [
     "root-0101",
     "root-0102",
     "root-0103",
+    "root-0104",
     "root-0201",
     "root-0601",
 ];
@@ -39,7 +40,7 @@ fn inventories_complete_root_denominator_before_selection() {
     assert_eq!(names.last(), Some(&"root-0601"));
     assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
     assert!(OVERLAY.contains("case_count = 10"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 5);
+    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 6);
     for case_name in PASSED_CASES {
         assert!(names.contains(case_name));
         let record = overlay_case(case_name);
@@ -56,45 +57,49 @@ fn executes_unchanged_root_location_path_cases() {
 }
 
 #[test]
-fn root_path_rejects_more_than_one_argument_node() {
-    let source_id = "urn:fastxslt:fn-root:cardinality:source";
-    let stylesheet_id = "urn:fastxslt:fn-root:cardinality:stylesheet";
-    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
-    resources
-        .admit(source_id, b"<doc><item/><item/></doc>".to_vec())
-        .expect("admit cardinality source");
-    resources
-        .admit(
-            stylesheet_id,
-            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><out><xsl:value-of select="root(doc/item)"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
-        )
-        .expect("admit cardinality stylesheet");
-    let snapshot = resources.seal();
-    let program = compile_resource(&snapshot, stylesheet_id).expect("compile cardinality control");
-    let mut set = TransformSetBuilder::new(
-        snapshot,
-        program,
-        1,
-        ExecutionPolicy {
-            denied_sources: HashSet::new(),
-            serialized_byte_limit: 4_096,
-            work_limits: WorkLimits::unbounded(),
-        },
-    );
-    set.add(TransformRequest {
-        identity: "cardinality".to_owned(),
-        result_identity: "urn:fastxslt:fn-root:cardinality:result".to_owned(),
-        entry: InvocationEntry::PrincipalSource {
-            resource: source_id.to_owned(),
-        },
-        parameters: BTreeMap::new(),
-        cancellation: CancellationToken::new(),
-        cancellation_fault: None,
-    })
-    .expect("admit cardinality request");
+fn root_path_and_source_node_variable_enforce_argument_cardinality() {
+    let stylesheets = [
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><out><xsl:value-of select="root(doc/item)"/></out></xsl:template></xsl:stylesheet>"#.as_slice(),
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><xsl:variable name="nodes" select="doc/item"/><out><xsl:value-of select="root($nodes)"/></out></xsl:template></xsl:stylesheet>"#.as_slice(),
+    ];
+    for (index, stylesheet) in stylesheets.into_iter().enumerate() {
+        let source_id = format!("urn:fastxslt:fn-root:cardinality:{index}:source");
+        let stylesheet_id = format!("urn:fastxslt:fn-root:cardinality:{index}:stylesheet");
+        let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+        resources
+            .admit(&source_id, b"<doc><item/><item/></doc>".to_vec())
+            .expect("admit cardinality source");
+        resources
+            .admit(&stylesheet_id, stylesheet.to_vec())
+            .expect("admit cardinality stylesheet");
+        let snapshot = resources.seal();
+        let program =
+            compile_resource(&snapshot, &stylesheet_id).expect("compile cardinality control");
+        let mut set = TransformSetBuilder::new(
+            snapshot,
+            program,
+            1,
+            ExecutionPolicy {
+                denied_sources: HashSet::new(),
+                serialized_byte_limit: 4_096,
+                work_limits: WorkLimits::unbounded(),
+            },
+        );
+        set.add(TransformRequest {
+            identity: format!("cardinality-{index}"),
+            result_identity: format!("urn:fastxslt:fn-root:cardinality:{index}:result"),
+            entry: InvocationEntry::PrincipalSource {
+                resource: source_id,
+            },
+            parameters: BTreeMap::new(),
+            cancellation: CancellationToken::new(),
+            cancellation_fault: None,
+        })
+        .expect("admit cardinality request");
 
-    let failure = execute_transform_set(set.seal()).expect_err("two root arguments must fail");
-    assert_eq!(failure.code, "XPTY0004");
+        let failure = execute_transform_set(set.seal()).expect_err("two root arguments must fail");
+        assert_eq!(failure.code, "XPTY0004");
+    }
 }
 
 fn execute_case(case_name: &str) {

@@ -27,6 +27,12 @@ execution = "passed"
 rationale = "The unchanged XSLT 2.0 case applies root() to two empty child paths and the explicit empty sequence; every call returns the empty sequence and the native empty result matches."
 
 [[case_override]]
+case_name = "root-0104"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case binds two invocation-local source-node variables, including a namespace-qualified child selection, and applies root() without copying or detaching source identity."
+
+[[case_override]]
 case_name = "root-0201"
 selection = "selected"
 execution = "passed"

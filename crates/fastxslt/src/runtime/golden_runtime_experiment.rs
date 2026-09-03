@@ -619,6 +619,7 @@ fn execute_instruction(
             )?);
         }
         Instruction::Variable { .. }
+        | Instruction::SourceNodeVariable { .. }
         | Instruction::IntegerRangeVariable { .. }
         | Instruction::TemporaryTreeVariable { .. } => {
             execute_binding(inputs, instruction, execution.node, scope, control)?;
@@ -908,6 +909,12 @@ fn execute_binding(
         Instruction::Variable { name, select, .. } => {
             let value = execute_variable_binding(inputs, name, select, context, control)?;
             Arc::make_mut(&mut scope.atomics).insert(name.clone(), value);
+        }
+        Instruction::SourceNodeVariable { name, select, .. } => {
+            let (source, context) = required_source_context(inputs, context)?;
+            let nodes = evaluate_location_path_controlled(source, context, select, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            scope.source_nodes.insert(name.clone(), nodes);
         }
         Instruction::IntegerRangeVariable {
             name, start, end, ..
