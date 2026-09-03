@@ -21,6 +21,15 @@ fn parses_the_golden_relative_child_path() {
 }
 
 #[test]
+fn explicit_context_child_path_is_the_same_relative_navigation() {
+    let implicit = parse_location_path("greeting/name", location()).expect("implicit path");
+    let explicit = parse_location_path("./greeting/name", location()).expect("explicit path");
+
+    assert_eq!(explicit.steps, implicit.steps);
+    assert_eq!(explicit.origin, PathOrigin::Relative);
+}
+
+#[test]
 fn distinguishes_invalid_from_unsupported_path_syntax() {
     assert!(matches!(
         parse_location_path("", location()),

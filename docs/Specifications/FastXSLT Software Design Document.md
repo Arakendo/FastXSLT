@@ -323,6 +323,10 @@ The exact `relative-path < integer` conditional form parses selected node string
 values as `i64` and uses existential comparison. It preserves ordered branch
 short-circuiting but does not admit decimal, floating-point, promotion, or
 general ordering semantics.
+An exact final `[. = string-literal]` predicate may filter a relative child path
+for conditional effective boolean value. Explicit context-child paths beginning
+with `./` share ordinary relative-child navigation. These forms do not admit a
+general predicate grammar or arbitrary comparison operands.
 
 Conditional structure is validated before branch expressions or constructors
 are compiled. Missing `test`, `xsl:when` after `xsl:otherwise`, repeated

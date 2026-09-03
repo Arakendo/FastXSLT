@@ -575,6 +575,8 @@ fn parse_final_context_predicate(expression: &str) -> (&str, Option<FinalContext
 fn parse_path_origin(expression: &str) -> (&str, PathOrigin) {
     if let Some(expression) = expression.strip_prefix("()/") {
         (expression, PathOrigin::EmptySequence)
+    } else if let Some(expression) = expression.strip_prefix("./") {
+        (expression, PathOrigin::Relative)
     } else if let Some(expression) = expression.strip_prefix("//") {
         (expression, PathOrigin::Descendant)
     } else if let Some(expression) = expression.strip_prefix('/') {

@@ -1206,16 +1206,14 @@ fn parse_scalar_boolean_expression(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<BooleanExpression, CompileFailure> {
-    if let Some(value) = xpath_string_literal(parsed) {
-        return Ok(BooleanExpression::Constant(!value.is_empty()));
+    if let Some(value) = parse_constant_string_boolean(parsed) {
+        return Ok(BooleanExpression::Constant(value));
     }
-    if let Some((left, right)) = parsed.split_once('=')
-        && let (Some(left), Some(right)) = (
-            xpath_string_literal(left.trim()),
-            xpath_string_literal(right.trim()),
-        )
-    {
-        return Ok(BooleanExpression::Constant(left == right));
+    if let Some((path, value)) = parse_path_context_string_predicate(parsed) {
+        return Ok(BooleanExpression::NodeStringEquals {
+            path: parse_location_path(path, location.clone()).map_err(map_path_failure)?,
+            value: value.to_owned(),
+        });
     }
     if let Some((path, value)) = parse_path_string_equality(parsed) {
         return Ok(BooleanExpression::NodeStringEquals {
@@ -1305,6 +1303,30 @@ fn parse_scalar_boolean_expression(
     } else {
         ordering.is_eq()
     }))
+}
+
+fn parse_constant_string_boolean(expression: &str) -> Option<bool> {
+    if let Some(value) = xpath_string_literal(expression) {
+        return Some(!value.is_empty());
+    }
+    let (left, right) = expression.split_once('=')?;
+    Some(xpath_string_literal(left.trim())? == xpath_string_literal(right.trim())?)
+}
+
+fn parse_path_context_string_predicate(expression: &str) -> Option<(&str, &str)> {
+    let (path, predicate) = expression.split_once('[')?;
+    if path.trim().is_empty() || path.contains(']') {
+        return None;
+    }
+    let predicate = predicate.strip_suffix(']')?;
+    if predicate.contains(['[', ']']) {
+        return None;
+    }
+    let (left, right) = predicate.split_once('=')?;
+    (left.trim() == ".")
+        .then(|| xpath_string_literal(right.trim()))
+        .flatten()
+        .map(|value| (path.trim(), value))
 }
 
 fn parse_path_integer_less_than(expression: &str) -> Option<(&str, i64)> {
