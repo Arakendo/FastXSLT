@@ -22,7 +22,7 @@ use crate::xpath::integer_for_experiment::evaluate as evaluate_integer_for;
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
     ConditionalIntegerBranch, ConditionalIntegerCondition, ConditionalIntegerExpression,
-    ValueExpression,
+    ConditionalPathBranch, ConditionalPathExpression, IntegerComparisonOperator, ValueExpression,
 };
 
 use super::{
@@ -134,8 +134,129 @@ pub(super) fn execute_value_of(
             let value = evaluate_conditional_integer(inputs, expression, context, control)?;
             append_text(result, &value.to_string(), inputs.request_id, control)?;
         }
+        ValueExpression::ConditionalPath(expression) => {
+            append_conditional_path(inputs, expression, context, result, control)?;
+        }
     }
     Ok(())
+}
+
+fn append_conditional_path(
+    inputs: &SequenceInputs<'_>,
+    expression: &ConditionalPathExpression,
+    context: Option<NodeId>,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let value = evaluate_conditional_path(inputs, expression, context, control)?;
+    append_text(result, &value, inputs.request_id, control)
+}
+
+fn evaluate_conditional_path(
+    inputs: &SequenceInputs<'_>,
+    expression: &ConditionalPathExpression,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let left = evaluate_integer_path(inputs, &expression.condition.left, context, control)?;
+    let right = evaluate_integer_path(inputs, &expression.condition.right, context, control)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let condition = match expression.condition.operator {
+        IntegerComparisonOperator::Equal => left == right,
+        IntegerComparisonOperator::GreaterThan => left > right,
+    };
+    evaluate_conditional_path_branch(
+        inputs,
+        if condition {
+            &expression.when_true
+        } else {
+            &expression.when_false
+        },
+        context,
+        control,
+    )
+}
+
+fn evaluate_conditional_path_branch(
+    inputs: &SequenceInputs<'_>,
+    branch: &ConditionalPathBranch,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    match branch {
+        ConditionalPathBranch::Path(path) => evaluate_path_string(inputs, path, context, control),
+        ConditionalPathBranch::Division {
+            numerator,
+            denominator,
+        } => {
+            let numerator = evaluate_integer_path(inputs, numerator, context, control)?;
+            let denominator = evaluate_integer_path(inputs, denominator, context, control)?;
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            if denominator == 0 {
+                return Err(failure(
+                    "FOAR0001",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    "integer division by zero in selected conditional branch",
+                ));
+            }
+            if numerator % denominator != 0 {
+                return Err(failure(
+                    "FXRT1007",
+                    FailureCategory::Unsupported,
+                    Some(inputs.request_id),
+                    "a selected non-integral division branch exceeds the admitted conditional slice",
+                ));
+            }
+            Ok((numerator / denominator).to_string())
+        }
+        ConditionalPathBranch::Conditional(expression) => {
+            evaluate_conditional_path(inputs, expression, context, control)
+        }
+    }
+}
+
+fn evaluate_integer_path(
+    inputs: &SequenceInputs<'_>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<i64, ExecutionFailure> {
+    let value = evaluate_path_string(inputs, path, context, control)?;
+    value.trim().parse::<i64>().map_err(|_| {
+        failure(
+            "FORG0001",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            format!("value is not a valid xs:integer lexical: {value}"),
+        )
+    })
+}
+
+fn evaluate_path_string(
+    inputs: &SequenceInputs<'_>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let selected = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let node = selected.first().ok_or_else(|| {
+        failure(
+            "XPTY0004",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            "empty sequence cannot supply the required singleton value",
+        )
+    })?;
+    source
+        .string_value_controlled(*node, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))
 }
 
 pub(super) fn evaluate_conditional_integer(

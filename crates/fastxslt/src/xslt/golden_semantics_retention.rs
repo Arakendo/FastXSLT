@@ -3,14 +3,14 @@ use std::mem::size_of;
 use super::{
     ApplySelection, BooleanExpression, CastExpression, CastableExpression, CharacterMapDefinition,
     ChildPresenceTest, ChooseBranch, ComputedAttribute, ConditionalIntegerBranch,
-    ConditionalIntegerCondition, ConditionalIntegerExpression, ConstructedAttribute,
-    ConstructedElement, ConstructedNode, DecimalSumForExpression, DeepEqualBooleanExpression,
-    ExpandedName, FocusSumForExpression, ForDistinctValuesExpression, FormatNumberExpression,
-    GlobalBinding, GlobalBindingDefault, Instruction, IntegerForExpression, LiteralAttribute,
-    LiteralAttributeValue, MatchPattern, MatchedTemplate, NamedTemplate, NamespaceBinding,
-    OutputSettings, SequenceItemExpression, SourceLocation, StylesheetProgram, Template,
-    TemplateArgument, TemplateArgumentValue, TemplateParameter, TemplateParameterDefault,
-    ValueExpression, VariableFilteredElementPath,
+    ConditionalIntegerCondition, ConditionalIntegerExpression, ConditionalPathBranch,
+    ConditionalPathExpression, ConstructedAttribute, ConstructedElement, ConstructedNode,
+    DecimalSumForExpression, DeepEqualBooleanExpression, ExpandedName, FocusSumForExpression,
+    ForDistinctValuesExpression, FormatNumberExpression, GlobalBinding, GlobalBindingDefault,
+    Instruction, IntegerForExpression, LiteralAttribute, LiteralAttributeValue, MatchPattern,
+    MatchedTemplate, NamedTemplate, NamespaceBinding, OutputSettings, SequenceItemExpression,
+    SourceLocation, StylesheetProgram, Template, TemplateArgument, TemplateArgumentValue,
+    TemplateParameter, TemplateParameterDefault, ValueExpression, VariableFilteredElementPath,
 };
 
 impl StylesheetProgram {
@@ -485,6 +485,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
             size_of::<DeepEqualBooleanExpression>() + expression.known_owned_capacity_bytes()
         }
         ValueExpression::ConditionalInteger(expression) => conditional_integer_owned(expression),
+        ValueExpression::ConditionalPath(expression) => conditional_path_owned(expression),
     }
 }
 
@@ -556,6 +557,24 @@ fn conditional_integer_branch_owned(value: &ConditionalIntegerBranch) -> usize {
     match value {
         ConditionalIntegerBranch::Integer(_) => 0,
         ConditionalIntegerBranch::Conditional(expression) => conditional_integer_owned(expression),
+    }
+}
+
+fn conditional_path_owned(value: &ConditionalPathExpression) -> usize {
+    value.condition.left.known_owned_capacity_bytes()
+        + value.condition.right.known_owned_capacity_bytes()
+        + conditional_path_branch_owned(&value.when_true)
+        + conditional_path_branch_owned(&value.when_false)
+}
+
+fn conditional_path_branch_owned(value: &ConditionalPathBranch) -> usize {
+    match value {
+        ConditionalPathBranch::Path(path) => path.known_owned_capacity_bytes(),
+        ConditionalPathBranch::Division {
+            numerator,
+            denominator,
+        } => numerator.known_owned_capacity_bytes() + denominator.known_owned_capacity_bytes(),
+        ConditionalPathBranch::Conditional(expression) => conditional_path_owned(expression),
     }
 }
 

@@ -467,6 +467,7 @@ pub(crate) enum ValueExpression {
     Castable(Box<CastableExpression>),
     DeepEqual(Box<DeepEqualBooleanExpression>),
     ConditionalInteger(Box<ConditionalIntegerExpression>),
+    ConditionalPath(Box<ConditionalPathExpression>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -486,6 +487,36 @@ pub(crate) enum ConditionalIntegerCondition {
 pub(crate) enum ConditionalIntegerBranch {
     Integer(i64),
     Conditional(Box<ConditionalIntegerExpression>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ConditionalPathExpression {
+    pub(crate) condition: IntegerPathComparison,
+    pub(crate) when_true: ConditionalPathBranch,
+    pub(crate) when_false: ConditionalPathBranch,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct IntegerPathComparison {
+    pub(crate) left: LocationPath,
+    pub(crate) right: LocationPath,
+    pub(crate) operator: IntegerComparisonOperator,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum IntegerComparisonOperator {
+    Equal,
+    GreaterThan,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ConditionalPathBranch {
+    Path(LocationPath),
+    Division {
+        numerator: LocationPath,
+        denominator: LocationPath,
+    },
+    Conditional(Box<ConditionalPathExpression>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

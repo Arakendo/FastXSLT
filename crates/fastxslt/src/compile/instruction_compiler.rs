@@ -20,9 +20,10 @@ use crate::xpath::path_experiment::{
 };
 use crate::xslt::golden_semantics_experiment::{
     BooleanExpression, ChooseBranch, ComputedAttribute, ConditionalIntegerBranch,
-    ConditionalIntegerCondition, ConditionalIntegerExpression, EqualityTest, Instruction,
-    LiteralAttributeValue, SequenceItemExpression, StringComparison, TemplateArgument,
-    ValueExpression,
+    ConditionalIntegerCondition, ConditionalIntegerExpression, ConditionalPathBranch,
+    ConditionalPathExpression, EqualityTest, Instruction, IntegerComparisonOperator,
+    IntegerPathComparison, LiteralAttributeValue, SequenceItemExpression, StringComparison,
+    TemplateArgument, ValueExpression,
 };
 
 #[path = "instruction_compiler/computed_attribute_compiler.rs"]
@@ -642,8 +643,8 @@ fn compile_value_expression(
     if let Some(count) = compile_count_value(document, element, expression, location)? {
         return Ok(count);
     }
-    if let Some(conditional) = parse_conditional_integer(expression, location)? {
-        return Ok(ValueExpression::ConditionalInteger(Box::new(conditional)));
+    if let Some(conditional) = compile_conditional_value(document, element, expression, location)? {
+        return Ok(conditional);
     }
     Ok(if recognizes_deep_equal(expression) {
         ValueExpression::DeepEqual(Box::new(parse_deep_equal(expression, location).map_err(
@@ -735,6 +736,128 @@ fn compile_value_expression(
             parse_location_path(expression, location.clone()).map_err(map_path_failure)?,
         )
     })
+}
+
+fn compile_conditional_value(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<ValueExpression>, CompileFailure> {
+    if let Some(value) = parse_conditional_path(document, element, expression, location)? {
+        return Ok(Some(ValueExpression::ConditionalPath(Box::new(value))));
+    }
+    Ok(parse_conditional_integer(expression, location)?
+        .map(|value| ValueExpression::ConditionalInteger(Box::new(value))))
+}
+
+fn parse_conditional_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<ConditionalPathExpression>, CompileFailure> {
+    let expression = expression.trim();
+    if !expression.starts_with("if (") || !expression.contains(":integer(") {
+        return Ok(None);
+    }
+    let closing = matching_parenthesis(expression, 3)
+        .ok_or_else(|| unsupported_boolean_expression(expression, location))?;
+    let condition =
+        parse_integer_path_comparison(document, element, &expression[4..closing], location)?;
+    let branches = expression[closing + 1..]
+        .trim_start()
+        .strip_prefix("then ")
+        .ok_or_else(|| unsupported_boolean_expression(expression, location))?;
+    let (when_true, when_false) = split_top_level_else(branches)
+        .ok_or_else(|| unsupported_boolean_expression(expression, location))?;
+    Ok(Some(ConditionalPathExpression {
+        condition,
+        when_true: parse_conditional_path_branch(document, element, when_true, location)?,
+        when_false: parse_conditional_path_branch(document, element, when_false, location)?,
+    }))
+}
+
+fn parse_integer_path_comparison(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<IntegerPathComparison, CompileFailure> {
+    let (left, right, operator) = split_top_level_integer_comparison(expression)
+        .ok_or_else(|| unsupported_boolean_expression(expression, location))?;
+    Ok(IntegerPathComparison {
+        left: parse_integer_path_cast(document, element, left, location)?,
+        right: parse_integer_path_cast(document, element, right, location)?,
+        operator,
+    })
+}
+
+fn split_top_level_integer_comparison(
+    expression: &str,
+) -> Option<(&str, &str, IntegerComparisonOperator)> {
+    let mut depth = 0_usize;
+    for (index, byte) in expression.bytes().enumerate() {
+        match byte {
+            b'(' => depth += 1,
+            b')' => depth = depth.checked_sub(1)?,
+            b'>' if depth == 0 => {
+                return Some((
+                    expression[..index].trim(),
+                    expression[index + 1..].trim(),
+                    IntegerComparisonOperator::GreaterThan,
+                ));
+            }
+            b'=' if depth == 0 => {
+                return Some((
+                    expression[..index].trim(),
+                    expression[index + 1..].trim(),
+                    IntegerComparisonOperator::Equal,
+                ));
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn parse_integer_path_cast(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<crate::xpath::path_experiment::LocationPath, CompileFailure> {
+    let expression = expression.trim();
+    let (prefix, argument) = expression
+        .split_once(":integer(")
+        .and_then(|(prefix, argument)| Some((prefix, argument.strip_suffix(')')?)))
+        .ok_or_else(|| unsupported_boolean_expression(expression, location))?;
+    if !is_ascii_ncname(prefix)
+        || namespace_for_prefix(document, element, prefix) != Some(XML_SCHEMA_NAMESPACE)
+    {
+        return Err(unsupported_boolean_expression(expression, location));
+    }
+    parse_location_path(argument.trim(), location.clone()).map_err(map_path_failure)
+}
+
+fn parse_conditional_path_branch(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<ConditionalPathBranch, CompileFailure> {
+    if let Some(conditional) = parse_conditional_path(document, element, expression, location)? {
+        return Ok(ConditionalPathBranch::Conditional(Box::new(conditional)));
+    }
+    if let Some((numerator, denominator)) = expression.split_once(" div ") {
+        return Ok(ConditionalPathBranch::Division {
+            numerator: parse_integer_path_cast(document, element, numerator, location)?,
+            denominator: parse_integer_path_cast(document, element, denominator, location)?,
+        });
+    }
+    parse_location_path(expression.trim(), location.clone())
+        .map(ConditionalPathBranch::Path)
+        .map_err(map_path_failure)
 }
 
 fn compile_count_value(
@@ -1481,15 +1604,28 @@ fn matching_parenthesis(expression: &str, opening: usize) -> Option<usize> {
 fn split_top_level_else(expression: &str) -> Option<(&str, &str)> {
     let bytes = expression.as_bytes();
     let mut depth = 0_usize;
+    let mut nested_conditionals = 0_usize;
     let mut quote = None;
     let mut index = 0_usize;
     while index + 6 <= bytes.len() {
+        if quote.is_none()
+            && depth == 0
+            && expression[index..].starts_with("if (")
+            && (index == 0 || bytes[index - 1].is_ascii_whitespace())
+        {
+            nested_conditionals += 1;
+        }
         match bytes[index] {
             byte if quote == Some(byte) => quote = None,
             b'\'' | b'"' if quote.is_none() => quote = Some(bytes[index]),
             b'(' if quote.is_none() => depth += 1,
             b')' if quote.is_none() => depth = depth.saturating_sub(1),
             b' ' if quote.is_none() && depth == 0 && expression[index..].starts_with(" else ") => {
+                if nested_conditionals > 0 {
+                    nested_conditionals -= 1;
+                    index += 6;
+                    continue;
+                }
                 return Some((expression[..index].trim(), expression[index + 6..].trim()));
             }
             _ => {}

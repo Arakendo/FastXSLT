@@ -420,6 +420,15 @@ XDM string-value derivation, and containment work. This does not admit a
 general conditional-expression grammar, general function calls, or arbitrary
 branch sequence types.
 
+A separate exact conditional value form compares two singleton source paths
+after schema-namespace-resolved `xs:integer` conversion and selects a path,
+integer-division, or recursively nested conditional branch. Equality and
+greater-than are the only admitted operators. Only the selected branch is
+evaluated; an unselected dynamic error therefore remains unobserved. Selected
+division by zero reports `FOAR0001`, while a selected non-integral quotient
+remains explicitly unsupported. This form does not admit general casting,
+numeric promotion, conditional operands, or branch expressions.
+
 Compiled mode names use expanded QName identity. An unprefixed lexical mode is
 in no namespace; a prefixed mode is resolved against the namespace context of
 the containing stylesheet instruction and retained in canonical expanded form.

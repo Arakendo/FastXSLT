@@ -253,3 +253,33 @@ case_name = "choose-1804"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged negative case reports standard static error XTSE0010 for a second xsl:otherwise child."
+
+[[case_override]]
+case_name = "choose-1901"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case selects the true location-path branch of an XPath conditional after comparing two schema-integer path values."
+
+[[case_override]]
+case_name = "choose-1902"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case selects the false location-path branch of an XPath conditional after comparing two schema-integer path values."
+
+[[case_override]]
+case_name = "choose-1903"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case selects a true location-path branch without evaluating the division-by-zero false branch."
+
+[[case_override]]
+case_name = "choose-1904"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case selects a false location-path branch without evaluating the division-by-zero true branch."
+
+[[case_override]]
+case_name = "choose-1905"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XSLT 2.0 case lazily evaluates nested typed-path conditional expressions and returns only the selected location-path value."

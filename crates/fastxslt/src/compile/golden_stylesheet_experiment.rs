@@ -1968,6 +1968,34 @@ mod tests {
     }
 
     #[test]
+    fn conditional_path_casts_resolve_the_schema_namespace() {
+        let valid = parse_stylesheet(
+            "memory:conditional-path.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:s="http://www.w3.org/2001/XMLSchema"><xsl:template match="/"><xsl:value-of select="if (s:integer(a/@v) > s:integer(b/@v)) then a/@v else b/@v"/></xsl:template></xsl:stylesheet>"#,
+        );
+        let invalid = parse_stylesheet(
+            "memory:conditional-path-invalid.xsl",
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:xs="urn:not-schema"><xsl:template match="/"><xsl:value-of select="if (xs:integer(a/@v) > xs:integer(b/@v)) then a/@v else b/@v"/></xsl:template></xsl:stylesheet>"#,
+        );
+
+        let program = compile_stylesheet(&valid).expect("schema-bound cast should compile");
+        assert!(matches!(
+            program
+                .root_template
+                .expect("root template")
+                .body
+                .as_slice(),
+            [Instruction::ValueOf {
+                select: ValueExpression::ConditionalPath(_),
+                ..
+            }]
+        ));
+        let failure =
+            compile_stylesheet(&invalid).expect_err("rebound xs prefix must not be trusted");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+    }
+
+    #[test]
     fn retains_narrow_numeric_globals_without_erasing_atomic_types_or_path_operands() {
         let document = parse_stylesheet(
             "memory:numeric-globals.xsl",
