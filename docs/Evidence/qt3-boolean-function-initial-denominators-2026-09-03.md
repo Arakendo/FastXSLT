@@ -27,26 +27,28 @@ boolean composition. Nonzero arity is classified separately from unsupported
 syntax and compared with the native `XPST0017` expectation.
 
 The QT3 adapter executes each unchanged expression and owns `assert-true`,
-`assert-false`, the paired `assert-type` check, and expected-error comparison.
-String-function composition and function-item invocation remain under the
-visible default rather than borrowing a pass from related functionality.
+`assert-false`, `assert-eq`, `assert-string-value`, the paired `assert-type`
+check, and expected-error comparison. A typed scalar projection additionally
+handles canonical boolean-to-string conversion, two-value concatenation,
+containment, and Unicode-codepoint string length. Function-item invocation
+remains under the visible default rather than borrowing a pass from related
+function-call functionality.
 
 ## Result
 
 | Test set | Native cases | Selected and passed | Profile excluded | Visible default not run |
 | --- | ---: | ---: | ---: | ---: |
-| `fn/true.xml` | 25 | 20 | 0 | 5 |
-| `fn/false.xml` | 25 | 20 | 0 | 5 |
-| **Subtotal** | **50** | **40** | **0** | **10** |
+| `fn/true.xml` | 25 | 24 | 0 | 1 |
+| `fn/false.xml` | 25 | 24 | 0 | 1 |
+| **Subtotal** | **50** | **48** | **0** | **2** |
 
-The audited QT3 subtotal is now 662 cases: 448 selected passes, 179 profile
-exclusions, and 35 visible default not-run cases. The remaining 31,159 QT3
+The audited QT3 subtotal is now 662 cases: 456 selected passes, 179 profile
+exclusions, and 27 visible default not-run cases. The remaining 31,159 QT3
 cases stay at catalog inventory only.
 
 ## Next pressure
 
-The next coherent tranche is the eight string conversion, concatenation,
-containment, and string-length cases. The two function-item/predicate cases
-remain a separate higher-order-function boundary. Promote either group only
-through its unchanged expressions and native assertions; do not replace them
-with case-specific expected answers.
+The two function-item/predicate cases remain a separate higher-order-function
+boundary. Promote them only through their unchanged expressions and native
+assertions; do not treat ordinary named-function calls as evidence for function
+items.

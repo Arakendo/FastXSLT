@@ -36,8 +36,54 @@ pub(crate) enum BooleanEvaluationFailure {
     Control(ControlFailure),
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum ScalarExpression {
+    Boolean(BooleanExpression),
+    BooleanString(BooleanExpression),
+    Concat(Box<Self>, Box<Self>),
+    Contains(Box<Self>, Box<Self>),
+    StringLength(Box<Self>),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum ScalarValue {
+    Boolean(bool),
+    String(String),
+    Integer(usize),
+}
+
 pub(crate) fn parse(expression: &str) -> Result<BooleanExpression, BooleanParseFailure> {
     parse_inner(expression.trim())
+}
+
+pub(crate) fn parse_scalar(expression: &str) -> Result<ScalarExpression, BooleanParseFailure> {
+    let expression = expression.trim();
+    if let Ok(boolean) = parse(expression) {
+        return Ok(ScalarExpression::Boolean(boolean));
+    }
+    if let Some(inner) = function_argument(expression, &["fn:string", "xs:string"]) {
+        return parse(inner).map(ScalarExpression::BooleanString);
+    }
+    if let Some(inner) = function_argument(expression, &["fn:concat"]) {
+        let (left, right) = split_top_level(inner, ",").ok_or(BooleanParseFailure::Unsupported)?;
+        return Ok(ScalarExpression::Concat(
+            Box::new(parse_scalar(left)?),
+            Box::new(parse_scalar(right)?),
+        ));
+    }
+    if let Some(inner) = function_argument(expression, &["fn:contains"]) {
+        let (left, right) = split_top_level(inner, ",").ok_or(BooleanParseFailure::Unsupported)?;
+        return Ok(ScalarExpression::Contains(
+            Box::new(parse_scalar(left)?),
+            Box::new(parse_scalar(right)?),
+        ));
+    }
+    if let Some(inner) = function_argument(expression, &["fn:string-length"]) {
+        return Ok(ScalarExpression::StringLength(Box::new(parse_scalar(
+            inner,
+        )?)));
+    }
+    parse(expression).map(ScalarExpression::Boolean)
 }
 
 fn parse_inner(expression: &str) -> Result<BooleanExpression, BooleanParseFailure> {
@@ -136,6 +182,44 @@ pub(crate) fn evaluate(
     }
 }
 
+pub(crate) fn evaluate_scalar(
+    expression: &ScalarExpression,
+    control: &mut InvocationControl,
+) -> Result<ScalarValue, BooleanEvaluationFailure> {
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(BooleanEvaluationFailure::Control)?;
+    match expression {
+        ScalarExpression::Boolean(boolean) => evaluate(boolean, control).map(ScalarValue::Boolean),
+        ScalarExpression::BooleanString(boolean) => evaluate(boolean, control)
+            .map(|value| ScalarValue::String(if value { "true" } else { "false" }.to_owned())),
+        ScalarExpression::Concat(left, right) => {
+            let mut left = evaluate_string(left, control)?;
+            left.push_str(&evaluate_string(right, control)?);
+            Ok(ScalarValue::String(left))
+        }
+        ScalarExpression::Contains(value, search) => {
+            let value = evaluate_string(value, control)?;
+            let search = evaluate_string(search, control)?;
+            Ok(ScalarValue::Boolean(value.contains(&search)))
+        }
+        ScalarExpression::StringLength(value) => {
+            evaluate_string(value, control).map(|value| ScalarValue::Integer(value.chars().count()))
+        }
+    }
+}
+
+fn evaluate_string(
+    expression: &ScalarExpression,
+    control: &mut InvocationControl,
+) -> Result<String, BooleanEvaluationFailure> {
+    match evaluate_scalar(expression, control)? {
+        ScalarValue::String(value) => Ok(value),
+        ScalarValue::Boolean(value) => Ok(if value { "true" } else { "false" }.to_owned()),
+        ScalarValue::Integer(value) => Ok(value.to_string()),
+    }
+}
+
 fn compare(left: bool, operator: BooleanComparison, right: bool) -> bool {
     match operator {
         BooleanComparison::Equal => left == right,
@@ -215,7 +299,7 @@ fn split_top_level<'a>(expression: &'a str, operator: &str) -> Option<(&'a str, 
 
 #[cfg(test)]
 mod tests {
-    use super::{BooleanParseFailure, evaluate, parse};
+    use super::{BooleanParseFailure, ScalarValue, evaluate, evaluate_scalar, parse, parse_scalar};
     use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 
     #[test]
@@ -247,5 +331,35 @@ mod tests {
             parse("contains('a', 'a')"),
             Err(BooleanParseFailure::Unsupported)
         );
+    }
+
+    #[test]
+    fn projects_boolean_constants_through_bounded_string_functions() {
+        for (source, expected) in [
+            (
+                "fn:string(fn:true())",
+                ScalarValue::String("true".to_owned()),
+            ),
+            (
+                "fn:concat(xs:string(false()),xs:string(false()))",
+                ScalarValue::String("falsefalse".to_owned()),
+            ),
+            (
+                "fn:contains(xs:string(true()),xs:string(true()))",
+                ScalarValue::Boolean(true),
+            ),
+            (
+                "fn:string-length(xs:string(false()))",
+                ScalarValue::Integer(5),
+            ),
+        ] {
+            let expression = parse_scalar(source).expect("parse scalar projection");
+            let mut control = InvocationControl::unbounded();
+            assert_eq!(
+                evaluate_scalar(&expression, &mut control),
+                Ok(expected),
+                "{source}"
+            );
+        }
     }
 }

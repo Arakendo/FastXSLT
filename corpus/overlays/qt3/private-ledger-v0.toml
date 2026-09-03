@@ -3136,3 +3136,59 @@ case_name = "K-FalseFunc-3"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged not(false()) expression satisfies its native boolean assertion."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-18"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged fn:string call converts the true boolean to its canonical lexical value."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-19"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged fn:concat call joins two canonical true boolean string values."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-20"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged fn:contains call compares canonical true boolean string values."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-21"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged fn:string-length call counts the canonical true boolean lexical value."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-18"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged fn:string call converts the false boolean to its canonical lexical value."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-19"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged fn:concat call joins two canonical false boolean string values."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-20"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged fn:contains call compares canonical false boolean string values."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-21"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged fn:string-length call counts the canonical false boolean lexical value."

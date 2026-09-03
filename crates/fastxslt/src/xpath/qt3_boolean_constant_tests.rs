@@ -2,15 +2,17 @@
 
 use std::{collections::BTreeSet, fs, path::PathBuf};
 
-use super::constant_boolean_experiment::{BooleanParseFailure, evaluate, parse};
+use super::constant_boolean_experiment::{
+    BooleanParseFailure, ScalarValue, evaluate_scalar, parse_scalar,
+};
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::qt3_overlay_test_support::{assert_private_case_passed, assert_selected_count};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
-const SELECTED_SUFFIXES: [&str; 20] = [
+const SELECTED_SUFFIXES: [&str; 24] = [
     "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17",
-    "K1", "K2", "K3",
+    "18", "19", "20", "21", "K1", "K2", "K3",
 ];
 
 #[test]
@@ -58,7 +60,7 @@ fn execute_case(document: &Document, case_name: &str, expected_constant: bool) {
     let source = document.string_value(test).trim().to_owned();
     let result = child_named(document, case, "result").expect("result metadata");
 
-    match parse(&source) {
+    match parse_scalar(&source) {
         Err(BooleanParseFailure::InvalidArity) => {
             let error = descendants_named(document, result, "error")
                 .into_iter()
@@ -71,13 +73,12 @@ fn execute_case(document: &Document, case_name: &str, expected_constant: bool) {
         }
         Ok(expression) => {
             let mut control = InvocationControl::unbounded();
-            let actual = evaluate(&expression, &mut control).expect("evaluate boolean expression");
-            let expected = expected_boolean(document, result)
-                .unwrap_or_else(|| panic!("selected case lacks a boolean assertion: {case_name}"));
-            assert_eq!(actual, expected, "{case_name}: {source}");
+            let actual =
+                evaluate_scalar(&expression, &mut control).expect("evaluate scalar expression");
+            assert_native_result(document, result, &actual, case_name, &source);
             assert!(control.consumed(WorkDomain::XPathOperation) > 0);
             if case_name.ends_with("-1") {
-                assert_eq!(actual, expected_constant);
+                assert_eq!(actual, ScalarValue::Boolean(expected_constant));
                 assert!(
                     !descendants_named(document, result, "assert-type").is_empty(),
                     "{case_name} retains its native xs:boolean type assertion"
@@ -85,6 +86,40 @@ fn execute_case(document: &Document, case_name: &str, expected_constant: bool) {
             }
         }
     }
+}
+
+fn assert_native_result(
+    document: &Document,
+    result: NodeId,
+    actual: &ScalarValue,
+    case_name: &str,
+    source: &str,
+) {
+    if let Some(expected) = expected_boolean(document, result) {
+        assert_eq!(
+            actual,
+            &ScalarValue::Boolean(expected),
+            "{case_name}: {source}"
+        );
+        return;
+    }
+    let assertion = descendants_named(document, result, "assert-eq")
+        .into_iter()
+        .next()
+        .or_else(|| {
+            descendants_named(document, result, "assert-string-value")
+                .into_iter()
+                .next()
+        })
+        .unwrap_or_else(|| panic!("selected case lacks an admitted assertion: {case_name}"));
+    let expected = document.string_value(assertion);
+    let expected = expected.trim().trim_matches('"');
+    let actual = match actual {
+        ScalarValue::Boolean(value) => value.to_string(),
+        ScalarValue::String(value) => value.clone(),
+        ScalarValue::Integer(value) => value.to_string(),
+    };
+    assert_eq!(actual, expected, "{case_name}: {source}");
 }
 
 fn expected_boolean(document: &Document, result: NodeId) -> Option<bool> {

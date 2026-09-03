@@ -7,4 +7,4 @@ selected_source = "private-ledger-v0.toml"
 [default_disposition]
 selection = "harness-unsupported"
 execution = "not-run"
-rationale = "Unless selected in the private ledger, the case requires string-function composition or function-item invocation outside the admitted constant-boolean adapter; no unexecuted case is inferred to pass or fail in the engine."
+rationale = "Unless selected in the private ledger, the case requires function-item invocation outside the admitted constant-scalar adapter; no unexecuted case is inferred to pass or fail in the engine."
