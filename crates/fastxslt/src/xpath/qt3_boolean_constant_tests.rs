@@ -29,6 +29,21 @@ const NOT_NUMERIC_STEMS: [&str; 13] = [
     "fn-notnni1args",
     "fn-notsht1args",
 ];
+const BOOLEAN_NUMERIC_STEMS: [&str; 13] = [
+    "fn-booleanint1args",
+    "fn-booleanintg1args",
+    "fn-booleandec1args",
+    "fn-booleandbl1args",
+    "fn-booleanflt1args",
+    "fn-booleanlng1args",
+    "fn-booleanusht1args",
+    "fn-booleannint1args",
+    "fn-booleanpint1args",
+    "fn-booleanulng1args",
+    "fn-booleannpi1args",
+    "fn-booleannni1args",
+    "fn-booleansht1args",
+];
 
 #[test]
 fn executes_qt3_true_and_false_constant_boolean_groups() {
@@ -63,6 +78,40 @@ fn executes_qt3_source_free_not_effective_boolean_value_tranche() {
     selected.extend((1..=9).map(|suffix| format!("K-NotFunc-{suffix}")));
     selected.push("cbcl-not-002".to_owned());
     assert_eq!(selected.len(), 73);
+    assert_selected_count(set_file, selected.len());
+    let document = load_test_set(set_file);
+    let catalog_names = descendants_named(&document, document.document_node(), "test-case")
+        .into_iter()
+        .map(|case| {
+            attribute(&document, case, "name")
+                .expect("case name")
+                .to_owned()
+        })
+        .collect::<BTreeSet<_>>();
+
+    for case_name in selected {
+        assert!(catalog_names.contains(&case_name), "{case_name}");
+        assert_private_case_passed(set_file, &case_name);
+        execute_not_case(&document, &case_name);
+    }
+}
+
+#[test]
+fn executes_qt3_source_free_boolean_effective_boolean_value_tranche() {
+    let set_file = "fn/boolean.xml";
+    let mut selected = BOOLEAN_NUMERIC_STEMS
+        .into_iter()
+        .flat_map(|stem| (1..=3).map(move |suffix| format!("{stem}-{suffix}")))
+        .collect::<Vec<_>>();
+    selected.extend((1..=49).map(|suffix| format!("fn-boolean-mixed-args-{suffix:03}")));
+    selected.extend(
+        [1, 2]
+            .into_iter()
+            .chain(7..=15)
+            .chain(17..=31)
+            .map(|suffix| format!("K-SeqBooleanFunc-{suffix}")),
+    );
+    assert_eq!(selected.len(), 114);
     assert_selected_count(set_file, selected.len());
     let document = load_test_set(set_file);
     let catalog_names = descendants_named(&document, document.document_node(), "test-case")

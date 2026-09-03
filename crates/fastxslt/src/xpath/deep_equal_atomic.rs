@@ -265,11 +265,8 @@ fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
     {
         return (!value.contains('"')).then(|| AtomicValue::AnyUri(value.to_owned()));
     }
-    if let Some(value) = expression
-        .strip_prefix("xs:string(\"")
-        .and_then(|value| value.strip_suffix("\")"))
-    {
-        return (!value.contains('"')).then(|| AtomicValue::String(value.to_owned()));
+    if let Some(value) = parse_string_value(expression) {
+        return Some(AtomicValue::String(value));
     }
     if let Some(value) = constructor_lexical(expression, "xs:untypedAtomic") {
         return Some(AtomicValue::UntypedAtomic(value.to_owned()));
@@ -283,12 +280,6 @@ fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
         constructor_lexical(expression, "xs:NCName").filter(|value| is_ascii_ncname(value))
     {
         return Some(AtomicValue::String(value.to_owned()));
-    }
-    if let Some(value) = expression
-        .strip_prefix('"')
-        .and_then(|value| value.strip_suffix('"'))
-    {
-        return (!value.contains('"')).then(|| AtomicValue::String(value.to_owned()));
     }
     if let Some(value) = parse_integer_constructor(expression) {
         return Some(AtomicValue::Integer(value));
@@ -341,6 +332,24 @@ fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
         return parse_decimal_lexical(expression).map(AtomicValue::Decimal);
     }
     expression.parse::<i128>().ok().map(AtomicValue::Integer)
+}
+
+fn parse_string_value(expression: &str) -> Option<String> {
+    let lexical = expression
+        .strip_prefix("xs:string(")
+        .and_then(|value| value.strip_suffix(')'))
+        .unwrap_or(expression);
+    if let Some(value) = lexical
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+    {
+        return (!value.contains('"')).then(|| value.to_owned());
+    }
+    lexical
+        .strip_prefix('\'')
+        .and_then(|value| value.strip_suffix('\''))
+        .filter(|value| !value.contains('\''))
+        .map(str::to_owned)
 }
 
 fn parse_integer_constructor(expression: &str) -> Option<i128> {

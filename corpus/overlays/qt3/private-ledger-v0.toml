@@ -4368,3 +4368,801 @@ case_name = "cbcl-not-002"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged prefixed fn:not call applies the empty-sequence effective boolean value and satisfies assert-true."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanint1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanint1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanint1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanintg1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanintg1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanintg1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleandec1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleandec1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleandec1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleandbl1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleandbl1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleandbl1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanflt1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanflt1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanflt1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanlng1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanlng1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanlng1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanusht1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanusht1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanusht1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleannint1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleannint1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleannint1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanpint1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanpint1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanpint1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanulng1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanulng1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleanulng1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleannpi1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleannpi1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleannpi1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleannni1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleannni1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleannni1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleansht1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleansht1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-booleansht1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton uses the standard numeric effective-boolean-value rule and satisfies its native assertion."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-001"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-002"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-003"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-004"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-005"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-006"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-007"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-008"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-009"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-010"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-011"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-012"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-013"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-014"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-015"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-016"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-017"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-018"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-019"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-020"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-021"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-022"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-023"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-024"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-025"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-026"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-027"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-028"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-029"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-030"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-031"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-032"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-033"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-034"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-035"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-036"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-037"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-038"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-039"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-040"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-041"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-042"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-043"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-044"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-045"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-046"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-047"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-048"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "fn-boolean-mixed-args-049"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged singleton atomic or empty-sequence expression uses the admitted standard effective-boolean-value rule."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity fn:boolean call is rejected with the native XPST0017 static error."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity fn:boolean call is rejected with the native XPST0017 static error."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-8"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-9"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-10"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-11"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-12"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-13"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-14"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-15"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-17"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-18"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-19"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-20"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-21"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-22"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-23"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-24"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-25"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-26"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-27"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-28"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-29"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-30"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."
+
+[[case]]
+set_file = "fn/boolean.xml"
+case_name = "K-SeqBooleanFunc-31"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free boolean, numeric, string, URI, untyped atomic, or empty-sequence expression executes through standard effective-boolean-value semantics."

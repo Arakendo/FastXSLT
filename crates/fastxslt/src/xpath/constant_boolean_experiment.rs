@@ -2,7 +2,9 @@
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 
-use super::deep_equal_atomic::{parse_effective_boolean_value, split_top_level_once};
+use super::deep_equal_atomic::{
+    parse_effective_boolean_value, parse_sequence, split_top_level_once,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum BooleanExpression {
@@ -137,7 +139,10 @@ fn parse_inner(expression: &str) -> Result<BooleanExpression, BooleanParseFailur
     {
         return Err(BooleanParseFailure::InvalidArity);
     }
-    if let Some(inner) = function_argument(expression, &["not", "fn:not", "xs:boolean"]) {
+    if let Some(inner) = function_argument(
+        expression,
+        &["not", "fn:not", "boolean", "fn:boolean", "xs:boolean"],
+    ) {
         if inner.trim().is_empty() || split_top_level_once(inner).is_some() {
             return Err(BooleanParseFailure::InvalidArity);
         }
@@ -146,11 +151,21 @@ fn parse_inner(expression: &str) -> Result<BooleanExpression, BooleanParseFailur
                 .map(BooleanExpression::Constant)
                 .ok_or(BooleanParseFailure::Unsupported)
         })?;
-        return if expression.trim_start().starts_with("xs:boolean(") {
-            Ok(inner)
-        } else {
+        return if expression.trim_start().starts_with("not(")
+            || expression.trim_start().starts_with("fn:not(")
+        {
             Ok(BooleanExpression::Not(Box::new(inner)))
+        } else {
+            Ok(inner)
         };
+    }
+    if let Some(inner) = function_argument(expression, &["empty", "fn:empty"]) {
+        if inner.trim().is_empty() || split_top_level_once(inner).is_some() {
+            return Err(BooleanParseFailure::InvalidArity);
+        }
+        return parse_sequence(inner)
+            .map(|sequence| BooleanExpression::Constant(sequence.is_empty()))
+            .ok_or(BooleanParseFailure::Unsupported);
     }
     if let Some(value) = parse_effective_boolean_value(expression) {
         return Ok(BooleanExpression::Constant(value));
@@ -328,6 +343,9 @@ mod tests {
             ("not(xs:double('NaN'))", true),
             ("not(xs:anyURI(\"example.com/\"))", false),
             ("fn:not(())", true),
+            ("fn:boolean(xs:float('NaN'))", false),
+            ("boolean(xs:untypedAtomic(\"string\"))", true),
+            ("not(empty(((), 1, 2)))", true),
         ] {
             let expression = parse(source).expect("parse admitted boolean expression");
             let mut control = InvocationControl::unbounded();

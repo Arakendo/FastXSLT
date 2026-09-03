@@ -28,6 +28,8 @@ const EXISTS_DENOMINATOR_SOURCE: &str =
     include_str!("../../../corpus/overlays/qt3/exists-denominator-v0.toml");
 const NOT_DENOMINATOR_SOURCE: &str =
     include_str!("../../../corpus/overlays/qt3/not-denominator-v0.toml");
+const BOOLEAN_DENOMINATOR_SOURCE: &str =
+    include_str!("../../../corpus/overlays/qt3/boolean-denominator-v0.toml");
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
@@ -339,7 +341,7 @@ fn assert_complete_denominator(
 
 #[test]
 fn qt3_denominator_overlays_conserve_their_parent_sets() {
-    assert_eq!(private_ledger().case.len(), 624);
+    assert_eq!(private_ledger().case.len(), 738);
     assert!(private_ledger().case.iter().all(|case| matches!(
         case.set_file.as_str(),
         "prod/AxisStep.xml"
@@ -349,6 +351,7 @@ fn qt3_denominator_overlays_conserve_their_parent_sets() {
             | "fn/empty.xml"
             | "fn/exists.xml"
             | "fn/not.xml"
+            | "fn/boolean.xml"
     )));
     assert_complete_denominator(AXIS_DENOMINATOR_SOURCE, "prod/AxisStep.xml", 349, 224, 112);
     assert_complete_denominator(
@@ -363,6 +366,7 @@ fn qt3_denominator_overlays_conserve_their_parent_sets() {
     assert_complete_denominator(EMPTY_DENOMINATOR_SOURCE, "fn/empty.xml", 54, 47, 2);
     assert_complete_denominator(EXISTS_DENOMINATOR_SOURCE, "fn/exists.xml", 58, 48, 2);
     assert_complete_denominator(NOT_DENOMINATOR_SOURCE, "fn/not.xml", 83, 73, 3);
+    assert_complete_denominator(BOOLEAN_DENOMINATOR_SOURCE, "fn/boolean.xml", 143, 114, 5);
 }
 
 #[test]
