@@ -246,6 +246,14 @@ compatibility profile or expose a public or host-configurable policy. The
 current executable slice proves only the bounded module topologies below; it
 does not define a public module graph representation.
 
+Named-template declarations and `xsl:call-template` instructions use the same
+expanded QName identity. Unprefixed names remain in no namespace; prefixed
+names are resolved from the owning stylesheet instruction and stored in
+`Q{namespace}local` form. The reserved XSLT namespace admits only the standard
+initial-template name. This private canonical spelling is not a public QName
+API, and initial-template catalog/host QName resolution remains a separate host
+boundary concern.
+
 For the selected XSLT 3.0 profile, `xsl:import` is not required to precede
 other top-level declarations. Imported named templates with the same expanded
 name are retained only when no higher-precedence declaration already supplies

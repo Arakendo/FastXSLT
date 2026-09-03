@@ -45,7 +45,8 @@ use super::{
     CompileCategory, CompileFailure, XML_SCHEMA_NAMESPACE, XSLT_NAMESPACE, effective_default_mode,
     effective_xpath_default_namespace, ensure_no_meaningful_children, ensure_only_attributes,
     invalid, is_ascii_ncname, is_xslt_element, map_path_failure, meaningful_children,
-    normalize_variable_qname, optional_attribute, required_attribute, unsupported,
+    normalize_named_template_name, normalize_variable_qname, optional_attribute,
+    required_attribute, unsupported,
 };
 
 fn compile_sequence(

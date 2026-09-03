@@ -1107,7 +1107,7 @@ fn compile_named_template(
     })
 }
 
-fn normalize_named_template_name(
+pub(super) fn normalize_named_template_name(
     document: &Document,
     element: NodeId,
     name: &str,
@@ -1136,10 +1136,17 @@ fn normalize_named_template_name(
             .iter()
             .find(|binding| binding.prefix.as_deref() == Some(prefix))
         {
-            if binding.namespace == XSLT_NAMESPACE && local == "initial-template" {
-                return Ok(STANDARD_INITIAL_TEMPLATE_NAME.to_owned());
+            if binding.namespace == XSLT_NAMESPACE {
+                if local == "initial-template" {
+                    return Ok(STANDARD_INITIAL_TEMPLATE_NAME.to_owned());
+                }
+                return Err(invalid(
+                    "XTSE0080",
+                    format!("reserved named-template name: {name}"),
+                    document.location(element),
+                ));
             }
-            break;
+            return Ok(format!("Q{{{}}}{local}", binding.namespace));
         }
         current = document.parent(node);
     }

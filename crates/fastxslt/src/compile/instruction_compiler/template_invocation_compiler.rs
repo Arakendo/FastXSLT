@@ -10,8 +10,8 @@ use super::super::variable_filtered_path_compiler::parse as parse_variable_filte
 use super::{
     CompileFailure, effective_default_mode, effective_xpath_default_namespace,
     ensure_no_meaningful_children, ensure_only_attributes, invalid, is_ascii_ncname,
-    is_xslt_element, map_path_failure, meaningful_children, optional_attribute, required_attribute,
-    unsupported,
+    is_xslt_element, map_path_failure, meaningful_children, normalize_named_template_name,
+    optional_attribute, required_attribute, unsupported,
 };
 
 pub(super) fn compile_apply_imports(
@@ -354,14 +354,11 @@ pub(super) fn compile_call_template(
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
     ensure_only_attributes(document, element, &["name"], "xsl:call-template")?;
-    let name = required_attribute(document, element, None, "name")?;
-    if !is_ascii_ncname(name) {
-        return Err(unsupported(
-            "FXST1013",
-            format!("unsupported named-template name: {name}"),
-            document.location(element),
-        ));
-    }
+    let name = normalize_named_template_name(
+        document,
+        element,
+        required_attribute(document, element, None, "name")?,
+    )?;
     let mut arguments = Vec::new();
     for child in meaningful_children(document, element) {
         if !is_xslt_element(document, child, "with-param") {
@@ -391,7 +388,7 @@ pub(super) fn compile_call_template(
         });
     }
     Ok(Instruction::CallTemplate {
-        name: name.to_owned(),
+        name,
         arguments,
         location: document.location(element).clone(),
     })

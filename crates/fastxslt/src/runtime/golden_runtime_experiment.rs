@@ -2484,3 +2484,7 @@ mod xslt30_apply_imports_inventory_tests;
 #[cfg(test)]
 #[path = "xslt30_choose_inventory_tests.rs"]
 mod xslt30_choose_inventory_tests;
+
+#[cfg(test)]
+#[path = "xslt30_call_template_inventory_tests.rs"]
+mod xslt30_call_template_inventory_tests;
