@@ -2,13 +2,16 @@
 
 use std::{collections::BTreeSet, fs, path::PathBuf};
 
-use super::string_length_experiment::{StringLengthFailure, StringLengthValue, evaluate};
+use super::string_length_experiment::{
+    StringLengthFailure, StringLengthValue, evaluate, evaluate_document_path,
+};
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::qt3_overlay_test_support::{assert_private_case_passed, assert_selected_count};
-use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
+use crate::resources::{ResourceLimits, ResourceSetBuilder};
+use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
-const SELECTED_CASES: [&str; 30] = [
+const SOURCE_FREE_CASES: [&str; 32] = [
     "fn-string-length1args-1",
     "fn-string-length1args-2",
     "fn-string-length1args-3",
@@ -31,6 +34,8 @@ const SELECTED_CASES: [&str; 30] = [
     "fn-string-length-17",
     "fn-string-length-18",
     "fn-string-length-20",
+    "fn-string-length-24",
+    "fn-string-length-25",
     "K-StringLengthFunc-1",
     "K-StringLengthFunc-2",
     "K-StringLengthFunc-3",
@@ -44,7 +49,7 @@ const SELECTED_CASES: [&str; 30] = [
 #[test]
 fn executes_qt3_source_free_string_length_tranche() {
     let set_file = "fn/string-length.xml";
-    assert_selected_count(set_file, SELECTED_CASES.len());
+    assert_selected_count(set_file, 33);
     let document = load_test_set(set_file);
     let catalog_names = descendants_named(&document, document.document_node(), "test-case")
         .into_iter()
@@ -55,7 +60,7 @@ fn executes_qt3_source_free_string_length_tranche() {
         })
         .collect::<BTreeSet<_>>();
 
-    for case_name in SELECTED_CASES {
+    for case_name in SOURCE_FREE_CASES {
         assert!(catalog_names.contains(case_name), "{case_name}");
         assert_private_case_passed(set_file, case_name);
         let case = descendants_named(&document, document.document_node(), "test-case")
@@ -76,12 +81,47 @@ fn executes_qt3_source_free_string_length_tranche() {
             Err(StringLengthFailure::MissingContext) => {
                 assert_expected_error(&document, result, "XPDY0002");
             }
+            Err(StringLengthFailure::InvalidArgumentType) => {
+                assert_expected_error(&document, result, "XPTY0004");
+            }
             Err(failure) => {
                 panic!("selected QT3 expression failed: {case_name}: {source}: {failure:?}")
             }
         }
         assert!(control.consumed(WorkDomain::XPathOperation) > 0);
     }
+}
+
+#[test]
+fn reports_qt3_document_sequence_string_length_type_error() {
+    let set_file = "fn/string-length.xml";
+    let case_name = "fn-string-length-19";
+    let test_set = load_test_set(set_file);
+    let case = descendants_named(&test_set, test_set.document_node(), "test-case")
+        .into_iter()
+        .find(|case| attribute(&test_set, *case, "name") == Some(case_name))
+        .expect("selected QT3 document string-length case");
+    let source = child_named(&test_set, case, "test")
+        .map(|test| test_set.string_value(test).trim().to_owned())
+        .expect("QT3 expression");
+    let result = child_named(&test_set, case, "result").expect("QT3 result metadata");
+    let document = load_context_document(&test_set, case, case_name);
+    let mut control = InvocationControl::unbounded();
+
+    assert_private_case_passed(set_file, case_name);
+    let failure = evaluate_document_path(
+        &source,
+        &document,
+        &SourceLocation {
+            resource: format!("urn:w3c:qt3:{case_name}:expression"),
+            span: 0..source.len(),
+        },
+        &mut control,
+    )
+    .expect_err("multi-node argument must fail string-length conversion");
+    assert_eq!(failure, StringLengthFailure::InvalidArgumentType);
+    assert_expected_error(&test_set, result, "XPTY0004");
+    assert!(control.consumed(WorkDomain::XPathNodeVisit) > 0);
 }
 
 fn assert_native_result(
@@ -162,6 +202,46 @@ fn load_test_set(set_file: &str) -> Document {
     )
     .expect("parse pinned QT3 string-length test set");
     Document::from_parsed(parsed).expect("build pinned QT3 string-length test set")
+}
+
+fn load_context_document(test_set: &Document, case: NodeId, case_name: &str) -> Document {
+    let environment_ref = child_named(test_set, case, "environment")
+        .and_then(|environment| attribute(test_set, environment, "ref"))
+        .expect("QT3 document case must reference an environment");
+    let catalog = load_test_set("catalog.xml");
+    let environment = descendants_named(&catalog, catalog.document_node(), "environment")
+        .into_iter()
+        .find(|environment| attribute(&catalog, *environment, "name") == Some(environment_ref))
+        .expect("QT3 catalog environment");
+    let source_file = descendants_named(&catalog, environment, "source")
+        .into_iter()
+        .find(|source| attribute(&catalog, *source, "role") == Some("."))
+        .and_then(|source| attribute(&catalog, source, "file"))
+        .expect("QT3 context source");
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../vendor/qt3tests")
+        .join(source_file);
+    let bytes = fs::read(path).expect("read QT3 context source and close handle");
+    let resource_id = format!("urn:w3c:qt3:{case_name}:source");
+    let byte_limit = bytes.len().max(1);
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(1, byte_limit, byte_limit));
+    resources
+        .admit(resource_id.clone(), bytes)
+        .expect("admit QT3 context source into bounded memory");
+    let snapshot = resources.seal();
+    let source = snapshot
+        .get(&resource_id)
+        .expect("sealed QT3 context source");
+    let parsed = parse_document(
+        &resource_id,
+        source,
+        ParseLimits {
+            max_events: source.len().max(1),
+            max_depth: 256,
+        },
+    )
+    .expect("parse QT3 context source");
+    Document::from_parsed(parsed).expect("build QT3 context XDM")
 }
 
 fn child_named(document: &Document, parent: NodeId, local: &str) -> Option<NodeId> {

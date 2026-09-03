@@ -14,4 +14,4 @@ rationale = "The case requires higher-order function items or schema validation 
 [default_disposition]
 selection = "harness-unsupported"
 execution = "not-run"
-rationale = "Unless selected in the private ledger or excluded by the feature rule, the case requires document atomization or range-predicate context semantics outside the admitted source-free string-length adapter; no unexecuted case is inferred to pass or fail."
+rationale = "No pinned case currently falls through this default; any future unselected case remains harness-unsupported/not-run until it receives an explicit disposition rather than inheriting a successful result."

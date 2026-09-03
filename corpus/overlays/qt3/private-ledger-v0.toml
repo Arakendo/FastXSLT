@@ -5509,3 +5509,24 @@ case_name = "K-StringLengthFunc-8"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged expression compares the integer string-length result by value."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-19"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged document path supplies multiple nodes to the optional-string argument and reports the native XPTY0004 type error."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-24"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged integer-range predicate uses the zero-argument context form and returns the sole three-character integer."
+
+[[case]]
+set_file = "fn/string-length.xml"
+case_name = "fn-string-length-25"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged integer-range predicate passes its atomic context item explicitly and reports the native XPTY0004 type error."

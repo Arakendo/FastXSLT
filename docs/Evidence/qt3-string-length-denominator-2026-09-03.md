@@ -35,23 +35,26 @@ assertion shape. Evaluation charges the XPath-operation work domain.
 
 | Disposition | Cases |
 | --- | ---: |
-| Selected and passed | 30 |
+| Selected and passed | 33 |
 | Profile excluded | 3 |
-| Visible default not run | 3 |
+| Visible default not run | 0 |
 | **Total** | **36** |
 
 The exclusions are the two schema-validation cases and the higher-order
-function-item case. The visible defaults are `fn-string-length-19`,
-`fn-string-length-24`, and `fn-string-length-25`, which require document
-atomization/cardinality or range-predicate focus semantics not admitted by this
-source-free evaluator.
+function-item case. A second tranche closes the original three visible
+defaults: `fn-string-length-19` evaluates its unchanged document path and
+reports `XPTY0004` for the multi-node optional-string argument;
+`fn-string-length-24` evaluates zero-argument string length against each
+integer focus item; and `fn-string-length-25` reports `XPTY0004` when that
+integer is supplied explicitly to the optional-string argument.
 
 Across all complete QT3 overlays, the conserved subtotal is now 1,036 cases:
-787 passes, 194 profile exclusions, and 55 visible default not-run cases.
+790 passes, 194 profile exclusions, and 52 visible default not-run cases.
 
 ## Boundary
 
 This evidence does not claim the zero-argument context form generally,
-document atomization, schema-aware typed values, function-item conversion, or
-general predicate focus. The evaluator is a private semantic slice, not a
-public XPath API or a second execution backend.
+general document atomization, schema-aware typed values, function-item
+conversion, or general predicate focus. The document and integer-range forms
+are deliberately bounded to the exercised semantics. The evaluator is a
+private semantic slice, not a public XPath API or a second execution backend.

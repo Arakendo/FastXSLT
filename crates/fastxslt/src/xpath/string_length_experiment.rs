@@ -1,6 +1,9 @@
 //! Private source-free `fn:string-length` seam for executable QT3 evidence.
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
+use crate::xdm::owned_tree_experiment::{Document, SourceLocation};
+
+use super::path_experiment::{PathFailure, evaluate_location_path_controlled, parse_location_path};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum StringLengthValue {
@@ -10,11 +13,13 @@ pub(crate) enum StringLengthValue {
     String(String),
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub(crate) enum StringLengthFailure {
     Control(ControlFailure),
     InvalidArity,
+    InvalidArgumentType,
     MissingContext,
+    Path(PathFailure),
     Unsupported,
 }
 
@@ -32,6 +37,31 @@ fn evaluate_inner(
     expression: &str,
     control: &mut InvocationControl,
 ) -> Result<StringLengthValue, StringLengthFailure> {
+    if let Some((start, end, expected_length, explicit_context_argument)) =
+        parse_range_length_filter(expression)
+    {
+        if start > end {
+            return Ok(StringLengthValue::Empty);
+        }
+        let item_count = end
+            .checked_sub(start)
+            .and_then(|distance| distance.checked_add(1))
+            .ok_or(StringLengthFailure::Unsupported)?;
+        control
+            .charge(WorkDomain::XPathOperation, item_count)
+            .map_err(StringLengthFailure::Control)?;
+        if explicit_context_argument {
+            return Err(StringLengthFailure::InvalidArgumentType);
+        }
+        let selected = (start..=end)
+            .filter(|value| value.to_string().chars().count() == expected_length)
+            .collect::<Vec<_>>();
+        return match selected.as_slice() {
+            [] => Ok(StringLengthValue::Empty),
+            [value] => Ok(StringLengthValue::Integer(*value)),
+            _ => Err(StringLengthFailure::Unsupported),
+        };
+    }
     if let Some((condition, when_true, when_false)) = parse_if(expression) {
         return if effective_boolean_value(&evaluate(condition, control)?) {
             evaluate(when_true, control)
@@ -66,50 +96,8 @@ fn evaluate_inner(
             .map(StringLengthValue::Integer)
             .ok_or(StringLengthFailure::Unsupported);
     }
-    if let Some(argument) = function_argument(expression, &["string-length", "fn:string-length"]) {
-        if argument.trim().is_empty() {
-            return Err(StringLengthFailure::MissingContext);
-        }
-        if split_top_level(argument, ",").is_some() {
-            return Err(StringLengthFailure::InvalidArity);
-        }
-        let value = evaluate(argument, control)?;
-        let string = optional_string_value(value)?;
-        return Ok(StringLengthValue::Integer(string.chars().count()));
-    }
-    if let Some(argument) = function_argument(expression, &["string", "fn:string", "xs:string"]) {
-        if argument.trim().is_empty() || split_top_level(argument, ",").is_some() {
-            return Err(StringLengthFailure::InvalidArity);
-        }
-        return Ok(StringLengthValue::String(string_value(evaluate(
-            argument, control,
-        )?)));
-    }
-    if let Some(arguments) = function_argument(expression, &["concat", "fn:concat"]) {
-        let (left, right) =
-            split_top_level(arguments, ",").ok_or(StringLengthFailure::InvalidArity)?;
-        if split_top_level(right, ",").is_some() {
-            return Err(StringLengthFailure::InvalidArity);
-        }
-        let mut result = string_value(evaluate(left, control)?);
-        result.push_str(&string_value(evaluate(right, control)?));
-        return Ok(StringLengthValue::String(result));
-    }
-    if let Some(argument) = function_argument(expression, &["boolean", "fn:boolean"]) {
-        if argument.trim().is_empty() || split_top_level(argument, ",").is_some() {
-            return Err(StringLengthFailure::InvalidArity);
-        }
-        return Ok(StringLengthValue::Boolean(effective_boolean_value(
-            &evaluate(argument, control)?,
-        )));
-    }
-    if let Some(argument) = function_argument(expression, &["not", "fn:not"]) {
-        if argument.trim().is_empty() || split_top_level(argument, ",").is_some() {
-            return Err(StringLengthFailure::InvalidArity);
-        }
-        return Ok(StringLengthValue::Boolean(!effective_boolean_value(
-            &evaluate(argument, control)?,
-        )));
+    if let Some(result) = evaluate_named_function(expression, control) {
+        return result;
     }
     if expression == "()" {
         return Ok(StringLengthValue::Empty);
@@ -127,6 +115,94 @@ fn evaluate_inner(
         .parse::<usize>()
         .map(StringLengthValue::Integer)
         .map_err(|_| StringLengthFailure::Unsupported)
+}
+
+fn evaluate_named_function(
+    expression: &str,
+    control: &mut InvocationControl,
+) -> Option<Result<StringLengthValue, StringLengthFailure>> {
+    if let Some(argument) = function_argument(expression, &["string-length", "fn:string-length"]) {
+        if argument.trim().is_empty() {
+            return Some(Err(StringLengthFailure::MissingContext));
+        }
+        if split_top_level(argument, ",").is_some() {
+            return Some(Err(StringLengthFailure::InvalidArity));
+        }
+        return Some(evaluate(argument, control).and_then(|value| {
+            optional_string_value(value)
+                .map(|string| StringLengthValue::Integer(string.chars().count()))
+        }));
+    }
+    if let Some(argument) = function_argument(expression, &["string", "fn:string", "xs:string"]) {
+        if argument.trim().is_empty() || split_top_level(argument, ",").is_some() {
+            return Some(Err(StringLengthFailure::InvalidArity));
+        }
+        return Some(
+            evaluate(argument, control)
+                .map(string_value)
+                .map(StringLengthValue::String),
+        );
+    }
+    if let Some(arguments) = function_argument(expression, &["concat", "fn:concat"]) {
+        let Some((left, right)) = split_top_level(arguments, ",") else {
+            return Some(Err(StringLengthFailure::InvalidArity));
+        };
+        if split_top_level(right, ",").is_some() {
+            return Some(Err(StringLengthFailure::InvalidArity));
+        }
+        return Some(evaluate(left, control).and_then(|left| {
+            evaluate(right, control).map(|right| {
+                let mut result = string_value(left);
+                result.push_str(&string_value(right));
+                StringLengthValue::String(result)
+            })
+        }));
+    }
+    if let Some(argument) = function_argument(expression, &["boolean", "fn:boolean"]) {
+        return Some(evaluate_unary_boolean(argument, control, false));
+    }
+    function_argument(expression, &["not", "fn:not"])
+        .map(|argument| evaluate_unary_boolean(argument, control, true))
+}
+
+fn evaluate_unary_boolean(
+    argument: &str,
+    control: &mut InvocationControl,
+    negate: bool,
+) -> Result<StringLengthValue, StringLengthFailure> {
+    if argument.trim().is_empty() || split_top_level(argument, ",").is_some() {
+        return Err(StringLengthFailure::InvalidArity);
+    }
+    evaluate(argument, control)
+        .map(|value| StringLengthValue::Boolean(effective_boolean_value(&value) ^ negate))
+}
+
+pub(crate) fn evaluate_document_path(
+    expression: &str,
+    document: &Document,
+    location: &SourceLocation,
+    control: &mut InvocationControl,
+) -> Result<StringLengthValue, StringLengthFailure> {
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(StringLengthFailure::Control)?;
+    let argument = function_argument(expression.trim(), &["string-length", "fn:string-length"])
+        .ok_or(StringLengthFailure::Unsupported)?;
+    if argument.trim().is_empty() || split_top_level(argument, ",").is_some() {
+        return Err(StringLengthFailure::InvalidArity);
+    }
+    let path = parse_location_path(argument.trim(), location.clone())
+        .map_err(StringLengthFailure::Path)?;
+    let nodes =
+        evaluate_location_path_controlled(document, document.document_node(), &path, control)
+            .map_err(StringLengthFailure::Control)?;
+    match nodes.as_slice() {
+        [] => Ok(StringLengthValue::Integer(0)),
+        [node] => Ok(StringLengthValue::Integer(
+            document.string_value(*node).chars().count(),
+        )),
+        [_, _, ..] => Err(StringLengthFailure::InvalidArgumentType),
+    }
 }
 
 fn optional_string_value(value: StringLengthValue) -> Result<String, StringLengthFailure> {
@@ -185,6 +261,24 @@ fn parse_quoted_string(expression: &str) -> Option<String> {
         }
     }
     None
+}
+
+fn parse_range_length_filter(expression: &str) -> Option<(usize, usize, usize, bool)> {
+    let (range, predicate) = expression.strip_prefix('(')?.split_once(")[")?;
+    let predicate = predicate.strip_suffix(']')?.trim();
+    let (start, end) = range.split_once(" to ")?;
+    let (call, expected) = predicate.split_once(" = ")?;
+    let explicit_context_argument = match call.trim() {
+        "string-length()" | "fn:string-length()" => false,
+        "string-length(.)" | "fn:string-length(.)" => true,
+        _ => return None,
+    };
+    Some((
+        start.trim().parse().ok()?,
+        end.trim().parse().ok()?,
+        expected.trim().parse().ok()?,
+        explicit_context_argument,
+    ))
 }
 
 fn parse_if(expression: &str) -> Option<(&str, &str, &str)> {
@@ -288,8 +382,10 @@ fn balanced(expression: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{StringLengthFailure, StringLengthValue, evaluate};
+    use super::{StringLengthFailure, StringLengthValue, evaluate, evaluate_document_path};
     use crate::execution_control_experiment::{InvocationControl, WorkDomain};
+    use crate::xdm::owned_tree_experiment::{Document, SourceLocation};
+    use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
     #[test]
     fn evaluates_typed_string_length_composition_and_lazy_conditionals() {
@@ -307,6 +403,10 @@ mod tests {
             (
                 "if(false()) then string-length() else true()",
                 StringLengthValue::Boolean(true),
+            ),
+            (
+                "(1 to 100)[string-length() = 3]",
+                StringLengthValue::Integer(100),
             ),
         ] {
             let mut control = InvocationControl::unbounded();
@@ -327,6 +427,40 @@ mod tests {
                 &mut InvocationControl::unbounded()
             ),
             Err(StringLengthFailure::InvalidArity)
+        );
+        assert_eq!(
+            evaluate(
+                "(1 to 100)[string-length(.) = 3]",
+                &mut InvocationControl::unbounded()
+            ),
+            Err(StringLengthFailure::InvalidArgumentType)
+        );
+    }
+
+    #[test]
+    fn document_path_rejects_more_than_one_supplied_item() {
+        let parsed = parse_document(
+            "memory:source.xml",
+            b"<works><employee name='one'/><employee name='two'/></works>",
+            ParseLimits {
+                max_events: 16,
+                max_depth: 8,
+            },
+        )
+        .expect("parse source");
+        let document = Document::from_parsed(parsed).expect("build XDM");
+        let source = "string-length(.//employee/@name)";
+        assert_eq!(
+            evaluate_document_path(
+                source,
+                &document,
+                &SourceLocation {
+                    resource: "memory:expression".to_owned(),
+                    span: 0..source.len(),
+                },
+                &mut InvocationControl::unbounded(),
+            ),
+            Err(StringLengthFailure::InvalidArgumentType)
         );
     }
 }

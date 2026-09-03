@@ -343,7 +343,7 @@ fn assert_complete_denominator(
 
 #[test]
 fn qt3_denominator_overlays_conserve_their_parent_sets() {
-    assert_eq!(private_ledger().case.len(), 787);
+    assert_eq!(private_ledger().case.len(), 790);
     assert!(private_ledger().case.iter().all(|case| matches!(
         case.set_file.as_str(),
         "prod/AxisStep.xml"
@@ -374,7 +374,7 @@ fn qt3_denominator_overlays_conserve_their_parent_sets() {
         STRING_LENGTH_DENOMINATOR_SOURCE,
         "fn/string-length.xml",
         36,
-        30,
+        33,
         3,
     );
 }
