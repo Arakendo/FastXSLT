@@ -3,13 +3,55 @@
 use crate::execution_control_experiment::{ControlFailure, InvocationControl};
 use crate::xdm::owned_tree_experiment::{Document, SourceLocation};
 
-use super::path_experiment::{PathFailure, evaluate_location_path_controlled, parse_location_path};
+use super::{
+    deep_equal_atomic::{parse_sequence, split_top_level_once},
+    path_experiment::{PathFailure, evaluate_location_path_controlled, parse_location_path},
+};
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum EmptyFailure {
     Path(PathFailure),
     Control(ControlFailure),
+    InvalidArity,
     Unsupported,
+}
+
+pub(crate) fn evaluate_source_free(
+    expression: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, EmptyFailure> {
+    let expression = expression.trim();
+    if let Some(inner) = function_argument(expression, &["not", "fn:not"]) {
+        control
+            .charge(
+                crate::execution_control_experiment::WorkDomain::XPathOperation,
+                1,
+            )
+            .map_err(EmptyFailure::Control)?;
+        return evaluate_source_free(inner, control).map(|value| !value);
+    }
+    let inner =
+        function_argument(expression, &["empty", "fn:empty"]).ok_or(EmptyFailure::Unsupported)?;
+    if inner.trim().is_empty() || split_top_level_once(inner).is_some() {
+        return Err(EmptyFailure::InvalidArity);
+    }
+    let sequence = parse_sequence(inner.trim()).ok_or(EmptyFailure::Unsupported)?;
+    control
+        .charge(
+            crate::execution_control_experiment::WorkDomain::XPathOperation,
+            1,
+        )
+        .map_err(EmptyFailure::Control)?;
+    Ok(sequence.is_empty())
+}
+
+fn function_argument<'a>(expression: &'a str, names: &[&str]) -> Option<&'a str> {
+    names.iter().find_map(|name| {
+        expression
+            .strip_prefix(name)
+            .and_then(|remainder| remainder.strip_prefix('('))
+            .and_then(|remainder| remainder.strip_suffix(')'))
+    })
 }
 
 pub(crate) fn evaluate(
@@ -30,7 +72,7 @@ pub(crate) fn evaluate(
 
 #[cfg(test)]
 mod tests {
-    use super::evaluate;
+    use super::{EmptyFailure, evaluate, evaluate_source_free};
     use crate::execution_control_experiment::{InvocationControl, WorkDomain};
     use crate::xdm::owned_tree_experiment::{Document, SourceLocation};
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
@@ -64,5 +106,21 @@ mod tests {
             );
         }
         assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 0);
+    }
+
+    #[test]
+    fn source_free_empty_distinguishes_sequences_from_function_arity() {
+        let mut control = InvocationControl::unbounded();
+        assert!(evaluate_source_free("empty(())", &mut control).unwrap());
+        assert!(evaluate_source_free("not(empty((1, (), \"string\")))", &mut control).unwrap());
+        assert_eq!(
+            evaluate_source_free("empty()", &mut control),
+            Err(EmptyFailure::InvalidArity)
+        );
+        assert_eq!(
+            evaluate_source_free("empty(1, 2)", &mut control),
+            Err(EmptyFailure::InvalidArity)
+        );
+        assert_eq!(control.consumed(WorkDomain::XPathOperation), 3);
     }
 }

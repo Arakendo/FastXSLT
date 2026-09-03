@@ -42,4 +42,6 @@ mod qt3_axis_tests;
 mod qt3_boolean_constant_tests;
 #[cfg(test)]
 mod qt3_deep_equal_tests;
+#[cfg(test)]
+mod qt3_empty_sequence_tests;
 pub(crate) mod static_string_experiment;

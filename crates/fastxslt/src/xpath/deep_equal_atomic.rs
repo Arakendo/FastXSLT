@@ -7,6 +7,11 @@ pub(super) struct AtomicSequence(Vec<AtomicValue>);
 const MAX_FOLDED_LITERAL_RANGE_ITEMS: usize = 1_024;
 
 impl AtomicSequence {
+    #[cfg(test)]
+    pub(super) fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     pub(super) fn len(&self) -> usize {
         self.0.len()
     }
@@ -260,9 +265,7 @@ fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
     {
         return (!value.contains('"')).then(|| AtomicValue::String(value.to_owned()));
     }
-    if let Some(value) =
-        constructor_lexical(expression, "xs:integer").and_then(|value| value.parse::<i128>().ok())
-    {
+    if let Some(value) = parse_integer_constructor(expression) {
         return Some(AtomicValue::Integer(value));
     }
     if let Some(value) =
@@ -313,6 +316,29 @@ fn parse_atomic_value(expression: &str) -> Option<AtomicValue> {
         return parse_decimal_lexical(expression).map(AtomicValue::Decimal);
     }
     expression.parse::<i128>().ok().map(AtomicValue::Integer)
+}
+
+fn parse_integer_constructor(expression: &str) -> Option<i128> {
+    for (name, minimum, maximum) in [
+        ("xs:int", i128::from(i32::MIN), i128::from(i32::MAX)),
+        ("xs:long", i128::from(i64::MIN), i128::from(i64::MAX)),
+        ("xs:short", i128::from(i16::MIN), i128::from(i16::MAX)),
+        ("xs:unsignedShort", 0, i128::from(u16::MAX)),
+        ("xs:unsignedLong", 0, i128::from(u64::MAX)),
+        ("xs:negativeInteger", i128::MIN, -1),
+        ("xs:positiveInteger", 1, i128::MAX),
+        ("xs:nonPositiveInteger", i128::MIN, 0),
+        ("xs:nonNegativeInteger", 0, i128::MAX),
+        ("xs:integer", i128::MIN, i128::MAX),
+    ] {
+        if let Some(value) = constructor_lexical(expression, name)
+            .and_then(|value| value.parse::<i128>().ok())
+            .filter(|value| (*value >= minimum) && (*value <= maximum))
+        {
+            return Some(value);
+        }
+    }
+    None
 }
 
 fn parse_year_month_duration(lexical: &str) -> Option<i64> {
@@ -552,65 +578,7 @@ fn parse_decimal_lexical(lexical: &str) -> Option<ExactDecimal> {
 }
 
 pub(super) fn parse_integer(expression: &str) -> Option<i128> {
-    let int = expression
-        .strip_prefix("(xs:int(\"")
-        .and_then(|value| value.strip_suffix("\"))"))
-        .and_then(|value| value.parse::<i32>().ok())
-        .map(i128::from);
-    let long = expression
-        .strip_prefix("(xs:long(\"")
-        .and_then(|value| value.strip_suffix("\"))"))
-        .and_then(|value| value.parse::<i64>().ok())
-        .map(i128::from);
-    let short = expression
-        .strip_prefix("(xs:short(\"")
-        .and_then(|value| value.strip_suffix("\"))"))
-        .and_then(|value| value.parse::<i16>().ok())
-        .map(i128::from);
-    let unsigned_short = expression
-        .strip_prefix("(xs:unsignedShort(\"")
-        .and_then(|value| value.strip_suffix("\"))"))
-        .and_then(|value| value.parse::<u16>().ok())
-        .map(i128::from);
-    let unsigned_long = expression
-        .strip_prefix("(xs:unsignedLong(\"")
-        .and_then(|value| value.strip_suffix("\"))"))
-        .and_then(|value| value.parse::<u64>().ok())
-        .map(i128::from);
-    let negative_integer = expression
-        .strip_prefix("(xs:negativeInteger(\"")
-        .and_then(|value| value.strip_suffix("\"))"))
-        .and_then(|value| value.parse::<i128>().ok())
-        .filter(|value| *value < 0);
-    let positive_integer = expression
-        .strip_prefix("(xs:positiveInteger(\"")
-        .and_then(|value| value.strip_suffix("\"))"))
-        .and_then(|value| value.parse::<i128>().ok())
-        .filter(|value| *value > 0);
-    let non_positive_integer = expression
-        .strip_prefix("(xs:nonPositiveInteger(\"")
-        .and_then(|value| value.strip_suffix("\"))"))
-        .and_then(|value| value.parse::<i128>().ok())
-        .filter(|value| *value <= 0);
-    let non_negative_integer = expression
-        .strip_prefix("(xs:nonNegativeInteger(\"")
-        .and_then(|value| value.strip_suffix("\"))"))
-        .and_then(|value| value.parse::<i128>().ok())
-        .filter(|value| *value >= 0);
-    int.or(long)
-        .or(short)
-        .or(unsigned_short)
-        .or(unsigned_long)
-        .or(negative_integer)
-        .or(positive_integer)
-        .or(non_positive_integer)
-        .or(non_negative_integer)
-        .or_else(|| {
-            expression
-                .strip_prefix("(xs:integer(\"")
-                .and_then(|value| value.strip_suffix("\"))"))
-                .and_then(|value| value.parse::<i128>().ok())
-        })
+    strip_outer_parentheses(expression).and_then(parse_integer_constructor)
 }
 
 fn atomic_values_equal(left: &AtomicValue, right: &AtomicValue) -> bool {

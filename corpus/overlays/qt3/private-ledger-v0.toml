@@ -3192,3 +3192,332 @@ case_name = "fn-false-21"
 selection = "selected"
 execution = "passed"
 rationale = "The unchanged fn:string-length call counts the canonical false boolean lexical value."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptyint1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptyint1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptyint1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptyintg1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptyintg1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptyintg1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptydec1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptydec1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptydec1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptydbl1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptydbl1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptydbl1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptyflt1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptyflt1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptyflt1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptylng1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptylng1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptylng1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptyusht1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptyusht1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptyusht1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptynint1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptynint1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptynint1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptypint1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptypint1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptypint1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptyulng1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptyulng1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptyulng1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptynpi1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptynpi1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptynpi1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptynni1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptynni1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptynni1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptysht1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptysht1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "fn-emptysht1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged typed numeric singleton is non-empty and satisfies its native assert-false expectation."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "K-SeqEmptyFunc-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity fn:empty call is rejected with the native XPST0017 static error."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "K-SeqEmptyFunc-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity fn:empty call is rejected with the native XPST0017 static error."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "K-SeqEmptyFunc-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free sequence expression executes through bounded atomic-sequence cardinality and satisfies its native boolean assertion."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "K-SeqEmptyFunc-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free sequence expression executes through bounded atomic-sequence cardinality and satisfies its native boolean assertion."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "K-SeqEmptyFunc-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free sequence expression executes through bounded atomic-sequence cardinality and satisfies its native boolean assertion."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "K-SeqEmptyFunc-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free sequence expression executes through bounded atomic-sequence cardinality and satisfies its native boolean assertion."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "K-SeqEmptyFunc-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free sequence expression executes through bounded atomic-sequence cardinality and satisfies its native boolean assertion."
+
+[[case]]
+set_file = "fn/empty.xml"
+case_name = "K-SeqEmptyFunc-8"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged source-free sequence expression executes through bounded atomic-sequence cardinality and satisfies its native boolean assertion."
