@@ -14,6 +14,8 @@ const OVERLAYS: [&str; 3] = [
     include_str!("../../../corpus/overlays/xslt30/type-expr-denominator-v0.toml"),
     include_str!("../../../corpus/overlays/xslt30/type-functions-denominator-v0.toml"),
 ];
+const STREAMING_OVERLAY: &str =
+    include_str!("../../../corpus/overlays/xslt30/streaming-profile-denominators-v0.toml");
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -34,6 +36,21 @@ struct ProfileExclusion {
     rationale: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AggregateProfileExclusion {
+    suite: String,
+    revision: String,
+    catalog: String,
+    scope: String,
+    feature: String,
+    test_set_count: usize,
+    case_count: usize,
+    selection: String,
+    execution: String,
+    rationale: String,
+}
+
 #[test]
 fn conserves_complete_schema_aware_expression_denominators() {
     let mut set_files = BTreeSet::new();
@@ -48,6 +65,50 @@ fn conserves_complete_schema_aware_expression_denominators() {
         assert!(!overlay.profile_exclusion.rationale.trim().is_empty());
         assert_profile_dependency_covers_every_case(&overlay);
     }
+}
+
+#[test]
+fn conserves_every_test_set_with_inherited_streaming_dependency() {
+    let overlay: AggregateProfileExclusion =
+        toml::from_str(STREAMING_OVERLAY).expect("typed streaming profile overlay");
+    assert_eq!(overlay.suite, EXPECTED_SUITE);
+    assert_eq!(overlay.revision, EXPECTED_REVISION);
+    assert_eq!(overlay.catalog, "catalog.xml");
+    assert_eq!(overlay.scope, "test-sets-with-inherited-feature");
+    assert_eq!(overlay.feature, "streaming");
+    assert_eq!(overlay.selection, "excluded-profile");
+    assert_eq!(overlay.execution, "not-run");
+    assert!(!overlay.rationale.trim().is_empty());
+
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../vendor/xslt30-test");
+    let catalog = parse_file(&root.join(&overlay.catalog), "urn:w3c:xslt30:catalog");
+    let catalog_root = element_children(&catalog, catalog.document_node())
+        .into_iter()
+        .next()
+        .expect("catalog root");
+    let references = children_named(&catalog, catalog_root, "test-set");
+    let mut qualified_sets = BTreeSet::new();
+    let mut qualified_cases = 0_usize;
+    for reference in references {
+        let file = attribute(&catalog, reference, "file").expect("test-set file");
+        let test_set = parse_file(&root.join(file), &format!("urn:w3c:xslt30:{file}"));
+        let test_set_root = element_children(&test_set, test_set.document_node())
+            .into_iter()
+            .next()
+            .expect("test-set root");
+        if has_feature_dependency(&test_set, test_set_root, &overlay.feature) {
+            assert!(qualified_sets.insert(file.to_owned()));
+            let cases = children_named(&test_set, test_set_root, "test-case");
+            let names = cases
+                .iter()
+                .map(|case| attribute(&test_set, *case, "name").expect("test case name"))
+                .collect::<BTreeSet<_>>();
+            assert_eq!(names.len(), cases.len(), "{file}");
+            qualified_cases += cases.len();
+        }
+    }
+    assert_eq!(qualified_sets.len(), overlay.test_set_count);
+    assert_eq!(qualified_cases, overlay.case_count);
 }
 
 fn assert_profile_dependency_covers_every_case(overlay: &Denominator) {
@@ -81,6 +142,20 @@ fn assert_profile_dependency_covers_every_case(overlay: &Denominator) {
         .map(|case| attribute(&document, *case, "name").expect("test case name"))
         .collect::<BTreeSet<_>>();
     assert_eq!(names.len(), overlay.case_count);
+}
+
+fn parse_file(path: &std::path::Path, identity: &str) -> Document {
+    let bytes = fs::read(path).expect("read pinned XSLT30 XML and close handle");
+    let parsed = parse_document(
+        identity,
+        &bytes,
+        ParseLimits {
+            max_events: 100_000,
+            max_depth: 64,
+        },
+    )
+    .expect("parse pinned XSLT30 XML");
+    Document::from_parsed(parsed).expect("build pinned XSLT30 XDM")
 }
 
 fn has_feature_dependency(document: &Document, root: NodeId, feature: &str) -> bool {

@@ -1,0 +1,10 @@
+suite = "W3C XSLT 3.0 test suite"
+revision = "6f8fd9e966ae74a251a2604abef9d904c7bc5c9b"
+catalog = "catalog.xml"
+scope = "test-sets-with-inherited-feature"
+feature = "streaming"
+test_set_count = 91
+case_count = 2746
+selection = "excluded-profile"
+execution = "not-run"
+rationale = "Every classified case inherits a native test-set-level streaming dependency; ADR-0007 explicitly excludes XSLT streaming conformance from the selected FastXSLT profile."
