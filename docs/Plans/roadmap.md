@@ -1644,8 +1644,9 @@ count:
    revisions, profile, target/toolchain/features, selection reasons, outcomes,
    and conservation totals. The two active QT3 adapters now use a typed private
    ledger/denominator loader. XSLT30's `expr/for`, `expr/path`,
-   `expr/data-manipulation`, `fn/deep-equal`, and `misc/initial-mode` adapters
-   now resolve 49 exact case identities and dispositions through the typed
+   `expr/data-manipulation`, `expr/castable`, `decl/template`, `fn/deep-equal`,
+   and `misc/initial-mode` adapters now resolve 64 exact case identities and
+   dispositions through the typed
    private-overlay loader instead of scanning TOML fragments. Other XSLT30
    adapters and the unified immutable report remain. Do not stabilize this
    test-only loader as a public API prematurely.

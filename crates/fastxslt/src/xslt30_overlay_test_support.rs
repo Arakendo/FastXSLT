@@ -15,7 +15,7 @@ const BUILT_IN_TEMPLATES_OVERLAY_SOURCE: &str =
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
-enum SelectionDisposition {
+pub(crate) enum SelectionDisposition {
     Selected,
     ExcludedByProfile,
     HarnessUnsupported,
@@ -23,7 +23,7 @@ enum SelectionDisposition {
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
-enum ExecutionDisposition {
+pub(crate) enum ExecutionDisposition {
     Passed,
     NativePass,
     NotRun,
@@ -317,6 +317,21 @@ fn require_private_case_execution(
 pub(crate) fn assert_private_case_passed(set_file: &str, case_name: &str) {
     require_private_case_passed(private_overlay(), set_file, case_name)
         .unwrap_or_else(|error| panic!("{error}"));
+}
+
+pub(crate) fn assert_private_case_disposition(
+    set_file: &str,
+    case_name: &str,
+    selection: SelectionDisposition,
+    execution: ExecutionDisposition,
+) {
+    let case = private_overlay()
+        .case
+        .iter()
+        .find(|case| case.set_file == set_file && case.case_name == case_name)
+        .unwrap_or_else(|| panic!("missing private overlay case {set_file}::{case_name}"));
+    assert_eq!(case.selection, selection, "{set_file}::{case_name}");
+    assert_eq!(case.execution, execution, "{set_file}::{case_name}");
 }
 
 pub(crate) fn assert_private_case_native_pass(set_file: &str, case_name: &str) {

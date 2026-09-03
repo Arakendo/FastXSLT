@@ -15,6 +15,10 @@ use crate::resources::{ResourceLimits, ResourceSetBuilder};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use crate::xslt::golden_semantics_experiment::STANDARD_INITIAL_TEMPLATE_NAME;
+use crate::xslt30_overlay_test_support::{
+    ExecutionDisposition, SelectionDisposition, assert_private_case_disposition,
+    assert_private_case_passed, assert_private_set_case_names,
+};
 
 const SET_FILE: &str = "tests/expr/castable/_castable-test-set.xml";
 
@@ -25,8 +29,8 @@ struct CasePressure {
     spec: &'static str,
     features: &'static [&'static str],
     assertion: &'static str,
-    selection: &'static str,
-    execution: &'static str,
+    selection: SelectionDisposition,
+    execution: ExecutionDisposition,
 }
 
 const CASES: [CasePressure; 9] = [
@@ -36,8 +40,8 @@ const CASES: [CasePressure; 9] = [
         spec: "XSLT20+",
         features: &[],
         assertion: "assert-xml",
-        selection: "selected",
-        execution: "passed",
+        selection: SelectionDisposition::Selected,
+        execution: ExecutionDisposition::Passed,
     },
     CasePressure {
         name: "castable-002",
@@ -45,8 +49,8 @@ const CASES: [CasePressure; 9] = [
         spec: "XSLT20+",
         features: &[],
         assertion: "assert-xml",
-        selection: "selected",
-        execution: "passed",
+        selection: SelectionDisposition::Selected,
+        execution: ExecutionDisposition::Passed,
     },
     CasePressure {
         name: "castable-003",
@@ -54,8 +58,8 @@ const CASES: [CasePressure; 9] = [
         spec: "XSLT20+",
         features: &[],
         assertion: "assert-xml",
-        selection: "selected",
-        execution: "passed",
+        selection: SelectionDisposition::Selected,
+        execution: ExecutionDisposition::Passed,
     },
     CasePressure {
         name: "castable-004",
@@ -63,8 +67,8 @@ const CASES: [CasePressure; 9] = [
         spec: "XSLT20+",
         features: &[],
         assertion: "assert-xml",
-        selection: "selected",
-        execution: "passed",
+        selection: SelectionDisposition::Selected,
+        execution: ExecutionDisposition::Passed,
     },
     CasePressure {
         name: "castable-005",
@@ -72,8 +76,8 @@ const CASES: [CasePressure; 9] = [
         spec: "XSLT30+",
         features: &["schema_aware", "higher_order_functions"],
         assertion: "assert",
-        selection: "excluded-by-profile",
-        execution: "not-run",
+        selection: SelectionDisposition::ExcludedByProfile,
+        execution: ExecutionDisposition::NotRun,
     },
     CasePressure {
         name: "castable-006",
@@ -81,8 +85,8 @@ const CASES: [CasePressure; 9] = [
         spec: "XSLT30+",
         features: &["schema_aware", "higher_order_functions"],
         assertion: "assert",
-        selection: "excluded-by-profile",
-        execution: "not-run",
+        selection: SelectionDisposition::ExcludedByProfile,
+        execution: ExecutionDisposition::NotRun,
     },
     selected_engine_case("castable-007"),
     selected_engine_case("castable-008"),
@@ -141,8 +145,7 @@ fn without_xml_declaration(xml: &str) -> &str {
 }
 
 fn execute_principal_case(case_name: &str) -> (String, String) {
-    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
-    assert!(overlay_case(overlay, case_name).contains("execution = \"passed\""));
+    assert_private_case_passed(SET_FILE, case_name);
     let (test_set, set_path) = load_test_set();
     let directory = set_path.parent().expect("castable test-set directory");
     let test_case = descendants_named(&test_set, test_set.document_node(), "test-case")
@@ -221,19 +224,15 @@ const fn selected_engine_case(name: &'static str) -> CasePressure {
         spec: "XSLT30+",
         features: &[],
         assertion: "all-of",
-        selection: "selected",
-        execution: "engine-unsupported",
+        selection: SelectionDisposition::Selected,
+        execution: ExecutionDisposition::EngineUnsupported,
     }
 }
 
 #[test]
 fn admits_complete_xslt30_castable_test_set_without_denominator_loss() {
-    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
-    let admitted: Vec<_> = overlay
-        .split("[[case]]")
-        .filter(|section| section.contains(&format!("set_file = \"{SET_FILE}\"")))
-        .collect();
-    assert_eq!(admitted.len(), CASES.len());
+    let case_names = CASES.map(|case| case.name);
+    assert_private_set_case_names(SET_FILE, &case_names);
 
     let (test_set, set_path) = load_test_set();
     let test_cases = descendants_named(&test_set, test_set.document_node(), "test-case");
@@ -244,9 +243,12 @@ fn admits_complete_xslt30_castable_test_set_without_denominator_loss() {
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(13, 65_536, 524_288));
 
     for pressure in CASES {
-        let record = overlay_case(overlay, pressure.name);
-        assert!(record.contains(&format!("selection = \"{}\"", pressure.selection)));
-        assert!(record.contains(&format!("execution = \"{}\"", pressure.execution)));
+        assert_private_case_disposition(
+            SET_FILE,
+            pressure.name,
+            pressure.selection,
+            pressure.execution,
+        );
 
         let test_case = test_cases
             .iter()
@@ -310,7 +312,7 @@ fn admits_complete_xslt30_castable_test_set_without_denominator_loss() {
     let snapshot = resources.seal();
     for pressure in CASES
         .iter()
-        .filter(|pressure| pressure.execution == "engine-unsupported")
+        .filter(|pressure| pressure.execution == ExecutionDisposition::EngineUnsupported)
     {
         let failure = compile_resource(&snapshot, &stylesheet_id(pressure.name))
             .expect_err("engine-unsupported castable case should fail compilation");
@@ -445,14 +447,4 @@ fn dependency<'a>(document: &'a Document, case: NodeId, kind: &str) -> Vec<&'a s
         })
         .filter_map(|node| attribute(document, node, "value"))
         .collect()
-}
-
-fn overlay_case<'a>(overlay: &'a str, case_name: &str) -> &'a str {
-    overlay
-        .split("[[case]]")
-        .find(|section| {
-            section.contains(&format!("set_file = \"{SET_FILE}\""))
-                && section.contains(&format!("case_name = \"{case_name}\""))
-        })
-        .expect("admitted castable case should have one overlay record")
 }

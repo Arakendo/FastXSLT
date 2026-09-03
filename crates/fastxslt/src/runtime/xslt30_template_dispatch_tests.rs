@@ -17,6 +17,9 @@ use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document, parse_document_controlled};
 use crate::xslt::golden_semantics_experiment::StylesheetProgram;
+use crate::xslt30_overlay_test_support::{
+    assert_private_case_passed, assert_private_set_case_names,
+};
 
 const CASE_NAME: &str = "template-006";
 const TEMPLATE_CASES: [&str; 6] = [
@@ -397,8 +400,10 @@ fn case_stylesheet_files(test_set: &Document, test_case: NodeId) -> Vec<(&str, O
 }
 
 fn compile_apply_templates_error_case(case_name: &str) -> (ExecutionFailure, String) {
-    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
-    assert!(overlay.contains(&format!("case_name = \"{case_name}\"")));
+    assert_private_case_passed(
+        "tests/insn/apply-templates/_apply-templates-test-set.xml",
+        case_name,
+    );
     let (test_set, set_path) = apply_templates_test_set();
     let test_case = find_element(
         &test_set,
@@ -438,15 +443,8 @@ fn expected_apply_templates_all_of(case_name: &str) -> Option<String> {
 
 #[test]
 fn classifies_the_complete_pinned_template_test_set_without_denominator_loss() {
-    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
-    let template_set = "set_file = \"tests/decl/template/_template-test-set.xml\"";
-    assert_eq!(overlay.matches(template_set).count(), TEMPLATE_CASES.len());
-    assert_eq!(
-        overlay
-            .matches("selection = \"engine-unsupported\"")
-            .count(),
-        0
-    );
+    const SET_FILE: &str = "tests/decl/template/_template-test-set.xml";
+    assert_private_set_case_names(SET_FILE, &TEMPLATE_CASES);
 
     let (test_set, set_path) = suite_test_set();
     for case_name in TEMPLATE_CASES {
@@ -457,7 +455,7 @@ fn classifies_the_complete_pinned_template_test_set_without_denominator_loss() {
             Some(("name", case_name)),
         )
         .expect("overlay case should exist in the complete pinned test set");
-        assert!(overlay.contains(&format!("case_name = \"{case_name}\"")));
+        assert_private_case_passed(SET_FILE, case_name);
 
         let spec = find_element(&test_set, test_case, "spec", None)
             .and_then(|node| attribute(&test_set, node, "value"))
@@ -490,7 +488,7 @@ fn classifies_the_complete_pinned_template_test_set_without_denominator_loss() {
 
 #[test]
 fn executes_pinned_xslt30_template_001_through_005() {
-    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
+    const SET_FILE: &str = "tests/decl/template/_template-test-set.xml";
     let (test_set, set_path) = suite_test_set();
     for case_name in [
         "template-001",
@@ -499,7 +497,7 @@ fn executes_pinned_xslt30_template_001_through_005() {
         "template-004",
         "template-005",
     ] {
-        assert!(overlay.contains(&format!("case_name = \"{case_name}\"")));
+        assert_private_case_passed(SET_FILE, case_name);
         let test_case = find_element(
             &test_set,
             test_set.document_node(),
@@ -1006,8 +1004,7 @@ fn executes_xslt30_positional_focus_with_iso_8859_1_bytes() {
 
 #[test]
 fn executes_pinned_xslt30_template_006_from_its_upstream_test_set() {
-    let overlay = include_str!("../../../../corpus/overlays/xslt30/private-slice-v0.toml");
-    assert!(overlay.contains("case_name = \"template-006\""));
+    assert_private_case_passed("tests/decl/template/_template-test-set.xml", "template-006");
 
     let (test_set, set_path) = suite_test_set();
     let test_case = find_element(
