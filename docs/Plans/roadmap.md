@@ -1574,11 +1574,11 @@ expression has been admitted is not hidden by broader upstream metadata:
 | --- | ---: | ---: | ---: | ---: |
 | `prod/AxisStep.xml` | 349 | 224 | 112 | 13 |
 | `fn/deep-equal.xml` | 263 | 184 | 67 | 12 |
-| `fn/true.xml` | 25 | 0 | 0 | 25 |
-| `fn/false.xml` | 25 | 0 | 0 | 25 |
-| **Audited subtotal** | **662** | **408** | **179** | **75** |
+| `fn/true.xml` | 25 | 20 | 0 | 5 |
+| `fn/false.xml` | 25 | 20 | 0 | 5 |
+| **Audited subtotal** | **662** | **448** | **179** | **35** |
 
-The 662-case subtotal is therefore conserved without relabeling the 75
+The 662-case subtotal is therefore conserved without relabeling the 35
 unexecuted cases as engine failures. The 179 exclusions describe the current
 XPath-in-XSLT profile and remain overridable by explicit case admission.
 AxisStep's 13 remaining defaults are precisely its namespace-node/namespace-axis
@@ -1586,9 +1586,10 @@ frontier. Deep-equal's 12 remaining defaults require UCA or suite-private
 collations or invocation clock/timezone semantics. These are named feature
 boundaries rather than an invitation to add case-specific successful answers.
 The complete 50-case `fn/true.xml` and `fn/false.xml` denominators are also
-typed and conserved before execution. Their visible defaults are deliberate
-pressure for one genuine constant-boolean XPath adapter rather than inferred
-passes from related compiler logic. The other 31,159 QT3 cases remain
+typed and conserved. A genuine source-free boolean evaluator and QT3 assertion
+adapter pass 40 unchanged constant, comparison, composition, constructor, and
+arity-error cases. Eight string-function cases and two function-item cases
+remain visibly not run. The other 31,159 QT3 cases remain
 structural catalog inventory only and still lack first-party selection
 dispositions.
 [Evidence](../Evidence/qt3-axis-deep-equal-conserved-denominators-2026-09-02.md)
@@ -1638,12 +1639,13 @@ count:
    execution.
 3. [x] Give `AxisStep.xml`, `fn/deep-equal.xml`, `fn/true.xml`, and
    `fn/false.xml` complete QT3 overlays so all 662 parent-set cases receive a
-   selection disposition. The typed verifier now conserves 408 selected
-   passes, 179 native-dependency profile exclusions, and 75 visible default
+   selection disposition. The typed verifier now conserves 448 selected
+   passes, 179 native-dependency profile exclusions, and 35 visible default
    not-run cases against the immutable upstream case identities. Explicit
    selection takes priority over a dependency rule. The two boolean-function
-   sets deliberately begin with no inferred passes and provide the next exact
-   implementation denominator.
+   boolean-function sets execute 40 unchanged cases through their own
+   work-accounted XPath and assertion adapter without inferring the remaining
+   string-function or function-item cases.
 4. [ ] Add complete denominators deliberately, selected by standards and
    implementation pressure rather than easy-case sampling. The remaining
    11,101 XSLT30 and 31,159 QT3 catalog-only cases must stay outside pass/fail

@@ -333,10 +333,10 @@ fn assert_complete_denominator(
 
 #[test]
 fn qt3_denominator_overlays_conserve_their_parent_sets() {
-    assert_eq!(private_ledger().case.len(), 408);
+    assert_eq!(private_ledger().case.len(), 448);
     assert!(private_ledger().case.iter().all(|case| matches!(
         case.set_file.as_str(),
-        "prod/AxisStep.xml" | "fn/deep-equal.xml"
+        "prod/AxisStep.xml" | "fn/deep-equal.xml" | "fn/true.xml" | "fn/false.xml"
     )));
     assert_complete_denominator(AXIS_DENOMINATOR_SOURCE, "prod/AxisStep.xml", 349, 224, 112);
     assert_complete_denominator(
@@ -346,8 +346,8 @@ fn qt3_denominator_overlays_conserve_their_parent_sets() {
         184,
         67,
     );
-    assert_complete_denominator(TRUE_DENOMINATOR_SOURCE, "fn/true.xml", 25, 0, 0);
-    assert_complete_denominator(FALSE_DENOMINATOR_SOURCE, "fn/false.xml", 25, 0, 0);
+    assert_complete_denominator(TRUE_DENOMINATOR_SOURCE, "fn/true.xml", 25, 20, 0);
+    assert_complete_denominator(FALSE_DENOMINATOR_SOURCE, "fn/false.xml", 25, 20, 0);
 }
 
 #[test]

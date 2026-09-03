@@ -7,4 +7,4 @@ selected_source = "private-ledger-v0.toml"
 [default_disposition]
 selection = "harness-unsupported"
 execution = "not-run"
-rationale = "The complete true-function denominator is conserved before execution. Its cases compose boolean constants with comparisons, boolean/string functions, function items, predicates, assertion families, and arity errors that do not yet share one QT3 adapter; no unexecuted case is inferred to pass or fail in the engine."
+rationale = "Unless selected in the private ledger, the case requires string-function composition or function-item invocation outside the admitted constant-boolean adapter; no unexecuted case is inferred to pass or fail in the engine."

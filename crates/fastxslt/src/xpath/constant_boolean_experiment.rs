@@ -1,0 +1,251 @@
+//! Private source-free `XPath` boolean-expression slice.
+
+use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum BooleanExpression {
+    Constant(bool),
+    Not(Box<Self>),
+    And(Box<Self>, Box<Self>),
+    Or(Box<Self>, Box<Self>),
+    Compare {
+        left: Box<Self>,
+        operator: BooleanComparison,
+        right: Box<Self>,
+    },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum BooleanComparison {
+    Equal,
+    NotEqual,
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum BooleanParseFailure {
+    InvalidArity,
+    Unsupported,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum BooleanEvaluationFailure {
+    Control(ControlFailure),
+}
+
+pub(crate) fn parse(expression: &str) -> Result<BooleanExpression, BooleanParseFailure> {
+    parse_inner(expression.trim())
+}
+
+fn parse_inner(expression: &str) -> Result<BooleanExpression, BooleanParseFailure> {
+    let expression = strip_balanced_parentheses(expression);
+    if let Some((left, right)) = split_top_level(expression, " or ") {
+        return Ok(BooleanExpression::Or(
+            Box::new(parse_inner(left)?),
+            Box::new(parse_inner(right)?),
+        ));
+    }
+    if let Some((left, right)) = split_top_level(expression, " and ") {
+        return Ok(BooleanExpression::And(
+            Box::new(parse_inner(left)?),
+            Box::new(parse_inner(right)?),
+        ));
+    }
+    for (lexical, operator) in [
+        (" <= ", BooleanComparison::LessThanOrEqual),
+        (" >= ", BooleanComparison::GreaterThanOrEqual),
+        (" != ", BooleanComparison::NotEqual),
+        (" eq ", BooleanComparison::Equal),
+        (" ne ", BooleanComparison::NotEqual),
+        (" lt ", BooleanComparison::LessThan),
+        (" le ", BooleanComparison::LessThanOrEqual),
+        (" gt ", BooleanComparison::GreaterThan),
+        (" ge ", BooleanComparison::GreaterThanOrEqual),
+        (" = ", BooleanComparison::Equal),
+        (" < ", BooleanComparison::LessThan),
+        (" > ", BooleanComparison::GreaterThan),
+    ] {
+        if let Some((left, right)) = split_top_level(expression, lexical) {
+            return Ok(BooleanExpression::Compare {
+                left: Box::new(parse_inner(left)?),
+                operator,
+                right: Box::new(parse_inner(right)?),
+            });
+        }
+    }
+    if matches!(expression, "true()" | "fn:true()") {
+        return Ok(BooleanExpression::Constant(true));
+    }
+    if matches!(expression, "false()" | "fn:false()") {
+        return Ok(BooleanExpression::Constant(false));
+    }
+    if has_nonzero_arity(expression, "true")
+        || has_nonzero_arity(expression, "fn:true")
+        || has_nonzero_arity(expression, "false")
+        || has_nonzero_arity(expression, "fn:false")
+    {
+        return Err(BooleanParseFailure::InvalidArity);
+    }
+    if let Some(inner) = function_argument(expression, &["not", "fn:not", "xs:boolean"]) {
+        let inner = parse_inner(inner)?;
+        return if expression.trim_start().starts_with("xs:boolean(") {
+            Ok(inner)
+        } else {
+            Ok(BooleanExpression::Not(Box::new(inner)))
+        };
+    }
+    Err(BooleanParseFailure::Unsupported)
+}
+
+pub(crate) fn evaluate(
+    expression: &BooleanExpression,
+    control: &mut InvocationControl,
+) -> Result<bool, BooleanEvaluationFailure> {
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(BooleanEvaluationFailure::Control)?;
+    match expression {
+        BooleanExpression::Constant(value) => Ok(*value),
+        BooleanExpression::Not(inner) => evaluate(inner, control).map(|value| !value),
+        BooleanExpression::And(left, right) => {
+            let left = evaluate(left, control)?;
+            if !left {
+                return Ok(false);
+            }
+            evaluate(right, control)
+        }
+        BooleanExpression::Or(left, right) => {
+            let left = evaluate(left, control)?;
+            if left {
+                return Ok(true);
+            }
+            evaluate(right, control)
+        }
+        BooleanExpression::Compare {
+            left,
+            operator,
+            right,
+        } => {
+            let left = evaluate(left, control)?;
+            let right = evaluate(right, control)?;
+            Ok(compare(left, *operator, right))
+        }
+    }
+}
+
+fn compare(left: bool, operator: BooleanComparison, right: bool) -> bool {
+    match operator {
+        BooleanComparison::Equal => left == right,
+        BooleanComparison::NotEqual => left != right,
+        BooleanComparison::LessThan => !left && right,
+        BooleanComparison::LessThanOrEqual => !left || right,
+        BooleanComparison::GreaterThan => left && !right,
+        BooleanComparison::GreaterThanOrEqual => left || !right,
+    }
+}
+
+fn has_nonzero_arity(expression: &str, name: &str) -> bool {
+    expression
+        .strip_prefix(name)
+        .and_then(|tail| tail.strip_prefix('('))
+        .and_then(|tail| tail.strip_suffix(')'))
+        .is_some_and(|argument| !argument.trim().is_empty())
+}
+
+fn function_argument<'a>(expression: &'a str, names: &[&str]) -> Option<&'a str> {
+    names.iter().find_map(|name| {
+        expression
+            .strip_prefix(name)
+            .and_then(|tail| tail.strip_prefix('('))
+            .and_then(|tail| tail.strip_suffix(')'))
+            .filter(|inner| balanced(inner))
+    })
+}
+
+fn strip_balanced_parentheses(mut expression: &str) -> &str {
+    loop {
+        let Some(inner) = expression
+            .strip_prefix('(')
+            .and_then(|value| value.strip_suffix(')'))
+        else {
+            return expression;
+        };
+        if !balanced(inner) {
+            return expression;
+        }
+        expression = inner.trim();
+    }
+}
+
+fn balanced(expression: &str) -> bool {
+    let mut depth = 0usize;
+    for character in expression.chars() {
+        match character {
+            '(' => depth += 1,
+            ')' => {
+                let Some(next) = depth.checked_sub(1) else {
+                    return false;
+                };
+                depth = next;
+            }
+            _ => {}
+        }
+    }
+    depth == 0
+}
+
+fn split_top_level<'a>(expression: &'a str, operator: &str) -> Option<(&'a str, &'a str)> {
+    let mut depth = 0usize;
+    for (index, character) in expression.char_indices() {
+        match character {
+            '(' => depth += 1,
+            ')' => depth = depth.checked_sub(1)?,
+            _ if depth == 0 && expression[index..].starts_with(operator) => {
+                let right = index + operator.len();
+                return Some((expression[..index].trim(), expression[right..].trim()));
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{BooleanParseFailure, evaluate, parse};
+    use crate::execution_control_experiment::{InvocationControl, WorkDomain};
+
+    #[test]
+    fn evaluates_boolean_constants_composition_and_comparisons() {
+        for (source, expected) in [
+            ("fn:true()", true),
+            ("not(false())", true),
+            ("true() and false()", false),
+            ("false() or true()", true),
+            ("false() lt true()", true),
+            ("true() >= false()", true),
+            ("xs:boolean(fn:false())", false),
+        ] {
+            let expression = parse(source).expect("parse admitted boolean expression");
+            let mut control = InvocationControl::unbounded();
+            assert_eq!(
+                evaluate(&expression, &mut control),
+                Ok(expected),
+                "{source}"
+            );
+            assert!(control.consumed(WorkDomain::XPathOperation) > 0);
+        }
+    }
+
+    #[test]
+    fn distinguishes_invalid_arity_from_unsupported_syntax() {
+        assert_eq!(parse("true(1)"), Err(BooleanParseFailure::InvalidArity));
+        assert_eq!(
+            parse("contains('a', 'a')"),
+            Err(BooleanParseFailure::Unsupported)
+        );
+    }
+}

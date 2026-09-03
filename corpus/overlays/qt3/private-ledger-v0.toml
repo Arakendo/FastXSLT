@@ -2856,3 +2856,283 @@ case_name = "cbcl-deep-equal-008"
 selection = "selected"
 execution = "passed"
 rationale = "Preserves untyped-atomic versus year-month-duration type boundaries and stops at the second unequal item."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression evaluates fn:true() as xs:boolean and satisfies both native assertions."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies fn:not to fn:true() and satisfies assert-false."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression evaluates boolean and over true constants with short-circuit semantics."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression evaluates boolean or over true constants with short-circuit semantics."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies boolean value equality to two true constants."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies boolean value inequality to two true constants."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies boolean value less-than ordering to two true constants."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-8"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies boolean value less-than-or-equal ordering to two true constants."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-9"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies boolean value greater-than ordering to two true constants."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-10"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies boolean value greater-than-or-equal ordering to two true constants."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-11"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies general equality to two singleton true values."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-12"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies general inequality to two singleton true values."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-13"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies general less-than ordering to two singleton true values."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-14"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies general less-than-or-equal ordering to two singleton true values."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-15"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies general greater-than ordering to two singleton true values."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-16"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies general greater-than-or-equal ordering to two singleton true values."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "fn-true-17"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged xs:boolean constructor preserves the true boolean value."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "K-TrueFunc-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged nonzero-arity true call is rejected with the native XPST0017 static error."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "K-TrueFunc-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged unprefixed true calls compare equal under boolean value comparison."
+
+[[case]]
+set_file = "fn/true.xml"
+case_name = "K-TrueFunc-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged unprefixed true call satisfies its native boolean assertion."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression evaluates fn:false() as xs:boolean and satisfies both native assertions."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies fn:not to fn:false() and satisfies assert-true."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression evaluates boolean and over false constants with short-circuit semantics."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression evaluates boolean or over false constants with short-circuit semantics."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies boolean value equality to two false constants."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies boolean value inequality to two false constants."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies boolean value less-than ordering to two false constants."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-8"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies boolean value less-than-or-equal ordering to two false constants."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-9"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies boolean value greater-than ordering to two false constants."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-10"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies boolean value greater-than-or-equal ordering to two false constants."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-11"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies general equality to two singleton false values."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-12"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies general inequality to two singleton false values."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-13"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies general less-than ordering to two singleton false values."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-14"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies general less-than-or-equal ordering to two singleton false values."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-15"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies general greater-than ordering to two singleton false values."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-16"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression applies general greater-than-or-equal ordering to two singleton false values."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "fn-false-17"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged xs:boolean constructor preserves the false boolean value."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "K-FalseFunc-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged nonzero-arity false call is rejected with the native XPST0017 static error."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "K-FalseFunc-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged unprefixed false calls compare equal under boolean value comparison."
+
+[[case]]
+set_file = "fn/false.xml"
+case_name = "K-FalseFunc-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged not(false()) expression satisfies its native boolean assertion."

@@ -19,29 +19,34 @@ earlier QT3 denominators, these sets need no dependency exclusion rule; the
 loader now permits an empty rule list while retaining strict validation for
 every rule that is present.
 
-No expression was executed in this tranche. The two sets deliberately begin
-with `harness-unsupported/not-run` defaults because they combine boolean
-constants with value and general comparisons, boolean and string functions,
-function items, predicates, arity errors, and several assertion families. The
-existing implementation of some component semantics is not evidence that an
-unchanged QT3 case passed through a suitable adapter and comparator.
+A source-free constant-boolean evaluator now parses prefixed and unprefixed
+`true()` and `false()`, `not()`, `and`, `or`, the six value-comparison
+operators, their six general-comparison spellings, and the identity
+`xs:boolean()` constructor. Evaluation is work-accounted and short-circuits
+boolean composition. Nonzero arity is classified separately from unsupported
+syntax and compared with the native `XPST0017` expectation.
+
+The QT3 adapter executes each unchanged expression and owns `assert-true`,
+`assert-false`, the paired `assert-type` check, and expected-error comparison.
+String-function composition and function-item invocation remain under the
+visible default rather than borrowing a pass from related functionality.
 
 ## Result
 
 | Test set | Native cases | Selected and passed | Profile excluded | Visible default not run |
 | --- | ---: | ---: | ---: | ---: |
-| `fn/true.xml` | 25 | 0 | 0 | 25 |
-| `fn/false.xml` | 25 | 0 | 0 | 25 |
-| **Subtotal** | **50** | **0** | **0** | **50** |
+| `fn/true.xml` | 25 | 20 | 0 | 5 |
+| `fn/false.xml` | 25 | 20 | 0 | 5 |
+| **Subtotal** | **50** | **40** | **0** | **10** |
 
-The audited QT3 subtotal is now 662 cases: 408 selected passes, 179 profile
-exclusions, and 75 visible default not-run cases. The remaining 31,159 QT3
+The audited QT3 subtotal is now 662 cases: 448 selected passes, 179 profile
+exclusions, and 35 visible default not-run cases. The remaining 31,159 QT3
 cases stay at catalog inventory only.
 
 ## Next pressure
 
-Use these denominators to build one genuine constant-boolean XPath slice and a
-QT3-owned assertion adapter. Promote cases only after their unchanged
-expressions and native assertions execute; do not replace them with
-case-specific expected answers or infer a pass from a compiler constant folder
-used through another XSLT path.
+The next coherent tranche is the eight string conversion, concatenation,
+containment, and string-length cases. The two function-item/predicate cases
+remain a separate higher-order-function boundary. Promote either group only
+through its unchanged expressions and native assertions; do not replace them
+with case-specific expected answers.

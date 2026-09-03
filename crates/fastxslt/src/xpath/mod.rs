@@ -2,6 +2,8 @@
 
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod castable_experiment;
+#[cfg(test)]
+pub(crate) mod constant_boolean_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod constant_integer_experiment;
 pub(crate) mod constant_numeric_experiment;
@@ -36,6 +38,8 @@ pub(crate) mod path_experiment;
 pub(crate) mod path_operand_type_experiment;
 #[cfg(test)]
 mod qt3_axis_tests;
+#[cfg(test)]
+mod qt3_boolean_constant_tests;
 #[cfg(test)]
 mod qt3_deep_equal_tests;
 pub(crate) mod static_string_experiment;
