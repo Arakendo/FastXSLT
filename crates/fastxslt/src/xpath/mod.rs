@@ -49,6 +49,8 @@ mod qt3_codepoint_equal_tests;
 #[cfg(test)]
 mod qt3_deep_equal_tests;
 #[cfg(test)]
+mod qt3_default_collation_tests;
+#[cfg(test)]
 mod qt3_empty_sequence_tests;
 #[cfg(test)]
 mod qt3_encode_for_uri_tests;

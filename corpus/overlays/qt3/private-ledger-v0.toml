@@ -6848,6 +6848,55 @@ execution = "passed"
 rationale = "The unchanged expression verifies normalize-space through its native equality or lazy-conditional assertion."
 
 [[case]]
+set_file = "fn/default-collation.xml"
+case_name = "fn-default-collation-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged one-argument call reports the native XPST0017 arity error."
+
+[[case]]
+set_file = "fn/default-collation.xml"
+case_name = "fn-default-collation-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged zero-argument call returns the standard Unicode codepoint collation URI."
+
+[[case]]
+set_file = "fn/default-collation.xml"
+case_name = "K-ContextDefaultCollationFunc-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity call reports the native XPST0017 error."
+
+[[case]]
+set_file = "fn/default-collation.xml"
+case_name = "K-ContextDefaultCollationFunc-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity call reports the native XPST0017 error."
+
+[[case]]
+set_file = "fn/default-collation.xml"
+case_name = "K-ContextDefaultCollationFunc-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged call compares equal to the standard codepoint collation URI."
+
+[[case]]
+set_file = "fn/default-collation.xml"
+case_name = "cbcl-default-collation-001"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged count composition proves the static-context collation is one string."
+
+[[case]]
+set_file = "fn/default-collation.xml"
+case_name = "cbcl-default-collation-002"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged boolean composition proves the static-context collation string is nonempty."
+
+[[case]]
 set_file = "fn/normalize-space.xml"
 case_name = "K-NormalizeSpaceFunc-3"
 selection = "selected"

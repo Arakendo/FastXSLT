@@ -2,6 +2,8 @@
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 
+const CODEPOINT_COLLATION: &str = "http://www.w3.org/2005/xpath-functions/collation/codepoint";
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum CaseValue {
     Boolean(bool),
@@ -161,6 +163,12 @@ fn evaluate_function(
             }
             let value = optional_string_argument(argument, control)?;
             Ok(CaseValue::String(normalize_xml_space(&value)))
+        }
+        "default-collation" | "fn:default-collation" => {
+            if !argument.trim().is_empty() {
+                return Err(CaseFailure::InvalidArity);
+            }
+            Ok(CaseValue::String(CODEPOINT_COLLATION.to_owned()))
         }
         "true" | "fn:true" if argument.trim().is_empty() => Ok(CaseValue::Boolean(true)),
         "false" | "fn:false" if argument.trim().is_empty() => Ok(CaseValue::Boolean(false)),
