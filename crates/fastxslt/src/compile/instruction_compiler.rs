@@ -19,16 +19,16 @@ use crate::xpath::path_experiment::{
     PathFailure, PathStep, parse_location_path, parse_qualified_child_path,
 };
 use crate::xslt::golden_semantics_experiment::{
-    BooleanExpression, ChooseBranch, ComputedAttribute, ConditionalIntegerBranch,
-    ConditionalIntegerCondition, ConditionalIntegerExpression, ConditionalPathBranch,
-    ConditionalPathExpression, EqualityTest, Instruction, IntegerComparisonOperator,
-    IntegerPathComparison, LiteralAttributeValue, SequenceItemExpression, StringComparison,
-    TemplateArgument, ValueExpression,
+    BooleanExpression, ChooseBranch, ComputedAttribute, EqualityTest, Instruction,
+    LiteralAttributeValue, SequenceItemExpression, StringComparison, TemplateArgument,
+    ValueExpression,
 };
 
 #[path = "instruction_compiler/computed_attribute_compiler.rs"]
 mod computed_attribute_compiler;
 use computed_attribute_compiler::compile_computed_attributes;
+#[path = "instruction_compiler/conditional_expression_compiler.rs"]
+mod conditional_expression_compiler;
 #[path = "instruction_compiler/literal_attribute_compiler.rs"]
 mod literal_attribute_compiler;
 pub(super) use literal_attribute_compiler::compile_literal_result_attributes;
@@ -643,30 +643,13 @@ fn compile_value_expression(
     if let Some(count) = compile_count_value(document, element, expression, location)? {
         return Ok(count);
     }
-    if let Some(conditional) = compile_conditional_value(document, element, expression, location)? {
+    if let Some(conditional) =
+        conditional_expression_compiler::compile_value(document, element, expression, location)?
+    {
         return Ok(conditional);
     }
     Ok(if recognizes_deep_equal(expression) {
-        ValueExpression::DeepEqual(Box::new(parse_deep_equal(expression, location).map_err(
-            |failure| {
-                let (code, category) = match failure.kind {
-                    DeepEqualFailureKind::InvalidArity { .. } => {
-                        ("FXXP0005", CompileCategory::Invalid)
-                    }
-                    DeepEqualFailureKind::InvalidCollation { standard_code }
-                    | DeepEqualFailureKind::InvalidCollationType { standard_code } => {
-                        (standard_code, CompileCategory::Invalid)
-                    }
-                    DeepEqualFailureKind::Unsupported => ("FXXP1010", CompileCategory::Unsupported),
-                };
-                CompileFailure {
-                    code,
-                    category,
-                    detail: failure.detail,
-                    location: failure.location,
-                }
-            },
-        )?))
+        compile_deep_equal_value(expression, location)?
     } else if expression.contains(" castable as ") {
         ValueExpression::Castable(Box::new(parse_castable(expression, location).map_err(
             |failure| CompileFailure {
@@ -738,126 +721,27 @@ fn compile_value_expression(
     })
 }
 
-fn compile_conditional_value(
-    document: &Document,
-    element: NodeId,
+fn compile_deep_equal_value(
     expression: &str,
     location: &SourceLocation,
-) -> Result<Option<ValueExpression>, CompileFailure> {
-    if let Some(value) = parse_conditional_path(document, element, expression, location)? {
-        return Ok(Some(ValueExpression::ConditionalPath(Box::new(value))));
-    }
-    Ok(parse_conditional_integer(expression, location)?
-        .map(|value| ValueExpression::ConditionalInteger(Box::new(value))))
-}
-
-fn parse_conditional_path(
-    document: &Document,
-    element: NodeId,
-    expression: &str,
-    location: &SourceLocation,
-) -> Result<Option<ConditionalPathExpression>, CompileFailure> {
-    let expression = expression.trim();
-    if !expression.starts_with("if (") || !expression.contains(":integer(") {
-        return Ok(None);
-    }
-    let closing = matching_parenthesis(expression, 3)
-        .ok_or_else(|| unsupported_boolean_expression(expression, location))?;
-    let condition =
-        parse_integer_path_comparison(document, element, &expression[4..closing], location)?;
-    let branches = expression[closing + 1..]
-        .trim_start()
-        .strip_prefix("then ")
-        .ok_or_else(|| unsupported_boolean_expression(expression, location))?;
-    let (when_true, when_false) = split_top_level_else(branches)
-        .ok_or_else(|| unsupported_boolean_expression(expression, location))?;
-    Ok(Some(ConditionalPathExpression {
-        condition,
-        when_true: parse_conditional_path_branch(document, element, when_true, location)?,
-        when_false: parse_conditional_path_branch(document, element, when_false, location)?,
-    }))
-}
-
-fn parse_integer_path_comparison(
-    document: &Document,
-    element: NodeId,
-    expression: &str,
-    location: &SourceLocation,
-) -> Result<IntegerPathComparison, CompileFailure> {
-    let (left, right, operator) = split_top_level_integer_comparison(expression)
-        .ok_or_else(|| unsupported_boolean_expression(expression, location))?;
-    Ok(IntegerPathComparison {
-        left: parse_integer_path_cast(document, element, left, location)?,
-        right: parse_integer_path_cast(document, element, right, location)?,
-        operator,
-    })
-}
-
-fn split_top_level_integer_comparison(
-    expression: &str,
-) -> Option<(&str, &str, IntegerComparisonOperator)> {
-    let mut depth = 0_usize;
-    for (index, byte) in expression.bytes().enumerate() {
-        match byte {
-            b'(' => depth += 1,
-            b')' => depth = depth.checked_sub(1)?,
-            b'>' if depth == 0 => {
-                return Some((
-                    expression[..index].trim(),
-                    expression[index + 1..].trim(),
-                    IntegerComparisonOperator::GreaterThan,
-                ));
+) -> Result<ValueExpression, CompileFailure> {
+    let expression = parse_deep_equal(expression, location).map_err(|failure| {
+        let (code, category) = match failure.kind {
+            DeepEqualFailureKind::InvalidArity { .. } => ("FXXP0005", CompileCategory::Invalid),
+            DeepEqualFailureKind::InvalidCollation { standard_code }
+            | DeepEqualFailureKind::InvalidCollationType { standard_code } => {
+                (standard_code, CompileCategory::Invalid)
             }
-            b'=' if depth == 0 => {
-                return Some((
-                    expression[..index].trim(),
-                    expression[index + 1..].trim(),
-                    IntegerComparisonOperator::Equal,
-                ));
-            }
-            _ => {}
+            DeepEqualFailureKind::Unsupported => ("FXXP1010", CompileCategory::Unsupported),
+        };
+        CompileFailure {
+            code,
+            category,
+            detail: failure.detail,
+            location: failure.location,
         }
-    }
-    None
-}
-
-fn parse_integer_path_cast(
-    document: &Document,
-    element: NodeId,
-    expression: &str,
-    location: &SourceLocation,
-) -> Result<crate::xpath::path_experiment::LocationPath, CompileFailure> {
-    let expression = expression.trim();
-    let (prefix, argument) = expression
-        .split_once(":integer(")
-        .and_then(|(prefix, argument)| Some((prefix, argument.strip_suffix(')')?)))
-        .ok_or_else(|| unsupported_boolean_expression(expression, location))?;
-    if !is_ascii_ncname(prefix)
-        || namespace_for_prefix(document, element, prefix) != Some(XML_SCHEMA_NAMESPACE)
-    {
-        return Err(unsupported_boolean_expression(expression, location));
-    }
-    parse_location_path(argument.trim(), location.clone()).map_err(map_path_failure)
-}
-
-fn parse_conditional_path_branch(
-    document: &Document,
-    element: NodeId,
-    expression: &str,
-    location: &SourceLocation,
-) -> Result<ConditionalPathBranch, CompileFailure> {
-    if let Some(conditional) = parse_conditional_path(document, element, expression, location)? {
-        return Ok(ConditionalPathBranch::Conditional(Box::new(conditional)));
-    }
-    if let Some((numerator, denominator)) = expression.split_once(" div ") {
-        return Ok(ConditionalPathBranch::Division {
-            numerator: parse_integer_path_cast(document, element, numerator, location)?,
-            denominator: parse_integer_path_cast(document, element, denominator, location)?,
-        });
-    }
-    parse_location_path(expression.trim(), location.clone())
-        .map(ConditionalPathBranch::Path)
-        .map_err(map_path_failure)
+    })?;
+    Ok(ValueExpression::DeepEqual(Box::new(expression)))
 }
 
 fn compile_count_value(
@@ -1461,7 +1345,9 @@ fn parse_boolean_expression(
         return Ok(BooleanExpression::Constant(false));
     }
     let parsed = strip_enclosing_parentheses(expression.trim());
-    if let Some(conditional) = parse_conditional_integer(parsed, location)? {
+    if let Some(conditional) =
+        conditional_expression_compiler::parse_integer_conditional(parsed, location)?
+    {
         return Ok(BooleanExpression::ConditionalInteger(Box::new(conditional)));
     }
     if let Some(variable) = parsed
@@ -1515,124 +1401,6 @@ fn parse_boolean_expression(
         });
     }
     parse_scalar_boolean_expression(parsed, expression, location, comparison)
-}
-
-fn parse_conditional_integer(
-    expression: &str,
-    location: &SourceLocation,
-) -> Result<Option<ConditionalIntegerExpression>, CompileFailure> {
-    let expression = expression.trim();
-    if !expression.starts_with("if (") {
-        return Ok(None);
-    }
-    let closing = matching_parenthesis(expression, 3)
-        .ok_or_else(|| unsupported_boolean_expression(expression, location))?;
-    let condition = parse_conditional_integer_condition(&expression[4..closing], location)?;
-    let branches = expression[closing + 1..]
-        .trim_start()
-        .strip_prefix("then ")
-        .ok_or_else(|| unsupported_boolean_expression(expression, location))?;
-    let (when_true, when_false) = split_top_level_else(branches)
-        .ok_or_else(|| unsupported_boolean_expression(expression, location))?;
-    Ok(Some(ConditionalIntegerExpression {
-        condition,
-        when_true: parse_conditional_integer_branch(when_true, location)?,
-        when_false: parse_conditional_integer_branch(when_false, location)?,
-    }))
-}
-
-fn parse_conditional_integer_condition(
-    expression: &str,
-    location: &SourceLocation,
-) -> Result<ConditionalIntegerCondition, CompileFailure> {
-    let expression = expression.trim();
-    if let Some(arguments) = expression
-        .strip_prefix("contains(")
-        .and_then(|value| value.strip_suffix(')'))
-        && let Some((path, needle)) = arguments.split_once(',')
-        && let Some(needle) = xpath_string_literal(needle.trim())
-    {
-        let path = parse_location_path(path.trim(), location.clone()).map_err(map_path_failure)?;
-        return Ok(ConditionalIntegerCondition::Contains {
-            path,
-            needle: needle.to_owned(),
-        });
-    }
-    if let Some((left, right)) = expression.split_once('<') {
-        let ordering = constant_numeric_experiment::compare(left.trim(), right.trim())
-            .map_err(|_| unsupported_boolean_expression(expression, location))?;
-        return Ok(ConditionalIntegerCondition::Constant(ordering.is_lt()));
-    }
-    Err(unsupported_boolean_expression(expression, location))
-}
-
-fn parse_conditional_integer_branch(
-    expression: &str,
-    location: &SourceLocation,
-) -> Result<ConditionalIntegerBranch, CompileFailure> {
-    if let Some(conditional) = parse_conditional_integer(expression, location)? {
-        return Ok(ConditionalIntegerBranch::Conditional(Box::new(conditional)));
-    }
-    expression
-        .trim()
-        .parse::<i64>()
-        .map(ConditionalIntegerBranch::Integer)
-        .map_err(|_| unsupported_boolean_expression(expression, location))
-}
-
-fn matching_parenthesis(expression: &str, opening: usize) -> Option<usize> {
-    let mut depth = 0_usize;
-    let mut quote = None;
-    for (index, byte) in expression.bytes().enumerate().skip(opening) {
-        if let Some(expected) = quote {
-            if byte == expected {
-                quote = None;
-            }
-            continue;
-        }
-        match byte {
-            b'\'' | b'"' => quote = Some(byte),
-            b'(' => depth += 1,
-            b')' if depth == 1 => return Some(index),
-            b')' => depth = depth.checked_sub(1)?,
-            _ => {}
-        }
-    }
-    None
-}
-
-fn split_top_level_else(expression: &str) -> Option<(&str, &str)> {
-    let bytes = expression.as_bytes();
-    let mut depth = 0_usize;
-    let mut nested_conditionals = 0_usize;
-    let mut quote = None;
-    let mut index = 0_usize;
-    while index + 6 <= bytes.len() {
-        if quote.is_none()
-            && depth == 0
-            && expression[index..].starts_with("if (")
-            && (index == 0 || bytes[index - 1].is_ascii_whitespace())
-        {
-            nested_conditionals += 1;
-        }
-        match bytes[index] {
-            byte if quote == Some(byte) => quote = None,
-            b'\'' | b'"' if quote.is_none() => quote = Some(bytes[index]),
-            b'(' if quote.is_none() => depth += 1,
-            b')' if quote.is_none() => depth = depth.saturating_sub(1),
-            b' ' if quote.is_none() && depth == 0 && expression[index..].starts_with(" else ") => {
-                if nested_conditionals > 0 {
-                    nested_conditionals -= 1;
-                    index += 6;
-                    continue;
-                }
-                return Some((expression[..index].trim(), expression[index + 6..].trim()));
-            }
-            _ => {}
-        }
-        index += 1;
-    }
-    None
 }
 
 fn split_top_level_or(expression: &str) -> Option<(&str, &str)> {

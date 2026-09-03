@@ -169,6 +169,13 @@ extracts a 289-line owner for apply/call invocation, arguments, selections, and
 modes. The 854-line parent retains sequence composition and delegates through
 five narrow entry points; the separate 125-line computed-attribute owner retains
 its static construction policy.
+The completed choose campaign subsequently raised the instruction compiler to
+2,050 lines and fired ADR-0004's mandatory review threshold. The
+[conditional-expression decomposition](../Evidence/instruction-compiler-conditional-expression-decomposition-review-2026-09-03.md)
+extracts balanced branch parsing, recursive conditional structure, typed-path
+operands, and schema-prefix validation into a 255-line private child. The
+1,813-line parent retains sequence-constructor and expression-family dispatch;
+the extraction changes neither compiled plans nor corpus dispositions.
 The shared XSLT30 corpus test unit then reached 1,117 lines while owning both
 template-dispatch and XPath path-expression campaigns. Its
 [test-owner decomposition review](../Evidence/xslt30-corpus-test-owner-decomposition-review-2026-08-29.md)
