@@ -182,6 +182,7 @@ pub(crate) struct InvocationControl {
     limits: WorkLimits,
     remaining: WorkLimits,
     cancellation_fault: Option<CancellationFault>,
+    next_temporary_tree_identity: u64,
     #[cfg(test)]
     observations: InvocationObservations,
 }
@@ -223,6 +224,7 @@ impl InvocationControl {
             limits,
             remaining: limits,
             cancellation_fault: None,
+            next_temporary_tree_identity: 0,
             #[cfg(test)]
             observations: InvocationObservations::default(),
         }
@@ -230,6 +232,12 @@ impl InvocationControl {
 
     pub(crate) fn unbounded() -> Self {
         Self::new(CancellationToken::new(), WorkLimits::unbounded())
+    }
+
+    pub(crate) fn allocate_temporary_tree_identity(&mut self) -> Option<u64> {
+        let identity = self.next_temporary_tree_identity;
+        self.next_temporary_tree_identity = identity.checked_add(1)?;
+        Some(identity)
     }
 
     /// Installs a deterministic test fault at a real charge point.
@@ -468,6 +476,16 @@ mod tests {
     };
 
     use super::{CancellationToken, ControlFailure, InvocationControl, WorkDomain, WorkLimits};
+
+    #[test]
+    fn temporary_tree_identities_are_unique_within_each_invocation() {
+        let mut first = InvocationControl::unbounded();
+        let mut second = InvocationControl::unbounded();
+
+        assert_eq!(first.allocate_temporary_tree_identity(), Some(0));
+        assert_eq!(first.allocate_temporary_tree_identity(), Some(1));
+        assert_eq!(second.allocate_temporary_tree_identity(), Some(0));
+    }
 
     #[test]
     fn cancellation_and_budget_exhaustion_remain_distinct() {

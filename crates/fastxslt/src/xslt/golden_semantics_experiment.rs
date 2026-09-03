@@ -420,6 +420,10 @@ pub(crate) enum ValueExpression {
     RootPath(LocationPath),
     RootVariable(String),
     GeneratedRootIdentity(LocationPath),
+    GeneratedTemporaryRootIdentity {
+        variable: String,
+        descendant_local: Option<String>,
+    },
     ContextNodeName,
     UpperCaseContextString,
     Variable(String),
@@ -450,6 +454,10 @@ pub(crate) enum BooleanExpression {
     RootIdentityEqualsVariable {
         path: LocationPath,
         variable: String,
+    },
+    TemporaryRootIdentityEqual {
+        variable: String,
+        descendant_local: String,
     },
     Constant(bool),
 }

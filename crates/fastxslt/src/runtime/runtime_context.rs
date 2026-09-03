@@ -34,8 +34,9 @@ pub(super) struct RuntimeGlobals {
     pub(super) temporary_trees: BTreeMap<String, TemporaryTree>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub(super) struct TemporaryTree {
+    pub(super) identity: u64,
     pub(super) roots: Vec<usize>,
     pub(super) nodes: Vec<TemporaryNode>,
 }
@@ -305,6 +306,52 @@ pub(super) fn source_node_identity(node: NodeId) -> String {
     format!("fastxslt-principal-n{}", node.index())
 }
 
+pub(super) fn temporary_document_identity(
+    tree: &TemporaryTree,
+    descendant_local: Option<&str>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Option<u64>, ExecutionFailure> {
+    let Some(descendant_local) = descendant_local else {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        return Ok(Some(tree.identity));
+    };
+    let mut selected = None;
+    for (index, node) in tree.nodes.iter().enumerate() {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if matches!(
+            &node.kind,
+            TemporaryNodeKind::Element { name, .. }
+                if name.namespace.is_none() && name.local == descendant_local
+        ) && selected.replace(index).is_some()
+        {
+            return Err(failure(
+                "XPTY0004",
+                FailureCategory::Invalid,
+                Some(request_id),
+                "root() requires a zero-or-one temporary-node argument",
+            ));
+        }
+    }
+    let Some(mut node) = selected else {
+        return Ok(None);
+    };
+    loop {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        let Some(parent) = tree.nodes[node].parent else {
+            break;
+        };
+        node = parent;
+    }
+    Ok(Some(tree.identity))
+}
+
 fn materialize_parentless_temporary_node(
     kind: TemporaryNodeKind,
     request_id: &str,
@@ -313,7 +360,9 @@ fn materialize_parentless_temporary_node(
     control
         .charge(WorkDomain::XdmNode, 1)
         .map_err(|failure| control_failure(failure, request_id))?;
+    let identity = allocate_temporary_tree_identity(control, request_id)?;
     Ok(TemporaryTree {
+        identity,
         roots: vec![0],
         nodes: vec![TemporaryNode {
             kind,
@@ -328,12 +377,30 @@ pub(super) fn materialize_temporary_tree(
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<TemporaryTree, ExecutionFailure> {
-    let mut tree = TemporaryTree::default();
+    let mut tree = TemporaryTree {
+        identity: allocate_temporary_tree_identity(control, request_id)?,
+        roots: Vec::new(),
+        nodes: Vec::new(),
+    };
     for element in elements {
         let root = materialize_temporary_element(element, None, &mut tree, request_id, control)?;
         tree.roots.push(root);
     }
     Ok(tree)
+}
+
+fn allocate_temporary_tree_identity(
+    control: &mut InvocationControl,
+    request_id: &str,
+) -> Result<u64, ExecutionFailure> {
+    control.allocate_temporary_tree_identity().ok_or_else(|| {
+        failure(
+            "FXRT0010",
+            FailureCategory::Limit,
+            Some(request_id),
+            "the invocation exhausted temporary-tree identity space",
+        )
+    })
 }
 
 fn materialize_temporary_element(

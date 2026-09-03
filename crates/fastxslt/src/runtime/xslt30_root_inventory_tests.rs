@@ -12,7 +12,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const TEST_SET: &str = "tests/fn/root/_root-test-set.xml";
-const PASSED_CASES: [&str; 8] = [
+const PASSED_CASES: [&str; 9] = [
     "root-0101",
     "root-0102",
     "root-0103",
@@ -20,6 +20,7 @@ const PASSED_CASES: [&str; 8] = [
     "root-0201",
     "root-0301",
     "root-0401",
+    "root-0501",
     "root-0601",
 ];
 const OVERLAY: &str = include_str!("../../../../corpus/overlays/xslt30/root-denominator-v0.toml");
@@ -42,7 +43,7 @@ fn inventories_complete_root_denominator_before_selection() {
     assert_eq!(names.last(), Some(&"root-0601"));
     assert!(OVERLAY.contains(&format!("set_file = \"{TEST_SET}\"")));
     assert!(OVERLAY.contains("case_count = 10"));
-    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 8);
+    assert_eq!(OVERLAY.matches("[[case_override]]").count(), 9);
     for case_name in PASSED_CASES {
         assert!(names.contains(case_name));
         let record = overlay_case(case_name);
@@ -62,6 +63,11 @@ fn executes_unchanged_root_location_path_cases() {
 fn generated_root_identity_is_stable_for_element_and_document_arguments() {
     execute_case("root-0301");
     execute_case("root-0401");
+}
+
+#[test]
+fn generated_root_identity_is_stable_for_a_temporary_document() {
+    execute_case("root-0501");
 }
 
 #[test]

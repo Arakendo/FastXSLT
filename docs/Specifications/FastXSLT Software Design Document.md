@@ -280,7 +280,13 @@ principal source document. A bare variable selected by `xsl:apply-templates`
 may resolve an invocation-local or global temporary tree, with local lexical
 state taking precedence. Nested apply-templates with no explicit selection
 continues from that temporary document or node focus and does not silently fall
-back to the principal source. The current representation admits attribute-free
+back to the principal source. Each materialized temporary tree also receives a
+first-class identity from its invocation control. Copies of the private tree
+handle preserve that identity, independently materialized trees within the
+same invocation receive distinct identities, and the identity domain is not
+shared across invocations, workers, snapshots, or generations. The identifier
+spelling remains private and opaque; allocation addresses and variable names
+are not semantic identity. The current representation admits attribute-free
 literal element trees with non-whitespace text children, preserving mixed child
 order and accounting separately for retained XDM nodes and result text bytes.
 Top-level text, attributes, comments, processing instructions, and general

@@ -1498,6 +1498,16 @@ fn evaluate_boolean(
                 inputs, path, variable, variables, context, control,
             )
         }
+        BooleanExpression::TemporaryRootIdentityEqual {
+            variable,
+            descendant_local,
+        } => evaluate_temporary_root_identity_equal(
+            inputs,
+            variable,
+            descendant_local,
+            variables,
+            control,
+        ),
         BooleanExpression::VariableEqualsInteger(test) => {
             let value = variables.atomics.get(&test.variable).ok_or_else(|| {
                 failure(
@@ -1510,6 +1520,36 @@ fn evaluate_boolean(
             Ok(value.lexical().trim().parse::<i64>() == Ok(test.integer))
         }
     }
+}
+
+fn evaluate_temporary_root_identity_equal(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    descendant_local: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let tree = variables
+        .temporary_trees
+        .get(variable)
+        .or_else(|| inputs.globals.temporary_trees.get(variable))
+        .ok_or_else(|| {
+            failure(
+                "FXRT0002",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("unbound temporary tree: ${variable}"),
+            )
+        })?;
+    let document =
+        runtime_context::temporary_document_identity(tree, None, inputs.request_id, control)?;
+    let descendant = runtime_context::temporary_document_identity(
+        tree,
+        Some(descendant_local),
+        inputs.request_id,
+        control,
+    )?;
+    Ok(document.is_some() && document == descendant)
 }
 
 fn evaluate_root_identity_equals_variable(

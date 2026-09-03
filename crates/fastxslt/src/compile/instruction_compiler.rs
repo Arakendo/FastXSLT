@@ -711,6 +711,12 @@ fn compile_root_value(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<Option<ValueExpression>, CompileFailure> {
+    if let Some((variable, descendant_local)) = parse_generated_temporary_root(expression) {
+        return Ok(Some(ValueExpression::GeneratedTemporaryRootIdentity {
+            variable: variable.to_owned(),
+            descendant_local: descendant_local.map(str::to_owned),
+        }));
+    }
     if let Some(argument) = generated_root_argument(expression) {
         return parse_location_path(argument, location.clone())
             .map(ValueExpression::GeneratedRootIdentity)
@@ -1083,6 +1089,12 @@ fn parse_boolean_expression(
     location: &SourceLocation,
 ) -> Result<BooleanExpression, CompileFailure> {
     let parsed = strip_enclosing_parentheses(expression.trim());
+    if let Some((variable, descendant_local)) = parse_temporary_root_identity_test(parsed) {
+        return Ok(BooleanExpression::TemporaryRootIdentityEqual {
+            variable: variable.to_owned(),
+            descendant_local: descendant_local.to_owned(),
+        });
+    }
     if let Some((path, variable)) = parse_generated_root_identity_test(parsed) {
         return Ok(BooleanExpression::RootIdentityEqualsVariable {
             path: parse_location_path(path, location.clone()).map_err(map_path_failure)?,
@@ -1132,6 +1144,32 @@ fn parse_boolean_expression(
     } else {
         ordering.is_eq()
     }))
+}
+
+fn parse_temporary_root_identity_test(expression: &str) -> Option<(&str, &str)> {
+    let (left, right) = expression.split_once('=')?;
+    let (left_variable, left_descendant) = parse_generated_temporary_root(left.trim())?;
+    let (right_variable, right_descendant) = parse_generated_temporary_root(right.trim())?;
+    if left_variable != right_variable || left_descendant.is_some() {
+        return None;
+    }
+    Some((left_variable, right_descendant?))
+}
+
+fn parse_generated_temporary_root(expression: &str) -> Option<(&str, Option<&str>)> {
+    let argument = generated_root_argument(expression)?;
+    let argument = argument.strip_prefix('$')?;
+    let (variable, descendant) = argument
+        .split_once("//")
+        .map_or((argument, None), |(variable, descendant)| {
+            (variable, Some(descendant))
+        });
+    if !is_ascii_ncname(variable)
+        || descendant.is_some_and(|descendant| !is_ascii_ncname(descendant))
+    {
+        return None;
+    }
+    Some((variable, descendant))
 }
 
 fn parse_generated_root_identity_test(expression: &str) -> Option<(&str, &str)> {

@@ -440,6 +440,10 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::GeneratedRootIdentity(path) => path.known_owned_capacity_bytes(),
         ValueExpression::ContextNodeName | ValueExpression::UpperCaseContextString => 0,
         ValueExpression::Variable(name) | ValueExpression::RootVariable(name) => name.capacity(),
+        ValueExpression::GeneratedTemporaryRootIdentity {
+            variable,
+            descendant_local,
+        } => variable.capacity() + descendant_local.as_ref().map_or(0, String::capacity),
         ValueExpression::IntegerFor(expression) => {
             size_of::<IntegerForExpression>() + expression.known_owned_capacity_bytes()
         }
@@ -475,6 +479,10 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         BooleanExpression::RootIdentityEqualsVariable { path, variable } => {
             path.known_owned_capacity_bytes() + variable.capacity()
         }
+        BooleanExpression::TemporaryRootIdentityEqual {
+            variable,
+            descendant_local,
+        } => variable.capacity() + descendant_local.capacity(),
         BooleanExpression::Constant(_) => 0,
     }
 }

@@ -23,7 +23,7 @@ use crate::xslt::golden_semantics_experiment::ValueExpression;
 
 use super::{
     ExecutionFailure, FailureCategory, ResultNode, RuntimeVariables, SequenceInputs, append_text,
-    control_failure, failure, required_source_context,
+    control_failure, failure, required_source_context, runtime_context,
 };
 
 pub(super) fn execute_value_of(
@@ -48,6 +48,17 @@ pub(super) fn execute_value_of(
         ValueExpression::GeneratedRootIdentity(path) => {
             append_generated_root_identity(inputs, path, context, result, control)?;
         }
+        ValueExpression::GeneratedTemporaryRootIdentity {
+            variable,
+            descendant_local,
+        } => append_generated_temporary_root_identity(
+            inputs,
+            variable,
+            descendant_local.as_deref(),
+            variables,
+            result,
+            control,
+        )?,
         ValueExpression::ContextNodeName => {
             append_context_node_name(inputs, context, result, control)?;
         }
@@ -58,14 +69,7 @@ pub(super) fn execute_value_of(
             append_variable_value(inputs, name, separator, variables, result, control)?;
         }
         ValueExpression::IntegerFor(expression) => {
-            let values = evaluate_integer_for(expression, control)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            for (index, value) in values.iter().enumerate() {
-                if index > 0 {
-                    append_text(result, separator, inputs.request_id, control)?;
-                }
-                append_text(result, &value.to_string(), inputs.request_id, control)?;
-            }
+            append_integer_for(inputs, expression, separator, result, control)?;
         }
         ValueExpression::FocusSumFor(expression) => {
             let (source, context) = required_source_context(inputs, context)?;
@@ -128,6 +132,61 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_integer_for(
+    inputs: &SequenceInputs<'_>,
+    expression: &crate::xpath::integer_for_experiment::IntegerForExpression,
+    separator: &str,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let values = evaluate_integer_for(expression, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    for (index, value) in values.iter().enumerate() {
+        if index > 0 {
+            append_text(result, separator, inputs.request_id, control)?;
+        }
+        append_text(result, &value.to_string(), inputs.request_id, control)?;
+    }
+    Ok(())
+}
+
+fn append_generated_temporary_root_identity(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    descendant_local: Option<&str>,
+    variables: &RuntimeVariables,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let tree = variables
+        .temporary_trees
+        .get(variable)
+        .or_else(|| inputs.globals.temporary_trees.get(variable))
+        .ok_or_else(|| {
+            failure(
+                "FXRT0002",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("unbound temporary tree: ${variable}"),
+            )
+        })?;
+    let Some(identity) = runtime_context::temporary_document_identity(
+        tree,
+        descendant_local,
+        inputs.request_id,
+        control,
+    )?
+    else {
+        return Ok(());
+    };
+    append_text(
+        result,
+        &format!("fastxslt-temporary-d{identity}"),
+        inputs.request_id,
+        control,
+    )
 }
 
 fn append_location_path_string(
