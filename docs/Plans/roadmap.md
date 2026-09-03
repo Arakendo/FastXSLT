@@ -1513,7 +1513,7 @@ conformance percentage or a promise about unselected cases.
 | Family | Current authority | Current state |
 | --- | --- | --- |
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
-| QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,014 explicitly selected cases execute through suite-specific XPath adapters. |
+| QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,045 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
@@ -1563,7 +1563,7 @@ not yet have individual first-party dispositions. This distinction matters:
 catalog discovery conserves the source inventory, while only a complete
 test-set overlay conserves a reportable case denominator.
 
-QT3 now has complete parent overlays for the seventeen test sets under active
+QT3 now has complete parent overlays for the eighteen test sets under active
 execution. Typed validation composes explicit selected private-ledger records,
 native XQuery-only dependency exclusions, and a visible
 `harness-unsupported/not-run` default for every other sibling. Explicit
@@ -1589,9 +1589,10 @@ expression has been admitted is not hidden by broader upstream metadata:
 | `fn/codepoint-equal.xml` | 36 | 23 | 6 | 7 |
 | `fn/normalize-space.xml` | 39 | 33 | 4 | 2 |
 | `fn/default-collation.xml` | 7 | 7 | 0 | 0 |
-| **Audited subtotal** | **1,285** | **1,014** | **207** | **64** |
+| `fn/years-from-duration.xml` | 31 | 31 | 0 | 0 |
+| **Audited subtotal** | **1,316** | **1,045** | **207** | **64** |
 
-The 1,285-case subtotal is therefore conserved without relabeling the 64
+The 1,316-case subtotal is therefore conserved without relabeling the 64
 unexecuted cases as engine failures. The 207 exclusions describe the current
 XPath-in-XSLT profile and remain overridable by explicit case admission.
 AxisStep's 13 remaining defaults are precisely its namespace-node/namespace-axis
@@ -1644,9 +1645,12 @@ empty-sequence, composition, arity-error, and missing-context passes, four
 schema-aware exclusions, and two visible focus/clock defaults. The complete
 `fn/default-collation.xml` denominator adds seven unchanged
 static-context value, composition, and arity-error passes with no exclusions or
-visible defaults. The other 30,536 QT3 cases
-remain structural catalog inventory only and still lack first-party selection
-dispositions.
+visible defaults. The complete `fn/years-from-duration.xml` denominator adds
+31 unchanged typed-duration construction, normalized year-component,
+empty-sequence, arithmetic, comparison, and arity-error passes without making
+the private duration representation a public XDM contract. The other 30,505
+QT3 cases remain structural catalog inventory only and still lack first-party
+selection dispositions.
 [Evidence](../Evidence/qt3-axis-deep-equal-conserved-denominators-2026-09-02.md)
 [Boolean function denominator evidence](../Evidence/qt3-boolean-function-initial-denominators-2026-09-03.md)
 [Empty function denominator evidence](../Evidence/qt3-empty-function-initial-denominator-2026-09-03.md)
@@ -1664,6 +1668,7 @@ dispositions.
 [Codepoint-equal denominator evidence](../Evidence/qt3-codepoint-equal-denominator-2026-09-03.md)
 [Normalize-space denominator evidence](../Evidence/qt3-normalize-space-denominator-2026-09-03.md)
 [Default-collation denominator evidence](../Evidence/qt3-default-collation-denominator-2026-09-03.md)
+[Years-from-duration denominator evidence](../Evidence/qt3-years-from-duration-denominator-2026-09-03.md)
 [Schema-aware XSLT30 profile evidence](../Evidence/xslt30-schema-aware-expression-profile-denominators-2026-09-03.md)
 [Streaming XSLT30 profile evidence](../Evidence/xslt30-streaming-profile-denominators-2026-09-03.md)
 [Dynamic-evaluation XSLT30 profile evidence](../Evidence/xslt30-dynamic-evaluation-profile-denominator-2026-09-03.md)
@@ -1713,8 +1718,9 @@ count:
    `fn/string-length.xml`, `fn/encode-for-uri.xml`, and
    `fn/escape-html-uri.xml`, `fn/iri-to-uri.xml`, `fn/lower-case.xml`, and
    `fn/upper-case.xml`, `fn/codepoint-equal.xml`, `fn/normalize-space.xml`, and
-   `fn/default-collation.xml`, so all 1,285 parent-set cases receive a selection
-   disposition. The typed verifier now conserves 1,014 selected passes, 207
+   `fn/default-collation.xml`, and `fn/years-from-duration.xml`, so all 1,316
+   parent-set cases receive a selection disposition. The typed verifier now
+   conserves 1,045 selected passes, 207
    native-dependency profile
    exclusions, and 64 visible
    default not-run cases against the immutable upstream case identities. Explicit
@@ -1746,9 +1752,11 @@ count:
    seven visible normalization/clock compositions. Normalize-space adds 33
    passes, four schema-aware exclusions, and two visible focus/clock gaps. The
    complete default-collation set adds seven passes with no remaining gaps.
+   The years-from-duration set adds 31 typed duration-component passes with no
+   remaining gaps while retaining its representation as private evidence.
 4. [ ] Add complete denominators deliberately, selected by standards and
    implementation pressure rather than easy-case sampling. The remaining
-   11,101 XSLT30 and 30,536 QT3 catalog-only cases must stay outside pass/fail
+   11,101 XSLT30 and 30,505 QT3 catalog-only cases must stay outside pass/fail
    totals until individually classified.
 5. [ ] Replace string-scanned experimental overlays with a validated internal
    loader and derive one immutable run report carrying suite/engine/harness

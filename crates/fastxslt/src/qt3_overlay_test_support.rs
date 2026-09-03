@@ -48,6 +48,8 @@ const NORMALIZE_SPACE_DENOMINATOR_SOURCE: &str =
     include_str!("../../../corpus/overlays/qt3/normalize-space-denominator-v0.toml");
 const DEFAULT_COLLATION_DENOMINATOR_SOURCE: &str =
     include_str!("../../../corpus/overlays/qt3/default-collation-denominator-v0.toml");
+const YEARS_FROM_DURATION_DENOMINATOR_SOURCE: &str =
+    include_str!("../../../corpus/overlays/qt3/years-from-duration-denominator-v0.toml");
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
@@ -357,9 +359,19 @@ fn assert_complete_denominator(
     );
 }
 
+fn assert_years_from_duration_denominator() {
+    assert_complete_denominator(
+        YEARS_FROM_DURATION_DENOMINATOR_SOURCE,
+        "fn/years-from-duration.xml",
+        31,
+        31,
+        0,
+    );
+}
+
 #[test]
 fn qt3_denominator_overlays_conserve_their_parent_sets() {
-    assert_eq!(private_ledger().case.len(), 1_014);
+    assert_eq!(private_ledger().case.len(), 1_045);
     assert!(private_ledger().case.iter().all(|case| matches!(
         case.set_file.as_str(),
         "prod/AxisStep.xml"
@@ -379,6 +391,7 @@ fn qt3_denominator_overlays_conserve_their_parent_sets() {
             | "fn/codepoint-equal.xml"
             | "fn/normalize-space.xml"
             | "fn/default-collation.xml"
+            | "fn/years-from-duration.xml"
     )));
     assert_complete_denominator(AXIS_DENOMINATOR_SOURCE, "prod/AxisStep.xml", 349, 224, 112);
     assert_complete_denominator(
@@ -457,6 +470,7 @@ fn qt3_denominator_overlays_conserve_their_parent_sets() {
         7,
         0,
     );
+    assert_years_from_duration_denominator();
 }
 
 #[test]

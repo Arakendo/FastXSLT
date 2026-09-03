@@ -24,6 +24,8 @@ mod deep_equal_composite;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod deep_equal_experiment;
 #[cfg(test)]
+pub(crate) mod duration_component_experiment;
+#[cfg(test)]
 pub(crate) mod effective_boolean_value_experiment;
 #[cfg(test)]
 pub(crate) mod empty_experiment;
@@ -66,6 +68,8 @@ mod qt3_normalize_space_tests;
 mod qt3_string_length_tests;
 #[cfg(test)]
 mod qt3_upper_case_tests;
+#[cfg(test)]
+mod qt3_years_from_duration_tests;
 pub(crate) mod static_string_experiment;
 #[cfg(test)]
 pub(crate) mod string_length_experiment;

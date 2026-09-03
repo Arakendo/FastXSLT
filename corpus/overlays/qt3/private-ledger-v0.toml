@@ -5945,6 +5945,224 @@ execution = "passed"
 rationale = "The unchanged expression verifies encode-for-uri through its native equality composition."
 
 [[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-8"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-9"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-10"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-11"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-12"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-13"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-14"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-15"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-16"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-17"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-18"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-19"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "fn-years-from-duration-20"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "K-YearsFromDurationFunc-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "K-YearsFromDurationFunc-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "K-YearsFromDurationFunc-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "K-YearsFromDurationFunc-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "K-YearsFromDurationFunc-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "K-YearsFromDurationFunc-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "K-YearsFromDurationFunc-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+[[case]]
+set_file = "fn/years-from-duration.xml"
+case_name = "cbcl-years-from-duration-001"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies typed duration year-component extraction through the bounded native duration evaluator."
+
+
+[[case]]
 set_file = "fn/iri-to-uri.xml"
 case_name = "fn-iri-to-uri1args-1"
 selection = "selected"
