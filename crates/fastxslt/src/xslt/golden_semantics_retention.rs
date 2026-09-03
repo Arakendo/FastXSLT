@@ -122,7 +122,7 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
                 text.capacity()
             }
             GlobalBindingDefault::Atomic(value) => value.known_owned_capacity_bytes(),
-            GlobalBindingDefault::Integer(_) => 0,
+            GlobalBindingDefault::EmptySequence | GlobalBindingDefault::Integer(_) => 0,
             GlobalBindingDefault::LocationPath(path)
             | GlobalBindingDefault::SourceNodeIdentity(path) => path.known_owned_capacity_bytes(),
             GlobalBindingDefault::TemporaryTree(elements) => {
@@ -439,6 +439,7 @@ fn literal_element_owned(
 
 fn value_expression_owned(value: &ValueExpression) -> usize {
     match value {
+        ValueExpression::LiteralString(value) => value.capacity(),
         ValueExpression::LocationPath(path)
         | ValueExpression::RootPath(path)
         | ValueExpression::GeneratedRootIdentity(path) => path.known_owned_capacity_bytes(),
@@ -490,7 +491,8 @@ fn sequence_item_owned(value: &SequenceItemExpression) -> usize {
 fn boolean_expression_owned(value: &BooleanExpression) -> usize {
     match value {
         BooleanExpression::VariableEqualsInteger(test) => test.variable.capacity(),
-        BooleanExpression::VariableEffectiveBooleanValue(variable) => variable.capacity(),
+        BooleanExpression::VariableEqualsEmptySequence(variable)
+        | BooleanExpression::VariableEffectiveBooleanValue(variable) => variable.capacity(),
         BooleanExpression::NodeExists(path)
         | BooleanExpression::NodeIntegerLessThan { path, .. } => path.known_owned_capacity_bytes(),
         BooleanExpression::NodeStringEquals { path, value } => {

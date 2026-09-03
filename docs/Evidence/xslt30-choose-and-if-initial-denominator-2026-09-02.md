@@ -11,8 +11,9 @@ Date: 2026-09-02
 - Unchanged cases `choose-0101`, `choose-0102`, `choose-0201`, `choose-0301`,
   `choose-0401`, `choose-0402`,
   `choose-0403`, `choose-0404`, `choose-0501`, `choose-0502`, `choose-0601`,
-  `choose-0602`, `choose-0605`, `choose-0606`, `choose-0701`, `choose-0702`, `choose-0801`,
-  `choose-0901`, `choose-1001`, `choose-1101`, `choose-1201`, `choose-1202`,
+  `choose-0602`, `choose-0605`, `choose-0606`, `choose-0609`, `choose-0701`,
+  `choose-0702`, `choose-0801`, `choose-0901`, `choose-1001`, `choose-1101`,
+  `choose-1201`, `choose-1202`,
   `choose-1203`, `choose-1301`, `choose-1401`, `choose-1703`, and
   `choose-1704`.
 - Unchanged negative cases `choose-1801` through `choose-1804`.
@@ -52,11 +53,11 @@ introduced.
 ## Result
 
 - Complete conserved denominator: 55 cases.
-- Selected and passed: 31, comprising 27 result comparisons and 4 expected
+- Selected and passed: 32, comprising 28 result comparisons and 4 expected
   static-error comparisons.
 - Engine unsupported: 0.
 - Excluded by profile: 0.
-- Visible default not run: 24.
+- Visible default not run: 23.
 
 The unchanged cases cover ordered first-match branch selection, an
 `xsl:otherwise` branch, empty fall-through when no branch matches, two true
@@ -128,13 +129,20 @@ values are true and empty values are false. The prefix spelling is not trusted:
 a focused compiler control accepts an alternate prefix bound to the XML Schema
 namespace and rejects `xs` rebound elsewhere.
 
-Current conserved XSLT30 accounting is 675 cases: 473 passed comparisons, 3
-engine-unsupported cases, 55 profile exclusions, and 144 visible default
+`choose-0609` retains an untyped global `xsl:sequence select="()"` as an actual
+empty-sequence binding and keeps it distinct from an empty
+`xs:untypedAtomic`. Exact `()`, `$variable=()`, and `boolean($variable)` tests
+all produce false without constructing result content. Its unexecuted branch
+also proves that literal-string `xsl:value-of` compiles without being mistaken
+for a location path.
+
+Current conserved XSLT30 accounting is 675 cases: 474 passed comparisons, 3
+engine-unsupported cases, 55 profile exclusions, and 143 visible default
 not-run cases across 17 complete test-set denominators.
 
 ## Limitation
 
-This evidence does not admit the other 24 cases. In particular, it makes no
+This evidence does not admit the other 23 cases. In particular, it makes no
 claim for general comparisons, boolean functions beyond the exact `not()`
 form and admitted `or` composition, collations, schema-aware cases,
 static typing, user functions, import composition, or arbitrary assertion

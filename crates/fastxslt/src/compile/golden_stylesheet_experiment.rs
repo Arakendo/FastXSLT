@@ -737,19 +737,39 @@ fn compile_typed_atomic_global(
         _ => return Err(unsupported_typed_global(document, element, declared_type)),
     };
     let lexical = if is_select {
-        xpath_string_literal(expression_or_content).ok_or_else(|| {
-            unsupported(
-                "FXST1016",
-                "the private typed atomic global slice requires a string literal select",
-                document.location(element),
-            )
-        })?
+        typed_atomic_select_lexical(document, element, local, expression_or_content).ok_or_else(
+            || {
+                unsupported(
+                    "FXST1016",
+                    "the private typed atomic global slice requires a matching constructor or string literal",
+                    document.location(element),
+                )
+            },
+        )?
     } else {
         expression_or_content
     };
     Ok(GlobalBindingDefault::Atomic(
         AtomicValue::from_validated_lexical(atomic_type, lexical),
     ))
+}
+
+fn typed_atomic_select_lexical<'a>(
+    document: &Document,
+    element: NodeId,
+    declared_local: &str,
+    expression: &'a str,
+) -> Option<&'a str> {
+    if let Some(literal) = xpath_string_literal(expression) {
+        return Some(literal);
+    }
+    let (constructor, argument) = expression.split_once('(')?;
+    let argument = argument.strip_suffix(')')?;
+    let (prefix, local) = constructor.split_once(':')?;
+    (local == declared_local
+        && namespace_for_prefix(document, element, prefix) == Some(XML_SCHEMA_NAMESPACE))
+    .then(|| xpath_string_literal(argument))
+    .flatten()
 }
 
 fn unsupported_typed_global(
@@ -784,6 +804,25 @@ fn compile_parentless_temporary_node(
     let [constructor] = children.as_slice() else {
         return Ok(None);
     };
+    if is_xslt_element(document, *constructor, "sequence") {
+        if declared_type.is_some() {
+            return Err(unsupported(
+                "FXST1016",
+                "the private empty-sequence global slice is untyped",
+                document.location(element),
+            ));
+        }
+        ensure_only_attributes(document, *constructor, &["select"], "xsl:sequence")?;
+        ensure_no_meaningful_children(document, *constructor, "xsl:sequence")?;
+        if required_attribute(document, *constructor, None, "select")? != "()" {
+            return Err(unsupported(
+                "FXST1016",
+                "the private global xsl:sequence slice admits only the empty sequence",
+                document.location(*constructor),
+            ));
+        }
+        return Ok(Some(GlobalBindingDefault::EmptySequence));
+    }
     if is_xslt_element(document, *constructor, "attribute") {
         if declared_type != Some("attribute()") {
             return Err(unsupported(
@@ -1741,7 +1780,7 @@ mod tests {
     fn typed_string_globals_resolve_the_schema_namespace_not_the_prefix_spelling() {
         let valid = parse_stylesheet(
             "memory:typed-string-global.xsl",
-            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:s="http://www.w3.org/2001/XMLSchema"><xsl:variable name="value" as="s:string" select="'kept'"/><xsl:template match="/"/></xsl:stylesheet>"#,
+            br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:s="http://www.w3.org/2001/XMLSchema"><xsl:variable name="value" as="s:string" select="'kept'"/><xsl:variable name="constructed" as="s:untypedAtomic" select="s:untypedAtomic('')"/><xsl:variable name="empty"><xsl:sequence select="()"/></xsl:variable><xsl:template match="/"/></xsl:stylesheet>"#,
         );
         let invalid = parse_stylesheet(
             "memory:false-schema-prefix.xsl",
@@ -1754,6 +1793,15 @@ mod tests {
         };
         assert_eq!(value.atomic_type(), BuiltinAtomicType::String);
         assert_eq!(value.lexical(), "kept");
+        let GlobalBindingDefault::Atomic(constructed) = &program.global_bindings[1].default else {
+            panic!("typed constructor should retain atomic identity");
+        };
+        assert_eq!(constructed.atomic_type(), BuiltinAtomicType::UntypedAtomic);
+        assert_eq!(constructed.lexical(), "");
+        assert_eq!(
+            program.global_bindings[2].default,
+            GlobalBindingDefault::EmptySequence
+        );
         let failure = compile_stylesheet(&invalid).expect_err("a rebound xs prefix is not schema");
         assert_eq!(failure.code, "FXST1016");
         assert_eq!(failure.category, CompileCategory::Unsupported);

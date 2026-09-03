@@ -39,6 +39,7 @@ pub(super) struct SequenceInputs<'a> {
 #[derive(Debug, Default)]
 pub(super) struct RuntimeGlobals {
     pub(super) atomics: Arc<BTreeMap<String, AtomicValue>>,
+    pub(super) empty_sequences: HashSet<String>,
     pub(super) nodes: BTreeMap<String, Vec<NodeId>>,
     pub(super) temporary_trees: BTreeMap<String, TemporaryTree>,
 }
@@ -235,6 +236,9 @@ fn materialize_global_default(
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     match &binding.default {
+        GlobalBindingDefault::EmptySequence => {
+            globals.empty_sequences.insert(binding.name.clone());
+        }
         GlobalBindingDefault::Text(value) => {
             Arc::make_mut(&mut globals.atomics)
                 .insert(binding.name.clone(), AtomicValue::untyped(value.clone()));

@@ -362,6 +362,13 @@ singleton supported numerics and booleans, source-node sequences, temporary
 trees, and bounded atomic sequences; values without a defined effective boolean
 value report `FORG0006`. This does not admit arbitrary typed global expressions,
 constructors, sequence types, or general variable XPath expressions.
+An untyped global whose complete sequence constructor is exact
+`xsl:sequence select="()"` retains an empty-sequence binding rather than an
+empty string or temporary document. Exact empty-sequence conditional forms and
+`boolean($variable)` observe that identity; comparison with `()` is false after
+verifying the variable is bound. `xsl:value-of` separately admits a static
+XPath string literal. These forms do not imply general sequence constructors,
+function calls, comparisons, or literal-expression evaluation.
 
 Conditional structure is validated before branch expressions or constructors
 are compiled. Missing `test`, `xsl:when` after `xsl:otherwise`, repeated

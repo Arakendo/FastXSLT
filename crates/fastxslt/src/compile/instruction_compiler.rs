@@ -626,6 +626,9 @@ fn compile_value_expression(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<ValueExpression, CompileFailure> {
+    if let Some(literal) = xpath_string_literal(expression.trim()) {
+        return Ok(ValueExpression::LiteralString(literal.to_owned()));
+    }
     Ok(if recognizes_deep_equal(expression) {
         ValueExpression::DeepEqual(Box::new(parse_deep_equal(expression, location).map_err(
             |failure| {
@@ -1175,7 +1178,20 @@ fn parse_boolean_expression(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<BooleanExpression, CompileFailure> {
+    if expression.trim() == "()" {
+        return Ok(BooleanExpression::Constant(false));
+    }
     let parsed = strip_enclosing_parentheses(expression.trim());
+    if let Some(variable) = parsed
+        .strip_prefix("boolean(")
+        .and_then(|value| value.strip_suffix(')'))
+        .and_then(|value| value.trim().strip_prefix('$'))
+        && is_ascii_ncname(variable)
+    {
+        return Ok(BooleanExpression::VariableEffectiveBooleanValue(
+            variable.to_owned(),
+        ));
+    }
     if let Some((left, right)) = split_top_level_or(parsed) {
         return Ok(BooleanExpression::Or {
             left: Box::new(parse_boolean_expression(left, location)?),
@@ -1268,6 +1284,9 @@ fn parse_scalar_boolean_expression(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<BooleanExpression, CompileFailure> {
+    if parsed == "()" {
+        return Ok(BooleanExpression::Constant(false));
+    }
     if let Some(value) = parse_constant_string_boolean(parsed) {
         return Ok(BooleanExpression::Constant(value));
     }
@@ -1304,6 +1323,11 @@ fn parse_scalar_boolean_expression(
     if let Some((variable, integer)) = parsed.split_once('=') {
         let variable = variable.trim().strip_prefix('$').unwrap_or_default();
         if is_ascii_ncname(variable) {
+            if integer.trim() == "()" {
+                return Ok(BooleanExpression::VariableEqualsEmptySequence(
+                    variable.to_owned(),
+                ));
+            }
             let integer = integer
                 .trim()
                 .parse::<i64>()

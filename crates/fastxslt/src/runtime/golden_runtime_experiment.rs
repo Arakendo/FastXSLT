@@ -1721,6 +1721,9 @@ fn evaluate_boolean(
         BooleanExpression::VariableEqualsInteger(test) => {
             evaluate_variable_integer_equality(inputs, test, variables)
         }
+        BooleanExpression::VariableEqualsEmptySequence(variable) => {
+            ensure_variable_is_bound(inputs, variable, variables).map(|()| false)
+        }
         BooleanExpression::VariableEffectiveBooleanValue(variable) => {
             evaluate_variable_effective_boolean_value(inputs, variable, variables, control)
         }
@@ -1758,8 +1761,17 @@ fn evaluate_variable_effective_boolean_value(
     if let Some(nodes) = variables.source_nodes.get(variable) {
         return Ok(!nodes.is_empty());
     }
+    if let Some(nodes) = inputs.globals.nodes.get(variable) {
+        return Ok(!nodes.is_empty());
+    }
     if variables.temporary_trees.contains_key(variable) {
         return Ok(true);
+    }
+    if inputs.globals.temporary_trees.contains_key(variable) {
+        return Ok(true);
+    }
+    if inputs.globals.empty_sequences.contains(variable) {
+        return Ok(false);
     }
     if let Some(values) = variables.atomic_sequences.get(variable) {
         return match values.as_slice() {
@@ -1767,6 +1779,30 @@ fn evaluate_variable_effective_boolean_value(
             [value] => atomic_effective_boolean_value(value, inputs.request_id),
             _ => Err(invalid_effective_boolean_value(inputs.request_id)),
         };
+    }
+    Err(failure(
+        "FXRT0002",
+        FailureCategory::Invalid,
+        Some(inputs.request_id),
+        format!("unbound variable: ${variable}"),
+    ))
+}
+
+fn ensure_variable_is_bound(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    variables: &RuntimeVariables,
+) -> Result<(), ExecutionFailure> {
+    let is_bound = variables.atomics.contains_key(variable)
+        || variables.atomic_sequences.contains_key(variable)
+        || variables.source_nodes.contains_key(variable)
+        || variables.temporary_trees.contains_key(variable)
+        || inputs.globals.atomics.contains_key(variable)
+        || inputs.globals.empty_sequences.contains(variable)
+        || inputs.globals.nodes.contains_key(variable)
+        || inputs.globals.temporary_trees.contains_key(variable);
+    if is_bound {
+        return Ok(());
     }
     Err(failure(
         "FXRT0002",

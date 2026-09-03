@@ -102,6 +102,7 @@ pub(crate) struct GlobalBinding {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum GlobalBindingDefault {
+    EmptySequence,
     Text(String),
     Atomic(AtomicValue),
     Integer(i64),
@@ -431,6 +432,7 @@ pub(crate) enum Instruction {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ValueExpression {
+    LiteralString(String),
     LocationPath(LocationPath),
     RootPath(LocationPath),
     RootVariable(String),
@@ -470,6 +472,7 @@ pub(crate) struct EqualityTest {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum BooleanExpression {
     VariableEqualsInteger(EqualityTest),
+    VariableEqualsEmptySequence(String),
     VariableEffectiveBooleanValue(String),
     NodeExists(LocationPath),
     NodeStringEquals {

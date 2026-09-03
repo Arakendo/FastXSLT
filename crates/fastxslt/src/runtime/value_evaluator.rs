@@ -36,6 +36,9 @@ pub(super) fn execute_value_of(
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     match select {
+        ValueExpression::LiteralString(value) => {
+            append_text(result, value, inputs.request_id, control)?;
+        }
         ValueExpression::LocationPath(path) => {
             append_location_path_string(inputs, path, context, result, control)?;
         }
