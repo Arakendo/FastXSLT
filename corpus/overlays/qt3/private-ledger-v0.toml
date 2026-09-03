@@ -5945,6 +5945,321 @@ execution = "passed"
 rationale = "The unchanged expression verifies encode-for-uri through its native equality composition."
 
 [[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri1args-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged argument exercises IRI-to-URI string conversion and UTF-8 percent encoding."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri1args-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged argument exercises IRI-to-URI string conversion and UTF-8 percent encoding."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri1args-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged argument exercises IRI-to-URI string conversion and UTF-8 percent encoding."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri1args-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged argument exercises IRI-to-URI string conversion and UTF-8 percent encoding."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri1args-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged numeric argument reports the native XPTY0004 type error."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri1args-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged two-argument call reports the native XPST0017 arity error."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-8"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-9"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-10"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-11"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-12"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-13"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-14"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-15"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-16"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-17"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-18A"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged XPath form preserves the ampersand spelling supplied to iri-to-uri."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-19"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-20"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-21"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-22"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-23"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-24"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-25"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal exercises an ASCII character that iri-to-uri preserves."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "fn-iri-to-uri-26"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged literal proves that iri-to-uri percent-encodes an ASCII space."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "K-IRIToURIfunc-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity call reports the native XPST0017 error."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "K-IRIToURIfunc-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity call reports the native XPST0017 error."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "K-IRIToURIfunc-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged empty-sequence result compares equal to the empty string."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "K2-IRIToURIfunc-1"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity call reports the native XPST0017 error."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "K2-IRIToURIfunc-2"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged invalid-arity call reports the native XPST0017 error."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "K2-IRIToURIfunc-3"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged non-string argument reports the native XPTY0004 type error."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "K2-IRIToURIfunc-4"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged non-string argument reports the native XPTY0004 type error."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "K2-IRIToURIfunc-5"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged string-derived atomic value is promoted and percent-encoded."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "K2-IRIToURIfunc-6"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged string-derived atomic value is promoted and percent-encoded."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "K2-IRIToURIfunc-7"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies exact percent encoding of excluded ASCII bytes."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "K2-IRIToURIfunc-8"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged expression verifies exact percent encoding of excluded ASCII bytes."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "K2-IRIToURIfunc-9"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged bounded codepoint range verifies exact UTF-8 percent encoding."
+
+[[case]]
+set_file = "fn/iri-to-uri.xml"
+case_name = "K2-IRIToURIfunc-10"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged bounded codepoint range verifies exact UTF-8 percent encoding."
+
+[[case]]
 set_file = "fn/encode-for-uri.xml"
 case_name = "K-EncodeURIfunc-4"
 selection = "selected"

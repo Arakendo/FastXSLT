@@ -1,0 +1,17 @@
+suite = "QT3"
+revision = "83993587711dbd5c18ed846385ec37d079d6e492"
+set_file = "fn/iri-to-uri.xml"
+case_count = 47
+selected_source = "private-ledger-v0.toml"
+
+[[dependency_rule]]
+dependency_type = "spec"
+values = ["XQ10+"]
+selection = "profile-excluded"
+execution = "not-run"
+rationale = "The case is explicitly XQuery-only and remains outside FastXSLT's XPath-in-XSLT profile."
+
+[default_disposition]
+selection = "harness-unsupported"
+execution = "not-run"
+rationale = "The remaining case exercises invocation-clock, sequence-index, and whitespace-normalization composition rather than the iri-to-uri operation; it remains visible and no result is inferred."

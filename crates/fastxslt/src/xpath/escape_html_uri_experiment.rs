@@ -84,6 +84,23 @@ pub(crate) fn evaluate_encode_for_uri(
 }
 
 #[cfg(test)]
+pub(crate) fn evaluate_iri_to_uri(
+    expression: &str,
+    control: &mut InvocationControl,
+) -> Result<EscapeHtmlUriValue, EscapeHtmlUriFailure> {
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(EscapeHtmlUriFailure::Control)?;
+    let expression = expression.trim();
+    if let Some((left, right)) = split_top_level(expression, " eq ") {
+        return Ok(EscapeHtmlUriValue::Boolean(
+            evaluate_iri_string(left, control)? == evaluate_iri_string(right, control)?,
+        ));
+    }
+    evaluate_iri_string(expression, control).map(EscapeHtmlUriValue::String)
+}
+
+#[cfg(test)]
 fn evaluate_string(
     expression: &str,
     control: &mut InvocationControl,
@@ -160,6 +177,112 @@ fn encode_for_uri(value: &str) -> String {
     let mut encoded = String::with_capacity(value.len());
     for byte in value.as_bytes() {
         if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
+            encoded.push(char::from(*byte));
+        } else {
+            encoded.push('%');
+            encoded.push(hex_digit(byte >> 4));
+            encoded.push(hex_digit(byte & 0x0f));
+        }
+    }
+    encoded
+}
+
+#[cfg(test)]
+fn evaluate_iri_string(
+    expression: &str,
+    control: &mut InvocationControl,
+) -> Result<String, EscapeHtmlUriFailure> {
+    let expression = strip_outer_parentheses(expression.trim());
+    if let Some(value) = parse_xpath_quoted(expression) {
+        return Ok(value);
+    }
+    let argument = function_argument(expression, &["iri-to-uri", "fn:iri-to-uri"])
+        .ok_or(EscapeHtmlUriFailure::Unsupported)?;
+    if argument.trim().is_empty() || split_top_level(argument, ",").is_some() {
+        return Err(EscapeHtmlUriFailure::InvalidArity);
+    }
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(EscapeHtmlUriFailure::Control)?;
+    let argument = argument.trim();
+    let value = if argument == "()" {
+        String::new()
+    } else if let Some(value) = parse_xpath_quoted(argument) {
+        value
+    } else if let Some(value) = parse_string_constructor(argument) {
+        value
+    } else if let Some(value) = parse_codepoint_range(argument) {
+        value
+    } else if argument.parse::<i128>().is_ok() || is_multi_item_sequence(argument) {
+        return Err(EscapeHtmlUriFailure::InvalidArgumentType);
+    } else {
+        return Err(EscapeHtmlUriFailure::Unsupported);
+    };
+    Ok(iri_to_uri(&value))
+}
+
+#[cfg(test)]
+fn parse_string_constructor(expression: &str) -> Option<String> {
+    let argument = function_argument(expression, &["xs:anyURI", "xs:untypedAtomic"])?;
+    parse_xpath_quoted(argument.trim())
+}
+
+#[cfg(test)]
+fn parse_codepoint_range(expression: &str) -> Option<String> {
+    let argument = function_argument(
+        expression,
+        &["codepoints-to-string", "fn:codepoints-to-string"],
+    )?;
+    let (start, end) = split_top_level(argument, " to ")?;
+    let start = start.parse::<u32>().ok()?;
+    let end = end.parse::<u32>().ok()?;
+    let mut value = String::new();
+    for codepoint in start..=end {
+        value.push(char::from_u32(codepoint)?);
+    }
+    Some(value)
+}
+
+#[cfg(test)]
+fn is_multi_item_sequence(expression: &str) -> bool {
+    expression
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(')'))
+        .is_some_and(|value| split_top_level(value, ",").is_some())
+}
+
+#[cfg(test)]
+fn parse_xpath_quoted(expression: &str) -> Option<String> {
+    let quote = expression.chars().next()?;
+    if !matches!(quote, '"' | '\'') || !expression.ends_with(quote) {
+        return None;
+    }
+    let inner = &expression[quote.len_utf8()..expression.len() - quote.len_utf8()];
+    let doubled = format!("{quote}{quote}");
+    let mut remainder = inner;
+    let mut value = String::with_capacity(inner.len());
+    while let Some(index) = remainder.find(quote) {
+        value.push_str(&remainder[..index]);
+        if !remainder[index..].starts_with(&doubled) {
+            return None;
+        }
+        value.push(quote);
+        remainder = &remainder[index + doubled.len()..];
+    }
+    value.push_str(remainder);
+    Some(value)
+}
+
+#[cfg(test)]
+fn iri_to_uri(value: &str) -> String {
+    let mut encoded = String::with_capacity(value.len());
+    for byte in value.as_bytes() {
+        if (b'!'..=b'~').contains(byte)
+            && !matches!(
+                byte,
+                b'"' | b'<' | b'>' | b'\\' | b'^' | b'`' | b'{' | b'|' | b'}'
+            )
+        {
             encoded.push(char::from(*byte));
         } else {
             encoded.push('%');
@@ -296,7 +419,8 @@ fn hex_digit(value: u8) -> char {
 #[cfg(test)]
 mod tests {
     use super::{
-        EscapeHtmlUriFailure, EscapeHtmlUriValue, evaluate, evaluate_encode_for_uri, fold_literal,
+        EscapeHtmlUriFailure, EscapeHtmlUriValue, evaluate, evaluate_encode_for_uri,
+        evaluate_iri_to_uri, fold_literal,
     };
     use crate::execution_control_experiment::InvocationControl;
 
@@ -359,6 +483,30 @@ mod tests {
         ] {
             assert_eq!(
                 evaluate_encode_for_uri(source, &mut InvocationControl::unbounded()),
+                Ok(expected),
+                "{source}"
+            );
+        }
+    }
+
+    #[test]
+    fn evaluates_iri_to_uri_preserved_and_encoded_values() {
+        for (source, expected) in [
+            (
+                "iri-to-uri(\"http://example/a%20b#c\")",
+                EscapeHtmlUriValue::String("http://example/a%20b#c".to_owned()),
+            ),
+            (
+                "iri-to-uri(\"<> \"\"{}|\\^`\")",
+                EscapeHtmlUriValue::String("%3C%3E%20%22%7B%7D%7C%5C%5E%60".to_owned()),
+            ),
+            (
+                "iri-to-uri(xs:anyURI(\"a string\"))",
+                EscapeHtmlUriValue::String("a%20string".to_owned()),
+            ),
+        ] {
+            assert_eq!(
+                evaluate_iri_to_uri(source, &mut InvocationControl::unbounded()),
                 Ok(expected),
                 "{source}"
             );

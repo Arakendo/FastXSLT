@@ -51,6 +51,8 @@ mod qt3_encode_for_uri_tests;
 #[cfg(test)]
 mod qt3_escape_html_uri_tests;
 #[cfg(test)]
+mod qt3_iri_to_uri_tests;
+#[cfg(test)]
 mod qt3_string_length_tests;
 pub(crate) mod static_string_experiment;
 #[cfg(test)]
