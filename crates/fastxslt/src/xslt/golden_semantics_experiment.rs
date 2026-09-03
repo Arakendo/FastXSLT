@@ -469,6 +469,10 @@ pub(crate) enum BooleanExpression {
         path: LocationPath,
         value: String,
     },
+    NodeIntegerLessThan {
+        path: LocationPath,
+        value: i64,
+    },
     ContextStringEquals(String),
     Not(Box<BooleanExpression>),
     RootIdentityEqualsVariable {

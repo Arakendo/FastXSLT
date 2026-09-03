@@ -12,7 +12,7 @@ Date: 2026-09-02
   `choose-0401`, `choose-0402`,
   `choose-0403`, `choose-0404`, `choose-0501`, `choose-0502`, `choose-0601`,
   `choose-0602`, `choose-0605`, `choose-0701`, `choose-0702`, and
-  `choose-1401`.
+  `choose-1001`, and `choose-1401`.
 - Unchanged negative cases `choose-1801` through `choose-1804`.
 
 ## Method
@@ -50,11 +50,11 @@ introduced.
 ## Result
 
 - Complete conserved denominator: 55 cases.
-- Selected and passed: 20, comprising 16 result comparisons and 4 expected
+- Selected and passed: 21, comprising 17 result comparisons and 4 expected
   static-error comparisons.
 - Engine unsupported: 0.
 - Excluded by profile: 0.
-- Visible default not run: 35.
+- Visible default not run: 34.
 
 The unchanged cases cover ordered first-match branch selection, an
 `xsl:otherwise` branch, empty fall-through when no branch matches, two true
@@ -76,13 +76,18 @@ Two cases reuse the existing exact constant numeric evaluator: one tests
 `round(3.7) > 3`, while the other reaches a nested `xsl:if` through
 `xsl:otherwise` and tests `9 mod 3 = 0`.
 
-Current conserved XSLT30 accounting is 675 cases: 462 passed comparisons, 3
-engine-unsupported cases, 55 profile exclusions, and 155 visible default
+`choose-1001` applies the exact relative-path-to-integer-less-than form to the
+untyped integer lexical value `5`. Ordered evaluation stops at the first true
+bound and instantiates only that branch; decimal, floating-point, and general
+numeric comparison remain outside this slice.
+
+Current conserved XSLT30 accounting is 675 cases: 463 passed comparisons, 3
+engine-unsupported cases, 55 profile exclusions, and 154 visible default
 not-run cases across 17 complete test-set denominators.
 
 ## Limitation
 
-This evidence does not admit the other 35 cases. In particular, it makes no
+This evidence does not admit the other 34 cases. In particular, it makes no
 claim for general comparisons, boolean functions beyond the exact `not()`
 form, compound boolean expressions, collations, schema-aware cases,
 static typing, user functions, import composition, or arbitrary assertion

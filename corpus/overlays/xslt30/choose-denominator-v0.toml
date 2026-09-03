@@ -99,6 +99,12 @@ execution = "passed"
 rationale = "The unchanged XSLT 1.0-compatible case negates a context string-value comparison and preserves selected-node order and focus."
 
 [[case_override]]
+case_name = "choose-1001"
+selection = "selected"
+execution = "passed"
+rationale = "The unchanged case compares one child node's untyped string value to successive integer bounds and instantiates only the first true xsl:when branch."
+
+[[case_override]]
 case_name = "choose-1401"
 selection = "selected"
 execution = "passed"

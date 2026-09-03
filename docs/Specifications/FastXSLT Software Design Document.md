@@ -319,6 +319,10 @@ string values are evaluated through controlled traversal so cancellation and
 work accounting remain active. This is not a general XPath boolean grammar;
 compound expressions, arbitrary comparisons, functions, namespaces, and
 collations require separate admission.
+The exact `relative-path < integer` conditional form parses selected node string
+values as `i64` and uses existential comparison. It preserves ordered branch
+short-circuiting but does not admit decimal, floating-point, promotion, or
+general ordering semantics.
 
 Conditional structure is validated before branch expressions or constructors
 are compiled. Missing `test`, `xsl:when` after `xsl:otherwise`, repeated

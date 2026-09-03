@@ -1223,6 +1223,12 @@ fn parse_scalar_boolean_expression(
             value: value.to_owned(),
         });
     }
+    if let Some((path, value)) = parse_path_integer_less_than(parsed) {
+        return Ok(BooleanExpression::NodeIntegerLessThan {
+            path: parse_location_path(path, location.clone()).map_err(map_path_failure)?,
+            value,
+        });
+    }
     if parsed.starts_with('/') || parsed.starts_with('@') {
         return parse_location_path(parsed, location.clone())
             .map(BooleanExpression::NodeExists)
@@ -1299,6 +1305,15 @@ fn parse_scalar_boolean_expression(
     } else {
         ordering.is_eq()
     }))
+}
+
+fn parse_path_integer_less_than(expression: &str) -> Option<(&str, i64)> {
+    let (path, value) = expression.split_once('<')?;
+    let path = path.trim();
+    if path.is_empty() || path.contains(['=', '>', '<']) {
+        return None;
+    }
+    Some((path, value.trim().parse().ok()?))
 }
 
 fn parse_path_string_equality(expression: &str) -> Option<(&str, &str)> {
