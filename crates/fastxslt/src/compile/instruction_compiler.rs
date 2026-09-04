@@ -1033,6 +1033,10 @@ fn compile_value_expression(
         root
     } else if matches!(expression.trim(), "name()" | "name(.)") {
         ValueExpression::ContextNodeName
+    } else if expression.trim() == "name(..)" {
+        ValueExpression::NodeNamePath(
+            parse_location_path("..", location.clone()).map_err(map_path_failure)?,
+        )
     } else if matches!(expression.trim(), "local-name()" | "local-name(.)") {
         ValueExpression::ContextNodeLocalName
     } else if matches!(expression.trim(), "namespace-uri()" | "namespace-uri(.)") {

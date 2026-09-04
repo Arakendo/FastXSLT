@@ -116,6 +116,9 @@ pub(super) fn execute_value_of(
         ValueExpression::ContextNodeName => {
             append_context_node_name(inputs, context, result, control)?;
         }
+        ValueExpression::NodeNamePath(path) => {
+            append_node_name_path(inputs, context, path, result, control)?;
+        }
         ValueExpression::ContextNodeLocalName => {
             append_context_node_local_name(inputs, context, result, control)?;
         }
@@ -1006,6 +1009,36 @@ fn append_context_node_name(
             FailureCategory::Unsupported,
             Some(inputs.request_id),
             "name(.) for namespaced nodes is outside the prefix-preserving private slice",
+        ));
+    }
+    append_text(result, &name.local, inputs.request_id, control)
+}
+
+fn append_node_name_path(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let selected = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let Some(node) = selected.first().copied() else {
+        return Ok(());
+    };
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let Some(name) = source.name(node) else {
+        return Ok(());
+    };
+    if name.namespace.is_some() {
+        return Err(failure(
+            "FXRT1008",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "name(..) for a namespaced node is outside the prefix-preserving private slice",
         ));
     }
     append_text(result, &name.local, inputs.request_id, control)

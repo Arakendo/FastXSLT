@@ -488,6 +488,7 @@ pub(crate) enum ValueExpression {
     },
     GeneratedDocumentRootIdentity(DocumentRootReference),
     ContextNodeName,
+    NodeNamePath(LocationPath),
     ContextNodeLocalName,
     ContextNodeNamespaceUri,
     ContextNodeNormalizedString,

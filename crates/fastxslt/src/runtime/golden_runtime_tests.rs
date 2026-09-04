@@ -989,6 +989,34 @@ fn value_of_position_and_last_use_the_current_sequence_focus() {
 }
 
 #[test]
+fn parent_name_value_uses_the_typed_singleton_parent_path() {
+    const SOURCE: &str = "urn:fastxslt:parent-name-value:source";
+    const STYLESHEET: &str = "urn:fastxslt:parent-name-value:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc><group><item/></group></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:apply-templates select="doc/group/item"/></xsl:template><xsl:template match="item"><out><xsl:value-of select="name(..)"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile parent name operation");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("parent-name-value", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute parent name operation");
+    assert_eq!(
+        results.by_request["parent-name-value"].serialized,
+        "<out>group</out>"
+    );
+}
+
+#[test]
 fn unqualified_name_comparison_does_not_match_a_namespaced_parent() {
     const SOURCE: &str = "urn:fastxslt:parent-name:source";
     const STYLESHEET: &str = "urn:fastxslt:parent-name:stylesheet";

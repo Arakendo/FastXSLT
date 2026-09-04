@@ -42,7 +42,9 @@ raises it to 521. The following
 [context normalize-space tranche](oasis-xslt10-context-normalize-space-tranche-2026-09-04.md)
 raises it to 522. The following
 [value focus tranche](oasis-xslt10-value-focus-tranche-2026-09-04.md)
-raises it to 525.
+raises it to 525. The following
+[parent name tranche](oasis-xslt10-parent-name-tranche-2026-09-04.md)
+raises it to 527.
 
 ## Outcome
 
