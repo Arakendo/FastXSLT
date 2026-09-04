@@ -603,6 +603,25 @@ mod tests {
         );
     }
 
+    #[test]
+    fn production_case_conversion_expression_reaches_the_workbench_host_path() {
+        let engine = ExperimentalEngine::new(
+            "urn:fastxslt:case-conversion:source",
+            b"<source/>".to_vec(),
+            "urn:fastxslt:case-conversion:stylesheet",
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="concat(lower-case('AB'), upper-case('cd')) eq 'abCD'"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("production case-conversion expression should compile");
+
+        assert_eq!(
+            engine
+                .transform("case-conversion-workbench")
+                .expect("production case-conversion expression should execute"),
+            "true"
+        );
+    }
+
     fn retention_custom_engine(
         label: &str,
         source: Vec<u8>,

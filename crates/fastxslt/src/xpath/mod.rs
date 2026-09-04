@@ -1,6 +1,6 @@
 //! `XPath` lexical, syntactic, and evaluation semantics.
 
-#[cfg(test)]
+#[cfg(any(test, feature = "workbench"))]
 pub(crate) mod case_conversion_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod castable_experiment;

@@ -10,9 +10,12 @@ Date: 2026-09-03
 
 ## Method
 
-A private source-free evaluator applies Rust's Unicode lowercase iterator to
-each scalar value, preserving expanding mappings. The bounded expression slice
-composes string constructors, `upper-case`, `count`, `boolean`, `not`,
+Every selected unchanged expression now compiles through generated XSLT into an
+owned production case-conversion expression and executes through the ordinary
+runtime, result tree, and text serializer. A workbench sentinel reaches the same
+semantic path. The shared evaluator applies Rust's Unicode lowercase iterator
+to each scalar value, preserving expanding mappings. The bounded expression
+slice composes string constructors, `upper-case`, `count`, `boolean`, `not`,
 two-argument `concat`, boolean `and`, and codepoint conversion around the
 lowercase operation.
 
@@ -50,5 +53,5 @@ Across all complete QT3 overlays, the conserved subtotal is now 1,174 cases:
 
 This evidence does not select a stable Unicode data source or version, claim
 locale-sensitive casing, or admit general XPath function composition. The
-evaluator remains a private semantic slice. A future standards profile must
+production expression remains a private semantic slice. A future standards profile must
 state and verify the Unicode version that underlies public case conversion.

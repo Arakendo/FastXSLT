@@ -1,6 +1,7 @@
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
+use crate::xpath::case_conversion_experiment::CaseConversionExpression;
 use crate::xpath::castable_experiment::{CastExpression, CastableExpression};
 use crate::xpath::decimal_sum_for_experiment::DecimalSumForExpression;
 use crate::xpath::deep_equal_boolean_experiment::DeepEqualBooleanExpression;
@@ -459,6 +460,7 @@ pub(crate) enum ValueExpression {
     GeneratedDocumentRootIdentity(DocumentRootReference),
     ContextNodeName,
     UpperCaseContextString,
+    CaseConversion(Box<CaseConversionExpression>),
     Variable(String),
     LiteralVariableConcat {
         literal: String,

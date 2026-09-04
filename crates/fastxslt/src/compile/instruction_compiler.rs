@@ -2,6 +2,10 @@
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
+use crate::xpath::case_conversion_experiment::{
+    CaseConversionParseFailure, parse as parse_case_conversion,
+    recognizes as recognizes_case_conversion,
+};
 use crate::xpath::castable_experiment::{parse as parse_castable, parse_cast};
 use crate::xpath::constant_numeric_experiment::{self, ConstantNumericFailure};
 use crate::xpath::decimal_sum_for_experiment::parse as parse_decimal_sum_for;
@@ -663,7 +667,9 @@ fn compile_value_expression(
     {
         return Ok(conditional);
     }
-    Ok(if recognizes_iri_to_uri(expression) {
+    Ok(if recognizes_case_conversion(expression) {
+        compile_case_conversion_value(expression, location)?
+    } else if recognizes_iri_to_uri(expression) {
         compile_iri_to_uri_value(expression, location)?
     } else if recognizes_encode_for_uri(expression) {
         compile_encode_for_uri_value(expression, location)?
@@ -742,6 +748,43 @@ fn compile_value_expression(
             parse_location_path(expression, location.clone()).map_err(map_path_failure)?,
         )
     })
+}
+
+fn compile_case_conversion_value(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<ValueExpression, CompileFailure> {
+    let expression = parse_case_conversion(expression).map_err(|failure| {
+        let (code, category, detail) = match failure {
+            CaseConversionParseFailure::InvalidArity => (
+                "XPST0017",
+                CompileCategory::Invalid,
+                "case-conversion function has invalid arity",
+            ),
+            CaseConversionParseFailure::InvalidArgumentType => (
+                "XPTY0004",
+                CompileCategory::Invalid,
+                "case-conversion expression has an invalid argument type",
+            ),
+            CaseConversionParseFailure::MissingContext => (
+                "XPDY0002",
+                CompileCategory::Invalid,
+                "case-conversion expression requires an absent context item",
+            ),
+            CaseConversionParseFailure::Unsupported => (
+                "FXXP1015",
+                CompileCategory::Unsupported,
+                "case-conversion expression shape is outside the admitted production slice",
+            ),
+        };
+        CompileFailure {
+            code,
+            category,
+            detail: detail.to_owned(),
+            location: location.clone(),
+        }
+    })?;
+    Ok(ValueExpression::CaseConversion(Box::new(expression)))
 }
 
 fn compile_iri_to_uri_value(

@@ -3,6 +3,9 @@
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{NodeId, StringValueVisitFailure};
+use crate::xpath::case_conversion_experiment::{
+    CaseConversionExpression, CaseFailure, CaseValue, evaluate_compiled as evaluate_case_conversion,
+};
 use crate::xpath::castable_experiment::{
     CastableExpression, evaluate as evaluate_castable, evaluate_value as evaluate_castable_value,
     variable_name as castable_variable_name,
@@ -90,6 +93,9 @@ pub(super) fn execute_value_of(
         ValueExpression::UpperCaseContextString => {
             append_upper_case_context_string(inputs, context, result, control)?;
         }
+        ValueExpression::CaseConversion(expression) => {
+            append_case_conversion(inputs, expression, separator, result, control)?;
+        }
         ValueExpression::Variable(name) => {
             append_variable_value(inputs, name, separator, variables, result, control)?;
         }
@@ -139,6 +145,42 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_case_conversion(
+    inputs: &SequenceInputs<'_>,
+    expression: &CaseConversionExpression,
+    separator: &str,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let value =
+        evaluate_case_conversion(expression, control).map_err(
+            |case_failure| match case_failure {
+                CaseFailure::Control(control) => control_failure(control, inputs.request_id),
+                CaseFailure::InvalidArity
+                | CaseFailure::InvalidArgumentType
+                | CaseFailure::MissingContext
+                | CaseFailure::Unsupported => failure(
+                    "FXRT1014",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    "compiled case-conversion expression failed runtime validation",
+                ),
+            },
+        )?;
+    let value = match value {
+        CaseValue::Boolean(value) => value.to_string(),
+        CaseValue::Empty => String::new(),
+        CaseValue::Integer(value) => value.to_string(),
+        CaseValue::Integers(values) => values
+            .into_iter()
+            .map(|value| value.to_string())
+            .collect::<Vec<_>>()
+            .join(separator),
+        CaseValue::String(value) => value,
+    };
+    append_text(result, &value, inputs.request_id, control)
 }
 
 fn append_focus_sum_for(

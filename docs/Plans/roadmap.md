@@ -23,27 +23,26 @@ ordered-key composition and binary serialization lookup while retaining the
 compact compiled vector.
 [Evidence](../Evidence/character-map-scaling-remediation-2026-09-03.md)
 
-The complete QT3 `default-collation`, `escape-html-uri`, `encode-for-uri`, and
-`iri-to-uri` families now put all 113 selected cases through typed production
+The complete QT3 `default-collation`, `escape-html-uri`, `encode-for-uri`,
+`iri-to-uri`, `lower-case`, and `upper-case` families now put all 168 selected cases through production
 semantics, XSLT execution, and serialization. All four expression families
 reach the same engine through ASP.NET workbench sentinels. The URI
 implementations share their encoding primitives with the earlier semantic code.
 Their QT3 adapters now own only selection, wrapper construction, and assertion
-comparison. The reusable wrapper preserves XPath attribute whitespace with XML
+comparison. The case-conversion path retains one owned, compile-validated
+expression and runs its shared typed evaluator under invocation work control;
+literal codepoint ranges are bounded before allocation. The reusable wrapper preserves XPath attribute whitespace with XML
 character references rather than allowing XML normalization to change a test.
 [Default-collation evidence](../Evidence/qt3-default-collation-denominator-2026-09-03.md)
 [Escape-HTML-URI evidence](../Evidence/qt3-escape-html-uri-denominator-2026-09-03.md)
 [Encode-for-URI evidence](../Evidence/qt3-encode-for-uri-denominator-2026-09-03.md)
 [IRI-to-URI evidence](../Evidence/qt3-iri-to-uri-denominator-2026-09-03.md)
+[Lower-case evidence](../Evidence/qt3-lower-case-denominator-2026-09-03.md)
+[Upper-case evidence](../Evidence/qt3-upper-case-denominator-2026-09-03.md)
 
 Finding 5 remains partially open for the other selected test-only families.
 Continue applying this production-path pattern and prefer existing shared
 semantic primitives over adding another family-specific test-only evaluator.
-The next case-conversion migration must first turn its composed string,
-boolean, integer, and codepoint-sequence forms into one bounded typed production
-plan. Its literal codepoint construction now rejects descending, over-4,096,
-and non-Unicode-scalar ranges before allocation; that hardening is preparation,
-not production-parity evidence.
 Exact fractional `seconds-from-duration` work remains paused until duration
 construction and component access have one typed production path. In parallel,
 the current ADR-0004 cohesion campaign remains active. Its current-state review

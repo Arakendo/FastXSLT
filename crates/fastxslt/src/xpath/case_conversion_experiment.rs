@@ -6,6 +6,25 @@ const CODEPOINT_COLLATION: &str = "http://www.w3.org/2005/xpath-functions/collat
 const MAX_LITERAL_CODEPOINT_RANGE: u32 = 4_096;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct CaseConversionExpression {
+    source: String,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum CaseConversionParseFailure {
+    InvalidArity,
+    InvalidArgumentType,
+    MissingContext,
+    Unsupported,
+}
+
+impl CaseConversionExpression {
+    pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
+        self.source.capacity()
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum CaseValue {
     Boolean(bool),
     Empty,
@@ -21,6 +40,38 @@ pub(crate) enum CaseFailure {
     InvalidArgumentType,
     MissingContext,
     Unsupported,
+}
+
+pub(crate) fn recognizes(expression: &str) -> bool {
+    let expression = expression.trim();
+    expression != "upper-case(.)"
+        && (expression.contains("lower-case") || expression.contains("upper-case"))
+}
+
+pub(crate) fn parse(
+    expression: &str,
+) -> Result<CaseConversionExpression, CaseConversionParseFailure> {
+    if !recognizes(expression) {
+        return Err(CaseConversionParseFailure::Unsupported);
+    }
+    evaluate(expression, &mut InvocationControl::unbounded()).map_err(|failure| match failure {
+        CaseFailure::InvalidArity => CaseConversionParseFailure::InvalidArity,
+        CaseFailure::InvalidArgumentType => CaseConversionParseFailure::InvalidArgumentType,
+        CaseFailure::MissingContext => CaseConversionParseFailure::MissingContext,
+        CaseFailure::Control(_) | CaseFailure::Unsupported => {
+            CaseConversionParseFailure::Unsupported
+        }
+    })?;
+    Ok(CaseConversionExpression {
+        source: expression.to_owned(),
+    })
+}
+
+pub(crate) fn evaluate_compiled(
+    expression: &CaseConversionExpression,
+    control: &mut InvocationControl,
+) -> Result<CaseValue, CaseFailure> {
+    evaluate(&expression.source, control)
 }
 
 pub(crate) fn evaluate(

@@ -10,9 +10,12 @@ Date: 2026-09-03
 
 ## Method
 
-The private case-conversion evaluator applies Rust's Unicode uppercase iterator
+Every selected unchanged expression now compiles through generated XSLT into an
+owned production case-conversion expression and executes through the ordinary
+runtime, result tree, and text serializer. A workbench sentinel reaches the same
+semantic path. The shared evaluator applies Rust's Unicode uppercase iterator
 to each scalar value and preserves expanding mappings. It uses the same bounded
-expression and assertion path as the complementary lowercase denominator.
+expression path as the complementary lowercase denominator.
 
 The selected tranche covers:
 
@@ -47,5 +50,5 @@ Across all complete QT3 overlays, the conserved subtotal is now 1,203 cases:
 
 This evidence does not select a stable Unicode data source or version, claim
 locale-sensitive casing, or admit general XPath function composition. The
-evaluator remains a private semantic slice. A future standards profile must
+production expression remains a private semantic slice. A future standards profile must
 state and verify the Unicode version underlying public case conversion.

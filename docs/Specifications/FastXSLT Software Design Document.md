@@ -360,6 +360,17 @@ expressions and return the codepoint collation URI through the ordinary XSLT
 value and host-workbench paths. Nonzero arity reports `XPST0017`. This remains a
 fixed private static-context slice; it does not expose host-defined collation
 configuration or a general function-call grammar.
+The selected source-free `lower-case()` and `upper-case()` expressions compile
+to an owned, validated private production form and execute one shared typed
+evaluator through the ordinary runtime and host-workbench paths. The admitted
+composition includes literals, optional strings, nested case conversion,
+bounded literal codepoint conversion, string construction, count, boolean/not,
+two-argument concatenation, equality, and boolean conjunction. Literal
+codepoint ranges may contain at most 4,096 valid Unicode scalar values. Case
+mapping uses Rust's toolchain-supplied Unicode tables; Unicode-version-pinned
+cases outside that profile remain excluded. This does not admit
+context-dependent case conversion, general function parsing, or a stable
+Unicode data-source contract.
 The `.//` abbreviation begins descendant navigation at the supplied context
 node, unlike leading `//`, which begins at the document node. Both reuse the
 same typed descendant steps, document-order normalization, deduplication, and
