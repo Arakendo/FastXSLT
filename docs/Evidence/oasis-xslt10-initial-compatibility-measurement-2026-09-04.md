@@ -166,6 +166,6 @@ sampling:
 6. compare every proposed legacy behavior against XSLT 3.0 semantics before
    allowing it to shape the core representation or public profile.
 
-AR-0019 owns the resulting product question: whether this shared-path evidence
-justifies a named XSLT 1.0 compatibility profile and which behaviors require an
-explicit compatibility mode.
+AR-0019 now owns the formal intermediate compatibility checkpoint: determine
+the exact named XSLT 1.0 profile and isolate the behaviors that require explicit
+version-dependent semantics while shared work continues toward XSLT 3.0.

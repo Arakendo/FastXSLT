@@ -1876,9 +1876,9 @@ count:
 4. [ ] Use the complete local OASIS XSLT 1.0 sweep as a compatibility frontier
    under AR-0019. Classify the dominant XPath/instruction groups, resolve or
    explicitly disposition the 20 semantic mismatches, reduce the 14 comparator
-   gaps, and define expected-error credit before deciding whether to select a
-   named compatibility profile. Shared features must land in the modern engine;
-   genuinely version-dependent behavior must remain explicit.
+   gaps, and define expected-error credit before selecting the exact boundaries
+   and claims of the named compatibility profile. Shared features must land in
+   the modern engine; genuinely version-dependent behavior must remain explicit.
 5. [ ] Add complete denominators deliberately, selected by standards and
    implementation pressure rather than easy-case sampling. The remaining
    11,101 XSLT30 and 30,380 QT3 catalog-only cases must stay outside pass/fail
@@ -1930,14 +1930,29 @@ has one explainable execution/comparison outcome.
 
 The current order of work is:
 
-1. continue standards-driven output, mode, XPath, and expression slices while
-   keeping their denominators conserved;
-2. complete the two QT3 parent-set overlays and introduce a validated internal
-   ledger/report loader when duplicated overlay mechanics justify it;
-3. resolve XML-corpus acquisition and begin a distinct adversarial family;
-4. obtain representative consumer transforms and budgets, then use them to
-   prioritize optional compatibility, formal performance workloads, and the
-   supported native/isolated host profiles.
+1. drive shared XPath/XSLT primitives from both the OASIS XSLT 1.0 frontier and
+   the pinned XSLT30/QT3 denominators, implementing each semantic capability
+   once in the modern compiler/runtime;
+2. complete the M4 XSLT 1.0 compatibility checkpoint in five explicit lanes:
+   shared modern primitives, cheap legacy completeness, isolated
+   version-dependent semantics, host-authorized capabilities, and awkward
+   result/serialization behavior;
+3. preserve complete ledger accounting while finishing QT3 parent overlays and
+   introducing a validated immutable report when duplicated mechanics justify
+   it;
+4. pass the XSLT 1.0 checkpoint without freezing the engine around a 1.0 data
+   model, then continue M5 widening against the primary XSLT30/XPath 3.1/XDM
+   3.1 reference editions;
+5. resolve XML-corpus acquisition, establish a distinct adversarial family, and
+   obtain representative consumer transforms and budgets for product-profile,
+   performance, and native/isolated-host decisions.
+
+This ordering makes XSLT 1.0 a formal delivery checkpoint, not the semantic
+foundation. A shared feature may be prioritized by whichever corpus exposes the
+clearest bounded denominator. A genuinely legacy rule must be selected through
+stylesheet static context and must not become the default behavior of modern
+stylesheets. Security-sensitive legacy expectations do not override explicit
+host authority, sealed resources, or bounded execution.
 
 Representative consumer transforms are not a prerequisite for a testable
 standards-driven preview. The pinned W3C suites provide executable stylesheets,
@@ -3132,6 +3147,112 @@ failed, and harness-error cases without an unqualified conformance claim.
 Exit criterion: representative stylesheets compile once, transform multiple
 documents without leaked state, fail through structured diagnostics, and expose
 measured end-to-end behavior to at least one non-Rust consumer.
+
+## M4 -- XSLT 1.0 compatibility checkpoint on the modern core
+
+This milestone is a deliberate delivery step toward the broader modern
+profile. It does not replace ADR-0007's XSLT 3.0/XPath 3.1/XDM 3.1 semantic
+direction and must not create a second compiler, evaluator, result model, or
+host lifecycle.
+
+### Measurement and accounting
+
+- [x] Acquire the archival OASIS Committee Draft 04 suite into ignored local
+  storage, verify its recorded hash, and conserve all 3,173 catalog cases.
+- [x] Establish the first strict lower bound: 366 unchanged XML passes from
+  2,742 standard-operation cases, with expected errors, mismatches, comparator
+  gaps, skipped supplemental data, and infrastructure failures kept separate.
+- [ ] Give each standard and expected-error case one reproducible final
+  disposition under a versioned local overlay/report, applying duplicate-safe
+  identity and doubts/discretionary metadata.
+- [ ] Define the supported-profile denominator independently from unavailable,
+  disputed, processor-specific, extension, or harness-infrastructure cases.
+
+### Shared modern primitives
+
+- [ ] Classify the dominant first-failure groups into semantic families and
+  cross-reference each with the XSLT30/QT3 roadmap before implementation.
+- [ ] Expand the shared XPath grammar, conversions, functions, predicates,
+  axes, node ordering, and sequence behavior required by both profiles.
+- [ ] Implement shared construction and stylesheet facilities, including the
+  required portions of `xsl:element`, `xsl:copy-of`, `xsl:sort`, `xsl:number`,
+  `xsl:key`, attribute sets, match patterns, include/import precedence,
+  namespace fixup, whitespace rules, and serialization.
+- [ ] Require every shared primitive to retain modern semantics, structured
+  diagnostics, charge points, cancellation, source provenance, and at least one
+  modern or cross-version regression where applicable.
+
+### Compatibility-only behavior
+
+- [ ] Inventory observable XSLT 1.0 differences in conversions, boolean/value
+  coercion, result tree fragments, conflict/error recovery, forwards-compatible
+  processing, namespace handling, and serialization.
+- [ ] Select genuine version-dependent behavior once during compilation/static
+  analysis and lower it into typed plan semantics. Do not add a recurring
+  version check to ordinary hot-path node visits or expression operations.
+- [ ] Retain a modern reference path or differential oracle for every
+  compatibility specialization where the two editions intentionally differ.
+- [ ] Resolve or explicitly classify all currently known executing mismatches
+  before using the suite percentage as a release indicator.
+
+### Authority and result boundaries
+
+- [ ] Admit supplemental documents and `document()` only through bounded sealed
+  resources or a later explicitly authorized resolver contract; never infer
+  filesystem/network permission from a legacy URI.
+- [ ] Keep extension functions optional and host-supplied. Absence must remain
+  an explainable capability outcome rather than partial success.
+- [ ] Decide the exact supported XML input and output encodings without
+  weakening DTD/entity policy or conflating comparator decoding with engine
+  serialization support.
+- [ ] Treat `disable-output-escaping` and other serialization-sensitive legacy
+  behavior as focused result/serializer work. Do not encode it as malformed
+  nodes in the semantic result tree.
+
+### Release evidence
+
+- [ ] Run the supported XSLT 1.0 profile through direct Rust, native .NET, and
+  isolated-worker lifecycle sentinels with diagnostic parity.
+- [ ] Add exact compatible workload comparisons against available maintained
+  XSLT 1.0 processors only after correctness gates, recording process boundary,
+  compile/prepared reuse, encodings, and algorithm differences.
+- [ ] Accept or supersede AR-0019 with an ADR defining stylesheet version
+  recognition, compatibility behavior, exclusions, reporting language, and the
+  relationship to ADR-0007.
+- [ ] Publish no `XSLT 1.0 compliant` or equivalent claim until the applicable
+  conformance requirements and complete selected denominator have been reviewed
+  explicitly.
+
+Exit criterion: FastXSLT has a named, documented XSLT 1.0 compatibility profile
+whose complete selected denominator has one explainable disposition per case;
+all supported cases execute through the shared bounded modern engine; all
+version-dependent semantics and authority exclusions are explicit; and no
+legacy rule has become the accidental default for XSLT 3.0 stylesheets.
+
+## M5 -- Broaden the staged XSLT 3.0 profile
+
+M4 is a checkpoint, not a stopping point. After its shared primitives and
+compatibility boundary are stable, continue widening directly against the
+pinned XSLT30, QT3, XDM 3.1, and Serialization 3.1 sources.
+
+- [ ] Re-run every conserved modern denominator after each compatibility
+  tranche and reject any legacy-mode leakage into modern stylesheet behavior.
+- [ ] Expand complete XSLT30/QT3 semantic families in dependency order, using
+  the shared XPath, construction, sorting, indexing, numbering, resource, and
+  serialization foundations established during M4.
+- [ ] Complete the general XDM sequence/value, function, map, array, QName,
+  namespace, and type behavior required by the selected modern profile without
+  exposing private representations prematurely.
+- [ ] Add modern-only XSLT facilities through the same compile-once,
+  prepare/reuse, bounded invocation, structured diagnostic, and host-neutral
+  lifecycle.
+- [ ] Define any formal XSLT 3.0 conformance target and its optional-feature
+  choices through a later evidence-backed decision; growing corpus coverage
+  alone does not create that claim.
+
+Exit criterion: a later accepted profile defines what FastXSLT means by its
+supported XSLT 3.0 coverage, and a reproducible conserved report demonstrates
+that profile through the same engine and host boundaries proven at M4.
 
 ## Later candidates
 

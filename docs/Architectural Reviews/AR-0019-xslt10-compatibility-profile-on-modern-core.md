@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Incubating |
+| Status | Under Review |
 | Opened | 2026-09-04 |
 | Last reviewed | 2026-09-04 |
 | Scope | Named XSLT 1.0 compatibility, backwards-compatible behavior, and shared modern execution |
@@ -122,11 +122,38 @@ The key unknown is the compatibility delta after shared blockers shrink:
   functions, and uncommon encodings without misusing the term conformance; and
 - whether consumer demand justifies the remaining compatibility-only work.
 
+Implementation and corpus findings will be classified into five lanes:
+
+1. **Shared modern primitives** -- XPath, construction, sorting, keys, numbering,
+   patterns, imports, namespaces, and serialization capabilities that strengthen
+   both the XSLT 1.0 checkpoint and the staged XSLT 3.0 profile.
+2. **Cheap XSLT 1.0 completeness features** -- bounded work that closes a
+   meaningful legacy denominator without distorting modern semantics or public
+   architecture.
+3. **Legacy compatibility semantics** -- conversion, result-tree-fragment,
+   conflict, recovery, or other edition-sensitive behavior selected explicitly
+   from stylesheet static context.
+4. **Host-authorized capabilities** -- `document()`, URI/resource acquisition,
+   and extension surfaces that must compose with sealed snapshots and explicit
+   host authority rather than recreate ambient legacy behavior.
+5. **Historically awkward result behavior** -- especially
+   `disable-output-escaping` and legacy serialization details, which require an
+   owned result/serialization contract and must not contaminate the clean
+   semantic result model.
+
+This classification is a routing rule, not a promise that every item in every
+lane will be supported. It makes the compatibility campaign a formal checkpoint
+on the modern path while preserving an explicit stop/review point for behavior
+that does not belong in the shared engine.
+
 ## Disposition
 
-**Incubating.** Continue shared-path corpus work and measure the compatibility
-delta. Do not select an XSLT 1.0 product claim, separate backend, or public
-version-mode contract yet.
+**Under Review.** The roadmap now selects a named XSLT 1.0 compatibility
+checkpoint as an intermediate implementation path toward broader XSLT 3.0
+coverage. Work is routed through the five lanes above and the shared modern
+compiler/runtime remains mandatory. This does not yet select the exact
+advertised profile, claim conformance, admit a separate backend, or stabilize a
+public version-mode contract.
 
 ## Required follow-up
 
@@ -135,6 +162,8 @@ version-mode contract yet.
   expected failures.
 - [x] Prove at least one legacy-discovered defect can be repaired through the
   shared modern runtime.
+- [x] Add a formal XSLT 1.0 compatibility checkpoint and subsequent modern
+  expansion milestone to the project roadmap.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 20 known semantic mismatches.
@@ -160,3 +189,6 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Opened as Incubating after the first complete local OASIS sweep
   established 366 definite unchanged XML passes and repaired one shared-runtime
   defect.
+- 2026-09-04 -- Moved Under Review after the project selected XSLT 1.0 as a
+  formal intermediate compatibility checkpoint on the way to broader XSLT 3.0
+  coverage, without changing ADR-0007's modern semantic foundation.

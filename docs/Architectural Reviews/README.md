@@ -110,5 +110,6 @@ and add the record to this index. Never reuse a retired number.
   persist, reconcile, retry, or quarantine ambiguous worker loss without moving
   durable workflow policy into FastXSLT.
 - [AR-0019: XSLT 1.0 Compatibility Profile on the Modern Core](AR-0019-xslt10-compatibility-profile-on-modern-core.md)
-  -- Incubating; measure whether a named legacy profile can reuse the modern
-  compiler/runtime while isolating only genuinely version-dependent behavior.
+  -- Under Review; XSLT 1.0 is now a formal intermediate roadmap checkpoint on
+  the shared modern compiler/runtime, while exact compatibility semantics and
+  the eventual advertised profile remain under evidence-led review.
