@@ -8,7 +8,9 @@ use super::constant_boolean_experiment::{
 use super::effective_boolean_value_experiment::{
     EffectiveBooleanFailure, evaluate as evaluate_document_ebv,
 };
-use super::qt3_production_path_test_support::{compile_expression, execute_expression};
+use super::qt3_production_path_test_support::{
+    compile_expression, execute_expression, execute_expression_with_source,
+};
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::qt3_overlay_test_support::{assert_private_case_passed, assert_selected_count};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
@@ -164,7 +166,7 @@ fn executes_qt3_document_aware_effective_boolean_value_tranche() {
         let mut control = InvocationControl::unbounded();
 
         assert_private_case_passed(set_file, case_name);
-        match evaluate_document_ebv(
+        let direct = evaluate_document_ebv(
             &expression,
             &document,
             &SourceLocation {
@@ -172,11 +174,12 @@ fn executes_qt3_document_aware_effective_boolean_value_tranche() {
                 span: 0..expression.len(),
             },
             &mut control,
-        ) {
+        );
+        match &direct {
             Ok(actual) => assert_native_result(
                 &test_set,
                 result,
-                &ScalarValue::Boolean(actual),
+                &ScalarValue::Boolean(*actual),
                 case_name,
                 &expression,
             ),
@@ -184,6 +187,24 @@ fn executes_qt3_document_aware_effective_boolean_value_tranche() {
                 assert_expected_error(&test_set, result, "FORG0006");
             }
             Err(failure) => panic!("selected QT3 EBV case failed: {case_name}: {failure:?}"),
+        }
+        let program = compile_expression(case_name, &expression).unwrap_or_else(|failure| {
+            panic!("production compile failed for {case_name}: {failure:?}")
+        });
+        let production = execute_expression_with_source(&program, &document, case_name);
+        match direct {
+            Ok(expected) => assert_eq!(
+                production.expect("production document-aware EBV should execute"),
+                expected.to_string(),
+                "production QT3 assertion for {case_name}: {expression}"
+            ),
+            Err(EffectiveBooleanFailure::InvalidTypeOrCardinality) => assert!(
+                production
+                    .expect_err("production document-aware EBV should fail")
+                    .contains("FORG0006"),
+                "production QT3 diagnostic for {case_name}: {expression}"
+            ),
+            Err(failure) => unreachable!("direct failure was already rejected: {failure:?}"),
         }
         assert!(control.consumed(WorkDomain::XPathOperation) > 0);
     }

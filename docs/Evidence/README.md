@@ -171,6 +171,7 @@ pressure architecture but does not silently create a public guarantee.
 - [QT3 Years-From-Duration Denominator](qt3-years-from-duration-denominator-2026-09-03.md)
 - [QT3 Deep-Equal Production Path](qt3-deep-equal-production-path-2026-09-03.md)
 - [QT3 Source-Free Boolean Production Path](qt3-source-free-boolean-production-path-2026-09-03.md)
+- [QT3 Document-Aware Boolean Production Path](qt3-document-aware-boolean-production-path-2026-09-03.md)
 - [QT3 Months-From-Duration Denominator](qt3-months-from-duration-denominator-2026-09-03.md)
 - [QT3 Days-From-Duration Denominator](qt3-days-from-duration-denominator-2026-09-03.md)
 - [QT3 Hour and Minute Duration Denominators](qt3-hour-minute-duration-denominators-2026-09-03.md)

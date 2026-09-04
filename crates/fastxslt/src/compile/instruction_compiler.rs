@@ -25,6 +25,10 @@ use crate::xpath::duration_component_experiment::{
     DurationComponentParseFailure, parse as parse_duration_component,
     recognizes as recognizes_duration_component,
 };
+use crate::xpath::effective_boolean_value_experiment::{
+    EffectiveBooleanFailure, parse as parse_document_boolean,
+    recognizes as recognizes_document_boolean,
+};
 use crate::xpath::empty_experiment::{
     SequenceCardinalityParseFailure, parse_source_free as parse_sequence_cardinality,
     recognizes_source_free as recognizes_sequence_cardinality,
@@ -665,6 +669,10 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
     })
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "the ordered typed expression-family dispatch is one cohesive responsibility"
+)]
 fn compile_value_expression(
     document: &Document,
     element: NodeId,
@@ -700,6 +708,8 @@ fn compile_value_expression(
         compile_deep_equal_value(expression, location)?
     } else if recognizes_sequence_cardinality(expression) {
         compile_sequence_cardinality_value(expression, location)?
+    } else if recognizes_document_boolean(expression) {
+        compile_document_boolean_value(expression, location)?
     } else if recognizes_source_free_scalar(expression) {
         compile_source_free_scalar_value(expression, location)?
     } else if expression.contains(" castable as ") {
@@ -771,6 +781,30 @@ fn compile_value_expression(
             parse_location_path(expression, location.clone()).map_err(map_path_failure)?,
         )
     })
+}
+
+fn compile_document_boolean_value(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<ValueExpression, CompileFailure> {
+    let expression =
+        parse_document_boolean(expression, location).map_err(|failure| match failure {
+            EffectiveBooleanFailure::Path(failure) => map_path_failure(failure),
+            EffectiveBooleanFailure::InvalidTypeOrCardinality => invalid(
+                "FORG0006",
+                "effective boolean value is undefined for the supplied sequence",
+                location,
+            ),
+            EffectiveBooleanFailure::Control(_) => {
+                unreachable!("compilation performs no work charges")
+            }
+            EffectiveBooleanFailure::Unsupported => unsupported(
+                "FXXP1020",
+                "document-aware boolean expression is outside the admitted production slice",
+                location,
+            ),
+        })?;
+    Ok(ValueExpression::DocumentBoolean(Box::new(expression)))
 }
 
 fn compile_source_free_scalar_value(

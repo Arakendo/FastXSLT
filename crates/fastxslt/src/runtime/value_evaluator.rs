@@ -25,6 +25,10 @@ use crate::xpath::duration_component_experiment::{
     DurationComponentExpression, DurationFailure, DurationValue,
     evaluate_compiled as evaluate_duration_component,
 };
+use crate::xpath::effective_boolean_value_experiment::{
+    DocumentBooleanExpression, EffectiveBooleanFailure,
+    evaluate_compiled as evaluate_document_boolean,
+};
 use crate::xpath::empty_experiment::{
     EmptyFailure, SequenceCardinalityExpression,
     evaluate_compiled_source_free as evaluate_sequence_cardinality,
@@ -155,6 +159,9 @@ pub(super) fn execute_value_of(
         ValueExpression::SourceFreeScalar(expression) => {
             append_source_free_scalar(inputs, expression, result, control)?;
         }
+        ValueExpression::DocumentBoolean(expression) => {
+            append_document_boolean(inputs, expression, context, result, control)?;
+        }
         ValueExpression::EncodeForUri(expression) => {
             append_encode_for_uri(inputs, expression, result, control)?;
         }
@@ -176,6 +183,37 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_document_boolean(
+    inputs: &SequenceInputs<'_>,
+    expression: &DocumentBooleanExpression,
+    context: Option<NodeId>,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, _) = required_source_context(inputs, context)?;
+    let value =
+        evaluate_document_boolean(expression, source, control).map_err(|evaluation_failure| {
+            match evaluation_failure {
+                EffectiveBooleanFailure::Control(control) => {
+                    control_failure(control, inputs.request_id)
+                }
+                EffectiveBooleanFailure::InvalidTypeOrCardinality => failure(
+                    "FORG0006",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    "effective boolean value is undefined for the supplied sequence",
+                ),
+                EffectiveBooleanFailure::Path(_) | EffectiveBooleanFailure::Unsupported => failure(
+                    "FXRT1020",
+                    FailureCategory::Unsupported,
+                    Some(inputs.request_id),
+                    "compiled document-aware boolean expression violated its runtime contract",
+                ),
+            }
+        })?;
+    append_boolean(inputs, value, result, control)
 }
 
 fn append_source_free_scalar(

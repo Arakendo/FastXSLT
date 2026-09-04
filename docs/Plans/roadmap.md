@@ -29,8 +29,10 @@ year/month/day/hour/minute duration-component families, plus `normalize-space`
 and `codepoint-equal`, and the source-free `empty`/`exists` cardinality families,
 plus `deep-equal`, now put all 692 selected
 cases through production semantics, XSLT execution, and serialization. The
-`true`, `false`, and source-free portions of `not` and `boolean` add 245 more,
-bringing the production-backed selected subtotal to 937. Every
+`true`, `false`, `not`, and `boolean` add 254 more, bringing the
+production-backed selected subtotal to 946. The nine document-aware EBV cases
+compile their paths once and preserve node-first versus atomic-first sequence
+behavior. Every
 migrated semantic family reaches the same engine through ASP.NET workbench
 sentinels. The URI
 implementations share their encoding primitives with the earlier semantic code.
@@ -56,6 +58,7 @@ character references rather than allowing XML normalization to change a test.
 [Exists evidence](../Evidence/qt3-exists-function-initial-denominator-2026-09-03.md)
 [Deep-equal production-path evidence](../Evidence/qt3-deep-equal-production-path-2026-09-03.md)
 [Source-free boolean production-path evidence](../Evidence/qt3-source-free-boolean-production-path-2026-09-03.md)
+[Document-aware boolean production-path evidence](../Evidence/qt3-document-aware-boolean-production-path-2026-09-03.md)
 
 Finding 5 remains partially open for the other selected test-only families.
 Continue applying this production-path pattern and prefer existing shared

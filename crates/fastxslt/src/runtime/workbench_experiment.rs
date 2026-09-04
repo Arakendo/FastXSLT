@@ -699,6 +699,25 @@ mod tests {
     }
 
     #[test]
+    fn production_document_boolean_reaches_the_workbench_host_path() {
+        let engine = ExperimentalEngine::new(
+            "urn:fastxslt:boolean:document:source",
+            b"<auction><Open/></auction>".to_vec(),
+            "urn:fastxslt:boolean:document:stylesheet",
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="boolean(//*:Open)"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("production document-aware boolean expression should compile");
+
+        assert_eq!(
+            engine
+                .transform("document-boolean-workbench")
+                .expect("production document-aware boolean expression should execute"),
+            "true"
+        );
+    }
+
+    #[test]
     fn production_string_length_expression_reaches_the_workbench_host_path() {
         let engine = ExperimentalEngine::new(
             "urn:fastxslt:string-length:source",

@@ -19,7 +19,7 @@ admitted behavior that the earlier review did not cover.
 | 2. Cross-kind lexical shadowing | Resolved 2026-09-03 | Every local binding clears competing value kinds and suppresses same-name global fallback. The source-node-over-global-atomic counterexample passes through shared and complete-clone frames. |
 | 3. Untaken creation outcome | Resolved 2026-09-03 | Releasing the outcome reclaims its engine and capacity; concurrent take/release has one linearized owner. |
 | 4. Character-map scaling | Resolved 2026-09-03 | Release-mode measurements confirmed both adverse curves. Compilation now composes through an ordered keyed map and retains a sorted compact vector; serialization uses binary lookup. |
-| 5. Test-only QT3 semantics | Partially remediated 2026-09-03 | Nineteen complete families plus source-free portions of `not` and `boolean` now put 937 selected cases through production semantics, XSLT execution, serialization, and workbench sentinels. The nine document-aware EBV cases remain separate. Other selected test-only families remain migration debt. |
+| 5. Test-only QT3 semantics | Partially remediated 2026-09-03 | Twenty-one complete families now put 946 selected cases through production semantics, XSLT execution, serialization, and workbench sentinels. The `not` and `boolean` families include their nine document-aware EBV cases. Other selected test-only families remain migration debt. |
 | 6. Worker command queue | Resolved 2026-09-03 | The shared event channel has capacity one and a focused backpressure test proves a second decoded event cannot be queued. |
 | 7. Source-unit reopening | Review obligation resolved 2026-09-03; campaign active | Current responsibilities and line counts are inventoried, compiler tests are extracted, and serializer/compiler/runtime checkpoints have named one-way seams and conservation gates. |
 
@@ -325,9 +325,10 @@ one owned source-free production cardinality form. The complete selected
 `deep-equal` tranche adds 184 cases and preserves its direct evaluator as a
 focused work-accounting oracle beside the production result. Production
 compilation now preserves `XPST0017` for invalid deep-equal arity rather than
-flattening it to a private code. The `true`, `false`, and source-free `not` and
-`boolean` selections add 245 cases through one owned production scalar AST;
-their direct evaluator remains the work-accounting oracle. Each unchanged selected expression is compiled
+flattening it to a private code. The `true`, `false`, `not`, and `boolean`
+selections add 254 cases through owned production scalar and document-aware
+EBV forms; their direct evaluators remain work-accounting oracles. Each
+unchanged selected expression is compiled
 into typed production semantics and executed through the real XSLT runtime and serializer;
 additional sentinels reach all production expression families through the
 ASP.NET workbench engine. The three URI paths also share their encoding
@@ -351,6 +352,7 @@ but do not resolve the remaining test-only families.
 [Exists evidence](../Evidence/qt3-exists-function-initial-denominator-2026-09-03.md)
 [Deep-equal production-path evidence](../Evidence/qt3-deep-equal-production-path-2026-09-03.md)
 [Source-free boolean production-path evidence](../Evidence/qt3-source-free-boolean-production-path-2026-09-03.md)
+[Document-aware boolean production-path evidence](../Evidence/qt3-document-aware-boolean-production-path-2026-09-03.md)
 
 Severity:
 - Medium

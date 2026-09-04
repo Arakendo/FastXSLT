@@ -392,8 +392,15 @@ compile into an owned scalar AST and execute under invocation work control.
 The admitted form preserves short-circuiting, boolean comparisons, effective
 boolean values for bounded literal atomic sequences, and the selected string
 projection compositions. Invalid arity remains `XPST0017` and undefined atomic
-effective boolean value remains `FORG0006`. This does not admit document-aware
-focus, arbitrary sequences, general scalar expressions, or a public XPath AST.
+effective boolean value remains `FORG0006`. This source-free form does not admit
+document focus, arbitrary sequences, general scalar expressions, or a public
+XPath AST.
+The selected document-aware `not()` and `boolean()` expressions compile root or
+descendant paths and ordered literal/path sequences into a separate owned form.
+Runtime EBV observes whether a node or atomic value occurs first, preserves
+empty node-sequence behavior, and reports `FORG0006` for an atomic-first
+multi-item sequence. This does not admit general sequence construction,
+atomization, or arbitrary document-aware scalar composition.
 The selected `string-length()` expressions compile to a private production form
 that distinguishes source-free compositions from one document-path argument.
 The shared typed evaluator counts Unicode scalar values, preserves lazy

@@ -6,7 +6,9 @@ use crate::xdm::owned_tree_experiment::{Document, SourceLocation};
 use super::deep_equal_atomic::{
     EffectiveBooleanValueFailure, parse_effective_boolean_value, split_top_level_once,
 };
-use super::path_experiment::{PathFailure, evaluate_location_path_controlled, parse_location_path};
+use super::path_experiment::{
+    LocationPath, PathFailure, evaluate_location_path_controlled, parse_location_path,
+};
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum EffectiveBooleanFailure {
@@ -23,12 +25,59 @@ enum EffectiveItem {
     InvalidAtomic,
 }
 
-pub(crate) fn evaluate(
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct DocumentBooleanExpression {
+    negate: bool,
+    items: Vec<DocumentBooleanItem>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum DocumentBooleanItem {
+    Atomic(EffectiveItem),
+    Path(LocationPath),
+}
+
+impl DocumentBooleanExpression {
+    #[cfg(feature = "workbench")]
+    pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
+        self.items.capacity() * std::mem::size_of::<DocumentBooleanItem>()
+            + self
+                .items
+                .iter()
+                .map(|item| match item {
+                    DocumentBooleanItem::Atomic(_) => 0,
+                    DocumentBooleanItem::Path(path) => path.known_owned_capacity_bytes(),
+                })
+                .sum::<usize>()
+    }
+}
+
+pub(crate) fn recognizes(expression: &str) -> bool {
+    let expression = expression.trim();
+    (expression.starts_with("not(")
+        || expression.starts_with("fn:not(")
+        || expression.starts_with("boolean(")
+        || expression.starts_with("fn:boolean("))
+        && contains_unquoted_slash(expression)
+}
+
+fn contains_unquoted_slash(expression: &str) -> bool {
+    let mut quote = None;
+    for character in expression.chars() {
+        match (quote, character) {
+            (Some(active), current) if current == active => quote = None,
+            (None, '\'' | '"') => quote = Some(character),
+            (None, '/') => return true,
+            _ => {}
+        }
+    }
+    false
+}
+
+pub(crate) fn parse(
     expression: &str,
-    document: &Document,
     location: &SourceLocation,
-    control: &mut InvocationControl,
-) -> Result<bool, EffectiveBooleanFailure> {
+) -> Result<DocumentBooleanExpression, EffectiveBooleanFailure> {
     let expression = expression.trim();
     let (argument, negate) =
         if let Some(argument) = function_argument(expression, &["not", "fn:not"]) {
@@ -38,18 +87,50 @@ pub(crate) fn evaluate(
         } else {
             return Err(EffectiveBooleanFailure::Unsupported);
         };
+    let mut items = Vec::new();
+    parse_sequence(
+        strip_outer_parentheses(argument.trim()),
+        location,
+        &mut items,
+    )?;
+    Ok(DocumentBooleanExpression { negate, items })
+}
 
+#[cfg(test)]
+pub(crate) fn evaluate(
+    expression: &str,
+    document: &Document,
+    location: &SourceLocation,
+    control: &mut InvocationControl,
+) -> Result<bool, EffectiveBooleanFailure> {
+    let expression = parse(expression, location)?;
+    evaluate_compiled(&expression, document, control)
+}
+
+pub(crate) fn evaluate_compiled(
+    expression: &DocumentBooleanExpression,
+    document: &Document,
+    control: &mut InvocationControl,
+) -> Result<bool, EffectiveBooleanFailure> {
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(EffectiveBooleanFailure::Control)?;
     let mut items = Vec::new();
-    evaluate_sequence(
-        strip_outer_parentheses(argument.trim()),
-        document,
-        location,
-        control,
-        &mut items,
-    )?;
+    for item in &expression.items {
+        match item {
+            DocumentBooleanItem::Atomic(item) => items.push(*item),
+            DocumentBooleanItem::Path(path) => {
+                let nodes = evaluate_location_path_controlled(
+                    document,
+                    document.document_node(),
+                    path,
+                    control,
+                )
+                .map_err(EffectiveBooleanFailure::Control)?;
+                items.extend(nodes.into_iter().map(|_| EffectiveItem::Node));
+            }
+        }
+    }
     let value = match items.as_slice() {
         [] => false,
         [EffectiveItem::Atomic(value)] => *value,
@@ -58,38 +139,33 @@ pub(crate) fn evaluate(
             return Err(EffectiveBooleanFailure::InvalidTypeOrCardinality);
         }
     };
-    Ok(value ^ negate)
+    Ok(value ^ expression.negate)
 }
 
-fn evaluate_sequence(
+fn parse_sequence(
     expression: &str,
-    document: &Document,
     location: &SourceLocation,
-    control: &mut InvocationControl,
-    items: &mut Vec<EffectiveItem>,
+    items: &mut Vec<DocumentBooleanItem>,
 ) -> Result<(), EffectiveBooleanFailure> {
     if expression == "()" {
         return Ok(());
     }
     if let Some((left, right)) = split_top_level_once(expression) {
-        evaluate_sequence(left.trim(), document, location, control, items)?;
-        return evaluate_sequence(right.trim(), document, location, control, items);
+        parse_sequence(left.trim(), location, items)?;
+        return parse_sequence(right.trim(), location, items);
     }
     if let Some(value) = parse_effective_boolean_value(expression) {
-        items.push(match value {
+        items.push(DocumentBooleanItem::Atomic(match value {
             Ok(value) => EffectiveItem::Atomic(value),
             Err(EffectiveBooleanValueFailure::InvalidTypeOrCardinality) => {
                 EffectiveItem::InvalidAtomic
             }
-        });
+        }));
         return Ok(());
     }
     let path =
         parse_location_path(expression, location.clone()).map_err(EffectiveBooleanFailure::Path)?;
-    let nodes =
-        evaluate_location_path_controlled(document, document.document_node(), &path, control)
-            .map_err(EffectiveBooleanFailure::Control)?;
-    items.extend(nodes.into_iter().map(|_| EffectiveItem::Node));
+    items.push(DocumentBooleanItem::Path(path));
     Ok(())
 }
 
@@ -111,7 +187,7 @@ fn strip_outer_parentheses(expression: &str) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use super::{EffectiveBooleanFailure, evaluate};
+    use super::{EffectiveBooleanFailure, evaluate, recognizes};
     use crate::execution_control_experiment::{InvocationControl, WorkDomain};
     use crate::xdm::owned_tree_experiment::{Document, SourceLocation};
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
@@ -163,5 +239,11 @@ mod tests {
             ),
             Err(EffectiveBooleanFailure::InvalidTypeOrCardinality)
         );
+    }
+
+    #[test]
+    fn recognition_ignores_slashes_inside_atomic_string_literals() {
+        assert!(recognizes("boolean(//*:Open)"));
+        assert!(!recognizes("not(xs:anyURI(\"example.com/\"))"));
     }
 }
