@@ -34,7 +34,9 @@ raises it to 481. The following
 [named processing-instruction path tranche](oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md)
 raises it to 485. The following
 [context name and PI pattern tranche](oasis-xslt10-context-name-and-pi-pattern-tranche-2026-09-04.md)
-raises it to 514.
+raises it to 514. The following
+[context expanded-name tranche](oasis-xslt10-context-expanded-name-tranche-2026-09-04.md)
+raises it to 519.
 
 ## Outcome
 

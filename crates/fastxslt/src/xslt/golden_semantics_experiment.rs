@@ -488,6 +488,8 @@ pub(crate) enum ValueExpression {
     },
     GeneratedDocumentRootIdentity(DocumentRootReference),
     ContextNodeName,
+    ContextNodeLocalName,
+    ContextNodeNamespaceUri,
     ContextRequiredOnly(SourceLocation),
     UpperCaseContextString,
     CaseConversion(Box<CaseConversionExpression>),

@@ -1021,6 +1021,10 @@ fn compile_value_expression(
         root
     } else if matches!(expression.trim(), "name()" | "name(.)") {
         ValueExpression::ContextNodeName
+    } else if matches!(expression.trim(), "local-name()" | "local-name(.)") {
+        ValueExpression::ContextNodeLocalName
+    } else if matches!(expression.trim(), "namespace-uri()" | "namespace-uri(.)") {
+        ValueExpression::ContextNodeNamespaceUri
     } else if expression.trim() == "upper-case(.)" {
         ValueExpression::UpperCaseContextString
     } else if let Some((literal, variable)) = parse_literal_variable_concat(expression) {

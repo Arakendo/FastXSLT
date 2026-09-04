@@ -113,6 +113,12 @@ pub(super) fn execute_value_of(
         ValueExpression::ContextNodeName => {
             append_context_node_name(inputs, context, result, control)?;
         }
+        ValueExpression::ContextNodeLocalName => {
+            append_context_node_local_name(inputs, context, result, control)?;
+        }
+        ValueExpression::ContextNodeNamespaceUri => {
+            append_context_node_namespace_uri(inputs, context, result, control)?;
+        }
         ValueExpression::ContextRequiredOnly(location) => {
             if context.is_none() {
                 return Err(failure_at(
@@ -991,6 +997,41 @@ fn append_context_node_name(
         ));
     }
     append_text(result, &name.local, inputs.request_id, control)
+}
+
+fn append_context_node_local_name(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    if let Some(name) = source.name(context) {
+        append_text(result, &name.local, inputs.request_id, control)?;
+    }
+    Ok(())
+}
+
+fn append_context_node_namespace_uri(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    if let Some(namespace) = source
+        .name(context)
+        .and_then(|name| name.namespace.as_deref())
+    {
+        append_text(result, namespace, inputs.request_id, control)?;
+    }
+    Ok(())
 }
 
 fn execute_deep_equal(

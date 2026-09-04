@@ -867,6 +867,38 @@ fn context_node_name_refuses_to_fabricate_a_namespaced_lexical_qname() {
 }
 
 #[test]
+fn context_local_name_and_namespace_uri_use_the_expanded_name() {
+    const SOURCE: &str = "urn:fastxslt:expanded-name-context:source";
+    const STYLESHEET: &str = "urn:fastxslt:expanded-name-context:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc xmlns:p="urn:example"><p:item/></doc>"#.to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:example"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:apply-templates select="doc/*"/></xsl:template><xsl:template match="p:item"><out><xsl:value-of select="local-name()"/>|<xsl:value-of select="namespace-uri()"/>|<xsl:value-of select="local-name(.)"/>|<xsl:value-of select="namespace-uri(.)"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile expanded-name operations");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("expanded-name", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute expanded-name operations");
+    assert_eq!(
+        results.by_request["expanded-name"].serialized,
+        "<out xmlns:p=\"urn:example\">item|urn:example|item|urn:example</out>"
+    );
+}
+
+#[test]
 fn unqualified_name_comparison_does_not_match_a_namespaced_parent() {
     const SOURCE: &str = "urn:fastxslt:parent-name:source";
     const STYLESHEET: &str = "urn:fastxslt:parent-name:stylesheet";
