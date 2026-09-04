@@ -209,6 +209,9 @@ public version-mode contract.
 - [x] Compose `name(..)` with the existing typed singleton parent path, raising
   the strict lower bound to 527 without selecting general multi-node legacy
   conversion behavior.
+- [x] Count the complete context XDM string value for no-argument
+  `string-length()`, raising the strict lower bound to 529 with Unicode and
+  missing-focus behavior preserved.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -284,6 +287,8 @@ maintained redistributable legacy suite becomes available.
   two additional initialized cases stop at visible later execution boundaries.
 - 2026-09-04 -- Typed singleton-parent `name(..)` composition raised the lower
   bound from 525 to 527; both newly initialized cases pass.
+- 2026-09-04 -- Typed context `string-length()` raised the lower bound from 527
+  to 529; both newly initialized cases pass without a new later boundary.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

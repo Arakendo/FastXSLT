@@ -961,6 +961,34 @@ fn context_normalize_space_streams_across_descendant_text_boundaries() {
 }
 
 #[test]
+fn context_string_length_counts_unicode_across_descendant_text_boundaries() {
+    const SOURCE: &str = "urn:fastxslt:context-string-length:source";
+    const STYLESHEET: &str = "urn:fastxslt:context-string-length:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, "<doc>a<part>🦀</part>é</doc>".as_bytes().to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:apply-templates select="doc"/></xsl:template><xsl:template match="doc"><out><xsl:value-of select="string-length()"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile context string length");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("context-string-length", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute context string length");
+    assert_eq!(
+        results.by_request["context-string-length"].serialized,
+        "<out>3</out>"
+    );
+}
+
+#[test]
 fn value_of_position_and_last_use_the_current_sequence_focus() {
     const SOURCE: &str = "urn:fastxslt:value-focus:source";
     const STYLESHEET: &str = "urn:fastxslt:value-focus:stylesheet";

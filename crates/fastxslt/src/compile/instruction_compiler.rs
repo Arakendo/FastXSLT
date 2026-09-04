@@ -952,6 +952,9 @@ fn compile_value_expression(
     ) {
         return Ok(ValueExpression::ContextNodeNormalizedString);
     }
+    if expression.trim() == "string-length()" {
+        return Ok(ValueExpression::ContextNodeStringLength(location.clone()));
+    }
     if expression.trim() == "position()" {
         return Ok(ValueExpression::ContextPosition(location.clone()));
     }

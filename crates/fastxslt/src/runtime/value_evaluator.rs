@@ -128,6 +128,9 @@ pub(super) fn execute_value_of(
         ValueExpression::ContextNodeNormalizedString => {
             append_context_node_normalized_string(inputs, context, result, control)?;
         }
+        ValueExpression::ContextNodeStringLength(location) => {
+            append_context_node_string_length(inputs, context, location, result, control)?;
+        }
         ValueExpression::ContextPosition(location) => {
             append_context_focus_value(inputs, focus, true, location, result, control)?;
         }
@@ -1113,6 +1116,50 @@ fn append_context_node_normalized_string(
             StringValueVisitFailure::Sink(failure) => failure,
         })?;
     append_text(result, &normalized, inputs.request_id, control)
+}
+
+fn append_context_node_string_length(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    location: &SourceLocation,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    if context.is_none() {
+        return Err(failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            "string-length() requires a context item",
+        ));
+    }
+    let (source, context) = required_source_context(inputs, context)?;
+    let mut length = 0_usize;
+    source
+        .visit_string_value_controlled(context, control, &mut |part, control| {
+            for _ in part.chars() {
+                control
+                    .charge(WorkDomain::XPathOperation, 1)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                length = length.checked_add(1).ok_or_else(|| {
+                    failure(
+                        "FOAR0002",
+                        FailureCategory::Invalid,
+                        Some(inputs.request_id),
+                        "context string length exceeds the supported integer range",
+                    )
+                })?;
+            }
+            Ok(())
+        })
+        .map_err(|failure| match failure {
+            StringValueVisitFailure::Control(failure) => {
+                control_failure(failure, inputs.request_id)
+            }
+            StringValueVisitFailure::Sink(failure) => failure,
+        })?;
+    append_text(result, &length.to_string(), inputs.request_id, control)
 }
 
 fn append_context_focus_value(
