@@ -327,7 +327,11 @@ fn compile_static_computed_element_name(
     namespace_override: Option<&str>,
 ) -> Result<(ExpandedName, Vec<NamespaceBinding>), CompileFailure> {
     if is_ascii_ncname(lexical) {
-        let namespace = namespace_override.filter(|value| !value.is_empty());
+        let namespace = match namespace_override {
+            Some("") => None,
+            Some(namespace) => Some(namespace),
+            None => namespace_for_prefix(document, element, "").filter(|value| !value.is_empty()),
+        };
         return Ok((
             ExpandedName {
                 namespace: namespace.map(str::to_owned),
@@ -1606,12 +1610,13 @@ fn namespace_for_prefix<'a>(
     element: NodeId,
     prefix: &str,
 ) -> Option<&'a str> {
+    let requested_prefix = (!prefix.is_empty()).then_some(prefix);
     let mut current = Some(element);
     while let Some(node) = current {
         if let Some(binding) = document
             .namespace_declarations(node)
             .iter()
-            .find(|binding| binding.prefix.as_deref() == Some(prefix))
+            .find(|binding| binding.prefix.as_deref() == requested_prefix)
         {
             return Some(binding.namespace.as_str());
         }

@@ -14,7 +14,8 @@ The subsequent
 raises the running definite-pass lower bound to 395.
 The later
 [static element namespace tranche](oasis-xslt10-static-element-namespace-tranche-2026-09-04.md)
-admits literal namespace URIs and raises the running bound to 452.
+admits literal and inherited static namespace URIs and raises the running bound
+to 461.
 
 ## Outcome
 

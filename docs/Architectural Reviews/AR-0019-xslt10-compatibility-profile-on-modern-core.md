@@ -174,7 +174,8 @@ public version-mode contract.
   shared result construction, eliminating all 13 `FXRT1002` observations and
   raising definite unchanged passes from 395 to 403.
 - [x] Compile literal `xsl:element` namespace URIs into retained namespace
-  bindings, raising definite unchanged passes from 403 to 452 while keeping
+  bindings and inherit the in-scope default namespace for unprefixed computed
+  names, raising definite unchanged passes from 403 to 461 while keeping
   namespace AVTs explicit.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
@@ -213,5 +214,6 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Source node-kind copying eliminated all 13 `FXRT1002`
   observations, producing eight more definite passes and preserving five later
   mismatch/error obligations.
-- 2026-09-04 -- Static computed-element namespace URIs raised the strict lower
-  bound to 452; nine newly visible namespace comparisons remain obligations.
+- 2026-09-04 -- Static computed-element namespace semantics raised the strict
+  lower bound to 461. Reviewing its first nine mismatches found and repaired
+  default-namespace inheritance, leaving no net mismatch increase.

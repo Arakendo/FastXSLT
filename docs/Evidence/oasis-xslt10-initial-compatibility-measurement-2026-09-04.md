@@ -20,7 +20,7 @@ raises it to 395, and the following
 [source node-kind copy tranche](oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md)
 raises it to 403. The later
 [static element namespace tranche](oasis-xslt10-static-element-namespace-tranche-2026-09-04.md)
-raises it to 452.
+raises it to 461.
 
 ## Outcome
 

@@ -190,6 +190,37 @@ fn compiles_static_xsl_element_namespace_without_runtime_qname_work() {
 }
 
 #[test]
+fn unprefixed_static_xsl_element_name_uses_its_in_scope_default_namespace() {
+    let document = parse_stylesheet(
+        "memory:inherited-computed-element-namespace.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:template match="/"><outer xmlns="urn:outer"><xsl:element name="inner"/></outer></xsl:template>
+        </xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&document).expect("in-scope default namespace should compile");
+    let root = program.root_template.as_ref().expect("root template");
+    let [Instruction::LiteralElement { body, .. }] = root.body.as_slice() else {
+        panic!("root template should contain the outer literal element");
+    };
+    let [
+        Instruction::LiteralElement {
+            origin,
+            name,
+            namespaces,
+            ..
+        },
+    ] = body.as_slice()
+    else {
+        panic!("outer element should contain the computed element");
+    };
+    assert_eq!(*origin, ElementConstructorOrigin::ComputedStatic);
+    assert_eq!(name.namespace.as_deref(), Some("urn:outer"));
+    assert_eq!(namespaces[0].prefix, None);
+    assert_eq!(namespaces[0].namespace, "urn:outer");
+}
+
+#[test]
 fn compiles_static_prefixed_xsl_element_with_its_required_binding() {
     let document = parse_stylesheet(
         "memory:static-prefixed-computed-element.xsl",
