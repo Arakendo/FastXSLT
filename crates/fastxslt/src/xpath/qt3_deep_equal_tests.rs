@@ -4,6 +4,7 @@ use std::{fs, path::PathBuf};
 
 use super::deep_equal_boolean_experiment::{evaluate, parse};
 use super::deep_equal_experiment::DeepEqualFailureKind;
+use super::qt3_production_path_test_support::{compile_expression, execute_expression};
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
@@ -360,6 +361,9 @@ fn classifies_selected_qt3_deep_equal_arity_errors() {
                 standard_code: "XPST0017"
             }
         );
+        let production_failure =
+            compile_expression(name, &expression).expect_err("production rejects invalid arity");
+        assert_eq!(production_failure.code, "XPST0017");
     }
 }
 
@@ -447,6 +451,9 @@ fn reports_qt3_standard_collation_errors() {
             other => panic!("unexpected collation failure: {other:?}"),
         };
         assert_eq!(actual_code, standard_code);
+        let production_failure = compile_expression(name, &expression)
+            .expect_err("production rejects invalid collation");
+        assert_eq!(production_failure.code, standard_code);
     }
 }
 
@@ -520,6 +527,7 @@ fn execute_named_true_cases(expected_cases: &[(&str, usize)]) {
         .expect("parse admitted named deep-equal expression");
         let mut control = InvocationControl::unbounded();
         assert!(evaluate(&parsed, None, &mut control).expect("evaluate named deep-equal case"));
+        assert_production_boolean(name, &expression, true);
         assert_eq!(
             control.consumed(WorkDomain::XPathOperation),
             expected_operations
@@ -580,6 +588,7 @@ fn execute_named_boolean_cases(expected_cases: &[(&str, bool, usize)]) {
             evaluate(&parsed, None, &mut control).expect("evaluate boolean deep-equal case"),
             expected
         );
+        assert_production_boolean(name, &expression, expected);
         assert_eq!(
             control.consumed(WorkDomain::XPathOperation),
             expected_operations
@@ -635,6 +644,7 @@ fn executes_complete_qt3_deep_equal_mixed_atomic_group() {
         let mut control = InvocationControl::unbounded();
         let actual = evaluate(&parsed, None, &mut control).expect("evaluate mixed deep-equal");
         assert_eq!(actual, expected, "native QT3 assertion for {name}");
+        assert_production_boolean(name, &expression, expected);
         assert_eq!(
             control.consumed(WorkDomain::XPathOperation),
             expected_operations
@@ -686,12 +696,23 @@ fn execute_group(prefix: &str, expected_cases: &[(&str, bool)], expected_operati
         let mut control = InvocationControl::unbounded();
         let actual = evaluate(&parsed, None, &mut control).expect("evaluate typed deep-equal");
         assert_eq!(actual, expected, "native QT3 assertion for {name}");
+        assert_production_boolean(name, &expression, expected);
         assert_eq!(
             control.consumed(WorkDomain::XPathOperation),
             expected_operations
         );
         assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 0);
     }
+}
+
+fn assert_production_boolean(case_name: &str, expression: &str, expected: bool) {
+    let program = compile_expression(case_name, expression)
+        .unwrap_or_else(|failure| panic!("production compile failed for {case_name}: {failure:?}"));
+    assert_eq!(
+        execute_expression(&program, case_name),
+        expected.to_string(),
+        "production QT3 assertion for {case_name}: {expression}"
+    );
 }
 
 fn load_test_set() -> Document {

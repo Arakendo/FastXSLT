@@ -661,6 +661,25 @@ mod tests {
     }
 
     #[test]
+    fn production_deep_equal_reaches_the_workbench_host_path() {
+        let engine = ExperimentalEngine::new(
+            "urn:fastxslt:deep-equal:source",
+            b"<source/>".to_vec(),
+            "urn:fastxslt:deep-equal:stylesheet",
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="deep-equal((1, 2), (1, 2))"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("production deep-equal expression should compile");
+
+        assert_eq!(
+            engine
+                .transform("deep-equal-workbench")
+                .expect("production deep-equal expression should execute"),
+            "true"
+        );
+    }
+
+    #[test]
     fn production_string_length_expression_reaches_the_workbench_host_path() {
         let engine = ExperimentalEngine::new(
             "urn:fastxslt:string-length:source",

@@ -1178,7 +1178,7 @@ fn separates_invalid_deep_equal_arity_and_collation_semantics() {
         );
     let failure = compile_stylesheet(&invalid).expect_err("invalid deep-equal arity should fail");
     assert_eq!(failure.category, CompileCategory::Invalid);
-    assert_eq!(failure.code, "FXXP0005");
+    assert_eq!(failure.code, "XPST0017");
     assert_eq!(failure.location.resource, "memory:deep-equal-arity.xsl");
     assert!(!failure.location.span.is_empty());
 

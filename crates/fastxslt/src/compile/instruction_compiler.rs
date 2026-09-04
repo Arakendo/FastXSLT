@@ -1024,8 +1024,8 @@ fn compile_deep_equal_value(
 ) -> Result<ValueExpression, CompileFailure> {
     let expression = parse_deep_equal(expression, location).map_err(|failure| {
         let (code, category) = match failure.kind {
-            DeepEqualFailureKind::InvalidArity { .. } => ("FXXP0005", CompileCategory::Invalid),
-            DeepEqualFailureKind::InvalidCollation { standard_code }
+            DeepEqualFailureKind::InvalidArity { standard_code }
+            | DeepEqualFailureKind::InvalidCollation { standard_code }
             | DeepEqualFailureKind::InvalidCollationType { standard_code } => {
                 (standard_code, CompileCategory::Invalid)
             }

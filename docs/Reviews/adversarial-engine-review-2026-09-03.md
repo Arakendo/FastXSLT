@@ -19,7 +19,7 @@ admitted behavior that the earlier review did not cover.
 | 2. Cross-kind lexical shadowing | Resolved 2026-09-03 | Every local binding clears competing value kinds and suppresses same-name global fallback. The source-node-over-global-atomic counterexample passes through shared and complete-clone frames. |
 | 3. Untaken creation outcome | Resolved 2026-09-03 | Releasing the outcome reclaims its engine and capacity; concurrent take/release has one linearized owner. |
 | 4. Character-map scaling | Resolved 2026-09-03 | Release-mode measurements confirmed both adverse curves. Compilation now composes through an ordered keyed map and retains a sorted compact vector; serialization uses binary lookup. |
-| 5. Test-only QT3 semantics | Partially remediated 2026-09-03 | Sixteen complete families now put 508 selected cases through production semantics, XSLT execution, serialization, and workbench sentinels. `string-length` adds both source-free and document-path runtime evidence; five duration-component families share one strict typed path; `empty` and `exists` share bounded cardinality semantics. Other selected test-only families remain migration debt. |
+| 5. Test-only QT3 semantics | Partially remediated 2026-09-03 | Seventeen complete families now put 692 selected cases through production semantics, XSLT execution, serialization, and workbench sentinels. The 184-case `deep-equal` selection retains its direct work-accounting oracle while also executing production. Other selected test-only families remain migration debt. |
 | 6. Worker command queue | Resolved 2026-09-03 | The shared event channel has capacity one and a focused backpressure test proves a second decoded event cannot be queued. |
 | 7. Source-unit reopening | Review obligation resolved 2026-09-03; campaign active | Current responsibilities and line counts are inventoried, compiler tests are extracted, and serializer/compiler/runtime checkpoints have named one-way seams and conservation gates. |
 
@@ -321,8 +321,12 @@ invalid component leftovers through the requested negative controls. The
 `normalize-space` and `codepoint-equal` denominators add 56 selected cases
 through the same owned source-free production string form used by case
 conversion. The `empty` and `exists` denominators add 95 selected cases through
-one owned source-free production cardinality form. Each unchanged selected expression is compiled into typed
-production semantics and executed through the real XSLT runtime and serializer;
+one owned source-free production cardinality form. The complete selected
+`deep-equal` tranche adds 184 cases and preserves its direct evaluator as a
+focused work-accounting oracle beside the production result. Production
+compilation now preserves `XPST0017` for invalid deep-equal arity rather than
+flattening it to a private code. Each unchanged selected expression is compiled
+into typed production semantics and executed through the real XSLT runtime and serializer;
 additional sentinels reach all production expression families through the
 ASP.NET workbench engine. The three URI paths also share their encoding
 primitives with the earlier semantic code.
@@ -343,6 +347,7 @@ but do not resolve the remaining test-only families.
 [Codepoint-equal evidence](../Evidence/qt3-codepoint-equal-denominator-2026-09-03.md)
 [Empty evidence](../Evidence/qt3-empty-function-initial-denominator-2026-09-03.md)
 [Exists evidence](../Evidence/qt3-exists-function-initial-denominator-2026-09-03.md)
+[Deep-equal production-path evidence](../Evidence/qt3-deep-equal-production-path-2026-09-03.md)
 
 Severity:
 - Medium
