@@ -250,6 +250,9 @@ public version-mode contract.
 - [x] Fold context-independent `floor()`, `ceiling()`, and `round()` through
   checked exact-rational semantics, raising the lower bound to 638 without
   admitting legacy conversion rules or adding runtime dispatch.
+- [x] Compose the three integral functions with admitted typed paths, charged
+  finite-decimal conversion, and modern zero-or-one cardinality, raising the
+  lower bound to 647 without selecting legacy first-node conversion.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -364,6 +367,9 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Checked constant integral functions raised the lower bound from
   614 to 638; all 24 newly initialized direct-result and equality cases pass
   without adding a mismatch or later failure.
+- 2026-09-04 -- Typed integral-function paths raised the lower bound from 638
+  to 647; all nine newly initialized cases pass, while a first-party boundary
+  case preserves multi-node `XPTY0004`.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

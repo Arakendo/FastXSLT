@@ -972,6 +972,9 @@ fn compile_value_expression(
             ),
         )));
     }
+    if let Some(value) = compile_integral_function_path(document, element, expression, location)? {
+        return Ok(value);
+    }
     if let Some(failure) = classify_atomic_path_operand(expression, location.clone()) {
         return Err(CompileFailure {
             code: failure.standard_code,
@@ -1562,6 +1565,34 @@ fn compile_normalize_space_path(
         }
     }
     Some(ValueExpression::NormalizedStringPath(path))
+}
+
+fn compile_integral_function_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<ValueExpression>, CompileFailure> {
+    let Some((function, argument)) =
+        crate::xpath::constant_numeric_experiment::integral_function_call(expression)
+    else {
+        return Ok(None);
+    };
+    let mut path = parse_location_path(argument, location.clone()).map_err(map_path_failure)?;
+    if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+        for step in &mut path.steps {
+            if let PathStep::ChildNamed(local) = step {
+                *step = PathStep::ChildExpandedName(ExpandedName {
+                    namespace: Some(namespace.to_owned()),
+                    local: local.clone(),
+                });
+            }
+        }
+    }
+    Ok(Some(ValueExpression::IntegralFunctionPath {
+        function,
+        path,
+    }))
 }
 
 fn compile_expanded_name_path(

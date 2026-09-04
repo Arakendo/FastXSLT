@@ -501,6 +501,10 @@ pub(crate) enum ValueExpression {
     ContextLanguageMatches(String),
     ContextNodeNormalizedString,
     NormalizedStringPath(LocationPath),
+    IntegralFunctionPath {
+        function: crate::xpath::constant_numeric_experiment::IntegralFunction,
+        path: LocationPath,
+    },
     ContextNodeStringLength(SourceLocation),
     ContextPosition(SourceLocation),
     ContextSize(SourceLocation),

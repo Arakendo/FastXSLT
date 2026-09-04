@@ -1289,12 +1289,15 @@ fn xpath_constant_integral_functions_fold_exact_results() {
     const STYLESHEET: &str = "urn:fastxslt:integral-functions:stylesheet";
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
     resources
-        .admit(SOURCE, br"<doc/>".to_vec())
+        .admit(
+            SOURCE,
+            br"<doc><low>-1.5</low><high>2.999999</high></doc>".to_vec(),
+        )
         .expect("admit source");
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="floor(1.9)"/>|<xsl:value-of select="floor(-1.5)"/>|<xsl:value-of select="ceiling(1.1)"/>|<xsl:value-of select="ceiling(-1.5)"/>|<xsl:value-of select="round(2.5)"/>|<xsl:value-of select="round(-2.5)"/>|<xsl:value-of select="floor(1.9)=1"/>|<xsl:value-of select="round(-1.5)=-1"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="floor(1.9)"/>|<xsl:value-of select="floor(-1.5)"/>|<xsl:value-of select="ceiling(1.1)"/>|<xsl:value-of select="ceiling(-1.5)"/>|<xsl:value-of select="round(2.5)"/>|<xsl:value-of select="round(-2.5)"/>|<xsl:value-of select="floor(1.9)=1"/>|<xsl:value-of select="round(-1.5)=-1"/>|<xsl:value-of select="floor(doc/low)"/>|<xsl:value-of select="ceiling(doc/high)"/>|<xsl:value-of select="round(doc/high)"/>|<xsl:value-of select="floor(doc/missing)"/></xsl:template></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit stylesheet");
     let snapshot = resources.seal();
@@ -1308,8 +1311,34 @@ fn xpath_constant_integral_functions_fold_exact_results() {
     let results = execute_transform_set(builder.seal()).expect("execute integral functions");
     assert_eq!(
         results.by_request["integral-functions"].serialized,
-        "1|-2|2|-1|3|-2|true|true"
+        "1|-2|2|-1|3|-2|true|true|-2|3|3|"
     );
+}
+
+#[test]
+fn xpath_integral_path_rejects_more_than_one_node() {
+    const SOURCE: &str = "urn:fastxslt:integral-many:source";
+    const STYLESHEET: &str = "urn:fastxslt:integral-many:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br"<doc><n>1</n><n>2</n></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="floor(doc/n)"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile integral path");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("integral-many", "result", SOURCE))
+        .expect("admit request");
+
+    let failure = execute_transform_set(builder.seal()).expect_err("cardinality must be enforced");
+    assert_eq!(failure.code, "XPTY0004");
+    assert_eq!(failure.category, FailureCategory::Invalid);
 }
 
 #[test]

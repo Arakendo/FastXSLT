@@ -76,6 +76,9 @@ raises it to 614.
 The following
 [constant integral-functions tranche](oasis-xslt10-constant-integral-functions-tranche-2026-09-04.md)
 raises it to 638.
+The following
+[integral-function path tranche](oasis-xslt10-integral-function-path-tranche-2026-09-04.md)
+raises it to 647.
 
 ## Outcome
 

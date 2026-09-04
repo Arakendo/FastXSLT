@@ -8,6 +8,13 @@ pub(crate) enum ConstantNumericFailure {
     Unsupported,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum IntegralFunction {
+    Floor,
+    Ceiling,
+    Round,
+}
+
 pub(crate) fn compare(left: &str, right: &str) -> Result<Ordering, ConstantNumericFailure> {
     let left = evaluate(left)?;
     let right = evaluate(right)?;
@@ -24,11 +31,70 @@ pub(crate) fn compare(left: &str, right: &str) -> Result<Ordering, ConstantNumer
 
 pub(crate) fn fold_integral_function(expression: &str) -> Option<String> {
     let expression = expression.trim();
-    if !contains_integral_function(expression) {
-        return None;
-    }
+    integral_function_call(expression)?;
     let value = evaluate(expression).ok()?;
     (value.denominator == 1).then(|| value.numerator.to_string())
+}
+
+pub(crate) fn integral_function_call(expression: &str) -> Option<(IntegralFunction, &str)> {
+    let expression = expression.trim();
+    for (name, function) in [
+        ("floor", IntegralFunction::Floor),
+        ("ceiling", IntegralFunction::Ceiling),
+        ("round", IntegralFunction::Round),
+    ] {
+        let Some(remainder) = expression.strip_prefix(name) else {
+            continue;
+        };
+        let remainder = remainder.trim_start_matches([' ', '\t', '\r', '\n']);
+        let argument = remainder.strip_prefix('(')?.strip_suffix(')')?.trim();
+        if !argument.is_empty() {
+            return Some((function, argument));
+        }
+    }
+    None
+}
+
+pub(crate) fn evaluate_integral_lexical(
+    function: IntegralFunction,
+    lexical: &str,
+) -> Result<String, ConstantNumericFailure> {
+    let lexical = lexical.trim();
+    if !is_admitted_decimal_lexical(lexical) {
+        return Err(
+            if lexical.contains(['e', 'E'])
+                || matches!(lexical, "NaN" | "INF" | "+INF" | "-INF")
+                || lexical.starts_with('.')
+                || lexical.ends_with('.')
+            {
+                ConstantNumericFailure::Unsupported
+            } else {
+                ConstantNumericFailure::Invalid
+            },
+        );
+    }
+    let value = evaluate(lexical)?;
+    let value = match function {
+        IntegralFunction::Floor => value.floor(),
+        IntegralFunction::Ceiling => value.ceiling()?,
+        IntegralFunction::Round => value.round()?,
+    };
+    Ok(value.numerator.to_string())
+}
+
+fn is_admitted_decimal_lexical(lexical: &str) -> bool {
+    let unsigned = lexical.strip_prefix(['+', '-']).unwrap_or(lexical);
+    let mut parts = unsigned.split('.');
+    let Some(integer) = parts.next() else {
+        return false;
+    };
+    let fraction = parts.next();
+    parts.next().is_none()
+        && !integer.is_empty()
+        && integer.bytes().all(|byte| byte.is_ascii_digit())
+        && fraction.is_none_or(|fraction| {
+            !fraction.is_empty() && fraction.bytes().all(|byte| byte.is_ascii_digit())
+        })
 }
 
 pub(crate) fn fold_integral_equality(expression: &str) -> Option<bool> {
@@ -361,7 +427,10 @@ impl Parser<'_> {
 mod tests {
     use std::cmp::Ordering;
 
-    use super::{ConstantNumericFailure, compare, fold_integral_equality, fold_integral_function};
+    use super::{
+        ConstantNumericFailure, IntegralFunction, compare, evaluate_integral_lexical,
+        fold_integral_equality, fold_integral_function, integral_function_call,
+    };
 
     #[test]
     fn compares_checked_exact_rational_constants() {
@@ -396,6 +465,22 @@ mod tests {
         assert_eq!(fold_integral_equality("round(-1.5) = -1"), Some(true));
         assert_eq!(fold_integral_equality("ceiling(1.1) = 1"), Some(false));
         assert_eq!(fold_integral_equality("floor(1.9) != 1"), None);
+        assert_eq!(
+            integral_function_call("floor(source)"),
+            Some((IntegralFunction::Floor, "source"))
+        );
+        assert_eq!(
+            evaluate_integral_lexical(IntegralFunction::Round, " -2.5 "),
+            Ok("-2".to_owned())
+        );
+        assert_eq!(
+            evaluate_integral_lexical(IntegralFunction::Floor, "1+2"),
+            Err(ConstantNumericFailure::Invalid)
+        );
+        assert_eq!(
+            evaluate_integral_lexical(IntegralFunction::Floor, "1e2"),
+            Err(ConstantNumericFailure::Unsupported)
+        );
     }
 
     #[test]
