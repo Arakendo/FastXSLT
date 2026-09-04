@@ -1105,6 +1105,35 @@ fn context_string_length_counts_unicode_codepoints_and_not_utf8_bytes() {
 }
 
 #[test]
+fn xpath10_numeric_literal_comparisons_preserve_number_semantics() {
+    const SOURCE: &str = "urn:fastxslt:numeric-comparison:source";
+    const STYLESHEET: &str = "urn:fastxslt:numeric-comparison:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="1=1"/>|<xsl:value-of select="1!=1.00"/>|<xsl:value-of select="0 = -0"/>|<xsl:value-of select="1.9999999 &lt; 2"/>|<xsl:value-of select="2.0000001 &lt; 2.0"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile numeric comparison tests");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("numeric-comparison", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute numeric comparisons");
+    assert_eq!(
+        results.by_request["numeric-comparison"].serialized,
+        "true|false|true|true|false"
+    );
+}
+
+#[test]
 fn default_selection_uses_built_in_element_and_text_rules() {
     const BUILT_IN_SOURCE: &str = "urn:fastxslt:golden:built-in-rules:source";
     const BUILT_IN_STYLESHEET: &str = "urn:fastxslt:golden:built-in-rules:stylesheet";

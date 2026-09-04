@@ -8,8 +8,8 @@ use crate::xpath::case_conversion_experiment::{
 };
 use crate::xpath::castable_experiment::{parse as parse_castable, parse_cast};
 use crate::xpath::constant_boolean_experiment::{
-    BooleanParseFailure, parse_scalar as parse_source_free_scalar,
-    recognizes_scalar as recognizes_source_free_scalar,
+    BooleanParseFailure, ScalarExpression, parse_literal_numeric_comparison,
+    parse_scalar as parse_source_free_scalar, recognizes_scalar as recognizes_source_free_scalar,
 };
 use crate::xpath::context_requirement_experiment::classify as classify_missing_context;
 use crate::xpath::decimal_sum_for_experiment::parse as parse_decimal_sum_for;
@@ -960,6 +960,11 @@ fn compile_value_expression(
     }
     if expression.trim() == "last()" {
         return Ok(ValueExpression::ContextSize(location.clone()));
+    }
+    if let Some(comparison) = parse_literal_numeric_comparison(expression) {
+        return Ok(ValueExpression::SourceFreeScalar(Box::new(
+            ScalarExpression::Boolean(comparison),
+        )));
     }
     Ok(if recognizes_duration_component(expression) {
         compile_duration_component_value(expression, location)?

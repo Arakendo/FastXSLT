@@ -46,7 +46,9 @@ raises it to 525. The following
 [parent name tranche](oasis-xslt10-parent-name-tranche-2026-09-04.md)
 raises it to 527. The following
 [context string-length tranche](oasis-xslt10-context-string-length-tranche-2026-09-04.md)
-raises it to 529.
+raises it to 529. The following
+[numeric literal comparison tranche](oasis-xslt10-numeric-literal-comparison-tranche-2026-09-04.md)
+raises it to 553.
 
 ## Outcome
 

@@ -100,6 +100,54 @@ pub(crate) fn recognizes_scalar(expression: &str) -> bool {
         .any(|function| expression.contains(function))
 }
 
+pub(crate) fn parse_literal_numeric_comparison(expression: &str) -> Option<BooleanExpression> {
+    let expression = strip_balanced_parentheses(expression.trim());
+    for (lexical, operator) in [
+        ("<=", BooleanComparison::LessThanOrEqual),
+        (">=", BooleanComparison::GreaterThanOrEqual),
+        ("!=", BooleanComparison::NotEqual),
+        ("=", BooleanComparison::Equal),
+        ("<", BooleanComparison::LessThan),
+        (">", BooleanComparison::GreaterThan),
+    ] {
+        let Some((left, right)) = split_top_level(expression, lexical) else {
+            continue;
+        };
+        let left = parse_xpath_number_literal(left)?;
+        let right = parse_xpath_number_literal(right)?;
+        let value = match operator {
+            BooleanComparison::Equal => left.partial_cmp(&right) == Some(std::cmp::Ordering::Equal),
+            BooleanComparison::NotEqual => {
+                left.partial_cmp(&right) != Some(std::cmp::Ordering::Equal)
+            }
+            BooleanComparison::LessThan => left < right,
+            BooleanComparison::LessThanOrEqual => left <= right,
+            BooleanComparison::GreaterThan => left > right,
+            BooleanComparison::GreaterThanOrEqual => left >= right,
+        };
+        return Some(BooleanExpression::Constant(value));
+    }
+    None
+}
+
+fn parse_xpath_number_literal(source: &str) -> Option<f64> {
+    let source = source.trim();
+    let unsigned = source.strip_prefix('-').unwrap_or(source);
+    if unsigned.is_empty() || unsigned.starts_with('+') {
+        return None;
+    }
+    let mut decimal_points = 0usize;
+    let mut digits = 0usize;
+    for character in unsigned.chars() {
+        match character {
+            '0'..='9' => digits += 1,
+            '.' if decimal_points == 0 => decimal_points += 1,
+            _ => return None,
+        }
+    }
+    (digits > 0).then(|| source.parse().ok()).flatten()
+}
+
 pub(crate) fn parse(expression: &str) -> Result<BooleanExpression, BooleanParseFailure> {
     parse_inner(expression.trim())
 }
@@ -377,7 +425,10 @@ fn split_top_level<'a>(expression: &'a str, operator: &str) -> Option<(&'a str, 
 
 #[cfg(test)]
 mod tests {
-    use super::{BooleanParseFailure, ScalarValue, evaluate, evaluate_scalar, parse, parse_scalar};
+    use super::{
+        BooleanExpression, BooleanParseFailure, ScalarValue, evaluate, evaluate_scalar, parse,
+        parse_literal_numeric_comparison, parse_scalar,
+    };
     use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 
     #[test]
@@ -457,5 +508,25 @@ mod tests {
                 "{source}"
             );
         }
+    }
+
+    #[test]
+    fn parses_xpath_numeric_literal_comparisons_without_boolean_coercion() {
+        for (source, expected) in [
+            ("1=1", true),
+            ("1 != 1.00", false),
+            ("0 = -0", true),
+            ("1.9999999 < 2", true),
+            ("2.0000001 < 2.0", false),
+            (".5 >= 0.50", true),
+        ] {
+            assert_eq!(
+                parse_literal_numeric_comparison(source),
+                Some(BooleanExpression::Constant(expected)),
+                "{source}"
+            );
+        }
+        assert_eq!(parse_literal_numeric_comparison("item = 1"), None);
+        assert_eq!(parse_literal_numeric_comparison("1 + 1"), None);
     }
 }
