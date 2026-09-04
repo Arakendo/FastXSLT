@@ -3,6 +3,7 @@
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 
 const CODEPOINT_COLLATION: &str = "http://www.w3.org/2005/xpath-functions/collation/codepoint";
+const MAX_LITERAL_CODEPOINT_RANGE: u32 = 4_096;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum CaseValue {
@@ -246,14 +247,25 @@ fn parse_codepoint_sequence(argument: &str) -> Result<Vec<u32>, CaseFailure> {
     if let Some((start, end)) = split_top_level(argument, " to ") {
         let start = start.parse::<u32>().map_err(|_| CaseFailure::Unsupported)?;
         let end = end.parse::<u32>().map_err(|_| CaseFailure::Unsupported)?;
-        return Ok((start..=end).collect());
+        let count = end
+            .checked_sub(start)
+            .and_then(|span| span.checked_add(1))
+            .filter(|count| *count <= MAX_LITERAL_CODEPOINT_RANGE)
+            .ok_or(CaseFailure::Unsupported)?;
+        if !(start..=end).all(|value| char::from_u32(value).is_some()) {
+            return Err(CaseFailure::Unsupported);
+        }
+        let capacity = usize::try_from(count).map_err(|_| CaseFailure::Unsupported)?;
+        let mut values = Vec::with_capacity(capacity);
+        values.extend(start..=end);
+        return Ok(values);
     }
-    Ok(vec![
-        argument
-            .trim()
-            .parse::<u32>()
-            .map_err(|_| CaseFailure::Unsupported)?,
-    ])
+    let value = argument
+        .trim()
+        .parse::<u32>()
+        .map_err(|_| CaseFailure::Unsupported)?;
+    char::from_u32(value).ok_or(CaseFailure::Unsupported)?;
+    Ok(vec![value])
 }
 
 fn parse_function(expression: &str) -> Option<(&str, &str)> {
@@ -352,7 +364,7 @@ fn balanced(expression: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{CaseValue, evaluate};
+    use super::{CaseFailure, CaseValue, evaluate};
     use crate::execution_control_experiment::InvocationControl;
 
     #[test]
@@ -371,5 +383,20 @@ mod tests {
             ),
             Ok(CaseValue::Integers(vec![105, 775]))
         );
+    }
+
+    #[test]
+    fn rejects_unbounded_and_non_scalar_codepoint_construction() {
+        for expression in [
+            "lower-case(codepoints-to-string(1 to 1000000))",
+            "upper-case(codepoints-to-string(55295 to 55297))",
+            "lower-case(codepoints-to-string(1114112))",
+        ] {
+            assert_eq!(
+                evaluate(expression, &mut InvocationControl::unbounded()),
+                Err(CaseFailure::Unsupported),
+                "{expression}"
+            );
+        }
     }
 }

@@ -39,6 +39,11 @@ character references rather than allowing XML normalization to change a test.
 Finding 5 remains partially open for the other selected test-only families.
 Continue applying this production-path pattern and prefer existing shared
 semantic primitives over adding another family-specific test-only evaluator.
+The next case-conversion migration must first turn its composed string,
+boolean, integer, and codepoint-sequence forms into one bounded typed production
+plan. Its literal codepoint construction now rejects descending, over-4,096,
+and non-Unicode-scalar ranges before allocation; that hardening is preparation,
+not production-parity evidence.
 Exact fractional `seconds-from-duration` work remains paused until duration
 construction and component access have one typed production path. In parallel,
 the current ADR-0004 cohesion campaign remains active. Its current-state review
