@@ -119,6 +119,9 @@ pub(super) fn execute_value_of(
         ValueExpression::ContextNodeNamespaceUri => {
             append_context_node_namespace_uri(inputs, context, result, control)?;
         }
+        ValueExpression::ContextNodeNormalizedString => {
+            append_context_node_normalized_string(inputs, context, result, control)?;
+        }
         ValueExpression::ContextRequiredOnly(location) => {
             if context.is_none() {
                 return Err(failure_at(
@@ -1032,6 +1035,42 @@ fn append_context_node_namespace_uri(
         append_text(result, namespace, inputs.request_id, control)?;
     }
     Ok(())
+}
+
+fn append_context_node_normalized_string(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let mut normalized = String::new();
+    let mut pending_space = false;
+    source
+        .visit_string_value_controlled(context, control, &mut |part, control| {
+            for character in part.chars() {
+                control
+                    .charge(WorkDomain::XPathOperation, 1)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                if matches!(character, '\u{9}' | '\u{a}' | '\u{d}' | ' ') {
+                    pending_space = !normalized.is_empty();
+                } else {
+                    if pending_space {
+                        normalized.push(' ');
+                        pending_space = false;
+                    }
+                    normalized.push(character);
+                }
+            }
+            Ok(())
+        })
+        .map_err(|failure| match failure {
+            StringValueVisitFailure::Control(failure) => {
+                control_failure(failure, inputs.request_id)
+            }
+            StringValueVisitFailure::Sink(failure) => failure,
+        })?;
+    append_text(result, &normalized, inputs.request_id, control)
 }
 
 fn execute_deep_equal(

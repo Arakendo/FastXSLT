@@ -485,6 +485,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::ContextNodeName
         | ValueExpression::ContextNodeLocalName
         | ValueExpression::ContextNodeNamespaceUri
+        | ValueExpression::ContextNodeNormalizedString
         | ValueExpression::UpperCaseContextString => 0,
         ValueExpression::ContextRequiredOnly(location) => location.resource.capacity(),
         ValueExpression::CaseConversion(expression) => {

@@ -946,6 +946,12 @@ fn compile_value_expression(
     {
         return Ok(conditional);
     }
+    if matches!(
+        expression.trim(),
+        "normalize-space()" | "normalize-space(.)"
+    ) {
+        return Ok(ValueExpression::ContextNodeNormalizedString);
+    }
     Ok(if recognizes_duration_component(expression) {
         compile_duration_component_value(expression, location)?
     } else if recognizes_string_length(expression) {

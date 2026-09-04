@@ -38,7 +38,9 @@ raises it to 514. The following
 [context expanded-name tranche](oasis-xslt10-context-expanded-name-tranche-2026-09-04.md)
 raises it to 519. The following
 [context string tranche](oasis-xslt10-context-string-tranche-2026-09-04.md)
-raises it to 521.
+raises it to 521. The following
+[context normalize-space tranche](oasis-xslt10-context-normalize-space-tranche-2026-09-04.md)
+raises it to 522.
 
 ## Outcome
 

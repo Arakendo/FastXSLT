@@ -928,6 +928,39 @@ fn context_string_function_reuses_the_context_item_string_value() {
 }
 
 #[test]
+fn context_normalize_space_streams_across_descendant_text_boundaries() {
+    const SOURCE: &str = "urn:fastxslt:context-normalize-space:source";
+    const STYLESHEET: &str = "urn:fastxslt:context-normalize-space:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc>  alpha <part> beta </part>\n gamma  </doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:apply-templates select="doc"/></xsl:template><xsl:template match="doc"><out><xsl:value-of select="normalize-space()"/>|<xsl:value-of select="normalize-space(.)"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile context normalization operations");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("context-normalize-space", "result", SOURCE))
+        .expect("admit request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute context normalization operations");
+    assert_eq!(
+        results.by_request["context-normalize-space"].serialized,
+        "<out>alpha beta gamma|alpha beta gamma</out>"
+    );
+}
+
+#[test]
 fn unqualified_name_comparison_does_not_match_a_namespaced_parent() {
     const SOURCE: &str = "urn:fastxslt:parent-name:source";
     const STYLESHEET: &str = "urn:fastxslt:parent-name:stylesheet";
