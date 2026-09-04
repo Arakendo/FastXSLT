@@ -84,6 +84,15 @@ The archive remains under ignored `.workbench` storage and is not redistributed.
 5. invokes the ignored release measurement with the extracted root supplied by
    environment rather than granting the engine filesystem authority.
 
+For targeted investigation, an optional case-identity fragment emits a bounded
+initialization failure, execution failure, or actual/expected comparison trace:
+
+```powershell
+./scripts/measure-oasis-xslt10.ps1 -TraceCase 'Lotus/math_math04'
+```
+
+Tracing does not filter the conserved sweep or change any case's disposition.
+
 The Rust measurement parses the catalog and doubts metadata through FastXSLT's
 bounded XML/XDM path, assigns duplicate-safe `submitter/id#ordinal` identities,
 loads principal and catalog-listed supplemental stylesheet bytes, and seals

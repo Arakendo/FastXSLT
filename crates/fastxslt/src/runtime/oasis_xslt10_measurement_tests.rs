@@ -168,6 +168,7 @@ fn measures_local_oasis_xslt10_compatibility() {
                 engine
             }
             Ok(Err(failure)) => {
+                trace_case_failure(&case.identity, "initialization", &failure);
                 measurement.initialization_failure(&case.identity, &failure);
                 if case.operation == "execution-error" {
                     measurement.increment("expected-error-observed-during-initialization");
@@ -196,6 +197,7 @@ fn measures_local_oasis_xslt10_compatibility() {
                 actual
             }
             Ok(Err(failure)) => {
+                trace_case_failure(&case.identity, "execution", &failure);
                 measurement.execution_failure(&case.identity, &failure);
                 if case.operation == "execution-error" {
                     measurement.increment("expected-error-observed-during-execution");
@@ -320,6 +322,21 @@ fn trace_case_comparison(identity: &str, actual: &str, expected: &[u8]) {
         "comparison-trace\t{identity}\tactual={}\texpected={}",
         escaped_detail(actual),
         escaped_detail(&expected)
+    );
+}
+
+fn trace_case_failure(identity: &str, phase: &str, failure: &WorkbenchFailure) {
+    let Some(requested) = std::env::var_os(TRACE_CASE_ENVIRONMENT) else {
+        return;
+    };
+    if !identity.contains(requested.to_string_lossy().as_ref()) {
+        return;
+    }
+    println!(
+        "failure-trace\t{identity}\tphase={phase}\tcategory={:?}\tcode={}\tdetail={}",
+        failure.category,
+        failure.code,
+        escaped_detail(&failure.detail)
     );
 }
 
