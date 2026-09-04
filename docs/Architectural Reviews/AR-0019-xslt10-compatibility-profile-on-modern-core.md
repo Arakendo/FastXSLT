@@ -9,7 +9,7 @@
 | Trigger | A complete local legacy sweep found 366 initial definite unchanged passes and dominant gaps that largely overlap the XSLT 3.0 roadmap |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007, ADR-0012, ADR-0013, ADR-0014 |
 | Related reviews | AR-0001, AR-0004, AR-0008, AR-0011, AR-0014 |
-| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md` |
+| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md` |
 
 ## Architectural question
 
@@ -177,6 +177,8 @@ public version-mode contract.
   bindings and inherit the in-scope default namespace for unprefixed computed
   names, raising definite unchanged passes from 403 to 461 while keeping
   namespace AVTs explicit.
+- [x] Repair admitted relative descendant match paths so `a//c` accepts a
+  nonadjacent `a` ancestor, moving one known mismatch to pass.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 20 known semantic mismatches.
@@ -217,3 +219,5 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Static computed-element namespace semantics raised the strict
   lower bound to 461. Reviewing its first nine mismatches found and repaired
   default-namespace inheritance, leaving no net mismatch increase.
+- 2026-09-04 -- Descendant match-pattern repair moved unchanged
+  `conflictres15` from mismatch to pass and raised the lower bound to 462.

@@ -5,7 +5,7 @@ use std::{cell::RefCell, collections::BTreeMap, mem::size_of};
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
-use crate::xpath::path_experiment::evaluate_location_path_controlled;
+use crate::xpath::path_experiment::{PathStep, evaluate_location_path_controlled};
 use crate::xslt::golden_semantics_experiment::{
     ChildPresenceTest, MatchPattern, MatchedTemplate, NamedSiblingBoundary, StylesheetProgram,
 };
@@ -599,6 +599,42 @@ fn match_path_pattern(
             control.observe_document_rooted_match_cache_build(retained_bytes);
         }
         return Ok(matches);
+    }
+    let descendant_pair = match path.steps.as_slice() {
+        [
+            PathStep::ChildNamed(ancestor),
+            PathStep::DescendantNamed(candidate),
+        ]
+        | [
+            PathStep::ChildNamed(ancestor),
+            PathStep::DescendantOrSelfAnyNode,
+            PathStep::ChildNamed(candidate),
+        ] => Some((ancestor, candidate)),
+        _ => None,
+    };
+    if let Some((ancestor, candidate)) = descendant_pair {
+        if source.kind(node) != NodeKind::Element
+            || source
+                .name(node)
+                .is_none_or(|name| name.namespace.is_some() || name.local != *candidate)
+        {
+            return Ok(false);
+        }
+        let mut current = source.parent(node);
+        while let Some(parent) = current {
+            control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            if source.kind(parent) == NodeKind::Element
+                && source
+                    .name(parent)
+                    .is_some_and(|name| name.namespace.is_none() && name.local == *ancestor)
+            {
+                return Ok(true);
+            }
+            current = source.parent(parent);
+        }
+        return Ok(false);
     }
     let mut first_step = node;
     for _ in 1..path.steps.len() {
