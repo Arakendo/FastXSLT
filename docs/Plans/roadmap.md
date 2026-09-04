@@ -3071,6 +3071,10 @@ failed, and harness-error cases without an unqualified conformance claim.
     four independent native handles, recording tiered throughput, latency,
     managed-allocation scope, isolated working set, and the limits of whole-host
     native memory observations.
+  - [x] Repeat the four-engine tier matrix after the standards and adversarial
+    tranches: larger native work is stable or faster and isolated 500-item work
+    remains within about 6%, while tiny-call throughput is lower and requires a
+    longer-duration, toolchain-pinned profile before attribution.
   - [x] Carry pre-dispatch cooperative cancellation and a deterministic
     XSLT-instruction budget through ADR-0009 scalar native controls, preserving
     exact diagnostics and ordinary reuse of the same engine handle without
