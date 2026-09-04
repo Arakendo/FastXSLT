@@ -2403,6 +2403,38 @@ fn copy_of_variables_preserves_atomic_source_node_and_temporary_tree_values() {
 }
 
 #[test]
+fn copy_of_path_union_deduplicates_and_restores_document_order() {
+    const SOURCE: &str = "urn:fastxslt:union-copy:source";
+    const STYLESHEET: &str = "urn:fastxslt:union-copy:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 12_288, 24_576));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc xmlns:p="urn:items" z="last-expression" x="first-expression"><p:a/><a/></doc>"#.to_vec(),
+        )
+        .expect("admit source document");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:items" exclude-result-prefixes="p"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><xsl:apply-templates select="doc"/></xsl:template><xsl:template match="doc"><out><xsl:copy-of select="@x | p:a | @z | p:a | a"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile copy-of path union");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(24_576));
+    builder
+        .add(request("union-copy", "union-copy-result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute copy-of path union");
+
+    assert_eq!(
+        results.by_request["union-copy"].serialized,
+        "<out z=\"last-expression\" x=\"first-expression\"><p:a xmlns:p=\"urn:items\"></p:a><a xmlns:p=\"urn:items\"></a></out>"
+    );
+}
+
+#[test]
 fn copy_of_location_path_copies_each_selected_subtree_in_document_order() {
     const SOURCE: &str = "urn:fastxslt:path-copy:source";
     const STYLESHEET: &str = "urn:fastxslt:path-copy:stylesheet";

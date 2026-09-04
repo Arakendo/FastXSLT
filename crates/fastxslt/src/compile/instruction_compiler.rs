@@ -51,7 +51,7 @@ use crate::xpath::iri_to_uri_expression::{
     IriToUriParseFailure, parse as parse_iri_to_uri, recognizes as recognizes_iri_to_uri,
 };
 use crate::xpath::path_experiment::{
-    PathFailure, PathStep, parse_location_path, parse_qualified_child_path,
+    LocationPath, PathFailure, PathStep, parse_location_path, parse_qualified_child_path,
 };
 use crate::xpath::path_operand_type_experiment::classify as classify_atomic_path_operand;
 use crate::xpath::string_length_experiment::{
@@ -485,6 +485,26 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
             location: document.location(element).clone(),
         });
     }
+    if select.contains('|') {
+        let alternatives = select
+            .split('|')
+            .map(str::trim)
+            .map(|alternative| {
+                if alternative.is_empty() {
+                    return Err(invalid(
+                        "XPST0003",
+                        "xsl:copy-of path union contains an empty alternative",
+                        document.location(element),
+                    ));
+                }
+                parse_copy_of_path(document, element, alternative)
+            })
+            .collect::<Result<Vec<_>, CompileFailure>>()?;
+        return Ok(Instruction::CopyOfPathUnion {
+            alternatives,
+            location: document.location(element).clone(),
+        });
+    }
     match select.trim() {
         "." => Ok(Instruction::CopyOfCurrent {
             location: document.location(element).clone(),
@@ -495,26 +515,44 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
         "ancestor-or-self::*" => Ok(Instruction::CopyOfAncestorOrSelfElements {
             location: document.location(element).clone(),
         }),
-        expression => parse_location_path(expression, document.location(element).clone())
-            .map(|select| Instruction::CopyOfLocationPath {
+        expression => parse_copy_of_path(document, element, expression).map(|select| {
+            Instruction::CopyOfLocationPath {
                 select,
                 location: document.location(element).clone(),
-            })
-            .map_err(|failure| match failure {
-                PathFailure::Invalid {
-                    standard_code,
-                    detail,
-                    location,
-                } => invalid(standard_code, detail, &location),
-                PathFailure::Unsupported {
-                    detail, location, ..
-                } => unsupported(
-                    "FXXP1003",
-                    format!("unsupported xsl:copy-of selection: {detail}"),
-                    &location,
-                ),
-            }),
+            }
+        }),
     }
+}
+
+fn parse_copy_of_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Result<LocationPath, CompileFailure> {
+    let location = document.location(element).clone();
+    let path = match parse_location_path(expression, location.clone()) {
+        Ok(path) => Ok(path),
+        Err(PathFailure::Unsupported { .. }) if expression.contains(':') => {
+            parse_qualified_child_path(expression, location, |prefix| {
+                namespace_for_prefix(document, element, prefix).map(str::to_owned)
+            })
+        }
+        Err(failure) => Err(failure),
+    };
+    path.map_err(|failure| match failure {
+        PathFailure::Invalid {
+            standard_code,
+            detail,
+            location,
+        } => invalid(standard_code, detail, &location),
+        PathFailure::Unsupported {
+            detail, location, ..
+        } => unsupported(
+            "FXXP1003",
+            format!("unsupported xsl:copy-of selection: {detail}"),
+            &location,
+        ),
+    })
 }
 
 fn static_copy_of_text(expression: &str) -> Option<String> {

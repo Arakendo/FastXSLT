@@ -28,7 +28,9 @@ raise it to 464. The following
 [static atomic copy-of tranche](oasis-xslt10-static-atomic-copy-of-tranche-2026-09-04.md)
 raises it to 468. The following
 [variable copy-of tranche](oasis-xslt10-variable-copy-of-tranche-2026-09-04.md)
-raises it to 476.
+raises it to 476. The subsequent
+[copy-of path union tranche](oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md)
+raises it to 481.
 
 ## Outcome
 

@@ -768,6 +768,7 @@ fn execute_instruction(
         | Instruction::CopyOfChildElements { .. }
         | Instruction::CopyOfAncestorOrSelfElements { .. }
         | Instruction::CopyOfLocationPath { .. }
+        | Instruction::CopyOfPathUnion { .. }
         | Instruction::CopyOfVariable { .. }
         | Instruction::Copy { .. } => result.extend(execute_result_instruction(
             inputs,
@@ -840,12 +841,42 @@ fn execute_result_instruction<'a>(
         Instruction::CopyOfLocationPath { select, .. } => {
             execute_copy_of_location_path(inputs, execution.node, select, control)
         }
+        Instruction::CopyOfPathUnion { alternatives, .. } => {
+            execute_copy_of_path_union(inputs, execution.node, alternatives, control)
+        }
         Instruction::CopyOfVariable { variable, location } => {
             execute_copy_of_variable(inputs, variable, location, scope, control)
         }
         Instruction::Copy { .. } => execute_copy(inputs, instruction, execution, scope, control),
         _ => unreachable!("result dispatch receives only result-producing instructions"),
     }
+}
+
+fn execute_copy_of_path_union(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    alternatives: &[crate::xpath::path_experiment::LocationPath],
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let mut selected = Vec::new();
+    for alternative in alternatives {
+        selected.extend(
+            evaluate_location_path_controlled(source, context, alternative, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?,
+        );
+    }
+    selected.sort_unstable_by_key(|node| source.document_order(*node));
+    selected.dedup();
+
+    let mut copied = Vec::new();
+    for node in selected {
+        copied.extend(copy_source_node(source, inputs.request_id, node, control)?);
+    }
+    Ok(copied)
 }
 
 fn execute_copy_of_variable(

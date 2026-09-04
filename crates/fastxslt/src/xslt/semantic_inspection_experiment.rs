@@ -286,6 +286,7 @@ fn observe_instructions(
             | Instruction::CopyOfChildElements { .. }
             | Instruction::CopyOfAncestorOrSelfElements { .. }
             | Instruction::CopyOfLocationPath { .. }
+            | Instruction::CopyOfPathUnion { .. }
             | Instruction::CopyOfStaticAtomicText { .. }
             | Instruction::CopyOfVariable { .. } => (SemanticFeature::CopyOf, None),
         };

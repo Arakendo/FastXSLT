@@ -9,7 +9,7 @@
 | Trigger | A complete local legacy sweep found 366 initial definite unchanged passes and dominant gaps that largely overlap the XSLT 3.0 roadmap |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007, ADR-0012, ADR-0013, ADR-0014 |
 | Related reviews | AR-0001, AR-0004, AR-0008, AR-0011, AR-0014 |
-| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md`; `docs/Evidence/oasis-xslt10-variable-copy-of-tranche-2026-09-04.md` |
+| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md`; `docs/Evidence/oasis-xslt10-variable-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md` |
 
 ## Architectural question
 
@@ -187,13 +187,16 @@ public version-mode contract.
 - [x] Copy atomic, source-node, and temporary-tree variables through their
   existing bounded shared representations, raising the strict lower bound to
   476 without adding a legacy result-tree-fragment backend.
+- [x] Compile admitted `xsl:copy-of` path unions with charged evaluation,
+  document-order normalization, and deduplication, raising the strict lower
+  bound to 481 while retaining one later error and one mismatch visibly.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
-- [ ] Resolve or explicitly classify the 29 known executing comparison
+- [ ] Resolve or explicitly classify the 30 known executing comparison
   mismatches.
 - [ ] Define expected-error and discretionary/doubts comparison rules.
-  - [x] Report doubt-annotated mismatches separately: two of the current 29
-    mismatches carry substantive doubts metadata; neither is reclassified yet.
+  - [x] Report doubt-annotated mismatches separately: three of the current 30
+    mismatches carry substantive doubts metadata; none is reclassified yet.
 - [ ] Prototype at least one genuine version-dependent behavior through
   compile-time static context without a second runtime.
 - [ ] Measure pass growth, regression risk, retained state, and hot-path cost as
@@ -240,6 +243,10 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Variable-valued `xsl:copy-of` reused the shared atomic,
   source-node, and temporary-tree representations and raised the lower bound
   from 468 to 476; all eight newly initialized cases reached definite passes.
-- 2026-09-04 -- The exploratory report now identifies the two current
-  mismatches with substantive doubts metadata separately from the other 27,
-  without changing the conserved denominator or case dispositions.
+- 2026-09-04 -- Bounded `xsl:copy-of` path unions raised the lower bound from
+  476 to 481. One newly initialized case remains a later execution failure and
+  `copy_copy09` remains an explicitly uncredited, doubt-annotated mismatch.
+- 2026-09-04 -- The exploratory report identified the then-current two
+  mismatches with substantive doubts metadata separately from the other 27;
+  the later path-union tranche adds `copy_copy09` as a third doubt-annotated
+  mismatch without changing any case disposition.

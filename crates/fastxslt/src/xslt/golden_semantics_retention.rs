@@ -310,6 +310,7 @@ fn instruction_owned(value: &Instruction) -> usize {
         | Instruction::CopyOfChildElements { .. }
         | Instruction::CopyOfAncestorOrSelfElements { .. }
         | Instruction::CopyOfLocationPath { .. }
+        | Instruction::CopyOfPathUnion { .. }
         | Instruction::CopyOfStaticAtomicText { .. }
         | Instruction::CopyOfVariable { .. }) => copy_of_owned(instruction),
         Instruction::If {
@@ -342,6 +343,15 @@ fn copy_of_owned(instruction: &Instruction) -> usize {
         | Instruction::CopyOfAncestorOrSelfElements { location } => location_owned(location),
         Instruction::CopyOfLocationPath { select, location } => {
             select.known_owned_capacity_bytes() + location_owned(location)
+        }
+        Instruction::CopyOfPathUnion {
+            alternatives,
+            location,
+        } => {
+            vec_owned(
+                alternatives,
+                crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
+            ) + location_owned(location)
         }
         Instruction::CopyOfStaticAtomicText { value, location } => {
             value.capacity() + location_owned(location)
