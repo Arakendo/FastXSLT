@@ -13,7 +13,10 @@ pub(crate) fn compile_expression(
     let select = expression
         .replace('&', "&amp;")
         .replace('"', "&quot;")
-        .replace('<', "&lt;");
+        .replace('<', "&lt;")
+        .replace('\r', "&#xD;")
+        .replace('\n', "&#xA;")
+        .replace('\t', "&#x9;");
     let stylesheet = format!(
         r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="{select}"/></xsl:template></xsl:stylesheet>"#
     );

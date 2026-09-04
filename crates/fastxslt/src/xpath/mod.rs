@@ -45,6 +45,8 @@ pub(crate) mod format_number_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod integer_for_experiment;
 #[cfg(any(test, feature = "workbench"))]
+pub(crate) mod iri_to_uri_expression;
+#[cfg(any(test, feature = "workbench"))]
 pub(crate) mod path_experiment;
 #[cfg(test)]
 pub(crate) mod path_operand_type_experiment;

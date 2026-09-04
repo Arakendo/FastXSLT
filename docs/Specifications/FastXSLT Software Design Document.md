@@ -621,6 +621,15 @@ literal-prefix `concat()` composition, and equality against a string literal.
 Invalid arity and argument type report `XPST0017` and `XPTY0004`. It executes
 through the ordinary XSLT runtime, serializer, and workbench boundary, but does
 not admit dynamic operands, general concatenation, or general function dispatch.
+The separate typed `iri-to-uri()` production expression admits optional string
+literals, literal `xs:anyURI` and `xs:untypedAtomic` constructors, equality
+against a string literal, and codepoint construction from a literal ascending
+range of at most 4,096 valid Unicode scalar values. It preserves URI-permitted
+printable ASCII and existing percent escapes while encoding spaces, controls,
+non-ASCII UTF-8 bytes, and excluded ASCII. Invalid arity and argument type report
+`XPST0017` and `XPTY0004`. It executes through the ordinary XSLT runtime,
+serializer, and workbench boundary, but does not admit general constructors,
+range evaluation, dynamic operands, or function dispatch.
 Invalid boolean values on admitted `xsl:output` properties are static
 stylesheet errors reported as `XTSE0020`, with the structured invalid category
 and stylesheet source location preserved. XSLT 2.0 accepts only `yes`/`no`;

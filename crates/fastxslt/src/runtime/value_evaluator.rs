@@ -28,6 +28,9 @@ use crate::xpath::format_number_experiment::{
     FormatNumberEvaluationFailure, evaluate as evaluate_format_number,
 };
 use crate::xpath::integer_for_experiment::evaluate as evaluate_integer_for;
+use crate::xpath::iri_to_uri_expression::{
+    IriToUriExpression, IriToUriValue, evaluate as evaluate_iri_to_uri,
+};
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
     ConditionalIntegerBranch, ConditionalIntegerCondition, ConditionalIntegerExpression,
@@ -97,21 +100,7 @@ pub(super) fn execute_value_of(
             append_integer_for(inputs, expression, separator, result, control)?;
         }
         ValueExpression::FocusSumFor(expression) => {
-            let (source, context) = required_source_context(inputs, context)?;
-            let value = evaluate_focus_sum_for(expression, source, context, control).map_err(
-                |evaluation_failure| match evaluation_failure {
-                    FocusSumEvaluationFailure::Control(failure) => {
-                        control_failure(failure, inputs.request_id)
-                    }
-                    FocusSumEvaluationFailure::Unsupported => failure(
-                        "FXRT1005",
-                        FailureCategory::Unsupported,
-                        Some(inputs.request_id),
-                        "non-empty numeric multiplication is outside the private focus-preserving sum slice",
-                    ),
-                },
-            )?;
-            append_text(result, &value.to_string(), inputs.request_id, control)?;
+            append_focus_sum_for(inputs, expression, context, result, control)?;
         }
         ValueExpression::DecimalSumFor(expression) => {
             let value = execute_decimal_sum(inputs, expression, context, control)?;
@@ -138,6 +127,9 @@ pub(super) fn execute_value_of(
         ValueExpression::EscapeHtmlUri(expression) => {
             append_escape_html_uri(inputs, expression, result, control)?;
         }
+        ValueExpression::IriToUri(expression) => {
+            append_iri_to_uri(inputs, expression, result, control)?;
+        }
         ValueExpression::ConditionalInteger(expression) => {
             let value = evaluate_conditional_integer(inputs, expression, context, control)?;
             append_text(result, &value.to_string(), inputs.request_id, control)?;
@@ -147,6 +139,45 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_focus_sum_for(
+    inputs: &SequenceInputs<'_>,
+    expression: &crate::xpath::focus_sum_for_experiment::FocusSumForExpression,
+    context: Option<NodeId>,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let value = evaluate_focus_sum_for(expression, source, context, control).map_err(
+        |evaluation_failure| match evaluation_failure {
+            FocusSumEvaluationFailure::Control(failure) => {
+                control_failure(failure, inputs.request_id)
+            }
+            FocusSumEvaluationFailure::Unsupported => failure(
+                "FXRT1005",
+                FailureCategory::Unsupported,
+                Some(inputs.request_id),
+                "non-empty numeric multiplication is outside the private focus-preserving sum slice",
+            ),
+        },
+    )?;
+    append_text(result, &value.to_string(), inputs.request_id, control)
+}
+
+fn append_iri_to_uri(
+    inputs: &SequenceInputs<'_>,
+    expression: &IriToUriExpression,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let value = evaluate_iri_to_uri(expression, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let value = match value {
+        IriToUriValue::Boolean(value) => value.to_string(),
+        IriToUriValue::String(value) => value,
+    };
+    append_text(result, &value, inputs.request_id, control)
 }
 
 fn append_encode_for_uri(

@@ -272,8 +272,7 @@ fn parse_xpath_quoted(expression: &str) -> Option<String> {
     Some(value)
 }
 
-#[cfg(test)]
-fn iri_to_uri(value: &str) -> String {
+pub(crate) fn iri_to_uri(value: &str) -> String {
     let mut encoded = String::with_capacity(value.len());
     for byte in value.as_bytes() {
         if (b'!'..=b'~').contains(byte)

@@ -27,6 +27,9 @@ use crate::xpath::for_distinct_values_experiment::{
 };
 use crate::xpath::format_number_experiment::parse as parse_format_number;
 use crate::xpath::integer_for_experiment::parse as parse_integer_for;
+use crate::xpath::iri_to_uri_expression::{
+    IriToUriParseFailure, parse as parse_iri_to_uri, recognizes as recognizes_iri_to_uri,
+};
 use crate::xpath::path_experiment::{
     PathFailure, PathStep, parse_location_path, parse_qualified_child_path,
 };
@@ -660,7 +663,9 @@ fn compile_value_expression(
     {
         return Ok(conditional);
     }
-    Ok(if recognizes_encode_for_uri(expression) {
+    Ok(if recognizes_iri_to_uri(expression) {
+        compile_iri_to_uri_value(expression, location)?
+    } else if recognizes_encode_for_uri(expression) {
         compile_encode_for_uri_value(expression, location)?
     } else if recognizes_escape_html_uri(expression) {
         compile_escape_html_uri_value(expression, location)?
@@ -737,6 +742,38 @@ fn compile_value_expression(
             parse_location_path(expression, location.clone()).map_err(map_path_failure)?,
         )
     })
+}
+
+fn compile_iri_to_uri_value(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<ValueExpression, CompileFailure> {
+    let expression = parse_iri_to_uri(expression).map_err(|failure| {
+        let (code, category, detail) = match failure {
+            IriToUriParseFailure::InvalidArity => (
+                "XPST0017",
+                CompileCategory::Invalid,
+                "fn:iri-to-uri requires one argument",
+            ),
+            IriToUriParseFailure::InvalidArgumentType => (
+                "XPTY0004",
+                CompileCategory::Invalid,
+                "fn:iri-to-uri requires an optional string",
+            ),
+            IriToUriParseFailure::Unsupported => (
+                "FXXP1014",
+                CompileCategory::Unsupported,
+                "iri-to-uri expression shape is outside the admitted production slice",
+            ),
+        };
+        CompileFailure {
+            code,
+            category,
+            detail: detail.to_owned(),
+            location: location.clone(),
+        }
+    })?;
+    Ok(ValueExpression::IriToUri(Box::new(expression)))
 }
 
 fn compile_encode_for_uri_value(
