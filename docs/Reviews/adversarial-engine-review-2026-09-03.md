@@ -3,9 +3,10 @@
 | Field | Value |
 | --- | --- |
 | Date | 2026-09-03 |
-| Status | Closure re-audit: Findings 1 through 6 verified resolved; Finding 7 remediation implemented pending independent re-audit |
+| Status | Closure re-audit complete: all seven findings verified resolved; broader ADR-0004 decomposition campaign remains active |
 | Scope | Repository state at `a9d495e`, with emphasis on changes after the resolved 2026-08-30 review |
 | Closure re-audit scope | Repository state at `b75e4e7` |
+| Finding 7 closure re-audit scope | Repository state at `e8115d7` |
 | Method | Read-only source, decision-record, evidence, corpus-overlay, runtime, worker, native-ABI, and managed-host inspection; full all-feature workspace test execution; static counterexamples |
 
 The earlier twelve findings remain closed. This review does not reopen one merely
@@ -22,7 +23,7 @@ admitted behavior that the earlier review did not cover.
 | 4. Character-map scaling | Verified resolved 2026-09-03 | Release-mode measurements confirmed both adverse curves. Compilation now composes through an ordered keyed map and retains a sorted compact vector; serialization uses binary lookup. |
 | 5. Test-only QT3 semantics | Verified resolved 2026-09-03 | All 1,170 current QT3 passes now execute or report their expected diagnostic through production compilation/runtime paths. Direct family evaluators remain focused oracles, not the sole pass mechanism. |
 | 6. Worker command queue | Verified resolved 2026-09-03 | The shared event channel has capacity one and a focused backpressure test proves a second decoded event cannot be queued. |
-| 7. Source-unit reopening | Remediation implemented 2026-09-03; independent re-audit pending | The required private boolean-compiler seam is now extracted. The sequence-constructor parent fell from the auditor's 2,237-line checkpoint to 1,817 lines; the broader decomposition campaign remains active. |
+| 7. Source-unit reopening | Verified resolved 2026-09-03 | The required private boolean-compiler seam is extracted. The sequence-constructor parent fell from the auditor's 2,237-line checkpoint to 1,817 lines, and independent inspection plus the full repository gate conserved the checkpoint. The broader decomposition campaign remains active. |
 
 ### Finding 1: Atomic `apply-templates` ranges allocate before control can intervene
 
@@ -505,13 +506,16 @@ exists, but its disposition no longer describes the current checkpoint and
 does not close the architecture-drift mechanism.
 [Review](../Evidence/second-adversarial-source-unit-cohesion-review-2026-09-03.md)
 
-Remediation: **Implemented 2026-09-03; independent closure re-audit pending.**
+Remediation: **Independently verified and closed 2026-09-03 at `e8115d7`.**
 Boolean-expression recognition and lowering now live behind one private typed
 operation in `instruction_compiler/boolean_expression_compiler.rs`. The parent
 retains sequence-constructor dispatch and selects when boolean compilation is
 attempted; the child has no constructor traversal, runtime, resource, or host
 policy responsibility. The move reduced the parent from 2,237 to 1,817 lines
-and preserved all workspace tests and existing corpus dispositions. The
+and preserved all workspace tests and existing corpus dispositions. Independent
+source inspection confirmed that control returns only the existing typed
+`BooleanExpression` or structured `CompileFailure`; the child reuses only
+stateless lexical/diagnostic helpers and existing typed compiler parsers. The
 auditor's reopening above remains the historical disposition at `b75e4e7`.
 [Evidence](../Evidence/instruction-boolean-compiler-decomposition-2026-09-03.md)
 
@@ -688,7 +692,7 @@ Subsequent remediation after `b75e4e7` completed that named extraction. The
 sequence-constructor parent is now 1,817 lines and delegates boolean recognition
 and lowering through one private typed operation. This statement records later
 work and does not alter the closure re-audit result at its stated checkpoint;
-Finding 7 awaits independent re-audit.
+independent re-audit at `e8115d7` verified the boundary and closes Finding 7.
 
 `cargo test --workspace --all-features` passed at this re-audit checkpoint: 622
 engine tests passed with 17 ignored, 18 native tests passed with 2 ignored, and

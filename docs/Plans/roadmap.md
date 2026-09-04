@@ -82,8 +82,8 @@ has discharged Finding 7's missing-review obligation and extracted the compiler
 composition tests. The instruction boolean compiler is now extracted behind one
 private typed operation, reducing its sequence-constructor parent from the
 auditor's 2,237-line checkpoint to 1,817 lines without changing the selected
-corpus ledger. Finding 7's immediate reopening condition is remediated pending
-independent re-audit. Remaining behavior-preserving checkpoints are serializer
+corpus ledger. Independent re-audit at `e8115d7` verified that boundary and
+closed Finding 7. Remaining behavior-preserving checkpoints are serializer
 HTML-profile recognition, runtime boolean evaluation, runtime source copying,
 and a post-campaign coupling review.
 [Review](../Evidence/second-adversarial-source-unit-cohesion-review-2026-09-03.md)

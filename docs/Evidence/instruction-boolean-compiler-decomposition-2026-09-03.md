@@ -5,7 +5,7 @@
 | Date | 2026-09-03 |
 | Trigger | Finding 7 of the [second adversarial review](../Reviews/adversarial-engine-review-2026-09-03.md) |
 | Governing decision | [ADR-0004](../ADR/ADR-0004-source-unit-cohesion-size-pressure-and-decomposition.md) |
-| Disposition | Required structural checkpoint completed; independent closure re-audit remains pending |
+| Disposition | Required structural checkpoint independently verified; Finding 7 closed |
 
 ## Change
 
@@ -30,11 +30,13 @@ extraction and formatting it contains 1,817 lines; the new private boolean
 compiler contains 443 lines. This is a responsibility move rather than a claim
 that total source volume decreased.
 
-The dependency remains one-way: the sequence-constructor owner selects the
+Control flow remains one-way: the sequence-constructor owner selects the
 boolean compiler, and the boolean compiler returns the existing typed result or
-existing structured `CompileFailure`. No trait, callback, dynamic dispatch,
-allocation policy, public Rust API, native ABI, or second execution path was
-introduced.
+existing structured `CompileFailure`. The child imports stateless lexical and
+diagnostic helpers from its parent plus existing typed compiler parsers; it does
+not call back into sequence-constructor traversal. No trait, callback, dynamic
+dispatch, allocation policy, public Rust API, native ABI, or second execution
+path was introduced.
 
 ## Conservation
 
@@ -50,8 +52,18 @@ Validation after the move:
   17 ignored, 18 native tests passed with 2 ignored, and 4 worker tests passed;
 - `cargo fmt --all --check`: covered by the final repository verification gate.
 
-Finding 7's immediate reopening condition is therefore remediated. The broader
-ADR-0004 campaign remains active for the serializer HTML-profile recognizer,
-runtime boolean evaluator, runtime source-copy seam, and final coupling and
-line-count review. The adversarial finding remains pending until independently
-re-audited.
+## Independent closure re-audit
+
+Independent review at `e8115d7` compared the extraction with the pre-move
+recognizer, traced both parent call sites, inspected the child's imports and
+responsibility boundary, confirmed the 1,817/443 physical line counts, and ran
+the focused compiler suite plus `scripts/verify.ps1`. The focused suite passed
+52 tests with one ignored manual measurement probe. The full verification gate
+passed formatting, Clippy, 622 engine tests, 18 native tests, 4 worker tests,
+documentation, Markdown links, and pinned conformance-source checks.
+
+Finding 7's immediate reopening condition is therefore independently verified
+closed. The broader ADR-0004 campaign remains active for the serializer
+HTML-profile recognizer, runtime boolean evaluator, runtime source-copy seam,
+and final coupling and line-count review; those planned checkpoints are not a
+continuation of this adversarial finding.
