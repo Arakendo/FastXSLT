@@ -641,6 +641,25 @@ mod tests {
         );
     }
 
+    #[test]
+    fn production_duration_component_expression_reaches_the_workbench_host_path() {
+        let engine = ExperimentalEngine::new(
+            "urn:fastxslt:duration-component:source",
+            b"<source/>".to_vec(),
+            "urn:fastxslt:duration-component:stylesheet",
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="minutes-from-duration(xs:duration('-P3Y4M8DT1H23M2.34S'))"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("production duration-component expression should compile");
+
+        assert_eq!(
+            engine
+                .transform("duration-component-workbench")
+                .expect("production duration-component expression should execute"),
+            "-23"
+        );
+    }
+
     fn retention_custom_engine(
         label: &str,
         source: Vec<u8>,

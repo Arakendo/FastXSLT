@@ -25,7 +25,7 @@ mod deep_equal_composite;
 pub(crate) mod deep_equal_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod default_collation_experiment;
-#[cfg(test)]
+#[cfg(any(test, feature = "workbench"))]
 pub(crate) mod duration_component_experiment;
 #[cfg(test)]
 pub(crate) mod effective_boolean_value_experiment;

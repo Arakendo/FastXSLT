@@ -2,6 +2,23 @@
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct DurationComponentExpression {
+    source: String,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum DurationComponentParseFailure {
+    InvalidArity,
+    Unsupported,
+}
+
+impl DurationComponentExpression {
+    pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
+        self.source.capacity()
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum DurationValue {
     Boolean(bool),
@@ -28,6 +45,42 @@ pub(crate) enum DurationFailure {
     Control(ControlFailure),
     InvalidArity,
     Unsupported,
+}
+
+pub(crate) fn recognizes(expression: &str) -> bool {
+    [
+        "years-from-duration",
+        "months-from-duration",
+        "days-from-duration",
+        "hours-from-duration",
+        "minutes-from-duration",
+    ]
+    .iter()
+    .any(|name| expression.contains(name))
+}
+
+pub(crate) fn parse(
+    expression: &str,
+) -> Result<DurationComponentExpression, DurationComponentParseFailure> {
+    if !recognizes(expression) {
+        return Err(DurationComponentParseFailure::Unsupported);
+    }
+    evaluate(expression, &mut InvocationControl::unbounded()).map_err(|failure| match failure {
+        DurationFailure::InvalidArity => DurationComponentParseFailure::InvalidArity,
+        DurationFailure::Control(_) | DurationFailure::Unsupported => {
+            DurationComponentParseFailure::Unsupported
+        }
+    })?;
+    Ok(DurationComponentExpression {
+        source: expression.to_owned(),
+    })
+}
+
+pub(crate) fn evaluate_compiled(
+    expression: &DurationComponentExpression,
+    control: &mut InvocationControl,
+) -> Result<DurationValue, DurationFailure> {
+    evaluate(&expression.source, control)
 }
 
 pub(crate) fn evaluate(

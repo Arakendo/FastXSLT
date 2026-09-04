@@ -17,6 +17,10 @@ use crate::xpath::default_collation_experiment::{
     DefaultCollationParseFailure, parse as parse_default_collation,
     recognizes as recognizes_default_collation,
 };
+use crate::xpath::duration_component_experiment::{
+    DurationComponentParseFailure, parse as parse_duration_component,
+    recognizes as recognizes_duration_component,
+};
 use crate::xpath::encode_for_uri_expression::{
     EncodeForUriParseFailure, parse as parse_encode_for_uri,
     recognizes as recognizes_encode_for_uri,
@@ -670,7 +674,9 @@ fn compile_value_expression(
     {
         return Ok(conditional);
     }
-    Ok(if recognizes_string_length(expression) {
+    Ok(if recognizes_duration_component(expression) {
+        compile_duration_component_value(expression, location)?
+    } else if recognizes_string_length(expression) {
         compile_string_length_value(expression, location)?
     } else if recognizes_case_conversion(expression) {
         compile_case_conversion_value(expression, location)?
@@ -753,6 +759,33 @@ fn compile_value_expression(
             parse_location_path(expression, location.clone()).map_err(map_path_failure)?,
         )
     })
+}
+
+fn compile_duration_component_value(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<ValueExpression, CompileFailure> {
+    let expression = parse_duration_component(expression).map_err(|failure| {
+        let (code, category, detail) = match failure {
+            DurationComponentParseFailure::InvalidArity => (
+                "XPST0017",
+                CompileCategory::Invalid,
+                "duration-component function has invalid arity",
+            ),
+            DurationComponentParseFailure::Unsupported => (
+                "FXXP1017",
+                CompileCategory::Unsupported,
+                "duration-component expression shape is outside the admitted production slice",
+            ),
+        };
+        CompileFailure {
+            code,
+            category,
+            detail: detail.to_owned(),
+            location: location.clone(),
+        }
+    })?;
+    Ok(ValueExpression::DurationComponent(Box::new(expression)))
 }
 
 fn compile_string_length_value(

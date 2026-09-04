@@ -19,7 +19,7 @@ admitted behavior that the earlier review did not cover.
 | 2. Cross-kind lexical shadowing | Resolved 2026-09-03 | Every local binding clears competing value kinds and suppresses same-name global fallback. The source-node-over-global-atomic counterexample passes through shared and complete-clone frames. |
 | 3. Untaken creation outcome | Resolved 2026-09-03 | Releasing the outcome reclaims its engine and capacity; concurrent take/release has one linearized owner. |
 | 4. Character-map scaling | Resolved 2026-09-03 | Release-mode measurements confirmed both adverse curves. Compilation now composes through an ordered keyed map and retains a sorted compact vector; serialization uses binary lookup. |
-| 5. Test-only QT3 semantics | Partially remediated 2026-09-03 | Seven complete families now put 201 selected cases through production semantics, XSLT execution, serialization, and workbench sentinels. `string-length` adds both source-free and document-path runtime evidence. Other selected test-only families remain migration debt. |
+| 5. Test-only QT3 semantics | Partially remediated 2026-09-03 | Twelve complete families now put 357 selected cases through production semantics, XSLT execution, serialization, and workbench sentinels. `string-length` adds both source-free and document-path runtime evidence; five duration-component families share one strict typed path. Other selected test-only families remain migration debt. |
 | 6. Worker command queue | Resolved 2026-09-03 | The shared event channel has capacity one and a focused backpressure test proves a second decoded event cannot be queued. |
 | 7. Source-unit reopening | Review obligation resolved 2026-09-03; campaign active | Current responsibilities and line counts are inventoried, compiler tests are extracted, and serializer/compiler/runtime checkpoints have named one-way seams and conservation gates. |
 
@@ -312,13 +312,15 @@ invoke test-only evaluators for their 113 selected cases. The complete
 cases through one owned production case-conversion expression and shared typed
 evaluator. The complete `fn/string-length.xml` denominator adds 33 selected
 cases through a production expression that distinguishes source-free and
-document-path execution. The duration evaluator remains test-only, but its
-constructor parser now rejects subtype contamination, empty/incomplete
-lexicals, trailing garbage, malformed fractional seconds, and invalid
-component leftovers through the requested negative controls. Each unchanged
+document-path execution. The five complete `years-from-duration`,
+`months-from-duration`, `days-from-duration`, `hours-from-duration`, and
+`minutes-from-duration` denominators add 156 selected cases through one private
+production expression. Its constructor parser rejects subtype contamination,
+empty/incomplete lexicals, trailing garbage, malformed fractional seconds, and
+invalid component leftovers through the requested negative controls. Each unchanged
 selected expression is compiled into typed production semantics and executed
 through the real XSLT runtime and serializer; additional sentinels reach all
-six expression families through the ASP.NET workbench engine. The three URI
+production expression families through the ASP.NET workbench engine. The three URI
 paths also share their encoding primitives with the earlier semantic code.
 These migrations establish and repeat the required production-parity pattern
 but do not resolve the remaining test-only families.
@@ -329,6 +331,10 @@ but do not resolve the remaining test-only families.
 [Lower-case evidence](../Evidence/qt3-lower-case-denominator-2026-09-03.md)
 [Upper-case evidence](../Evidence/qt3-upper-case-denominator-2026-09-03.md)
 [String-length evidence](../Evidence/qt3-string-length-denominator-2026-09-03.md)
+[Years-from-duration evidence](../Evidence/qt3-years-from-duration-denominator-2026-09-03.md)
+[Months-from-duration evidence](../Evidence/qt3-months-from-duration-denominator-2026-09-03.md)
+[Days-from-duration evidence](../Evidence/qt3-days-from-duration-denominator-2026-09-03.md)
+[Hour/minute duration evidence](../Evidence/qt3-hour-minute-duration-denominators-2026-09-03.md)
 
 Severity:
 - Medium
@@ -354,9 +360,9 @@ whereas the QT3 case-conversion evaluator owns a separate parser and value
 model.
 
 The separate implementations already have observable boundary divergence.
-The test-only duration parser uses one permissive parser for
-`xs:yearMonthDuration`, `xs:duration`, and `xs:dayTimeDuration`, ignores the
-remainder after the date `D` component, and accepts an otherwise empty `P`
+At review time, the test-only duration parser used one permissive parser for
+`xs:yearMonthDuration`, `xs:duration`, and `xs:dayTimeDuration`, ignored the
+remainder after the date `D` component, and accepted an otherwise empty `P`
 lexical (`xpath/duration_component_experiment.rs:218-294`). Consequently
 `xs:yearMonthDuration("P1D")`, `xs:dayTimeDuration("P1Y")`, and
 `xs:duration("P1Dgarbage")` are accepted by that semantic slice even though

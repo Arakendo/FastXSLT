@@ -12,12 +12,15 @@ Date: 2026-09-03
 
 ## Method
 
-The private duration-component evaluator derives normalized hour and minute
+The private production duration-component expression derives normalized hour and minute
 components from its signed whole-second representation. Division and remainder
 normalize oversized lexical fields such as `PT123H` and `P21DT10H65M`; signed
 general durations preserve the sign on each extracted component. The shared
-adapter executes the unchanged boolean, integer, string, empty-sequence,
-arithmetic, comparison, optional-type, and arity-error assertions.
+adapter compiles each unchanged expression inside `xsl:value-of`, executes the
+ordinary runtime, serializes its result, and checks the unchanged boolean,
+integer, string, empty-sequence, arithmetic, comparison, optional-type, and
+arity-error assertions. A negative-duration workbench sentinel reaches the
+same expression through the host-facing engine path.
 
 Every case executes its unchanged QT3 expression and native assertion shape.
 Evaluation charges the XPath-operation work domain.

@@ -2,8 +2,7 @@
 
 use std::{collections::BTreeSet, fs, path::PathBuf};
 
-use super::duration_component_experiment::{DurationFailure, DurationValue, evaluate};
-use crate::execution_control_experiment::{InvocationControl, WorkDomain};
+use super::qt3_production_path_test_support::{compile_expression, execute_expression};
 use crate::qt3_overlay_test_support::{assert_private_case_passed, assert_selected_count};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
@@ -67,74 +66,47 @@ fn execute_duration_denominator(component: &str, component_title: &str, numbered
             .map(|test| document.string_value(test).trim().to_owned())
             .expect("QT3 expression");
         let result = child_named(&document, case, "result").expect("QT3 result metadata");
-        let mut control = InvocationControl::unbounded();
-
-        match evaluate(&source, &mut control) {
-            Ok(actual) => assert_native_result(&document, result, &actual, &case_name, &source),
-            Err(DurationFailure::InvalidArity) => {
-                assert_expected_error(&document, result, "XPST0017");
+        match compile_expression(&case_name, &source) {
+            Ok(program) => {
+                let actual = execute_expression(&program, &case_name);
+                assert_serialized_result(&document, result, &actual, &case_name, &source);
             }
             Err(failure) => {
-                panic!("selected QT3 expression failed: {case_name}: {source}: {failure:?}")
+                assert_expected_error(&document, result, failure.code);
             }
         }
-        assert!(control.consumed(WorkDomain::XPathOperation) > 0);
     }
 }
 
-fn assert_native_result(
+fn assert_serialized_result(
     document: &Document,
     result: NodeId,
-    actual: &DurationValue,
+    actual: &str,
     case_name: &str,
     source: &str,
 ) {
     if !descendants_named(document, result, "assert-true").is_empty() {
-        assert_eq!(
-            actual,
-            &DurationValue::Boolean(true),
-            "{case_name}: {source}"
-        );
+        assert_eq!(actual, "true", "{case_name}: {source}");
         return;
     }
     if !descendants_named(document, result, "assert-false").is_empty() {
-        assert_eq!(
-            actual,
-            &DurationValue::Boolean(false),
-            "{case_name}: {source}"
-        );
+        assert_eq!(actual, "false", "{case_name}: {source}");
         return;
     }
     if let Some(assertion) = descendants_named(document, result, "assert-eq")
         .into_iter()
         .next()
     {
-        let expected = document
-            .string_value(assertion)
-            .trim()
-            .parse::<i128>()
-            .expect("integer assert-eq");
-        assert_eq!(
-            actual,
-            &DurationValue::Integer(expected),
-            "{case_name}: {source}"
-        );
+        let expected = document.string_value(assertion);
+        assert_eq!(actual, expected.trim(), "{case_name}: {source}");
         return;
     }
     let assertion = descendants_named(document, result, "assert-string-value")
         .into_iter()
         .next()
         .unwrap_or_else(|| panic!("selected case lacks an admitted assertion: {case_name}"));
-    let expected = document
-        .string_value(assertion)
-        .trim()
-        .parse::<i128>()
-        .expect("integer string assertion");
-    assert_eq!(
-        actual,
-        &DurationValue::Integer(expected),
-        "{case_name}: {source}"
-    );
+    let expected = document.string_value(assertion);
+    assert_eq!(actual, expected.trim(), "{case_name}: {source}");
 }
 
 fn assert_expected_error(document: &Document, result: NodeId, expected_code: &str) {

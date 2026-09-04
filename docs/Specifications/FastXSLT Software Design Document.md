@@ -381,6 +381,17 @@ invocation source and reports `XPTY0004` when optional-string conversion receive
 multiple nodes. This does not admit general atomization, context-dependent
 zero-argument evaluation, schema-aware values, function items, or predicate
 focus.
+The selected `years-from-duration()`, `months-from-duration()`,
+`days-from-duration()`, `hours-from-duration()`, and `minutes-from-duration()`
+expressions compile to one owned private production form and execute through
+the ordinary runtime and host-workbench paths. Its constructors distinguish
+general, year-month, and day-time duration lexical spaces; reject subtype
+contamination, incomplete forms, trailing content, malformed fractional
+seconds, and leftover components; and retain signed total months and signed
+whole seconds for normalized integer extraction. This does not admit a public
+duration representation, exact fractional-second component extraction,
+arbitrary-precision duration storage, general duration arithmetic, or a
+general function-call grammar.
 The `.//` abbreviation begins descendant navigation at the supplied context
 node, unlike leading `//`, which begins at the document node. Both reuse the
 same typed descendant steps, document-order normalization, deduplication, and

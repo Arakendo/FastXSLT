@@ -10,16 +10,17 @@ Date: 2026-09-03
 
 ## Method
 
-The private duration representation now retains signed total months and signed
+The private production duration representation retains signed total months and signed
 whole seconds. Construction normalizes oversized hour fields before the day
 component is derived by division by 86,400. Fractional lexical seconds are
 ignored after their whole-second contribution because they cannot affect this
 integer component; this narrow representation does not claim to retain them.
-The existing shared adapter executes true, false, integer, string,
-empty-sequence, composition, and arity-error assertions.
+The shared adapter compiles every unchanged expression inside `xsl:value-of`,
+executes the ordinary runtime, serializes its result, and checks true, false,
+integer, string, empty-sequence, composition, and arity-error assertions.
 
-Every case executes its unchanged QT3 expression and native assertion shape.
-Evaluation charges the XPath-operation work domain.
+Runtime evaluation charges the XPath-operation work domain. The shared
+workbench sentinel covers the same production duration-component path.
 
 ## Conserved result
 

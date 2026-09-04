@@ -24,10 +24,11 @@ compact compiled vector.
 [Evidence](../Evidence/character-map-scaling-remediation-2026-09-03.md)
 
 The complete QT3 `default-collation`, `escape-html-uri`, `encode-for-uri`,
-`iri-to-uri`, `lower-case`, `upper-case`, and `string-length` families now put
-all 201 selected cases through production
-semantics, XSLT execution, and serialization. All four expression families
-reach the same engine through ASP.NET workbench sentinels. The URI
+`iri-to-uri`, `lower-case`, `upper-case`, `string-length`, and the five
+year/month/day/hour/minute duration-component families now put all 357 selected
+cases through production semantics, XSLT execution, and serialization. Every
+migrated semantic family reaches the same engine through ASP.NET workbench
+sentinels. The URI
 implementations share their encoding primitives with the earlier semantic code.
 Their QT3 adapters now own only selection, wrapper construction, and assertion
 comparison. The case-conversion path retains one owned, compile-validated
@@ -41,16 +42,20 @@ character references rather than allowing XML normalization to change a test.
 [Lower-case evidence](../Evidence/qt3-lower-case-denominator-2026-09-03.md)
 [Upper-case evidence](../Evidence/qt3-upper-case-denominator-2026-09-03.md)
 [String-length evidence](../Evidence/qt3-string-length-denominator-2026-09-03.md)
+[Years-from-duration evidence](../Evidence/qt3-years-from-duration-denominator-2026-09-03.md)
+[Months-from-duration evidence](../Evidence/qt3-months-from-duration-denominator-2026-09-03.md)
+[Days-from-duration evidence](../Evidence/qt3-days-from-duration-denominator-2026-09-03.md)
+[Hour/minute duration evidence](../Evidence/qt3-hour-minute-duration-denominators-2026-09-03.md)
 
 Finding 5 remains partially open for the other selected test-only families.
 Continue applying this production-path pattern and prefer existing shared
 semantic primitives over adding another family-specific test-only evaluator.
-Exact fractional `seconds-from-duration` work remains paused until duration
-construction and component access have one typed production path. The shared
-duration constructor now completely consumes admitted lexicals and
+Exact fractional `seconds-from-duration` work remains paused because it needs
+fraction-preserving decimal duration storage. The shared production duration
+constructor now completely consumes admitted lexicals and
 rejects subtype contamination, empty/incomplete forms, trailing garbage, and
-malformed fractional seconds. This repairs the review's known semantic defect
-before the five existing duration-component denominators move into production.
+malformed fractional seconds. The five existing integer duration-component
+denominators now compile and execute through that typed production path.
 In parallel,
 the current ADR-0004 cohesion campaign remains active. Its current-state review
 has discharged Finding 7's missing-review obligation and extracted the compiler

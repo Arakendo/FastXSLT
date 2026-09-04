@@ -499,6 +499,9 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
                 }
             }
         }
+        ValueExpression::DurationComponent(expression) => {
+            size_of_val(expression.as_ref()) + expression.known_owned_capacity_bytes()
+        }
         ValueExpression::EncodeForUri(expression) => {
             size_of_val(expression.as_ref()) + expression.known_owned_capacity_bytes()
         }

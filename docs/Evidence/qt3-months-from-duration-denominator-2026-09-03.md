@@ -10,14 +10,16 @@ Date: 2026-09-03
 
 ## Method
 
-The private bounded duration-component evaluator reuses the signed total-month
+The private bounded production expression reuses the signed total-month
 representation established by the adjacent years-from-duration denominator and
 derives the normalized month component using signed integer remainder by
-twelve. The shared QT3 adapter executes native true, false, integer, string,
-and arity-error assertions without substituting fixture-specific results.
+twelve. The shared QT3 adapter compiles every unchanged expression inside
+`xsl:value-of`, executes the ordinary runtime, serializes its result, and checks
+native true, false, integer, string, and arity-error assertions without
+substituting fixture-specific results.
 
-Every case executes its unchanged QT3 expression and native assertion shape.
-Evaluation charges the XPath-operation work domain.
+Runtime evaluation charges the XPath-operation work domain. The shared
+workbench sentinel covers the same production duration-component path.
 
 ## Conserved result
 
@@ -33,7 +35,7 @@ Across all complete QT3 overlays, the conserved subtotal is now 1,347 cases:
 
 ## Boundary
 
-This result has the same private representation boundary as the adjacent
+This result has the same private production representation boundary as the adjacent
 years-from-duration evidence. It does not establish a public duration type,
-complete duration lexical validation, general duration arithmetic, or support
-for day, hour, minute, and second component functions.
+complete duration lexical validation beyond the admitted forms, general
+duration arithmetic, or support for the seconds component function.

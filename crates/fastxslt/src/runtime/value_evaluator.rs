@@ -18,6 +18,10 @@ use crate::xpath::deep_equal_experiment::DeepEqualEvaluationFailure;
 use crate::xpath::default_collation_experiment::{
     DefaultCollationValue, evaluate as evaluate_default_collation,
 };
+use crate::xpath::duration_component_experiment::{
+    DurationComponentExpression, DurationFailure, DurationValue,
+    evaluate_compiled as evaluate_duration_component,
+};
 use crate::xpath::encode_for_uri_expression::{
     EncodeForUriExpression, EncodeForUriValue, evaluate as evaluate_encode_for_uri,
 };
@@ -131,6 +135,9 @@ pub(super) fn execute_value_of(
         ValueExpression::DefaultCollation(expression) => {
             append_default_collation(inputs, expression, result, control)?;
         }
+        ValueExpression::DurationComponent(expression) => {
+            append_duration_component(inputs, expression, result, control)?;
+        }
         ValueExpression::EncodeForUri(expression) => {
             append_encode_for_uri(inputs, expression, result, control)?;
         }
@@ -152,6 +159,39 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_duration_component(
+    inputs: &SequenceInputs<'_>,
+    expression: &DurationComponentExpression,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let value = evaluate_duration_component(expression, control).map_err(|duration_failure| {
+        match duration_failure {
+            DurationFailure::Control(control) => control_failure(control, inputs.request_id),
+            DurationFailure::InvalidArity | DurationFailure::Unsupported => failure(
+                "FXRT1016",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                "compiled duration-component expression failed runtime validation",
+            ),
+        }
+    })?;
+    let value = match value {
+        DurationValue::Boolean(value) => value.to_string(),
+        DurationValue::Empty => String::new(),
+        DurationValue::Integer(value) => value.to_string(),
+        DurationValue::Duration(_) => {
+            return Err(failure(
+                "FXRT1016",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                "compiled duration-component expression returned a duration value",
+            ));
+        }
+    };
+    append_text(result, &value, inputs.request_id, control)
 }
 
 fn append_string_length(

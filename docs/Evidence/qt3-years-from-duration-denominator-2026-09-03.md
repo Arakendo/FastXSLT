@@ -10,7 +10,7 @@ Date: 2026-09-03
 
 ## Method
 
-A bounded, source-free duration-component evaluator parses the year and month
+A bounded, source-free production expression parses the year and month
 components of `xs:yearMonthDuration`, `xs:duration`, and
 `xs:dayTimeDuration` lexical values into signed total months. It derives the
 normalized year component using integer division by twelve. Existing private
@@ -18,8 +18,11 @@ composition handles empty sequences, count/empty/average, arithmetic, integer
 comparisons, optional-integer instance tests, and the native `XPST0017` arity
 diagnostic.
 
-Every case executes its unchanged QT3 expression and native assertion shape.
-Evaluation charges the XPath-operation work domain.
+Every unchanged QT3 expression is compiled inside a generated `xsl:value-of`,
+executed by the ordinary XSLT runtime, serialized as text, and compared with
+its native assertion shape. Runtime evaluation charges the XPath-operation
+work domain. A workbench sentinel proves the same compiled expression reaches
+the host-facing engine path.
 
 ## Conserved result
 
@@ -35,9 +38,9 @@ Across all complete QT3 overlays, the conserved subtotal is now 1,316 cases:
 
 ## Boundary
 
-This evidence admits only the typed duration construction and year-component
+This evidence admits only the private typed duration construction and
+year-component
 expressions exercised by this denominator. It does not establish a public
 duration representation, general duration arithmetic, complete lexical
-validation, implicit timezone semantics, or the other duration component
-functions. The representation and evaluator remain private test evidence until
-a broader XPath/XDM slice supplies an owned semantic boundary.
+validation beyond the admitted forms, implicit timezone semantics, or the
+seconds component function.
