@@ -1119,13 +1119,17 @@ fn compile_count_value(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<Option<ValueExpression>, CompileFailure> {
-    let Some(argument) = expression
-        .trim()
-        .strip_prefix("count(")
-        .and_then(|value| value.strip_suffix(')'))
-    else {
+    let expression = expression.trim();
+    let Some(argument) = ["count(", "fn:count("].iter().find_map(|prefix| {
+        expression
+            .strip_prefix(prefix)
+            .and_then(|value| value.strip_suffix(')'))
+    }) else {
         return Ok(None);
     };
+    if argument.trim_start().starts_with("fn:") && argument.contains('(') {
+        return Ok(None);
+    }
     let mut path =
         parse_location_path(argument.trim(), location.clone()).map_err(map_path_failure)?;
     if let Some(namespace) = effective_xpath_default_namespace(document, element) {

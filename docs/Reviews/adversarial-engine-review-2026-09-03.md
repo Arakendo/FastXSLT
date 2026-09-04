@@ -19,7 +19,7 @@ admitted behavior that the earlier review did not cover.
 | 2. Cross-kind lexical shadowing | Resolved 2026-09-03 | Every local binding clears competing value kinds and suppresses same-name global fallback. The source-node-over-global-atomic counterexample passes through shared and complete-clone frames. |
 | 3. Untaken creation outcome | Resolved 2026-09-03 | Releasing the outcome reclaims its engine and capacity; concurrent take/release has one linearized owner. |
 | 4. Character-map scaling | Resolved 2026-09-03 | Release-mode measurements confirmed both adverse curves. Compilation now composes through an ordered keyed map and retains a sorted compact vector; serialization uses binary lookup. |
-| 5. Test-only QT3 semantics | Partially remediated 2026-09-03 | Twenty-one complete families now put 946 selected cases through production semantics, XSLT execution, serialization, and workbench sentinels. The `not` and `boolean` families include their nine document-aware EBV cases. Other selected test-only families remain migration debt. |
+| 5. Test-only QT3 semantics | Partially remediated 2026-09-03 | Twenty-one complete families plus 182 successful `AxisStep` count cases now put 1,128 selected cases through production semantics, XSLT execution, serialization, and workbench sentinels. The remaining 42 selected `AxisStep` path/cardinality/diagnostic cases are the current migration debt. |
 | 6. Worker command queue | Resolved 2026-09-03 | The shared event channel has capacity one and a focused backpressure test proves a second decoded event cannot be queued. |
 | 7. Source-unit reopening | Review obligation resolved 2026-09-03; campaign active | Current responsibilities and line counts are inventoried, compiler tests are extracted, and serializer/compiler/runtime checkpoints have named one-way seams and conservation gates. |
 
@@ -332,7 +332,10 @@ unchanged selected expression is compiled
 into typed production semantics and executed through the real XSLT runtime and serializer;
 additional sentinels reach all production expression families through the
 ASP.NET workbench engine. The three URI paths also share their encoding
-primitives with the earlier semantic code.
+primitives with the earlier semantic code. The 182 successful `AxisStep`
+selections now compile their unchanged standard `fn:count(location-path)`
+expressions and execute the production path evaluator; their direct count seam
+remains a work-accounting oracle.
 These migrations establish and repeat the required production-parity pattern
 but do not resolve the remaining test-only families.
 [Default-collation evidence](../Evidence/qt3-default-collation-denominator-2026-09-03.md)
@@ -353,6 +356,7 @@ but do not resolve the remaining test-only families.
 [Deep-equal production-path evidence](../Evidence/qt3-deep-equal-production-path-2026-09-03.md)
 [Source-free boolean production-path evidence](../Evidence/qt3-source-free-boolean-production-path-2026-09-03.md)
 [Document-aware boolean production-path evidence](../Evidence/qt3-document-aware-boolean-production-path-2026-09-03.md)
+[Axis count production-path evidence](../Evidence/qt3-axis-count-production-path-2026-09-03.md)
 
 Severity:
 - Medium

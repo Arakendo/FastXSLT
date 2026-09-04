@@ -8,6 +8,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocati
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 use super::count_experiment;
+use super::qt3_production_path_test_support::{compile_expression, execute_expression_with_source};
 
 const EMPTY_SEQUENCE_PATH_CASES: [(&str, &str); 2] = [
     ("K2-Axes-55", "empty(()/@attr)"),
@@ -477,6 +478,15 @@ fn executes_qt3_axes001_through_axes084_admitted_location_path_groups() {
         .expect("execute admitted QT3 count expression");
 
         assert_eq!(actual, asserted, "native QT3 assertion for {case_name}");
+        let program = compile_expression(case_name, &expression).unwrap_or_else(|failure| {
+            panic!("production compile failed for {case_name}: {failure:?}")
+        });
+        assert_eq!(
+            execute_expression_with_source(&program, &document, case_name)
+                .expect("production axis count should execute"),
+            asserted.to_string(),
+            "production QT3 assertion for {case_name}: {expression}"
+        );
         assert!(control.consumed(WorkDomain::XPathNodeVisit) > 0);
     }
 }

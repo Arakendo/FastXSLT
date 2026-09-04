@@ -718,6 +718,26 @@ mod tests {
     }
 
     #[test]
+    fn prefixed_count_location_path_reaches_the_workbench_host_path() {
+        let engine = ExperimentalEngine::new(
+            "urn:fastxslt:count:source",
+            b"<root><center><south-east/><other/></center><center><south-east/></center></root>"
+                .to_vec(),
+            "urn:fastxslt:count:stylesheet",
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="fn:count(//center/child::south-east)"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("prefixed count location path should compile");
+
+        assert_eq!(
+            engine
+                .transform("prefixed-count-workbench")
+                .expect("prefixed count location path should execute"),
+            "2"
+        );
+    }
+
+    #[test]
     fn production_string_length_expression_reaches_the_workbench_host_path() {
         let engine = ExperimentalEngine::new(
             "urn:fastxslt:string-length:source",

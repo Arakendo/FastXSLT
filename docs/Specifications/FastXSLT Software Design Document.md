@@ -328,7 +328,8 @@ the source-document whitespace visibility policy, and does not admit
 `xml:space` on every instruction or literal result element.
 The private conditional/value slice also admits `xpath-default-namespace` on
 `xsl:if`, `xsl:choose`, `xsl:when`, `xsl:otherwise`, and `xsl:value-of` for the
-exact `count(location-path)` value form. Unprefixed element steps use the
+exact `count(location-path)` value form, including the standard predeclared
+`fn:count` spelling. Unprefixed element steps use the
 nearest effective namespace, an empty declaration resets it, and attribute
 name tests remain outside default element namespace application. Counting
 reuses controlled path traversal and does not admit general aggregate

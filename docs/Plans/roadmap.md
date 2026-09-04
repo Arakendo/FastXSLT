@@ -32,7 +32,9 @@ cases through production semantics, XSLT execution, and serialization. The
 `true`, `false`, `not`, and `boolean` add 254 more, bringing the
 production-backed selected subtotal to 946. The nine document-aware EBV cases
 compile their paths once and preserve node-first versus atomic-first sequence
-behavior. Every
+behavior. Another 182 successful `AxisStep` cases now compile standard
+`fn:count(location-path)` and execute the existing typed path machinery through
+production, bringing the subtotal to 1,128. Every
 migrated semantic family reaches the same engine through ASP.NET workbench
 sentinels. The URI
 implementations share their encoding primitives with the earlier semantic code.
@@ -59,6 +61,7 @@ character references rather than allowing XML normalization to change a test.
 [Deep-equal production-path evidence](../Evidence/qt3-deep-equal-production-path-2026-09-03.md)
 [Source-free boolean production-path evidence](../Evidence/qt3-source-free-boolean-production-path-2026-09-03.md)
 [Document-aware boolean production-path evidence](../Evidence/qt3-document-aware-boolean-production-path-2026-09-03.md)
+[Axis count production-path evidence](../Evidence/qt3-axis-count-production-path-2026-09-03.md)
 
 Finding 5 remains partially open for the other selected test-only families.
 Continue applying this production-path pattern and prefer existing shared
