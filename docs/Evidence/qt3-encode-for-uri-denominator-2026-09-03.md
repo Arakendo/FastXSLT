@@ -10,11 +10,19 @@ Date: 2026-09-03
 
 ## Method
 
-A private source-free evaluator retains the URI unreserved ASCII characters
-`A-Z`, `a-z`, `0-9`, `-`, `_`, `.`, and `~`. Every other byte of the UTF-8
-encoding is percent-encoded using uppercase hexadecimal digits. Shared bounded
-call parsing also accepts insignificant whitespace between a function name and
-its argument list.
+The denominator was initially admitted through a private source-free evaluator.
+It now runs every selected unchanged expression through generated XSLT and the
+ordinary XML parser, stylesheet compiler, typed expression plan, runtime,
+result tree, and text serializer. A separate workbench sentinel executes the
+same typed expression through the ASP.NET-facing experimental engine.
+
+The production expression retains the URI unreserved ASCII characters `A-Z`,
+`a-z`, `0-9`, `-`, `_`, `.`, and `~`. Every other byte of the UTF-8 encoding is
+percent-encoded using uppercase hexadecimal digits. It accepts the selected
+outer-parentheses and two-argument `concat` forms and insignificant whitespace
+between a function name and its argument list. The QT3 adapter now owns only
+catalog selection, wrapper construction, and assertion comparison; it does not
+evaluate the function or manufacture the reported error.
 
 The selected tranche covers:
 
@@ -25,7 +33,9 @@ The selected tranche covers:
 - native `XPST0017` invalid-arity and `XPTY0004` invalid-argument diagnostics.
 
 Every selected case executes the unchanged QT3 expression and its native
-assertion shape. Evaluation charges the XPath-operation work domain.
+assertion shape. Invalid arity and argument type are reported by production
+compilation as `XPST0017` and `XPTY0004`. Evaluation charges the XPath-operation
+work domain.
 
 ## Conserved result
 
@@ -47,5 +57,6 @@ Across all complete QT3 overlays, the conserved subtotal is now 1,099 cases:
 
 This evidence does not claim general function dispatch, arbitrary expression
 composition, invocation clocks, sequence indexing, `treat as`, or whitespace
-normalization. The evaluator remains a private semantic slice and does not
-select a public URI encoding API.
+normalization. The production expression is a private typed semantic slice for
+the selected forms and does not select a public URI encoding API or widen the
+one visible not-run case.

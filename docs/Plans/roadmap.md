@@ -23,14 +23,15 @@ ordered-key composition and binary serialization lookup while retaining the
 compact compiled vector.
 [Evidence](../Evidence/character-map-scaling-remediation-2026-09-03.md)
 
-The complete QT3 `default-collation` and `escape-html-uri` families now put all
-40 selected cases through typed production semantics, XSLT execution, and
-serialization. Both expression families reach the same engine through ASP.NET
-workbench sentinels. The escape implementation is also shared with the earlier
-literal-fold path. Their QT3 adapters now own only selection, wrapper
-construction, and assertion comparison.
+The complete QT3 `default-collation`, `escape-html-uri`, and `encode-for-uri`
+families now put all 68 selected cases through typed production semantics, XSLT
+execution, and serialization. All three expression families reach the same
+engine through ASP.NET workbench sentinels. The URI implementations share their
+encoding primitives with the earlier semantic code. Their QT3 adapters now own
+only selection, wrapper construction, and assertion comparison.
 [Default-collation evidence](../Evidence/qt3-default-collation-denominator-2026-09-03.md)
 [Escape-HTML-URI evidence](../Evidence/qt3-escape-html-uri-denominator-2026-09-03.md)
+[Encode-for-URI evidence](../Evidence/qt3-encode-for-uri-denominator-2026-09-03.md)
 
 Finding 5 remains partially open for the other selected test-only families.
 Continue applying this production-path pattern and prefer existing shared

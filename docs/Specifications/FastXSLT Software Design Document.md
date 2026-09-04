@@ -614,6 +614,13 @@ the ordinary XSLT runtime, serializer, and workbench boundary. Both forms share
 one escape implementation. They remain distinct from serializer-owned URI
 attribute escaping and do not admit dynamic arguments or general function
 dispatch.
+The separate typed `encode-for-uri()` production expression percent-encodes
+every UTF-8 byte except the URI unreserved ASCII set. It admits the selected
+empty and string literals, harmless outer parentheses, a two-argument
+literal-prefix `concat()` composition, and equality against a string literal.
+Invalid arity and argument type report `XPST0017` and `XPTY0004`. It executes
+through the ordinary XSLT runtime, serializer, and workbench boundary, but does
+not admit dynamic operands, general concatenation, or general function dispatch.
 Invalid boolean values on admitted `xsl:output` properties are static
 stylesheet errors reported as `XTSE0020`, with the structured invalid category
 and stylesheet source location preserved. XSLT 2.0 accepts only `yes`/`no`;

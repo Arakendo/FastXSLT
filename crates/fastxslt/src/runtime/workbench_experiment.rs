@@ -565,6 +565,25 @@ mod tests {
         );
     }
 
+    #[test]
+    fn production_encode_for_uri_expression_reaches_the_workbench_host_path() {
+        let engine = ExperimentalEngine::new(
+            "urn:fastxslt:encode-for-uri:source",
+            b"<source/>".to_vec(),
+            "urn:fastxslt:encode-for-uri:stylesheet",
+            r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="concat('http://www.example.com/', encode-for-uri('~bébé')) eq 'http://www.example.com/~b%C3%A9b%C3%A9'"/></xsl:template></xsl:stylesheet>"#.as_bytes().to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("production encode-for-uri expression should compile");
+
+        assert_eq!(
+            engine
+                .transform("encode-for-uri-workbench")
+                .expect("production encode-for-uri expression should execute"),
+            "true"
+        );
+    }
+
     fn retention_custom_engine(
         label: &str,
         source: Vec<u8>,

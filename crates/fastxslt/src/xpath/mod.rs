@@ -31,6 +31,8 @@ pub(crate) mod duration_component_experiment;
 pub(crate) mod effective_boolean_value_experiment;
 #[cfg(test)]
 pub(crate) mod empty_experiment;
+#[cfg(any(test, feature = "workbench"))]
+pub(crate) mod encode_for_uri_expression;
 pub(crate) mod escape_html_uri_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod escape_html_uri_expression;

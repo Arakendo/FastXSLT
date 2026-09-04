@@ -19,7 +19,7 @@ admitted behavior that the earlier review did not cover.
 | 2. Cross-kind lexical shadowing | Resolved 2026-09-03 | Every local binding clears competing value kinds and suppresses same-name global fallback. The source-node-over-global-atomic counterexample passes through shared and complete-clone frames. |
 | 3. Untaken creation outcome | Resolved 2026-09-03 | Releasing the outcome reclaims its engine and capacity; concurrent take/release has one linearized owner. |
 | 4. Character-map scaling | Resolved 2026-09-03 | Release-mode measurements confirmed both adverse curves. Compilation now composes through an ordered keyed map and retains a sorted compact vector; serialization uses binary lookup. |
-| 5. Test-only QT3 semantics | Partially remediated 2026-09-03 | The complete `default-collation` and `escape-html-uri` families now put all 40 selected cases through compiled typed production semantics, XSLT execution, serialization, and workbench sentinels. Other selected test-only families remain migration debt. |
+| 5. Test-only QT3 semantics | Partially remediated 2026-09-03 | The complete `default-collation`, `escape-html-uri`, and `encode-for-uri` families now put all 68 selected cases through compiled typed production semantics, XSLT execution, serialization, and workbench sentinels. Other selected test-only families remain migration debt. |
 | 6. Worker command queue | Resolved 2026-09-03 | The shared event channel has capacity one and a focused backpressure test proves a second decoded event cannot be queued. |
 | 7. Source-unit reopening | Review obligation resolved 2026-09-03; campaign active | Current responsibilities and line counts are inventoried, compiler tests are extracted, and serializer/compiler/runtime checkpoints have named one-way seams and conservation gates. |
 
@@ -305,16 +305,18 @@ request for a generalized cache.
 ### Finding 5: QT3 pass growth is implemented by test-only XPath evaluators
 
 Disposition: **Partially remediated 2026-09-03.** The complete seven-case
-`fn/default-collation.xml` and 34-case `fn/escape-html-uri.xml` denominators no
-longer invoke test-only evaluators for their 40 selected cases. Each unchanged
-selected expression is compiled into typed production semantics and executed
-through the real XSLT runtime and serializer; additional sentinels reach both
-expression families through the ASP.NET workbench engine. The shared
-escape implementation also remains the authority for the older literal-fold
-path. These migrations establish and repeat the required production-parity
-pattern but do not resolve the remaining test-only families.
+`fn/default-collation.xml`, 34-case `fn/escape-html-uri.xml`, and 29-case
+`fn/encode-for-uri.xml` denominators no longer invoke test-only evaluators for
+their 68 selected cases. Each unchanged selected expression is compiled into
+typed production semantics and executed through the real XSLT runtime and
+serializer; additional sentinels reach all three expression families through
+the ASP.NET workbench engine. The two URI paths also share their encoding
+primitives with the earlier semantic code. These migrations establish and
+repeat the required production-parity pattern but do not resolve the remaining
+test-only families.
 [Default-collation evidence](../Evidence/qt3-default-collation-denominator-2026-09-03.md)
 [Escape-HTML-URI evidence](../Evidence/qt3-escape-html-uri-denominator-2026-09-03.md)
+[Encode-for-URI evidence](../Evidence/qt3-encode-for-uri-denominator-2026-09-03.md)
 
 Severity:
 - Medium

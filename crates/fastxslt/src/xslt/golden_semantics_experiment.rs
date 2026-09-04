@@ -5,6 +5,7 @@ use crate::xpath::castable_experiment::{CastExpression, CastableExpression};
 use crate::xpath::decimal_sum_for_experiment::DecimalSumForExpression;
 use crate::xpath::deep_equal_boolean_experiment::DeepEqualBooleanExpression;
 use crate::xpath::default_collation_experiment::DefaultCollationExpression;
+use crate::xpath::encode_for_uri_expression::EncodeForUriExpression;
 use crate::xpath::escape_html_uri_expression::EscapeHtmlUriExpression;
 use crate::xpath::focus_sum_for_experiment::FocusSumForExpression;
 use crate::xpath::for_distinct_values_experiment::ForDistinctValuesExpression;
@@ -469,6 +470,7 @@ pub(crate) enum ValueExpression {
     Castable(Box<CastableExpression>),
     DeepEqual(Box<DeepEqualBooleanExpression>),
     DefaultCollation(Box<DefaultCollationExpression>),
+    EncodeForUri(Box<EncodeForUriExpression>),
     EscapeHtmlUri(Box<EscapeHtmlUriExpression>),
     ConditionalInteger(Box<ConditionalIntegerExpression>),
     ConditionalPath(Box<ConditionalPathExpression>),

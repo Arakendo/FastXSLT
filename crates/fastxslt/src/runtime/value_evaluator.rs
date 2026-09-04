@@ -15,6 +15,9 @@ use crate::xpath::deep_equal_experiment::DeepEqualEvaluationFailure;
 use crate::xpath::default_collation_experiment::{
     DefaultCollationValue, evaluate as evaluate_default_collation,
 };
+use crate::xpath::encode_for_uri_expression::{
+    EncodeForUriExpression, EncodeForUriValue, evaluate as evaluate_encode_for_uri,
+};
 use crate::xpath::escape_html_uri_expression::{
     EscapeHtmlUriExpression, EscapeHtmlUriValue, evaluate as evaluate_escape_html_uri,
 };
@@ -129,6 +132,9 @@ pub(super) fn execute_value_of(
         ValueExpression::DefaultCollation(expression) => {
             append_default_collation(inputs, expression, result, control)?;
         }
+        ValueExpression::EncodeForUri(expression) => {
+            append_encode_for_uri(inputs, expression, result, control)?;
+        }
         ValueExpression::EscapeHtmlUri(expression) => {
             append_escape_html_uri(inputs, expression, result, control)?;
         }
@@ -141,6 +147,21 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_encode_for_uri(
+    inputs: &SequenceInputs<'_>,
+    expression: &EncodeForUriExpression,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let value = evaluate_encode_for_uri(expression, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let value = match value {
+        EncodeForUriValue::Boolean(value) => value.to_string(),
+        EncodeForUriValue::String(value) => value,
+    };
+    append_text(result, &value, inputs.request_id, control)
 }
 
 fn append_escape_html_uri(

@@ -172,8 +172,7 @@ fn evaluate_encode_string(
     Ok(encode_for_uri(&value))
 }
 
-#[cfg(test)]
-fn encode_for_uri(value: &str) -> String {
+pub(crate) fn encode_for_uri(value: &str) -> String {
     let mut encoded = String::with_capacity(value.len());
     for byte in value.as_bytes() {
         if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {

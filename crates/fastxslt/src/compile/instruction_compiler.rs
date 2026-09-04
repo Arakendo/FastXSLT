@@ -13,6 +13,10 @@ use crate::xpath::default_collation_experiment::{
     DefaultCollationParseFailure, parse as parse_default_collation,
     recognizes as recognizes_default_collation,
 };
+use crate::xpath::encode_for_uri_expression::{
+    EncodeForUriParseFailure, parse as parse_encode_for_uri,
+    recognizes as recognizes_encode_for_uri,
+};
 use crate::xpath::escape_html_uri_expression::{
     EscapeHtmlUriParseFailure, parse as parse_escape_html_uri,
     recognizes as recognizes_escape_html_uri,
@@ -656,7 +660,9 @@ fn compile_value_expression(
     {
         return Ok(conditional);
     }
-    Ok(if recognizes_escape_html_uri(expression) {
+    Ok(if recognizes_encode_for_uri(expression) {
+        compile_encode_for_uri_value(expression, location)?
+    } else if recognizes_escape_html_uri(expression) {
         compile_escape_html_uri_value(expression, location)?
     } else if recognizes_default_collation(expression) {
         compile_default_collation_value(expression, location)?
@@ -731,6 +737,38 @@ fn compile_value_expression(
             parse_location_path(expression, location.clone()).map_err(map_path_failure)?,
         )
     })
+}
+
+fn compile_encode_for_uri_value(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<ValueExpression, CompileFailure> {
+    let expression = parse_encode_for_uri(expression).map_err(|failure| {
+        let (code, category, detail) = match failure {
+            EncodeForUriParseFailure::InvalidArity => (
+                "XPST0017",
+                CompileCategory::Invalid,
+                "fn:encode-for-uri requires one argument",
+            ),
+            EncodeForUriParseFailure::InvalidArgumentType => (
+                "XPTY0004",
+                CompileCategory::Invalid,
+                "fn:encode-for-uri requires an optional string",
+            ),
+            EncodeForUriParseFailure::Unsupported => (
+                "FXXP1013",
+                CompileCategory::Unsupported,
+                "encode-for-uri expression shape is outside the admitted production slice",
+            ),
+        };
+        CompileFailure {
+            code,
+            category,
+            detail: detail.to_owned(),
+            location: location.clone(),
+        }
+    })?;
+    Ok(ValueExpression::EncodeForUri(Box::new(expression)))
 }
 
 fn compile_escape_html_uri_value(
