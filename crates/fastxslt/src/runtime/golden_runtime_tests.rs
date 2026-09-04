@@ -1162,7 +1162,7 @@ fn xpath_concat_folds_bounded_static_atomic_arguments() {
 }
 
 #[test]
-fn xpath_static_binary_string_functions_preserve_typed_results() {
+fn xpath_static_string_functions_preserve_typed_results() {
     const SOURCE: &str = "urn:fastxslt:static-string-functions:source";
     const STYLESHEET: &str = "urn:fastxslt:static-string-functions:stylesheet";
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
@@ -1172,7 +1172,7 @@ fn xpath_static_binary_string_functions_preserve_typed_results() {
     resources
         .admit(
             STYLESHEET,
-            r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="contains('ENCYCLOPEDIA', 'CYCL')"/>|<xsl:value-of select="starts-with('abc', '')"/>|<xsl:value-of select="substring-before('1999/04/01', '/')"/>|<xsl:value-of select="substring-after('é😀', 'é')"/>|<xsl:value-of select="translate('zzaaazzz', 'abcz', 'ABC')"/></xsl:template></xsl:stylesheet>"#.as_bytes().to_vec(),
+            r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="contains('ENCYCLOPEDIA', 'CYCL')"/>|<xsl:value-of select="starts-with('abc', '')"/>|<xsl:value-of select="substring-before('1999/04/01', '/')"/>|<xsl:value-of select="substring-after('é😀', 'é')"/>|<xsl:value-of select="translate('zzaaazzz', 'abcz', 'ABC')"/>|<xsl:value-of select="substring('é😀x', 2, 1)"/></xsl:template></xsl:stylesheet>"#.as_bytes().to_vec(),
         )
         .expect("admit stylesheet");
     let snapshot = resources.seal();
@@ -1185,7 +1185,7 @@ fn xpath_static_binary_string_functions_preserve_typed_results() {
     let results = execute_transform_set(builder.seal()).expect("execute static string functions");
     assert_eq!(
         results.by_request["static-string-functions"].serialized,
-        "true|true|1999|😀|AAA"
+        "true|true|1999|😀|AAA|😀"
     );
 }
 

@@ -112,6 +112,52 @@ pub(crate) fn fold_translate_literals(expression: &str) -> Option<String> {
     Some(translated)
 }
 
+pub(crate) fn fold_substring_literals(expression: &str) -> Option<String> {
+    let expression = expression.trim();
+    let arguments = ["substring", "fn:substring"].iter().find_map(|name| {
+        expression
+            .strip_prefix(name)
+            .and_then(|tail| tail.strip_prefix('('))
+            .and_then(|tail| tail.strip_suffix(')'))
+    })?;
+    let arguments = split_arguments(arguments, 3)?;
+    let [value, start, remainder @ ..] = arguments.as_slice() else {
+        return None;
+    };
+    if remainder.len() > 1 {
+        return None;
+    }
+    let value = quoted_literal(value)?;
+    let start = xpath_round(parse_finite_number(start)?);
+    let end = match remainder.first() {
+        Some(length) => Some(start + xpath_round(parse_finite_number(length)?)),
+        None => None,
+    };
+    let mut position = 1.0;
+    Some(
+        value
+            .chars()
+            .filter(|_| {
+                let selected = position >= start && end.is_none_or(|end| position < end);
+                position += 1.0;
+                selected
+            })
+            .collect(),
+    )
+}
+
+fn parse_finite_number(source: &str) -> Option<f64> {
+    source
+        .trim()
+        .parse::<f64>()
+        .ok()
+        .filter(|value| value.is_finite())
+}
+
+fn xpath_round(value: f64) -> f64 {
+    (value + 0.5).floor()
+}
+
 fn split_arguments(source: &str, max_arguments: usize) -> Option<Vec<&str>> {
     let mut arguments = Vec::new();
     let mut start = 0usize;
@@ -211,7 +257,7 @@ fn is_xml_10_character(character: char) -> bool {
 mod tests {
     use super::{
         StaticStringFunctionValue, fold, fold_binary_literal_function, fold_concat_literals,
-        fold_translate_literals,
+        fold_substring_literals, fold_translate_literals,
     };
 
     #[test]
@@ -288,5 +334,25 @@ mod tests {
         }
         assert_eq!(fold_translate_literals("translate(path, 'a', 'A')"), None);
         assert_eq!(fold_translate_literals("translate('a', 'A')"), None);
+    }
+
+    #[test]
+    fn folds_literal_substring_with_xpath_position_and_rounding_rules() {
+        for (source, expected) in [
+            ("substring('ENCYCLOPEDIA', 8)", "PEDIA"),
+            ("substring('abcdefghijk', 4, 6)", "defghi"),
+            ("substring('12345', 1.5, 2.6)", "234"),
+            ("substring('12345', 0, 3)", "12"),
+            ("substring('12345', -1.5, 3)", "1"),
+            ("substring('é😀x', 2, 1)", "😀"),
+        ] {
+            assert_eq!(fold_substring_literals(source).as_deref(), Some(expected));
+        }
+        assert_eq!(fold_substring_literals("substring(path, 1, 2)"), None);
+        assert_eq!(
+            fold_substring_literals("substring('abc', 0 div 0, 2)"),
+            None
+        );
+        assert_eq!(fold_substring_literals("substring('abc', 1, 2, 3)"), None);
     }
 }

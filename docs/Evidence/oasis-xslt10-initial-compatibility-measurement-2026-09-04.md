@@ -56,7 +56,9 @@ raises it to 567. The following
 [static binary string-functions tranche](oasis-xslt10-static-binary-string-functions-tranche-2026-09-04.md)
 raises it to 592. The following
 [static translate tranche](oasis-xslt10-static-translate-tranche-2026-09-04.md)
-raises it to 598.
+raises it to 598. The following
+[static substring tranche](oasis-xslt10-static-substring-tranche-2026-09-04.md)
+raises it to 606.
 
 ## Outcome
 
