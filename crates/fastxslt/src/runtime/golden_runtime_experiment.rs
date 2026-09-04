@@ -1903,6 +1903,9 @@ fn evaluate_boolean(
         BooleanExpression::Not(expression) => {
             evaluate_boolean(inputs, expression, context, variables, control).map(|value| !value)
         }
+        BooleanExpression::NodeIdentityEqual { left, right } => {
+            evaluate_node_identity_equal(inputs, left, right, context, control)
+        }
         BooleanExpression::RootIdentityEqualsVariable { path, variable } => {
             evaluate_root_identity_equals_variable(
                 inputs, path, variable, variables, context, control,
@@ -1944,6 +1947,24 @@ fn evaluate_boolean(
                 .map(|value| value != 0)
         }
     }
+}
+
+fn evaluate_node_identity_equal(
+    inputs: &SequenceInputs<'_>,
+    left: &crate::xpath::path_experiment::LocationPath,
+    right: &crate::xpath::path_experiment::LocationPath,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    runtime_context::source_node_identities_equal(
+        source,
+        context,
+        left,
+        right,
+        inputs.request_id,
+        control,
+    )
 }
 
 fn evaluate_context_language_matches(

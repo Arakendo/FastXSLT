@@ -169,6 +169,66 @@ fn source_node_global_paths_execute_in_for_each_without_temporary_tree_dispatch(
 }
 
 #[test]
+fn generate_id_uses_stable_distinct_source_node_identity() {
+    const SOURCE: &str = "urn:fastxslt:generate-id:source";
+    const STYLESHEET: &str = "urn:fastxslt:generate-id:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><a/><b/></doc>".to_vec())
+        .expect("admit source document");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><same><xsl:value-of select="generate-id(/doc/a)=generate-id(/doc/a)"/></same><different><xsl:value-of select="generate-id(/doc/a)=generate-id(/doc/b)"/></different><first><xsl:value-of select="generate-id(/doc/a)"/></first><again><xsl:value-of select="generate-id(/doc/a)"/></again><empty><xsl:value-of select="generate-id(/doc/missing)"/></empty></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("generate-id", "generate-id-result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute generate-id case");
+
+    assert_eq!(
+        results.by_request["generate-id"].serialized,
+        "<out><same>true</same><different>false</different><first>fastxslt-principal-n2</first><again>fastxslt-principal-n2</again><empty></empty></out>"
+    );
+}
+
+#[test]
+fn generate_id_rejects_more_than_one_source_node() {
+    const SOURCE: &str = "urn:fastxslt:generate-id-many:source";
+    const STYLESHEET: &str = "urn:fastxslt:generate-id-many:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc><a/><a/></doc>".to_vec())
+        .expect("admit source document");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="generate-id(/doc/a)"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request(
+            "generate-id-many",
+            "generate-id-many-result",
+            SOURCE,
+        ))
+        .expect("admit request");
+
+    let failure = execute_transform_set(builder.seal()).expect_err("cardinality must be enforced");
+
+    assert_eq!(failure.code, "XPTY0004");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+}
+
+#[test]
 fn static_xsl_element_executes_nested_sequence_constructors() {
     let source = parse_document(
         "memory:static-computed-element.xml",

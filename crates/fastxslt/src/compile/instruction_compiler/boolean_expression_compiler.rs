@@ -81,6 +81,12 @@ pub(super) fn compile(
             variable: variable.to_owned(),
         });
     }
+    if let Some((left, right)) = generated_node_identity_test(parsed) {
+        return Ok(BooleanExpression::NodeIdentityEqual {
+            left: parse_location_path(left, location.clone()).map_err(map_path_failure)?,
+            right: parse_location_path(right, location.clone()).map_err(map_path_failure)?,
+        });
+    }
     parse_scalar(parsed, expression, location, comparison)
 }
 
@@ -407,6 +413,22 @@ fn parse_generated_root_identity_test(expression: &str) -> Option<(&str, &str)> 
         .strip_suffix("))")?
         .trim();
     Some((path, variable))
+}
+
+pub(super) fn generated_node_identity_test(expression: &str) -> Option<(&str, &str)> {
+    let (left, right) = expression.split_once('=')?;
+    Some((
+        parse_generated_node_argument(left.trim())?,
+        parse_generated_node_argument(right.trim())?,
+    ))
+}
+
+fn parse_generated_node_argument(expression: &str) -> Option<&str> {
+    let argument = expression
+        .strip_prefix("generate-id(")?
+        .strip_suffix(')')?
+        .trim();
+    (!argument.is_empty()).then_some(argument)
 }
 
 fn strip_enclosing_parentheses(mut expression: &str) -> &str {

@@ -481,6 +481,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::CountLocationPath(path)
         | ValueExpression::RootPath(path)
         | ValueExpression::NodeNamePath(path)
+        | ValueExpression::GeneratedNodeIdentity(path)
         | ValueExpression::GeneratedRootIdentity(path)
         | ValueExpression::EmptyLocationPath(path) => path.known_owned_capacity_bytes(),
         ValueExpression::ContextNodeName
@@ -511,6 +512,9 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
                     .descendant_local
                     .as_ref()
                     .map_or(0, String::capacity)
+        }
+        ValueExpression::NodeIdentityEqual { left, right } => {
+            left.known_owned_capacity_bytes() + right.known_owned_capacity_bytes()
         }
         ValueExpression::IntegerFor(expression) => {
             size_of::<IntegerForExpression>() + expression.known_owned_capacity_bytes()
@@ -605,6 +609,9 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
             boolean_expression_owned(left) + boolean_expression_owned(right)
         }
         BooleanExpression::Not(expression) => boolean_expression_owned(expression),
+        BooleanExpression::NodeIdentityEqual { left, right } => {
+            left.known_owned_capacity_bytes() + right.known_owned_capacity_bytes()
+        }
         BooleanExpression::RootIdentityEqualsVariable { path, variable } => {
             path.known_owned_capacity_bytes() + variable.capacity()
         }

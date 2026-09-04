@@ -1068,6 +1068,13 @@ fn compile_value_expression(
                 location: failure.location,
             })?,
         ))
+    } else if let Some((left, right)) =
+        boolean_expression_compiler::generated_node_identity_test(expression)
+    {
+        ValueExpression::NodeIdentityEqual {
+            left: parse_location_path(left, location.clone()).map_err(map_path_failure)?,
+            right: parse_location_path(right, location.clone()).map_err(map_path_failure)?,
+        }
     } else if let Some(root) = compile_root_value(document, element, expression, location)? {
         root
     } else if matches!(expression.trim(), "name()" | "name(.)") {
@@ -1552,9 +1559,45 @@ fn compile_root_value(
             .map(Some)
             .map_err(map_path_failure);
     }
+    if let Some(argument) = generated_node_argument(expression) {
+        return parse_location_path(argument, location.clone())
+            .map(ValueExpression::GeneratedNodeIdentity)
+            .map(Some)
+            .map_err(map_path_failure);
+    }
     root_argument(expression)
         .map(|argument| compile_root_expression(document, element, argument, location))
         .transpose()
+}
+
+fn generated_node_argument(expression: &str) -> Option<&str> {
+    let argument = expression
+        .trim()
+        .strip_prefix("generate-id(")?
+        .strip_suffix(')')?
+        .trim();
+    (!argument.is_empty() && has_balanced_parentheses(argument)).then_some(argument)
+}
+
+fn has_balanced_parentheses(expression: &str) -> bool {
+    let mut depth = 0_usize;
+    let mut quote = None;
+    for byte in expression.bytes() {
+        if let Some(expected) = quote {
+            if byte == expected {
+                quote = None;
+            }
+            continue;
+        }
+        match byte {
+            b'\'' | b'"' => quote = Some(byte),
+            b'(' => depth += 1,
+            b')' if depth == 0 => return false,
+            b')' => depth -= 1,
+            _ => {}
+        }
+    }
+    depth == 0 && quote.is_none()
 }
 
 fn generated_root_argument(expression: &str) -> Option<&str> {

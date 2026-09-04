@@ -234,6 +234,10 @@ public version-mode contract.
 - [x] Add work-charged inherited `xml:lang` matching shared by value and
   instruction-test expressions, raising the lower bound to 607 without
   admitting neighboring legacy mixed-type coercions.
+- [x] Add typed principal-source `generate-id()` value and identity-equality
+  operations, raising the lower bound to 608 while retaining modern
+  zero-or-one cardinality rather than silently selecting legacy first-node
+  conversion.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -333,6 +337,9 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Literal `lang()` with inherited `xml:lang` semantics raised the
   lower bound from 606 to 607; value and instruction-test compilation share one
   work-charged evaluator.
+- 2026-09-04 -- Typed principal-source node identity raised the lower bound
+  from 607 to 608 through unchanged `idkey06`; multi-node legacy conversion
+  remains behind the unresolved version-mode boundary.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

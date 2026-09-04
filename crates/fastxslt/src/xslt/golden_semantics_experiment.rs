@@ -481,12 +481,17 @@ pub(crate) enum ValueExpression {
     CountLocationPath(LocationPath),
     RootPath(LocationPath),
     RootVariable(String),
+    GeneratedNodeIdentity(LocationPath),
     GeneratedRootIdentity(LocationPath),
     GeneratedTemporaryRootIdentity {
         variable: String,
         descendant_local: Option<String>,
     },
     GeneratedDocumentRootIdentity(DocumentRootReference),
+    NodeIdentityEqual {
+        left: LocationPath,
+        right: LocationPath,
+    },
     ContextNodeName,
     NodeNamePath(LocationPath),
     ContextNodeLocalName,
@@ -624,6 +629,10 @@ pub(crate) enum BooleanExpression {
         right: Box<BooleanExpression>,
     },
     Not(Box<BooleanExpression>),
+    NodeIdentityEqual {
+        left: LocationPath,
+        right: LocationPath,
+    },
     RootIdentityEqualsVariable {
         path: LocationPath,
         variable: String,

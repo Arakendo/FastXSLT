@@ -96,6 +96,9 @@ pub(super) fn execute_value_of(
         ValueExpression::RootVariable(name) => {
             append_root_variable_string(inputs, name, variables, result, control)?;
         }
+        ValueExpression::GeneratedNodeIdentity(path) => {
+            append_generated_node_identity(inputs, path, context, result, control)?;
+        }
         ValueExpression::GeneratedRootIdentity(path) => {
             append_generated_root_identity(inputs, path, context, result, control)?;
         }
@@ -112,6 +115,10 @@ pub(super) fn execute_value_of(
         )?,
         ValueExpression::GeneratedDocumentRootIdentity(reference) => {
             append_generated_document_root_identity(inputs, reference, result, control)?;
+        }
+        ValueExpression::NodeIdentityEqual { left, right } => {
+            let equal = evaluate_node_identity_equal(inputs, left, right, context, control)?;
+            append_boolean(inputs, equal, result, control)?;
         }
         ValueExpression::ContextNodeName => {
             append_context_node_name(inputs, context, result, control)?;
@@ -933,6 +940,44 @@ fn append_generated_root_identity(
     append_text(
         result,
         &super::runtime_context::source_node_identity(root),
+        inputs.request_id,
+        control,
+    )
+}
+
+fn append_generated_node_identity(
+    inputs: &SequenceInputs<'_>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    context: Option<NodeId>,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    if let Some(identity) = super::runtime_context::source_node_identity_for_path(
+        source,
+        context,
+        path,
+        inputs.request_id,
+        control,
+    )? {
+        append_text(result, &identity, inputs.request_id, control)?;
+    }
+    Ok(())
+}
+
+fn evaluate_node_identity_equal(
+    inputs: &SequenceInputs<'_>,
+    left: &crate::xpath::path_experiment::LocationPath,
+    right: &crate::xpath::path_experiment::LocationPath,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    super::runtime_context::source_node_identities_equal(
+        source,
+        context,
+        left,
+        right,
         inputs.request_id,
         control,
     )

@@ -61,6 +61,9 @@ raises it to 598. The following
 raises it to 606. The following
 [context language tranche](oasis-xslt10-context-language-tranche-2026-09-04.md)
 raises it to 607.
+The following
+[source node identity tranche](oasis-xslt10-generate-id-tranche-2026-09-04.md)
+raises it to 608.
 
 ## Outcome
 

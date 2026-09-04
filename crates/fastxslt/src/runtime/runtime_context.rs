@@ -508,6 +508,39 @@ pub(super) fn source_node_identity(node: NodeId) -> String {
     format!("fastxslt-principal-n{}", node.index())
 }
 
+pub(super) fn source_node_identity_for_path(
+    source: &Document,
+    context: NodeId,
+    path: &crate::xpath::path_experiment::LocationPath,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Option<String>, ExecutionFailure> {
+    let nodes = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    if nodes.len() > 1 {
+        return Err(failure(
+            "XPTY0004",
+            FailureCategory::Invalid,
+            Some(request_id),
+            "generate-id() requires a zero-or-one node argument",
+        ));
+    }
+    Ok(nodes.first().copied().map(source_node_identity))
+}
+
+pub(super) fn source_node_identities_equal(
+    source: &Document,
+    context: NodeId,
+    left: &crate::xpath::path_experiment::LocationPath,
+    right: &crate::xpath::path_experiment::LocationPath,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let left = source_node_identity_for_path(source, context, left, request_id, control)?;
+    let right = source_node_identity_for_path(source, context, right, request_id, control)?;
+    Ok(left == right)
+}
+
 pub(super) fn temporary_tree_string_value(
     tree: &TemporaryTree,
     request_id: &str,
