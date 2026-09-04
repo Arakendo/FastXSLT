@@ -40,6 +40,32 @@ fn qualified_child_steps_match_expanded_names() {
 }
 
 #[test]
+fn qualified_child_and_attribute_steps_match_expanded_names() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        br#"<doc xmlns:a="urn:element" xmlns:b="urn:attribute"><a:item b:code="selected" code="other"/></doc>"#,
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let path =
+        parse_qualified_child_path("doc/a:item/@b:code", location(), |prefix| match prefix {
+            "a" => Some("urn:element".to_owned()),
+            "b" => Some("urn:attribute".to_owned()),
+            _ => None,
+        })
+        .expect("qualified child and attribute path should parse");
+
+    let selected = evaluate_location_path(&document, document.document_node(), &path);
+
+    assert_eq!(selected.len(), 1);
+    assert_eq!(document.string_value(selected[0]), "selected");
+}
+
+#[test]
 fn qualified_child_steps_reject_unbound_prefixes() {
     let failure = parse_qualified_child_path("doc/missing:a", location(), |_| None)
         .expect_err("unbound prefix must fail statically");

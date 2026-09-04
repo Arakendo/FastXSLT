@@ -259,6 +259,9 @@ public version-mode contract.
 - [x] Compose `name()` with admitted typed paths, raising the lower bound to
   657 while retaining namespaced lexical-QName reconstruction as unsupported
   and the multi-node legacy case as a visible modern `XPTY0004` boundary.
+- [x] Add expanded-name attribute steps to the qualified path model, raising
+  the lower bound to 662 while retaining lexical-prefix reconstruction as an
+  explicit boundary.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -383,6 +386,9 @@ maintained redistributable legacy suite becomes available.
   Eleven cases initialize: four pass, three reach existing XML-comparator gaps,
   and four retain explicit cardinality, lexical-prefix, or serialization
   boundaries without adding a mismatch.
+- 2026-09-04 -- Expanded-name attribute path steps raised the lower bound from
+  657 to 662. Five cases pass and one reaches the retained lexical-prefix
+  boundary without adding a mismatch or comparator gap.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

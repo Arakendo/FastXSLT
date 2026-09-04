@@ -70,6 +70,7 @@ pub(crate) enum PathStep {
     ChildProcessingInstruction,
     ChildProcessingInstructionNamed(String),
     AttributeNamed(String),
+    AttributeExpandedName(ExpandedName),
     AttributeAny,
     ParentNamed(String),
     ParentAnyElement,
@@ -101,7 +102,7 @@ impl PathStep {
             | Self::DescendantNamed(value)
             | Self::DescendantOrSelfNamed(value)
             | Self::FollowingSiblingNamed(value) => value.capacity(),
-            Self::ChildExpandedName(name) => {
+            Self::ChildExpandedName(name) | Self::AttributeExpandedName(name) => {
                 name.local.capacity()
                     + name
                         .namespace
@@ -184,7 +185,10 @@ impl PathStep {
     }
 
     fn uses_attribute_axis(&self) -> bool {
-        matches!(self, Self::AttributeNamed(_) | Self::AttributeAny)
+        matches!(
+            self,
+            Self::AttributeNamed(_) | Self::AttributeExpandedName(_) | Self::AttributeAny
+        )
     }
 
     fn uses_parent_axis(&self) -> bool {
@@ -238,7 +242,9 @@ impl PartialEq<&str> for PathStep {
             | Self::DescendantNamed(value)
             | Self::DescendantOrSelfNamed(value)
             | Self::FollowingSiblingNamed(value) => value == *other,
-            Self::ChildExpandedName(value) => value.namespace.is_none() && value.local == *other,
+            Self::ChildExpandedName(value) | Self::AttributeExpandedName(value) => {
+                value.namespace.is_none() && value.local == *other
+            }
             Self::ChildAnyElement
             | Self::ParentAnyElement
             | Self::SelfAnyElement
@@ -419,14 +425,21 @@ pub(crate) fn parse_qualified_child_path(
     let mut found_qualified_step = false;
     let mut steps = Vec::new();
     for step in expression.split('/') {
-        let Some((prefix, local)) = step.split_once(':') else {
-            if !is_ascii_ncname(step) {
+        let (attribute, name_test) = step
+            .strip_prefix('@')
+            .map_or((false, step), |name| (true, name));
+        let Some((prefix, local)) = name_test.split_once(':') else {
+            if !is_ascii_ncname(name_test) {
                 return Err(invalid_syntax(
                     format!("the qualified path contains an invalid name test: {expression}"),
                     &location,
                 ));
             }
-            steps.push(PathStep::ChildNamed(step.to_owned()));
+            steps.push(if attribute {
+                PathStep::AttributeNamed(name_test.to_owned())
+            } else {
+                PathStep::ChildNamed(name_test.to_owned())
+            });
             continue;
         };
         if !is_ascii_ncname(prefix) || !is_ascii_ncname(local) || local.contains(':') {
@@ -441,10 +454,15 @@ pub(crate) fn parse_qualified_child_path(
             location: location.clone(),
         })?;
         found_qualified_step = true;
-        steps.push(PathStep::ChildExpandedName(ExpandedName {
+        let name = ExpandedName {
             namespace: Some(namespace),
             local: local.to_owned(),
-        }));
+        };
+        steps.push(if attribute {
+            PathStep::AttributeExpandedName(name)
+        } else {
+            PathStep::ChildExpandedName(name)
+        });
     }
     if !found_qualified_step {
         return Err(PathFailure::Unsupported {
@@ -977,6 +995,9 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
                 && document
                     .name(child)
                     .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
+        }
+        PathStep::AttributeExpandedName(required) => {
+            document.kind(child) == NodeKind::Attribute && document.name(child) == Some(required)
         }
         PathStep::AttributeAny => document.kind(child) == NodeKind::Attribute,
         PathStep::ParentNamed(required) => {

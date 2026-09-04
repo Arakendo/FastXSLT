@@ -86,6 +86,10 @@ The following
 [name path tranche](oasis-xslt10-name-path-tranche-2026-09-04.md)
 raises it to 657 while retaining lexical-prefix reconstruction and legacy
 multi-node conversion as explicit boundaries.
+The following
+[qualified attribute path tranche](oasis-xslt10-qualified-attribute-path-tranche-2026-09-04.md)
+raises it to 662 while retaining lexical-prefix reconstruction as an explicit
+boundary.
 
 ## Outcome
 
