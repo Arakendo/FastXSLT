@@ -1898,10 +1898,7 @@ fn write_character_expansion(
 ) -> Result<(), ExecutionFailure> {
     if normalization_form == NormalizationForm::None {
         for character in value.chars() {
-            if let Some((_, replacement)) = character_map
-                .iter()
-                .find(|(candidate, _)| *candidate == character)
-            {
+            if let Some(replacement) = character_map_replacement(character_map, character) {
                 output.push_str(replacement)?;
             } else {
                 write_character(character, output)?;
@@ -1912,10 +1909,7 @@ fn write_character_expansion(
 
     let mut unmapped = String::new();
     for character in value.chars() {
-        if let Some((_, replacement)) = character_map
-            .iter()
-            .find(|(candidate, _)| *candidate == character)
-        {
+        if let Some(replacement) = character_map_replacement(character_map, character) {
             write_normalized_characters(
                 &unmapped,
                 normalization_form,
@@ -1929,6 +1923,13 @@ fn write_character_expansion(
         }
     }
     write_normalized_characters(&unmapped, normalization_form, &mut write_character, output)
+}
+
+fn character_map_replacement(character_map: &[(char, String)], character: char) -> Option<&str> {
+    character_map
+        .binary_search_by_key(&character, |(candidate, _)| *candidate)
+        .ok()
+        .map(|index| character_map[index].1.as_str())
 }
 
 fn write_normalized_characters(
@@ -2009,5 +2010,51 @@ impl<'a> BudgetedString<'a> {
 
     fn finish(self) -> String {
         self.value
+    }
+}
+
+#[cfg(test)]
+mod scaling_measurement_tests {
+    use std::hint::black_box;
+    use std::time::Instant;
+
+    use crate::execution_control_experiment::InvocationControl;
+
+    use super::{BudgetedString, NormalizationForm, write_character_expansion};
+
+    #[test]
+    #[ignore = "manual release-mode character-map serialization scaling measurement"]
+    fn measure_absent_character_map_lookup_scaling() {
+        const INPUT_CHARACTERS: usize = 10_000;
+        let input = "z".repeat(INPUT_CHARACTERS);
+        for entry_count in [100_usize, 1_000, 5_000, 10_000] {
+            let character_map = (0..entry_count)
+                .map(|offset| {
+                    let scalar = u32::try_from(offset).expect("measurement size fits u32") + 0x1000;
+                    (
+                        char::from_u32(scalar).expect("measurement scalar should be valid"),
+                        format!("replacement-{offset}"),
+                    )
+                })
+                .collect::<Vec<_>>();
+            let mut control = InvocationControl::unbounded();
+            let mut output =
+                BudgetedString::new(INPUT_CHARACTERS, "character-map-scale", &mut control);
+            let started = Instant::now();
+            write_character_expansion(
+                black_box(&input),
+                black_box(&character_map),
+                NormalizationForm::None,
+                |character, output| output.push(character),
+                &mut output,
+            )
+            .expect("measurement serialization should succeed");
+            let elapsed = started.elapsed();
+            assert_eq!(output.finish(), input);
+            eprintln!(
+                "character-map-serialize entries={entry_count} input_chars={INPUT_CHARACTERS} elapsed_us={}",
+                elapsed.as_micros()
+            );
+        }
     }
 }

@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | Date | 2026-09-03 |
-| Status | Remediation in progress; Findings 1, 2, 3, and 6 resolved |
+| Status | Remediation in progress; Findings 1, 2, 3, 4, and 6 resolved |
 | Scope | Repository state at `a9d495e`, with emphasis on changes after the resolved 2026-08-30 review |
 | Method | Read-only source, decision-record, evidence, corpus-overlay, runtime, worker, native-ABI, and managed-host inspection; full all-feature workspace test execution; static counterexamples |
 
@@ -18,7 +18,7 @@ admitted behavior that the earlier review did not cover.
 | 1. Atomic range retention | Resolved 2026-09-03 | Range dispatch is iterator-owned, focus size is checked, and XPath control is charged before each item is dispatched. A billion-item zero-budget stylesheet fails before span-proportional retention. |
 | 2. Cross-kind lexical shadowing | Resolved 2026-09-03 | Every local binding clears competing value kinds and suppresses same-name global fallback. The source-node-over-global-atomic counterexample passes through shared and complete-clone frames. |
 | 3. Untaken creation outcome | Resolved 2026-09-03 | Releasing the outcome reclaims its engine and capacity; concurrent take/release has one linearized owner. |
-| 4. Character-map scaling | Open | Measure compilation and serialization scaling before selecting an index or explicit ceiling. |
+| 4. Character-map scaling | Resolved 2026-09-03 | Release-mode measurements confirmed both adverse curves. Compilation now composes through an ordered keyed map and retains a sorted compact vector; serialization uses binary lookup. |
 | 5. Test-only QT3 semantics | Open; expansion paused | Promote one complete family into the production XPath path and install a parity sentinel before adding another test-only semantic family. |
 | 6. Worker command queue | Resolved 2026-09-03 | The shared event channel has capacity one and a focused backpressure test proves a second decoded event cannot be queued. |
 | 7. Source-unit reopening | Open | Perform the required current-state cohesion reviews after the correctness tranche identifies stable seams. |
@@ -234,6 +234,13 @@ an abandoned creation outcome; this case should be made explicit there or in
 ADR-0008's handle lifecycle.
 
 ### Finding 4: Character maps create uncharged quadratic compile and serialization work
+
+Disposition: **Resolved 2026-09-03.** Release-mode measurements confirmed
+quadratic distinct-entry composition and map-size-proportional serialization
+lookup. Resolution now applies precedence through a compilation-local ordered
+map, retains a compact scalar-sorted vector, and performs binary lookup during
+serialization. The measurement and conservation evidence is recorded in
+[Character-Map Scaling Remediation](../Evidence/character-map-scaling-remediation-2026-09-03.md).
 
 Severity:
 - Medium
@@ -547,7 +554,7 @@ criteria are already stronger evidence than a generic style preference.
   definite about fired review triggers, not a predetermined demand to split by
   line count.
 
-## Missing evidence
+## Missing evidence at review time
 
 - A sacrificial-process range test proving control precedes allocation.
 - Cross-kind local/global variable shadowing, including the complete-clone oracle.
@@ -558,7 +565,7 @@ criteria are already stronger evidence than a generic style preference.
 - Current retained ADR-0004 reviews for the compiler, runtime, instruction
   compiler, and serializer parents.
 
-## Recommended experiment and remediation order
+## Original recommended experiment and remediation order
 
 1. Stop eager atomic-range allocation and add the hostile-span sacrificial test.
 2. Repair cross-kind binding shadowing and add the value-kind cross-product.

@@ -18,9 +18,14 @@ complete-clone frames; native take/release races retain one owner; and the
 worker queue now backpressures after one waiting event.
 [Evidence](../Evidence/adversarial-review-second-remediation-tranche-2026-09-03.md)
 
-The remaining review order is character-map scaling measurement, promotion of
-one complete QT3 family into the production XPath path, and current ADR-0004
-cohesion reviews for the fired source-unit triggers. Do not add another
+The review's character-map scaling finding is now resolved with measured
+ordered-key composition and binary serialization lookup while retaining the
+compact compiled vector.
+[Evidence](../Evidence/character-map-scaling-remediation-2026-09-03.md)
+
+The remaining review order is promotion of one complete QT3 family into the
+production XPath path, followed by current ADR-0004 cohesion reviews for the
+fired source-unit triggers. Do not add another
 family-specific test-only QT3 semantic evaluator before the production-path
 migration establishes the parity pattern. Exact fractional
 `seconds-from-duration` work is therefore paused at this boundary rather than

@@ -146,6 +146,7 @@ pressure architecture but does not silently create a public guarantee.
 - [ASP.NET Worker Control-Frame Serialization](aspnet-worker-control-frame-serialization-2026-08-31.md)
 - [Template-Candidate Fanout and Cancellation Gap](template-candidate-fanout-and-cancellation-gap-2026-08-31.md)
 - [Second Adversarial Review: Boundedness, Binding, and Ownership Tranche](adversarial-review-second-remediation-tranche-2026-09-03.md)
+- [Character-Map Scaling Remediation](character-map-scaling-remediation-2026-09-03.md)
 - [Document-Rooted Match-Path Reevaluation](document-rooted-match-path-reevaluation-2026-08-31.md)
 - [Named-Template Global-Frame Cloning](named-template-global-frame-cloning-2026-08-31.md)
 - [Native Outcome Bounds and Atomic Creation Publication](native-outcome-bounds-and-atomic-creation-publication-2026-08-31.md)

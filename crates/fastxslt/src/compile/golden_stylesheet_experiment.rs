@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xml::quick_xml_experiment::ExpandedName;
@@ -392,7 +394,7 @@ fn resolved_character_map(
     map: &CharacterMapDefinition,
     maps: &[CharacterMapDefinition],
 ) -> Result<Vec<(char, String)>, CompileFailure> {
-    let mut resolved = Vec::new();
+    let mut resolved = BTreeMap::new();
     for reference in &map.referenced_map_names {
         let referenced = maps
             .iter()
@@ -408,13 +410,13 @@ fn resolved_character_map(
         merge_character_map_entries(&mut resolved, &referenced.entries);
     }
     merge_character_map_entries(&mut resolved, &map.entries);
-    Ok(resolved)
+    Ok(resolved.into_iter().collect())
 }
 
 pub(super) fn finalize_character_maps(
     program: &mut StylesheetProgram,
 ) -> Result<(), CompileFailure> {
-    program.output.character_map.clear();
+    let mut output_character_map = BTreeMap::new();
     for name in &program.output_character_map_names {
         let map = program
             .character_maps
@@ -431,21 +433,15 @@ pub(super) fn finalize_character_maps(
                 )
             })?;
         let resolved = resolved_character_map(map, &program.character_maps)?;
-        merge_character_map_entries(&mut program.output.character_map, &resolved);
+        merge_character_map_entries(&mut output_character_map, &resolved);
     }
+    program.output.character_map = output_character_map.into_iter().collect();
     Ok(())
 }
 
-fn merge_character_map_entries(target: &mut Vec<(char, String)>, entries: &[(char, String)]) {
+fn merge_character_map_entries(target: &mut BTreeMap<char, String>, entries: &[(char, String)]) {
     for (character, replacement) in entries {
-        if let Some((_, inherited)) = target
-            .iter_mut()
-            .find(|(candidate, _)| candidate == character)
-        {
-            inherited.clone_from(replacement);
-        } else {
-            target.push((*character, replacement.clone()));
-        }
+        target.insert(*character, replacement.clone());
     }
 }
 
@@ -1784,6 +1780,10 @@ pub(super) fn unsupported(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+    use std::hint::black_box;
+    use std::time::Instant;
+
     use crate::xdm::atomic_value_experiment::BuiltinAtomicType;
     use crate::xdm::owned_tree_experiment::Document;
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
@@ -1792,7 +1792,7 @@ mod tests {
         STANDARD_INITIAL_TEMPLATE_NAME, TemplatePriority, ValueExpression,
     };
 
-    use super::{CompileCategory, compile_stylesheet};
+    use super::{CompileCategory, compile_stylesheet, merge_character_map_entries};
 
     const LIMITS: ParseLimits = ParseLimits {
         max_events: 256,
@@ -1802,6 +1802,49 @@ mod tests {
     fn parse_stylesheet(resource: &str, bytes: &[u8]) -> Document {
         let parsed = parse_document(resource, bytes, LIMITS).expect("stylesheet XML should parse");
         Document::from_parsed(parsed).expect("stylesheet XDM should build")
+    }
+
+    #[test]
+    fn character_map_composition_sorts_keys_and_preserves_last_entry_precedence() {
+        let mut resolved = BTreeMap::new();
+        merge_character_map_entries(
+            &mut resolved,
+            &[
+                ('z', "inherited".to_owned()),
+                ('a', "first".to_owned()),
+                ('z', "local".to_owned()),
+            ],
+        );
+
+        assert_eq!(
+            resolved.into_iter().collect::<Vec<_>>(),
+            vec![('a', "first".to_owned()), ('z', "local".to_owned())]
+        );
+    }
+
+    #[test]
+    #[ignore = "manual release-mode character-map composition scaling measurement"]
+    fn measure_character_map_composition_scaling() {
+        for entry_count in [100_usize, 1_000, 5_000, 10_000] {
+            let entries = (0..entry_count)
+                .map(|offset| {
+                    let scalar = u32::try_from(offset).expect("measurement size fits u32") + 0x1000;
+                    (
+                        char::from_u32(scalar).expect("measurement scalar should be valid"),
+                        format!("replacement-{offset}"),
+                    )
+                })
+                .collect::<Vec<_>>();
+            let started = Instant::now();
+            let mut resolved = BTreeMap::new();
+            merge_character_map_entries(&mut resolved, black_box(&entries));
+            let elapsed = started.elapsed();
+            assert_eq!(resolved.len(), entry_count);
+            eprintln!(
+                "character-map-compose entries={entry_count} elapsed_us={}",
+                elapsed.as_micros()
+            );
+        }
     }
 
     #[test]
