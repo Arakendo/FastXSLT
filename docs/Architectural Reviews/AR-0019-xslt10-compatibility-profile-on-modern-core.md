@@ -215,6 +215,9 @@ public version-mode contract.
 - [x] Compare source-free XPath numeric literals through typed numeric rather
   than effective-boolean-value semantics, raising the strict lower bound to
   553 with all 24 newly initialized cases passing.
+- [x] Compare homogeneous boolean and string literals through their typed
+  equality semantics, raising the lower bound to 560 while leaving
+  version-sensitive mixed-type coercion unsupported.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -295,6 +298,9 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Typed source-free numeric literal comparisons raised the lower
   bound from 529 to 553; all 24 newly initialized cases reach definite passes
   without a new mismatch or runtime failure.
+- 2026-09-04 -- Homogeneous boolean and string literal equality raised the
+  lower bound from 553 to 560; all seven newly initialized cases pass while
+  mixed-type legacy coercion remains explicit.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

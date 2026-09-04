@@ -1105,7 +1105,7 @@ fn context_string_length_counts_unicode_codepoints_and_not_utf8_bytes() {
 }
 
 #[test]
-fn xpath10_numeric_literal_comparisons_preserve_number_semantics() {
+fn xpath10_literal_comparisons_preserve_atomic_semantics() {
     const SOURCE: &str = "urn:fastxslt:numeric-comparison:source";
     const STYLESHEET: &str = "urn:fastxslt:numeric-comparison:stylesheet";
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
@@ -1115,7 +1115,7 @@ fn xpath10_numeric_literal_comparisons_preserve_number_semantics() {
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="1=1"/>|<xsl:value-of select="1!=1.00"/>|<xsl:value-of select="0 = -0"/>|<xsl:value-of select="1.9999999 &lt; 2"/>|<xsl:value-of select="2.0000001 &lt; 2.0"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="1=1"/>|<xsl:value-of select="1!=1.00"/>|<xsl:value-of select="0 = -0"/>|<xsl:value-of select="1.9999999 &lt; 2"/>|<xsl:value-of select="2.0000001 &lt; 2.0"/>|<xsl:value-of select="false()!=true()"/>|<xsl:value-of select="'ace' != 'abc'"/></xsl:template></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit stylesheet");
     let snapshot = resources.seal();
@@ -1129,7 +1129,7 @@ fn xpath10_numeric_literal_comparisons_preserve_number_semantics() {
     let results = execute_transform_set(builder.seal()).expect("execute numeric comparisons");
     assert_eq!(
         results.by_request["numeric-comparison"].serialized,
-        "true|false|true|true|false"
+        "true|false|true|true|false|true|true"
     );
 }
 

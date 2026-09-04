@@ -48,7 +48,9 @@ raises it to 527. The following
 [context string-length tranche](oasis-xslt10-context-string-length-tranche-2026-09-04.md)
 raises it to 529. The following
 [numeric literal comparison tranche](oasis-xslt10-numeric-literal-comparison-tranche-2026-09-04.md)
-raises it to 553.
+raises it to 553. The following
+[homogeneous literal equality tranche](oasis-xslt10-homogeneous-literal-equality-tranche-2026-09-04.md)
+raises it to 560.
 
 ## Outcome
 

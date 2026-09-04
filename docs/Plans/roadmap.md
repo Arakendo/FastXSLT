@@ -98,11 +98,12 @@ five clean passes, and context `string()` spellings add two more, reaching 521.
 Context `normalize-space()` adds one clean pass, and typed `position()`/`last()`
 value operations add three more. Singleton-parent `name(..)` adds two clean
 passes, context `string-length()` adds two more, and typed numeric literal
-comparisons add 24 clean passes, reaching 553. The sweep retains 48
+comparisons add 24 clean passes. Homogeneous boolean and string literal
+equality adds seven more, reaching 560. The sweep retains 48
 executing comparison mismatches, 16 comparator gaps, and 35
 supplemental-data cases as explicitly not admitted, and gives every other case
 a structured initialization, execution, or infrastructure observation. This is
-a strict 20.17% lower bound over the suite's 2,742 standard-operation cases,
+a strict 20.42% lower bound over the suite's 2,742 standard-operation cases,
 not an XSLT 1.0 conformance claim. The initial sweep also found and drove a shared
 source-node-variable path repair, so AR-0019 now studies whether legacy
 compatibility can progress on the modern compiler/runtime rather than through a
@@ -1661,7 +1662,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 553 after shared construction/copy/path/context-function/focus/numeric-comparison tranches plus descendant-pattern, include-order, and comment-text repairs. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 560 after shared construction/copy/path/context-function/focus/literal-comparison tranches plus descendant-pattern, include-order, and comment-text repairs. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -3256,6 +3257,9 @@ host lifecycle.
 - [x] Raise it to 553 through typed source-free numeric literal comparisons;
   all 24 newly initialized cases pass without a new mismatch or runtime
   failure.
+- [x] Raise it to 560 through homogeneous boolean and string literal equality;
+  mixed-type legacy coercion remains explicit pending version-aware static
+  context.
 - [ ] Give each standard and expected-error case one reproducible final
   disposition under a versioned local overlay/report, applying duplicate-safe
   identity and doubts/discretionary metadata.

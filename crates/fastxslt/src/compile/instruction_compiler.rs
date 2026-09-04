@@ -8,7 +8,7 @@ use crate::xpath::case_conversion_experiment::{
 };
 use crate::xpath::castable_experiment::{parse as parse_castable, parse_cast};
 use crate::xpath::constant_boolean_experiment::{
-    BooleanParseFailure, ScalarExpression, parse_literal_numeric_comparison,
+    BooleanParseFailure, ScalarExpression, parse_literal_comparison,
     parse_scalar as parse_source_free_scalar, recognizes_scalar as recognizes_source_free_scalar,
 };
 use crate::xpath::context_requirement_experiment::classify as classify_missing_context;
@@ -961,7 +961,7 @@ fn compile_value_expression(
     if expression.trim() == "last()" {
         return Ok(ValueExpression::ContextSize(location.clone()));
     }
-    if let Some(comparison) = parse_literal_numeric_comparison(expression) {
+    if let Some(comparison) = parse_literal_comparison(expression) {
         return Ok(ValueExpression::SourceFreeScalar(Box::new(
             ScalarExpression::Boolean(comparison),
         )));

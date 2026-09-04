@@ -100,7 +100,7 @@ pub(crate) fn recognizes_scalar(expression: &str) -> bool {
         .any(|function| expression.contains(function))
 }
 
-pub(crate) fn parse_literal_numeric_comparison(expression: &str) -> Option<BooleanExpression> {
+pub(crate) fn parse_literal_comparison(expression: &str) -> Option<BooleanExpression> {
     let expression = strip_balanced_parentheses(expression.trim());
     for (lexical, operator) in [
         ("<=", BooleanComparison::LessThanOrEqual),
@@ -113,19 +113,71 @@ pub(crate) fn parse_literal_numeric_comparison(expression: &str) -> Option<Boole
         let Some((left, right)) = split_top_level(expression, lexical) else {
             continue;
         };
-        let left = parse_xpath_number_literal(left)?;
-        let right = parse_xpath_number_literal(right)?;
-        let value = match operator {
-            BooleanComparison::Equal => left.partial_cmp(&right) == Some(std::cmp::Ordering::Equal),
-            BooleanComparison::NotEqual => {
-                left.partial_cmp(&right) != Some(std::cmp::Ordering::Equal)
-            }
-            BooleanComparison::LessThan => left < right,
-            BooleanComparison::LessThanOrEqual => left <= right,
-            BooleanComparison::GreaterThan => left > right,
-            BooleanComparison::GreaterThanOrEqual => left >= right,
-        };
-        return Some(BooleanExpression::Constant(value));
+        if let (Some(left), Some(right)) = (
+            parse_xpath_number_literal(left),
+            parse_xpath_number_literal(right),
+        ) {
+            return Some(BooleanExpression::Constant(compare_numbers(
+                left, operator, right,
+            )));
+        }
+        if !matches!(
+            operator,
+            BooleanComparison::Equal | BooleanComparison::NotEqual
+        ) {
+            return None;
+        }
+        if let (Some(left), Some(right)) =
+            (parse_boolean_literal(left), parse_boolean_literal(right))
+        {
+            return Some(BooleanExpression::Constant(match operator {
+                BooleanComparison::Equal => left == right,
+                BooleanComparison::NotEqual => left != right,
+                _ => unreachable!("ordered comparisons returned above"),
+            }));
+        }
+        if let (Some(left), Some(right)) = (parse_string_literal(left), parse_string_literal(right))
+        {
+            return Some(BooleanExpression::Constant(match operator {
+                BooleanComparison::Equal => left == right,
+                BooleanComparison::NotEqual => left != right,
+                _ => unreachable!("ordered comparisons returned above"),
+            }));
+        }
+        return None;
+    }
+    None
+}
+
+fn compare_numbers(left: f64, operator: BooleanComparison, right: f64) -> bool {
+    match operator {
+        BooleanComparison::Equal => left.partial_cmp(&right) == Some(std::cmp::Ordering::Equal),
+        BooleanComparison::NotEqual => left.partial_cmp(&right) != Some(std::cmp::Ordering::Equal),
+        BooleanComparison::LessThan => left < right,
+        BooleanComparison::LessThanOrEqual => left <= right,
+        BooleanComparison::GreaterThan => left > right,
+        BooleanComparison::GreaterThanOrEqual => left >= right,
+    }
+}
+
+fn parse_boolean_literal(source: &str) -> Option<bool> {
+    match source.trim() {
+        "true()" | "fn:true()" => Some(true),
+        "false()" | "fn:false()" => Some(false),
+        _ => None,
+    }
+}
+
+fn parse_string_literal(source: &str) -> Option<&str> {
+    let source = source.trim();
+    for quote in ['\'', '"'] {
+        if let Some(value) = source
+            .strip_prefix(quote)
+            .and_then(|value| value.strip_suffix(quote))
+            .filter(|value| !value.contains(quote))
+        {
+            return Some(value);
+        }
     }
     None
 }
@@ -427,7 +479,7 @@ fn split_top_level<'a>(expression: &'a str, operator: &str) -> Option<(&'a str, 
 mod tests {
     use super::{
         BooleanExpression, BooleanParseFailure, ScalarValue, evaluate, evaluate_scalar, parse,
-        parse_literal_numeric_comparison, parse_scalar,
+        parse_literal_comparison, parse_scalar,
     };
     use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 
@@ -521,12 +573,31 @@ mod tests {
             (".5 >= 0.50", true),
         ] {
             assert_eq!(
-                parse_literal_numeric_comparison(source),
+                parse_literal_comparison(source),
                 Some(BooleanExpression::Constant(expected)),
                 "{source}"
             );
         }
-        assert_eq!(parse_literal_numeric_comparison("item = 1"), None);
-        assert_eq!(parse_literal_numeric_comparison("1 + 1"), None);
+        assert_eq!(parse_literal_comparison("item = 1"), None);
+        assert_eq!(parse_literal_comparison("1 + 1"), None);
+    }
+
+    #[test]
+    fn parses_homogeneous_string_and_boolean_literal_equality() {
+        for (source, expected) in [
+            ("false()!=true()", true),
+            ("true()=true()", true),
+            ("'ace' != 'ace'", false),
+            ("'ace' != 'abc'", true),
+            ("\"H\" = 'H'", true),
+        ] {
+            assert_eq!(
+                parse_literal_comparison(source),
+                Some(BooleanExpression::Constant(expected)),
+                "{source}"
+            );
+        }
+        assert_eq!(parse_literal_comparison("1 = '001'"), None);
+        assert_eq!(parse_literal_comparison("'2' > '1'"), None);
     }
 }
