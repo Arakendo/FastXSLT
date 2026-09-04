@@ -15,6 +15,9 @@ use crate::xpath::deep_equal_experiment::DeepEqualEvaluationFailure;
 use crate::xpath::default_collation_experiment::{
     DefaultCollationValue, evaluate as evaluate_default_collation,
 };
+use crate::xpath::escape_html_uri_expression::{
+    EscapeHtmlUriExpression, EscapeHtmlUriValue, evaluate as evaluate_escape_html_uri,
+};
 use crate::xpath::focus_sum_for_experiment::{
     FocusSumEvaluationFailure, evaluate as evaluate_focus_sum_for,
 };
@@ -126,6 +129,9 @@ pub(super) fn execute_value_of(
         ValueExpression::DefaultCollation(expression) => {
             append_default_collation(inputs, expression, result, control)?;
         }
+        ValueExpression::EscapeHtmlUri(expression) => {
+            append_escape_html_uri(inputs, expression, result, control)?;
+        }
         ValueExpression::ConditionalInteger(expression) => {
             let value = evaluate_conditional_integer(inputs, expression, context, control)?;
             append_text(result, &value.to_string(), inputs.request_id, control)?;
@@ -135,6 +141,27 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_escape_html_uri(
+    inputs: &SequenceInputs<'_>,
+    expression: &EscapeHtmlUriExpression,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let value = evaluate_escape_html_uri(expression, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let value = match value {
+        EscapeHtmlUriValue::Boolean(value) => {
+            if value {
+                "true".to_owned()
+            } else {
+                "false".to_owned()
+            }
+        }
+        EscapeHtmlUriValue::String(value) => value,
+    };
+    append_text(result, &value, inputs.request_id, control)
 }
 
 fn append_boolean(

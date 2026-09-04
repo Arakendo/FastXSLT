@@ -546,6 +546,25 @@ mod tests {
         );
     }
 
+    #[test]
+    fn production_escape_html_uri_expression_reaches_the_workbench_host_path() {
+        let engine = ExperimentalEngine::new(
+            "urn:fastxslt:escape-html-uri:source",
+            b"<source/>".to_vec(),
+            "urn:fastxslt:escape-html-uri:stylesheet",
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="escape-html-uri(codepoints-to-string((9, 65, 128)))"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("production escape-html-uri expression should compile");
+
+        assert_eq!(
+            engine
+                .transform("escape-html-uri-workbench")
+                .expect("production escape-html-uri expression should execute"),
+            "%09A%C2%80"
+        );
+    }
+
     fn retention_custom_engine(
         label: &str,
         source: Vec<u8>,

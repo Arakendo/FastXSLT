@@ -3,9 +3,10 @@
 use std::{collections::BTreeSet, fs, path::PathBuf};
 
 use crate::qt3_overlay_test_support::{assert_private_case_passed, assert_selected_count};
-use crate::runtime::golden_runtime_experiment::execute_compiled_stylesheet_for_test;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+
+use super::qt3_production_path_test_support::{compile_expression, execute_expression};
 
 #[test]
 fn executes_complete_qt3_default_collation_denominator() {
@@ -42,7 +43,7 @@ fn executes_complete_qt3_default_collation_denominator() {
             .map(|test| document.string_value(test).trim().to_owned())
             .expect("QT3 expression");
         let result = child_named(&document, case, "result").expect("QT3 result metadata");
-        let compiled = compile_production_expression(case_name, &source);
+        let compiled = compile_expression(case_name, &source);
         if expects_error(&document, result, "XPST0017") {
             let failure = compiled.expect_err("invalid arity must fail production compilation");
             assert_eq!(failure.code, "XPST0017", "{case_name}: {source}");
@@ -50,58 +51,10 @@ fn executes_complete_qt3_default_collation_denominator() {
             let program = compiled.unwrap_or_else(|failure| {
                 panic!("production compilation failed: {case_name}: {source}: {failure:?}")
             });
-            let source_document = parse_source(case_name);
-            let actual = execute_compiled_stylesheet_for_test(
-                &program,
-                &source_document,
-                &format!("qt3:{case_name}"),
-            )
-            .unwrap_or_else(|failure| {
-                panic!("production execution failed: {case_name}: {source}: {failure}")
-            });
+            let actual = execute_expression(&program, case_name);
             assert_native_result(&document, result, &actual, case_name, &source);
         }
     }
-}
-
-fn compile_production_expression(
-    case_name: &str,
-    expression: &str,
-) -> Result<
-    crate::xslt::golden_semantics_experiment::StylesheetProgram,
-    crate::compile::golden_stylesheet_experiment::CompileFailure,
-> {
-    let select = expression
-        .replace('&', "&amp;")
-        .replace('"', "&quot;")
-        .replace('<', "&lt;");
-    let stylesheet = format!(
-        r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="{select}"/></xsl:template></xsl:stylesheet>"#
-    );
-    let parsed = parse_document(
-        &format!("urn:w3c:qt3:{case_name}:stylesheet"),
-        stylesheet.as_bytes(),
-        ParseLimits {
-            max_events: 32,
-            max_depth: 8,
-        },
-    )
-    .expect("generated production-path stylesheet should parse");
-    let document = Document::from_parsed(parsed).expect("generated stylesheet XDM should build");
-    crate::compile::golden_stylesheet_experiment::compile_stylesheet(&document)
-}
-
-fn parse_source(case_name: &str) -> Document {
-    let parsed = parse_document(
-        &format!("urn:w3c:qt3:{case_name}:source"),
-        b"<source/>",
-        ParseLimits {
-            max_events: 8,
-            max_depth: 4,
-        },
-    )
-    .expect("production-path source should parse");
-    Document::from_parsed(parsed).expect("production-path source XDM should build")
 }
 
 fn assert_native_result(

@@ -13,6 +13,10 @@ use crate::xpath::default_collation_experiment::{
     DefaultCollationParseFailure, parse as parse_default_collation,
     recognizes as recognizes_default_collation,
 };
+use crate::xpath::escape_html_uri_expression::{
+    EscapeHtmlUriParseFailure, parse as parse_escape_html_uri,
+    recognizes as recognizes_escape_html_uri,
+};
 use crate::xpath::focus_sum_for_experiment::parse as parse_focus_sum_for;
 use crate::xpath::for_distinct_values_experiment::{
     ForExpressionFailure, parse as parse_for_distinct_values,
@@ -652,7 +656,9 @@ fn compile_value_expression(
     {
         return Ok(conditional);
     }
-    Ok(if recognizes_default_collation(expression) {
+    Ok(if recognizes_escape_html_uri(expression) {
+        compile_escape_html_uri_value(expression, location)?
+    } else if recognizes_default_collation(expression) {
         compile_default_collation_value(expression, location)?
     } else if recognizes_deep_equal(expression) {
         compile_deep_equal_value(expression, location)?
@@ -725,6 +731,38 @@ fn compile_value_expression(
             parse_location_path(expression, location.clone()).map_err(map_path_failure)?,
         )
     })
+}
+
+fn compile_escape_html_uri_value(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<ValueExpression, CompileFailure> {
+    let expression = parse_escape_html_uri(expression).map_err(|failure| {
+        let (code, category, detail) = match failure {
+            EscapeHtmlUriParseFailure::InvalidArity => (
+                "XPST0017",
+                CompileCategory::Invalid,
+                "fn:escape-html-uri requires one argument",
+            ),
+            EscapeHtmlUriParseFailure::InvalidArgumentType => (
+                "XPTY0004",
+                CompileCategory::Invalid,
+                "fn:escape-html-uri requires an optional string",
+            ),
+            EscapeHtmlUriParseFailure::Unsupported => (
+                "FXXP1012",
+                CompileCategory::Unsupported,
+                "escape-html-uri expression shape is outside the admitted production slice",
+            ),
+        };
+        CompileFailure {
+            code,
+            category,
+            detail: detail.to_owned(),
+            location: location.clone(),
+        }
+    })?;
+    Ok(ValueExpression::EscapeHtmlUri(Box::new(expression)))
 }
 
 fn compile_default_collation_value(

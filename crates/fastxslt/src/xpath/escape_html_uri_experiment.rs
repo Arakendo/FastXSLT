@@ -32,7 +32,7 @@ pub(crate) fn fold_literal(expression: &str) -> Option<String> {
     Some(escape(literal))
 }
 
-fn escape(literal: &str) -> String {
+pub(crate) fn escape(literal: &str) -> String {
     let mut escaped = String::with_capacity(literal.len());
     for character in literal.chars() {
         if ('\u{20}'..='\u{7e}').contains(&character) {

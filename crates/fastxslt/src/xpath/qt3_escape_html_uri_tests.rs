@@ -2,8 +2,7 @@
 
 use std::{collections::BTreeSet, fs, path::PathBuf};
 
-use super::escape_html_uri_experiment::{EscapeHtmlUriFailure, EscapeHtmlUriValue, evaluate};
-use crate::execution_control_experiment::{InvocationControl, WorkDomain};
+use super::qt3_production_path_test_support::{compile_expression, execute_expression};
 use crate::qt3_overlay_test_support::{assert_private_case_passed, assert_selected_count};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
@@ -41,37 +40,30 @@ fn executes_qt3_escape_html_uri_denominator_tranche() {
             .map(|test| document.string_value(test).trim().to_owned())
             .expect("QT3 expression");
         let result = child_named(&document, case, "result").expect("QT3 result metadata");
-        let mut control = InvocationControl::unbounded();
-
-        match evaluate(&source, &mut control) {
-            Ok(actual) => assert_native_result(&document, result, &actual, &case_name, &source),
-            Err(EscapeHtmlUriFailure::InvalidArity) => {
-                assert_expected_error(&document, result, "XPST0017");
-            }
-            Err(EscapeHtmlUriFailure::InvalidArgumentType) => {
-                assert_expected_error(&document, result, "XPTY0004");
-            }
-            Err(failure) => {
-                panic!("selected QT3 expression failed: {case_name}: {source}: {failure:?}")
-            }
+        let compiled = compile_expression(&case_name, &source);
+        if let Some(expected_code) = expected_error(&document, result) {
+            let failure =
+                compiled.expect_err("invalid expression must fail production compilation");
+            assert_eq!(failure.code, expected_code, "{case_name}: {source}");
+        } else {
+            let program = compiled.unwrap_or_else(|failure| {
+                panic!("production compilation failed: {case_name}: {source}: {failure:?}")
+            });
+            let actual = execute_expression(&program, &case_name);
+            assert_native_result(&document, result, &actual, &case_name, &source);
         }
-        assert!(control.consumed(WorkDomain::XPathOperation) > 0);
     }
 }
 
 fn assert_native_result(
     document: &Document,
     result: NodeId,
-    actual: &EscapeHtmlUriValue,
+    actual: &str,
     case_name: &str,
     source: &str,
 ) {
     if !descendants_named(document, result, "assert-true").is_empty() {
-        assert_eq!(
-            actual,
-            &EscapeHtmlUriValue::Boolean(true),
-            "{case_name}: {source}"
-        );
+        assert_eq!(actual, "true", "{case_name}: {source}");
         return;
     }
     let assertion = descendants_named(document, result, "assert-string-value")
@@ -80,17 +72,16 @@ fn assert_native_result(
         .unwrap_or_else(|| panic!("selected case lacks an admitted assertion: {case_name}"));
     assert_eq!(
         actual,
-        &EscapeHtmlUriValue::String(document.string_value(assertion)),
+        document.string_value(assertion),
         "{case_name}: {source}"
     );
 }
 
-fn assert_expected_error(document: &Document, result: NodeId, expected_code: &str) {
-    let error = descendants_named(document, result, "error")
+fn expected_error(document: &Document, result: NodeId) -> Option<&str> {
+    descendants_named(document, result, "error")
         .into_iter()
         .next()
-        .expect("selected error case must own a native error assertion");
-    assert_eq!(attribute(document, error, "code"), Some(expected_code));
+        .and_then(|error| attribute(document, error, "code"))
 }
 
 fn load_test_set(set_file: &str) -> Document {

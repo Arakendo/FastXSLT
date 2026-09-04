@@ -10,12 +10,19 @@ Date: 2026-09-03
 
 ## Method
 
-A private source-free evaluator recognizes the standard one-argument
+The denominator was initially admitted through a private source-free evaluator.
+It now runs every selected unchanged expression through generated XSLT and the
+ordinary XML parser, stylesheet compiler, typed expression plan, runtime,
+result tree, and text serializer. A separate workbench sentinel executes the
+same typed expression through the ASP.NET-facing experimental engine.
+
+The production expression recognizes the standard one-argument
 `fn:escape-html-uri` call, preserves printable ASCII characters, and
 percent-encodes every other Unicode scalar value as its UTF-8 bytes using
-uppercase hexadecimal digits. The same escaping implementation remains used by
-the existing compile-time literal fold; the QT3 adapter adds bounded expression
-and assertion handling without creating a public XPath API.
+uppercase hexadecimal digits. It shares that escaping implementation with the
+existing compile-time literal fold. The QT3 adapter now owns only catalog
+selection, wrapper construction, and assertion comparison; it does not evaluate
+the function or manufacture the reported error.
 
 The selected tranche covers:
 
@@ -26,7 +33,9 @@ The selected tranche covers:
 - native `XPST0017` invalid-arity and `XPTY0004` invalid-argument diagnostics.
 
 Every selected case executes the unchanged QT3 expression and its native
-assertion shape. Evaluation charges the XPath-operation work domain.
+assertion shape. Invalid arity and argument type are reported by production
+compilation as `XPST0017` and `XPTY0004`. Evaluation charges the XPath-operation
+work domain.
 
 ## Conserved result
 
@@ -49,5 +58,6 @@ Across all complete QT3 overlays, the conserved subtotal is now 1,070 cases:
 
 This evidence does not claim general function dispatch, arbitrary expression
 composition, invocation clocks, `iri-to-uri`, sequence indexing, `treat as`, or
-whitespace normalization. The evaluator is a private semantic slice and the
-production literal fold remains deliberately narrower than the test adapter.
+whitespace normalization. The production expression is a private typed semantic
+slice for the selected forms; it does not create a public XPath API or widen the
+one visible not-run case.

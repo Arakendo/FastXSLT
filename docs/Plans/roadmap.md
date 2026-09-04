@@ -23,20 +23,23 @@ ordered-key composition and binary serialization lookup while retaining the
 compact compiled vector.
 [Evidence](../Evidence/character-map-scaling-remediation-2026-09-03.md)
 
-The complete seven-case QT3 `default-collation` family now establishes the
-production-parity migration pattern: unchanged expressions compile to typed
-semantics, execute through XSLT and serialization, and reach the same engine
-through the ASP.NET workbench path. The QT3 adapter now owns only selection,
-wrapper construction, and assertion comparison for that family.
-[Evidence](../Evidence/qt3-default-collation-denominator-2026-09-03.md)
+The complete QT3 `default-collation` and `escape-html-uri` families now put all
+40 selected cases through typed production semantics, XSLT execution, and
+serialization. Both expression families reach the same engine through ASP.NET
+workbench sentinels. The escape implementation is also shared with the earlier
+literal-fold path. Their QT3 adapters now own only selection, wrapper
+construction, and assertion comparison.
+[Default-collation evidence](../Evidence/qt3-default-collation-denominator-2026-09-03.md)
+[Escape-HTML-URI evidence](../Evidence/qt3-escape-html-uri-denominator-2026-09-03.md)
 
 Finding 5 remains partially open for the other selected test-only families.
-Apply this production-path pattern rather than adding another family-specific
-test-only semantic evaluator. Exact fractional `seconds-from-duration` work
-remains paused until duration construction and component access have one typed
-production path. The immediate review work now moves to the current ADR-0004
-cohesion campaign. The required current-state review has discharged Finding
-7's missing-review obligation and extracted the compiler composition tests.
+Continue applying this production-path pattern and prefer existing shared
+semantic primitives over adding another family-specific test-only evaluator.
+Exact fractional `seconds-from-duration` work remains paused until duration
+construction and component access have one typed production path. In parallel,
+the current ADR-0004 cohesion campaign remains active. Its current-state review
+has discharged Finding 7's missing-review obligation and extracted the compiler
+composition tests.
 Remaining behavior-preserving checkpoints are serializer HTML-profile
 recognition, instruction boolean compilation, runtime boolean evaluation,
 runtime source copying, and a post-campaign coupling review.
