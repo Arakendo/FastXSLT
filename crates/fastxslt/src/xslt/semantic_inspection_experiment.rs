@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use super::golden_semantics_experiment::{
-    GlobalBindingKind, Instruction, OutputSettings, StylesheetProgram,
+    ElementConstructorOrigin, GlobalBindingKind, Instruction, OutputSettings, StylesheetProgram,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -22,6 +22,7 @@ enum InspectionFailure {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum SemanticFeature {
     LiteralElement,
+    ComputedElement,
     ComputedAttribute,
     Text,
     ProcessingInstruction,
@@ -233,6 +234,7 @@ fn observe_instructions(
             .ok_or(InspectionFailure::CountOverflow)?;
         let (feature, body) = match instruction {
             Instruction::LiteralElement {
+                origin,
                 computed_attributes,
                 body,
                 ..
@@ -248,7 +250,11 @@ fn observe_instructions(
                         .checked_add(computed_attributes.len())
                         .ok_or(InspectionFailure::CountOverflow)?;
                 }
-                (SemanticFeature::LiteralElement, Some(body.as_slice()))
+                let feature = match origin {
+                    ElementConstructorOrigin::Literal => SemanticFeature::LiteralElement,
+                    ElementConstructorOrigin::ComputedStatic => SemanticFeature::ComputedElement,
+                };
+                (feature, Some(body.as_slice()))
             }
             Instruction::Text { .. } => (SemanticFeature::Text, None),
             Instruction::ProcessingInstructionNode { .. } => {

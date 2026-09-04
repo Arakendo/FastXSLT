@@ -324,9 +324,16 @@ pub(crate) enum NodeTest {
     AnyNode,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ElementConstructorOrigin {
+    Literal,
+    ComputedStatic,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Instruction {
     LiteralElement {
+        origin: ElementConstructorOrigin,
         name: ExpandedName,
         namespaces: Vec<NamespaceBinding>,
         attributes: Vec<LiteralAttribute>,

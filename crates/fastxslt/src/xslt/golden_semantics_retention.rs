@@ -335,6 +335,7 @@ fn instruction_owned(value: &Instruction) -> usize {
 
 fn literal_element_instruction_owned(value: &Instruction) -> usize {
     let Instruction::LiteralElement {
+        origin: _,
         name,
         namespaces,
         attributes,

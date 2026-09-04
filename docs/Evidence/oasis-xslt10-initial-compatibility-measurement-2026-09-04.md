@@ -11,6 +11,11 @@
 | Definite unchanged XML passes | 366 standard-operation cases |
 | Disposition | Local-only compatibility evidence; not a conformance claim |
 
+This document preserves the initial baseline. The subsequent
+[static computed-element tranche](oasis-xslt10-static-computed-element-tranche-2026-09-04.md)
+raises the definite unchanged pass count to 386 without changing the conserved
+denominators.
+
 ## Outcome
 
 FastXSLT now has a repeatable, hash-verified local measurement over every case

@@ -11,6 +11,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const SUITE_ROOT_ENVIRONMENT: &str = "FASTXSLT_OASIS_XSLT10_ROOT";
+const TRACE_CASE_ENVIRONMENT: &str = "FASTXSLT_OASIS_XSLT10_TRACE_CASE";
 
 #[derive(Debug)]
 struct LegacyCase {
@@ -227,12 +228,17 @@ fn measures_local_oasis_xslt10_compatibility() {
             continue;
         };
         match xml_equivalent(&actual, &expected) {
-            Ok(true) => measurement.increment("xml-comparison-pass"),
+            Ok(true) => {
+                trace_case_comparison(&case.identity, &actual, &expected);
+                measurement.increment("xml-comparison-pass");
+            }
             Ok(false) => {
+                trace_case_comparison(&case.identity, &actual, &expected);
                 measurement.increment("xml-comparison-mismatch");
                 measurement.mismatch_cases.push(case.identity.clone());
             }
             Err(frontier) => {
+                trace_case_comparison(&case.identity, &actual, &expected);
                 measurement.increment("xml-comparator-unsupported");
                 *measurement
                     .comparison_frontiers
@@ -280,6 +286,30 @@ fn measures_local_oasis_xslt10_compatibility() {
         println!("panic-case\t{identity}");
     }
     println!("OASIS_XSLT10_MEASUREMENT_END");
+}
+
+fn trace_case_comparison(identity: &str, actual: &str, expected: &[u8]) {
+    let Some(requested) = std::env::var_os(TRACE_CASE_ENVIRONMENT) else {
+        return;
+    };
+    if !identity.contains(requested.to_string_lossy().as_ref()) {
+        return;
+    }
+    let expected = decode_expected_xml(expected).unwrap_or_else(|failure| format!("<{failure}>"));
+    println!(
+        "comparison-trace\t{identity}\tactual={}\texpected={}",
+        escaped_detail(actual),
+        escaped_detail(&expected)
+    );
+}
+
+fn escaped_detail(detail: &str) -> String {
+    const MAX_CHARS: usize = 1_024;
+    let mut escaped = detail.escape_debug().take(MAX_CHARS).collect::<String>();
+    if detail.escape_debug().count() > MAX_CHARS {
+        escaped.push('…');
+    }
+    escaped
 }
 
 fn measurement_limits() -> WorkbenchLimits {

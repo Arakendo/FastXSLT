@@ -6,7 +6,7 @@ use crate::xdm::atomic_value_experiment::BuiltinAtomicType;
 use crate::xdm::owned_tree_experiment::Document;
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use crate::xslt::golden_semantics_experiment::{
-    BooleanExpression, GlobalBindingDefault, Instruction, MatchPattern,
+    BooleanExpression, ElementConstructorOrigin, GlobalBindingDefault, Instruction, MatchPattern,
     STANDARD_INITIAL_TEMPLATE_NAME, TemplatePriority, ValueExpression,
 };
 
@@ -109,6 +109,88 @@ fn compiles_the_golden_stylesheet_into_owned_semantics() {
             .resource,
         "golden:hello/stylesheet.xsl"
     );
+}
+
+#[test]
+fn compiles_static_unprefixed_xsl_element_without_calling_it_literal() {
+    let document = parse_stylesheet(
+        "memory:static-computed-element.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:template match="/"><xsl:element name="out">value</xsl:element></xsl:template>
+        </xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&document).expect("static xsl:element should compile");
+    let [
+        Instruction::LiteralElement {
+            origin, name, body, ..
+        },
+    ] = program
+        .root_template
+        .as_ref()
+        .expect("root template")
+        .body
+        .as_slice()
+    else {
+        panic!("root template should contain one element constructor");
+    };
+    assert_eq!(*origin, ElementConstructorOrigin::ComputedStatic);
+    assert_eq!(name.namespace, None);
+    assert_eq!(name.local, "out");
+    assert!(matches!(body.as_slice(), [Instruction::Text { value, .. }] if value == "value"));
+}
+
+#[test]
+fn static_xsl_element_keeps_dynamic_names_namespaces_and_attribute_sets_explicit() {
+    for (attribute, code) in [
+        ("name=\"{name()}\"", "FXST1047"),
+        ("name=\"out\" namespace=\"urn:test\"", "FXST1045"),
+        ("name=\"out\" use-attribute-sets=\"common\"", "FXST1046"),
+    ] {
+        let bytes = format!(
+            r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:test" version="1.0">
+              <xsl:template match="/"><xsl:element {attribute}/></xsl:template>
+            </xsl:stylesheet>"#
+        );
+        let document = parse_stylesheet("memory:bounded-computed-element.xsl", bytes.as_bytes());
+        let failure = compile_stylesheet(&document).expect_err("unadmitted form should fail");
+        assert_eq!(failure.code, code);
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+    }
+}
+
+#[test]
+fn compiles_static_prefixed_xsl_element_with_its_required_binding() {
+    let document = parse_stylesheet(
+        "memory:static-prefixed-computed-element.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:test" version="1.0">
+          <xsl:template match="/"><xsl:element name="p:out"/></xsl:template>
+        </xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&document).expect("prefixed xsl:element should compile");
+    let [
+        Instruction::LiteralElement {
+            origin,
+            name,
+            namespaces,
+            ..
+        },
+    ] = program
+        .root_template
+        .as_ref()
+        .expect("root template")
+        .body
+        .as_slice()
+    else {
+        panic!("root template should contain one element constructor");
+    };
+    assert_eq!(*origin, ElementConstructorOrigin::ComputedStatic);
+    assert_eq!(name.namespace.as_deref(), Some("urn:test"));
+    assert_eq!(name.local, "out");
+    assert_eq!(namespaces.len(), 1);
+    assert_eq!(namespaces[0].prefix.as_deref(), Some("p"));
+    assert_eq!(namespaces[0].namespace, "urn:test");
 }
 
 #[test]

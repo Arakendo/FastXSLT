@@ -691,6 +691,7 @@ fn compile_simplified_stylesheet_at(
     let root_template = Template {
         parameters: Vec::new(),
         body: vec![Instruction::LiteralElement {
+            origin: crate::xslt::golden_semantics_experiment::ElementConstructorOrigin::Literal,
             name: root_name.clone(),
             namespaces: literal_result_namespaces(document, root),
             attributes: Vec::new(),

@@ -58,8 +58,8 @@ use crate::xpath::string_length_experiment::{
     StringLengthParseFailure, parse as parse_string_length, recognizes as recognizes_string_length,
 };
 use crate::xslt::golden_semantics_experiment::{
-    ChooseBranch, ComputedAttribute, Instruction, LiteralAttributeValue, SequenceItemExpression,
-    StringComparison, TemplateArgument, ValueExpression,
+    ChooseBranch, ComputedAttribute, ElementConstructorOrigin, Instruction, LiteralAttributeValue,
+    SequenceItemExpression, StringComparison, TemplateArgument, ValueExpression,
 };
 
 #[path = "instruction_compiler/computed_attribute_compiler.rs"]
@@ -131,6 +131,8 @@ pub(super) fn compile_sequence_excluding(
                 if name.namespace.as_deref() == Some(XSLT_NAMESPACE) {
                     if name.local == "text" {
                         instructions.push(compile_text(document, child)?);
+                    } else if name.local == "element" {
+                        instructions.push(compile_static_computed_element(document, child)?);
                     } else if name.local == "comment" {
                         instructions.push(compile_comment(document, child)?);
                     } else if name.local == "attribute" {
@@ -264,6 +266,7 @@ fn compile_literal_element(
         document.location(element),
     )?;
     Ok(Instruction::LiteralElement {
+        origin: ElementConstructorOrigin::Literal,
         name: document
             .name(element)
             .expect("literal result element has a name")
@@ -274,6 +277,92 @@ fn compile_literal_element(
         body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
         location: document.location(element).clone(),
     })
+}
+
+fn compile_static_computed_element(
+    document: &Document,
+    element: NodeId,
+) -> Result<Instruction, CompileFailure> {
+    ensure_only_attributes(
+        document,
+        element,
+        &["name", "namespace", "use-attribute-sets"],
+        "xsl:element",
+    )?;
+    let name = required_attribute(document, element, None, "name")?;
+    if optional_attribute(document, element, None, "namespace").is_some() {
+        return Err(unsupported(
+            "FXST1045",
+            "the private xsl:element slice does not yet support the namespace attribute",
+            document.location(element),
+        ));
+    }
+    if optional_attribute(document, element, None, "use-attribute-sets").is_some() {
+        return Err(unsupported(
+            "FXST1046",
+            "the private xsl:element slice does not yet support attribute sets",
+            document.location(element),
+        ));
+    }
+    let (name, namespaces) = compile_static_computed_element_name(document, element, name)?;
+    let (computed_attributes, computed_attribute_nodes) =
+        compile_computed_attributes(document, element)?;
+    Ok(Instruction::LiteralElement {
+        origin: ElementConstructorOrigin::ComputedStatic,
+        name,
+        namespaces,
+        attributes: Vec::new(),
+        computed_attributes,
+        body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
+        location: document.location(element).clone(),
+    })
+}
+
+fn compile_static_computed_element_name(
+    document: &Document,
+    element: NodeId,
+    lexical: &str,
+) -> Result<(ExpandedName, Vec<NamespaceBinding>), CompileFailure> {
+    if is_ascii_ncname(lexical) {
+        return Ok((
+            ExpandedName {
+                namespace: None,
+                local: lexical.to_owned(),
+            },
+            Vec::new(),
+        ));
+    }
+    let Some((prefix, local)) = lexical.split_once(':') else {
+        return Err(unsupported(
+            "FXST1047",
+            "the private xsl:element slice requires a static QName",
+            document.location(element),
+        ));
+    };
+    if !is_ascii_ncname(prefix) || !is_ascii_ncname(local) || local.contains(':') {
+        return Err(unsupported(
+            "FXST1047",
+            "the private xsl:element slice requires a static QName",
+            document.location(element),
+        ));
+    }
+    let namespace = namespace_for_prefix(document, element, prefix).ok_or_else(|| {
+        invalid(
+            "XTDE0830",
+            format!("xsl:element name uses an unbound prefix: {prefix}"),
+            document.location(element),
+        )
+    })?;
+    Ok((
+        ExpandedName {
+            namespace: Some(namespace.to_owned()),
+            local: local.to_owned(),
+        },
+        vec![NamespaceBinding {
+            prefix: Some(prefix.to_owned()),
+            namespace: namespace.to_owned(),
+        }],
+    ))
 }
 
 fn ensure_distinct_result_attributes(
