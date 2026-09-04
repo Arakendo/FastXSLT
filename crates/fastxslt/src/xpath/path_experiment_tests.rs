@@ -698,6 +698,37 @@ fn child_kind_tests_select_only_their_declared_node_kinds() {
 }
 
 #[test]
+fn named_processing_instruction_test_filters_the_target_on_child_and_descendant_paths() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        br"<root><?other first?><a><?work selected?></a><?work selected-too?></root>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+
+    let child = parse_location_path("processing-instruction('work')", location())
+        .expect("named child PI test should parse");
+    let descendants = parse_location_path(".//processing-instruction(\"work\")", location())
+        .expect("named descendant PI test should parse");
+
+    let child_selected = evaluate_location_path(&document, root, &child);
+    let descendant_selected = evaluate_location_path(&document, root, &descendants);
+    assert_eq!(child_selected.len(), 1);
+    assert_eq!(document.value(child_selected[0]), Some("selected-too"));
+    assert_eq!(descendant_selected.len(), 2);
+    assert!(descendant_selected.iter().all(|node| {
+        document
+            .name(*node)
+            .is_some_and(|name| name.local == "work")
+    }));
+}
+
+#[test]
 fn evaluates_the_golden_path_from_the_document_node() {
     let parsed = parse_document(
         "memory:source.xml",

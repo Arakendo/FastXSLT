@@ -89,11 +89,13 @@ temporary-tree representations and raises the strict lower bound to 476; all
 eight newly initialized cases reach definite passes.
 Bounded node-path unions add five more definite passes while retaining one
 later error and one new comparison mismatch visibly, reaching 481. The sweep
+then reaches 485 after the shared path model retains named
+processing-instruction tests; all four newly initialized cases pass. The sweep
 retains 30
 executing comparison mismatches, 16 comparator gaps, and 35
 supplemental-data cases as explicitly not admitted, and gives every other case
 a structured initialization, execution, or infrastructure observation. This is
-a strict 17.54% lower bound over the suite's 2,742 standard-operation cases,
+a strict 17.69% lower bound over the suite's 2,742 standard-operation cases,
 not an XSLT 1.0 conformance claim. The initial sweep also found and drove a shared
 source-node-variable path repair, so AR-0019 now studies whether legacy
 compatibility can progress on the modern compiler/runtime rather than through a
@@ -108,6 +110,7 @@ second engine.
 [Static atomic copy-of evidence](../Evidence/oasis-xslt10-static-atomic-copy-of-tranche-2026-09-04.md)
 [Variable copy-of evidence](../Evidence/oasis-xslt10-variable-copy-of-tranche-2026-09-04.md)
 [Copy-of path union evidence](../Evidence/oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md)
+[Named processing-instruction path evidence](../Evidence/oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md)
 [Mismatch metadata evidence](../Evidence/oasis-xslt10-mismatch-metadata-refinement-2026-09-04.md)
 [Review](../Architectural%20Reviews/AR-0019-xslt10-compatibility-profile-on-modern-core.md)
 
@@ -1644,7 +1647,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 481 after shared construction/copy tranches plus descendant-pattern, include-order, and comment-text repairs. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 485 after shared construction/copy/path tranches plus descendant-pattern, include-order, and comment-text repairs. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -3219,6 +3222,8 @@ host lifecycle.
   temporary-tree values through their existing bounded shared representations.
 - [x] Raise it to 481 through bounded node-path unions in `xsl:copy-of`, with
   document-order normalization and deduplication before deep copy.
+- [x] Raise it to 485 by retaining named processing-instruction tests as a
+  shared typed path step rather than an instruction-specific exception.
 - [ ] Give each standard and expected-error case one reproducible final
   disposition under a versioned local overlay/report, applying duplicate-safe
   identity and doubts/discretionary metadata.
@@ -3249,6 +3254,8 @@ host lifecycle.
     temporary-tree semantics without introducing a legacy-only value model.
   - [x] Bounded `xsl:copy-of` path unions evaluate each typed alternative,
     restore document order, and remove duplicate node identities before copy.
+  - [x] Named processing-instruction node tests execute through the ordinary
+    charged child/descendant location-path evaluator.
 - [ ] Require every shared primitive to retain modern semantics, structured
   diagnostics, charge points, cancellation, source provenance, and at least one
   modern or cross-version regression where applicable.

@@ -102,6 +102,7 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Static Atomic Copy-Of Tranche](oasis-xslt10-static-atomic-copy-of-tranche-2026-09-04.md)
 - [OASIS XSLT 1.0 Variable Copy-Of Tranche](oasis-xslt10-variable-copy-of-tranche-2026-09-04.md)
 - [OASIS XSLT 1.0 Copy-Of Path Union Tranche](oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md)
+- [OASIS XSLT 1.0 Named Processing-Instruction Path Tranche](oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md)
 - [OASIS XSLT 1.0 Mismatch Metadata Refinement](oasis-xslt10-mismatch-metadata-refinement-2026-09-04.md)
 - [Rust XML Parser Candidate Review](rust-xml-parser-candidate-review-2026-08-25.md)
 - [Owned XDM Tree Experiment](owned-xdm-tree-experiment-2026-08-25.md)

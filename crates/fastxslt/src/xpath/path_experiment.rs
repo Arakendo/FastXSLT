@@ -68,6 +68,7 @@ pub(crate) enum PathStep {
     ChildText,
     ChildComment,
     ChildProcessingInstruction,
+    ChildProcessingInstructionNamed(String),
     AttributeNamed(String),
     AttributeAny,
     ParentNamed(String),
@@ -93,6 +94,7 @@ impl PathStep {
         match self {
             Self::ChildNamed(value)
             | Self::ChildLocalName(value)
+            | Self::ChildProcessingInstructionNamed(value)
             | Self::AttributeNamed(value)
             | Self::ParentNamed(value)
             | Self::SelfNamed(value)
@@ -165,6 +167,9 @@ impl PathStep {
             };
         }
         let name_test = value.strip_prefix("child::").unwrap_or(value);
+        if let Some(target) = processing_instruction_target(name_test) {
+            return Some(Self::ChildProcessingInstructionNamed(target.to_owned()));
+        }
         Some(match name_test {
             "*" | "element()" => Self::ChildAnyElement,
             "node()" => Self::ChildAnyNode,
@@ -249,6 +254,9 @@ impl PartialEq<&str> for PathStep {
             Self::ChildText => *other == "text()",
             Self::ChildComment => *other == "comment()",
             Self::ChildProcessingInstruction => *other == "processing-instruction()",
+            Self::ChildProcessingInstructionNamed(target) => {
+                processing_instruction_target(other).is_some_and(|other| other == target)
+            }
             Self::AttributeAny => matches!(*other, "*" | "node()"),
         }
     }
@@ -471,12 +479,31 @@ fn has_unadmitted_name_test(step: &str) -> bool {
             name_test,
             "element()" | "comment()" | "processing-instruction()"
         );
+    let admitted_named_processing_instruction = (!step.contains("::")
+        || step.starts_with("child::"))
+        && processing_instruction_target(name_test).is_some();
     let admitted_local_wildcard = (!step.contains("::") || step.starts_with("child::"))
         && name_test.strip_prefix("*:").is_some_and(is_ascii_ncname);
     !matches!(name_test, "*" | "node()" | "text()")
         && !admitted_child_kind
+        && !admitted_named_processing_instruction
         && !admitted_local_wildcard
         && !is_ascii_ncname(name_test)
+}
+
+fn processing_instruction_target(name_test: &str) -> Option<&str> {
+    let argument = name_test
+        .strip_prefix("processing-instruction(")?
+        .strip_suffix(')')?;
+    for delimiter in ['\'', '"'] {
+        let target = argument
+            .strip_prefix(delimiter)
+            .and_then(|value| value.strip_suffix(delimiter));
+        if let Some(target) = target.filter(|value| is_ascii_ncname(value)) {
+            return Some(target);
+        }
+    }
+    None
 }
 
 fn validate_expression_opening(
@@ -938,6 +965,12 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
         PathStep::ChildComment => document.kind(child) == NodeKind::Comment,
         PathStep::ChildProcessingInstruction => {
             document.kind(child) == NodeKind::ProcessingInstruction
+        }
+        PathStep::ChildProcessingInstructionNamed(required) => {
+            document.kind(child) == NodeKind::ProcessingInstruction
+                && document
+                    .name(child)
+                    .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
         }
         PathStep::AttributeNamed(required) => {
             document.kind(child) == NodeKind::Attribute
