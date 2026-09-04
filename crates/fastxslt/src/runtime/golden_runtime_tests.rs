@@ -2194,6 +2194,38 @@ fn copy_of_location_path_copies_each_selected_subtree_in_document_order() {
 }
 
 #[test]
+fn copy_of_location_paths_preserve_attribute_comment_and_processing_instruction_kinds() {
+    const SOURCE: &str = "urn:fastxslt:node-kind-copy:source";
+    const STYLESHEET: &str = "urn:fastxslt:node-kind-copy:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc id=\"kept\"><!--note--><?work ready?></doc>".to_vec(),
+        )
+        .expect("admit source document");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:copy-of select="/doc/@id"/><xsl:copy-of select="/doc/comment()"/><xsl:copy-of select="/doc/processing-instruction()"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("node-kind-copy", "node-kind-copy-result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute node-kind copy");
+
+    assert_eq!(
+        results.by_request["node-kind-copy"].serialized,
+        "<out id=\"kept\"><!--note--><?work ready?></out>"
+    );
+}
+
+#[test]
 fn copy_of_ancestor_or_self_elements_preserves_reverse_axis_order() {
     const SOURCE: &str = "urn:fastxslt:ancestor-copy:source";
     const STYLESHEET: &str = "urn:fastxslt:ancestor-copy:stylesheet";

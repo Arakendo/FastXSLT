@@ -2298,12 +2298,32 @@ fn copy_source_node(
             )?;
             Ok(copied)
         }
-        NodeKind::Attribute | NodeKind::Comment | NodeKind::ProcessingInstruction => Err(failure(
-            "FXRT1002",
-            FailureCategory::Unsupported,
-            Some(request_id),
-            "the selected source node kind is outside the private xsl:sequence copy slice",
-        )),
+        NodeKind::Attribute => {
+            control
+                .charge(WorkDomain::ResultNode, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            Ok(vec![ResultNode::PendingAttribute(ResultAttribute {
+                name: source
+                    .name(node)
+                    .expect("source attribute has a name")
+                    .clone(),
+                value: source.string_value(node),
+            })])
+        }
+        NodeKind::Comment => Ok(vec![construct_comment(
+            source.value(node).unwrap_or_default(),
+            request_id,
+            control,
+        )?]),
+        NodeKind::ProcessingInstruction => Ok(vec![construct_processing_instruction(
+            &source
+                .name(node)
+                .expect("source processing instruction has a target")
+                .local,
+            source.value(node).unwrap_or_default(),
+            request_id,
+            control,
+        )?]),
     }
 }
 

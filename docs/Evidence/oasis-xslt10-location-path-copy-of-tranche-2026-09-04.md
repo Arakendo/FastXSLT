@@ -9,6 +9,10 @@
 | Result | 395 definite unchanged XML passes |
 | Disposition | Shared node-path `xsl:copy-of` slice implemented; general sequence copying remains open |
 
+The subsequent
+[source node-kind copy tranche](oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md)
+eliminates the `FXRT1002` boundary and raises the running lower bound to 403.
+
 ## Outcome
 
 `xsl:copy-of` can now compile ordinary node-selecting location paths through the
@@ -57,11 +61,10 @@ asserts document-order output.
 
 This is a node-path slice, not general XPath sequence-copy semantics. The
 remaining 29 compile-time `FXXP1003` cases use expression forms outside the
-admitted path grammar. Paths selecting source attributes, comments, or
-processing instructions currently reach an explicit `FXRT1002` unsupported
-node-kind boundary rather than producing a plausible partial result. Atomic
-values, variables, unions, computed sequences, namespace-copy controls, and
-validation/type behavior remain open.
+admitted path grammar. Atomic values, variables, unions, computed sequences,
+namespace-copy controls, and validation/type behavior remain open. Source
+attributes, comments, and processing instructions were admitted by the
+following focused tranche.
 
 ## Next work
 

@@ -16,7 +16,9 @@ This document preserves the initial baseline. The subsequent
 raises the definite unchanged pass count to 386 without changing the conserved
 denominators; the following
 [location-path copy-of tranche](oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md)
-raises it to 395.
+raises it to 395, and the following
+[source node-kind copy tranche](oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md)
+raises it to 403.
 
 ## Outcome
 
