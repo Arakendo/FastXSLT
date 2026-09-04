@@ -290,10 +290,11 @@ fn compile_static_computed_element(
         "xsl:element",
     )?;
     let name = required_attribute(document, element, None, "name")?;
-    if optional_attribute(document, element, None, "namespace").is_some() {
+    let namespace = optional_attribute(document, element, None, "namespace");
+    if namespace.is_some_and(|value| value.contains(['{', '}'])) {
         return Err(unsupported(
             "FXST1045",
-            "the private xsl:element slice does not yet support the namespace attribute",
+            "the private xsl:element namespace slice requires a static URI",
             document.location(element),
         ));
     }
@@ -304,7 +305,8 @@ fn compile_static_computed_element(
             document.location(element),
         ));
     }
-    let (name, namespaces) = compile_static_computed_element_name(document, element, name)?;
+    let (name, namespaces) =
+        compile_static_computed_element_name(document, element, name, namespace)?;
     let (computed_attributes, computed_attribute_nodes) =
         compile_computed_attributes(document, element)?;
     Ok(Instruction::LiteralElement {
@@ -322,14 +324,23 @@ fn compile_static_computed_element_name(
     document: &Document,
     element: NodeId,
     lexical: &str,
+    namespace_override: Option<&str>,
 ) -> Result<(ExpandedName, Vec<NamespaceBinding>), CompileFailure> {
     if is_ascii_ncname(lexical) {
+        let namespace = namespace_override.filter(|value| !value.is_empty());
         return Ok((
             ExpandedName {
-                namespace: None,
+                namespace: namespace.map(str::to_owned),
                 local: lexical.to_owned(),
             },
-            Vec::new(),
+            namespace
+                .map(|namespace| {
+                    vec![NamespaceBinding {
+                        prefix: None,
+                        namespace: namespace.to_owned(),
+                    }]
+                })
+                .unwrap_or_default(),
         ));
     }
     let Some((prefix, local)) = lexical.split_once(':') else {
@@ -346,13 +357,23 @@ fn compile_static_computed_element_name(
             document.location(element),
         ));
     }
-    let namespace = namespace_for_prefix(document, element, prefix).ok_or_else(|| {
-        invalid(
-            "XTDE0830",
-            format!("xsl:element name uses an unbound prefix: {prefix}"),
-            document.location(element),
-        )
-    })?;
+    let namespace = match namespace_override {
+        Some("") => {
+            return Err(invalid(
+                "XTDE0835",
+                "a prefixed xsl:element name cannot use an empty namespace",
+                document.location(element),
+            ));
+        }
+        Some(namespace) => namespace,
+        None => namespace_for_prefix(document, element, prefix).ok_or_else(|| {
+            invalid(
+                "XTDE0830",
+                format!("xsl:element name uses an unbound prefix: {prefix}"),
+                document.location(element),
+            )
+        })?,
+    };
     Ok((
         ExpandedName {
             namespace: Some(namespace.to_owned()),

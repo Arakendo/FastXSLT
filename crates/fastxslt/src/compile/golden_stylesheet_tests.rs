@@ -144,7 +144,7 @@ fn compiles_static_unprefixed_xsl_element_without_calling_it_literal() {
 fn static_xsl_element_keeps_dynamic_names_namespaces_and_attribute_sets_explicit() {
     for (attribute, code) in [
         ("name=\"{name()}\"", "FXST1047"),
-        ("name=\"out\" namespace=\"urn:test\"", "FXST1045"),
+        ("name=\"out\" namespace=\"{namespace-uri()}\"", "FXST1045"),
         ("name=\"out\" use-attribute-sets=\"common\"", "FXST1046"),
     ] {
         let bytes = format!(
@@ -157,6 +157,36 @@ fn static_xsl_element_keeps_dynamic_names_namespaces_and_attribute_sets_explicit
         assert_eq!(failure.code, code);
         assert_eq!(failure.category, CompileCategory::Unsupported);
     }
+}
+
+#[test]
+fn compiles_static_xsl_element_namespace_without_runtime_qname_work() {
+    let document = parse_stylesheet(
+        "memory:static-computed-element-namespace.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:template match="/"><xsl:element name="out" namespace="urn:result"/></xsl:template>
+        </xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&document).expect("static namespace should compile");
+    let root_template = program.root_template.as_ref().expect("root template");
+    let [
+        Instruction::LiteralElement {
+            origin,
+            name,
+            namespaces,
+            ..
+        },
+    ] = root_template.body.as_slice()
+    else {
+        panic!("root template should contain one computed element");
+    };
+    assert_eq!(*origin, ElementConstructorOrigin::ComputedStatic);
+    assert_eq!(name.namespace.as_deref(), Some("urn:result"));
+    assert_eq!(name.local, "out");
+    assert_eq!(namespaces.len(), 1);
+    assert_eq!(namespaces[0].prefix, None);
+    assert_eq!(namespaces[0].namespace, "urn:result");
 }
 
 #[test]

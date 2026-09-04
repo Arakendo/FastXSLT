@@ -220,6 +220,53 @@ fn static_xsl_element_executes_nested_sequence_constructors() {
 }
 
 #[test]
+fn static_xsl_element_namespace_serializes_a_default_result_binding() {
+    let source = parse_document(
+        "memory:static-computed-element-namespace.xml",
+        b"<doc/>",
+        ParseLimits {
+            max_events: 8,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:static-computed-element-namespace.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:output method="xml" omit-xml-declaration="yes"/>
+          <xsl:template match="/"><xsl:element name="out" namespace="urn:result"/></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("static namespace should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "static-computed-element-namespace-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("static namespaced xsl:element should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "static-computed-element-namespace-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out xmlns=\"urn:result\"></out>");
+}
+
+#[test]
 fn one_prepared_source_supports_preserving_and_stripping_stylesheets_without_mutation() {
     let parsed_source = parse_document(
         "memory:shared-source.xml",

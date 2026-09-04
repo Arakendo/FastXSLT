@@ -12,6 +12,9 @@
 The subsequent
 [location-path copy-of tranche](oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md)
 raises the running definite-pass lower bound to 395.
+The later
+[static element namespace tranche](oasis-xslt10-static-element-namespace-tranche-2026-09-04.md)
+admits literal namespace URIs and raises the running bound to 452.
 
 ## Outcome
 
@@ -62,11 +65,11 @@ compilation, execution, serialization, and comparison.
 
 ## Deliberately open forms
 
-This tranche does not admit an `xsl:element` `namespace` attribute, a dynamic
-attribute value template in `name` or `namespace`, or `use-attribute-sets`.
-Those forms remain structured unsupported outcomes. The sweep now exposes 73
-cases at the explicit `namespace`-attribute frontier instead of hiding the
-entire family behind generic unsupported-instruction reporting.
+This initial tranche did not admit an `xsl:element` `namespace` attribute, a
+dynamic attribute value template in `name` or `namespace`, or
+`use-attribute-sets`. The later static-namespace tranche admits literal URI
+values; dynamic name/namespace AVTs and attribute sets remain structured
+unsupported outcomes.
 
 The mismatch review performed before this implementation also confirmed that
 the archival suite needs an owned infoset/canonical comparison policy. Several
