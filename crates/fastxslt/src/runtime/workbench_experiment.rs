@@ -527,6 +527,25 @@ mod tests {
         .expect("exact for-004 engine should initialize")
     }
 
+    #[test]
+    fn production_default_collation_expression_reaches_the_workbench_host_path() {
+        let engine = ExperimentalEngine::new(
+            "urn:fastxslt:default-collation:source",
+            b"<source/>".to_vec(),
+            "urn:fastxslt:default-collation:stylesheet",
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="fn:default-collation()" xmlns:fn="http://www.w3.org/2005/xpath-functions"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("production default-collation expression should compile");
+
+        assert_eq!(
+            engine
+                .transform("default-collation-workbench")
+                .expect("production default-collation expression should execute"),
+            "http://www.w3.org/2005/xpath-functions/collation/codepoint"
+        );
+    }
+
     fn retention_custom_engine(
         label: &str,
         source: Vec<u8>,

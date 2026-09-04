@@ -4,6 +4,7 @@ use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::castable_experiment::{CastExpression, CastableExpression};
 use crate::xpath::decimal_sum_for_experiment::DecimalSumForExpression;
 use crate::xpath::deep_equal_boolean_experiment::DeepEqualBooleanExpression;
+use crate::xpath::default_collation_experiment::DefaultCollationExpression;
 use crate::xpath::focus_sum_for_experiment::FocusSumForExpression;
 use crate::xpath::for_distinct_values_experiment::ForDistinctValuesExpression;
 use crate::xpath::format_number_experiment::FormatNumberExpression;
@@ -466,6 +467,7 @@ pub(crate) enum ValueExpression {
     FormatNumber(Box<FormatNumberExpression>),
     Castable(Box<CastableExpression>),
     DeepEqual(Box<DeepEqualBooleanExpression>),
+    DefaultCollation(Box<DefaultCollationExpression>),
     ConditionalInteger(Box<ConditionalIntegerExpression>),
     ConditionalPath(Box<ConditionalPathExpression>),
 }

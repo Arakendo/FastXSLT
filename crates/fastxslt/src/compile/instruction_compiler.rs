@@ -9,6 +9,10 @@ use crate::xpath::deep_equal_boolean_experiment::{
     parse as parse_deep_equal, recognizes as recognizes_deep_equal,
 };
 use crate::xpath::deep_equal_experiment::DeepEqualFailureKind;
+use crate::xpath::default_collation_experiment::{
+    DefaultCollationParseFailure, parse as parse_default_collation,
+    recognizes as recognizes_default_collation,
+};
 use crate::xpath::focus_sum_for_experiment::parse as parse_focus_sum_for;
 use crate::xpath::for_distinct_values_experiment::{
     ForExpressionFailure, parse as parse_for_distinct_values,
@@ -648,7 +652,9 @@ fn compile_value_expression(
     {
         return Ok(conditional);
     }
-    Ok(if recognizes_deep_equal(expression) {
+    Ok(if recognizes_default_collation(expression) {
+        compile_default_collation_value(expression, location)?
+    } else if recognizes_deep_equal(expression) {
         compile_deep_equal_value(expression, location)?
     } else if expression.contains(" castable as ") {
         ValueExpression::Castable(Box::new(parse_castable(expression, location).map_err(
@@ -719,6 +725,33 @@ fn compile_value_expression(
             parse_location_path(expression, location.clone()).map_err(map_path_failure)?,
         )
     })
+}
+
+fn compile_default_collation_value(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<ValueExpression, CompileFailure> {
+    let expression = parse_default_collation(expression).map_err(|failure| {
+        let (code, category, detail) = match failure {
+            DefaultCollationParseFailure::InvalidArity => (
+                "XPST0017",
+                CompileCategory::Invalid,
+                "fn:default-collation requires zero arguments",
+            ),
+            DefaultCollationParseFailure::Unsupported => (
+                "FXXP1011",
+                CompileCategory::Unsupported,
+                "default-collation expression shape is outside the admitted production slice",
+            ),
+        };
+        CompileFailure {
+            code,
+            category,
+            detail: detail.to_owned(),
+            location: location.clone(),
+        }
+    })?;
+    Ok(ValueExpression::DefaultCollation(Box::new(expression)))
 }
 
 fn compile_deep_equal_value(

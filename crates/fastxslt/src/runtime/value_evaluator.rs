@@ -12,6 +12,9 @@ use crate::xpath::decimal_sum_for_experiment::{
 };
 use crate::xpath::deep_equal_boolean_experiment::evaluate as evaluate_deep_equal;
 use crate::xpath::deep_equal_experiment::DeepEqualEvaluationFailure;
+use crate::xpath::default_collation_experiment::{
+    DefaultCollationValue, evaluate as evaluate_default_collation,
+};
 use crate::xpath::focus_sum_for_experiment::{
     FocusSumEvaluationFailure, evaluate as evaluate_focus_sum_for,
 };
@@ -114,21 +117,14 @@ pub(super) fn execute_value_of(
         ValueExpression::Castable(expression) => {
             let value =
                 execute_castable_expression(inputs, expression, context, variables, control)?;
-            append_text(
-                result,
-                if value { "true" } else { "false" },
-                inputs.request_id,
-                control,
-            )?;
+            append_boolean(inputs, value, result, control)?;
         }
         ValueExpression::DeepEqual(expression) => {
             let value = execute_deep_equal(inputs, expression, context, control)?;
-            append_text(
-                result,
-                if value { "true" } else { "false" },
-                inputs.request_id,
-                control,
-            )?;
+            append_boolean(inputs, value, result, control)?;
+        }
+        ValueExpression::DefaultCollation(expression) => {
+            append_default_collation(inputs, expression, result, control)?;
         }
         ValueExpression::ConditionalInteger(expression) => {
             let value = evaluate_conditional_integer(inputs, expression, context, control)?;
@@ -139,6 +135,42 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_boolean(
+    inputs: &SequenceInputs<'_>,
+    value: bool,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    append_text(
+        result,
+        if value { "true" } else { "false" },
+        inputs.request_id,
+        control,
+    )
+}
+
+fn append_default_collation(
+    inputs: &SequenceInputs<'_>,
+    expression: &crate::xpath::default_collation_experiment::DefaultCollationExpression,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let value = evaluate_default_collation(expression, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let value = match value {
+        DefaultCollationValue::Boolean(value) => {
+            if value {
+                "true".to_owned()
+            } else {
+                "false".to_owned()
+            }
+        }
+        DefaultCollationValue::Integer(value) => value.to_string(),
+        DefaultCollationValue::String(value) => value,
+    };
+    append_text(result, &value, inputs.request_id, control)
 }
 
 fn append_conditional_path(

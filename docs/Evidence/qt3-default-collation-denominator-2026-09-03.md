@@ -10,14 +10,26 @@ Date: 2026-09-03
 
 ## Method
 
-The private source-free evaluator supplies the standard Unicode codepoint
-collation URI as its explicit static-context default. The value does not depend
-on process locale or host environment. Existing bounded equality, count, and
-effective-boolean-value composition evaluates the native surrounding
-expressions.
+The original denominator admission used a private test-only source-free
+evaluator. Following Finding 5 of the second adversarial review, all seven cases
+now use a compiled typed `DefaultCollationExpression` in the production XSLT
+path. The QT3 adapter performs only catalog selection, wrapper construction, and
+result/error comparison.
+
+Each unchanged QT3 expression is placed in an `xsl:value-of` `select` attribute,
+then passes through the ordinary XML parser, stylesheet compiler, value
+evaluator, result tree, and text serializer. The same compiled expression also
+executes through `ExperimentalEngine`, the engine used by the ASP.NET workbench.
+Static arity failures occur during production stylesheet compilation with
+`XPST0017`; successful evaluation charges the XPath-operation work domain.
+
+The production evaluator supplies the standard Unicode codepoint collation URI
+as its explicit static-context default. The value does not depend on process
+locale or host environment. Equality, count, and effective-boolean-value forms
+retain distinct compiled and evaluated value kinds.
 
 Every case executes the unchanged QT3 expression and its native assertion
-shape. Evaluation charges the XPath-operation work domain.
+shape.
 
 ## Conserved result
 
@@ -36,3 +48,6 @@ Across all complete QT3 overlays, the conserved subtotal is now 1,285 cases:
 This evidence selects the codepoint collation only for the admitted private
 static-context slice. It does not define a public static-context API, admit
 host-defined collations, or settle future default-collation configurability.
+It establishes a production-parity migration pattern for one complete family;
+it does not retroactively place other test-only QT3 families on the production
+path.

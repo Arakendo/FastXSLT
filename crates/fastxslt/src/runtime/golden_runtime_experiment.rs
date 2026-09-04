@@ -109,6 +109,25 @@ pub(super) fn execute_program(
     )
 }
 
+#[cfg(test)]
+pub(crate) fn execute_compiled_stylesheet_for_test(
+    program: &StylesheetProgram,
+    source: &Document,
+    request_id: &str,
+) -> Result<String, String> {
+    let mut control = InvocationControl::unbounded();
+    let result = execute_program(program, source, request_id, &mut control)
+        .map_err(|failure| format!("{failure:?}"))?;
+    serialize_xml(
+        &result,
+        &program.output,
+        request_id,
+        64 * 1024,
+        &mut control,
+    )
+    .map_err(|failure| format!("{failure:?}"))
+}
+
 fn execute_program_with_parameters(
     program: &StylesheetProgram,
     source: &Document,

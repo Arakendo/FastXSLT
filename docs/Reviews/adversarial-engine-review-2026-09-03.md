@@ -19,7 +19,7 @@ admitted behavior that the earlier review did not cover.
 | 2. Cross-kind lexical shadowing | Resolved 2026-09-03 | Every local binding clears competing value kinds and suppresses same-name global fallback. The source-node-over-global-atomic counterexample passes through shared and complete-clone frames. |
 | 3. Untaken creation outcome | Resolved 2026-09-03 | Releasing the outcome reclaims its engine and capacity; concurrent take/release has one linearized owner. |
 | 4. Character-map scaling | Resolved 2026-09-03 | Release-mode measurements confirmed both adverse curves. Compilation now composes through an ordered keyed map and retains a sorted compact vector; serialization uses binary lookup. |
-| 5. Test-only QT3 semantics | Open; expansion paused | Promote one complete family into the production XPath path and install a parity sentinel before adding another test-only semantic family. |
+| 5. Test-only QT3 semantics | Partially remediated 2026-09-03 | The complete seven-case `default-collation` family now uses compiled typed production semantics through XSLT and the workbench. Other selected test-only families remain migration debt. |
 | 6. Worker command queue | Resolved 2026-09-03 | The shared event channel has capacity one and a focused backpressure test proves a second decoded event cannot be queued. |
 | 7. Source-unit reopening | Open | Perform the required current-state cohesion reviews after the correctness tranche identifies stable seams. |
 
@@ -303,6 +303,15 @@ when a measured seam demonstrates pressure; this is a focused candidate, not a
 request for a generalized cache.
 
 ### Finding 5: QT3 pass growth is implemented by test-only XPath evaluators
+
+Disposition: **Partially remediated 2026-09-03.** The complete seven-case
+`fn/default-collation.xml` denominator no longer invokes the test-only
+case-conversion evaluator. Each unchanged expression is compiled into a typed
+production expression and executed through the real XSLT runtime and serializer;
+an additional sentinel reaches the same expression through the ASP.NET
+workbench engine. This establishes the required migration pattern but does not
+resolve the remaining test-only families.
+[Evidence](../Evidence/qt3-default-collation-denominator-2026-09-03.md)
 
 Severity:
 - Medium

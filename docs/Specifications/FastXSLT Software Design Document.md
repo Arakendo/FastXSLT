@@ -354,6 +354,12 @@ ASCII case-insensitive member. That comparison policy is retained in compiled
 semantics and applied only to the admitted name/string comparison; a list with
 no available member reports `XTSE0125`. This does not admit UCA, arbitrary
 collation URIs, locale-sensitive comparison, or a general static-context API.
+The exact zero-argument `default-collation()` function and its admitted
+equality, `count()`, and `boolean()` compositions compile to typed production
+expressions and return the codepoint collation URI through the ordinary XSLT
+value and host-workbench paths. Nonzero arity reports `XPST0017`. This remains a
+fixed private static-context slice; it does not expose host-defined collation
+configuration or a general function-call grammar.
 The `.//` abbreviation begins descendant navigation at the supplied context
 node, unlike leading `//`, which begins at the document node. Both reuse the
 same typed descendant steps, document-order normalization, deduplication, and

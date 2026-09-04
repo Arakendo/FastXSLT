@@ -23,6 +23,8 @@ pub(crate) mod deep_equal_boolean_experiment;
 mod deep_equal_composite;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod deep_equal_experiment;
+#[cfg(any(test, feature = "workbench"))]
+pub(crate) mod default_collation_experiment;
 #[cfg(test)]
 pub(crate) mod duration_component_experiment;
 #[cfg(test)]

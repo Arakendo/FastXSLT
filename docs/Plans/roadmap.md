@@ -23,13 +23,19 @@ ordered-key composition and binary serialization lookup while retaining the
 compact compiled vector.
 [Evidence](../Evidence/character-map-scaling-remediation-2026-09-03.md)
 
-The remaining review order is promotion of one complete QT3 family into the
-production XPath path, followed by current ADR-0004 cohesion reviews for the
-fired source-unit triggers. Do not add another
-family-specific test-only QT3 semantic evaluator before the production-path
-migration establishes the parity pattern. Exact fractional
-`seconds-from-duration` work is therefore paused at this boundary rather than
-extending the private whole-second representation.
+The complete seven-case QT3 `default-collation` family now establishes the
+production-parity migration pattern: unchanged expressions compile to typed
+semantics, execute through XSLT and serialization, and reach the same engine
+through the ASP.NET workbench path. The QT3 adapter now owns only selection,
+wrapper construction, and assertion comparison for that family.
+[Evidence](../Evidence/qt3-default-collation-denominator-2026-09-03.md)
+
+Finding 5 remains partially open for the other selected test-only families.
+Apply this production-path pattern rather than adding another family-specific
+test-only semantic evaluator. Exact fractional `seconds-from-duration` work
+remains paused until duration construction and component access have one typed
+production path. The immediate review work now moves to the current ADR-0004
+cohesion reviews for the fired source-unit triggers.
 
 The first
 [adversarial engine review](../Reviews/adversarial-engine-review-2026-08-30.md)

@@ -484,6 +484,18 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::DeepEqual(expression) => {
             size_of::<DeepEqualBooleanExpression>() + expression.known_owned_capacity_bytes()
         }
+        ValueExpression::DefaultCollation(expression) => {
+            size_of_val(expression.as_ref()) + match expression.as_ref() {
+                crate::xpath::default_collation_experiment::DefaultCollationExpression::Equals(
+                    expected,
+                ) => expected.capacity(),
+                crate::xpath::default_collation_experiment::DefaultCollationExpression::Value
+                | crate::xpath::default_collation_experiment::DefaultCollationExpression::Count
+                | crate::xpath::default_collation_experiment::DefaultCollationExpression::Boolean => {
+                    0
+                }
+            }
+        }
         ValueExpression::ConditionalInteger(expression) => conditional_integer_owned(expression),
         ValueExpression::ConditionalPath(expression) => conditional_path_owned(expression),
     }
