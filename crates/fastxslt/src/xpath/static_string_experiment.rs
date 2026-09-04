@@ -84,6 +84,34 @@ pub(crate) fn fold_binary_literal_function(expression: &str) -> Option<StaticStr
     }
 }
 
+pub(crate) fn fold_translate_literals(expression: &str) -> Option<String> {
+    let expression = expression.trim();
+    let arguments = ["translate", "fn:translate"].iter().find_map(|name| {
+        expression
+            .strip_prefix(name)
+            .and_then(|tail| tail.strip_prefix('('))
+            .and_then(|tail| tail.strip_suffix(')'))
+    })?;
+    let arguments = split_arguments(arguments, 3)?;
+    let [value, search, replacement] = arguments.as_slice() else {
+        return None;
+    };
+    let value = quoted_literal(value)?;
+    let search = quoted_literal(search)?.chars().collect::<Vec<_>>();
+    let replacement = quoted_literal(replacement)?.chars().collect::<Vec<_>>();
+    let mut translated = String::with_capacity(value.len());
+    for character in value.chars() {
+        let Some(index) = search.iter().position(|candidate| *candidate == character) else {
+            translated.push(character);
+            continue;
+        };
+        if let Some(replacement) = replacement.get(index) {
+            translated.push(*replacement);
+        }
+    }
+    Some(translated)
+}
+
 fn split_arguments(source: &str, max_arguments: usize) -> Option<Vec<&str>> {
     let mut arguments = Vec::new();
     let mut start = 0usize;
@@ -183,6 +211,7 @@ fn is_xml_10_character(character: char) -> bool {
 mod tests {
     use super::{
         StaticStringFunctionValue, fold, fold_binary_literal_function, fold_concat_literals,
+        fold_translate_literals,
     };
 
     #[test]
@@ -244,5 +273,20 @@ mod tests {
         }
         assert_eq!(fold_binary_literal_function("contains(path, 'x')"), None);
         assert_eq!(fold_binary_literal_function("contains('x')"), None);
+    }
+
+    #[test]
+    fn folds_literal_translate_by_unicode_codepoint_without_retranslating() {
+        for (source, expected) in [
+            ("translate('bar', 'abc', 'ABC')", "BAr"),
+            ("translate('abe', 'abe', 'bao')", "bao"),
+            ("translate('zzaaazzz', 'abcz', 'ABC')", "AAA"),
+            ("translate('é😀x', '😀é', 'AB')", "BAx"),
+            ("fn:translate('abracadabra', 'aba', 'XYZ')", "XYrXcXdXYrX"),
+        ] {
+            assert_eq!(fold_translate_literals(source).as_deref(), Some(expected));
+        }
+        assert_eq!(fold_translate_literals("translate(path, 'a', 'A')"), None);
+        assert_eq!(fold_translate_literals("translate('a', 'A')"), None);
     }
 }

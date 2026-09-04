@@ -224,6 +224,9 @@ public version-mode contract.
 - [x] Fold two-literal `contains()`, `starts-with()`, `substring-before()`, and
   `substring-after()` through typed shared results, raising the lower bound to
   592 with all 25 newly initialized cases passing.
+- [x] Fold three-literal `translate()` with codepoint, removal, duplicate, and
+  non-recursive replacement semantics, raising the lower bound to 598 with all
+  six newly initialized cases passing.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -312,6 +315,9 @@ maintained redistributable legacy suite becomes available.
   1,000-argument stress case.
 - 2026-09-04 -- Typed static binary string-function folding raised the lower
   bound from 567 to 592; all 25 newly initialized cases pass without a new
+  mismatch or runtime failure.
+- 2026-09-04 -- Codepoint-correct static `translate()` folding raised the lower
+  bound from 592 to 598; all six newly initialized cases pass without a new
   mismatch or runtime failure.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;

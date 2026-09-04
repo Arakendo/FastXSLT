@@ -948,6 +948,11 @@ fn compile_value_expression(
             }
         });
     }
+    if let Some(literal) =
+        crate::xpath::static_string_experiment::fold_translate_literals(expression)
+    {
+        return Ok(ValueExpression::LiteralString(literal));
+    }
     if let Some(failure) = classify_atomic_path_operand(expression, location.clone()) {
         return Err(CompileFailure {
             code: failure.standard_code,
