@@ -210,6 +210,7 @@ pressure architecture but does not silently create a public guarantee.
 - [XSLT30 Near-Complete Denominator Classification](xslt30-near-complete-denominator-classification-2026-08-30.md)
 - [Stylesheet-Module Assembly Decomposition Review](stylesheet-module-assembly-decomposition-review-2026-08-28.md)
 - [Instruction-Compiler Template-Invocation Decomposition Review](instruction-compiler-template-invocation-decomposition-review-2026-08-29.md)
+- [Instruction Boolean-Compiler Decomposition](instruction-boolean-compiler-decomposition-2026-09-03.md)
 - [XSLT30 Corpus Test-Owner Decomposition Review](xslt30-corpus-test-owner-decomposition-review-2026-08-29.md)
 - [XSLT30 Conflict-Resolution Multiple-Match Error Policy](xslt30-conflict-resolution-multiple-match-error-policy-2026-08-29.md)
 - [Sealed Stylesheet-Dependency Accounting](sealed-stylesheet-dependency-accounting-2026-08-28.md)

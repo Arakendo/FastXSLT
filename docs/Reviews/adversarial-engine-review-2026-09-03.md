@@ -3,8 +3,9 @@
 | Field | Value |
 | --- | --- |
 | Date | 2026-09-03 |
-| Status | Findings 1 through 6 resolved; Finding 7 review obligation resolved with an active decomposition campaign |
+| Status | Closure re-audit: Findings 1 through 6 verified resolved; Finding 7 remediation implemented pending independent re-audit |
 | Scope | Repository state at `a9d495e`, with emphasis on changes after the resolved 2026-08-30 review |
+| Closure re-audit scope | Repository state at `b75e4e7` |
 | Method | Read-only source, decision-record, evidence, corpus-overlay, runtime, worker, native-ABI, and managed-host inspection; full all-feature workspace test execution; static counterexamples |
 
 The earlier twelve findings remain closed. This review does not reopen one merely
@@ -15,13 +16,13 @@ admitted behavior that the earlier review did not cover.
 
 | Finding | Status | Resolution or next evidence |
 | --- | --- | --- |
-| 1. Atomic range retention | Resolved 2026-09-03 | Range dispatch is iterator-owned, focus size is checked, and XPath control is charged before each item is dispatched. A billion-item zero-budget stylesheet fails before span-proportional retention. |
-| 2. Cross-kind lexical shadowing | Resolved 2026-09-03 | Every local binding clears competing value kinds and suppresses same-name global fallback. The source-node-over-global-atomic counterexample passes through shared and complete-clone frames. |
-| 3. Untaken creation outcome | Resolved 2026-09-03 | Releasing the outcome reclaims its engine and capacity; concurrent take/release has one linearized owner. |
-| 4. Character-map scaling | Resolved 2026-09-03 | Release-mode measurements confirmed both adverse curves. Compilation now composes through an ordered keyed map and retains a sorted compact vector; serialization uses binary lookup. |
-| 5. Test-only QT3 semantics | Resolved 2026-09-03 | All 1,170 current QT3 passes now execute or report their expected diagnostic through production compilation/runtime paths. Direct family evaluators remain focused oracles, not the sole pass mechanism. |
-| 6. Worker command queue | Resolved 2026-09-03 | The shared event channel has capacity one and a focused backpressure test proves a second decoded event cannot be queued. |
-| 7. Source-unit reopening | Review obligation resolved 2026-09-03; campaign active | Current responsibilities and line counts are inventoried, compiler tests are extracted, and serializer/compiler/runtime checkpoints have named one-way seams and conservation gates. |
+| 1. Atomic range retention | Verified resolved 2026-09-03 | Range dispatch is iterator-owned, focus size is checked, and XPath control is charged before each item is dispatched. A billion-item zero-budget stylesheet fails before span-proportional retention. |
+| 2. Cross-kind lexical shadowing | Verified resolved 2026-09-03 | Every local binding clears competing value kinds and suppresses same-name global fallback. The source-node-over-global-atomic counterexample passes through shared and complete-clone frames. |
+| 3. Untaken creation outcome | Verified resolved 2026-09-03 | Releasing the outcome reclaims its engine and capacity; concurrent take/release has one linearized owner. |
+| 4. Character-map scaling | Verified resolved 2026-09-03 | Release-mode measurements confirmed both adverse curves. Compilation now composes through an ordered keyed map and retains a sorted compact vector; serialization uses binary lookup. |
+| 5. Test-only QT3 semantics | Verified resolved 2026-09-03 | All 1,170 current QT3 passes now execute or report their expected diagnostic through production compilation/runtime paths. Direct family evaluators remain focused oracles, not the sole pass mechanism. |
+| 6. Worker command queue | Verified resolved 2026-09-03 | The shared event channel has capacity one and a focused backpressure test proves a second decoded event cannot be queued. |
+| 7. Source-unit reopening | Remediation implemented 2026-09-03; independent re-audit pending | The required private boolean-compiler seam is now extracted. The sequence-constructor parent fell from the auditor's 2,237-line checkpoint to 1,817 lines; the broader decomposition campaign remains active. |
 
 ### Finding 1: Atomic `apply-templates` ranges allocate before control can intervene
 
@@ -493,14 +494,26 @@ an avoidable transport allocation outside that execution.
 
 ### Finding 7: Mandatory source-unit reopening triggers have fired again
 
-Disposition: **Review obligation resolved 2026-09-03; decomposition campaign
-active.** The current-state review inventories every triggered unit, extracts
-the compiler composition tests unchanged, records bounded retain decisions, and
-requires separate structural checkpoints for serializer HTML-profile
-recognition, instruction boolean compilation, runtime boolean evaluation, and
-runtime source copying. The campaign remains roadmap work rather than being
-hidden by the resolved governance finding.
+Disposition: **Reopened 2026-09-03.** The current-state review did inventory the
+triggered units and extract the compiler composition tests, but its first named
+ordering constraint was not conserved. It required boolean-expression
+compilation to move behind a private typed operation before another
+expression-family expansion. Subsequent QT3 production-path work added 397 net
+lines to `compile/instruction_compiler.rs`, taking it from the reviewed 1,851
+lines to 2,237 lines, without that extraction. The retained review therefore
+exists, but its disposition no longer describes the current checkpoint and
+does not close the architecture-drift mechanism.
 [Review](../Evidence/second-adversarial-source-unit-cohesion-review-2026-09-03.md)
+
+Remediation: **Implemented 2026-09-03; independent closure re-audit pending.**
+Boolean-expression recognition and lowering now live behind one private typed
+operation in `instruction_compiler/boolean_expression_compiler.rs`. The parent
+retains sequence-constructor dispatch and selects when boolean compilation is
+attempted; the child has no constructor traversal, runtime, resource, or host
+policy responsibility. The move reduced the parent from 2,237 to 1,817 lines
+and preserved all workspace tests and existing corpus dispositions. The
+auditor's reopening above remains the historical disposition at `b75e4e7`.
+[Evidence](../Evidence/instruction-boolean-compiler-decomposition-2026-09-03.md)
 
 Severity:
 - Medium
@@ -640,6 +653,47 @@ criteria are already stronger evidence than a generic style preference.
 6. Route one complete QT3 family through the production semantic path.
 7. Reopen the fired ADR-0004 source-unit reviews and extract only the seams
    demonstrated by the fixes above.
+
+## Closure re-audit performed
+
+At `b75e4e7`, each finding was retraced through its original counterexample and
+claimed remediation rather than inferred from the remediation labels:
+
+- Finding 1 is closed by checked iterator-owned range dispatch and a hostile
+  billion-item, zero-budget regression that reaches control before
+  span-proportional retention.
+- Finding 2 is closed by binding identity independent of value kind, removal of
+  inherited same-name atomics on local bind, guarded global node/tree fallback,
+  and the exact node-over-atomic regression through both frame strategies.
+- Finding 3 is closed by outcome-owned pending engines, capacity reclamation on
+  release, rejection of direct release while publication is pending, and a
+  concurrent take/release ownership test.
+- Finding 4 is closed by ordered-map composition, a scalar-sorted retained
+  vector, binary serialization lookup, and the retained release-mode scaling
+  measurements.
+- Finding 5 is closed for the current 1,170-case selected ledger. Every selected
+  family test now wraps the unchanged expression in production XSLT or checks
+  its expected production diagnostic; the denominator conservation and family
+  tests pass together.
+- Finding 6 is closed by the capacity-one synchronous event channel. Static
+  tracing bounds application-owned decoded events, and the focused test rejects
+  a second queued event while the slot is occupied.
+- Finding 7 is not closed. Its 2026-09-03 review explicitly required the
+  instruction boolean-compilation extraction before another expression-family
+  expansion. Between `99ca3e9` and `b75e4e7`, the file received 397 net lines
+  while the named seam remained in the parent; its current physical size is
+  2,237 lines.
+
+Subsequent remediation after `b75e4e7` completed that named extraction. The
+sequence-constructor parent is now 1,817 lines and delegates boolean recognition
+and lowering through one private typed operation. This statement records later
+work and does not alter the closure re-audit result at its stated checkpoint;
+Finding 7 awaits independent re-audit.
+
+`cargo test --workspace --all-features` passed at this re-audit checkpoint: 622
+engine tests passed with 17 ignored, 18 native tests passed with 2 ignored, and
+4 worker tests passed. The ignored cases are retained manual measurement probes,
+not the focused closure regressions above.
 
 ## Validation performed
 

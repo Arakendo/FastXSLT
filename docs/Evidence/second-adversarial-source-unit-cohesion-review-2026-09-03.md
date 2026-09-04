@@ -6,7 +6,7 @@
 | Semantic checkpoint | `32dd322`, all repository gates passing |
 | Governing decision | [ADR-0004](../ADR/ADR-0004-source-unit-cohesion-size-pressure-and-decomposition.md) |
 | Review trigger | Finding 7 of the [second adversarial review](../Reviews/adversarial-engine-review-2026-09-03.md) |
-| Disposition | Review obligation discharged; checkpointed decomposition campaign retained |
+| Disposition | Review obligation discharged; checkpointed decomposition campaign active |
 
 ## Current inventory
 
@@ -70,6 +70,22 @@ constructors, compile unrelated instructions, call runtime code, or own host
 policy. The parent remains responsible for instruction dispatch and choosing
 which expression family is attempted.
 
+### Completed checkpoint
+
+The required boolean-expression seam was extracted after the closure re-audit
+reopened Finding 7 for bypassing this ordering constraint. At the auditor's
+`b75e4e7` checkpoint, `instruction_compiler.rs` contained 2,237 lines. The
+behavior-preserving move leaves 1,817 lines in the parent and places 443 lines
+in the private `boolean_expression_compiler.rs` child.
+
+The child consumes an expression, source location, and existing comparison
+policy and returns the existing typed boolean expression or structured compile
+failure. It owns boolean lexical recognition and recursive lowering, depends
+only on existing pure static compiler helpers, and has no constructor traversal,
+runtime, resource, host-policy, public-API, or ABI responsibility. The full
+workspace suite passes unchanged. See the
+[instruction boolean-compiler decomposition evidence](instruction-boolean-compiler-decomposition-2026-09-03.md).
+
 ## Required runtime seams
 
 The runtime parent remains the mutually recursive composition root for sequence
@@ -125,9 +141,11 @@ changes remain observations rather than a decomposition goal.
 
 Finding 7's missing-review obligation is discharged by this inventory and
 disposition. The decomposition debt is not declared complete. The roadmap must
-retain, in order, the serializer HTML-profile extraction, instruction boolean
-compiler extraction, runtime boolean evaluator extraction, runtime source-copy
-extraction, and a post-campaign coupling/line-count review.
+retain the remaining serializer HTML-profile extraction, runtime boolean
+evaluator extraction, runtime source-copy extraction, and a post-campaign
+coupling/line-count review. The instruction boolean-compiler checkpoint is now
+complete; its delayed completion and the auditor's reopening remain recorded
+rather than rewritten as if the ordering constraint had been conserved.
 
 If any extraction requires a broad shared mutable context, cyclic sibling
 imports, changed diagnostics, or altered hot-path behavior, stop and record the
