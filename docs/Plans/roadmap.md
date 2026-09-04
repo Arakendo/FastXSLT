@@ -35,7 +35,12 @@ Apply this production-path pattern rather than adding another family-specific
 test-only semantic evaluator. Exact fractional `seconds-from-duration` work
 remains paused until duration construction and component access have one typed
 production path. The immediate review work now moves to the current ADR-0004
-cohesion reviews for the fired source-unit triggers.
+cohesion campaign. The required current-state review has discharged Finding
+7's missing-review obligation and extracted the compiler composition tests.
+Remaining behavior-preserving checkpoints are serializer HTML-profile
+recognition, instruction boolean compilation, runtime boolean evaluation,
+runtime source copying, and a post-campaign coupling review.
+[Review](../Evidence/second-adversarial-source-unit-cohesion-review-2026-09-03.md)
 
 The first
 [adversarial engine review](../Reviews/adversarial-engine-review-2026-08-30.md)

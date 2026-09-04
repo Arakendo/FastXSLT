@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | Date | 2026-09-03 |
-| Status | Remediation in progress; Findings 1, 2, 3, 4, and 6 resolved |
+| Status | Remediation in progress; Findings 1, 2, 3, 4, and 6 resolved; Finding 7 review obligation resolved with an active decomposition campaign; Finding 5 partially remediated |
 | Scope | Repository state at `a9d495e`, with emphasis on changes after the resolved 2026-08-30 review |
 | Method | Read-only source, decision-record, evidence, corpus-overlay, runtime, worker, native-ABI, and managed-host inspection; full all-feature workspace test execution; static counterexamples |
 
@@ -21,7 +21,7 @@ admitted behavior that the earlier review did not cover.
 | 4. Character-map scaling | Resolved 2026-09-03 | Release-mode measurements confirmed both adverse curves. Compilation now composes through an ordered keyed map and retains a sorted compact vector; serialization uses binary lookup. |
 | 5. Test-only QT3 semantics | Partially remediated 2026-09-03 | The complete seven-case `default-collation` family now uses compiled typed production semantics through XSLT and the workbench. Other selected test-only families remain migration debt. |
 | 6. Worker command queue | Resolved 2026-09-03 | The shared event channel has capacity one and a focused backpressure test proves a second decoded event cannot be queued. |
-| 7. Source-unit reopening | Open | Perform the required current-state cohesion reviews after the correctness tranche identifies stable seams. |
+| 7. Source-unit reopening | Review obligation resolved 2026-09-03; campaign active | Current responsibilities and line counts are inventoried, compiler tests are extracted, and serializer/compiler/runtime checkpoints have named one-way seams and conservation gates. |
 
 ### Finding 1: Atomic `apply-templates` ranges allocate before control can intervene
 
@@ -445,6 +445,15 @@ only process isolation can terminate non-cooperating execution; it identifies
 an avoidable transport allocation outside that execution.
 
 ### Finding 7: Mandatory source-unit reopening triggers have fired again
+
+Disposition: **Review obligation resolved 2026-09-03; decomposition campaign
+active.** The current-state review inventories every triggered unit, extracts
+the compiler composition tests unchanged, records bounded retain decisions, and
+requires separate structural checkpoints for serializer HTML-profile
+recognition, instruction boolean compilation, runtime boolean evaluation, and
+runtime source copying. The campaign remains roadmap work rather than being
+hidden by the resolved governance finding.
+[Review](../Evidence/second-adversarial-source-unit-cohesion-review-2026-09-03.md)
 
 Severity:
 - Medium
