@@ -1398,6 +1398,60 @@ fn xpath_static_string_functions_preserve_typed_results() {
 }
 
 #[test]
+fn xpath_string_function_composes_static_atoms_and_typed_paths() {
+    const SOURCE: &str = "urn:fastxslt:string-function:source";
+    const STYLESHEET: &str = "urn:fastxslt:string-function:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br"<doc>alpha<part>beta</part></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="string(0)"/>|<xsl:value-of select="string('test')"/>|<xsl:value-of select="string(doc)"/>|<xsl:value-of select="string(doc/missing)"/>|<xsl:value-of select="string(boolean(0))"/>|<xsl:value-of select="string(boolean(1))"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile string function");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("string-function", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute string function");
+    assert_eq!(
+        results.by_request["string-function"].serialized,
+        "0|test|alphabeta||false|true"
+    );
+}
+
+#[test]
+fn xpath_string_path_rejects_more_than_one_node() {
+    const SOURCE: &str = "urn:fastxslt:string-many:source";
+    const STYLESHEET: &str = "urn:fastxslt:string-many:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br"<doc><n>one</n><n>two</n></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="string(doc/n)"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile string path");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("string-many", "result", SOURCE))
+        .expect("admit request");
+
+    let failure = execute_transform_set(builder.seal()).expect_err("cardinality must be enforced");
+    assert_eq!(failure.code, "XPTY0004");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+}
+
+#[test]
 fn xpath_lang_uses_the_nearest_inherited_xml_language() {
     const SOURCE: &str = "urn:fastxslt:lang:source";
     const STYLESHEET: &str = "urn:fastxslt:lang:stylesheet";

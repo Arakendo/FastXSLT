@@ -151,6 +151,9 @@ pub(super) fn execute_value_of(
         ValueExpression::NormalizedStringPath(path) => {
             append_normalized_string_path(inputs, context, path, result, control)?;
         }
+        ValueExpression::StringPath(path) => {
+            append_string_path(inputs, context, path, result, control)?;
+        }
         ValueExpression::IntegralFunctionPath { function, path } => {
             append_integral_function_path(inputs, context, *function, path, result, control)?;
         }
@@ -1208,6 +1211,34 @@ fn append_normalized_string_path(
         return Ok(());
     };
     append_normalized_node_string(inputs, source, node, result, control)
+}
+
+fn append_string_path(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let selected = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    if selected.len() > 1 {
+        return Err(failure_at(
+            "XPTY0004",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            path.location.clone(),
+            "fn:string requires a zero-or-one item argument",
+        ));
+    }
+    let Some(node) = selected.first().copied() else {
+        return Ok(());
+    };
+    let value = source
+        .string_value_controlled(node, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    append_text(result, &value, inputs.request_id, control)
 }
 
 fn append_integral_function_path(

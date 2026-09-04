@@ -958,6 +958,10 @@ fn compile_value_expression(
     {
         return Ok(ValueExpression::LiteralString(literal));
     }
+    if let Some(literal) = crate::xpath::static_string_experiment::fold_string_function(expression)
+    {
+        return Ok(ValueExpression::LiteralString(literal));
+    }
     if let Some(literal) =
         crate::xpath::constant_numeric_experiment::fold_integral_function(expression)
     {
@@ -974,6 +978,9 @@ fn compile_value_expression(
     }
     if let Some(value) = compile_integral_function_path(document, element, expression, location)? {
         return Ok(value);
+    }
+    if let Some(path) = compile_string_path(document, element, expression, location) {
+        return Ok(ValueExpression::StringPath(path));
     }
     if let Some(failure) = classify_atomic_path_operand(expression, location.clone()) {
         return Err(CompileFailure {
@@ -1593,6 +1600,38 @@ fn compile_integral_function_path(
         function,
         path,
     }))
+}
+
+fn compile_string_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Option<LocationPath> {
+    let expression = expression.trim();
+    let argument = ["string(", "fn:string("]
+        .iter()
+        .find_map(|prefix| {
+            expression
+                .strip_prefix(prefix)
+                .and_then(|value| value.strip_suffix(')'))
+        })?
+        .trim();
+    if argument.is_empty() || !has_balanced_parentheses(argument) {
+        return None;
+    }
+    let mut path = parse_location_path(argument, location.clone()).ok()?;
+    if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+        for step in &mut path.steps {
+            if let PathStep::ChildNamed(local) = step {
+                *step = PathStep::ChildExpandedName(ExpandedName {
+                    namespace: Some(namespace.to_owned()),
+                    local: local.clone(),
+                });
+            }
+        }
+    }
+    Some(path)
 }
 
 fn compile_expanded_name_path(

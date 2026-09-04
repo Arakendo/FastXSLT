@@ -123,6 +123,7 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Function-Name Whitespace Tranche](oasis-xslt10-function-name-whitespace-tranche-2026-09-04.md)
 - [OASIS XSLT 1.0 Constant Integral Functions Tranche](oasis-xslt10-constant-integral-functions-tranche-2026-09-04.md)
 - [OASIS XSLT 1.0 Integral-Function Path Tranche](oasis-xslt10-integral-function-path-tranche-2026-09-04.md)
+- [OASIS XSLT 1.0 String Function Tranche](oasis-xslt10-string-function-tranche-2026-09-04.md)
 - [OASIS XSLT 1.0 Mismatch Metadata Refinement](oasis-xslt10-mismatch-metadata-refinement-2026-09-04.md)
 - [Rust XML Parser Candidate Review](rust-xml-parser-candidate-review-2026-08-25.md)
 - [Owned XDM Tree Experiment](owned-xdm-tree-experiment-2026-08-25.md)

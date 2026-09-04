@@ -79,6 +79,9 @@ raises it to 638.
 The following
 [integral-function path tranche](oasis-xslt10-integral-function-path-tranche-2026-09-04.md)
 raises it to 647.
+The following
+[string-function tranche](oasis-xslt10-string-function-tranche-2026-09-04.md)
+raises it to 653 while retaining one newly visible modern cardinality failure.
 
 ## Outcome
 

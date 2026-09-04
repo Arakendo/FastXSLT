@@ -109,10 +109,11 @@ comparison mismatches. Path-dependent `local-name()` and `namespace-uri()`
 then reach 613, and whitespace-tolerant zero-argument `string-length ()`
 recognition reaches 614. Checked constant `floor()`, `ceiling()`, and `round()`
 results and equalities then reach 638, and their typed zero-or-one path forms
-reach 647. The sweep retains 16 comparator gaps and 35 supplemental-data cases
-as explicitly not admitted, and gives every other case a structured
-initialization, execution, or infrastructure observation. This is a strict
-23.60% lower bound over the suite's 2,742 standard-operation cases,
+reach 647. Static-atom and typed-path `string()` then reach 653 while preserving
+one multi-node case as `XPTY0004`. The sweep retains 16 comparator gaps and 35
+supplemental-data cases as explicitly not admitted, and gives every other case
+a structured initialization, execution, or infrastructure observation. This
+is a strict 23.82% lower bound over the suite's 2,742 standard-operation cases,
 not an XSLT 1.0 conformance claim. The initial sweep also found and drove a shared
 source-node-variable path repair, so AR-0019 now studies whether legacy
 compatibility can progress on the modern compiler/runtime rather than through a
@@ -137,6 +138,7 @@ second engine.
 [Context string-length evidence](../Evidence/oasis-xslt10-context-string-length-tranche-2026-09-04.md)
 [Constant integral-functions evidence](../Evidence/oasis-xslt10-constant-integral-functions-tranche-2026-09-04.md)
 [Integral-function path evidence](../Evidence/oasis-xslt10-integral-function-path-tranche-2026-09-04.md)
+[String-function evidence](../Evidence/oasis-xslt10-string-function-tranche-2026-09-04.md)
 [Mismatch metadata evidence](../Evidence/oasis-xslt10-mismatch-metadata-refinement-2026-09-04.md)
 [Review](../Architectural%20Reviews/AR-0019-xslt10-compatibility-profile-on-modern-core.md)
 
@@ -1673,7 +1675,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 647 after shared construction/copy/path/context-function/focus/node-identity/literal-comparison/static-string-function/constant-numeric and lexical-recognition tranches plus descendant-pattern, include-order, and comment-text repairs. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 653 after shared construction/copy/path/context-function/focus/node-identity/literal-comparison/static-string-function/constant-numeric and lexical-recognition tranches plus descendant-pattern, include-order, and comment-text repairs. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -3295,6 +3297,8 @@ host lifecycle.
   `ceiling()`, and `round()` results and equalities.
 - [x] Raise it to 647 by composing the integral functions with admitted typed
   paths while preserving zero-or-one cardinality.
+- [x] Raise it to 653 by composing `string()` with admitted static atoms and
+  typed paths while preserving the multi-node cardinality error.
 - [ ] Give each standard and expected-error case one reproducible final
   disposition under a versioned local overlay/report, applying duplicate-safe
   identity and doubts/discretionary metadata.

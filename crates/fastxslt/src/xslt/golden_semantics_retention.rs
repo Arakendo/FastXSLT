@@ -474,6 +474,10 @@ fn literal_element_owned(
         + location_owned(location)
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "the exhaustive prepared-value ownership accounting is one cohesive responsibility"
+)]
 fn value_expression_owned(value: &ValueExpression) -> usize {
     match value {
         ValueExpression::LiteralString(value) => value.capacity(),
@@ -484,6 +488,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::NodeLocalNamePath(path)
         | ValueExpression::NodeNamespaceUriPath(path)
         | ValueExpression::NormalizedStringPath(path)
+        | ValueExpression::StringPath(path)
         | ValueExpression::GeneratedNodeIdentity(path)
         | ValueExpression::GeneratedRootIdentity(path)
         | ValueExpression::EmptyLocationPath(path)

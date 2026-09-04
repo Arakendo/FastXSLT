@@ -39,6 +39,17 @@ pub(crate) fn fold_concat_literals(expression: &str) -> Option<String> {
     Some(result)
 }
 
+pub(crate) fn fold_string_function(expression: &str) -> Option<String> {
+    let expression = expression.trim();
+    let argument = ["string", "fn:string"].iter().find_map(|name| {
+        expression
+            .strip_prefix(name)
+            .and_then(|tail| tail.strip_prefix('('))
+            .and_then(|tail| tail.strip_suffix(')'))
+    })?;
+    static_atom_string(argument)
+}
+
 pub(crate) fn fold_binary_literal_function(expression: &str) -> Option<StaticStringFunctionValue> {
     let expression = expression.trim();
     let (function, arguments) = [
@@ -257,7 +268,7 @@ fn is_xml_10_character(character: char) -> bool {
 mod tests {
     use super::{
         StaticStringFunctionValue, fold, fold_binary_literal_function, fold_concat_literals,
-        fold_substring_literals, fold_translate_literals,
+        fold_string_function, fold_substring_literals, fold_translate_literals,
     };
 
     #[test]
@@ -281,6 +292,22 @@ mod tests {
         assert_eq!(fold_concat_literals("concat('a', path)"), None);
         let excessive = format!("concat({})", vec!["'x'"; 4_097].join(","));
         assert_eq!(fold_concat_literals(&excessive), None);
+    }
+
+    #[test]
+    fn folds_string_over_static_atomic_values() {
+        assert_eq!(fold_string_function("string(0)"), Some("0".to_owned()));
+        assert_eq!(fold_string_function("string(-2)"), Some("-2".to_owned()));
+        assert_eq!(
+            fold_string_function("fn:string('test')"),
+            Some("test".to_owned())
+        );
+        assert_eq!(
+            fold_string_function("string(false())"),
+            Some("false".to_owned())
+        );
+        assert_eq!(fold_string_function("string(path)"), None);
+        assert_eq!(fold_string_function("string(1.0)"), None);
     }
 
     #[test]
