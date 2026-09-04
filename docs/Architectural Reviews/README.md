@@ -105,3 +105,7 @@ and add the record to this index. Never reuse a retired number.
 - [AR-0017: Native Handle Registry Retention and Abandonment](AR-0017-native-handle-registry-retention-and-abandonment.md)
   -- Incubating; repair per-object bounds and insertion rollback, then measure
   abandoned native state before selecting an aggregate quota or ownership domain.
+- [AR-0018: Execution-Loss Provenance and Host-Owned Quarantine](AR-0018-execution-loss-provenance-and-host-owned-quarantine.md)
+  -- Incubating; determine the bounded attempt observations a host needs to
+  persist, reconcile, retry, or quarantine ambiguous worker loss without moving
+  durable workflow policy into FastXSLT.

@@ -141,6 +141,7 @@ pressure architecture but does not silently create a public guarantee.
 - [ASP.NET Tiered Workload and Bounded Concurrency](aspnet-tiered-workload-and-bounded-concurrency-2026-08-26.md)
 - [ASP.NET Tiered Performance Drift](aspnet-tiered-performance-drift-2026-09-03.md)
 - [ASP.NET Worker Recovery and Generation Replacement](aspnet-worker-recovery-and-generation-replacement-2026-08-26.md)
+- [Peer Review: Execution-Loss Provenance and Quarantine](peer-execution-loss-quarantine-review-monday-2026-09-03.md)
 - [ASP.NET Pre-Dispatch Cooperative Cancellation](aspnet-predispatch-cooperative-cancellation-2026-08-26.md)
 - [ASP.NET Active Cooperative Cancellation](aspnet-active-cooperative-cancellation-2026-08-26.md)
 - [ASP.NET Natural Cancellation Races](aspnet-natural-cancellation-races-2026-08-26.md)

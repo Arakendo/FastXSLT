@@ -1099,6 +1099,8 @@ reference and differential evidence; ADR-0008 authorizes only native FFI copies.
 - Execution supervision, cooperative cancellation/deadline observation, panic
   containment, worker health, and the process boundary required for hard
   termination, tracked by AR-0010.
+- Attempt identity, ambiguous worker-loss provenance, and the bounded
+  observations needed for host-owned retry or quarantine, tracked by AR-0018.
 
 ### Deferred capability decisions
 

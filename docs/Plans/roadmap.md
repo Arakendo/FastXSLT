@@ -3104,6 +3104,24 @@ architectural review. Their presence in this list is not a commitment. WASM now
 has stated future consumer pressure and is tracked separately by AR-0015, but it
 does not enter the current critical path without a named runtime and workload.
 
+### Execution-loss provenance and host quarantine
+
+[AR-0018](../Architectural%20Reviews/AR-0018-execution-loss-provenance-and-host-owned-quarantine.md)
+preserves field-operation pressure to keep repeatedly catastrophic work from
+cycling blindly through replacement workers. FastXSLT supplies bounded
+execution facts; the host owns durable attempt records, retry, quarantine,
+escalation, and publication reconciliation.
+
+- [ ] Inventory which current supervisor observations survive worker loss.
+- [ ] Add private host-supplied attempt identity and a bounded execution-loss
+  envelope without exposing source content or private engine representation.
+- [ ] Fault-inject loss across admission, acknowledgement, execution, result
+  transfer, and simulated publication boundaries.
+- [ ] Prove host-selected quarantine can stop repeat worker loss while siblings
+  continue, without classifying one XML input as the cause without evidence.
+- [ ] Require representative durable-host evidence and a later ADR before any
+  public observation, retry, or quarantine contract.
+
 ### Deferred WASM embedding profile
 
 AR-0015 preserves a future presealed, memory-resident WASM experiment using the
