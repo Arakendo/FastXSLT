@@ -3075,6 +3075,11 @@ failed, and harness-error cases without an unqualified conformance claim.
     tranches: larger native work is stable or faster and isolated 500-item work
     remains within about 6%, while tiny-call throughput is lower and requires a
     longer-duration, toolchain-pinned profile before attribution.
+  - [x] Retarget the private workbench to `net10.0` and repeat five fresh host
+    processes. Isolated throughput improved 2-15% against the same-day `net8.0`
+    run while native throughput declined 11-18%; retain target selection and
+    attribution pending a longer controlled A/B. The local SaxonCS lane failed
+    closed on current moderate/high NuGet vulnerability advisories.
   - [x] Carry pre-dispatch cooperative cancellation and a deterministic
     XSLT-instruction budget through ADR-0009 scalar native controls, preserving
     exact diagnostics and ordinary reuse of the same engine handle without

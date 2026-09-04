@@ -110,6 +110,13 @@ security contracts.
   22,903 transforms/second concurrently. The pool makes prepared-state memory
   multiplication explicit; cancellation and production restart/replacement
   policy remain open.
+- The private workbench now targets the installed .NET 10 preview. A same-day
+  five-process comparison against the preceding `net8.0` run observed 2-15%
+  higher isolated throughput but 11-18% lower native throughput. The opposite
+  boundary movement and short lanes require a longer controlled multi-target
+  A/B before selecting a supported target or attributing the change to one
+  mechanism. The optional SaxonCS lane failed closed on current NuGet
+  vulnerability advisories and was not measured under `net10.0`.
 - A private two-worker fault probe acknowledged a deliberately non-cooperating
   request, terminated only its process, returned an explicit
   `worker-terminated` disposition without retry, initialized a replacement from
@@ -278,3 +285,8 @@ invalidates the selected mechanism.
   shared host-neutral lifecycle and the candidate low-latency/containment
   profiles, and moved this review to Under Review. Representative consumer
   requirements still block a supported-mode ADR.
+- 2026-09-03 -- Retargeted the private workbench to `net10.0` and repeated the
+  tier matrix over five fresh hosts. Isolated and native paths moved in opposite
+  directions relative to the same-day `net8.0` evidence; retained target
+  selection pending a longer controlled A/B. The local SaxonCS comparison was
+  omitted rather than suppressing moderate/high NuGet audit failures.

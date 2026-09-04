@@ -35,6 +35,7 @@ if ($MeasurementRuns -lt 1) {
 }
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $repositoryRoot 'workbenches/FastXSLT.AspNet.Workbench/FastXSLT.AspNet.Workbench.csproj'
+$targetFramework = 'net10.0'
 $workbenchDirectory = Join-Path $repositoryRoot '.workbench'
 $stdoutLog = Join-Path $workbenchDirectory 'aspnet-stdout.log'
 $stderrLog = Join-Path $workbenchDirectory 'aspnet-stderr.log'
@@ -58,7 +59,7 @@ try {
     }
     $nativeLibraryName = if ($IsWindows) { 'fastxslt_dotnet_workbench.dll' } elseif ($IsMacOS) { 'libfastxslt_dotnet_workbench.dylib' } else { 'libfastxslt_dotnet_workbench.so' }
     $nativeLibrary = Join-Path $repositoryRoot "target/release/$nativeLibraryName"
-    $managedOutput = Join-Path $repositoryRoot 'workbenches/FastXSLT.AspNet.Workbench/bin/Release/net8.0'
+    $managedOutput = Join-Path $repositoryRoot "workbenches/FastXSLT.AspNet.Workbench/bin/Release/$targetFramework"
     Copy-Item -LiteralPath $nativeLibrary -Destination $managedOutput -Force
     $managedAssembly = Join-Path $managedOutput 'FastXSLT.AspNet.Workbench.dll'
     $quotaSmoke = dotnet $managedAssembly --native-quota-smoke

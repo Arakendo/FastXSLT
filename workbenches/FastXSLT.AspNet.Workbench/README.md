@@ -2,7 +2,9 @@
 
 This unsupported workbench exercises FastXSLT through a persistent isolated
 Rust worker. It is evidence for AR-0002, not a production package or accepted
-interop API.
+interop API. It currently targets the .NET 10 preview runtime installed on the
+development host; historical .NET 8 evidence remains labeled with its original
+target.
 
 Run the reproducible smoke and sequential measurement:
 
