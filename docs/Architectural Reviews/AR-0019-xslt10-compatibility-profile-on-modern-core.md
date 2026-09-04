@@ -218,6 +218,9 @@ public version-mode contract.
 - [x] Compare homogeneous boolean and string literals through their typed
   equality semantics, raising the lower bound to 560 while leaving
   version-sensitive mixed-type coercion unsupported.
+- [x] Fold bounded static `concat()` calls into the shared literal-result path,
+  raising the lower bound to 567 and passing the unchanged 1,000-argument
+  stress case without admitting dynamic concat semantics.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -301,6 +304,9 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Homogeneous boolean and string literal equality raised the
   lower bound from 553 to 560; all seven newly initialized cases pass while
   mixed-type legacy coercion remains explicit.
+- 2026-09-04 -- Bounded static `concat()` folding raised the lower bound from
+  560 to 567; all seven newly initialized cases pass, including the unchanged
+  1,000-argument stress case.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

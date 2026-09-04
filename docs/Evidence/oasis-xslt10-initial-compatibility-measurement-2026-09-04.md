@@ -50,7 +50,9 @@ raises it to 529. The following
 [numeric literal comparison tranche](oasis-xslt10-numeric-literal-comparison-tranche-2026-09-04.md)
 raises it to 553. The following
 [homogeneous literal equality tranche](oasis-xslt10-homogeneous-literal-equality-tranche-2026-09-04.md)
-raises it to 560.
+raises it to 560. The following
+[static concat tranche](oasis-xslt10-static-concat-tranche-2026-09-04.md)
+raises it to 567.
 
 ## Outcome
 

@@ -1134,6 +1134,34 @@ fn xpath10_literal_comparisons_preserve_atomic_semantics() {
 }
 
 #[test]
+fn xpath_concat_folds_bounded_static_atomic_arguments() {
+    const SOURCE: &str = "urn:fastxslt:static-concat:source";
+    const STYLESHEET: &str = "urn:fastxslt:static-concat:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="concat('a,b', false(), string(34), 'c')"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile static concat");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("static-concat", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute static concat");
+    assert_eq!(
+        results.by_request["static-concat"].serialized,
+        "a,bfalse34c"
+    );
+}
+
+#[test]
 fn default_selection_uses_built_in_element_and_text_rules() {
     const BUILT_IN_SOURCE: &str = "urn:fastxslt:golden:built-in-rules:source";
     const BUILT_IN_STYLESHEET: &str = "urn:fastxslt:golden:built-in-rules:stylesheet";
