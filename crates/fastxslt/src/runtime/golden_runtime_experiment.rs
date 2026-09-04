@@ -1870,22 +1870,7 @@ fn evaluate_boolean(
             evaluate_node_string_equals(inputs, path, value, context, control)
         }
         BooleanExpression::NodeIntegerLessThan { path, value } => {
-            let (source, context) = required_source_context(inputs, context)?;
-            let nodes = evaluate_location_path_controlled(source, context, path, control)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            for node in nodes {
-                let actual = source
-                    .string_value_controlled(node, control)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
-                if actual
-                    .trim()
-                    .parse::<i64>()
-                    .is_ok_and(|actual| actual < *value)
-                {
-                    return Ok(true);
-                }
-            }
-            Ok(false)
+            evaluate_node_integer_less_than(inputs, path, *value, context, control)
         }
         BooleanExpression::UnqualifiedNodeNameEquals {
             path,
@@ -1904,6 +1889,9 @@ fn evaluate_boolean(
         }
         BooleanExpression::ContextStringLengthEquals(expected) => {
             evaluate_context_string_length(inputs, context, *expected, control)
+        }
+        BooleanExpression::ContextLanguageMatches(language) => {
+            evaluate_context_language_matches(inputs, context, language, control)
         }
         BooleanExpression::Or { left, right } => {
             if evaluate_boolean(inputs, left, context, variables, control)? {
@@ -1956,6 +1944,42 @@ fn evaluate_boolean(
                 .map(|value| value != 0)
         }
     }
+}
+
+fn evaluate_context_language_matches(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    language: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    crate::xpath::language_experiment::evaluate(source, context, language, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))
+}
+
+fn evaluate_node_integer_less_than(
+    inputs: &SequenceInputs<'_>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    expected: i64,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let nodes = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    for node in nodes {
+        let actual = source
+            .string_value_controlled(node, control)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        if actual
+            .trim()
+            .parse::<i64>()
+            .is_ok_and(|actual| actual < expected)
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn evaluate_node_string_equals(

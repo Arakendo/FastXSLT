@@ -989,6 +989,9 @@ fn compile_value_expression(
     if expression.trim() == "last()" {
         return Ok(ValueExpression::ContextSize(location.clone()));
     }
+    if let Some(language) = crate::xpath::language_experiment::parse_literal(expression) {
+        return Ok(ValueExpression::ContextLanguageMatches(language));
+    }
     if let Some(comparison) = parse_literal_comparison(expression) {
         return Ok(ValueExpression::SourceFreeScalar(Box::new(
             ScalarExpression::Boolean(comparison),

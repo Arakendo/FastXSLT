@@ -125,6 +125,13 @@ pub(super) fn execute_value_of(
         ValueExpression::ContextNodeNamespaceUri => {
             append_context_node_namespace_uri(inputs, context, result, control)?;
         }
+        ValueExpression::ContextLanguageMatches(language) => {
+            let (source, context) = required_source_context(inputs, context)?;
+            let matches =
+                crate::xpath::language_experiment::evaluate(source, context, language, control)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            append_boolean(inputs, matches, result, control)?;
+        }
         ValueExpression::ContextNodeNormalizedString => {
             append_context_node_normalized_string(inputs, context, result, control)?;
         }

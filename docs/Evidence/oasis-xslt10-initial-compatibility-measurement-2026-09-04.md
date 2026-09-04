@@ -58,7 +58,9 @@ raises it to 592. The following
 [static translate tranche](oasis-xslt10-static-translate-tranche-2026-09-04.md)
 raises it to 598. The following
 [static substring tranche](oasis-xslt10-static-substring-tranche-2026-09-04.md)
-raises it to 606.
+raises it to 606. The following
+[context language tranche](oasis-xslt10-context-language-tranche-2026-09-04.md)
+raises it to 607.
 
 ## Outcome
 

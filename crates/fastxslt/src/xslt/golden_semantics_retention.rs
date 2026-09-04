@@ -488,6 +488,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::ContextNodeNamespaceUri
         | ValueExpression::ContextNodeNormalizedString
         | ValueExpression::UpperCaseContextString => 0,
+        ValueExpression::ContextLanguageMatches(language) => language.capacity(),
         ValueExpression::ContextNodeStringLength(location)
         | ValueExpression::ContextPosition(location)
         | ValueExpression::ContextSize(location)
@@ -598,7 +599,8 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
             local,
             comparison: _,
         } => path.known_owned_capacity_bytes() + local.capacity(),
-        BooleanExpression::ContextStringEquals(value) => value.capacity(),
+        BooleanExpression::ContextStringEquals(value)
+        | BooleanExpression::ContextLanguageMatches(value) => value.capacity(),
         BooleanExpression::Or { left, right } => {
             boolean_expression_owned(left) + boolean_expression_owned(right)
         }

@@ -491,6 +491,7 @@ pub(crate) enum ValueExpression {
     NodeNamePath(LocationPath),
     ContextNodeLocalName,
     ContextNodeNamespaceUri,
+    ContextLanguageMatches(String),
     ContextNodeNormalizedString,
     ContextNodeStringLength(SourceLocation),
     ContextPosition(SourceLocation),
@@ -617,6 +618,7 @@ pub(crate) enum BooleanExpression {
     },
     ContextStringEquals(String),
     ContextStringLengthEquals(usize),
+    ContextLanguageMatches(String),
     Or {
         left: Box<BooleanExpression>,
         right: Box<BooleanExpression>,

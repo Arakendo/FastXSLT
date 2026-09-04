@@ -38,6 +38,9 @@ pub(super) fn compile(
             variable.to_owned(),
         ));
     }
+    if let Some(language) = crate::xpath::language_experiment::parse_literal(parsed) {
+        return Ok(BooleanExpression::ContextLanguageMatches(language));
+    }
     if let Some((left, right)) = split_top_level_or(parsed) {
         return Ok(BooleanExpression::Or {
             left: Box::new(compile(left, location, comparison)?),

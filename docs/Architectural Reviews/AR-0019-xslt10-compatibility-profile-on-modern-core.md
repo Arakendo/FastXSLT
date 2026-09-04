@@ -231,6 +231,9 @@ public version-mode contract.
   Unicode-codepoint semantics, raising the lower bound to 606 with all eight
   newly initialized cases passing while leaving legacy NaN/infinity behavior
   behind the unresolved version-mode boundary.
+- [x] Add work-charged inherited `xml:lang` matching shared by value and
+  instruction-test expressions, raising the lower bound to 607 without
+  admitting neighboring legacy mixed-type coercions.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -327,6 +330,9 @@ maintained redistributable legacy suite becomes available.
   bound from 598 to 606; all eight newly initialized cases pass without a new
   mismatch or runtime failure, while version-sensitive NaN/infinity behavior
   remains unsupported.
+- 2026-09-04 -- Literal `lang()` with inherited `xml:lang` semantics raised the
+  lower bound from 606 to 607; value and instruction-test compilation share one
+  work-charged evaluator.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated
