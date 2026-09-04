@@ -5,7 +5,7 @@
 | Date | 2026-09-03 |
 | Reviewer | Monday |
 | Scope | Field handling after worker crash, hard termination, containment loss, or disappearance during a transform |
-| Result | Open AR-0018; retain host-owned durability and quarantine policy |
+| Result | AR-0018 scope confirmed; retain Incubating pending fault-injection evidence |
 
 ## Review
 
@@ -41,3 +41,36 @@ The resulting boundary is:
 AR-0018 carries the unresolved attempt identity, ambiguity, persistence,
 privacy, phase vocabulary, and fault-injection questions without expanding the
 engine into a job scheduler or database.
+
+## Review of AR-0018
+
+The resulting AR was reviewed as well scoped, security-aware, operationally
+realistic, and consistent with ADR-0005 and ADR-0016. In particular, it
+preserves five important constraints:
+
+- worker loss does not establish that an input is invalid or malicious;
+- logical request identity and unique attempt identity remain distinct;
+- completion can be ambiguous across process loss, so idempotent host
+  publication and reconciliation are stronger targets than exactly-once
+  execution;
+- the candidate envelope carries bounded identity and diagnostic metadata
+  rather than customer XML, parameters, paths, or secret-bearing URIs; and
+- retries, quarantine, escalation, persistence, and publication remain host
+  policy rather than hidden FastXSLT behavior.
+
+The proposed fault-injection matrix is the appropriate next evidence. It must
+cover loss before admission, after assignment and acknowledgement, during
+execution and transfer, after receipt but before publication, host restart with
+an orphaned attempt, and duplicate, missing, delayed, or out-of-order
+observations.
+
+Phase vocabulary should remain deliberately coarse during incubation. The
+candidate `admitted`, `initializing`, `compiling`, `preparing`, `executing`,
+`serializing`, `transferring`, and `unknown` phases are sufficient for the
+experiment. More detailed phases would risk exposing private architecture and
+adding synchronization overhead without demonstrated operational value.
+
+The disposition remains **Incubating**. No event schema, retry threshold,
+quarantine scope, persistence contract, or public observation API is selected
+until the fault-injection work demonstrates which fields and delivery shape are
+actually necessary.

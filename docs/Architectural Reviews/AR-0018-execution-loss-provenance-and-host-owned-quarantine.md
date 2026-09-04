@@ -275,3 +275,7 @@ its own dispatch journal.
 - 2026-09-03 -- Opened as Incubating from field-operation pressure to prevent
   repeatedly catastrophic work from cycling through replacement workers while
   retaining host ownership of durability, retry, and quarantine policy.
+- 2026-09-03 -- Peer review confirmed the request/attempt split, ambiguous
+  completion model, bounded privacy posture, host-owned quarantine boundary,
+  and fault-injection plan. Retained Incubating and explicitly kept the first
+  phase vocabulary coarse pending measured operational need.
