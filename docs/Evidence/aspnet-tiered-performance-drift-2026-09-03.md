@@ -1,16 +1,16 @@
 # ASP.NET Tiered Performance Drift
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-09-03 |
-| FastXSLT checkpoint | `8735c97` |
-| Host | AMD Ryzen 7 7800X3D, 16 logical processors, Windows `10.0.26200.0` |
-| Toolchain | Rust 1.95.0; .NET SDK 10.0.100-preview.7 targeting `net8.0` |
-| Stylesheet | Pinned XSLT30 `for-004`; Microsoft lane uses the reviewed XSLT 1.0 equivalent |
-| Tiers | 5, 50, and 500 deterministic `order-item` elements |
-| Runs | Five fresh ASP.NET host processes; medians of one tiered sample per process |
-| Command | `./scripts/verify-aspnet-workbench.ps1 -LocalSaxonCs -TieredBenchmark -TieredSummaryOnly -TieredRequests 250 -TieredConcurrency 4 -MeasurementRuns 1` |
-| Claim | Same-machine private drift evidence for one narrow warm workload; not a general engine ranking |
+| Field               | Value                                                                                                                                                 |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Date                | 2026-09-03                                                                                                                                            |
+| FastXSLT checkpoint | `8735c97`                                                                                                                                             |
+| Host                | AMD Ryzen 7 7800X3D, 16 logical processors, Windows `10.0.26200.0`                                                                                    |
+| Toolchain           | Rust 1.95.0; .NET SDK 10.0.100-preview.7 targeting `net8.0`                                                                                           |
+| Stylesheet          | Pinned XSLT30 `for-004`; Microsoft lane uses the reviewed XSLT 1.0 equivalent                                                                         |
+| Tiers               | 5, 50, and 500 deterministic `order-item` elements                                                                                                    |
+| Runs                | Five fresh ASP.NET host processes; medians of one tiered sample per process                                                                           |
+| Command             | `./scripts/verify-aspnet-workbench.ps1 -LocalSaxonCs -TieredBenchmark -TieredSummaryOnly -TieredRequests 250 -TieredConcurrency 4 -MeasurementRuns 1` |
+| Claim               | Same-machine private drift evidence for one narrow warm workload; not a general engine ranking                                                        |
 
 ## Method
 
@@ -34,12 +34,12 @@ machine load limit attribution of small changes to FastXSLT code alone.
 
 Values are completed transforms per second.
 
-| Engine path | 5 sequential | 5 x4 | 50 sequential | 50 x4 | 500 sequential | 500 x4 |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| FastXSLT isolated | 17,305 | 64,402 | 14,964 | 57,027 | 5,258 | 21,576 |
-| FastXSLT native | 296,990 | 863,767 | 72,861 | 271,128 | 8,836 | 30,585 |
-| SaxonCS exact | 25,993 | 126,686 | 15,417 | 36,217 | 1,835 | 14,593 |
-| Microsoft equivalent XSLT 1.0 | 164,209 | 458,817 | 19,580 | 58,023 | 261 | 989 |
+| Engine path                   | 5 sequential |    5 x4 | 50 sequential |   50 x4 | 500 sequential | 500 x4 |
+| ----------------------------- | -----------: | ------: | ------------: | ------: | -------------: | -----: |
+| FastXSLT isolated             |       17,305 |  64,402 |        14,964 |  57,027 |          5,258 | 21,576 |
+| FastXSLT native               |      296,990 | 863,767 |        72,861 | 271,128 |          8,836 | 30,585 |
+| SaxonCS exact                 |       25,993 | 126,686 |        15,417 |  36,217 |          1,835 | 14,593 |
+| Microsoft equivalent XSLT 1.0 |      164,209 | 458,817 |        19,580 |  58,023 |            261 |    989 |
 
 SaxonCS's 500-item concurrent lane remained bimodal: the five observations were
 approximately 4,110, 5,784, 14,593, 26,146, and 26,318 transforms per second.
@@ -56,12 +56,12 @@ The native comparison uses the three-process baseline in
 because that was the first recorded native tier matrix. Positive values mean
 higher current throughput.
 
-| Engine path | 5 sequential | 5 x4 | 50 sequential | 50 x4 | 500 sequential | 500 x4 |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| FastXSLT isolated | -33.4% | -24.2% | -12.1% | -4.5% | -5.3% | -5.8% |
-| FastXSLT native | -14.4% | -16.8% | -4.6% | +12.0% | +14.7% | +3.6% |
-| SaxonCS exact | +6.2% | +38.4% | +12.2% | -16.7% | +2.1% | +145.3% |
-| Microsoft equivalent XSLT 1.0 | +18.5% | +0.4% | +12.8% | +2.0% | -1.3% | +5.7% |
+| Engine path                   | 5 sequential |   5 x4 | 50 sequential |  50 x4 | 500 sequential |  500 x4 |
+| ----------------------------- | -----------: | -----: | ------------: | -----: | -------------: | ------: |
+| FastXSLT isolated             |       -33.4% | -24.2% |        -12.1% |  -4.5% |          -5.3% |   -5.8% |
+| FastXSLT native               |       -14.4% | -16.8% |         -4.6% | +12.0% |         +14.7% |   +3.6% |
+| SaxonCS exact                 |        +6.2% | +38.4% |        +12.2% | -16.7% |          +2.1% | +145.3% |
+| Microsoft equivalent XSLT 1.0 |       +18.5% |  +0.4% |        +12.8% |  +2.0% |          -1.3% |   +5.7% |
 
 The mixed movement across engines demonstrates meaningful run/environment
 noise. FastXSLT's tiny isolated and native lanes have nevertheless moved down
@@ -75,20 +75,20 @@ about 6% of the August baseline.
 Values are microseconds. Each value is the median of the five runs' reported
 percentile.
 
-| Path/tier | Concurrency | p50 | p95 | p99 |
-| --- | ---: | ---: | ---: | ---: |
-| Isolated, 5 items | 1 | 51.1 | 88.5 | 121.2 |
-| Isolated, 5 items | 4 | 54.0 | 78.4 | 106.2 |
-| Native, 5 items | 1 | 2.9 | 3.9 | 5.3 |
-| Native, 5 items | 4 | 3.5 | 5.9 | 8.4 |
-| Isolated, 50 items | 1 | 60.9 | 96.7 | 134.9 |
-| Isolated, 50 items | 4 | 65.4 | 91.1 | 124.3 |
-| Native, 50 items | 1 | 12.7 | 19.9 | 23.3 |
-| Native, 50 items | 4 | 13.0 | 17.4 | 26.7 |
-| Isolated, 500 items | 1 | 182.9 | 238.7 | 357.6 |
-| Isolated, 500 items | 4 | 169.7 | 249.4 | 366.7 |
-| Native, 500 items | 1 | 109.6 | 123.8 | 201.4 |
-| Native, 500 items | 4 | 111.0 | 196.9 | 213.0 |
+| Path/tier           | Concurrency |   p50 |   p95 |   p99 |
+| ------------------- | ----------: | ----: | ----: | ----: |
+| Isolated, 5 items   |           1 |  51.1 |  88.5 | 121.2 |
+| Isolated, 5 items   |           4 |  54.0 |  78.4 | 106.2 |
+| Native, 5 items     |           1 |   2.9 |   3.9 |   5.3 |
+| Native, 5 items     |           4 |   3.5 |   5.9 |   8.4 |
+| Isolated, 50 items  |           1 |  60.9 |  96.7 | 134.9 |
+| Isolated, 50 items  |           4 |  65.4 |  91.1 | 124.3 |
+| Native, 50 items    |           1 |  12.7 |  19.9 |  23.3 |
+| Native, 50 items    |           4 |  13.0 |  17.4 |  26.7 |
+| Isolated, 500 items |           1 | 182.9 | 238.7 | 357.6 |
+| Isolated, 500 items |           4 | 169.7 | 249.4 | 366.7 |
+| Native, 500 items   |           1 | 109.6 | 123.8 | 201.4 |
+| Native, 500 items   |           4 | 111.0 | 196.9 | 213.0 |
 
 ## Boundary and allocation observations
 

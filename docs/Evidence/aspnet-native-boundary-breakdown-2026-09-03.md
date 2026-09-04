@@ -1,17 +1,17 @@
 # ASP.NET Native Boundary Breakdown
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-09-03 |
-| FastXSLT source checkpoint | Working tree above `703f75b` |
-| Host | AMD Ryzen 7 7800X3D, 16 logical processors, Windows `10.0.26200.0` |
-| Toolchain | Rust 1.95.0; .NET SDK 10.0.100-preview.7; .NET 8 and .NET 10 runtimes |
-| Stylesheet | Pinned XSLT30 `for-004` |
-| Tiers | 5, 50, and 500 deterministic `order-item` elements |
-| Repetitions | Five reports per target in one fresh host process per target |
-| Requests per report | 10,000 / 4,000 / 1,000 for the 5 / 50 / 500-item tiers |
-| Optional comparison dependencies | None in either target |
-| Claim | Private boundary-localization evidence; not an ABI guarantee or general performance claim |
+| Field                            | Value                                                                                     |
+| -------------------------------- | ----------------------------------------------------------------------------------------- |
+| Date                             | 2026-09-03                                                                                |
+| FastXSLT source checkpoint       | Working tree above `703f75b`                                                              |
+| Host                             | AMD Ryzen 7 7800X3D, 16 logical processors, Windows `10.0.26200.0`                        |
+| Toolchain                        | Rust 1.95.0; .NET SDK 10.0.100-preview.7; .NET 8 and .NET 10 runtimes                     |
+| Stylesheet                       | Pinned XSLT30 `for-004`                                                                   |
+| Tiers                            | 5, 50, and 500 deterministic `order-item` elements                                        |
+| Repetitions                      | Five reports per target in one fresh host process per target                              |
+| Requests per report              | 10,000 / 4,000 / 1,000 for the 5 / 50 / 500-item tiers                                    |
+| Optional comparison dependencies | None in either target                                                                     |
+| Claim                            | Private boundary-localization evidence; not an ABI guarantee or general performance claim |
 
 ## Question and method
 
@@ -57,11 +57,11 @@ excluded the local SaxonCS overlay.
 Values are medians of five reports. Higher throughput and lower export time are
 better.
 
-| Tier | .NET 8 direct/s | .NET 10 direct/s | Direct change | .NET 8 one-slot pool/s | .NET 10 one-slot pool/s | Pool change |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 5 items | 248,808 | 253,180 | +1.8% | 264,604 | 279,325 | +5.6% |
-| 50 items | 65,014 | 66,721 | +2.6% | 62,174 | 65,133 | +4.8% |
-| 500 items | 7,549 | 7,626 | +1.0% | 7,490 | 7,929 | +5.9% |
+| Tier      | .NET 8 direct/s | .NET 10 direct/s | Direct change | .NET 8 one-slot pool/s | .NET 10 one-slot pool/s | Pool change |
+| --------- | --------------: | ---------------: | ------------: | ---------------------: | ----------------------: | ----------: |
+| 5 items   |         248,808 |          253,180 |         +1.8% |                264,604 |                 279,325 |       +5.6% |
+| 50 items  |          65,014 |           66,721 |         +2.6% |                 62,174 |                  65,133 |       +4.8% |
+| 500 items |           7,549 |            7,626 |         +1.0% |                  7,490 |                   7,929 |       +5.9% |
 
 The ordinary single-source `/measure/inprocess` median was 275,459/s under
 .NET 8 and 280,426/s under .NET 10, a 1.8% increase. The earlier native decline
@@ -82,13 +82,13 @@ is not a demonstrated explanation for the earlier drift.
 Values are median mean microseconds per instrumented direct call.
 
 | Target / tier | Transform export | Instrumented total | Export share |
-| --- | ---: | ---: | ---: |
-| .NET 8 / 5 | 3.102 | 3.677 | 84.4% |
-| .NET 10 / 5 | 3.060 | 3.676 | 83.2% |
-| .NET 8 / 50 | 15.192 | 15.775 | 96.3% |
-| .NET 10 / 50 | 14.585 | 15.157 | 96.2% |
-| .NET 8 / 500 | 130.402 | 130.925 | 99.6% |
-| .NET 10 / 500 | 125.887 | 126.414 | 99.6% |
+| ------------- | ---------------: | -----------------: | -----------: |
+| .NET 8 / 5    |            3.102 |              3.677 |        84.4% |
+| .NET 10 / 5   |            3.060 |              3.676 |        83.2% |
+| .NET 8 / 50   |           15.192 |             15.775 |        96.3% |
+| .NET 10 / 50  |           14.585 |             15.157 |        96.2% |
+| .NET 8 / 500  |          130.402 |            130.925 |        99.6% |
+| .NET 10 / 500 |          125.887 |            126.414 |        99.6% |
 
 The .NET 10 transform-export median was 1.4%, 4.0%, and 3.5% lower than .NET 8
 across the three tiers. Copy, decode, and release were individually generally
@@ -112,11 +112,11 @@ cargo test --release -p fastxslt-dotnet-workbench `
   measure_native_transform_export_components -- --ignored --nocapture
 ```
 
-| Tier | Request copy + decode | Engine lookup + `Arc` clone | Transform + serialization | Outcome insert | Outcome release | Transform share of listed components |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 5 items | 0.048 us | 0.035 us | 2.720 us | 0.065 us | 0.052 us | 93.1% |
-| 50 items | 0.067 us | 0.035 us | 12.370 us | 0.058 us | 0.052 us | 98.3% |
-| 500 items | 0.046 us | 0.035 us | 102.337 us | 0.062 us | 0.049 us | 99.8% |
+| Tier      | Request copy + decode | Engine lookup + `Arc` clone | Transform + serialization | Outcome insert | Outcome release | Transform share of listed components |
+| --------- | --------------------: | --------------------------: | ------------------------: | -------------: | --------------: | -----------------------------------: |
+| 5 items   |              0.048 us |                    0.035 us |                  2.720 us |       0.065 us |        0.052 us |                                93.1% |
+| 50 items  |              0.067 us |                    0.035 us |                 12.370 us |       0.058 us |        0.052 us |                                98.3% |
+| 500 items |              0.046 us |                    0.035 us |                102.337 us |       0.062 us |        0.049 us |                                99.8% |
 
 The absolute Rust-test and ASP.NET timings are not directly subtractable: they
 run in different processes and binaries and the manual probe is one averaged
