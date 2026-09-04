@@ -16,7 +16,7 @@ its exact case identities and count, composes explicit private-ledger passes
 with native dependency exclusions, and applies a visible
 `harness-unsupported/not-run` default to every remaining case.
 
-A private, safe, source-free evaluator executes `fn:empty` and unprefixed
+A private, safe, source-free production expression executes `fn:empty` and unprefixed
 `empty` over bounded atomic literal sequences. It reuses the atomic sequence
 parser already exercised by `fn:deep-equal`, including validated integer
 subtypes, exact decimals, floats, doubles, empty sequences, nested sequence
@@ -25,8 +25,11 @@ charges each executed XPath operation, and distinguishes zero- or multi-argument
 calls from unsupported grammar so native `XPST0017` assertions remain exact.
 
 The adapter reads the unchanged expression and native assertion from
-`fn/empty.xml`. It does not encode expected booleans from case names and does
-not infer results for the five unexecuted XPath cases.
+`fn/empty.xml`, compiles it inside `xsl:value-of`, executes the ordinary runtime,
+and compares the serialized boolean or compile diagnostic. It does not encode
+expected booleans from case names and does not infer results for the five
+unexecuted XPath cases. A cardinality-composition sentinel reaches the same
+expression through the host-facing workbench engine.
 
 ## Result
 

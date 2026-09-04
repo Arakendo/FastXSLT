@@ -29,7 +29,7 @@ pub(crate) mod default_collation_experiment;
 pub(crate) mod duration_component_experiment;
 #[cfg(test)]
 pub(crate) mod effective_boolean_value_experiment;
-#[cfg(test)]
+#[cfg(any(test, feature = "workbench"))]
 pub(crate) mod empty_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod encode_for_uri_expression;

@@ -22,6 +22,10 @@ use crate::xpath::duration_component_experiment::{
     DurationComponentExpression, DurationFailure, DurationValue,
     evaluate_compiled as evaluate_duration_component,
 };
+use crate::xpath::empty_experiment::{
+    EmptyFailure, SequenceCardinalityExpression,
+    evaluate_compiled_source_free as evaluate_sequence_cardinality,
+};
 use crate::xpath::encode_for_uri_expression::{
     EncodeForUriExpression, EncodeForUriValue, evaluate as evaluate_encode_for_uri,
 };
@@ -138,6 +142,9 @@ pub(super) fn execute_value_of(
         ValueExpression::DurationComponent(expression) => {
             append_duration_component(inputs, expression, result, control)?;
         }
+        ValueExpression::SequenceCardinality(expression) => {
+            append_sequence_cardinality(inputs, expression, result, control)?;
+        }
         ValueExpression::EncodeForUri(expression) => {
             append_encode_for_uri(inputs, expression, result, control)?;
         }
@@ -159,6 +166,33 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_sequence_cardinality(
+    inputs: &SequenceInputs<'_>,
+    expression: &SequenceCardinalityExpression,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let value = evaluate_sequence_cardinality(expression, control).map_err(|empty_failure| {
+        match empty_failure {
+            EmptyFailure::Control(control) => control_failure(control, inputs.request_id),
+            #[cfg(test)]
+            EmptyFailure::Path(_) => failure(
+                "FXRT1017",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                "compiled sequence-cardinality expression failed runtime validation",
+            ),
+            EmptyFailure::InvalidArity | EmptyFailure::Unsupported => failure(
+                "FXRT1017",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                "compiled sequence-cardinality expression failed runtime validation",
+            ),
+        }
+    })?;
+    append_boolean(inputs, value, result, control)
 }
 
 fn append_duration_component(

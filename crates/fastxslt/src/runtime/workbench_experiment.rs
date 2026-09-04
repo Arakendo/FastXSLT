@@ -642,6 +642,25 @@ mod tests {
     }
 
     #[test]
+    fn production_sequence_cardinality_reaches_the_workbench_host_path() {
+        let engine = ExperimentalEngine::new(
+            "urn:fastxslt:sequence-cardinality:source",
+            b"<source/>".to_vec(),
+            "urn:fastxslt:sequence-cardinality:stylesheet",
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="empty(())"/><xsl:value-of select="exists(reverse((1, 2, 3)))"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("production sequence-cardinality expression should compile");
+
+        assert_eq!(
+            engine
+                .transform("sequence-cardinality-workbench")
+                .expect("production sequence-cardinality expression should execute"),
+            "truetrue"
+        );
+    }
+
+    #[test]
     fn production_string_length_expression_reaches_the_workbench_host_path() {
         let engine = ExperimentalEngine::new(
             "urn:fastxslt:string-length:source",

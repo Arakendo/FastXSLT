@@ -21,6 +21,10 @@ use crate::xpath::duration_component_experiment::{
     DurationComponentParseFailure, parse as parse_duration_component,
     recognizes as recognizes_duration_component,
 };
+use crate::xpath::empty_experiment::{
+    SequenceCardinalityParseFailure, parse_source_free as parse_sequence_cardinality,
+    recognizes_source_free as recognizes_sequence_cardinality,
+};
 use crate::xpath::encode_for_uri_expression::{
     EncodeForUriParseFailure, parse as parse_encode_for_uri,
     recognizes as recognizes_encode_for_uri,
@@ -690,6 +694,8 @@ fn compile_value_expression(
         compile_default_collation_value(expression, location)?
     } else if recognizes_deep_equal(expression) {
         compile_deep_equal_value(expression, location)?
+    } else if recognizes_sequence_cardinality(expression) {
+        compile_sequence_cardinality_value(expression, location)?
     } else if expression.contains(" castable as ") {
         ValueExpression::Castable(Box::new(parse_castable(expression, location).map_err(
             |failure| CompileFailure {
@@ -759,6 +765,33 @@ fn compile_value_expression(
             parse_location_path(expression, location.clone()).map_err(map_path_failure)?,
         )
     })
+}
+
+fn compile_sequence_cardinality_value(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<ValueExpression, CompileFailure> {
+    let expression = parse_sequence_cardinality(expression).map_err(|failure| {
+        let (code, category, detail) = match failure {
+            SequenceCardinalityParseFailure::InvalidArity => (
+                "XPST0017",
+                CompileCategory::Invalid,
+                "sequence-cardinality function has invalid arity",
+            ),
+            SequenceCardinalityParseFailure::Unsupported => (
+                "FXXP1018",
+                CompileCategory::Unsupported,
+                "sequence-cardinality expression is outside the admitted production slice",
+            ),
+        };
+        CompileFailure {
+            code,
+            category,
+            detail: detail.to_owned(),
+            location: location.clone(),
+        }
+    })?;
+    Ok(ValueExpression::SequenceCardinality(Box::new(expression)))
 }
 
 fn compile_duration_component_value(

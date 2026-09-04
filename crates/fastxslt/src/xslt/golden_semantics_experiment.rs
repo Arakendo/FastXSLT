@@ -7,6 +7,7 @@ use crate::xpath::decimal_sum_for_experiment::DecimalSumForExpression;
 use crate::xpath::deep_equal_boolean_experiment::DeepEqualBooleanExpression;
 use crate::xpath::default_collation_experiment::DefaultCollationExpression;
 use crate::xpath::duration_component_experiment::DurationComponentExpression;
+use crate::xpath::empty_experiment::SequenceCardinalityExpression;
 use crate::xpath::encode_for_uri_expression::EncodeForUriExpression;
 use crate::xpath::escape_html_uri_expression::EscapeHtmlUriExpression;
 use crate::xpath::focus_sum_for_experiment::FocusSumForExpression;
@@ -476,6 +477,7 @@ pub(crate) enum ValueExpression {
     DeepEqual(Box<DeepEqualBooleanExpression>),
     DefaultCollation(Box<DefaultCollationExpression>),
     DurationComponent(Box<DurationComponentExpression>),
+    SequenceCardinality(Box<SequenceCardinalityExpression>),
     EncodeForUri(Box<EncodeForUriExpression>),
     EscapeHtmlUri(Box<EscapeHtmlUriExpression>),
     IriToUri(Box<IriToUriExpression>),

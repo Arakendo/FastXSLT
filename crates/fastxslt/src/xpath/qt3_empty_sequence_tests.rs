@@ -2,8 +2,7 @@
 
 use std::{collections::BTreeSet, fs, path::PathBuf};
 
-use super::empty_experiment::{EmptyFailure, evaluate_source_free};
-use crate::execution_control_experiment::{InvocationControl, WorkDomain};
+use super::qt3_production_path_test_support::{compile_expression, execute_expression};
 use crate::qt3_overlay_test_support::{assert_private_case_passed, assert_selected_count};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
@@ -106,24 +105,19 @@ fn execute_case(document: &Document, case_name: &str) {
     let test = child_named(document, case, "test").expect("test expression");
     let source = document.string_value(test).trim().to_owned();
     let result = child_named(document, case, "result").expect("result metadata");
-    let mut control = InvocationControl::unbounded();
-
-    match evaluate_source_free(&source, &mut control) {
-        Err(EmptyFailure::InvalidArity) => {
+    match compile_expression(case_name, &source) {
+        Err(failure) => {
             let error = descendants_named(document, result, "error")
                 .into_iter()
                 .next()
                 .expect("invalid-arity case must expect an error");
-            assert_eq!(attribute(document, error, "code"), Some("XPST0017"));
+            assert_eq!(attribute(document, error, "code"), Some(failure.code));
         }
-        Err(failure) => {
-            panic!("selected expression did not execute: {case_name}: {source}: {failure:?}")
-        }
-        Ok(actual) => {
+        Ok(program) => {
+            let actual = execute_expression(&program, case_name);
             let expected = expected_boolean(document, result)
                 .unwrap_or_else(|| panic!("selected case lacks a boolean assertion: {case_name}"));
-            assert_eq!(actual, expected, "{case_name}: {source}");
-            assert!(control.consumed(WorkDomain::XPathOperation) > 0);
+            assert_eq!(actual, expected.to_string(), "{case_name}: {source}");
         }
     }
 }

@@ -1,19 +1,72 @@
 //! Private `fn:empty` seam for bounded, source-free path evidence.
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl};
+#[cfg(test)]
 use crate::xdm::owned_tree_experiment::{Document, SourceLocation};
 
-use super::{
-    deep_equal_atomic::{parse_sequence, split_top_level_once},
-    path_experiment::{PathFailure, evaluate_location_path_controlled, parse_location_path},
-};
+use super::deep_equal_atomic::{parse_sequence, split_top_level_once};
+#[cfg(test)]
+use super::path_experiment::{PathFailure, evaluate_location_path_controlled, parse_location_path};
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct SequenceCardinalityExpression {
+    source: String,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum SequenceCardinalityParseFailure {
+    InvalidArity,
+    Unsupported,
+}
+
+impl SequenceCardinalityExpression {
+    pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
+        self.source.capacity()
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum EmptyFailure {
+    #[cfg(test)]
     Path(PathFailure),
     Control(ControlFailure),
     InvalidArity,
     Unsupported,
+}
+
+pub(crate) fn recognizes_source_free(expression: &str) -> bool {
+    expression.contains("empty(")
+        || expression.contains("fn:empty(")
+        || expression.contains("exists(")
+        || expression.contains("fn:exists(")
+}
+
+pub(crate) fn parse_source_free(
+    expression: &str,
+) -> Result<SequenceCardinalityExpression, SequenceCardinalityParseFailure> {
+    if !recognizes_source_free(expression) {
+        return Err(SequenceCardinalityParseFailure::Unsupported);
+    }
+    evaluate_source_free(expression, &mut InvocationControl::unbounded()).map_err(|failure| {
+        match failure {
+            EmptyFailure::InvalidArity => SequenceCardinalityParseFailure::InvalidArity,
+            #[cfg(test)]
+            EmptyFailure::Path(_) => SequenceCardinalityParseFailure::Unsupported,
+            EmptyFailure::Control(_) | EmptyFailure::Unsupported => {
+                SequenceCardinalityParseFailure::Unsupported
+            }
+        }
+    })?;
+    Ok(SequenceCardinalityExpression {
+        source: expression.to_owned(),
+    })
+}
+
+pub(crate) fn evaluate_compiled_source_free(
+    expression: &SequenceCardinalityExpression,
+    control: &mut InvocationControl,
+) -> Result<bool, EmptyFailure> {
+    evaluate_source_free(&expression.source, control)
 }
 
 pub(crate) fn evaluate_source_free(
@@ -60,6 +113,7 @@ fn function_argument<'a>(expression: &'a str, names: &[&str]) -> Option<&'a str>
     })
 }
 
+#[cfg(test)]
 pub(crate) fn evaluate(
     expression: &str,
     document: &Document,

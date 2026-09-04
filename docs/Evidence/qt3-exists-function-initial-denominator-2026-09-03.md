@@ -13,7 +13,8 @@ Date: 2026-09-03
 
 The same typed denominator and immutable upstream-expression path used for
 `fn:empty` now conserves `fn/exists`. The shared safe evaluator computes
-cardinality over the already validated bounded atomic-sequence grammar,
+cardinality over the already validated bounded atomic-sequence grammar through
+the private production expression,
 supports prefixed and unprefixed calls plus `fn:not`, and charges every
 executed XPath operation. `exists()` and `exists(1, 2)` remain native
 `XPST0017` arity errors rather than collapsing into unsupported syntax.
@@ -22,6 +23,11 @@ The ninth direct function case exercises bounded literal `reverse()` before
 the existence test. Invocation-clock expressions and the wider range/for/
 predicate grammar remain unexecuted rather than receiving answers derived from
 their expected assertions.
+
+Every selected expression is compiled inside `xsl:value-of`, executed by the
+ordinary runtime, serialized as text, and compared with its native assertion or
+compile diagnostic. A workbench sentinel composes `exists` with `empty` through
+the same host-facing engine path.
 
 ## Result
 

@@ -7,7 +7,6 @@ pub(super) struct AtomicSequence(Vec<AtomicValue>);
 const MAX_FOLDED_LITERAL_RANGE_ITEMS: usize = 1_024;
 
 impl AtomicSequence {
-    #[cfg(test)]
     pub(super) fn is_empty(&self) -> bool {
         self.0.is_empty()
     }

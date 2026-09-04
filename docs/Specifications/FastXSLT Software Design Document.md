@@ -379,6 +379,14 @@ an empty operand as an empty result. Invalid arity and non-string operands keep
 their standard diagnostic identities. This does not admit zero-argument
 normalization with a supplied focus, Unicode normalization, invocation clocks,
 schema-aware atomization, or a public collation API.
+Selected source-free `empty()` and `exists()` expressions compile to one owned
+private cardinality form. It computes cardinality over the bounded atomic
+literal sequence grammar shared with deep equality, supports nested sequence
+flattening, exact admitted atomic constructors, literal `reverse()`, and
+`not()` composition, and distinguishes invalid arity as `XPST0017`. Runtime
+evaluation remains charged and reaches the host-workbench path. This does not
+admit general node-sequence cardinality, dynamic sequence construction,
+invocation clocks, range predicates, or arbitrary higher-order expressions.
 The selected `string-length()` expressions compile to a private production form
 that distinguishes source-free compositions from one document-path argument.
 The shared typed evaluator counts Unicode scalar values, preserves lazy
