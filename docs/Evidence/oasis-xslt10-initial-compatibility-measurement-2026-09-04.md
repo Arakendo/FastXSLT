@@ -67,6 +67,9 @@ raises it to 608.
 The following
 [normalize-space path tranche](oasis-xslt10-normalize-space-path-tranche-2026-09-04.md)
 raises it to 609.
+The following
+[expanded-name path tranche](oasis-xslt10-expanded-name-path-tranche-2026-09-04.md)
+raises it to 613.
 
 ## Outcome
 

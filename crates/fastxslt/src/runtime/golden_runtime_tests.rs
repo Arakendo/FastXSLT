@@ -959,6 +959,65 @@ fn context_local_name_and_namespace_uri_use_the_expanded_name() {
 }
 
 #[test]
+fn path_local_name_and_namespace_uri_use_the_selected_expanded_name() {
+    const SOURCE: &str = "urn:fastxslt:expanded-name-path:source";
+    const STYLESHEET: &str = "urn:fastxslt:expanded-name-path:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc xmlns:p="urn:example"><p:item/><plain/></doc>"#.to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:example"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:value-of select="local-name(doc/p:item)"/>|<xsl:value-of select="namespace-uri(doc/p:item)"/>|<xsl:value-of select="local-name(doc/plain)"/>|<xsl:value-of select="namespace-uri(doc/plain)"/>|<xsl:value-of select="local-name(doc/missing)"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile expanded-name paths");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("expanded-name-path", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute expanded-name paths");
+
+    assert_eq!(
+        results.by_request["expanded-name-path"].serialized,
+        "<out xmlns:p=\"urn:example\">item|urn:example|plain||</out>"
+    );
+}
+
+#[test]
+fn expanded_name_path_rejects_more_than_one_node() {
+    const SOURCE: &str = "urn:fastxslt:expanded-name-many:source";
+    const STYLESHEET: &str = "urn:fastxslt:expanded-name-many:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc><item/><item/></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="local-name(doc/item)"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile expanded-name path");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("expanded-name-many", "result", SOURCE))
+        .expect("admit request");
+
+    let failure = execute_transform_set(builder.seal()).expect_err("cardinality must be enforced");
+
+    assert_eq!(failure.code, "XPTY0004");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+}
+
+#[test]
 fn context_string_function_reuses_the_context_item_string_value() {
     const SOURCE: &str = "urn:fastxslt:context-string:source";
     const STYLESHEET: &str = "urn:fastxslt:context-string:stylesheet";

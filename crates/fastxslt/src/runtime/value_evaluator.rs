@@ -129,8 +129,14 @@ pub(super) fn execute_value_of(
         ValueExpression::ContextNodeLocalName => {
             append_context_node_local_name(inputs, context, result, control)?;
         }
+        ValueExpression::NodeLocalNamePath(path) => {
+            append_node_expanded_name_component(inputs, context, path, true, result, control)?;
+        }
         ValueExpression::ContextNodeNamespaceUri => {
             append_context_node_namespace_uri(inputs, context, result, control)?;
+        }
+        ValueExpression::NodeNamespaceUriPath(path) => {
+            append_node_expanded_name_component(inputs, context, path, false, result, control)?;
         }
         ValueExpression::ContextLanguageMatches(language) => {
             let (source, context) = required_source_context(inputs, context)?;
@@ -1135,6 +1141,36 @@ fn append_context_node_namespace_uri(
         append_text(result, namespace, inputs.request_id, control)?;
     }
     Ok(())
+}
+
+fn append_node_expanded_name_component(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    local_name: bool,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let selected = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    if selected.len() > 1 {
+        return Err(failure(
+            "XPTY0004",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            "expanded-name function requires a zero-or-one node argument",
+        ));
+    }
+    let Some(name) = selected.first().and_then(|node| source.name(*node)) else {
+        return Ok(());
+    };
+    let value = if local_name {
+        name.local.as_str()
+    } else {
+        name.namespace.as_deref().unwrap_or("")
+    };
+    append_text(result, value, inputs.request_id, control)
 }
 
 fn append_context_node_normalized_string(

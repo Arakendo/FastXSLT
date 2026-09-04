@@ -1089,8 +1089,16 @@ fn compile_value_expression(
         )
     } else if matches!(expression.trim(), "local-name()" | "local-name(.)") {
         ValueExpression::ContextNodeLocalName
+    } else if let Some(path) =
+        compile_expanded_name_path(document, element, expression, "local-name", location)
+    {
+        ValueExpression::NodeLocalNamePath(path?)
     } else if matches!(expression.trim(), "namespace-uri()" | "namespace-uri(.)") {
         ValueExpression::ContextNodeNamespaceUri
+    } else if let Some(path) =
+        compile_expanded_name_path(document, element, expression, "namespace-uri", location)
+    {
+        ValueExpression::NodeNamespaceUriPath(path?)
     } else if matches!(expression.trim(), "string()" | "string(.)") {
         compile_location_path_or_missing_context(".", location)?
     } else if expression.trim() == "upper-case(.)" {
@@ -1540,6 +1548,52 @@ fn compile_normalize_space_path(
         }
     }
     Some(ValueExpression::NormalizedStringPath(path))
+}
+
+fn compile_expanded_name_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    function: &str,
+    location: &SourceLocation,
+) -> Option<Result<LocationPath, CompileFailure>> {
+    let expression = expression.trim();
+    let argument = [format!("{function}("), format!("fn:{function}(")]
+        .iter()
+        .find_map(|prefix| {
+            expression
+                .strip_prefix(prefix)
+                .and_then(|value| value.strip_suffix(')'))
+        })?
+        .trim();
+    if argument.is_empty() || !has_balanced_parentheses(argument) {
+        return None;
+    }
+    let path = match parse_location_path(argument, location.clone()) {
+        Ok(path) => Ok(path),
+        Err(PathFailure::Unsupported { .. }) if argument.contains(':') => {
+            parse_qualified_child_path(argument, location.clone(), |prefix| {
+                namespace_for_prefix(document, element, prefix).map(str::to_owned)
+            })
+        }
+        Err(failure) => Err(failure),
+    };
+    Some(
+        path.map(|mut path| {
+            if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+                for step in &mut path.steps {
+                    if let PathStep::ChildNamed(local) = step {
+                        *step = PathStep::ChildExpandedName(ExpandedName {
+                            namespace: Some(namespace.to_owned()),
+                            local: local.clone(),
+                        });
+                    }
+                }
+            }
+            path
+        })
+        .map_err(map_path_failure),
+    )
 }
 
 fn parse_literal_variable_concat(expression: &str) -> Option<(String, String)> {

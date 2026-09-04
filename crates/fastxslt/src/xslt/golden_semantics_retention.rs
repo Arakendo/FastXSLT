@@ -481,6 +481,8 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::CountLocationPath(path)
         | ValueExpression::RootPath(path)
         | ValueExpression::NodeNamePath(path)
+        | ValueExpression::NodeLocalNamePath(path)
+        | ValueExpression::NodeNamespaceUriPath(path)
         | ValueExpression::NormalizedStringPath(path)
         | ValueExpression::GeneratedNodeIdentity(path)
         | ValueExpression::GeneratedRootIdentity(path)
@@ -514,9 +516,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
                     .as_ref()
                     .map_or(0, String::capacity)
         }
-        ValueExpression::NodeIdentityEqual { left, right } => {
-            left.known_owned_capacity_bytes() + right.known_owned_capacity_bytes()
-        }
+        ValueExpression::NodeIdentityEqual { left, right } => path_pair_owned(left, right),
         ValueExpression::IntegerFor(expression) => {
             size_of::<IntegerForExpression>() + expression.known_owned_capacity_bytes()
         }
@@ -610,9 +610,7 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
             boolean_expression_owned(left) + boolean_expression_owned(right)
         }
         BooleanExpression::Not(expression) => boolean_expression_owned(expression),
-        BooleanExpression::NodeIdentityEqual { left, right } => {
-            left.known_owned_capacity_bytes() + right.known_owned_capacity_bytes()
-        }
+        BooleanExpression::NodeIdentityEqual { left, right } => path_pair_owned(left, right),
         BooleanExpression::RootIdentityEqualsVariable { path, variable } => {
             path.known_owned_capacity_bytes() + variable.capacity()
         }
@@ -630,6 +628,13 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         }
         BooleanExpression::ContextStringLengthEquals(_) | BooleanExpression::Constant(_) => 0,
     }
+}
+
+fn path_pair_owned(
+    left: &crate::xpath::path_experiment::LocationPath,
+    right: &crate::xpath::path_experiment::LocationPath,
+) -> usize {
+    left.known_owned_capacity_bytes() + right.known_owned_capacity_bytes()
 }
 
 fn conditional_integer_owned(value: &ConditionalIntegerExpression) -> usize {
