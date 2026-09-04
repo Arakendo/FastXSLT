@@ -1284,6 +1284,35 @@ fn xpath10_literal_comparisons_preserve_atomic_semantics() {
 }
 
 #[test]
+fn xpath_constant_integral_functions_fold_exact_results() {
+    const SOURCE: &str = "urn:fastxslt:integral-functions:source";
+    const STYLESHEET: &str = "urn:fastxslt:integral-functions:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="floor(1.9)"/>|<xsl:value-of select="floor(-1.5)"/>|<xsl:value-of select="ceiling(1.1)"/>|<xsl:value-of select="ceiling(-1.5)"/>|<xsl:value-of select="round(2.5)"/>|<xsl:value-of select="round(-2.5)"/>|<xsl:value-of select="floor(1.9)=1"/>|<xsl:value-of select="round(-1.5)=-1"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile exact integral functions");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("integral-functions", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute integral functions");
+    assert_eq!(
+        results.by_request["integral-functions"].serialized,
+        "1|-2|2|-1|3|-2|true|true"
+    );
+}
+
+#[test]
 fn xpath_concat_folds_bounded_static_atomic_arguments() {
     const SOURCE: &str = "urn:fastxslt:static-concat:source";
     const STYLESHEET: &str = "urn:fastxslt:static-concat:stylesheet";

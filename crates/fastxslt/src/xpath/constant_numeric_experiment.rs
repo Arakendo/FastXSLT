@@ -22,6 +22,42 @@ pub(crate) fn compare(left: &str, right: &str) -> Result<Ordering, ConstantNumer
         .ok_or(ConstantNumericFailure::Invalid)
 }
 
+pub(crate) fn fold_integral_function(expression: &str) -> Option<String> {
+    let expression = expression.trim();
+    if !contains_integral_function(expression) {
+        return None;
+    }
+    let value = evaluate(expression).ok()?;
+    (value.denominator == 1).then(|| value.numerator.to_string())
+}
+
+pub(crate) fn fold_integral_equality(expression: &str) -> Option<bool> {
+    let (left, right) = expression.split_once('=')?;
+    if right.contains('=')
+        || left.trim_end().ends_with('!')
+        || !contains_integral_function(expression)
+    {
+        return None;
+    }
+    compare(left.trim(), right.trim())
+        .ok()
+        .map(std::cmp::Ordering::is_eq)
+}
+
+fn contains_integral_function(expression: &str) -> bool {
+    ["floor", "ceiling", "round"].iter().any(|name| {
+        expression.match_indices(name).any(|(index, _)| {
+            let before_is_name =
+                index > 0 && expression.as_bytes()[index - 1].is_ascii_alphanumeric();
+            let remainder = &expression[index + name.len()..];
+            !before_is_name
+                && remainder
+                    .trim_start_matches([' ', '\t', '\r', '\n'])
+                    .starts_with('(')
+        })
+    })
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Rational {
     numerator: i128,
@@ -114,9 +150,6 @@ impl Rational {
     }
 
     fn round(self) -> Result<Self, ConstantNumericFailure> {
-        if self.numerator < 0 || self.denominator <= 0 {
-            return Err(ConstantNumericFailure::Unsupported);
-        }
         let doubled = self
             .numerator
             .checked_mul(2)
@@ -126,7 +159,23 @@ impl Rational {
             .denominator
             .checked_mul(2)
             .ok_or(ConstantNumericFailure::Invalid)?;
-        Ok(Self::integer(doubled / divisor))
+        Ok(Self::integer(doubled.div_euclid(divisor)))
+    }
+
+    fn floor(self) -> Self {
+        Self::integer(self.numerator.div_euclid(self.denominator))
+    }
+
+    fn ceiling(self) -> Result<Self, ConstantNumericFailure> {
+        let floor = self.numerator.div_euclid(self.denominator);
+        let value = if self.numerator.rem_euclid(self.denominator) == 0 {
+            floor
+        } else {
+            floor
+                .checked_add(1)
+                .ok_or(ConstantNumericFailure::Invalid)?
+        };
+        Ok(Self::integer(value))
     }
 }
 
@@ -182,6 +231,43 @@ impl Parser<'_> {
 
     fn primary(&mut self) -> Result<Rational, ConstantNumericFailure> {
         self.whitespace();
+        if self.consume(b'+') {
+            return self.primary();
+        }
+        if self.consume(b'-') {
+            let value = self.primary()?;
+            return Ok(Rational {
+                numerator: value
+                    .numerator
+                    .checked_neg()
+                    .ok_or(ConstantNumericFailure::Invalid)?,
+                denominator: value.denominator,
+            });
+        }
+        if self.consume_keyword(b"floor") {
+            self.whitespace();
+            if !self.consume(b'(') {
+                return Err(ConstantNumericFailure::Invalid);
+            }
+            let value = self.additive()?;
+            self.whitespace();
+            if !self.consume(b')') {
+                return Err(ConstantNumericFailure::Invalid);
+            }
+            return Ok(value.floor());
+        }
+        if self.consume_keyword(b"ceiling") {
+            self.whitespace();
+            if !self.consume(b'(') {
+                return Err(ConstantNumericFailure::Invalid);
+            }
+            let value = self.additive()?;
+            self.whitespace();
+            if !self.consume(b')') {
+                return Err(ConstantNumericFailure::Invalid);
+            }
+            return value.ceiling();
+        }
         if self.consume_keyword(b"round") {
             self.whitespace();
             if !self.consume(b'(') {
@@ -246,7 +332,7 @@ impl Parser<'_> {
         while self
             .input
             .get(self.offset)
-            .is_some_and(u8::is_ascii_whitespace)
+            .is_some_and(|byte| matches!(byte, b' ' | b'\t' | b'\r' | b'\n'))
         {
             self.offset += 1;
         }
@@ -275,7 +361,7 @@ impl Parser<'_> {
 mod tests {
     use std::cmp::Ordering;
 
-    use super::{ConstantNumericFailure, compare};
+    use super::{ConstantNumericFailure, compare, fold_integral_equality, fold_integral_function};
 
     #[test]
     fn compares_checked_exact_rational_constants() {
@@ -294,11 +380,29 @@ mod tests {
     }
 
     #[test]
-    fn rejects_unadmitted_numeric_functions_and_invalid_division() {
+    fn folds_exact_integral_functions_with_xpath_rounding_direction() {
+        assert_eq!(fold_integral_function("floor(3.7)"), Some("3".to_owned()));
+        assert_eq!(fold_integral_function("floor(-1.5)"), Some("-2".to_owned()));
+        assert_eq!(fold_integral_function("ceiling(3.1)"), Some("4".to_owned()));
         assert_eq!(
-            compare("ceiling(3.7)", "3"),
-            Err(ConstantNumericFailure::Unsupported)
+            fold_integral_function("ceiling(-1.5)"),
+            Some("-1".to_owned())
         );
+        assert_eq!(fold_integral_function("round(2.5)"), Some("3".to_owned()));
+        assert_eq!(fold_integral_function("round(-2.5)"), Some("-2".to_owned()));
+        assert_eq!(fold_integral_function("floor(source)"), None);
+        assert_eq!(fold_integral_function("not-floor(1.5)"), None);
+        assert_eq!(fold_integral_equality("floor(1.9) = 1"), Some(true));
+        assert_eq!(fold_integral_equality("round(-1.5) = -1"), Some(true));
+        assert_eq!(fold_integral_equality("ceiling(1.1) = 1"), Some(false));
+        assert_eq!(fold_integral_equality("floor(1.9) != 1"), None);
+    }
+
+    #[test]
+    fn compares_integral_functions_and_rejects_invalid_division() {
+        assert_eq!(compare("ceiling(3.7)", "3"), Ok(Ordering::Greater));
+        assert_eq!(compare("floor(-1.5)", "-2"), Ok(Ordering::Equal));
+        assert_eq!(compare("round(-1.5)", "-1"), Ok(Ordering::Equal));
         assert_eq!(
             compare("1 div 0", "0"),
             Err(ConstantNumericFailure::Invalid)

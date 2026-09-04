@@ -958,6 +958,20 @@ fn compile_value_expression(
     {
         return Ok(ValueExpression::LiteralString(literal));
     }
+    if let Some(literal) =
+        crate::xpath::constant_numeric_experiment::fold_integral_function(expression)
+    {
+        return Ok(ValueExpression::LiteralString(literal));
+    }
+    if let Some(value) =
+        crate::xpath::constant_numeric_experiment::fold_integral_equality(expression)
+    {
+        return Ok(ValueExpression::SourceFreeScalar(Box::new(
+            ScalarExpression::Boolean(
+                crate::xpath::constant_boolean_experiment::BooleanExpression::Constant(value),
+            ),
+        )));
+    }
     if let Some(failure) = classify_atomic_path_operand(expression, location.clone()) {
         return Err(CompileFailure {
             code: failure.standard_code,

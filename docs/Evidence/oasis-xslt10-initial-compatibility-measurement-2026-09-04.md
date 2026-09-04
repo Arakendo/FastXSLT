@@ -73,6 +73,9 @@ raises it to 613.
 The following
 [function-name whitespace tranche](oasis-xslt10-function-name-whitespace-tranche-2026-09-04.md)
 raises it to 614.
+The following
+[constant integral-functions tranche](oasis-xslt10-constant-integral-functions-tranche-2026-09-04.md)
+raises it to 638.
 
 ## Outcome
 

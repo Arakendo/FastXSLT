@@ -247,6 +247,9 @@ public version-mode contract.
 - [x] Recognize the XPath-legal whitespace gap before the empty
   `string-length` argument list, raising the lower bound to 614 through the
   existing typed context operation.
+- [x] Fold context-independent `floor()`, `ceiling()`, and `round()` through
+  checked exact-rational semantics, raising the lower bound to 638 without
+  admitting legacy conversion rules or adding runtime dispatch.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -358,6 +361,9 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Whitespace-tolerant zero-argument function recognition raised
   the lower bound from 613 to 614 through unchanged `select20` without changing
   `string-length` semantics.
+- 2026-09-04 -- Checked constant integral functions raised the lower bound from
+  614 to 638; all 24 newly initialized direct-result and equality cases pass
+  without adding a mismatch or later failure.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated
