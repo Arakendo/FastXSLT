@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
@@ -149,6 +150,103 @@ public sealed class NativeFastXsltClient : IDisposable
             return ReadTransformOutcome(outcome);
         }
     }
+
+    internal NativeBoundaryTransformSample TransformMeasured(string requestIdentity)
+    {
+        var totalStarted = Stopwatch.GetTimestamp();
+        var gateStarted = Stopwatch.GetTimestamp();
+        Monitor.Enter(_gate);
+        var gateMicroseconds = Stopwatch.GetElapsedTime(gateStarted).TotalMicroseconds;
+        try
+        {
+            ObjectDisposedException.ThrowIf(_engine.IsClosed, this);
+
+            var phaseStarted = Stopwatch.GetTimestamp();
+            var request = Encoding.UTF8.GetBytes(requestIdentity);
+            var requestEncodingMicroseconds = ElapsedMicroseconds(phaseStarted);
+
+            phaseStarted = Stopwatch.GetTimestamp();
+            var outcome = NativeMethods.Transform(_engine.Value, request, (nuint)request.Length);
+            var transformExportMicroseconds = ElapsedMicroseconds(phaseStarted);
+            ThrowIfAdmissionStatus(outcome);
+
+            phaseStarted = Stopwatch.GetTimestamp();
+            var kind = NativeMethods.OutcomeKind(outcome);
+            var outcomeKindMicroseconds = ElapsedMicroseconds(phaseStarted);
+            if (kind != 2)
+            {
+                if (kind == 3)
+                {
+                    throw ReadFailureAndRelease(outcome);
+                }
+                NativeMethods.OutcomeRelease(outcome);
+                throw new InvalidDataException("Native transform returned an invalid outcome.");
+            }
+
+            var released = false;
+            try
+            {
+                phaseStarted = Stopwatch.GetTimestamp();
+                var nativeLength = NativeMethods.OutcomeLength(outcome);
+                var outcomeLengthMicroseconds = ElapsedMicroseconds(phaseStarted);
+                if (nativeLength == nuint.MaxValue || nativeLength > 1_048_576)
+                {
+                    throw new InvalidDataException("Native outcome length is invalid.");
+                }
+
+                phaseStarted = Stopwatch.GetTimestamp();
+                var value = new byte[checked((int)nativeLength)];
+                var bufferAllocationMicroseconds = ElapsedMicroseconds(phaseStarted);
+
+                phaseStarted = Stopwatch.GetTimestamp();
+                if (NativeMethods.OutcomeCopy(outcome, value, nativeLength) != 0)
+                {
+                    throw new InvalidDataException("Native outcome copy failed.");
+                }
+                var outcomeCopyMicroseconds = ElapsedMicroseconds(phaseStarted);
+
+                phaseStarted = Stopwatch.GetTimestamp();
+                var result = Encoding.UTF8.GetString(value);
+                var resultDecodingMicroseconds = ElapsedMicroseconds(phaseStarted);
+
+                phaseStarted = Stopwatch.GetTimestamp();
+                if (NativeMethods.OutcomeRelease(outcome) != 1)
+                {
+                    throw new InvalidDataException("Native outcome release failed.");
+                }
+                released = true;
+                var outcomeReleaseMicroseconds = ElapsedMicroseconds(phaseStarted);
+
+                return new NativeBoundaryTransformSample(
+                    result,
+                    new NativeBoundaryTiming(
+                        gateMicroseconds,
+                        requestEncodingMicroseconds,
+                        transformExportMicroseconds,
+                        outcomeKindMicroseconds,
+                        outcomeLengthMicroseconds,
+                        bufferAllocationMicroseconds,
+                        outcomeCopyMicroseconds,
+                        resultDecodingMicroseconds,
+                        outcomeReleaseMicroseconds,
+                        ElapsedMicroseconds(totalStarted)));
+            }
+            finally
+            {
+                if (!released)
+                {
+                    NativeMethods.OutcomeRelease(outcome);
+                }
+            }
+        }
+        finally
+        {
+            Monitor.Exit(_gate);
+        }
+    }
+
+    private static double ElapsedMicroseconds(long started) =>
+        Stopwatch.GetElapsedTime(started).TotalMicroseconds;
 
     public NativeRetainedOutcome TransformRetained(string requestIdentity)
     {

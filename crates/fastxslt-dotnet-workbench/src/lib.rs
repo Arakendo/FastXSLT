@@ -1147,6 +1147,10 @@ pub extern "C" fn fastxslt_workbench_v0_registry_outcome_payload_bytes() -> usiz
 mod diagnostic_tests;
 
 #[cfg(test)]
+#[path = "boundary_performance_tests.rs"]
+mod boundary_performance_tests;
+
+#[cfg(test)]
 mod tests {
     use std::{
         process::Command,

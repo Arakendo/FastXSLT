@@ -127,3 +127,12 @@ Before attributing the native decline or choosing a host target, run a longer
 time-based A/B with both target frameworks, identical optional dependencies,
 fixed power state, randomized lane order, and separate timing for managed lease,
 P/Invoke, registry outcome publication, result copying, and release.
+
+The subsequent
+[native-boundary breakdown](aspnet-native-boundary-breakdown-2026-09-03.md)
+held optional dependencies and the current Rust library constant. It did not
+reproduce a .NET 10 native regression: direct throughput was 1-3% higher and
+one-slot-pool throughput 5-6% higher than the matching .NET 8 run. It localized
+83-99.6% of instrumented time to the still-combined transform export. The raw
+results above remain evidence, but they no longer justify attributing their
+11-18% movement to the target framework or managed result-transfer path.

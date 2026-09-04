@@ -12,6 +12,10 @@ Run the reproducible smoke and sequential measurement:
 ./scripts/verify-aspnet-workbench.ps1
 ```
 
+The script defaults to `net10.0`. A diagnostic target comparison may pass
+`-TargetFramework net8.0`; this overrides the workbench target for that local
+run without changing the checked-in project default.
+
 The workbench currently loads the pinned XSLT30 `for-004` source and stylesheet
 once, retains one compiled stylesheet and prepared input in the worker, and
 offers:
@@ -24,6 +28,7 @@ offers:
 - `POST /transform/dotnet-xslt1`
 - `POST /measure/dotnet-xslt1?requests=1000`
 - `POST /benchmark/tiers?requests=250&concurrency=4`
+- `POST /benchmark/native-boundary-breakdown?requests=250`
 - `POST /experiment/worker-recovery`
 - `POST /experiment/cooperative-cancellation`
 - `POST /experiment/active-cancellation`
@@ -64,6 +69,13 @@ proves a sibling plus a later request still complete. A second experiment
 atomically promotes a new explicitly identified generation while an acquired old
 generation remains executable until its lease drains. These are workbench
 lifecycle observations, not a production restart policy or public API.
+
+The native-boundary breakdown is a diagnostic benchmark over the existing ABI.
+It compares a direct client with the same client behind a one-slot managed pool,
+then times request encoding, the combined transform/export call, outcome
+metadata calls, result copying/decoding, and release. Per-phase probes include
+their own `Stopwatch` overhead and cannot split Rust execution from registry
+publication; they are localization evidence, not additive production latency.
 
 The pre-dispatch cooperative-cancellation probe carries a cancellation state
 that was already signalled by the host into a normal engine invocation. The

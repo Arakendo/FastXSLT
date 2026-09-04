@@ -4,11 +4,11 @@
 | --- | --- |
 | Status | Under Review |
 | Opened | 2026-08-25 |
-| Last reviewed | 2026-08-26 |
+| Last reviewed | 2026-09-03 |
 | Scope | Non-Rust embedding, deployment, and performance boundary |
 | Trigger | ASP.NET applications are a motivating FastXSLT consumer class |
 | Related ADRs | ADR-0001, ADR-0008, ADR-0009, ADR-0010 |
-| Related evidence | `docs/Evidence/aspnet-host-mode-guarantee-cost-matrix-2026-08-26.md` and its linked native/isolated measurements; AR-0003 and AR-0010 |
+| Related evidence | `docs/Evidence/aspnet-host-mode-guarantee-cost-matrix-2026-08-26.md`, `docs/Evidence/aspnet-native-boundary-breakdown-2026-09-03.md`, and their linked native/isolated measurements; AR-0003 and AR-0010 |
 
 ## Architectural question
 
@@ -117,6 +117,15 @@ security contracts.
   A/B before selecting a supported target or attributing the change to one
   mechanism. The optional SaxonCS lane failed closed on current NuGet
   vulnerability advisories and was not measured under `net10.0`.
+- A follow-up multi-target diagnostic used identical optional dependencies and
+  the same current Rust library. It did not reproduce a .NET 10 native decline:
+  direct throughput was 1-3% higher and one-slot-pool throughput 5-6% higher
+  than .NET 8. Per-phase probes place 83-99.6% of instrumented native time in
+  the combined transform export. Managed lease and result transfer are not
+  demonstrated bottlenecks; Rust execution versus request/registry publication
+  was then split by an ignored safe release probe. Transform/serialization owned
+  93-99.8% of its listed sequential components; registry contention remains a
+  separate concurrency question rather than a demonstrated sequential hot spot.
 - A private two-worker fault probe acknowledged a deliberately non-cooperating
   request, terminated only its process, returned an explicit
   `worker-terminated` disposition without retry, initialized a replacement from
@@ -277,6 +286,11 @@ invalidates the selected mechanism.
   prepared source semantics and completed the current representative native
   diagnostic matrix through unsupported-stylesheet parity. No ABI or unsafe
   surface changed.
+- 2026-09-03 -- Retargeted the private workbench to .NET 10, then followed its
+  initially opposite native/isolated drift with an identical-dependency .NET 8
+  versus .NET 10 boundary breakdown. The controlled run did not reproduce a
+  .NET 10 native loss and localized nearly all larger-tier time to the combined
+  Rust transform/outcome export without changing the ABI.
 - 2026-08-26 -- Accepted ADR-0010 and exercised active native cooperative
   cancellation through Rust-owned control handles. Deterministic and natural
   managed-token probes preserved diagnostics and reuse without claiming a

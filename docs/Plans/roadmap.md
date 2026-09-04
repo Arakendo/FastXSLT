@@ -3076,10 +3076,16 @@ failed, and harness-error cases without an unqualified conformance claim.
     remains within about 6%, while tiny-call throughput is lower and requires a
     longer-duration, toolchain-pinned profile before attribution.
   - [x] Retarget the private workbench to `net10.0` and repeat five fresh host
-    processes. Isolated throughput improved 2-15% against the same-day `net8.0`
-    run while native throughput declined 11-18%; retain target selection and
-    attribution pending a longer controlled A/B. The local SaxonCS lane failed
-    closed on current moderate/high NuGet vulnerability advisories.
+    processes. The first run showed opposite isolated/native movement and the
+    local SaxonCS lane failed closed on current moderate/high NuGet vulnerability
+    advisories. A subsequent identical-dependency multi-target boundary probe
+    did not reproduce the native decline: .NET 10 direct throughput was 1-3%
+    higher and one-slot-pool throughput 5-6% higher than .NET 8. It localized
+    83-99.6% of instrumented time to the combined Rust transform/outcome export;
+    a safe internal split then attributed 93-99.8% of listed sequential export
+    components to semantic transform/serialization rather than request identity
+    handling or registry publication. Target selection and evaluator-phase
+    attribution remain open.
   - [x] Carry pre-dispatch cooperative cancellation and a deterministic
     XSLT-instruction budget through ADR-0009 scalar native controls, preserving
     exact diagnostics and ordinary reuse of the same engine handle without

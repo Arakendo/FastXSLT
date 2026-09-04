@@ -196,6 +196,20 @@ app.MapPost("/benchmark/tiers", async (int? requests, int? concurrency) =>
         tieredBenchmarkGate.Release();
     }
 });
+app.MapPost("/benchmark/native-boundary-breakdown", async (int? requests) =>
+{
+    await tieredBenchmarkGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await NativeBoundaryBreakdown.RunAsync(
+            stylesheet,
+            Math.Clamp(requests ?? 250, 1, 10_000)));
+    }
+    finally
+    {
+        tieredBenchmarkGate.Release();
+    }
+});
 app.MapPost("/experiment/worker-recovery", async () =>
 {
     await operationalExperimentGate.WaitAsync();

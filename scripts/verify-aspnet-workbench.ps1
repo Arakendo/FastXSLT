@@ -1,11 +1,14 @@
 [CmdletBinding()]
 param(
     [int]$Port = 5087,
+    [ValidateSet('net8.0', 'net10.0')]
+    [string]$TargetFramework = 'net10.0',
     [int]$MeasurementRequests = 1000,
     [int]$MeasurementRuns = 3,
     [switch]$LocalSaxonCs,
     [switch]$TieredBenchmark,
     [switch]$TieredSummaryOnly,
+    [switch]$NativeBoundaryBreakdown,
     [switch]$OperationalExperiments,
     [switch]$NativeRegistryPressure,
     [switch]$RegistrySummaryOnly,
@@ -35,7 +38,7 @@ if ($MeasurementRuns -lt 1) {
 }
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $repositoryRoot 'workbenches/FastXSLT.AspNet.Workbench/FastXSLT.AspNet.Workbench.csproj'
-$targetFramework = 'net10.0'
+$targetFramework = $TargetFramework
 $workbenchDirectory = Join-Path $repositoryRoot '.workbench'
 $stdoutLog = Join-Path $workbenchDirectory 'aspnet-stdout.log'
 $stderrLog = Join-Path $workbenchDirectory 'aspnet-stderr.log'
@@ -49,7 +52,9 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "Rust worker build failed with exit code $LASTEXITCODE"
     }
-    $dotnetBuildArguments = @('build', $project, '--configuration', 'Release')
+    $dotnetBuildArguments = @(
+        'build', $project, '--configuration', 'Release',
+        "-p:FastXsltDiagnosticTargetFramework=$targetFramework")
     if ($LocalSaxonCs) {
         $dotnetBuildArguments += '-p:EnableLocalSaxonCs=true'
     }
@@ -601,6 +606,21 @@ try {
             }
             else {
                 $tiered | ConvertTo-Json -Depth 6
+            }
+        }
+        if ($NativeBoundaryBreakdown) {
+            for ($boundaryRun = 1; $boundaryRun -le $MeasurementRuns; $boundaryRun++) {
+                $boundary = Invoke-RestMethod -Method Post -Uri "$baseAddress/benchmark/native-boundary-breakdown?requests=$TieredRequests"
+                $boundary.measurements | Select-Object `
+                    @{Name='Run'; Expression={$boundaryRun}}, tier, requests, `
+                    @{Name='DirectPerSecond'; Expression={$_.direct.transformsPerSecond}}, `
+                    @{Name='PoolPerSecond'; Expression={$_.oneSlotPool.transformsPerSecond}}, `
+                    observedPoolOverheadMicroseconds, `
+                    @{Name='TransformExportMicroseconds'; Expression={$_.instrumentedDirectMeans.transformExportMicroseconds}}, `
+                    @{Name='CopyMicroseconds'; Expression={$_.instrumentedDirectMeans.outcomeCopyMicroseconds}}, `
+                    @{Name='DecodeMicroseconds'; Expression={$_.instrumentedDirectMeans.resultDecodingMicroseconds}}, `
+                    @{Name='ReleaseMicroseconds'; Expression={$_.instrumentedDirectMeans.outcomeReleaseMicroseconds}}, `
+                    @{Name='InstrumentedTotalMicroseconds'; Expression={$_.instrumentedDirectMeans.instrumentedTotalMicroseconds}}
             }
         }
     }
