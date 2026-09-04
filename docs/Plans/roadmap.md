@@ -101,6 +101,7 @@ second engine.
 [Descendant match-pattern evidence](../Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md)
 [Include-order and comment-text evidence](../Evidence/oasis-xslt10-include-order-and-comment-text-repairs-2026-09-04.md)
 [Static atomic copy-of evidence](../Evidence/oasis-xslt10-static-atomic-copy-of-tranche-2026-09-04.md)
+[Mismatch metadata evidence](../Evidence/oasis-xslt10-mismatch-metadata-refinement-2026-09-04.md)
 [Review](../Architectural%20Reviews/AR-0019-xslt10-compatibility-profile-on-modern-core.md)
 
 The remaining 42 selected `AxisStep` cases now also reach production: two
@@ -3210,6 +3211,8 @@ host lifecycle.
 - [ ] Give each standard and expected-error case one reproducible final
   disposition under a versioned local overlay/report, applying duplicate-safe
   identity and doubts/discretionary metadata.
+  - [x] Separate the two executing mismatches with substantive doubts metadata
+    from the other 27 raw mismatches without changing any disposition.
 - [ ] Define the supported-profile denominator independently from unavailable,
   disputed, processor-specific, extension, or harness-infrastructure cases.
 

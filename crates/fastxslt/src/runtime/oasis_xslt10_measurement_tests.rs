@@ -42,6 +42,7 @@ struct Measurement {
     comparison_examples: BTreeMap<String, String>,
     infrastructure_cases: Vec<String>,
     mismatch_cases: Vec<String>,
+    doubt_annotated_mismatch_cases: Vec<String>,
 }
 
 impl Measurement {
@@ -235,11 +236,20 @@ fn measures_local_oasis_xslt10_compatibility() {
             Ok(false) => {
                 trace_case_comparison(&case.identity, &actual, &expected);
                 measurement.increment("xml-comparison-mismatch");
+                if doubtful.contains(&case.id) {
+                    measurement.increment("xml-comparison-mismatch-with-doubt-metadata");
+                    measurement
+                        .doubt_annotated_mismatch_cases
+                        .push(case.identity.clone());
+                }
                 measurement.mismatch_cases.push(case.identity.clone());
             }
             Err(frontier) => {
                 trace_case_comparison(&case.identity, &actual, &expected);
                 measurement.increment("xml-comparator-unsupported");
+                if doubtful.contains(&case.id) {
+                    measurement.increment("xml-comparator-unsupported-with-doubt-metadata");
+                }
                 *measurement
                     .comparison_frontiers
                     .entry(frontier.clone())
@@ -273,6 +283,9 @@ fn measures_local_oasis_xslt10_compatibility() {
     }
     for identity in &measurement.mismatch_cases {
         println!("mismatch-case\t{identity}");
+    }
+    for identity in &measurement.doubt_annotated_mismatch_cases {
+        println!("doubt-annotated-mismatch-case\t{identity}");
     }
     for (category, total) in &measurement.category_totals {
         let executed = measurement

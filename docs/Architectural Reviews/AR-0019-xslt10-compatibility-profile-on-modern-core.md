@@ -189,6 +189,8 @@ public version-mode contract.
 - [ ] Resolve or explicitly classify the 29 known executing comparison
   mismatches.
 - [ ] Define expected-error and discretionary/doubts comparison rules.
+  - [x] Report doubt-annotated mismatches separately: two of the current 29
+    mismatches carry substantive doubts metadata; neither is reclassified yet.
 - [ ] Prototype at least one genuine version-dependent behavior through
   compile-time static context without a second runtime.
 - [ ] Measure pass growth, regression risk, retained state, and hot-path cost as
@@ -232,3 +234,6 @@ maintained redistributable legacy suite becomes available.
   raising the lower bound to 464.
 - 2026-09-04 -- Static string, integer, and boolean `xsl:copy-of` values raised
   the lower bound from 464 to 468 without exposing another mismatch.
+- 2026-09-04 -- The exploratory report now identifies the two current
+  mismatches with substantive doubts metadata separately from the other 27,
+  without changing the conserved denominator or case dispositions.
