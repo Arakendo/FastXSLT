@@ -112,3 +112,13 @@ Current evidence therefore favors a modern XDM-oriented internal model with a
 named staged compatibility slice over a 1.0-only internal model. This does not
 select an advertised standards profile: representative consumer transforms and
 an accepted ADR are still required.
+
+## 2026-09-04 measurement update
+
+The archive has now been acquired again into ignored storage, verified against
+the recorded hash, and exercised by a first-party local-only runner. The
+[initial compatibility measurement](oasis-xslt10-initial-compatibility-measurement-2026-09-04.md)
+records 366 definite unchanged XML passes across the complete 3,173-case
+catalog, keeps expected-error and harness outcomes separate, and opens
+[AR-0019](../Architectural%20Reviews/AR-0019-xslt10-compatibility-profile-on-modern-core.md)
+to study a named compatibility profile on the shared modern engine.

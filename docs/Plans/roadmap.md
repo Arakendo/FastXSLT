@@ -64,6 +64,20 @@ character references rather than allowing XML normalization to change a test.
 [Axis count production-path evidence](../Evidence/qt3-axis-count-production-path-2026-09-03.md)
 [Axis diagnostic-tail production-path evidence](../Evidence/qt3-axis-diagnostic-tail-production-path-2026-09-03.md)
 
+A hash-verified local runner now measures the complete archival 3,173-case
+OASIS XSLT/XPath 1.0 catalog without redistributing its bytes. The first refined
+sweep proves 366 unchanged standard-case XML comparisons, identifies 20
+executing semantic mismatches and 14 comparator gaps, retains 35
+supplemental-data cases as explicitly not admitted, and gives every other case
+a structured initialization, execution, or infrastructure observation. This is
+a strict 13.35% lower bound over the suite's 2,742 standard-operation cases,
+not an XSLT 1.0 conformance claim. The sweep also found and drove a shared
+source-node-variable path repair, so AR-0019 now studies whether legacy
+compatibility can progress on the modern compiler/runtime rather than through a
+second engine.
+[Evidence](../Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md)
+[Review](../Architectural%20Reviews/AR-0019-xslt10-compatibility-profile-on-modern-core.md)
+
 The remaining 42 selected `AxisStep` cases now also reach production: two
 empty-origin paths serialize `true`, 35 static failures preserve `XPST0003`,
 `XPTY0019`, or `XPTY0020`, and five contextless named-template executions report
@@ -1597,6 +1611,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; 366 standard cases have definite unchanged XML passes. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -1858,11 +1873,17 @@ count:
    Hours-from-duration and minutes-from-duration add 63 more unchanged passes
    through normalized signed component extraction; exact fractional seconds
    remain deliberately outside this integer-only slice.
-4. [ ] Add complete denominators deliberately, selected by standards and
+4. [ ] Use the complete local OASIS XSLT 1.0 sweep as a compatibility frontier
+   under AR-0019. Classify the dominant XPath/instruction groups, resolve or
+   explicitly disposition the 20 semantic mismatches, reduce the 14 comparator
+   gaps, and define expected-error credit before deciding whether to select a
+   named compatibility profile. Shared features must land in the modern engine;
+   genuinely version-dependent behavior must remain explicit.
+5. [ ] Add complete denominators deliberately, selected by standards and
    implementation pressure rather than easy-case sampling. The remaining
    11,101 XSLT30 and 30,380 QT3 catalog-only cases must stay outside pass/fail
    totals until individually classified.
-5. [ ] Replace string-scanned experimental overlays with a validated internal
+6. [ ] Replace string-scanned experimental overlays with a validated internal
    loader and derive one immutable run report carrying suite/engine/harness
    revisions, profile, target/toolchain/features, selection reasons, outcomes,
    and conservation totals. The four active QT3 adapters now use a typed private
@@ -1882,23 +1903,23 @@ count:
    strip-space, and built-in-template denominators no longer depend on duplicate
    records in the broad private overlay. The unified immutable report remains.
    Do not stabilize this test-only loader as a public API prematurely.
-6. [ ] Define fast pull-request, focused semantic, and reproducible full-corpus
+7. [ ] Define fast pull-request, focused semantic, and reproducible full-corpus
    CI tiers. A shard, retry, feature flag, or unavailable corpus must never
    silently shrink the denominator.
-7. [ ] Resolve W3C XML suite rights and choose local-only hash-verified
+8. [ ] Resolve W3C XML suite rights and choose local-only hash-verified
    acquisition or reviewed redistribution; then implement edition/namespace/
    entity classification and execute one nonvalidating XML/Namespaces subset.
-8. [ ] Create a first-party adversarial corpus with exact bytes or generators,
+9. [ ] Create a first-party adversarial corpus with exact bytes or generators,
    named expected work/structural limits, cancellation points, and no
    conformance or production-budget implication.
-9. [ ] Create correctness-gated performance manifests for cold compilation,
+10. [ ] Create correctness-gated performance manifests for cold compilation,
    prepared reuse, serialization, concurrency, allocation/retention, and host
    transfer. Existing workbench numbers remain evidence, not benchmark corpus
    defaults.
-10. [ ] Reconcile stale corpus summaries in `corpus/README.md`,
+11. [ ] Reconcile stale corpus summaries in `corpus/README.md`,
     `docs/testing-strategy.md`, and AR-0011 with the executable ledgers before
     using those pages for release reporting.
-11. [ ] Review W3C license/trademark terms, subset rules, report language, and
+12. [ ] Review W3C license/trademark terms, subset rules, report language, and
     exact distribution contents before publishing a conformance or
     standards-performance claim.
 

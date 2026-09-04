@@ -109,3 +109,6 @@ and add the record to this index. Never reuse a retired number.
   -- Incubating; determine the bounded attempt observations a host needs to
   persist, reconcile, retry, or quarantine ambiguous worker loss without moving
   durable workflow policy into FastXSLT.
+- [AR-0019: XSLT 1.0 Compatibility Profile on the Modern Core](AR-0019-xslt10-compatibility-profile-on-modern-core.md)
+  -- Incubating; measure whether a named legacy profile can reuse the modern
+  compiler/runtime while isolating only genuinely version-dependent behavior.

@@ -117,6 +117,58 @@ fn golden_transform_executes_through_an_unordered_identified_set() {
 }
 
 #[test]
+fn source_node_global_paths_execute_in_for_each_without_temporary_tree_dispatch() {
+    let source = parse_document(
+        "memory:source-node-global.xml",
+        b"<root><group><item>A</item><item>B</item></group></root>",
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:source-node-global.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:param name="all" select="//group"/>
+          <xsl:template match="/">
+            <out><xsl:for-each select="$all/item"><xsl:value-of select="."/></xsl:for-each></out>
+          </xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 64,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("source-node global path should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "source-node-global-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("source-node global path should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "source-node-global-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(
+        serialized,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>AB</out>"
+    );
+}
+
+#[test]
 fn one_prepared_source_supports_preserving_and_stripping_stylesheets_without_mutation() {
     let parsed_source = parse_document(
         "memory:shared-source.xml",

@@ -1013,7 +1013,14 @@ fn execute_for_each_nodes<'a>(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let (_, context) = required_source_context(inputs, execution.node)?;
-    let selected = select_apply_nodes(inputs, Some(select), context, &variables.atomics, control)?;
+    let selected = if let ApplySelection::TemporaryPath { variable, steps } = select
+        && let Some(selected) =
+            select_source_variable_path(inputs, variables, variable, steps, control)
+    {
+        selected?
+    } else {
+        select_apply_nodes(inputs, Some(select), context, &variables.atomics, control)?
+    };
     let focus_size = selected.len();
     let mut result = Vec::new();
     for (index, node) in selected.into_iter().enumerate() {
@@ -1342,10 +1349,43 @@ fn execute_apply_templates(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    if let Some(result) = execute_special_apply_selection(
+        inputs, select, mode, execution, parameters, variables, control,
+    )? {
+        return Ok(result);
+    }
+    let (_, context) = required_source_context(inputs, execution.node)?;
+    let selected = select_apply_nodes(inputs, select, context, &variables.atomics, control)?;
+    let mut result = Vec::new();
+    let focus_size = selected.len();
+    for (offset, node) in selected.into_iter().enumerate() {
+        result.extend(apply_template_at(
+            inputs,
+            node,
+            mode,
+            parameters,
+            offset + 1,
+            focus_size,
+            control,
+        )?);
+    }
+    Ok(result)
+}
+
+fn execute_special_apply_selection(
+    inputs: &SequenceInputs<'_>,
+    select: Option<&ApplySelection>,
+    mode: Option<&str>,
+    execution: SequenceContext<'_>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Option<Vec<ResultNode>>, ExecutionFailure> {
     if let Some(ApplySelection::AtomicIntegerRange { start, end }) = select {
         return atomic_template_executor::apply_integer_range(
             inputs, *start, *end, mode, parameters, control,
-        );
+        )
+        .map(Some);
     }
     if let Some(ApplySelection::TemporaryRoot(name)) = select {
         let tree = variables
@@ -1358,9 +1398,28 @@ fn execute_apply_templates(
                     format!("unbound temporary tree: ${name}"),
                 )
             })?;
-        return apply_temporary_roots(inputs, tree, mode, parameters, control);
+        return apply_temporary_roots(inputs, tree, mode, parameters, control).map(Some);
     }
     if let Some(ApplySelection::TemporaryPath { variable, steps }) = select {
+        if let Some(selected) =
+            select_source_variable_path(inputs, variables, variable, steps, control)
+        {
+            let selected = selected?;
+            let mut result = Vec::new();
+            let focus_size = selected.len();
+            for (offset, node) in selected.into_iter().enumerate() {
+                result.extend(apply_template_at(
+                    inputs,
+                    node,
+                    mode,
+                    parameters,
+                    offset + 1,
+                    focus_size,
+                    control,
+                )?);
+            }
+            return Ok(Some(result));
+        }
         let tree = variables
             .temporary_tree(inputs.globals, variable)
             .ok_or_else(|| {
@@ -1373,7 +1432,8 @@ fn execute_apply_templates(
             })?;
         return temporary_tree_executor::apply_temporary_path(
             inputs, tree, steps, mode, parameters, control,
-        );
+        )
+        .map(Some);
     }
     if let Some(ApplySelection::GlobalTemporaryChildren(name)) = select {
         let tree = inputs.globals.temporary_trees.get(name).ok_or_else(|| {
@@ -1400,31 +1460,45 @@ fn execute_apply_templates(
                 control,
             )?);
         }
-        return Ok(result);
+        return Ok(Some(result));
     }
     if select.is_none()
         && let Some(focus) = execution.temporary_focus
     {
         return temporary_tree_executor::apply_temporary_builtin(
             inputs, focus, mode, parameters, control,
-        );
+        )
+        .map(Some);
     }
-    let (_, context) = required_source_context(inputs, execution.node)?;
-    let selected = select_apply_nodes(inputs, select, context, &variables.atomics, control)?;
-    let mut result = Vec::new();
-    let focus_size = selected.len();
-    for (offset, node) in selected.into_iter().enumerate() {
-        result.extend(apply_template_at(
-            inputs,
-            node,
-            mode,
-            parameters,
-            offset + 1,
-            focus_size,
-            control,
-        )?);
+    Ok(None)
+}
+
+fn select_source_variable_path(
+    inputs: &SequenceInputs<'_>,
+    variables: &RuntimeVariables,
+    variable: &str,
+    steps: &[ExpandedName],
+    control: &mut InvocationControl,
+) -> Option<Result<Vec<NodeId>, ExecutionFailure>> {
+    let source = inputs.source?;
+    let mut selected = variables.source_nodes(inputs.globals, variable)?.clone();
+    for step in steps {
+        let mut next = Vec::new();
+        for node in selected {
+            for child in source.children(node).iter().copied() {
+                if let Err(charge_failure) = control.charge(WorkDomain::XPathNodeVisit, 1) {
+                    return Some(Err(control_failure(charge_failure, inputs.request_id)));
+                }
+                if source.kind(child) == NodeKind::Element && source.name(child) == Some(step) {
+                    next.push(child);
+                }
+            }
+        }
+        next.sort_unstable_by_key(|node| source.document_order(*node));
+        next.dedup();
+        selected = next;
     }
-    Ok(result)
+    Some(Ok(selected))
 }
 
 fn execute_next_match(

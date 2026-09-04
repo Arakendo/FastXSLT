@@ -6,3 +6,6 @@ pub(crate) mod golden_runtime_experiment;
 pub(crate) mod prepared_input_experiment;
 #[cfg(feature = "workbench")]
 pub(crate) mod workbench_experiment;
+
+#[cfg(all(test, feature = "workbench"))]
+mod oasis_xslt10_measurement_tests;
