@@ -371,6 +371,16 @@ mapping uses Rust's toolchain-supplied Unicode tables; Unicode-version-pinned
 cases outside that profile remain excluded. This does not admit
 context-dependent case conversion, general function parsing, or a stable
 Unicode data-source contract.
+The selected `string-length()` expressions compile to a private production form
+that distinguishes source-free compositions from one document-path argument.
+The shared typed evaluator counts Unicode scalar values, preserves lazy
+conditional behavior, and admits the selected string construction, integer
+addition/equality, boolean/not/conjunction, type test, and bounded integer-focus
+forms. The document form evaluates its compiled location path against the
+invocation source and reports `XPTY0004` when optional-string conversion receives
+multiple nodes. This does not admit general atomization, context-dependent
+zero-argument evaluation, schema-aware values, function items, or predicate
+focus.
 The `.//` abbreviation begins descendant navigation at the supplied context
 node, unlike leading `//`, which begins at the document node. Both reuse the
 same typed descendant steps, document-order normalization, deduplication, and

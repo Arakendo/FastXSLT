@@ -2,13 +2,12 @@
 
 use std::{collections::BTreeSet, fs, path::PathBuf};
 
-use super::string_length_experiment::{
-    StringLengthFailure, StringLengthValue, evaluate, evaluate_document_path,
+use super::qt3_production_path_test_support::{
+    compile_expression, execute_expression, execute_expression_with_source,
 };
-use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::qt3_overlay_test_support::{assert_private_case_passed, assert_selected_count};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
-use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
+use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const SOURCE_FREE_CASES: [&str; 32] = [
@@ -71,24 +70,17 @@ fn executes_qt3_source_free_string_length_tranche() {
             .map(|test| document.string_value(test).trim().to_owned())
             .expect("QT3 expression");
         let result = child_named(&document, case, "result").expect("QT3 result metadata");
-        let mut control = InvocationControl::unbounded();
-
-        match evaluate(&source, &mut control) {
-            Ok(actual) => assert_native_result(&document, result, &actual, case_name, &source),
-            Err(StringLengthFailure::InvalidArity) => {
-                assert_expected_error(&document, result, "XPST0017");
-            }
-            Err(StringLengthFailure::MissingContext) => {
-                assert_expected_error(&document, result, "XPDY0002");
-            }
-            Err(StringLengthFailure::InvalidArgumentType) => {
-                assert_expected_error(&document, result, "XPTY0004");
-            }
-            Err(failure) => {
-                panic!("selected QT3 expression failed: {case_name}: {source}: {failure:?}")
-            }
+        let compiled = compile_expression(case_name, &source);
+        if let Some(expected_code) = expected_error(&document, result) {
+            let failure = compiled.expect_err("invalid expression must fail compilation");
+            assert_eq!(failure.code, expected_code, "{case_name}: {source}");
+        } else {
+            let program = compiled.unwrap_or_else(|failure| {
+                panic!("production compilation failed: {case_name}: {source}: {failure:?}")
+            });
+            let actual = execute_expression(&program, case_name);
+            assert_native_result(&document, result, &actual, case_name, &source);
         }
-        assert!(control.consumed(WorkDomain::XPathOperation) > 0);
     }
 }
 
@@ -106,45 +98,28 @@ fn reports_qt3_document_sequence_string_length_type_error() {
         .expect("QT3 expression");
     let result = child_named(&test_set, case, "result").expect("QT3 result metadata");
     let document = load_context_document(&test_set, case, case_name);
-    let mut control = InvocationControl::unbounded();
-
     assert_private_case_passed(set_file, case_name);
-    let failure = evaluate_document_path(
-        &source,
-        &document,
-        &SourceLocation {
-            resource: format!("urn:w3c:qt3:{case_name}:expression"),
-            span: 0..source.len(),
-        },
-        &mut control,
-    )
-    .expect_err("multi-node argument must fail string-length conversion");
-    assert_eq!(failure, StringLengthFailure::InvalidArgumentType);
+    let program = compile_expression(case_name, &source)
+        .expect("document-aware string-length expression should compile");
+    let failure = execute_expression_with_source(&program, &document, case_name)
+        .expect_err("multi-node argument must fail string-length conversion");
+    assert!(failure.contains("XPTY0004"), "{failure}");
     assert_expected_error(&test_set, result, "XPTY0004");
-    assert!(control.consumed(WorkDomain::XPathNodeVisit) > 0);
 }
 
 fn assert_native_result(
     document: &Document,
     result: NodeId,
-    actual: &StringLengthValue,
+    actual: &str,
     case_name: &str,
     source: &str,
 ) {
     if !descendants_named(document, result, "assert-true").is_empty() {
-        assert_eq!(
-            actual,
-            &StringLengthValue::Boolean(true),
-            "{case_name}: {source}"
-        );
+        assert_eq!(actual, "true", "{case_name}: {source}");
         return;
     }
     if !descendants_named(document, result, "assert-false").is_empty() {
-        assert_eq!(
-            actual,
-            &StringLengthValue::Boolean(false),
-            "{case_name}: {source}"
-        );
+        assert_eq!(actual, "false", "{case_name}: {source}");
         return;
     }
     if let Some(assertion) = descendants_named(document, result, "assert-eq")
@@ -153,7 +128,7 @@ fn assert_native_result(
     {
         let expected = document.string_value(assertion);
         let expected = expected.trim().trim_matches(['"', '\'']);
-        assert_eq!(lexical_value(actual), expected, "{case_name}: {source}");
+        assert_eq!(actual, expected, "{case_name}: {source}");
         return;
     }
     if let Some(assertion) = descendants_named(document, result, "assert-type")
@@ -161,22 +136,10 @@ fn assert_native_result(
         .next()
     {
         assert_eq!(document.string_value(assertion).trim(), "xs:integer");
-        assert!(
-            matches!(actual, StringLengthValue::Integer(_)),
-            "{case_name}: {source}"
-        );
+        assert!(actual.parse::<usize>().is_ok(), "{case_name}: {source}");
         return;
     }
     panic!("selected case lacks an admitted assertion: {case_name}");
-}
-
-fn lexical_value(value: &StringLengthValue) -> String {
-    match value {
-        StringLengthValue::Empty => String::new(),
-        StringLengthValue::Boolean(value) => value.to_string(),
-        StringLengthValue::Integer(value) => value.to_string(),
-        StringLengthValue::String(value) => value.clone(),
-    }
 }
 
 fn assert_expected_error(document: &Document, result: NodeId, expected_code: &str) {
@@ -185,6 +148,19 @@ fn assert_expected_error(document: &Document, result: NodeId, expected_code: &st
         .next()
         .expect("selected error case must own a native error assertion");
     assert_eq!(attribute(document, error, "code"), Some(expected_code));
+}
+
+fn expected_error(document: &Document, result: NodeId) -> Option<&str> {
+    if ["assert-true", "assert-false", "assert-eq", "assert-type"]
+        .iter()
+        .any(|name| !descendants_named(document, result, name).is_empty())
+    {
+        return None;
+    }
+    descendants_named(document, result, "error")
+        .into_iter()
+        .next()
+        .and_then(|error| attribute(document, error, "code"))
 }
 
 fn load_test_set(set_file: &str) -> Document {

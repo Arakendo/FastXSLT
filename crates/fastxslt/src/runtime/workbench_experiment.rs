@@ -622,6 +622,25 @@ mod tests {
         );
     }
 
+    #[test]
+    fn production_string_length_expression_reaches_the_workbench_host_path() {
+        let engine = ExperimentalEngine::new(
+            "urn:fastxslt:string-length:source",
+            b"<source/>".to_vec(),
+            "urn:fastxslt:string-length:stylesheet",
+            r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="string-length('A😀') + string-length('bc')"/></xsl:template></xsl:stylesheet>"#.as_bytes().to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("production string-length expression should compile");
+
+        assert_eq!(
+            engine
+                .transform("string-length-workbench")
+                .expect("production string-length expression should execute"),
+            "4"
+        );
+    }
+
     fn retention_custom_engine(
         label: &str,
         source: Vec<u8>,

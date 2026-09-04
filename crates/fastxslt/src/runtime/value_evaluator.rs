@@ -35,6 +35,10 @@ use crate::xpath::iri_to_uri_expression::{
     IriToUriExpression, IriToUriValue, evaluate as evaluate_iri_to_uri,
 };
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
+use crate::xpath::string_length_experiment::{
+    StringLengthExpression, StringLengthFailure, StringLengthValue,
+    evaluate_compiled as evaluate_string_length,
+};
 use crate::xslt::golden_semantics_experiment::{
     ConditionalIntegerBranch, ConditionalIntegerCondition, ConditionalIntegerExpression,
     ConditionalPathBranch, ConditionalPathExpression, IntegerComparisonOperator, ValueExpression,
@@ -136,6 +140,9 @@ pub(super) fn execute_value_of(
         ValueExpression::IriToUri(expression) => {
             append_iri_to_uri(inputs, expression, result, control)?;
         }
+        ValueExpression::StringLength(expression) => {
+            append_string_length(inputs, expression, result, control)?;
+        }
         ValueExpression::ConditionalInteger(expression) => {
             let value = evaluate_conditional_integer(inputs, expression, context, control)?;
             append_text(result, &value.to_string(), inputs.request_id, control)?;
@@ -145,6 +152,44 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_string_length(
+    inputs: &SequenceInputs<'_>,
+    expression: &StringLengthExpression,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let value =
+        evaluate_string_length(expression, inputs.source, control).map_err(|string_failure| {
+            match string_failure {
+                StringLengthFailure::Control(control) => {
+                    control_failure(control, inputs.request_id)
+                }
+                StringLengthFailure::InvalidArgumentType => failure(
+                    "XPTY0004",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    "fn:string-length received more than one item",
+                ),
+                StringLengthFailure::InvalidArity
+                | StringLengthFailure::MissingContext
+                | StringLengthFailure::Path(_)
+                | StringLengthFailure::Unsupported => failure(
+                    "FXRT1015",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    "compiled string-length expression failed runtime validation",
+                ),
+            }
+        })?;
+    let value = match value {
+        StringLengthValue::Empty => String::new(),
+        StringLengthValue::Boolean(value) => value.to_string(),
+        StringLengthValue::Integer(value) => value.to_string(),
+        StringLengthValue::String(value) => value,
+    };
+    append_text(result, &value, inputs.request_id, control)
 }
 
 fn append_case_conversion(

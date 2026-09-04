@@ -10,8 +10,14 @@ Date: 2026-09-03
 
 ## Method
 
-A private source-free evaluator retains empty sequence, string, integer, and
-boolean values as distinct types. This avoids the incorrect shortcut of
+All 33 selected unchanged expressions now compile through generated XSLT and
+execute through the ordinary runtime and serializer. The compiled form keeps
+source-free evaluation distinct from its one document-path expression; the
+latter uses the real QT3 context document and reports its runtime cardinality
+error. A workbench sentinel reaches the same production expression path.
+
+The shared evaluator retains empty sequence, string, integer, and boolean values
+as distinct types. This avoids the incorrect shortcut of
 reducing a string to its effective boolean value before measuring it.
 `fn:string-length` counts Rust `char` values, which correspond to Unicode scalar
 values for the admitted literals rather than UTF-8 bytes or UTF-16 code units.
@@ -57,4 +63,4 @@ This evidence does not claim the zero-argument context form generally,
 general document atomization, schema-aware typed values, function-item
 conversion, or general predicate focus. The document and integer-range forms
 are deliberately bounded to the exercised semantics. The evaluator is a
-private semantic slice, not a public XPath API or a second execution backend.
+production semantic slice, not a public XPath API or a second execution backend.

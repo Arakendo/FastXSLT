@@ -14,6 +14,7 @@ use crate::xpath::format_number_experiment::FormatNumberExpression;
 use crate::xpath::integer_for_experiment::IntegerForExpression;
 use crate::xpath::iri_to_uri_expression::IriToUriExpression;
 use crate::xpath::path_experiment::LocationPath;
+use crate::xpath::string_length_experiment::StringLengthExpression;
 
 pub(crate) const STANDARD_INITIAL_TEMPLATE_NAME: &str =
     "Q{http://www.w3.org/1999/XSL/Transform}initial-template";
@@ -476,6 +477,7 @@ pub(crate) enum ValueExpression {
     EncodeForUri(Box<EncodeForUriExpression>),
     EscapeHtmlUri(Box<EscapeHtmlUriExpression>),
     IriToUri(Box<IriToUriExpression>),
+    StringLength(Box<StringLengthExpression>),
     ConditionalInteger(Box<ConditionalIntegerExpression>),
     ConditionalPath(Box<ConditionalPathExpression>),
 }

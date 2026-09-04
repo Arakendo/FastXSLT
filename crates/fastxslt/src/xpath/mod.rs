@@ -81,5 +81,5 @@ mod qt3_string_length_tests;
 #[cfg(test)]
 mod qt3_upper_case_tests;
 pub(crate) mod static_string_experiment;
-#[cfg(test)]
+#[cfg(any(test, feature = "workbench"))]
 pub(crate) mod string_length_experiment;

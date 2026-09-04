@@ -6,6 +6,33 @@ use crate::xdm::owned_tree_experiment::{Document, SourceLocation};
 use super::path_experiment::{PathFailure, evaluate_location_path_controlled, parse_location_path};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct StringLengthExpression {
+    source: String,
+    location: SourceLocation,
+    kind: StringLengthExpressionKind,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum StringLengthExpressionKind {
+    SourceFree,
+    DocumentPath,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) enum StringLengthParseFailure {
+    InvalidArity,
+    InvalidArgumentType,
+    MissingContext,
+    Unsupported,
+}
+
+impl StringLengthExpression {
+    pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
+        self.source.capacity() + self.location.resource.capacity()
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum StringLengthValue {
     Empty,
     Boolean(bool),
@@ -21,6 +48,63 @@ pub(crate) enum StringLengthFailure {
     MissingContext,
     Path(PathFailure),
     Unsupported,
+}
+
+pub(crate) fn recognizes(expression: &str) -> bool {
+    expression.contains("string-length")
+}
+
+pub(crate) fn parse(
+    expression: &str,
+    location: SourceLocation,
+) -> Result<StringLengthExpression, StringLengthParseFailure> {
+    if !recognizes(expression) {
+        return Err(StringLengthParseFailure::Unsupported);
+    }
+    let kind = match evaluate(expression, &mut InvocationControl::unbounded()) {
+        Ok(_) => StringLengthExpressionKind::SourceFree,
+        Err(StringLengthFailure::InvalidArity) => {
+            return Err(StringLengthParseFailure::InvalidArity);
+        }
+        Err(StringLengthFailure::InvalidArgumentType) => {
+            return Err(StringLengthParseFailure::InvalidArgumentType);
+        }
+        Err(StringLengthFailure::MissingContext) => {
+            return Err(StringLengthParseFailure::MissingContext);
+        }
+        Err(StringLengthFailure::Unsupported) => {
+            let argument =
+                function_argument(expression.trim(), &["string-length", "fn:string-length"])
+                    .ok_or(StringLengthParseFailure::Unsupported)?;
+            parse_location_path(argument.trim(), location.clone())
+                .map_err(|_| StringLengthParseFailure::Unsupported)?;
+            StringLengthExpressionKind::DocumentPath
+        }
+        Err(StringLengthFailure::Control(_) | StringLengthFailure::Path(_)) => {
+            return Err(StringLengthParseFailure::Unsupported);
+        }
+    };
+    Ok(StringLengthExpression {
+        source: expression.to_owned(),
+        location,
+        kind,
+    })
+}
+
+pub(crate) fn evaluate_compiled(
+    expression: &StringLengthExpression,
+    document: Option<&Document>,
+    control: &mut InvocationControl,
+) -> Result<StringLengthValue, StringLengthFailure> {
+    match expression.kind {
+        StringLengthExpressionKind::SourceFree => evaluate(&expression.source, control),
+        StringLengthExpressionKind::DocumentPath => evaluate_document_path(
+            &expression.source,
+            document.ok_or(StringLengthFailure::MissingContext)?,
+            &expression.location,
+            control,
+        ),
+    }
 }
 
 pub(crate) fn evaluate(

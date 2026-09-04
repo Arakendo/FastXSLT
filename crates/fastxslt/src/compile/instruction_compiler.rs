@@ -37,6 +37,9 @@ use crate::xpath::iri_to_uri_expression::{
 use crate::xpath::path_experiment::{
     PathFailure, PathStep, parse_location_path, parse_qualified_child_path,
 };
+use crate::xpath::string_length_experiment::{
+    StringLengthParseFailure, parse as parse_string_length, recognizes as recognizes_string_length,
+};
 use crate::xslt::golden_semantics_experiment::{
     BooleanExpression, ChooseBranch, ComputedAttribute, EqualityTest, Instruction,
     LiteralAttributeValue, SequenceItemExpression, StringComparison, TemplateArgument,
@@ -667,7 +670,9 @@ fn compile_value_expression(
     {
         return Ok(conditional);
     }
-    Ok(if recognizes_case_conversion(expression) {
+    Ok(if recognizes_string_length(expression) {
+        compile_string_length_value(expression, location)?
+    } else if recognizes_case_conversion(expression) {
         compile_case_conversion_value(expression, location)?
     } else if recognizes_iri_to_uri(expression) {
         compile_iri_to_uri_value(expression, location)?
@@ -748,6 +753,43 @@ fn compile_value_expression(
             parse_location_path(expression, location.clone()).map_err(map_path_failure)?,
         )
     })
+}
+
+fn compile_string_length_value(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<ValueExpression, CompileFailure> {
+    let expression = parse_string_length(expression, location.clone()).map_err(|failure| {
+        let (code, category, detail) = match failure {
+            StringLengthParseFailure::InvalidArity => (
+                "XPST0017",
+                CompileCategory::Invalid,
+                "fn:string-length has invalid arity",
+            ),
+            StringLengthParseFailure::InvalidArgumentType => (
+                "XPTY0004",
+                CompileCategory::Invalid,
+                "fn:string-length has an invalid argument type",
+            ),
+            StringLengthParseFailure::MissingContext => (
+                "XPDY0002",
+                CompileCategory::Invalid,
+                "fn:string-length requires an absent context item",
+            ),
+            StringLengthParseFailure::Unsupported => (
+                "FXXP1016",
+                CompileCategory::Unsupported,
+                "string-length expression shape is outside the admitted production slice",
+            ),
+        };
+        CompileFailure {
+            code,
+            category,
+            detail: detail.to_owned(),
+            location: location.clone(),
+        }
+    })?;
+    Ok(ValueExpression::StringLength(Box::new(expression)))
 }
 
 fn compile_case_conversion_value(

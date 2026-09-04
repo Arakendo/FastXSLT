@@ -44,6 +44,14 @@ pub(crate) fn execute_expression(program: &StylesheetProgram, case_name: &str) -
     )
     .expect("production-path source should parse");
     let source = Document::from_parsed(parsed).expect("production-path source XDM should build");
-    execute_compiled_stylesheet_for_test(program, &source, &format!("qt3:{case_name}"))
+    execute_expression_with_source(program, &source, case_name)
         .unwrap_or_else(|failure| panic!("production execution failed: {case_name}: {failure}"))
+}
+
+pub(crate) fn execute_expression_with_source(
+    program: &StylesheetProgram,
+    source: &Document,
+    case_name: &str,
+) -> Result<String, String> {
+    execute_compiled_stylesheet_for_test(program, source, &format!("qt3:{case_name}"))
 }

@@ -508,6 +508,9 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::IriToUri(expression) => {
             size_of_val(expression.as_ref()) + expression.known_owned_capacity_bytes()
         }
+        ValueExpression::StringLength(expression) => {
+            size_of_val(expression.as_ref()) + expression.known_owned_capacity_bytes()
+        }
         ValueExpression::ConditionalInteger(expression) => conditional_integer_owned(expression),
         ValueExpression::ConditionalPath(expression) => conditional_path_owned(expression),
     }

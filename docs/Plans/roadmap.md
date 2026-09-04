@@ -24,7 +24,8 @@ compact compiled vector.
 [Evidence](../Evidence/character-map-scaling-remediation-2026-09-03.md)
 
 The complete QT3 `default-collation`, `escape-html-uri`, `encode-for-uri`,
-`iri-to-uri`, `lower-case`, and `upper-case` families now put all 168 selected cases through production
+`iri-to-uri`, `lower-case`, `upper-case`, and `string-length` families now put
+all 201 selected cases through production
 semantics, XSLT execution, and serialization. All four expression families
 reach the same engine through ASP.NET workbench sentinels. The URI
 implementations share their encoding primitives with the earlier semantic code.
@@ -39,6 +40,7 @@ character references rather than allowing XML normalization to change a test.
 [IRI-to-URI evidence](../Evidence/qt3-iri-to-uri-denominator-2026-09-03.md)
 [Lower-case evidence](../Evidence/qt3-lower-case-denominator-2026-09-03.md)
 [Upper-case evidence](../Evidence/qt3-upper-case-denominator-2026-09-03.md)
+[String-length evidence](../Evidence/qt3-string-length-denominator-2026-09-03.md)
 
 Finding 5 remains partially open for the other selected test-only families.
 Continue applying this production-path pattern and prefer existing shared
