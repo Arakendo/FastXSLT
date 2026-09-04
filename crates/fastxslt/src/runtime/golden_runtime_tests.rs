@@ -1121,7 +1121,7 @@ fn context_string_length_counts_unicode_across_descendant_text_boundaries() {
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:apply-templates select="doc"/></xsl:template><xsl:template match="doc"><out><xsl:value-of select="string-length()"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:apply-templates select="doc"/></xsl:template><xsl:template match="doc"><out><xsl:value-of select="string-length()"/>|<xsl:value-of select="string-length ()"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit stylesheet");
     let snapshot = resources.seal();
@@ -1134,7 +1134,7 @@ fn context_string_length_counts_unicode_across_descendant_text_boundaries() {
     let results = execute_transform_set(builder.seal()).expect("execute context string length");
     assert_eq!(
         results.by_request["context-string-length"].serialized,
-        "<out>3</out>"
+        "<out>3|3</out>"
     );
 }
 

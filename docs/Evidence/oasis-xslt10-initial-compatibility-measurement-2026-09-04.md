@@ -70,6 +70,9 @@ raises it to 609.
 The following
 [expanded-name path tranche](oasis-xslt10-expanded-name-path-tranche-2026-09-04.md)
 raises it to 613.
+The following
+[function-name whitespace tranche](oasis-xslt10-function-name-whitespace-tranche-2026-09-04.md)
+raises it to 614.
 
 ## Outcome
 

@@ -984,7 +984,7 @@ fn compile_value_expression(
     {
         return Ok(normalized);
     }
-    if expression.trim() == "string-length()" {
+    if is_zero_argument_function(expression, "string-length") {
         return Ok(ValueExpression::ContextNodeStringLength(location.clone()));
     }
     if expression.trim() == "position()" {
@@ -1689,6 +1689,13 @@ fn has_balanced_parentheses(expression: &str) -> bool {
         }
     }
     depth == 0 && quote.is_none()
+}
+
+fn is_zero_argument_function(expression: &str, name: &str) -> bool {
+    expression
+        .trim()
+        .strip_prefix(name)
+        .is_some_and(|remainder| remainder.trim_start_matches([' ', '\t', '\r', '\n']) == "()")
 }
 
 fn generated_root_argument(expression: &str) -> Option<&str> {
