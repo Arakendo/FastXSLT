@@ -638,6 +638,14 @@ impl<'a> SequenceContext<'a> {
             ..Self::new(None, current_mode)
         }
     }
+
+    fn sequence_focus(self) -> Option<SequenceFocus> {
+        (self.node.is_some() || self.temporary_focus.is_some() || self.atomic_focus.is_some())
+            .then_some(SequenceFocus {
+                position: self.focus_position,
+                size: self.focus_size,
+            })
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -706,15 +714,7 @@ fn execute_instruction(
         Instruction::ValueOf {
             select, separator, ..
         } => {
-            execute_value_of(
-                inputs,
-                select,
-                separator,
-                execution.node,
-                scope,
-                result,
-                control,
-            )?;
+            execute_value_of(inputs, select, separator, execution, scope, result, control)?;
         }
         Instruction::SequenceNodes { select, .. } => {
             result.extend(execute_sequence_nodes(

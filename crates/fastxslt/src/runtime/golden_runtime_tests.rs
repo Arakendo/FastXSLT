@@ -961,6 +961,34 @@ fn context_normalize_space_streams_across_descendant_text_boundaries() {
 }
 
 #[test]
+fn value_of_position_and_last_use_the_current_sequence_focus() {
+    const SOURCE: &str = "urn:fastxslt:value-focus:source";
+    const STYLESHEET: &str = "urn:fastxslt:value-focus:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc><item/><item/><item/></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc/item"/></out></xsl:template><xsl:template match="item"><at><xsl:value-of select="position()"/>/<xsl:value-of select="last()"/></at></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile focus operations");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("value-focus", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute focus operations");
+    assert_eq!(
+        results.by_request["value-focus"].serialized,
+        "<out><at>1/3</at><at>2/3</at><at>3/3</at></out>"
+    );
+}
+
+#[test]
 fn unqualified_name_comparison_does_not_match_a_namespaced_parent() {
     const SOURCE: &str = "urn:fastxslt:parent-name:source";
     const STYLESHEET: &str = "urn:fastxslt:parent-name:stylesheet";
@@ -2421,6 +2449,43 @@ fn initial_template_entry_rejects_an_unknown_compiled_name_without_a_source() {
     assert_eq!(failure.code, "XTDE0040");
     assert_eq!(failure.category, FailureCategory::Invalid);
     assert_eq!(failure.request_id.as_deref(), Some("unknown-entry"));
+}
+
+#[test]
+fn initial_template_position_requires_a_dynamic_focus() {
+    const SOURCE: &str = "urn:fastxslt:focusless-initial-template:source";
+    const STYLESHEET: &str = "urn:fastxslt:focusless-initial-template:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<unused/>".to_vec())
+        .expect("admit unused source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template name="start"><xsl:value-of select="position()"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile focus operation");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(TransformRequest {
+            identity: "focusless".to_owned(),
+            result_identity: "result".to_owned(),
+            entry: InvocationEntry::InitialTemplate {
+                name: "start".to_owned(),
+            },
+            parameters: BTreeMap::new(),
+            cancellation: CancellationToken::new(),
+            cancellation_fault: None,
+        })
+        .expect("admit focusless initial template");
+
+    let failure = execute_transform_set(builder.seal())
+        .expect_err("position without a dynamic focus must fail");
+    assert_eq!(failure.code, "XPDY0002");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+    assert!(failure.location.is_some());
 }
 
 #[test]

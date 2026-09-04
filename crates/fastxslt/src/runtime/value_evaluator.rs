@@ -2,7 +2,7 @@
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::AtomicValue;
-use crate::xdm::owned_tree_experiment::{NodeId, StringValueVisitFailure};
+use crate::xdm::owned_tree_experiment::{NodeId, SourceLocation, StringValueVisitFailure};
 use crate::xpath::case_conversion_experiment::{
     CaseConversionExpression, CaseFailure, CaseValue, evaluate_compiled as evaluate_case_conversion,
 };
@@ -60,8 +60,9 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 use super::{
-    ExecutionFailure, FailureCategory, ResultNode, RuntimeVariables, SequenceInputs, append_text,
-    control_failure, failure, failure_at, required_source_context, runtime_context,
+    ExecutionFailure, FailureCategory, ResultNode, RuntimeVariables, SequenceContext,
+    SequenceFocus, SequenceInputs, append_text, control_failure, failure, failure_at,
+    required_source_context, runtime_context,
 };
 
 #[expect(
@@ -72,11 +73,13 @@ pub(super) fn execute_value_of(
     inputs: &SequenceInputs<'_>,
     select: &ValueExpression,
     separator: &str,
-    context: Option<NodeId>,
+    execution: SequenceContext<'_>,
     variables: &RuntimeVariables,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
+    let context = execution.node;
+    let focus = execution.sequence_focus();
     match select {
         ValueExpression::LiteralString(value) => {
             append_text(result, value, inputs.request_id, control)?;
@@ -121,6 +124,12 @@ pub(super) fn execute_value_of(
         }
         ValueExpression::ContextNodeNormalizedString => {
             append_context_node_normalized_string(inputs, context, result, control)?;
+        }
+        ValueExpression::ContextPosition(location) => {
+            append_context_focus_value(inputs, focus, true, location, result, control)?;
+        }
+        ValueExpression::ContextSize(location) => {
+            append_context_focus_value(inputs, focus, false, location, result, control)?;
         }
         ValueExpression::ContextRequiredOnly(location) => {
             if context.is_none() {
@@ -1071,6 +1080,34 @@ fn append_context_node_normalized_string(
             StringValueVisitFailure::Sink(failure) => failure,
         })?;
     append_text(result, &normalized, inputs.request_id, control)
+}
+
+fn append_context_focus_value(
+    inputs: &SequenceInputs<'_>,
+    focus: Option<SequenceFocus>,
+    use_position: bool,
+    location: &SourceLocation,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let focus = focus.ok_or_else(|| {
+        failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            "position() and last() require a dynamic focus",
+        )
+    })?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let value = if use_position {
+        focus.position
+    } else {
+        focus.size
+    };
+    append_text(result, &value.to_string(), inputs.request_id, control)
 }
 
 fn execute_deep_equal(

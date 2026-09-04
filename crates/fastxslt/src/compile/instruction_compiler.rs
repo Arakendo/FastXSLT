@@ -952,6 +952,12 @@ fn compile_value_expression(
     ) {
         return Ok(ValueExpression::ContextNodeNormalizedString);
     }
+    if expression.trim() == "position()" {
+        return Ok(ValueExpression::ContextPosition(location.clone()));
+    }
+    if expression.trim() == "last()" {
+        return Ok(ValueExpression::ContextSize(location.clone()));
+    }
     Ok(if recognizes_duration_component(expression) {
         compile_duration_component_value(expression, location)?
     } else if recognizes_string_length(expression) {

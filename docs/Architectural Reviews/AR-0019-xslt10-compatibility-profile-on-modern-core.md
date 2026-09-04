@@ -203,6 +203,9 @@ public version-mode contract.
 - [x] Evaluate context `normalize-space()` over the complete charged XDM string
   value, preserving collapse state across text boundaries and raising the
   strict lower bound to 522.
+- [x] Pass the existing invocation-local sequence focus into typed value
+  evaluation for `position()` and `last()`, raising the strict lower bound to
+  525 while preserving focusless `XPDY0002`.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -273,6 +276,9 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Context `normalize-space()` became a charged streaming
   string-value operation and raised the lower bound from 521 to 522 without a
   new mismatch or later failure.
+- 2026-09-04 -- Typed `position()` and `last()` value operations reused the
+  runtime's existing sequence focus and raised the lower bound from 522 to 525;
+  two additional initialized cases stop at visible later execution boundaries.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated
