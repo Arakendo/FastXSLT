@@ -26,7 +26,9 @@ raises it to 462. The subsequent
 [include-order and comment-text repairs](oasis-xslt10-include-order-and-comment-text-repairs-2026-09-04.md)
 raise it to 464. The following
 [static atomic copy-of tranche](oasis-xslt10-static-atomic-copy-of-tranche-2026-09-04.md)
-raises it to 468.
+raises it to 468. The following
+[variable copy-of tranche](oasis-xslt10-variable-copy-of-tranche-2026-09-04.md)
+raises it to 476.
 
 ## Outcome
 

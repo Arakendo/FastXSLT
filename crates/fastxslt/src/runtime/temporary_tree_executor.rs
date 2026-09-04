@@ -540,6 +540,81 @@ fn copy_temporary_focus(
     }
 }
 
+pub(super) fn copy_temporary_tree(
+    inputs: &SequenceInputs<'_>,
+    tree: &TemporaryTree,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let mut copied = Vec::new();
+    for root in tree.roots.iter().copied() {
+        copied.extend(copy_temporary_node(inputs, tree, root, control)?);
+    }
+    Ok(copied)
+}
+
+fn copy_temporary_node(
+    inputs: &SequenceInputs<'_>,
+    tree: &TemporaryTree,
+    node: usize,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    match &tree.nodes[node].kind {
+        TemporaryNodeKind::Text(value) => copy_temporary_text(value, inputs.request_id, control),
+        TemporaryNodeKind::Comment(value) => {
+            copy_temporary_comment(value, inputs.request_id, control)
+        }
+        TemporaryNodeKind::ProcessingInstruction { target, value } => {
+            copy_temporary_processing_instruction(target, value, inputs.request_id, control)
+        }
+        TemporaryNodeKind::Attribute { name, value } => {
+            control
+                .charge(WorkDomain::ResultNode, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            Ok(vec![ResultNode::PendingAttribute(
+                super::result_tree::ResultAttribute {
+                    name: name.clone(),
+                    value: value.clone(),
+                },
+            )])
+        }
+        TemporaryNodeKind::Element {
+            name,
+            namespaces,
+            attributes,
+        } => {
+            control
+                .charge(WorkDomain::ResultNode, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let result_attributes = attributes
+                .iter()
+                .map(|attribute| {
+                    let TemporaryNodeKind::Attribute { name, value } = &tree.nodes[*attribute].kind
+                    else {
+                        unreachable!("temporary element attribute index identifies an attribute")
+                    };
+                    control
+                        .charge(WorkDomain::ResultNode, 1)
+                        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                    Ok(super::result_tree::ResultAttribute {
+                        name: name.clone(),
+                        value: value.clone(),
+                    })
+                })
+                .collect::<Result<Vec<_>, ExecutionFailure>>()?;
+            let mut children = Vec::new();
+            for child in tree.nodes[node].children.iter().copied() {
+                children.extend(copy_temporary_node(inputs, tree, child, control)?);
+            }
+            Ok(vec![ResultNode::Element {
+                name: name.clone(),
+                namespaces: namespaces.clone(),
+                attributes: result_attributes,
+                children,
+            }])
+        }
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn shallow_copy_temporary_attributes(
     inputs: &SequenceInputs<'_>,

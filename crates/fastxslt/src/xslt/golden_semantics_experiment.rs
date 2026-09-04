@@ -443,6 +443,10 @@ pub(crate) enum Instruction {
         value: String,
         location: SourceLocation,
     },
+    CopyOfVariable {
+        variable: String,
+        location: SourceLocation,
+    },
     If {
         test: BooleanExpression,
         body: Vec<Instruction>,

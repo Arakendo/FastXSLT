@@ -475,6 +475,16 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
             location: document.location(element).clone(),
         });
     }
+    if let Some(variable) = select
+        .trim()
+        .strip_prefix('$')
+        .filter(|name| is_ascii_ncname(name))
+    {
+        return Ok(Instruction::CopyOfVariable {
+            variable: variable.to_owned(),
+            location: document.location(element).clone(),
+        });
+    }
     match select.trim() {
         "." => Ok(Instruction::CopyOfCurrent {
             location: document.location(element).clone(),

@@ -768,6 +768,7 @@ fn execute_instruction(
         | Instruction::CopyOfChildElements { .. }
         | Instruction::CopyOfAncestorOrSelfElements { .. }
         | Instruction::CopyOfLocationPath { .. }
+        | Instruction::CopyOfVariable { .. }
         | Instruction::Copy { .. } => result.extend(execute_result_instruction(
             inputs,
             instruction,
@@ -839,9 +840,68 @@ fn execute_result_instruction<'a>(
         Instruction::CopyOfLocationPath { select, .. } => {
             execute_copy_of_location_path(inputs, execution.node, select, control)
         }
+        Instruction::CopyOfVariable { variable, location } => {
+            execute_copy_of_variable(inputs, variable, location, scope, control)
+        }
         Instruction::Copy { .. } => execute_copy(inputs, instruction, execution, scope, control),
         _ => unreachable!("result dispatch receives only result-producing instructions"),
     }
+}
+
+fn execute_copy_of_variable(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+
+    let mut copied = Vec::new();
+    if let Some(value) = variables.atomics.get(variable) {
+        append_text(&mut copied, value.lexical(), inputs.request_id, control)?;
+        return Ok(copied);
+    }
+    if let Some(values) = variables.atomic_sequences.get(variable) {
+        for (index, value) in values.iter().enumerate() {
+            if index != 0 {
+                append_text(&mut copied, " ", inputs.request_id, control)?;
+            }
+            append_text(&mut copied, value.lexical(), inputs.request_id, control)?;
+        }
+        return Ok(copied);
+    }
+    if let Some(nodes) = variables.source_nodes(inputs.globals, variable) {
+        let source = inputs.source.ok_or_else(|| {
+            failure(
+                "XPDY0002",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("source-node variable ${variable} requires a source document"),
+            )
+        })?;
+        for node in nodes.iter().copied() {
+            copied.extend(copy_source_node(source, inputs.request_id, node, control)?);
+        }
+        return Ok(copied);
+    }
+    if let Some(tree) = variables.temporary_tree(inputs.globals, variable) {
+        return temporary_tree_executor::copy_temporary_tree(inputs, tree, control);
+    }
+    if variables.allows_global_fallback(variable)
+        && inputs.globals.empty_sequences.contains(variable)
+    {
+        return Ok(copied);
+    }
+    Err(failure_at(
+        "FXRT0002",
+        FailureCategory::Invalid,
+        Some(inputs.request_id),
+        location.clone(),
+        format!("unbound variable: ${variable}"),
+    ))
 }
 
 fn execute_copy_of_location_path(

@@ -2371,6 +2371,38 @@ fn copy_of_static_atomic_values_construct_bounded_text() {
 }
 
 #[test]
+fn copy_of_variables_preserves_atomic_source_node_and_temporary_tree_values() {
+    const SOURCE: &str = "urn:fastxslt:variable-copy:source";
+    const STYLESHEET: &str = "urn:fastxslt:variable-copy:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 16_384, 32_768));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item id=\"1\">source</item><item id=\"2\"/></doc>".to_vec(),
+        )
+        .expect("admit source document");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:kept" exclude-result-prefixes="p"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:variable name="atomic" select="'value'"/><xsl:template match="/"><xsl:variable name="nodes" select="/doc/item"/><xsl:variable name="tree"><p:held marker="yes"><inner>temporary</inner></p:held></xsl:variable><out><xsl:copy-of select="$atomic"/><xsl:copy-of select="$nodes"/><xsl:copy-of select="$tree"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile variable copies");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(32_768));
+    builder
+        .add(request("variable-copy", "variable-copy-result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute variable copies");
+
+    assert_eq!(
+        results.by_request["variable-copy"].serialized,
+        "<out>value<item id=\"1\">source</item><item id=\"2\"></item><p:held xmlns:p=\"urn:kept\" marker=\"yes\"><inner>temporary</inner></p:held></out>"
+    );
+}
+
+#[test]
 fn copy_of_location_path_copies_each_selected_subtree_in_document_order() {
     const SOURCE: &str = "urn:fastxslt:path-copy:source";
     const STYLESHEET: &str = "urn:fastxslt:path-copy:stylesheet";

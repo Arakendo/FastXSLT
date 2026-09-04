@@ -310,7 +310,8 @@ fn instruction_owned(value: &Instruction) -> usize {
         | Instruction::CopyOfChildElements { .. }
         | Instruction::CopyOfAncestorOrSelfElements { .. }
         | Instruction::CopyOfLocationPath { .. }
-        | Instruction::CopyOfStaticAtomicText { .. }) => copy_of_owned(instruction),
+        | Instruction::CopyOfStaticAtomicText { .. }
+        | Instruction::CopyOfVariable { .. }) => copy_of_owned(instruction),
         Instruction::If {
             test,
             body,
@@ -344,6 +345,9 @@ fn copy_of_owned(instruction: &Instruction) -> usize {
         }
         Instruction::CopyOfStaticAtomicText { value, location } => {
             value.capacity() + location_owned(location)
+        }
+        Instruction::CopyOfVariable { variable, location } => {
+            variable.capacity() + location_owned(location)
         }
         _ => unreachable!("copy-of retention receives one copy-of instruction"),
     }

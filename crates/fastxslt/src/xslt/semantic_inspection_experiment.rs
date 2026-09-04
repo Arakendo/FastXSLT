@@ -286,7 +286,8 @@ fn observe_instructions(
             | Instruction::CopyOfChildElements { .. }
             | Instruction::CopyOfAncestorOrSelfElements { .. }
             | Instruction::CopyOfLocationPath { .. }
-            | Instruction::CopyOfStaticAtomicText { .. } => (SemanticFeature::CopyOf, None),
+            | Instruction::CopyOfStaticAtomicText { .. }
+            | Instruction::CopyOfVariable { .. } => (SemanticFeature::CopyOf, None),
         };
         let occurrences = feature_counts.entry(feature).or_default();
         *occurrences = occurrences
