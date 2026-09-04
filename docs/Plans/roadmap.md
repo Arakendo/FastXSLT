@@ -46,7 +46,12 @@ Finding 5 remains partially open for the other selected test-only families.
 Continue applying this production-path pattern and prefer existing shared
 semantic primitives over adding another family-specific test-only evaluator.
 Exact fractional `seconds-from-duration` work remains paused until duration
-construction and component access have one typed production path. In parallel,
+construction and component access have one typed production path. The shared
+duration constructor now completely consumes admitted lexicals and
+rejects subtype contamination, empty/incomplete forms, trailing garbage, and
+malformed fractional seconds. This repairs the review's known semantic defect
+before the five existing duration-component denominators move into production.
+In parallel,
 the current ADR-0004 cohesion campaign remains active. Its current-state review
 has discharged Finding 7's missing-review obligation and extracted the compiler
 composition tests.

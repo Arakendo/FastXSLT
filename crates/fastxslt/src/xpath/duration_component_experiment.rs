@@ -17,6 +17,13 @@ pub(crate) struct Duration {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum DurationKind {
+    General,
+    YearMonth,
+    DayTime,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum DurationFailure {
     Control(ControlFailure),
     InvalidArity,
@@ -173,7 +180,13 @@ fn evaluate_function(
         "xs:yearMonthDuration" | "xs:duration" | "xs:dayTimeDuration" => {
             require_one_argument(argument)?;
             let lexical = parse_quoted(argument).ok_or(DurationFailure::Unsupported)?;
-            Ok(DurationValue::Duration(parse_duration(&lexical)?))
+            let kind = match name {
+                "xs:yearMonthDuration" => DurationKind::YearMonth,
+                "xs:dayTimeDuration" => DurationKind::DayTime,
+                "xs:duration" => DurationKind::General,
+                _ => unreachable!(),
+            };
+            Ok(DurationValue::Duration(parse_duration(&lexical, kind)?))
         }
         "count" | "fn:count" => {
             require_one_argument(argument)?;
@@ -215,20 +228,42 @@ fn checked_binary(
     ))
 }
 
-fn parse_duration(lexical: &str) -> Result<Duration, DurationFailure> {
+fn parse_duration(lexical: &str, kind: DurationKind) -> Result<Duration, DurationFailure> {
     let (sign, lexical) = lexical
         .strip_prefix('-')
         .map_or((1_i128, lexical), |value| (-1, value));
     let body = lexical
         .strip_prefix('P')
         .ok_or(DurationFailure::Unsupported)?;
+    if body.is_empty() || body.matches('T').count() > 1 {
+        return Err(DurationFailure::Unsupported);
+    }
     let (date, time) = body.split_once('T').map_or((body, ""), |parts| parts);
+    if body.contains('T') && time.is_empty() {
+        return Err(DurationFailure::Unsupported);
+    }
+    match kind {
+        DurationKind::YearMonth if body.contains('T') || date.contains('D') => {
+            return Err(DurationFailure::Unsupported);
+        }
+        DurationKind::DayTime if date.contains('Y') || date.contains('M') => {
+            return Err(DurationFailure::Unsupported);
+        }
+        DurationKind::General | DurationKind::YearMonth | DurationKind::DayTime => {}
+    }
     let (years, after_years) = take_component(date, 'Y')?;
     let (months, after_months) = take_component(after_years, 'M')?;
-    let (days, _) = take_component(after_months, 'D')?;
+    let (days, after_days) = take_component(after_months, 'D')?;
+    if !after_days.is_empty() {
+        return Err(DurationFailure::Unsupported);
+    }
     let (hours, after_hours) = take_component(time, 'H')?;
     let (minutes, after_minutes) = take_component(after_hours, 'M')?;
     let seconds = take_whole_seconds(after_minutes)?;
+    let has_component = date.contains(['Y', 'M', 'D']) || time.contains(['H', 'M', 'S']);
+    if !has_component {
+        return Err(DurationFailure::Unsupported);
+    }
     let months = years
         .checked_mul(12)
         .and_then(|value| value.checked_add(months))
@@ -265,9 +300,18 @@ fn take_whole_seconds(input: &str) -> Result<i128, DurationFailure> {
             Err(DurationFailure::Unsupported)
         };
     };
-    seconds
-        .split_once('.')
-        .map_or(seconds, |(whole, _)| whole)
+    let whole = if let Some((whole, fraction)) = seconds.split_once('.') {
+        if whole.is_empty()
+            || fraction.is_empty()
+            || !fraction.bytes().all(|byte| byte.is_ascii_digit())
+        {
+            return Err(DurationFailure::Unsupported);
+        }
+        whole
+    } else {
+        seconds
+    };
+    whole
         .parse::<i128>()
         .map_err(|_| DurationFailure::Unsupported)
 }
@@ -401,7 +445,7 @@ fn balanced(expression: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{DurationValue, evaluate};
+    use super::{DurationFailure, DurationValue, evaluate};
     use crate::execution_control_experiment::InvocationControl;
 
     #[test]
@@ -472,6 +516,24 @@ mod tests {
             assert_eq!(
                 evaluate(source, &mut InvocationControl::unbounded()),
                 Ok(DurationValue::Integer(expected))
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_subtype_contamination_and_incomplete_lexicals() {
+        for source in [
+            "years-from-duration(xs:yearMonthDuration(\"P1D\"))",
+            "days-from-duration(xs:dayTimeDuration(\"P1Y\"))",
+            "days-from-duration(xs:duration(\"P1Dgarbage\"))",
+            "days-from-duration(xs:duration(\"P\"))",
+            "hours-from-duration(xs:duration(\"PT\"))",
+            "hours-from-duration(xs:duration(\"PT1.S\"))",
+        ] {
+            assert_eq!(
+                evaluate(source, &mut InvocationControl::unbounded()),
+                Err(DurationFailure::Unsupported),
+                "{source}"
             );
         }
     }

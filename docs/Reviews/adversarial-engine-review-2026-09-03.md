@@ -312,7 +312,10 @@ invoke test-only evaluators for their 113 selected cases. The complete
 cases through one owned production case-conversion expression and shared typed
 evaluator. The complete `fn/string-length.xml` denominator adds 33 selected
 cases through a production expression that distinguishes source-free and
-document-path execution. Each unchanged
+document-path execution. The duration evaluator remains test-only, but its
+constructor parser now rejects subtype contamination, empty/incomplete
+lexicals, trailing garbage, malformed fractional seconds, and invalid
+component leftovers through the requested negative controls. Each unchanged
 selected expression is compiled into typed production semantics and executed
 through the real XSLT runtime and serializer; additional sentinels reach all
 six expression families through the ASP.NET workbench engine. The three URI
