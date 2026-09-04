@@ -1,5 +1,7 @@
 //! Exact-decimal `format-number(sum(for ...))` seam used by XSLT30 `for-004`.
 
+use std::borrow::Cow;
+
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
 
@@ -101,6 +103,29 @@ pub(crate) fn evaluate(
     context: NodeId,
     control: &mut InvocationControl,
 ) -> Result<String, DecimalSumEvaluationFailure> {
+    evaluate_using(
+        expression,
+        document,
+        context,
+        control,
+        AttributeStringStrategy::Borrowed,
+    )
+}
+
+#[derive(Clone, Copy)]
+enum AttributeStringStrategy {
+    Borrowed,
+    #[cfg(test)]
+    CompleteOwnedReference,
+}
+
+fn evaluate_using(
+    expression: &DecimalSumForExpression,
+    document: &Document,
+    context: NodeId,
+    control: &mut InvocationControl,
+    attribute_strings: AttributeStringStrategy,
+) -> Result<String, DecimalSumEvaluationFailure> {
     let tuples =
         evaluate_location_path_controlled(document, context, &expression.binding_path, control)
             .map_err(DecimalSumEvaluationFailure::Control)?;
@@ -116,18 +141,8 @@ pub(crate) fn evaluate(
         else {
             continue;
         };
-        let left = ExactDecimal::parse(
-            &document
-                .string_value_controlled(left_node, control)
-                .map_err(DecimalSumEvaluationFailure::Control)?,
-        )
-        .ok_or(DecimalSumEvaluationFailure::InvalidValue)?;
-        let right = ExactDecimal::parse(
-            &document
-                .string_value_controlled(right_node, control)
-                .map_err(DecimalSumEvaluationFailure::Control)?,
-        )
-        .ok_or(DecimalSumEvaluationFailure::InvalidValue)?;
+        let left = attribute_decimal(document, left_node, control, attribute_strings)?;
+        let right = attribute_decimal(document, right_node, control, attribute_strings)?;
         control
             .charge(WorkDomain::XPathOperation, 1)
             .map_err(DecimalSumEvaluationFailure::Control)?;
@@ -147,6 +162,52 @@ pub(crate) fn evaluate(
     total
         .format_two_decimals()
         .ok_or(DecimalSumEvaluationFailure::Unsupported)
+}
+
+fn attribute_decimal(
+    document: &Document,
+    attribute: NodeId,
+    control: &mut InvocationControl,
+    strategy: AttributeStringStrategy,
+) -> Result<ExactDecimal, DecimalSumEvaluationFailure> {
+    let lexical = match strategy {
+        AttributeStringStrategy::Borrowed => Cow::Borrowed(
+            document
+                .attribute_string_value_controlled(attribute, control)
+                .map_err(DecimalSumEvaluationFailure::Control)?
+                .ok_or(DecimalSumEvaluationFailure::InvalidValue)?,
+        ),
+        #[cfg(test)]
+        AttributeStringStrategy::CompleteOwnedReference => Cow::Owned(
+            document
+                .string_value_controlled(attribute, control)
+                .map_err(DecimalSumEvaluationFailure::Control)?,
+        ),
+    };
+    let parsed = match strategy {
+        AttributeStringStrategy::Borrowed => ExactDecimal::parse(&lexical),
+        #[cfg(test)]
+        AttributeStringStrategy::CompleteOwnedReference => {
+            ExactDecimal::parse_complete_reference(&lexical)
+        }
+    };
+    parsed.ok_or(DecimalSumEvaluationFailure::InvalidValue)
+}
+
+#[cfg(test)]
+fn evaluate_complete_owned_reference(
+    expression: &DecimalSumForExpression,
+    document: &Document,
+    context: NodeId,
+    control: &mut InvocationControl,
+) -> Result<String, DecimalSumEvaluationFailure> {
+    evaluate_using(
+        expression,
+        document,
+        context,
+        control,
+        AttributeStringStrategy::CompleteOwnedReference,
+    )
 }
 
 fn find_attribute(
@@ -171,6 +232,35 @@ fn find_attribute(
 
 impl ExactDecimal {
     fn parse(value: &str) -> Option<Self> {
+        let value = value.trim();
+        let (negative, unsigned) = value
+            .strip_prefix('-')
+            .map_or((false, value), |rest| (true, rest));
+        let (whole, fractional) = unsigned.split_once('.').unwrap_or((unsigned, ""));
+        if whole.is_empty()
+            || !whole.bytes().all(|byte| byte.is_ascii_digit())
+            || !fractional.bytes().all(|byte| byte.is_ascii_digit())
+        {
+            return None;
+        }
+        let scale = u32::try_from(fractional.len()).ok()?;
+        let mut units =
+            whole
+                .bytes()
+                .chain(fractional.bytes())
+                .try_fold(0_i128, |value, digit| {
+                    value
+                        .checked_mul(10)?
+                        .checked_add(i128::from(digit.checked_sub(b'0')?))
+                })?;
+        if negative {
+            units = units.checked_neg()?;
+        }
+        Some(Self { units, scale })
+    }
+
+    #[cfg(test)]
+    fn parse_complete_reference(value: &str) -> Option<Self> {
         let value = value.trim();
         let (negative, unsigned) = value
             .strip_prefix('-')
@@ -284,7 +374,13 @@ fn unsupported(expression: &str, location: &SourceLocation) -> DecimalSumForFail
 
 #[cfg(test)]
 mod tests {
-    use super::{DecimalSumEvaluationFailure, evaluate, parse};
+    use std::hint::black_box;
+    use std::time::Instant;
+
+    use super::{
+        DecimalSumEvaluationFailure, ExactDecimal, evaluate, evaluate_complete_owned_reference,
+        parse,
+    };
     use crate::execution_control_experiment::{InvocationControl, WorkDomain};
     use crate::xdm::owned_tree_experiment::{Document, SourceLocation};
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
@@ -314,12 +410,28 @@ mod tests {
         let document = Document::from_parsed(parsed).expect("source XDM should build");
         let order = document.children(document.document_node())[0];
         let mut control = InvocationControl::unbounded();
+        let mut reference_control = InvocationControl::unbounded();
 
         let result = evaluate(&expression(), &document, order, &mut control)
             .expect("admitted exact decimal values should evaluate");
+        let reference = evaluate_complete_owned_reference(
+            &expression(),
+            &document,
+            order,
+            &mut reference_control,
+        )
+        .expect("complete owned-string reference should evaluate");
 
         assert_eq!(result, "36.02");
+        assert_eq!(result, reference);
         assert_eq!(control.consumed(WorkDomain::XPathOperation), 11);
+        for domain in [
+            WorkDomain::XPathOperation,
+            WorkDomain::XPathNodeVisit,
+            WorkDomain::XdmStringValueNode,
+        ] {
+            assert_eq!(control.consumed(domain), reference_control.consumed(domain));
+        }
     }
 
     #[test]
@@ -344,6 +456,118 @@ mod tests {
                 &mut InvocationControl::unbounded()
             ),
             Err(DecimalSumEvaluationFailure::Unsupported)
+        );
+    }
+
+    #[test]
+    fn allocation_free_decimal_parser_matches_the_complete_reference() {
+        for lexical in [
+            "0",
+            "1",
+            "1.",
+            "001.2300",
+            "-0.01",
+            "  42.50\t",
+            "170141183460469231731687303715884105727",
+            "170141183460469231731687303715884105728",
+            "-170141183460469231731687303715884105728",
+            "",
+            ".1",
+            "+1",
+            "--1",
+            "1.2.3",
+            "NaN",
+        ] {
+            assert_eq!(
+                ExactDecimal::parse(lexical),
+                ExactDecimal::parse_complete_reference(lexical),
+                "lexical {lexical:?}"
+            );
+        }
+    }
+
+    #[cfg(feature = "allocation-observation")]
+    #[test]
+    #[ignore = "manual allocator-observed borrowed versus owned attribute string probe"]
+    fn measures_borrowed_attribute_string_specialization() {
+        const ITEMS: usize = 500;
+        const ITERATIONS: u32 = 1_000;
+        let mut source = String::from("<order>");
+        for _ in 0..ITEMS {
+            source.push_str("<order-item price='1.00' qty='1'/>");
+        }
+        source.push_str("</order>");
+        let parsed = parse_document(
+            "memory:borrowed-attribute-measurement",
+            source.as_bytes(),
+            ParseLimits {
+                max_events: 4_096,
+                max_depth: 4,
+            },
+        )
+        .expect("measurement source should parse");
+        let document = Document::from_parsed(parsed).expect("measurement XDM should build");
+        let order = document.children(document.document_node())[0];
+        let expression = expression();
+
+        let borrowed_allocations = allocation_counter::measure(|| {
+            black_box(
+                evaluate(
+                    &expression,
+                    &document,
+                    order,
+                    &mut InvocationControl::unbounded(),
+                )
+                .expect("borrowed evaluation"),
+            );
+        });
+        let reference_allocations = allocation_counter::measure(|| {
+            black_box(
+                evaluate_complete_owned_reference(
+                    &expression,
+                    &document,
+                    order,
+                    &mut InvocationControl::unbounded(),
+                )
+                .expect("owned reference evaluation"),
+            );
+        });
+
+        let started = Instant::now();
+        for _ in 0..ITERATIONS {
+            black_box(
+                evaluate(
+                    &expression,
+                    &document,
+                    order,
+                    &mut InvocationControl::unbounded(),
+                )
+                .expect("borrowed evaluation"),
+            );
+        }
+        let borrowed_microseconds =
+            started.elapsed().as_secs_f64() * 1_000_000.0 / f64::from(ITERATIONS);
+        let started = Instant::now();
+        for _ in 0..ITERATIONS {
+            black_box(
+                evaluate_complete_owned_reference(
+                    &expression,
+                    &document,
+                    order,
+                    &mut InvocationControl::unbounded(),
+                )
+                .expect("owned reference evaluation"),
+            );
+        }
+        let reference_microseconds =
+            started.elapsed().as_secs_f64() * 1_000_000.0 / f64::from(ITERATIONS);
+
+        println!(
+            "items={ITEMS} borrowed_allocations={borrowed_allocations:?} reference_allocations={reference_allocations:?} borrowed_us={borrowed_microseconds:.6} reference_us={reference_microseconds:.6}"
+        );
+        assert_eq!(
+            reference_allocations.count_total - borrowed_allocations.count_total,
+            ITEMS as u64 * 4
         );
     }
 }

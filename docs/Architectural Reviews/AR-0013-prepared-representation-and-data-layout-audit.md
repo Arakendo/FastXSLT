@@ -4,12 +4,12 @@
 | --- | --- |
 | Status | Incubating |
 | Opened | 2026-08-27 |
-| Last reviewed | 2026-08-31 |
+| Last reviewed | 2026-09-04 |
 | Scope | XDM, compiled stylesheet, execution plan, prepared input, and invocation-local storage |
 | Trigger | Explore whether deliberately prepared representations can improve repeated execution rather than inheriting conventional engine layouts without evidence |
 | Related ADRs | ADR-0002, ADR-0003, ADR-0004, ADR-0007 |
 | Related reviews | AR-0007, AR-0009, AR-0012 |
-| Related evidence | `../Evidence/private-prepared-input-reuse-2026-08-25.md`; `../Evidence/private-prepared-retention-observation-2026-08-25.md`; `../Evidence/allocation-counter-review-and-preparation-probe-2026-08-25.md`; `../Evidence/aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md`; `../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md`; `../Evidence/document-rooted-match-path-reevaluation-2026-08-31.md`; `../Evidence/named-template-global-frame-cloning-2026-08-31.md` |
+| Related evidence | `../Evidence/private-prepared-input-reuse-2026-08-25.md`; `../Evidence/private-prepared-retention-observation-2026-08-25.md`; `../Evidence/allocation-counter-review-and-preparation-probe-2026-08-25.md`; `../Evidence/aspnet-native-vs-isolated-tiered-comparison-2026-08-26.md`; `../Evidence/template-candidate-fanout-and-cancellation-gap-2026-08-31.md`; `../Evidence/document-rooted-match-path-reevaluation-2026-08-31.md`; `../Evidence/named-template-global-frame-cloning-2026-08-31.md`; `../Evidence/for-004-exact-decimal-activated-path-2026-09-04.md` |
 
 ## Architectural question
 
@@ -283,6 +283,17 @@ name/namespace/value strings 3.4%. The high occurrence-to-unique ratios nominate
 interning and compact-layout experiments, but the field proportions and single
 synthetic shape do not justify selecting one.
 
+The first end-to-end activated-path profile localized 74-98% of semantic
+execution in the exact-decimal evaluator selected for XSLT30 `for-004`. A safe
+borrowed-attribute and allocation-free checked-decimal path removed exactly
+2,000 allocation requests from one 500-item evaluation while retaining the
+complete owned-string/parser references and equal work charges. The focused
+evaluator improved by roughly 72%, and five fresh ASP.NET processes recorded a
+3.7x native and 2.2x isolated sequential improvement at 500 items against the
+prior medians. This admits the private specialization, not a general borrowed
+XDM API, decimal representation, or assumption that every hot path is
+allocation-bound.
+
 ## Disposition
 
 **Incubating.** Preserve the audit and candidate inventory, but select no data
@@ -320,7 +331,11 @@ provide a concrete hypothesis to test.
   where profiles nominate them.
 - [ ] Profile the reference path and nominate one measured representation
   hypothesis, or record that no material representation pressure was found.
-- [ ] Prototype the nominated hypothesis in safe Rust and differentially verify
+- [x] Profile and differentially verify the first narrow execution
+  specialization: borrow retained attribute lexicals and parse exact decimals
+  without per-value allocation while preserving the complete safe reference,
+  work charges, and native/isolated host behavior.
+- [ ] Prototype each future nominated representation hypothesis in safe Rust and differentially verify
   it before considering any optimized or unsafe successor.
 - [ ] Record negative experiments so later work does not repeat attractive dead
   ends without new evidence.
@@ -362,3 +377,7 @@ provide a concrete hypothesis to test.
 - 2026-08-31 -- Completed prepared-XDM byte anatomy on a 3,002-node repetitive
   shape; node records dominated the capacity estimate, so no interning or XDM
   layout was selected from duplication counts alone.
+- 2026-09-04 -- Profiled the XSLT30 `for-004` transform through semantic and
+  serialization phases, removed per-attribute owned-string and decimal-lexical
+  allocations in a private safe activated path, retained complete references,
+  and confirmed the gain across five fresh native and isolated ASP.NET runs.

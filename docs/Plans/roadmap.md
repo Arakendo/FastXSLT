@@ -3084,8 +3084,14 @@ failed, and harness-error cases without an unqualified conformance claim.
     83-99.6% of instrumented time to the combined Rust transform/outcome export;
     a safe internal split then attributed 93-99.8% of listed sequential export
     components to semantic transform/serialization rather than request identity
-    handling or registry publication. Target selection and evaluator-phase
-    attribution remain open.
+    handling or registry publication. The next safe phase probe localized
+    74-98% of semantic execution to the exact-decimal `for-004` evaluator. Its
+    compile-selected borrowed-attribute and allocation-free decimal path removed
+    2,000 allocation requests per 500-item transform while retaining complete references
+    and equal work charges. Five fresh .NET 10 processes then recorded medians
+    of 27,387/s native and 11,550/s isolated sequentially at 500 items, roughly
+    3.7x and 2.2x the prior medians. This is narrow activated-path evidence, not
+    a general engine-performance claim or permission for unsafe code.
   - [x] Carry pre-dispatch cooperative cancellation and a deterministic
     XSLT-instruction budget through ADR-0009 scalar native controls, preserving
     exact diagnostics and ordinary reuse of the same engine handle without
@@ -3177,10 +3183,12 @@ container or unsafe path before profiles establish a concrete pressure.
   Treat name duplication, refcount/synchronization,
   dispatch/navigation fan-out, and scratch-capacity behavior as follow-ups
   nominated by evidence rather than simultaneous instrumentation projects.
-- [x] Prototype the first two measured hypotheses behind private safe-Rust
+- [x] Prototype the first three measured hypotheses behind private safe-Rust
   owners: bounded document-rooted match membership (ADR-0013) and
-  invocation-owned copy-on-write atomic frames (ADR-0014). Preserve both
-  complete reference paths for differential verification.
+  invocation-owned copy-on-write atomic frames (ADR-0014), plus the
+  compile-selected exact-decimal evaluator's borrowed-attribute and
+  allocation-free parsing path. Preserve complete reference paths for
+  differential verification.
 - [ ] Record both successful and negative experiments, including preparation
   cost, break-even reuse, retained memory, throughput, tail latency, and host-
   visible behavior.

@@ -523,6 +523,18 @@ impl Document {
         self.nodes[id.0].value.as_deref()
     }
 
+    pub(crate) fn attribute_string_value_controlled(
+        &self,
+        id: NodeId,
+        control: &mut InvocationControl,
+    ) -> Result<Option<&str>, ControlFailure> {
+        control.charge(WorkDomain::XdmStringValueNode, 1)?;
+        let node = &self.nodes[id.0];
+        Ok((node.kind == NodeKind::Attribute)
+            .then_some(node.value.as_deref())
+            .flatten())
+    }
+
     pub(crate) fn location(&self, id: NodeId) -> &SourceLocation {
         &self.nodes[id.0].location
     }

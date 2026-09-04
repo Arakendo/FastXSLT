@@ -487,6 +487,10 @@ fn workbench_failure(
 }
 
 #[cfg(test)]
+#[path = "workbench_transform_performance_tests.rs"]
+mod workbench_transform_performance_tests;
+
+#[cfg(test)]
 mod tests {
     use std::fmt::Write as _;
     use std::mem::size_of;

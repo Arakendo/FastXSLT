@@ -140,3 +140,10 @@ but sequential evidence does not justify registry surgery. Use the existing
 AR-0013 prepared-layout and activated-path process for any candidate
 optimization. No result here admits a new cache, ABI, unsafe path, or public
 contract.
+
+That next probe is complete for this workload. It localized 74-98% of semantic
+execution to the exact-decimal evaluator, then removed its per-attribute string
+and decimal-lexical allocations behind a safe private specialization. The
+[focused and ASP.NET evidence](for-004-exact-decimal-activated-path-2026-09-04.md)
+records differential work charges, retained references, and the consumer-visible
+gain. Registry and managed-boundary changes remain unjustified by this path.
