@@ -142,6 +142,9 @@ pub(super) fn execute_value_of(
         ValueExpression::ContextNodeNormalizedString => {
             append_context_node_normalized_string(inputs, context, result, control)?;
         }
+        ValueExpression::NormalizedStringPath(path) => {
+            append_normalized_string_path(inputs, context, path, result, control)?;
+        }
         ValueExpression::ContextNodeStringLength(location) => {
             append_context_node_string_length(inputs, context, location, result, control)?;
         }
@@ -1141,10 +1144,44 @@ fn append_context_node_normalized_string(
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
+    append_normalized_node_string(inputs, source, context, result, control)
+}
+
+fn append_normalized_string_path(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let selected = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    if selected.len() > 1 {
+        return Err(failure(
+            "XPTY0004",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            "normalize-space() requires a zero-or-one item argument",
+        ));
+    }
+    let Some(node) = selected.first().copied() else {
+        return Ok(());
+    };
+    append_normalized_node_string(inputs, source, node, result, control)
+}
+
+fn append_normalized_node_string(
+    inputs: &SequenceInputs<'_>,
+    source: &crate::xdm::owned_tree_experiment::Document,
+    node: NodeId,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
     let mut normalized = String::new();
     let mut pending_space = false;
     source
-        .visit_string_value_controlled(context, control, &mut |part, control| {
+        .visit_string_value_controlled(node, control, &mut |part, control| {
             for character in part.chars() {
                 control
                     .charge(WorkDomain::XPathOperation, 1)

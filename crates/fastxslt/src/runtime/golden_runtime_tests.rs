@@ -1001,7 +1001,7 @@ fn context_normalize_space_streams_across_descendant_text_boundaries() {
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:apply-templates select="doc"/></xsl:template><xsl:template match="doc"><out><xsl:value-of select="normalize-space()"/>|<xsl:value-of select="normalize-space(.)"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:apply-templates select="doc"/></xsl:template><xsl:template match="doc"><out><xsl:value-of select="normalize-space()"/>|<xsl:value-of select="normalize-space(.)"/>|<xsl:value-of select="normalize-space(part)"/>|<xsl:value-of select="normalize-space(missing)"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit stylesheet");
     let snapshot = resources.seal();
@@ -1016,8 +1016,39 @@ fn context_normalize_space_streams_across_descendant_text_boundaries() {
         execute_transform_set(builder.seal()).expect("execute context normalization operations");
     assert_eq!(
         results.by_request["context-normalize-space"].serialized,
-        "<out>alpha beta gamma|alpha beta gamma</out>"
+        "<out>alpha beta gamma|alpha beta gamma|beta|</out>"
     );
+}
+
+#[test]
+fn normalize_space_path_rejects_more_than_one_node() {
+    const SOURCE: &str = "urn:fastxslt:normalize-space-many:source";
+    const STYLESHEET: &str = "urn:fastxslt:normalize-space-many:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc><part>a</part><part>b</part></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="normalize-space(/doc/part)"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request(
+            "normalize-space-many",
+            "normalize-space-many-result",
+            SOURCE,
+        ))
+        .expect("admit request");
+
+    let failure = execute_transform_set(builder.seal()).expect_err("cardinality must be enforced");
+
+    assert_eq!(failure.code, "XPTY0004");
+    assert_eq!(failure.category, FailureCategory::Invalid);
 }
 
 #[test]

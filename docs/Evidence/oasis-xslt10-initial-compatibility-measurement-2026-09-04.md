@@ -64,6 +64,9 @@ raises it to 607.
 The following
 [source node identity tranche](oasis-xslt10-generate-id-tranche-2026-09-04.md)
 raises it to 608.
+The following
+[normalize-space path tranche](oasis-xslt10-normalize-space-path-tranche-2026-09-04.md)
+raises it to 609.
 
 ## Outcome
 

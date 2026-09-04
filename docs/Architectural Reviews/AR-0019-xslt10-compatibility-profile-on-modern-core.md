@@ -238,6 +238,9 @@ public version-mode contract.
   operations, raising the lower bound to 608 while retaining modern
   zero-or-one cardinality rather than silently selecting legacy first-node
   conversion.
+- [x] Compose `normalize-space()` with an admitted location path and the shared
+  charged XDM string-value operation, raising the lower bound to 609 while
+  keeping multi-node legacy conversion behind version-mode review.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -340,6 +343,9 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Typed principal-source node identity raised the lower bound
   from 607 to 608 through unchanged `idkey06`; multi-node legacy conversion
   remains behind the unresolved version-mode boundary.
+- 2026-09-04 -- Path-dependent `normalize-space()` raised the lower bound from
+  608 to 609 through unchanged `string10`; the modern zero-or-one argument
+  boundary remains explicit.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

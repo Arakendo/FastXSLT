@@ -980,6 +980,10 @@ fn compile_value_expression(
     ) {
         return Ok(ValueExpression::ContextNodeNormalizedString);
     }
+    if let Some(normalized) = compile_normalize_space_path(document, element, expression, location)
+    {
+        return Ok(normalized);
+    }
     if expression.trim() == "string-length()" {
         return Ok(ValueExpression::ContextNodeStringLength(location.clone()));
     }
@@ -1503,6 +1507,39 @@ fn compile_count_value(
         }
     }
     Ok(Some(ValueExpression::CountLocationPath(path)))
+}
+
+fn compile_normalize_space_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Option<ValueExpression> {
+    let expression = expression.trim();
+    let argument = ["normalize-space(", "fn:normalize-space("]
+        .iter()
+        .find_map(|prefix| {
+            expression
+                .strip_prefix(prefix)
+                .and_then(|value| value.strip_suffix(')'))
+        })?;
+    if argument.trim().is_empty() || !has_balanced_parentheses(argument) {
+        return None;
+    }
+    let Ok(mut path) = parse_location_path(argument.trim(), location.clone()) else {
+        return None;
+    };
+    if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+        for step in &mut path.steps {
+            if let PathStep::ChildNamed(local) = step {
+                *step = PathStep::ChildExpandedName(ExpandedName {
+                    namespace: Some(namespace.to_owned()),
+                    local: local.clone(),
+                });
+            }
+        }
+    }
+    Some(ValueExpression::NormalizedStringPath(path))
 }
 
 fn parse_literal_variable_concat(expression: &str) -> Option<(String, String)> {
