@@ -306,13 +306,11 @@ fn instruction_owned(value: &Instruction) -> usize {
             arguments,
             location,
         } => vec_owned(arguments, template_argument_owned) + location_owned(location),
-        Instruction::CopyOfCurrent { location } | Instruction::CopyOfChildElements { location } => {
-            location_owned(location)
-        }
-        Instruction::CopyOfAncestorOrSelfElements { location } => location_owned(location),
-        Instruction::CopyOfLocationPath { select, location } => {
-            select.known_owned_capacity_bytes() + location_owned(location)
-        }
+        instruction @ (Instruction::CopyOfCurrent { .. }
+        | Instruction::CopyOfChildElements { .. }
+        | Instruction::CopyOfAncestorOrSelfElements { .. }
+        | Instruction::CopyOfLocationPath { .. }
+        | Instruction::CopyOfStaticAtomicText { .. }) => copy_of_owned(instruction),
         Instruction::If {
             test,
             body,
@@ -333,6 +331,21 @@ fn instruction_owned(value: &Instruction) -> usize {
             body,
             location,
         } => copy_owned(attributes, body, location),
+    }
+}
+
+fn copy_of_owned(instruction: &Instruction) -> usize {
+    match instruction {
+        Instruction::CopyOfCurrent { location }
+        | Instruction::CopyOfChildElements { location }
+        | Instruction::CopyOfAncestorOrSelfElements { location } => location_owned(location),
+        Instruction::CopyOfLocationPath { select, location } => {
+            select.known_owned_capacity_bytes() + location_owned(location)
+        }
+        Instruction::CopyOfStaticAtomicText { value, location } => {
+            value.capacity() + location_owned(location)
+        }
+        _ => unreachable!("copy-of retention receives one copy-of instruction"),
     }
 }
 

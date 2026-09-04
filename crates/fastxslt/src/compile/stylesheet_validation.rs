@@ -89,6 +89,7 @@ fn validate_named_calls(
             | Instruction::CopyOfChildElements { .. }
             | Instruction::CopyOfAncestorOrSelfElements { .. }
             | Instruction::CopyOfLocationPath { .. }
+            | Instruction::CopyOfStaticAtomicText { .. }
             | Instruction::Copy { .. } => {}
         }
     }

@@ -469,6 +469,12 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
     ensure_only_attributes(document, element, &["select"], "xsl:copy-of")?;
     ensure_no_meaningful_children(document, element, "xsl:copy-of")?;
     let select = required_attribute(document, element, None, "select")?;
+    if let Some(value) = static_copy_of_text(select.trim()) {
+        return Ok(Instruction::CopyOfStaticAtomicText {
+            value,
+            location: document.location(element).clone(),
+        });
+    }
     match select.trim() {
         "." => Ok(Instruction::CopyOfCurrent {
             location: document.location(element).clone(),
@@ -498,6 +504,25 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
                     &location,
                 ),
             }),
+    }
+}
+
+fn static_copy_of_text(expression: &str) -> Option<String> {
+    for delimiter in ['\'', '"'] {
+        let literal = expression
+            .strip_prefix(delimiter)
+            .and_then(|value| value.strip_suffix(delimiter));
+        if let Some(literal) = literal.filter(|value| !value.contains(delimiter)) {
+            return Some(literal.to_owned());
+        }
+    }
+    match expression {
+        "true()" => Some("true".to_owned()),
+        "false()" => Some("false".to_owned()),
+        _ => expression
+            .parse::<i64>()
+            .ok()
+            .map(|value| value.to_string()),
     }
 }
 

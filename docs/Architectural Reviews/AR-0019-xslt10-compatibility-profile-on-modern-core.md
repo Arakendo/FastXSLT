@@ -182,6 +182,8 @@ public version-mode contract.
 - [x] Preserve included matched-template declaration order and stylesheet text
   runs separated by ignored comments, moving two known mismatches to pass and
   raising the strict lower bound to 464.
+- [x] Compile static atomic `xsl:copy-of` values through the bounded shared
+  result-text path, raising the strict lower bound to 468.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 29 known executing comparison
@@ -228,3 +230,5 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Include declaration-position preservation and comment-separated
   text-run handling moved `impincl06` and `whitespace21` from mismatch to pass,
   raising the lower bound to 464.
+- 2026-09-04 -- Static string, integer, and boolean `xsl:copy-of` values raised
+  the lower bound from 464 to 468 without exposing another mismatch.

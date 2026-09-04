@@ -691,6 +691,9 @@ fn execute_instruction(
             control,
         )?),
         Instruction::Text { value, .. } => append_text(result, value, inputs.request_id, control)?,
+        Instruction::CopyOfStaticAtomicText { value, .. } => {
+            append_text(result, value, inputs.request_id, control)?;
+        }
         Instruction::ProcessingInstructionNode { target, value, .. } => result.push(
             construct_processing_instruction(target, value, inputs.request_id, control)?,
         ),

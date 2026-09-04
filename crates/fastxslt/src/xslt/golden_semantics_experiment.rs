@@ -439,6 +439,10 @@ pub(crate) enum Instruction {
         select: LocationPath,
         location: SourceLocation,
     },
+    CopyOfStaticAtomicText {
+        value: String,
+        location: SourceLocation,
+    },
     If {
         test: BooleanExpression,
         body: Vec<Instruction>,

@@ -81,11 +81,14 @@ passes. A charged relative descendant-pattern repair then moves unchanged
 `conflictres15` from mismatch to pass, reaching 462. Two shared compiler repairs
 then preserve the textual
 position of included template rules and retain literal text runs across ignored
-stylesheet comments. The sweep now proves 464 definite passes and retains 29
+stylesheet comments. The sweep then proves 464 definite passes. Static atomic
+`xsl:copy-of` raises the
+strict lower bound to 468 definite passes without exposing another mismatch.
+The sweep retains 29
 executing comparison mismatches, 16 comparator gaps, and 35
 supplemental-data cases as explicitly not admitted, and gives every other case
 a structured initialization, execution, or infrastructure observation. This is
-a strict 16.92% lower bound over the suite's 2,742 standard-operation cases,
+a strict 17.07% lower bound over the suite's 2,742 standard-operation cases,
 not an XSLT 1.0 conformance claim. The initial sweep also found and drove a shared
 source-node-variable path repair, so AR-0019 now studies whether legacy
 compatibility can progress on the modern compiler/runtime rather than through a
@@ -97,6 +100,7 @@ second engine.
 [Static element namespace evidence](../Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md)
 [Descendant match-pattern evidence](../Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md)
 [Include-order and comment-text evidence](../Evidence/oasis-xslt10-include-order-and-comment-text-repairs-2026-09-04.md)
+[Static atomic copy-of evidence](../Evidence/oasis-xslt10-static-atomic-copy-of-tranche-2026-09-04.md)
 [Review](../Architectural%20Reviews/AR-0019-xslt10-compatibility-profile-on-modern-core.md)
 
 The remaining 42 selected `AxisStep` cases now also reach production: two
@@ -1632,7 +1636,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 464 after shared construction/copy tranches plus descendant-pattern, include-order, and comment-text repairs. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 468 after shared construction/copy tranches plus descendant-pattern, include-order, and comment-text repairs. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -3201,6 +3205,8 @@ host lifecycle.
 - [x] Raise it to 464 by preserving included template declaration position and
   treating text separated only by ignored stylesheet comments or processing
   instructions as one whitespace-stripping run.
+- [x] Raise it to 468 by compiling static string, integer, and boolean
+  `xsl:copy-of` values to typed operations using bounded text construction.
 - [ ] Give each standard and expected-error case one reproducible final
   disposition under a versioned local overlay/report, applying duplicate-safe
   identity and doubts/discretionary metadata.
