@@ -310,6 +310,9 @@ fn instruction_owned(value: &Instruction) -> usize {
             location_owned(location)
         }
         Instruction::CopyOfAncestorOrSelfElements { location } => location_owned(location),
+        Instruction::CopyOfLocationPath { select, location } => {
+            select.known_owned_capacity_bytes() + location_owned(location)
+        }
         Instruction::If {
             test,
             body,

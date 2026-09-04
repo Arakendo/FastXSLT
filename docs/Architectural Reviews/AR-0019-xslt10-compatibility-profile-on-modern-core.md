@@ -9,7 +9,7 @@
 | Trigger | A complete local legacy sweep found 366 initial definite unchanged passes and dominant gaps that largely overlap the XSLT 3.0 roadmap |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007, ADR-0012, ADR-0013, ADR-0014 |
 | Related reviews | AR-0001, AR-0004, AR-0008, AR-0011, AR-0014 |
-| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md` |
+| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md` |
 
 ## Architectural question
 
@@ -167,6 +167,9 @@ public version-mode contract.
 - [x] Implement the first shared construction tranche: static unprefixed and
   prefixed `xsl:element` QNames use the modern result-construction path, raising
   definite unchanged passes from 366 to 386 without a legacy backend.
+- [x] Expand `xsl:copy-of` through the shared typed location-path evaluator and
+  deep-copy path, raising definite unchanged passes from 386 to 395 while
+  exposing later execution boundaries rather than crediting them.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 20 known semantic mismatches.
@@ -198,3 +201,6 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- The first shared construction tranche admitted static
   `xsl:element` QNames and raised the strict lower bound from 366 to 386 passes;
   namespace attributes, dynamic names, and attribute sets remain explicit.
+- 2026-09-04 -- Shared node-path `xsl:copy-of` raised the lower bound to 395 and
+  moved 95 cases past initialization; 81 of those expose later execution
+  boundaries and remain visibly uncredited.

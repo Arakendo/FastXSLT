@@ -69,17 +69,21 @@ OASIS XSLT/XPath 1.0 catalog without redistributing its bytes. The initial
 refined sweep proved 366 unchanged standard-case XML comparisons. The first
 shared construction tranche now compiles static unprefixed and prefixed
 `xsl:element` QNames through the modern result-construction path and raises the
-strict lower bound to 386 passes. It retains 25 executing comparison mismatches,
-15 comparator gaps, and 35
+strict lower bound to 386 passes. A second shared tranche routes node-selecting
+`xsl:copy-of` paths through the existing typed XPath evaluator and deep-copy
+machinery, raising the bound again to 395 passes while exposing 81 later
+execution failures. It retains 29 executing comparison mismatches, 15
+comparator gaps, and 35
 supplemental-data cases as explicitly not admitted, and gives every other case
 a structured initialization, execution, or infrastructure observation. This is
-a strict 14.08% lower bound over the suite's 2,742 standard-operation cases,
+a strict 14.41% lower bound over the suite's 2,742 standard-operation cases,
 not an XSLT 1.0 conformance claim. The initial sweep also found and drove a shared
 source-node-variable path repair, so AR-0019 now studies whether legacy
 compatibility can progress on the modern compiler/runtime rather than through a
 second engine.
 [Evidence](../Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md)
 [Static computed-element evidence](../Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md)
+[Location-path copy-of evidence](../Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md)
 [Review](../Architectural%20Reviews/AR-0019-xslt10-compatibility-profile-on-modern-core.md)
 
 The remaining 42 selected `AxisStep` cases now also reach production: two
@@ -1615,7 +1619,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 386 after the first shared construction tranche. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 395 after shared `xsl:element` and node-path `xsl:copy-of` tranches. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -3169,6 +3173,9 @@ host lifecycle.
 - [x] Raise that lower bound to 386 through a shared static-QName
   `xsl:element` tranche; keep namespace attributes, dynamic names, and
   attribute sets explicitly unsupported rather than adding legacy shortcuts.
+- [x] Raise it again to 395 through shared node-path `xsl:copy-of`; preserve the
+  81 newly exposed later failures rather than treating initialization success
+  as compatibility credit.
 - [ ] Give each standard and expected-error case one reproducible final
   disposition under a versioned local overlay/report, applying duplicate-safe
   identity and doubts/discretionary metadata.
@@ -3187,6 +3194,8 @@ host lifecycle.
   namespace fixup, whitespace rules, and serialization.
   - [x] Static unprefixed and prefixed `xsl:element` QNames compile once and
     execute through the existing bounded result-construction operation.
+  - [x] Ordinary node-selecting `xsl:copy-of` location paths compile once and
+    execute through the existing charged XPath and deep-copy machinery.
 - [ ] Require every shared primitive to retain modern semantics, structured
   diagnostics, charge points, cancellation, source provenance, and at least one
   modern or cross-version regression where applicable.

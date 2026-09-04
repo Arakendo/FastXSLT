@@ -435,6 +435,10 @@ pub(crate) enum Instruction {
     CopyOfAncestorOrSelfElements {
         location: SourceLocation,
     },
+    CopyOfLocationPath {
+        select: LocationPath,
+        location: SourceLocation,
+    },
     If {
         test: BooleanExpression,
         body: Vec<Instruction>,

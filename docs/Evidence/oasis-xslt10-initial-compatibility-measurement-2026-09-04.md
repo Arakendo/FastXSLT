@@ -14,7 +14,9 @@
 This document preserves the initial baseline. The subsequent
 [static computed-element tranche](oasis-xslt10-static-computed-element-tranche-2026-09-04.md)
 raises the definite unchanged pass count to 386 without changing the conserved
-denominators.
+denominators; the following
+[location-path copy-of tranche](oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md)
+raises it to 395.
 
 ## Outcome
 

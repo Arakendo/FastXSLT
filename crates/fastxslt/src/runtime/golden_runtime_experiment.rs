@@ -764,6 +764,7 @@ fn execute_instruction(
         | Instruction::CopyOfCurrent { .. }
         | Instruction::CopyOfChildElements { .. }
         | Instruction::CopyOfAncestorOrSelfElements { .. }
+        | Instruction::CopyOfLocationPath { .. }
         | Instruction::Copy { .. } => result.extend(execute_result_instruction(
             inputs,
             instruction,
@@ -832,9 +833,28 @@ fn execute_result_instruction<'a>(
         Instruction::CopyOfAncestorOrSelfElements { location } => {
             execute_copy_of_ancestor_or_self(inputs, execution.node, location, control)
         }
+        Instruction::CopyOfLocationPath { select, .. } => {
+            execute_copy_of_location_path(inputs, execution.node, select, control)
+        }
         Instruction::Copy { .. } => execute_copy(inputs, instruction, execution, scope, control),
         _ => unreachable!("result dispatch receives only result-producing instructions"),
     }
+}
+
+fn execute_copy_of_location_path(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    select: &crate::xpath::path_experiment::LocationPath,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let selected = evaluate_location_path_controlled(source, context, select, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let mut copied = Vec::new();
+    for node in selected {
+        copied.extend(copy_source_node(source, inputs.request_id, node, control)?);
+    }
+    Ok(copied)
 }
 
 fn execute_copy_of_current(

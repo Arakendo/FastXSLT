@@ -2162,6 +2162,38 @@ fn initial_template_copy_of_current_copies_a_document_nodes_children() {
 }
 
 #[test]
+fn copy_of_location_path_copies_each_selected_subtree_in_document_order() {
+    const SOURCE: &str = "urn:fastxslt:path-copy:source";
+    const STYLESHEET: &str = "urn:fastxslt:path-copy:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><selected id=\"1\"><value>A</value></selected><skip/><selected id=\"2\"><value>B</value></selected></doc>".to_vec(),
+        )
+        .expect("admit source document");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:copy-of select="/doc/selected"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("path-copy", "path-copy-result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute location-path copy");
+
+    assert_eq!(
+        results.by_request["path-copy"].serialized,
+        "<out><selected id=\"1\"><value>A</value></selected><selected id=\"2\"><value>B</value></selected></out>"
+    );
+}
+
+#[test]
 fn copy_of_ancestor_or_self_elements_preserves_reverse_axis_order() {
     const SOURCE: &str = "urn:fastxslt:ancestor-copy:source";
     const STYLESHEET: &str = "urn:fastxslt:ancestor-copy:stylesheet";

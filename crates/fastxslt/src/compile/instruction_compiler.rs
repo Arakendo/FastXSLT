@@ -409,11 +409,25 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
         "ancestor-or-self::*" => Ok(Instruction::CopyOfAncestorOrSelfElements {
             location: document.location(element).clone(),
         }),
-        _ => Err(unsupported(
-            "FXXP1003",
-            format!("unsupported xsl:copy-of selection: {select}"),
-            document.location(element),
-        )),
+        expression => parse_location_path(expression, document.location(element).clone())
+            .map(|select| Instruction::CopyOfLocationPath {
+                select,
+                location: document.location(element).clone(),
+            })
+            .map_err(|failure| match failure {
+                PathFailure::Invalid {
+                    standard_code,
+                    detail,
+                    location,
+                } => invalid(standard_code, detail, &location),
+                PathFailure::Unsupported {
+                    detail, location, ..
+                } => unsupported(
+                    "FXXP1003",
+                    format!("unsupported xsl:copy-of selection: {detail}"),
+                    &location,
+                ),
+            }),
     }
 }
 

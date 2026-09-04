@@ -9,6 +9,10 @@
 | Result | 386 definite unchanged XML passes |
 | Disposition | Shared modern primitive implemented; broader `xsl:element` remains open |
 
+The subsequent
+[location-path copy-of tranche](oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md)
+raises the running definite-pass lower bound to 395.
+
 ## Outcome
 
 FastXSLT now compiles and executes the first bounded `xsl:element` slice through
@@ -73,9 +77,8 @@ comparison obligation is classified.
 
 ## Next work
 
-Continue the shared-primitive campaign in dependency order. The next selection
-should use the measured first-failure groups and cross-check XSLT30/QT3 needs;
-likely candidates are a bounded `xsl:copy-of` selection slice or another common
-XPath location-path family. Broader `xsl:element` namespace/AVT behavior should
-land only with explicit QName, namespace, and attribute-value-template
-semantics rather than as a corpus-specific shortcut.
+Continue the shared-primitive campaign in dependency order. A bounded
+node-selecting `xsl:copy-of` location-path slice was selected next and is
+recorded separately. Broader `xsl:element` namespace/AVT behavior should land
+only with explicit QName, namespace, and attribute-value-template semantics
+rather than as a corpus-specific shortcut.
