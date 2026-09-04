@@ -4,7 +4,7 @@
 pub(crate) mod case_conversion_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod castable_experiment;
-#[cfg(test)]
+#[cfg(any(test, feature = "workbench"))]
 pub(crate) mod constant_boolean_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod constant_integer_experiment;

@@ -10,6 +10,9 @@ use crate::xpath::castable_experiment::{
     CastableExpression, evaluate as evaluate_castable, evaluate_value as evaluate_castable_value,
     variable_name as castable_variable_name,
 };
+use crate::xpath::constant_boolean_experiment::{
+    BooleanEvaluationFailure, ScalarExpression, ScalarValue, evaluate_scalar,
+};
 use crate::xpath::decimal_sum_for_experiment::{
     DecimalSumEvaluationFailure, evaluate as evaluate_decimal_sum_for,
 };
@@ -57,6 +60,10 @@ use super::{
     control_failure, failure, required_source_context, runtime_context,
 };
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "the exhaustive typed value-expression dispatch is one cohesive responsibility"
+)]
 pub(super) fn execute_value_of(
     inputs: &SequenceInputs<'_>,
     select: &ValueExpression,
@@ -145,6 +152,9 @@ pub(super) fn execute_value_of(
         ValueExpression::SequenceCardinality(expression) => {
             append_sequence_cardinality(inputs, expression, result, control)?;
         }
+        ValueExpression::SourceFreeScalar(expression) => {
+            append_source_free_scalar(inputs, expression, result, control)?;
+        }
         ValueExpression::EncodeForUri(expression) => {
             append_encode_for_uri(inputs, expression, result, control)?;
         }
@@ -166,6 +176,23 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_source_free_scalar(
+    inputs: &SequenceInputs<'_>,
+    expression: &ScalarExpression,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let value = evaluate_scalar(expression, control).map_err(
+        |BooleanEvaluationFailure::Control(control)| control_failure(control, inputs.request_id),
+    )?;
+    let value = match value {
+        ScalarValue::Boolean(value) => value.to_string(),
+        ScalarValue::String(value) => value,
+        ScalarValue::Integer(value) => value.to_string(),
+    };
+    append_text(result, &value, inputs.request_id, control)
 }
 
 fn append_sequence_cardinality(

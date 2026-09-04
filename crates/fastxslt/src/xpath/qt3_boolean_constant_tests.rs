@@ -8,6 +8,7 @@ use super::constant_boolean_experiment::{
 use super::effective_boolean_value_experiment::{
     EffectiveBooleanFailure, evaluate as evaluate_document_ebv,
 };
+use super::qt3_production_path_test_support::{compile_expression, execute_expression};
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::qt3_overlay_test_support::{assert_private_case_passed, assert_selected_count};
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
@@ -204,9 +205,11 @@ fn execute_not_case(document: &Document, case_name: &str) {
                 .next()
                 .expect("invalid-arity case must expect an error");
             assert_eq!(attribute(document, error, "code"), Some("XPST0017"));
+            assert_production_failure(&source, case_name, "XPST0017");
         }
         Err(BooleanParseFailure::InvalidEffectiveBooleanValue) => {
             assert_expected_error(document, result, "FORG0006");
+            assert_production_failure(&source, case_name, "FORG0006");
         }
         Err(BooleanParseFailure::Unsupported) => {
             panic!("selected QT3 expression is outside the admitted grammar: {case_name}: {source}")
@@ -216,6 +219,7 @@ fn execute_not_case(document: &Document, case_name: &str) {
             let actual =
                 evaluate_scalar(&expression, &mut control).expect("evaluate scalar expression");
             assert_native_result(document, result, &actual, case_name, &source);
+            assert_production_scalar(&source, case_name, &actual);
             assert!(control.consumed(WorkDomain::XPathOperation) > 0);
         }
     }
@@ -252,9 +256,11 @@ fn execute_case(document: &Document, case_name: &str, expected_constant: bool) {
                 .next()
                 .expect("invalid-arity case must expect an error");
             assert_eq!(attribute(document, error, "code"), Some("XPST0017"));
+            assert_production_failure(&source, case_name, "XPST0017");
         }
         Err(BooleanParseFailure::InvalidEffectiveBooleanValue) => {
             assert_expected_error(document, result, "FORG0006");
+            assert_production_failure(&source, case_name, "FORG0006");
         }
         Err(BooleanParseFailure::Unsupported) => {
             panic!("selected QT3 expression is outside the admitted grammar: {case_name}: {source}")
@@ -264,6 +270,7 @@ fn execute_case(document: &Document, case_name: &str, expected_constant: bool) {
             let actual =
                 evaluate_scalar(&expression, &mut control).expect("evaluate scalar expression");
             assert_native_result(document, result, &actual, case_name, &source);
+            assert_production_scalar(&source, case_name, &actual);
             assert!(control.consumed(WorkDomain::XPathOperation) > 0);
             if case_name.ends_with("-1") {
                 assert_eq!(actual, ScalarValue::Boolean(expected_constant));
@@ -274,6 +281,27 @@ fn execute_case(document: &Document, case_name: &str, expected_constant: bool) {
             }
         }
     }
+}
+
+fn assert_production_scalar(expression: &str, case_name: &str, expected: &ScalarValue) {
+    let program = compile_expression(case_name, expression)
+        .unwrap_or_else(|failure| panic!("production compile failed for {case_name}: {failure:?}"));
+    let expected = match expected {
+        ScalarValue::Boolean(value) => value.to_string(),
+        ScalarValue::String(value) => value.clone(),
+        ScalarValue::Integer(value) => value.to_string(),
+    };
+    assert_eq!(
+        execute_expression(&program, case_name),
+        expected,
+        "production QT3 assertion for {case_name}: {expression}"
+    );
+}
+
+fn assert_production_failure(expression: &str, case_name: &str, expected_code: &str) {
+    let failure = compile_expression(case_name, expression)
+        .expect_err("production boolean expression should fail compilation");
+    assert_eq!(failure.code, expected_code, "{case_name}: {expression}");
 }
 
 fn assert_expected_error(document: &Document, result: NodeId, expected_code: &str) {

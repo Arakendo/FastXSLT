@@ -3,6 +3,7 @@ use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::case_conversion_experiment::CaseConversionExpression;
 use crate::xpath::castable_experiment::{CastExpression, CastableExpression};
+use crate::xpath::constant_boolean_experiment::ScalarExpression;
 use crate::xpath::decimal_sum_for_experiment::DecimalSumForExpression;
 use crate::xpath::deep_equal_boolean_experiment::DeepEqualBooleanExpression;
 use crate::xpath::default_collation_experiment::DefaultCollationExpression;
@@ -478,6 +479,7 @@ pub(crate) enum ValueExpression {
     DefaultCollation(Box<DefaultCollationExpression>),
     DurationComponent(Box<DurationComponentExpression>),
     SequenceCardinality(Box<SequenceCardinalityExpression>),
+    SourceFreeScalar(Box<ScalarExpression>),
     EncodeForUri(Box<EncodeForUriExpression>),
     EscapeHtmlUri(Box<EscapeHtmlUriExpression>),
     IriToUri(Box<IriToUriExpression>),

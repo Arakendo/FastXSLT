@@ -58,6 +58,48 @@ pub(crate) enum ScalarValue {
     Integer(usize),
 }
 
+impl ScalarExpression {
+    pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
+        match self {
+            Self::Boolean(boolean) | Self::BooleanString(boolean) => {
+                boolean.known_owned_capacity_bytes()
+            }
+            Self::Concat(left, right) | Self::Contains(left, right) => {
+                std::mem::size_of_val(left.as_ref())
+                    + left.known_owned_capacity_bytes()
+                    + std::mem::size_of_val(right.as_ref())
+                    + right.known_owned_capacity_bytes()
+            }
+            Self::StringLength(value) => {
+                std::mem::size_of_val(value.as_ref()) + value.known_owned_capacity_bytes()
+            }
+        }
+    }
+}
+
+impl BooleanExpression {
+    fn known_owned_capacity_bytes(&self) -> usize {
+        match self {
+            Self::Constant(_) => 0,
+            Self::Not(value) => {
+                std::mem::size_of_val(value.as_ref()) + value.known_owned_capacity_bytes()
+            }
+            Self::And(left, right) | Self::Or(left, right) | Self::Compare { left, right, .. } => {
+                std::mem::size_of_val(left.as_ref())
+                    + left.known_owned_capacity_bytes()
+                    + std::mem::size_of_val(right.as_ref())
+                    + right.known_owned_capacity_bytes()
+            }
+        }
+    }
+}
+
+pub(crate) fn recognizes_scalar(expression: &str) -> bool {
+    ["true(", "false(", "not(", "boolean("]
+        .iter()
+        .any(|function| expression.contains(function))
+}
+
 pub(crate) fn parse(expression: &str) -> Result<BooleanExpression, BooleanParseFailure> {
     parse_inner(expression.trim())
 }

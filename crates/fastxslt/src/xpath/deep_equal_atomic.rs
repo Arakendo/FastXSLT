@@ -41,7 +41,6 @@ pub(super) enum AtomicCollation {
     HtmlAsciiCaseInsensitive,
 }
 
-#[cfg(test)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum EffectiveBooleanValueFailure {
     InvalidTypeOrCardinality,
@@ -119,7 +118,6 @@ pub(super) fn parse_sequence(expression: &str) -> Option<AtomicSequence> {
     parse_atomic_sequence(expression).map(AtomicSequence)
 }
 
-#[cfg(test)]
 pub(super) fn parse_effective_boolean_value(
     expression: &str,
 ) -> Option<Result<bool, EffectiveBooleanValueFailure>> {

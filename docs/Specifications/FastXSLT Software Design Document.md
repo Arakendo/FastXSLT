@@ -387,6 +387,13 @@ flattening, exact admitted atomic constructors, literal `reverse()`, and
 evaluation remains charged and reaches the host-workbench path. This does not
 admit general node-sequence cardinality, dynamic sequence construction,
 invocation clocks, range predicates, or arbitrary higher-order expressions.
+Selected source-free `true()`, `false()`, `not()`, and `boolean()` compositions
+compile into an owned scalar AST and execute under invocation work control.
+The admitted form preserves short-circuiting, boolean comparisons, effective
+boolean values for bounded literal atomic sequences, and the selected string
+projection compositions. Invalid arity remains `XPST0017` and undefined atomic
+effective boolean value remains `FORG0006`. This does not admit document-aware
+focus, arbitrary sequences, general scalar expressions, or a public XPath AST.
 The selected `string-length()` expressions compile to a private production form
 that distinguishes source-free compositions from one document-path argument.
 The shared typed evaluator counts Unicode scalar values, preserves lazy

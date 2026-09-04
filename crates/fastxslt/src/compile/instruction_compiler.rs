@@ -7,6 +7,10 @@ use crate::xpath::case_conversion_experiment::{
     recognizes as recognizes_case_conversion,
 };
 use crate::xpath::castable_experiment::{parse as parse_castable, parse_cast};
+use crate::xpath::constant_boolean_experiment::{
+    BooleanParseFailure, parse_scalar as parse_source_free_scalar,
+    recognizes_scalar as recognizes_source_free_scalar,
+};
 use crate::xpath::constant_numeric_experiment::{self, ConstantNumericFailure};
 use crate::xpath::decimal_sum_for_experiment::parse as parse_decimal_sum_for;
 use crate::xpath::deep_equal_boolean_experiment::{
@@ -696,6 +700,8 @@ fn compile_value_expression(
         compile_deep_equal_value(expression, location)?
     } else if recognizes_sequence_cardinality(expression) {
         compile_sequence_cardinality_value(expression, location)?
+    } else if recognizes_source_free_scalar(expression) {
+        compile_source_free_scalar_value(expression, location)?
     } else if expression.contains(" castable as ") {
         ValueExpression::Castable(Box::new(parse_castable(expression, location).map_err(
             |failure| CompileFailure {
@@ -765,6 +771,38 @@ fn compile_value_expression(
             parse_location_path(expression, location.clone()).map_err(map_path_failure)?,
         )
     })
+}
+
+fn compile_source_free_scalar_value(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<ValueExpression, CompileFailure> {
+    let expression = parse_source_free_scalar(expression).map_err(|failure| {
+        let (code, category, detail) = match failure {
+            BooleanParseFailure::InvalidArity => (
+                "XPST0017",
+                CompileCategory::Invalid,
+                "boolean function has invalid arity",
+            ),
+            BooleanParseFailure::InvalidEffectiveBooleanValue => (
+                "FORG0006",
+                CompileCategory::Invalid,
+                "effective boolean value is undefined for the supplied sequence",
+            ),
+            BooleanParseFailure::Unsupported => (
+                "FXXP1019",
+                CompileCategory::Unsupported,
+                "source-free boolean expression is outside the admitted production slice",
+            ),
+        };
+        CompileFailure {
+            code,
+            category,
+            detail: detail.to_owned(),
+            location: location.clone(),
+        }
+    })?;
+    Ok(ValueExpression::SourceFreeScalar(Box::new(expression)))
 }
 
 fn compile_sequence_cardinality_value(

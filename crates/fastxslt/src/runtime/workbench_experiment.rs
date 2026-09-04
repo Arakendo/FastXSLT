@@ -680,6 +680,25 @@ mod tests {
     }
 
     #[test]
+    fn production_source_free_boolean_reaches_the_workbench_host_path() {
+        let engine = ExperimentalEngine::new(
+            "urn:fastxslt:boolean:source",
+            b"<source/>".to_vec(),
+            "urn:fastxslt:boolean:stylesheet",
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="not(false()) and boolean(xs:int('1'))"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("production source-free boolean expression should compile");
+
+        assert_eq!(
+            engine
+                .transform("boolean-workbench")
+                .expect("production source-free boolean expression should execute"),
+            "true"
+        );
+    }
+
+    #[test]
     fn production_string_length_expression_reaches_the_workbench_host_path() {
         let engine = ExperimentalEngine::new(
             "urn:fastxslt:string-length:source",
