@@ -82,6 +82,10 @@ raises it to 647.
 The following
 [string-function tranche](oasis-xslt10-string-function-tranche-2026-09-04.md)
 raises it to 653 while retaining one newly visible modern cardinality failure.
+The following
+[name path tranche](oasis-xslt10-name-path-tranche-2026-09-04.md)
+raises it to 657 while retaining lexical-prefix reconstruction and legacy
+multi-node conversion as explicit boundaries.
 
 ## Outcome
 

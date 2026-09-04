@@ -1094,6 +1094,15 @@ fn append_node_name_path(
     let (source, context) = required_source_context(inputs, context)?;
     let selected = evaluate_location_path_controlled(source, context, path, control)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    if selected.len() > 1 {
+        return Err(failure_at(
+            "XPTY0004",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            path.location.clone(),
+            "fn:name requires a zero-or-one node argument",
+        ));
+    }
     let Some(node) = selected.first().copied() else {
         return Ok(());
     };
@@ -1108,7 +1117,7 @@ fn append_node_name_path(
             "FXRT1008",
             FailureCategory::Unsupported,
             Some(inputs.request_id),
-            "name(..) for a namespaced node is outside the prefix-preserving private slice",
+            "fn:name for a namespaced node is outside the prefix-preserving private slice",
         ));
     }
     append_text(result, &name.local, inputs.request_id, control)

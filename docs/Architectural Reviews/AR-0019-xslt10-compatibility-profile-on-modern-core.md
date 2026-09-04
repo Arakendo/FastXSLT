@@ -256,6 +256,9 @@ public version-mode contract.
 - [x] Compose `string()` with admitted static atoms and typed paths, raising the
   lower bound to 653 while retaining the multi-node legacy case as a visible
   modern `XPTY0004` boundary.
+- [x] Compose `name()` with admitted typed paths, raising the lower bound to
+  657 while retaining namespaced lexical-QName reconstruction as unsupported
+  and the multi-node legacy case as a visible modern `XPTY0004` boundary.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -376,6 +379,10 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Static-atom and typed-path `string()` raised the lower bound
   from 647 to 653. Seven cases initialize: six pass and the multi-node legacy
   case reports the retained modern cardinality error.
+- 2026-09-04 -- Typed `name()` paths raised the lower bound from 653 to 657.
+  Eleven cases initialize: four pass, three reach existing XML-comparator gaps,
+  and four retain explicit cardinality, lexical-prefix, or serialization
+  boundaries without adding a mismatch.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

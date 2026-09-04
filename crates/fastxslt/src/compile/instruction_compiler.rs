@@ -982,6 +982,9 @@ fn compile_value_expression(
     if let Some(path) = compile_string_path(document, element, expression, location) {
         return Ok(ValueExpression::StringPath(path));
     }
+    if let Some(path) = compile_name_path(document, element, expression, location) {
+        return Ok(ValueExpression::NodeNamePath(path));
+    }
     if let Some(failure) = classify_atomic_path_operand(expression, location.clone()) {
         return Err(CompileFailure {
             code: failure.standard_code,
@@ -1621,6 +1624,47 @@ fn compile_string_path(
         return None;
     }
     let mut path = parse_location_path(argument, location.clone()).ok()?;
+    if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+        for step in &mut path.steps {
+            if let PathStep::ChildNamed(local) = step {
+                *step = PathStep::ChildExpandedName(ExpandedName {
+                    namespace: Some(namespace.to_owned()),
+                    local: local.clone(),
+                });
+            }
+        }
+    }
+    Some(path)
+}
+
+fn compile_name_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Option<LocationPath> {
+    let expression = expression.trim();
+    let argument = ["name(", "fn:name("]
+        .iter()
+        .find_map(|prefix| {
+            expression
+                .strip_prefix(prefix)
+                .and_then(|value| value.strip_suffix(')'))
+        })?
+        .trim();
+    if argument.is_empty() || !has_balanced_parentheses(argument) {
+        return None;
+    }
+    let mut path = parse_location_path(argument, location.clone())
+        .or_else(|failure| match failure {
+            PathFailure::Unsupported { .. } if argument.contains(':') => {
+                parse_qualified_child_path(argument, location.clone(), |prefix| {
+                    namespace_for_prefix(document, element, prefix).map(str::to_owned)
+                })
+            }
+            failure => Err(failure),
+        })
+        .ok()?;
     if let Some(namespace) = effective_xpath_default_namespace(document, element) {
         for step in &mut path.steps {
             if let PathStep::ChildNamed(local) = step {
