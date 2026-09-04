@@ -192,9 +192,12 @@ public version-mode contract.
   bound to 481 while retaining one later error and one mismatch visibly.
 - [x] Retain and evaluate named processing-instruction node tests in the shared
   typed location-path model, raising the strict lower bound to 485.
+- [x] Reuse the typed processing-instruction target for named template patterns,
+  retain XPath 1.0 literal-star PI selection, and lower no-argument `name()` to
+  the shared context-name operation, raising the strict lower bound to 514.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
-- [ ] Resolve or explicitly classify the 30 known executing comparison
+- [ ] Resolve or explicitly classify the 48 known executing comparison
   mismatches.
 - [ ] Define expected-error and discretionary/doubts comparison rules.
   - [x] Report doubt-annotated mismatches separately: three of the current 30
@@ -251,6 +254,10 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Named processing-instruction tests became a typed shared path
   step and raised the lower bound from 481 to 485; all four newly initialized
   cases reached definite passes.
+- 2026-09-04 -- Named PI template patterns, literal-star PI selection, and the
+  no-argument `name()` spelling raised the lower bound from 485 to 514. The
+  wider frontier also exposes 18 additional mismatches, ten later execution
+  failures, and one expected-error unexpected success; all remain uncredited.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

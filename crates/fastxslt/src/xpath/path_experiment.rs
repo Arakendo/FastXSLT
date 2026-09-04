@@ -499,7 +499,7 @@ fn processing_instruction_target(name_test: &str) -> Option<&str> {
         let target = argument
             .strip_prefix(delimiter)
             .and_then(|value| value.strip_suffix(delimiter));
-        if let Some(target) = target.filter(|value| is_ascii_ncname(value)) {
+        if let Some(target) = target.filter(|value| *value == "*" || is_ascii_ncname(value)) {
             return Some(target);
         }
     }

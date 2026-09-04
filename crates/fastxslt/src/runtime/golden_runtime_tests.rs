@@ -513,6 +513,33 @@ fn principal_template_after_two_includes_wins_same_precedence_conflict() {
 }
 
 #[test]
+fn named_processing_instruction_pattern_outranks_generic_node_test() {
+    const SOURCE: &str = "urn:fastxslt:named-pi-pattern:source";
+    const STYLESHEET: &str = "urn:fastxslt:named-pi-pattern:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="//processing-instruction()"/></out></xsl:template><xsl:template match="processing-instruction()"><generic/></xsl:template><xsl:template match="processing-instruction('work')"><named><xsl:value-of select="name()"/></named></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><?other no?><?work yes?></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("named-pi-pattern", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["named-pi-pattern"].serialized,
+        "<out><generic></generic><named>work</named></out>"
+    );
+}
+
+#[test]
 fn ignored_stylesheet_comments_do_not_split_literal_text_runs() {
     const SOURCE: &str = "urn:fastxslt:stylesheet-comment-text:source";
     const STYLESHEET: &str = "urn:fastxslt:stylesheet-comment-text:stylesheet";

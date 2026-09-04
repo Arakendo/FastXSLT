@@ -32,7 +32,9 @@ raises it to 476. The subsequent
 [copy-of path union tranche](oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md)
 raises it to 481. The following
 [named processing-instruction path tranche](oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md)
-raises it to 485.
+raises it to 485. The following
+[context name and PI pattern tranche](oasis-xslt10-context-name-and-pi-pattern-tranche-2026-09-04.md)
+raises it to 514.
 
 ## Outcome
 

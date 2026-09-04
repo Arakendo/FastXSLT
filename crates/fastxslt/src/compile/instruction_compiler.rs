@@ -1019,7 +1019,7 @@ fn compile_value_expression(
         ))
     } else if let Some(root) = compile_root_value(document, element, expression, location)? {
         root
-    } else if expression.trim() == "name(.)" {
+    } else if matches!(expression.trim(), "name()" | "name(.)") {
         ValueExpression::ContextNodeName
     } else if expression.trim() == "upper-case(.)" {
         ValueExpression::UpperCaseContextString

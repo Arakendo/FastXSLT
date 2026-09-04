@@ -743,6 +743,10 @@ fn temporary_matches(
             TemporaryNodeKind::ProcessingInstruction { .. },
             MatchPattern::ProcessingInstruction | MatchPattern::AnyNode,
         ) => true,
+        (
+            TemporaryNodeKind::ProcessingInstruction { target, .. },
+            MatchPattern::ProcessingInstructionNamed(required),
+        ) => target == required,
         (_, MatchPattern::QualifiedElementPathAlternatives(alternatives)) => {
             return matches_temporary_path_alternatives(
                 tree,

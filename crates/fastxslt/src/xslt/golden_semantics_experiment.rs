@@ -280,6 +280,7 @@ pub(crate) enum MatchPattern {
     Comment,
     Text,
     ProcessingInstruction,
+    ProcessingInstructionNamed(String),
     AnyNode,
     AnyElement,
 }

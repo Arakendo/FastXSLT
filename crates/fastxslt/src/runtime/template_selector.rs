@@ -339,6 +339,11 @@ fn matches_pattern(
         MatchPattern::ProcessingInstruction => {
             Ok(source.kind(node) == NodeKind::ProcessingInstruction)
         }
+        MatchPattern::ProcessingInstructionNamed(required) => Ok(source.kind(node)
+            == NodeKind::ProcessingInstruction
+            && source
+                .name(node)
+                .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())),
         MatchPattern::AnyNode => Ok(matches_any_node(source.kind(node))),
     }
 }

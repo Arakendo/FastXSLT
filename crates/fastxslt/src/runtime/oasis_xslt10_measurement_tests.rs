@@ -41,6 +41,7 @@ struct Measurement {
     comparison_frontiers: BTreeMap<String, usize>,
     comparison_examples: BTreeMap<String, String>,
     infrastructure_cases: Vec<String>,
+    expected_error_unexpected_success_cases: Vec<String>,
     mismatch_cases: Vec<String>,
     doubt_annotated_mismatch_cases: Vec<String>,
 }
@@ -212,6 +213,9 @@ fn measures_local_oasis_xslt10_compatibility() {
 
         if case.operation == "execution-error" {
             measurement.increment("expected-error-unexpected-success");
+            measurement
+                .expected_error_unexpected_success_cases
+                .push(case.identity.clone());
             continue;
         }
         if case.output_compare.as_deref() != Some("XML") {
@@ -280,6 +284,9 @@ fn measures_local_oasis_xslt10_compatibility() {
     }
     for identity in &measurement.infrastructure_cases {
         println!("infrastructure-case\t{identity}");
+    }
+    for identity in &measurement.expected_error_unexpected_success_cases {
+        println!("expected-error-unexpected-success-case\t{identity}");
     }
     for identity in &measurement.mismatch_cases {
         println!("mismatch-case\t{identity}");

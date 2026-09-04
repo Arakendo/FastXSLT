@@ -28,6 +28,13 @@ pub(super) fn compile_match_pattern(
         "comment()" => MatchPattern::Comment,
         "text()" => MatchPattern::Text,
         "processing-instruction()" => MatchPattern::ProcessingInstruction,
+        named if parse_named_processing_instruction_pattern(named).is_some() => {
+            MatchPattern::ProcessingInstructionNamed(
+                parse_named_processing_instruction_pattern(named)
+                    .expect("named processing-instruction pattern shape was checked")
+                    .to_owned(),
+            )
+        }
         "node()" => MatchPattern::AnyNode,
         "//*" => MatchPattern::DescendantAnyElement,
         lexical if parse_document_element_test(lexical).is_some() => {
@@ -151,6 +158,21 @@ pub(super) fn compile_match_pattern(
     };
     let priority = compile_template_priority(document, element, &pattern)?;
     Ok((pattern, priority))
+}
+
+fn parse_named_processing_instruction_pattern(pattern: &str) -> Option<&str> {
+    let argument = pattern
+        .strip_prefix("processing-instruction(")?
+        .strip_suffix(')')?;
+    for delimiter in ['\'', '"'] {
+        let target = argument
+            .strip_prefix(delimiter)
+            .and_then(|value| value.strip_suffix(delimiter));
+        if let Some(target) = target.filter(|value| *value == "*" || is_ascii_ncname(value)) {
+            return Some(target);
+        }
+    }
+    None
 }
 
 pub(super) fn is_homogeneous_qualified_path_union(pattern: &str) -> bool {
@@ -412,7 +434,8 @@ fn compile_template_priority(
             }
             MatchPattern::DocumentElement(Some(_))
             | MatchPattern::Element(_)
-            | MatchPattern::Attribute(_) => TemplatePriority::EXACT_NAME_DEFAULT,
+            | MatchPattern::Attribute(_)
+            | MatchPattern::ProcessingInstructionNamed(_) => TemplatePriority::EXACT_NAME_DEFAULT,
             MatchPattern::ElementLocal(_) | MatchPattern::ElementNamespace(_) => {
                 TemplatePriority::NAMESPACE_WILDCARD_DEFAULT
             }

@@ -178,6 +178,7 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
         | MatchPattern::AnyAttribute => 0,
         MatchPattern::DocumentElement(name) => name.as_ref().map_or(0, name_owned),
         MatchPattern::Element(name) | MatchPattern::Attribute(name) => name_owned(name),
+        MatchPattern::ProcessingInstructionNamed(target) => target.capacity(),
         MatchPattern::ElementLocal(value) | MatchPattern::ElementNamespace(value) => {
             value.capacity()
         }

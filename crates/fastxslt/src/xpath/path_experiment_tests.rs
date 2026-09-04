@@ -726,6 +726,10 @@ fn named_processing_instruction_test_filters_the_target_on_child_and_descendant_
             .name(*node)
             .is_some_and(|name| name.local == "work")
     }));
+
+    let literal_star = parse_location_path("processing-instruction('*')", location())
+        .expect("XPath 1.0 literal-star PI test should parse");
+    assert!(evaluate_location_path(&document, root, &literal_star).is_empty());
 }
 
 #[test]
