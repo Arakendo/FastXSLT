@@ -198,6 +198,8 @@ public version-mode contract.
 - [x] Lower `local-name()` and `namespace-uri()` context forms to typed shared
   expanded-name operations, raising the strict lower bound to 519 with no new
   mismatch or later failure.
+- [x] Normalize context `string()` and `string(.)` to the existing charged `.`
+  path and XDM string-value operation, raising the strict lower bound to 521.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -263,6 +265,8 @@ maintained redistributable legacy suite becomes available.
   failures, and one expected-error unexpected success; all remain uncredited.
 - 2026-09-04 -- Typed context `local-name()` and `namespace-uri()` operations
   raised the lower bound from 514 to 519; all five newly initialized cases pass.
+- 2026-09-04 -- Context `string()` spellings reused the existing `.` path and
+  raised the lower bound from 519 to 521; both newly initialized cases pass.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated
