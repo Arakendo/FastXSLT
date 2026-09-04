@@ -10,7 +10,7 @@ Date: 2026-09-03
 
 ## Method
 
-The private source-free case-conversion evaluator now retains an explicit empty
+The private source-free production string expression retains an explicit empty
 sequence and compares two optional strings by Unicode scalar sequence. If
 either operand is empty, `fn:codepoint-equal` returns the empty sequence. An
 atomic value other than a string produces the native `XPTY0004` boundary.
@@ -24,8 +24,11 @@ The selected tranche covers:
   `or` composition;
 - native `XPST0017` invalid-arity diagnostics.
 
-Every selected case executes the unchanged QT3 expression and its native
-assertion shape. Evaluation charges the XPath-operation work domain.
+Every selected unchanged expression is compiled inside `xsl:value-of`, executed
+by the ordinary runtime, serialized as text, and compared with its native
+assertion shape. Evaluation charges the XPath-operation work domain. A
+workbench sentinel composes codepoint equality with normalization through the
+same host-facing engine path.
 
 ## Conserved result
 

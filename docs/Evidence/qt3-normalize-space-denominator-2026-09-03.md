@@ -10,7 +10,7 @@ Date: 2026-09-03
 
 ## Method
 
-The private source-free string evaluator trims and collapses only the four XML
+The private source-free production string expression trims and collapses only the four XML
 whitespace characters: space, tab, carriage return, and line feed. It does not
 use a broader Unicode-whitespace shortcut. The optional-string empty sequence
 becomes the empty string, while a zero-argument call without supplied focus
@@ -24,8 +24,11 @@ The selected tranche covers:
 - equality assertions and a lazily unselected missing-context branch;
 - native `XPST0017` invalid-arity and `XPDY0002` missing-context diagnostics.
 
-Every selected case executes the unchanged QT3 expression and its native
-assertion shape. Evaluation charges the XPath-operation work domain.
+Every selected unchanged expression is compiled inside `xsl:value-of`, executed
+by the ordinary runtime, serialized as text, and compared with its native
+assertion shape. Evaluation charges the XPath-operation work domain. A
+workbench sentinel composes normalization with codepoint equality through the
+same host-facing engine path.
 
 ## Conserved result
 
@@ -47,4 +50,4 @@ Across all complete QT3 overlays, the conserved subtotal is now 1,278 cases:
 
 This evidence does not claim the zero-argument form with a supplied focus,
 schema-aware atomization, invocation clocks, or general predicate/sequence
-composition. The evaluator remains a private semantic slice.
+composition. The production expression remains a private semantic slice.

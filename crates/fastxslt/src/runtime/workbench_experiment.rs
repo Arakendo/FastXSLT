@@ -623,6 +623,25 @@ mod tests {
     }
 
     #[test]
+    fn production_source_free_string_functions_reach_the_workbench_host_path() {
+        let engine = ExperimentalEngine::new(
+            "urn:fastxslt:source-free-string:source",
+            b"<source/>".to_vec(),
+            "urn:fastxslt:source-free-string:stylesheet",
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="codepoint-equal(normalize-space('  A   B  '), 'A B')"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            WorkbenchLimits::default(),
+        )
+        .expect("production source-free string functions should compile");
+
+        assert_eq!(
+            engine
+                .transform("source-free-string-workbench")
+                .expect("production source-free string functions should execute"),
+            "true"
+        );
+    }
+
+    #[test]
     fn production_string_length_expression_reaches_the_workbench_host_path() {
         let engine = ExperimentalEngine::new(
             "urn:fastxslt:string-length:source",

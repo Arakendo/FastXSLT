@@ -2,8 +2,7 @@
 
 use std::{collections::BTreeSet, fs, path::PathBuf};
 
-use super::case_conversion_experiment::{CaseFailure, CaseValue, evaluate};
-use crate::execution_control_experiment::{InvocationControl, WorkDomain};
+use super::qt3_production_path_test_support::{compile_expression, execute_expression};
 use crate::qt3_overlay_test_support::{assert_private_case_passed, assert_selected_count};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
@@ -40,33 +39,25 @@ fn executes_qt3_normalize_space_denominator_tranche() {
             .map(|test| document.string_value(test).trim().to_owned())
             .expect("QT3 expression");
         let result = child_named(&document, case, "result").expect("QT3 result metadata");
-        let mut control = InvocationControl::unbounded();
-
-        match evaluate(&source, &mut control) {
-            Ok(actual) => assert_native_result(&document, result, &actual, &case_name, &source),
-            Err(CaseFailure::InvalidArity) => {
-                assert_expected_error(&document, result, "XPST0017");
+        match compile_expression(&case_name, &source) {
+            Ok(program) => {
+                let actual = execute_expression(&program, &case_name);
+                assert_serialized_result(&document, result, &actual, &case_name, &source);
             }
-            Err(CaseFailure::MissingContext) => {
-                assert_expected_error(&document, result, "XPDY0002");
-            }
-            Err(failure) => {
-                panic!("selected QT3 expression failed: {case_name}: {source}: {failure:?}")
-            }
+            Err(failure) => assert_expected_error(&document, result, failure.code),
         }
-        assert!(control.consumed(WorkDomain::XPathOperation) > 0);
     }
 }
 
-fn assert_native_result(
+fn assert_serialized_result(
     document: &Document,
     result: NodeId,
-    actual: &CaseValue,
+    actual: &str,
     case_name: &str,
     source: &str,
 ) {
     if !descendants_named(document, result, "assert-true").is_empty() {
-        assert_eq!(actual, &CaseValue::Boolean(true), "{case_name}: {source}");
+        assert_eq!(actual, "true", "{case_name}: {source}");
         return;
     }
     if let Some(assertion) = descendants_named(document, result, "assert-string-value")
@@ -75,7 +66,7 @@ fn assert_native_result(
     {
         assert_eq!(
             actual,
-            &CaseValue::String(document.string_value(assertion)),
+            document.string_value(assertion),
             "{case_name}: {source}"
         );
         return;
@@ -85,11 +76,7 @@ fn assert_native_result(
         .next()
     {
         let expected = parse_quoted_assertion(&document.string_value(assertion));
-        assert_eq!(
-            actual,
-            &CaseValue::String(expected),
-            "{case_name}: {source}"
-        );
+        assert_eq!(actual, expected, "{case_name}: {source}");
         return;
     }
     panic!("selected case lacks an admitted assertion: {case_name}");

@@ -25,7 +25,8 @@ compact compiled vector.
 
 The complete QT3 `default-collation`, `escape-html-uri`, `encode-for-uri`,
 `iri-to-uri`, `lower-case`, `upper-case`, `string-length`, and the five
-year/month/day/hour/minute duration-component families now put all 357 selected
+year/month/day/hour/minute duration-component families, plus `normalize-space`
+and `codepoint-equal`, now put all 413 selected
 cases through production semantics, XSLT execution, and serialization. Every
 migrated semantic family reaches the same engine through ASP.NET workbench
 sentinels. The URI
@@ -46,6 +47,8 @@ character references rather than allowing XML normalization to change a test.
 [Months-from-duration evidence](../Evidence/qt3-months-from-duration-denominator-2026-09-03.md)
 [Days-from-duration evidence](../Evidence/qt3-days-from-duration-denominator-2026-09-03.md)
 [Hour/minute duration evidence](../Evidence/qt3-hour-minute-duration-denominators-2026-09-03.md)
+[Normalize-space evidence](../Evidence/qt3-normalize-space-denominator-2026-09-03.md)
+[Codepoint-equal evidence](../Evidence/qt3-codepoint-equal-denominator-2026-09-03.md)
 
 Finding 5 remains partially open for the other selected test-only families.
 Continue applying this production-path pattern and prefer existing shared

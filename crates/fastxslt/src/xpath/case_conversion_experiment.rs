@@ -45,7 +45,10 @@ pub(crate) enum CaseFailure {
 pub(crate) fn recognizes(expression: &str) -> bool {
     let expression = expression.trim();
     expression != "upper-case(.)"
-        && (expression.contains("lower-case") || expression.contains("upper-case"))
+        && (expression.contains("lower-case")
+            || expression.contains("upper-case")
+            || expression.contains("normalize-space")
+            || expression.contains("codepoint-equal"))
 }
 
 pub(crate) fn parse(

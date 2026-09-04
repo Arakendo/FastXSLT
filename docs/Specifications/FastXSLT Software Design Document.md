@@ -371,6 +371,14 @@ mapping uses Rust's toolchain-supplied Unicode tables; Unicode-version-pinned
 cases outside that profile remain excluded. This does not admit
 context-dependent case conversion, general function parsing, or a stable
 Unicode data-source contract.
+The same owned source-free production string form admits selected
+`normalize-space()` and `codepoint-equal()` compositions. Normalization trims
+and collapses only XML space, tab, carriage return, and line feed; codepoint
+equality compares optional strings by Unicode scalar sequence and propagates
+an empty operand as an empty result. Invalid arity and non-string operands keep
+their standard diagnostic identities. This does not admit zero-argument
+normalization with a supplied focus, Unicode normalization, invocation clocks,
+schema-aware atomization, or a public collation API.
 The selected `string-length()` expressions compile to a private production form
 that distinguishes source-free compositions from one document-path argument.
 The shared typed evaluator counts Unicode scalar values, preserves lazy
