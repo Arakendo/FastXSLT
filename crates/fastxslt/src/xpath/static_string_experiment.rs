@@ -1,5 +1,11 @@
 //! Bounded constant folding for static string concatenation.
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum StaticStringFunctionValue {
+    String(String),
+    Boolean(bool),
+}
+
 pub(crate) fn fold(expression: &str) -> Option<String> {
     let mut value = String::new();
     for term in expression.split("||") {
@@ -31,6 +37,51 @@ pub(crate) fn fold_concat_literals(expression: &str) -> Option<String> {
         result.push_str(&static_atom_string(argument)?);
     }
     Some(result)
+}
+
+pub(crate) fn fold_binary_literal_function(expression: &str) -> Option<StaticStringFunctionValue> {
+    let expression = expression.trim();
+    let (function, arguments) = [
+        "substring-before",
+        "fn:substring-before",
+        "substring-after",
+        "fn:substring-after",
+        "starts-with",
+        "fn:starts-with",
+        "contains",
+        "fn:contains",
+    ]
+    .iter()
+    .find_map(|name| {
+        expression
+            .strip_prefix(name)
+            .and_then(|tail| tail.strip_prefix('('))
+            .and_then(|tail| tail.strip_suffix(')'))
+            .map(|arguments| (*name, arguments))
+    })?;
+    let arguments = split_arguments(arguments, 2)?;
+    let [value, search] = arguments.as_slice() else {
+        return None;
+    };
+    let value = quoted_literal(value)?;
+    let search = quoted_literal(search)?;
+    match function.strip_prefix("fn:").unwrap_or(function) {
+        "contains" => Some(StaticStringFunctionValue::Boolean(value.contains(search))),
+        "starts-with" => Some(StaticStringFunctionValue::Boolean(
+            value.starts_with(search),
+        )),
+        "substring-before" => Some(StaticStringFunctionValue::String(
+            value
+                .find(search)
+                .map_or_else(String::new, |index| value[..index].to_owned()),
+        )),
+        "substring-after" => Some(StaticStringFunctionValue::String(
+            value.find(search).map_or_else(String::new, |index| {
+                value[index + search.len()..].to_owned()
+            }),
+        )),
+        _ => unreachable!("function list and folding dispatch must agree"),
+    }
 }
 
 fn split_arguments(source: &str, max_arguments: usize) -> Option<Vec<&str>> {
@@ -130,7 +181,9 @@ fn is_xml_10_character(character: char) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{fold, fold_concat_literals};
+    use super::{
+        StaticStringFunctionValue, fold, fold_binary_literal_function, fold_concat_literals,
+    };
 
     #[test]
     fn folds_literal_concatenation_with_one_xml_codepoint() {
@@ -153,5 +206,43 @@ mod tests {
         assert_eq!(fold_concat_literals("concat('a', path)"), None);
         let excessive = format!("concat({})", vec!["'x'"; 4_097].join(","));
         assert_eq!(fold_concat_literals(&excessive), None);
+    }
+
+    #[test]
+    fn folds_binary_literal_string_functions_with_empty_string_rules() {
+        for (source, expected) in [
+            (
+                "contains('ENCYCLOPEDIA', 'CYCL')",
+                StaticStringFunctionValue::Boolean(true),
+            ),
+            (
+                "starts-with('abc', '')",
+                StaticStringFunctionValue::Boolean(true),
+            ),
+            (
+                "substring-before('1999/04/01', '/')",
+                StaticStringFunctionValue::String("1999".to_owned()),
+            ),
+            (
+                "substring-after('1999/04/01', '/')",
+                StaticStringFunctionValue::String("04/01".to_owned()),
+            ),
+            (
+                "substring-after('abc', 'z')",
+                StaticStringFunctionValue::String(String::new()),
+            ),
+            (
+                "substring-after('é😀', 'é')",
+                StaticStringFunctionValue::String("😀".to_owned()),
+            ),
+        ] {
+            assert_eq!(
+                fold_binary_literal_function(source),
+                Some(expected),
+                "{source}"
+            );
+        }
+        assert_eq!(fold_binary_literal_function("contains(path, 'x')"), None);
+        assert_eq!(fold_binary_literal_function("contains('x')"), None);
     }
 }

@@ -52,7 +52,9 @@ raises it to 553. The following
 [homogeneous literal equality tranche](oasis-xslt10-homogeneous-literal-equality-tranche-2026-09-04.md)
 raises it to 560. The following
 [static concat tranche](oasis-xslt10-static-concat-tranche-2026-09-04.md)
-raises it to 567.
+raises it to 567. The following
+[static binary string-functions tranche](oasis-xslt10-static-binary-string-functions-tranche-2026-09-04.md)
+raises it to 592.
 
 ## Outcome
 

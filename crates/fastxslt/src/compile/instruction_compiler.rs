@@ -934,6 +934,20 @@ fn compile_value_expression(
     {
         return Ok(ValueExpression::LiteralString(literal));
     }
+    if let Some(value) =
+        crate::xpath::static_string_experiment::fold_binary_literal_function(expression)
+    {
+        return Ok(match value {
+            crate::xpath::static_string_experiment::StaticStringFunctionValue::String(value) => {
+                ValueExpression::LiteralString(value)
+            }
+            crate::xpath::static_string_experiment::StaticStringFunctionValue::Boolean(value) => {
+                ValueExpression::SourceFreeScalar(Box::new(ScalarExpression::Boolean(
+                    crate::xpath::constant_boolean_experiment::BooleanExpression::Constant(value),
+                )))
+            }
+        });
+    }
     if let Some(failure) = classify_atomic_path_operand(expression, location.clone()) {
         return Err(CompileFailure {
             code: failure.standard_code,

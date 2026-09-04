@@ -221,6 +221,9 @@ public version-mode contract.
 - [x] Fold bounded static `concat()` calls into the shared literal-result path,
   raising the lower bound to 567 and passing the unchanged 1,000-argument
   stress case without admitting dynamic concat semantics.
+- [x] Fold two-literal `contains()`, `starts-with()`, `substring-before()`, and
+  `substring-after()` through typed shared results, raising the lower bound to
+  592 with all 25 newly initialized cases passing.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -307,6 +310,9 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Bounded static `concat()` folding raised the lower bound from
   560 to 567; all seven newly initialized cases pass, including the unchanged
   1,000-argument stress case.
+- 2026-09-04 -- Typed static binary string-function folding raised the lower
+  bound from 567 to 592; all 25 newly initialized cases pass without a new
+  mismatch or runtime failure.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated
