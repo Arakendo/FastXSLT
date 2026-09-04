@@ -335,6 +335,13 @@ name tests remain outside default element namespace application. Counting
 reuses controlled path traversal and does not admit general aggregate
 functions, arbitrary default-namespace expressions, or namespace-sensitive
 condition operands.
+An empty-sequence path origin followed by an admitted location step remains an
+empty node sequence; selected `empty(()/step)` expressions compile to a typed
+form and perform no node visits. Statically atomic path operands report
+`XPTY0019`, and an axis applied with a statically atomic context reports
+`XPTY0020`. A context-dependent expression invoked without a context item
+reports `XPDY0002`; bounded context-required forms outside the general evaluator
+remain explicitly unsupported when a context is present.
 The exact `relative-path < integer` conditional form parses selected node string
 values as `i64` and uses existential comparison. It preserves ordered branch
 short-circuiting but does not admit decimal, floating-point, promotion, or

@@ -763,16 +763,16 @@ pub(super) fn required_source_context<'a>(
 ) -> Result<(&'a Document, NodeId), ExecutionFailure> {
     let source = inputs.source.ok_or_else(|| {
         failure(
-            "FXRT1004",
-            FailureCategory::Unsupported,
+            "XPDY0002",
+            FailureCategory::Invalid,
             Some(inputs.request_id),
             "the instruction requires a principal source and context item",
         )
     })?;
     let context = context.ok_or_else(|| {
         failure(
-            "FXRT1004",
-            FailureCategory::Unsupported,
+            "XPDY0002",
+            FailureCategory::Invalid,
             Some(inputs.request_id),
             "the instruction requires a principal source and context item",
         )

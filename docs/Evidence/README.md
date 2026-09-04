@@ -173,6 +173,7 @@ pressure architecture but does not silently create a public guarantee.
 - [QT3 Source-Free Boolean Production Path](qt3-source-free-boolean-production-path-2026-09-03.md)
 - [QT3 Document-Aware Boolean Production Path](qt3-document-aware-boolean-production-path-2026-09-03.md)
 - [QT3 Axis Count Production Path](qt3-axis-count-production-path-2026-09-03.md)
+- [QT3 Axis Diagnostic Tail Production Path](qt3-axis-diagnostic-tail-production-path-2026-09-03.md)
 - [QT3 Months-From-Duration Denominator](qt3-months-from-duration-denominator-2026-09-03.md)
 - [QT3 Days-From-Duration Denominator](qt3-days-from-duration-denominator-2026-09-03.md)
 - [QT3 Hour and Minute Duration Denominators](qt3-hour-minute-duration-denominators-2026-09-03.md)

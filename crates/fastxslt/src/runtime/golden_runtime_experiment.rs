@@ -128,6 +128,32 @@ pub(crate) fn execute_compiled_stylesheet_for_test(
     .map_err(|failure| format!("{failure:?}"))
 }
 
+#[cfg(test)]
+pub(crate) fn execute_compiled_initial_template_without_source_for_test(
+    program: &StylesheetProgram,
+    name: &str,
+    request_id: &str,
+) -> Result<String, String> {
+    let mut control = InvocationControl::unbounded();
+    let result = execute_initial_template(
+        program,
+        name,
+        &BTreeMap::new(),
+        MultipleMatchPolicy::UseLast,
+        request_id,
+        &mut control,
+    )
+    .map_err(|failure| format!("{failure:?}"))?;
+    serialize_xml(
+        &result,
+        &program.output,
+        request_id,
+        64 * 1024,
+        &mut control,
+    )
+    .map_err(|failure| format!("{failure:?}"))
+}
+
 fn execute_program_with_parameters(
     program: &StylesheetProgram,
     source: &Document,

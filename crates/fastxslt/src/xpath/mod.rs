@@ -9,7 +9,7 @@ pub(crate) mod constant_boolean_experiment;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod constant_integer_experiment;
 pub(crate) mod constant_numeric_experiment;
-#[cfg(test)]
+#[cfg(any(test, feature = "workbench"))]
 pub(crate) mod context_requirement_experiment;
 #[cfg(test)]
 pub(crate) mod count_experiment;
@@ -48,7 +48,7 @@ pub(crate) mod integer_for_experiment;
 pub(crate) mod iri_to_uri_expression;
 #[cfg(any(test, feature = "workbench"))]
 pub(crate) mod path_experiment;
-#[cfg(test)]
+#[cfg(any(test, feature = "workbench"))]
 pub(crate) mod path_operand_type_experiment;
 #[cfg(test)]
 mod qt3_axis_tests;

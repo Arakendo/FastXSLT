@@ -448,8 +448,10 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::LocationPath(path)
         | ValueExpression::CountLocationPath(path)
         | ValueExpression::RootPath(path)
-        | ValueExpression::GeneratedRootIdentity(path) => path.known_owned_capacity_bytes(),
+        | ValueExpression::GeneratedRootIdentity(path)
+        | ValueExpression::EmptyLocationPath(path) => path.known_owned_capacity_bytes(),
         ValueExpression::ContextNodeName | ValueExpression::UpperCaseContextString => 0,
+        ValueExpression::ContextRequiredOnly(location) => location.resource.capacity(),
         ValueExpression::CaseConversion(expression) => {
             size_of_val(expression.as_ref()) + expression.known_owned_capacity_bytes()
         }

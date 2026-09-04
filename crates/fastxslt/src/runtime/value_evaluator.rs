@@ -61,7 +61,7 @@ use crate::xslt::golden_semantics_experiment::{
 
 use super::{
     ExecutionFailure, FailureCategory, ResultNode, RuntimeVariables, SequenceInputs, append_text,
-    control_failure, failure, required_source_context, runtime_context,
+    control_failure, failure, failure_at, required_source_context, runtime_context,
 };
 
 #[expect(
@@ -113,6 +113,24 @@ pub(super) fn execute_value_of(
         ValueExpression::ContextNodeName => {
             append_context_node_name(inputs, context, result, control)?;
         }
+        ValueExpression::ContextRequiredOnly(location) => {
+            if context.is_none() {
+                return Err(failure_at(
+                    "XPDY0002",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    location.clone(),
+                    "the expression requires a context item, but none was supplied",
+                ));
+            }
+            return Err(failure_at(
+                "FXXP1021",
+                FailureCategory::Unsupported,
+                Some(inputs.request_id),
+                location.clone(),
+                "the context-dependent expression is outside the admitted evaluation slice",
+            ));
+        }
         ValueExpression::UpperCaseContextString => {
             append_upper_case_context_string(inputs, context, result, control)?;
         }
@@ -156,6 +174,9 @@ pub(super) fn execute_value_of(
         ValueExpression::SequenceCardinality(expression) => {
             append_sequence_cardinality(inputs, expression, result, control)?;
         }
+        ValueExpression::EmptyLocationPath(path) => {
+            append_empty_location_path(inputs, path, context, result, control)?;
+        }
         ValueExpression::SourceFreeScalar(expression) => {
             append_source_free_scalar(inputs, expression, result, control)?;
         }
@@ -183,6 +204,19 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_empty_location_path(
+    inputs: &SequenceInputs<'_>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    context: Option<NodeId>,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let selected = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    append_boolean(inputs, selected.is_empty(), result, control)
 }
 
 fn append_document_boolean(

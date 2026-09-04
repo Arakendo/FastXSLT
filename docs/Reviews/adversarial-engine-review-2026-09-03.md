@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | Date | 2026-09-03 |
-| Status | Remediation in progress; Findings 1, 2, 3, 4, and 6 resolved; Finding 7 review obligation resolved with an active decomposition campaign; Finding 5 partially remediated |
+| Status | Findings 1 through 6 resolved; Finding 7 review obligation resolved with an active decomposition campaign |
 | Scope | Repository state at `a9d495e`, with emphasis on changes after the resolved 2026-08-30 review |
 | Method | Read-only source, decision-record, evidence, corpus-overlay, runtime, worker, native-ABI, and managed-host inspection; full all-feature workspace test execution; static counterexamples |
 
@@ -19,7 +19,7 @@ admitted behavior that the earlier review did not cover.
 | 2. Cross-kind lexical shadowing | Resolved 2026-09-03 | Every local binding clears competing value kinds and suppresses same-name global fallback. The source-node-over-global-atomic counterexample passes through shared and complete-clone frames. |
 | 3. Untaken creation outcome | Resolved 2026-09-03 | Releasing the outcome reclaims its engine and capacity; concurrent take/release has one linearized owner. |
 | 4. Character-map scaling | Resolved 2026-09-03 | Release-mode measurements confirmed both adverse curves. Compilation now composes through an ordered keyed map and retains a sorted compact vector; serialization uses binary lookup. |
-| 5. Test-only QT3 semantics | Partially remediated 2026-09-03 | Twenty-one complete families plus 182 successful `AxisStep` count cases now put 1,128 selected cases through production semantics, XSLT execution, serialization, and workbench sentinels. The remaining 42 selected `AxisStep` path/cardinality/diagnostic cases are the current migration debt. |
+| 5. Test-only QT3 semantics | Resolved 2026-09-03 | All 1,170 current QT3 passes now execute or report their expected diagnostic through production compilation/runtime paths. Direct family evaluators remain focused oracles, not the sole pass mechanism. |
 | 6. Worker command queue | Resolved 2026-09-03 | The shared event channel has capacity one and a focused backpressure test proves a second decoded event cannot be queued. |
 | 7. Source-unit reopening | Review obligation resolved 2026-09-03; campaign active | Current responsibilities and line counts are inventoried, compiler tests are extracted, and serializer/compiler/runtime checkpoints have named one-way seams and conservation gates. |
 
@@ -304,7 +304,7 @@ request for a generalized cache.
 
 ### Finding 5: QT3 pass growth is implemented by test-only XPath evaluators
 
-Disposition: **Partially remediated 2026-09-03.** The complete seven-case
+Disposition: **Resolved 2026-09-03.** The complete seven-case
 `fn/default-collation.xml`, 34-case `fn/escape-html-uri.xml`, 29-case
 `fn/encode-for-uri.xml`, and 47-case `fn/iri-to-uri.xml` denominators no longer
 invoke test-only evaluators for their 113 selected cases. The complete
@@ -335,9 +335,10 @@ ASP.NET workbench engine. The three URI paths also share their encoding
 primitives with the earlier semantic code. The 182 successful `AxisStep`
 selections now compile their unchanged standard `fn:count(location-path)`
 expressions and execute the production path evaluator; their direct count seam
-remains a work-accounting oracle.
-These migrations establish and repeat the required production-parity pattern
-but do not resolve the remaining test-only families.
+remains a work-accounting oracle. The remaining 42 `AxisStep` cases execute
+empty-origin cardinality or preserve their expected static/dynamic standard
+diagnostics through production. Together these migrations make all 1,170
+current QT3 passes production-backed.
 [Default-collation evidence](../Evidence/qt3-default-collation-denominator-2026-09-03.md)
 [Escape-HTML-URI evidence](../Evidence/qt3-escape-html-uri-denominator-2026-09-03.md)
 [Encode-for-URI evidence](../Evidence/qt3-encode-for-uri-denominator-2026-09-03.md)
@@ -357,6 +358,7 @@ but do not resolve the remaining test-only families.
 [Source-free boolean production-path evidence](../Evidence/qt3-source-free-boolean-production-path-2026-09-03.md)
 [Document-aware boolean production-path evidence](../Evidence/qt3-document-aware-boolean-production-path-2026-09-03.md)
 [Axis count production-path evidence](../Evidence/qt3-axis-count-production-path-2026-09-03.md)
+[Axis diagnostic-tail production-path evidence](../Evidence/qt3-axis-diagnostic-tail-production-path-2026-09-03.md)
 
 Severity:
 - Medium

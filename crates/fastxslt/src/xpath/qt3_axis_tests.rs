@@ -8,7 +8,10 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocati
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 use super::count_experiment;
-use super::qt3_production_path_test_support::{compile_expression, execute_expression_with_source};
+use super::qt3_production_path_test_support::{
+    compile_contextless_expression, compile_expression, execute_contextless_expression,
+    execute_expression_with_source,
+};
 
 const EMPTY_SEQUENCE_PATH_CASES: [(&str, &str); 2] = [
     ("K2-Axes-55", "empty(()/@attr)"),
@@ -536,6 +539,15 @@ fn executes_qt3_empty_sequence_path_cases() {
         )
         .expect("execute admitted QT3 empty-sequence path expression");
         assert!(actual, "native QT3 assertion for {case_name}");
+        let program = compile_expression(case_name, &expression).unwrap_or_else(|failure| {
+            panic!("production compile failed for {case_name}: {failure:?}")
+        });
+        assert_eq!(
+            execute_expression_with_source(&program, &document, case_name)
+                .expect("production empty-origin path should execute"),
+            "true",
+            "production QT3 assertion for {case_name}: {expression}"
+        );
         assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 0);
     }
 }
@@ -571,6 +583,9 @@ fn reports_qt3_statically_known_atomic_path_type_errors() {
         assert_eq!(failure.standard_code, expected_code, "{case_name}");
         assert_eq!(failure.location, location, "{case_name}");
         assert!(!failure.detail.is_empty(), "{case_name}");
+        let production = compile_expression(case_name, &expression)
+            .expect_err("production must reject a statically atomic path operand");
+        assert_eq!(production.code, expected_code, "{case_name}: {expression}");
     }
 }
 
@@ -605,6 +620,16 @@ fn reports_qt3_missing_dynamic_context_cases() {
         assert_eq!(failure.standard_code, "XPDY0002", "{case_name}");
         assert_eq!(failure.location, location, "{case_name}");
         assert!(!failure.detail.is_empty(), "{case_name}");
+        let program =
+            compile_contextless_expression(case_name, &expression).unwrap_or_else(|failure| {
+                panic!("production compile failed for {case_name}: {failure:?}")
+            });
+        let production = execute_contextless_expression(&program, case_name)
+            .expect_err("contextless production execution must fail");
+        assert!(
+            production.contains("XPDY0002"),
+            "production QT3 diagnostic for {case_name}: {expression}: {production}"
+        );
     }
 }
 
@@ -651,5 +676,8 @@ fn reports_admitted_qt3_axis_static_syntax_errors() {
                 panic!("{case_name} must be classified as invalid syntax")
             }
         }
+        let production = compile_expression(case_name, &expression)
+            .expect_err("production must reject invalid path syntax");
+        assert_eq!(production.code, "XPST0003", "{case_name}: {expression}");
     }
 }

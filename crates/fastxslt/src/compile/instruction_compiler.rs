@@ -12,6 +12,7 @@ use crate::xpath::constant_boolean_experiment::{
     recognizes_scalar as recognizes_source_free_scalar,
 };
 use crate::xpath::constant_numeric_experiment::{self, ConstantNumericFailure};
+use crate::xpath::context_requirement_experiment::classify as classify_missing_context;
 use crate::xpath::decimal_sum_for_experiment::parse as parse_decimal_sum_for;
 use crate::xpath::deep_equal_boolean_experiment::{
     parse as parse_deep_equal, recognizes as recognizes_deep_equal,
@@ -53,6 +54,7 @@ use crate::xpath::iri_to_uri_expression::{
 use crate::xpath::path_experiment::{
     PathFailure, PathStep, parse_location_path, parse_qualified_child_path,
 };
+use crate::xpath::path_operand_type_experiment::classify as classify_atomic_path_operand;
 use crate::xpath::string_length_experiment::{
     StringLengthParseFailure, parse as parse_string_length, recognizes as recognizes_string_length,
 };
@@ -682,6 +684,14 @@ fn compile_value_expression(
     if let Some(literal) = xpath_string_literal(expression.trim()) {
         return Ok(ValueExpression::LiteralString(literal.to_owned()));
     }
+    if let Some(failure) = classify_atomic_path_operand(expression, location.clone()) {
+        return Err(CompileFailure {
+            code: failure.standard_code,
+            category: CompileCategory::Invalid,
+            detail: failure.detail,
+            location: failure.location,
+        });
+    }
     if let Some(count) = compile_count_value(document, element, expression, location)? {
         return Ok(count);
     }
@@ -706,6 +716,8 @@ fn compile_value_expression(
         compile_default_collation_value(expression, location)?
     } else if recognizes_deep_equal(expression) {
         compile_deep_equal_value(expression, location)?
+    } else if let Some(path) = compile_empty_location_path(expression, location)? {
+        path
     } else if recognizes_sequence_cardinality(expression) {
         compile_sequence_cardinality_value(expression, location)?
     } else if recognizes_document_boolean(expression) {
@@ -777,10 +789,44 @@ fn compile_value_expression(
         }
         ValueExpression::Variable(variable.to_owned())
     } else {
-        ValueExpression::LocationPath(
-            parse_location_path(expression, location.clone()).map_err(map_path_failure)?,
-        )
+        compile_location_path_or_missing_context(expression, location)?
     })
+}
+
+fn compile_location_path_or_missing_context(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<ValueExpression, CompileFailure> {
+    match parse_location_path(expression, location.clone()) {
+        Ok(path) => Ok(ValueExpression::LocationPath(path)),
+        Err(failure @ PathFailure::Unsupported { .. }) => {
+            if let Some(requirement) = classify_missing_context(expression, location.clone()) {
+                Ok(ValueExpression::ContextRequiredOnly(requirement.location))
+            } else {
+                Err(map_path_failure(failure))
+            }
+        }
+        Err(failure) => Err(map_path_failure(failure)),
+    }
+}
+
+fn compile_empty_location_path(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<ValueExpression>, CompileFailure> {
+    let expression = expression.trim();
+    let Some(argument) = ["empty(", "fn:empty("].iter().find_map(|prefix| {
+        expression
+            .strip_prefix(prefix)
+            .and_then(|value| value.strip_suffix(')'))
+    }) else {
+        return Ok(None);
+    };
+    if !argument.trim_start().starts_with("()/") {
+        return Ok(None);
+    }
+    let path = parse_location_path(argument.trim(), location.clone()).map_err(map_path_failure)?;
+    Ok(Some(ValueExpression::EmptyLocationPath(path)))
 }
 
 fn compile_document_boolean_value(

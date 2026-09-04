@@ -62,10 +62,14 @@ character references rather than allowing XML normalization to change a test.
 [Source-free boolean production-path evidence](../Evidence/qt3-source-free-boolean-production-path-2026-09-03.md)
 [Document-aware boolean production-path evidence](../Evidence/qt3-document-aware-boolean-production-path-2026-09-03.md)
 [Axis count production-path evidence](../Evidence/qt3-axis-count-production-path-2026-09-03.md)
+[Axis diagnostic-tail production-path evidence](../Evidence/qt3-axis-diagnostic-tail-production-path-2026-09-03.md)
 
-Finding 5 remains partially open for the other selected test-only families.
-Continue applying this production-path pattern and prefer existing shared
-semantic primitives over adding another family-specific test-only evaluator.
+The remaining 42 selected `AxisStep` cases now also reach production: two
+empty-origin paths serialize `true`, 35 static failures preserve `XPST0003`,
+`XPTY0019`, or `XPTY0020`, and five contextless named-template executions report
+`XPDY0002`. All 1,170 current QT3 passes are therefore production-backed, and
+Finding 5 is resolved. Direct family evaluators remain focused accounting and
+classification oracles rather than the sole basis for a pass.
 Exact fractional `seconds-from-duration` work remains paused because it needs
 fraction-preserving decimal duration storage. The shared production duration
 constructor now completely consumes admitted lexicals and
