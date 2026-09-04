@@ -109,20 +109,22 @@ pub(super) fn compile_sequence_excluding(
     let mut instructions = Vec::new();
     let mut local_variables = Vec::new();
     let preserve_whitespace = effective_xml_space_preserved(document, parent)?;
-    for child in document
+    let children = document
         .children(parent)
         .iter()
         .copied()
         .filter(|child| !excluded.contains(child))
-    {
+        .collect::<Vec<_>>();
+    for (index, child) in children.iter().copied().enumerate() {
         match document.kind(child) {
             NodeKind::Text => {
-                let value = document.value(child).unwrap_or_default();
-                if preserve_whitespace || !value.chars().all(char::is_whitespace) {
-                    instructions.push(Instruction::Text {
-                        value: value.to_owned(),
-                        location: document.location(child).clone(),
-                    });
+                if let Some(instruction) = compile_literal_text_node(
+                    document,
+                    child,
+                    preserve_whitespace
+                        || text_run_contains_non_whitespace(document, &children, index),
+                ) {
+                    instructions.push(instruction);
                 }
             }
             NodeKind::Comment | NodeKind::ProcessingInstruction => {}
@@ -203,6 +205,49 @@ pub(super) fn compile_sequence_excluding(
         }
     }
     Ok(instructions)
+}
+
+fn compile_literal_text_node(
+    document: &Document,
+    node: NodeId,
+    preserve_whitespace: bool,
+) -> Option<Instruction> {
+    let value = document.value(node).unwrap_or_default();
+    (preserve_whitespace || !value.chars().all(char::is_whitespace)).then(|| Instruction::Text {
+        value: value.to_owned(),
+        location: document.location(node).clone(),
+    })
+}
+
+fn text_run_contains_non_whitespace(
+    document: &Document,
+    siblings: &[NodeId],
+    text_index: usize,
+) -> bool {
+    let mut start = text_index;
+    while start > 0
+        && matches!(
+            document.kind(siblings[start - 1]),
+            NodeKind::Text | NodeKind::Comment | NodeKind::ProcessingInstruction
+        )
+    {
+        start -= 1;
+    }
+    let mut end = text_index + 1;
+    while end < siblings.len()
+        && matches!(
+            document.kind(siblings[end]),
+            NodeKind::Text | NodeKind::Comment | NodeKind::ProcessingInstruction
+        )
+    {
+        end += 1;
+    }
+    siblings[start..end].iter().any(|sibling| {
+        document.kind(*sibling) == NodeKind::Text
+            && document
+                .value(*sibling)
+                .is_some_and(|value| !value.chars().all(char::is_whitespace))
+    })
 }
 
 fn local_variable_name(variable: &Instruction) -> &String {

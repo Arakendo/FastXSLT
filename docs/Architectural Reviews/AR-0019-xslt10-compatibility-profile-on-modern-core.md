@@ -179,9 +179,13 @@ public version-mode contract.
   namespace AVTs explicit.
 - [x] Repair admitted relative descendant match paths so `a//c` accepts a
   nonadjacent `a` ancestor, moving one known mismatch to pass.
+- [x] Preserve included matched-template declaration order and stylesheet text
+  runs separated by ignored comments, moving two known mismatches to pass and
+  raising the strict lower bound to 464.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
-- [ ] Resolve or explicitly classify the 20 known semantic mismatches.
+- [ ] Resolve or explicitly classify the 29 known executing comparison
+  mismatches.
 - [ ] Define expected-error and discretionary/doubts comparison rules.
 - [ ] Prototype at least one genuine version-dependent behavior through
   compile-time static context without a second runtime.
@@ -221,3 +225,6 @@ maintained redistributable legacy suite becomes available.
   default-namespace inheritance, leaving no net mismatch increase.
 - 2026-09-04 -- Descendant match-pattern repair moved unchanged
   `conflictres15` from mismatch to pass and raised the lower bound to 462.
+- 2026-09-04 -- Include declaration-position preservation and comment-separated
+  text-run handling moved `impincl06` and `whitespace21` from mismatch to pass,
+  raising the lower bound to 464.

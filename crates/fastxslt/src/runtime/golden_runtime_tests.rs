@@ -463,6 +463,86 @@ fn exact_element_templates_dispatch_repeated_nodes_in_document_order() {
 }
 
 #[test]
+fn principal_template_after_two_includes_wins_same_precedence_conflict() {
+    const SOURCE: &str = "urn:fastxslt:include-order:source";
+    const PRINCIPAL: &str = "https://example.invalid/include-order/main.xsl";
+    const MODULES: [(&str, &[u8]); 4] = [
+        (
+            "https://example.invalid/include-order/b.xsl",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:import href="d.xsl"/><xsl:template match="unused-b">B</xsl:template></xsl:stylesheet>"#,
+        ),
+        (
+            "https://example.invalid/include-order/c.xsl",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:import href="e.xsl"/><xsl:template match="title">C</xsl:template></xsl:stylesheet>"#,
+        ),
+        (
+            "https://example.invalid/include-order/d.xsl",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="unused-d">D</xsl:template></xsl:stylesheet>"#,
+        ),
+        (
+            "https://example.invalid/include-order/e.xsl",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="title">E</xsl:template></xsl:stylesheet>"#,
+        ),
+    ];
+    let principal = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc/title"/></out></xsl:template><xsl:include href="b.xsl"/><xsl:include href="c.xsl"/><xsl:template match="title">MAIN</xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(6, 8_192, 32_768));
+    resources
+        .admit(SOURCE, b"<doc><title>value</title></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(PRINCIPAL, principal.to_vec())
+        .expect("admit principal stylesheet");
+    for (identity, bytes) in MODULES {
+        resources
+            .admit(identity, bytes.to_vec())
+            .expect("admit stylesheet dependency");
+    }
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, PRINCIPAL).expect("compile include graph");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("include-order", "include-order-result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute include-order case");
+
+    assert_eq!(
+        results.by_request["include-order"].serialized,
+        "<out>MAIN</out>"
+    );
+}
+
+#[test]
+fn ignored_stylesheet_comments_do_not_split_literal_text_runs() {
+    const SOURCE: &str = "urn:fastxslt:stylesheet-comment-text:source";
+    const STYLESHEET: &str = "urn:fastxslt:stylesheet-comment-text:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out>x
+    <!-- ignored -->y
+    <!-- ignored -->
+    <z><!-- ignored --> </z></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("stylesheet-comment-text", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["stylesheet-comment-text"].serialized,
+        "<out>x\n    y\n    \n    <z></z></out>"
+    );
+}
+
+#[test]
 fn positional_patterns_and_avts_share_the_apply_templates_focus() {
     const POSITION_SOURCE: &str = "urn:fastxslt:position-focus:source";
     const POSITION_STYLESHEET: &str = "urn:fastxslt:position-focus:stylesheet";

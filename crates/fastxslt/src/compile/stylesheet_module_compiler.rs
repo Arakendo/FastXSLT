@@ -90,7 +90,7 @@ pub(crate) fn compile_stylesheet_with_single_include_program_at(
     merge_included_program(
         &mut program,
         included_program,
-        principal.location(principal_root),
+        principal.location(*include),
         false,
     )?;
     finalize_character_maps(&mut program)?;
@@ -135,7 +135,7 @@ fn merge_included_program(
         program.root_template = included_program.root_template;
         program.root_template_modes = included_program.root_template_modes;
     }
-    for matched in included_program.matched_templates {
+    for matched in &included_program.matched_templates {
         if !allow_duplicate_matches
             && program.matched_templates.iter().any(|existing| {
                 existing.pattern == matched.pattern && existing.modes == matched.modes
@@ -147,8 +147,19 @@ fn merge_included_program(
                 &matched.template.location,
             ));
         }
-        program.matched_templates.push(matched);
     }
+    let insertion_index = program
+        .matched_templates
+        .iter()
+        .position(|matched| {
+            matched.template.location.resource == location.resource
+                && matched.template.location.span.start > location.span.start
+        })
+        .unwrap_or(program.matched_templates.len());
+    program.matched_templates.splice(
+        insertion_index..insertion_index,
+        included_program.matched_templates,
+    );
     for named in included_program.named_templates {
         if program
             .named_templates
@@ -204,13 +215,8 @@ pub(crate) fn compile_stylesheet_with_two_included_programs_at(
         principal_root,
         &include_declarations,
     )?;
-    for included in included_programs {
-        merge_included_program(
-            &mut program,
-            included,
-            principal.location(principal_root),
-            true,
-        )?;
+    for (included, include) in included_programs.into_iter().zip(include_declarations) {
+        merge_included_program(&mut program, included, principal.location(include), true)?;
     }
     finalize_character_maps(&mut program)?;
     validate_named_template_references(&program)?;

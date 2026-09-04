@@ -22,7 +22,9 @@ raises it to 403. The later
 [static element namespace tranche](oasis-xslt10-static-element-namespace-tranche-2026-09-04.md)
 raises it to 461. The subsequent
 [descendant match-pattern repair](oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md)
-raises it to 462.
+raises it to 462. The subsequent
+[include-order and comment-text repairs](oasis-xslt10-include-order-and-comment-text-repairs-2026-09-04.md)
+raise it to 464.
 
 ## Outcome
 
