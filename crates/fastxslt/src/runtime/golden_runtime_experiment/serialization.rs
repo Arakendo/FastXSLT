@@ -10,6 +10,13 @@ use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xslt::golden_semantics_experiment::OutputSettings;
 use unicode_normalization::UnicodeNormalization;
 
+mod namespace_scope;
+
+use namespace_scope::{
+    NamespaceFrame, NamespaceMode, NamespaceScope, complete_element_prefix as element_prefix,
+    complete_namespace_scope as element_namespace_scope,
+};
+
 #[derive(Clone, Copy)]
 struct SerializationOptions<'a> {
     cdata_section_elements: &'a [crate::xml::quick_xml_experiment::ExpandedName],
@@ -73,6 +80,24 @@ pub(in crate::runtime) fn serialize_xml(
     request_id: &str,
     byte_limit: usize,
     control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    serialize_xml_with_namespace_mode(
+        result,
+        settings,
+        request_id,
+        byte_limit,
+        control,
+        NamespaceMode::ScopedStack,
+    )
+}
+
+fn serialize_xml_with_namespace_mode(
+    result: &SemanticResult,
+    settings: &OutputSettings,
+    request_id: &str,
+    byte_limit: usize,
+    control: &mut InvocationControl,
+    namespace_mode: NamespaceMode,
 ) -> Result<String, ExecutionFailure> {
     validate_serialization_preconditions(result, settings, request_id)?;
     let normalization_form = validate_normalization_form(settings, request_id)?;
@@ -163,15 +188,43 @@ pub(in crate::runtime) fn serialize_xml(
         indent: settings.indent == Some(true),
         indentation_state: IndentationState::Enabled,
     };
+    let mut namespace_scope =
+        NamespaceScope::new(output_namespace_mode(namespace_mode, xhtml_mode));
     let mut doctype_written = false;
     for node in &result.children {
         if !doctype_written && matches!(node, ResultNode::Element { .. }) {
             serialize_doctype(result, settings, xhtml, &mut output)?;
             doctype_written = true;
         }
-        serialize_node(node, &[], options, 0, &mut output)?;
+        serialize_node(node, &mut namespace_scope, options, 0, &mut output)?;
     }
     Ok(output.finish())
+}
+
+fn output_namespace_mode(requested: NamespaceMode, xhtml_mode: XhtmlMode) -> NamespaceMode {
+    if xhtml_mode == XhtmlMode::DefaultNamespace {
+        NamespaceMode::CompleteClone
+    } else {
+        requested
+    }
+}
+
+#[cfg(test)]
+pub(in crate::runtime) fn serialize_xml_complete_namespace_reference(
+    result: &SemanticResult,
+    settings: &OutputSettings,
+    request_id: &str,
+    byte_limit: usize,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    serialize_xml_with_namespace_mode(
+        result,
+        settings,
+        request_id,
+        byte_limit,
+        control,
+        NamespaceMode::CompleteClone,
+    )
 }
 
 fn is_significant_result_node(node: &ResultNode) -> bool {
@@ -1331,9 +1384,9 @@ fn write_character_mapped(
     )
 }
 
-fn serialize_node(
-    node: &ResultNode,
-    inherited_namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
+fn serialize_node<'a>(
+    node: &'a ResultNode,
+    namespace_scope: &mut NamespaceScope<'a>,
     options: SerializationOptions<'_>,
     depth: usize,
     output: &mut BudgetedString,
@@ -1357,7 +1410,7 @@ fn serialize_node(
             output.push_str("-->")?;
         }
         ResultNode::Element { .. } => {
-            serialize_element(node, inherited_namespaces, options, depth, output)?;
+            serialize_element(node, namespace_scope, options, depth, output)?;
         }
         ResultNode::PendingAttribute(_) => {
             return Err(failure(
@@ -1385,9 +1438,9 @@ fn serialize_processing_instruction(
     output.push_str("?>")
 }
 
-fn serialize_element(
-    node: &ResultNode,
-    inherited_namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
+fn serialize_element<'a>(
+    node: &'a ResultNode,
+    namespace_scope: &mut NamespaceScope<'a>,
     options: SerializationOptions<'_>,
     depth: usize,
     output: &mut BudgetedString,
@@ -1401,103 +1454,120 @@ fn serialize_element(
     else {
         unreachable!("serialize_element receives an element")
     };
-    let normalized_namespaces;
-    let namespaces = if options.xhtml_mode == XhtmlMode::DefaultNamespace {
+    let frame = enter_element_namespace_scope(
+        namespace_scope,
+        name,
+        namespaces,
+        attributes,
+        options.xhtml_mode,
+    );
+    let result = (|| {
+        let prefix = namespace_scope.element_prefix(name.namespace.as_deref(), output)?;
+        output.push('<')?;
+        write_name(prefix.as_deref(), &name.local, output)?;
+        namespace_scope.write_declarations(&frame, output)?;
+        for attribute in attributes {
+            output.push(' ')?;
+            let prefix =
+                namespace_scope.attribute_prefix(attribute.name.namespace.as_deref(), output)?;
+            write_name(prefix.as_deref(), &attribute.name.local, output)?;
+            output.push_str("=\"")?;
+            if options.escape_uri_attributes && is_uri_attribute(name, attribute) {
+                escape_uri_attribute(&attribute.value, output)?;
+            } else {
+                escape_attribute_with_character_map(
+                    &attribute.value,
+                    options.character_map,
+                    options.normalization_form,
+                    output,
+                )?;
+            }
+            output.push('"')?;
+        }
+        if options.xml_empty_element_tag && children.is_empty() {
+            return output.push_str("/>");
+        }
+        if options.html_mode != HtmlMode::None && children.is_empty() && is_html_void_element(name)
+        {
+            return output.push('>');
+        }
+        if options.xhtml_mode != XhtmlMode::None
+            && children.is_empty()
+            && is_xhtml_void_element(name, options.xhtml_mode)
+        {
+            return output.push_str(" />");
+        }
+        output.push('>')?;
+        let inject_content_type = options
+            .content_type_media_type
+            .is_some_and(|_| is_content_type_head(name, options));
+        let options = options.inherited_for(name);
+        let indent_children = options.indent
+            && options.indentation_state == IndentationState::Enabled
+            && (inject_content_type
+                || children
+                    .iter()
+                    .any(|child| !is_replaced_content_type_meta(child, inject_content_type)))
+            && children
+                .iter()
+                .filter(|child| !is_replaced_content_type_meta(child, inject_content_type))
+                .all(|child| matches!(child, ResultNode::Element { .. }));
+        serialize_content_type_if_needed(
+            options,
+            inject_content_type,
+            indent_children,
+            depth,
+            output,
+        )?;
+        for child in children {
+            if is_replaced_content_type_meta(child, inject_content_type) {
+                continue;
+            }
+            serialize_element_child(
+                child,
+                name,
+                namespace_scope,
+                options,
+                depth,
+                indent_children,
+                output,
+            )?;
+        }
+        if indent_children {
+            write_indentation(depth, output)?;
+        }
+        output.push_str("</")?;
+        write_name(prefix.as_deref(), &name.local, output)?;
+        output.push('>')
+    })();
+    namespace_scope.exit(frame);
+    result
+}
+
+fn enter_element_namespace_scope<'a>(
+    namespace_scope: &mut NamespaceScope<'a>,
+    name: &crate::xml::quick_xml_experiment::ExpandedName,
+    namespaces: &'a [crate::xml::quick_xml_experiment::NamespaceBinding],
+    attributes: &[ResultAttribute],
+    xhtml_mode: XhtmlMode,
+) -> NamespaceFrame {
+    if xhtml_mode == XhtmlMode::DefaultNamespace {
         let default_namespace = name
             .namespace
             .as_deref()
             .filter(|namespace| is_xhtml5_default_namespace(Some(namespace)));
-        normalized_namespaces =
+        let normalized =
             normalize_xhtml5_namespace_bindings(default_namespace, namespaces, attributes);
-        normalized_namespaces.as_slice()
+        namespace_scope.enter_transient(name, &normalized)
     } else {
-        namespaces
-    };
-    let (in_scope, declarations) = element_namespace_scope(name, namespaces, inherited_namespaces);
-    let prefix = element_prefix(name.namespace.as_deref(), &in_scope, output)?;
-    output.push('<')?;
-    write_name(prefix, &name.local, output)?;
-    for binding in &declarations {
-        output.push_str(" xmlns")?;
-        if let Some(prefix) = &binding.prefix {
-            output.push(':')?;
-            output.push_str(prefix)?;
-        }
-        output.push_str("=\"")?;
-        escape_attribute(&binding.namespace, output)?;
-        output.push('"')?;
+        namespace_scope.enter_borrowed(name, namespaces)
     }
-    for attribute in attributes {
-        output.push(' ')?;
-        let prefix = attribute_prefix(attribute.name.namespace.as_deref(), &in_scope, output)?;
-        write_name(prefix, &attribute.name.local, output)?;
-        output.push_str("=\"")?;
-        if options.escape_uri_attributes && is_uri_attribute(name, attribute) {
-            escape_uri_attribute(&attribute.value, output)?;
-        } else {
-            escape_attribute_with_character_map(
-                &attribute.value,
-                options.character_map,
-                options.normalization_form,
-                output,
-            )?;
-        }
-        output.push('"')?;
-    }
-    if options.xml_empty_element_tag && children.is_empty() {
-        return output.push_str("/>");
-    }
-    if options.html_mode != HtmlMode::None && children.is_empty() && is_html_void_element(name) {
-        return output.push('>');
-    }
-    if options.xhtml_mode != XhtmlMode::None
-        && children.is_empty()
-        && is_xhtml_void_element(name, options.xhtml_mode)
-    {
-        return output.push_str(" />");
-    }
-    output.push('>')?;
-    let inject_content_type = options
-        .content_type_media_type
-        .is_some_and(|_| is_content_type_head(name, options));
-    let options = options.inherited_for(name);
-    let indent_children = options.indent
-        && options.indentation_state == IndentationState::Enabled
-        && (inject_content_type
-            || children
-                .iter()
-                .any(|child| !is_replaced_content_type_meta(child, inject_content_type)))
-        && children
-            .iter()
-            .filter(|child| !is_replaced_content_type_meta(child, inject_content_type))
-            .all(|child| matches!(child, ResultNode::Element { .. }));
-    serialize_content_type_if_needed(options, inject_content_type, indent_children, depth, output)?;
-    for child in children {
-        if is_replaced_content_type_meta(child, inject_content_type) {
-            continue;
-        }
-        serialize_element_child(
-            child,
-            name,
-            &in_scope,
-            options,
-            depth,
-            indent_children,
-            output,
-        )?;
-    }
-    if indent_children {
-        write_indentation(depth, output)?;
-    }
-    output.push_str("</")?;
-    write_name(prefix, &name.local, output)?;
-    output.push('>')
 }
 
-fn serialize_element_child(
-    child: &ResultNode,
+fn serialize_element_child<'a>(
+    child: &'a ResultNode,
     parent_name: &crate::xml::quick_xml_experiment::ExpandedName,
-    in_scope: &[crate::xml::quick_xml_experiment::NamespaceBinding],
+    namespace_scope: &mut NamespaceScope<'a>,
     options: SerializationOptions<'_>,
     depth: usize,
     indent: bool,
@@ -1522,7 +1592,7 @@ fn serialize_element_child(
             output,
         );
     }
-    serialize_node(child, in_scope, options, depth + 1, output)
+    serialize_node(child, namespace_scope, options, depth + 1, output)
 }
 
 fn serialize_content_type_if_needed(
@@ -1632,42 +1702,6 @@ fn is_xhtml_void_element(
         )
 }
 
-fn element_namespace_scope(
-    name: &crate::xml::quick_xml_experiment::ExpandedName,
-    namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
-    inherited_namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
-) -> (
-    Vec<crate::xml::quick_xml_experiment::NamespaceBinding>,
-    Vec<crate::xml::quick_xml_experiment::NamespaceBinding>,
-) {
-    let mut in_scope = inherited_namespaces.to_vec();
-    let mut declarations = Vec::new();
-    for binding in namespaces {
-        let inherited = in_scope.iter().position(|candidate| {
-            candidate.prefix == binding.prefix && candidate.namespace == binding.namespace
-        });
-        if inherited.is_none() {
-            declarations.push(binding.clone());
-        }
-        in_scope.retain(|candidate| candidate.prefix != binding.prefix);
-        in_scope.push(binding.clone());
-    }
-    if name.namespace.is_none()
-        && in_scope
-            .iter()
-            .any(|binding| binding.prefix.is_none() && !binding.namespace.is_empty())
-    {
-        let undeclaration = crate::xml::quick_xml_experiment::NamespaceBinding {
-            prefix: None,
-            namespace: String::new(),
-        };
-        declarations.push(undeclaration.clone());
-        in_scope.retain(|binding| binding.prefix.is_some());
-        in_scope.push(undeclaration);
-    }
-    (in_scope, declarations)
-}
-
 fn is_xhtml_head(name: &crate::xml::quick_xml_experiment::ExpandedName) -> bool {
     name.namespace.as_deref() == Some("http://www.w3.org/1999/xhtml") && name.local == "head"
 }
@@ -1732,55 +1766,6 @@ fn serialize_cdata(
     let normalized = normalize_to_string(value, normalization_form);
     output.push_str(&normalized.replace("]]>", "]]]]><![CDATA[>"))?;
     output.push_str("]]>")
-}
-
-fn attribute_prefix<'a>(
-    namespace: Option<&str>,
-    in_scope: &'a [crate::xml::quick_xml_experiment::NamespaceBinding],
-    output: &BudgetedString,
-) -> Result<Option<&'a str>, ExecutionFailure> {
-    let Some(namespace) = namespace else {
-        return Ok(None);
-    };
-    if namespace == "http://www.w3.org/XML/1998/namespace" {
-        return Ok(Some("xml"));
-    }
-    in_scope
-        .iter()
-        .find(|binding| binding.prefix.is_some() && binding.namespace == namespace)
-        .and_then(|binding| binding.prefix.as_deref())
-        .map(Some)
-        .ok_or_else(|| {
-            failure(
-                "FXSR1002",
-                FailureCategory::Unsupported,
-                Some(&output.request_id),
-                format!("result attribute namespace has no retained prefix binding: {namespace}"),
-            )
-        })
-}
-
-fn element_prefix<'a>(
-    namespace: Option<&str>,
-    in_scope: &'a [crate::xml::quick_xml_experiment::NamespaceBinding],
-    output: &BudgetedString,
-) -> Result<Option<&'a str>, ExecutionFailure> {
-    let Some(namespace) = namespace else {
-        return Ok(None);
-    };
-    in_scope
-        .iter()
-        .filter(|binding| binding.namespace == namespace)
-        .min_by_key(|binding| usize::from(binding.prefix.is_some()))
-        .map(|binding| binding.prefix.as_deref())
-        .ok_or_else(|| {
-            failure(
-                "FXSR1002",
-                FailureCategory::Unsupported,
-                Some(&output.request_id),
-                format!("result namespace has no retained prefix binding: {namespace}"),
-            )
-        })
 }
 
 fn write_name(
@@ -2085,10 +2070,198 @@ mod scaling_measurement_tests {
     use std::time::Instant;
 
     use crate::execution_control_experiment::{InvocationControl, WorkDomain};
+    use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
+    use crate::xslt::golden_semantics_experiment::OutputSettings;
 
     use super::{
-        BudgetedString, NormalizationForm, escape_text_in_bounded_runs, write_character_expansion,
+        BudgetedString, NamespaceMode, NormalizationForm, ResultAttribute, ResultNode,
+        SemanticResult, escape_text_in_bounded_runs, serialize_xml_with_namespace_mode,
+        write_character_expansion,
     };
+
+    fn xml_settings() -> OutputSettings {
+        OutputSettings {
+            method: Some("xml".to_owned()),
+            version: None,
+            html_version: None,
+            encoding: None,
+            media_type: None,
+            doctype_system: None,
+            doctype_public: None,
+            include_content_type: None,
+            escape_uri_attributes: None,
+            byte_order_mark: None,
+            normalization_form: None,
+            character_map: Vec::new(),
+            undeclare_prefixes: None,
+            standalone: None,
+            cdata_section_elements: Vec::new(),
+            suppress_indentation_elements: Vec::new(),
+            omit_xml_declaration: true,
+            indent: None,
+        }
+    }
+
+    fn namespace_binding(prefix: Option<&str>, namespace: &str) -> NamespaceBinding {
+        NamespaceBinding {
+            prefix: prefix.map(str::to_owned),
+            namespace: namespace.to_owned(),
+        }
+    }
+
+    fn expanded_name(namespace: Option<&str>, local: &str) -> ExpandedName {
+        ExpandedName {
+            namespace: namespace.map(str::to_owned),
+            local: local.to_owned(),
+        }
+    }
+
+    fn namespace_scope_result() -> SemanticResult {
+        let unnamespaced_grandchild = ResultNode::Element {
+            name: expanded_name(None, "plain"),
+            namespaces: Vec::new(),
+            attributes: Vec::new(),
+            children: Vec::new(),
+        };
+        let shadowing_child = ResultNode::Element {
+            name: expanded_name(Some("urn:shadow"), "child"),
+            namespaces: vec![
+                namespace_binding(Some("q"), "urn:shared"),
+                namespace_binding(Some("p"), "urn:shadow"),
+            ],
+            attributes: vec![ResultAttribute {
+                name: expanded_name(Some("urn:shadow"), "value"),
+                value: "one".to_owned(),
+            }],
+            children: vec![unnamespaced_grandchild],
+        };
+        let restored_sibling = ResultNode::Element {
+            name: expanded_name(Some("urn:shared"), "sibling"),
+            namespaces: Vec::new(),
+            attributes: vec![ResultAttribute {
+                name: expanded_name(Some("urn:shared"), "value"),
+                value: "two".to_owned(),
+            }],
+            children: Vec::new(),
+        };
+        SemanticResult {
+            children: vec![ResultNode::Element {
+                name: expanded_name(Some("urn:shared"), "root"),
+                namespaces: vec![
+                    namespace_binding(Some("p"), "urn:shared"),
+                    namespace_binding(Some("q"), "urn:shared"),
+                    namespace_binding(None, "urn:default"),
+                ],
+                attributes: vec![ResultAttribute {
+                    name: expanded_name(Some("urn:shared"), "value"),
+                    value: "root".to_owned(),
+                }],
+                children: vec![shadowing_child, restored_sibling],
+            }],
+        }
+    }
+
+    #[test]
+    fn scoped_namespace_stack_matches_complete_clone_for_shadowing_and_siblings() {
+        let result = namespace_scope_result();
+        let settings = xml_settings();
+        let mut scoped_control = InvocationControl::unbounded();
+        let scoped = serialize_xml_with_namespace_mode(
+            &result,
+            &settings,
+            "namespace-scope",
+            4_096,
+            &mut scoped_control,
+            NamespaceMode::ScopedStack,
+        )
+        .expect("scoped namespace serialization");
+        let mut complete_control = InvocationControl::unbounded();
+        let complete = serialize_xml_with_namespace_mode(
+            &result,
+            &settings,
+            "namespace-scope",
+            4_096,
+            &mut complete_control,
+            NamespaceMode::CompleteClone,
+        )
+        .expect("complete namespace serialization");
+
+        assert_eq!(scoped, complete);
+        assert_eq!(
+            scoped,
+            "<p:root xmlns:p=\"urn:shared\" xmlns:q=\"urn:shared\" xmlns=\"urn:default\" p:value=\"root\"><p:child xmlns:p=\"urn:shadow\" p:value=\"one\"><plain xmlns=\"\"></plain></p:child><p:sibling p:value=\"two\"></p:sibling></p:root>"
+        );
+        assert_eq!(
+            scoped_control.consumed(WorkDomain::SerializedByte),
+            complete_control.consumed(WorkDomain::SerializedByte)
+        );
+    }
+
+    #[test]
+    fn scoped_namespace_stack_matches_complete_clone_at_the_byte_limit() {
+        let result = namespace_scope_result();
+        let settings = xml_settings();
+        let mut scoped_control = InvocationControl::unbounded();
+        let scoped = serialize_xml_with_namespace_mode(
+            &result,
+            &settings,
+            "namespace-limit",
+            71,
+            &mut scoped_control,
+            NamespaceMode::ScopedStack,
+        )
+        .expect_err("scoped serialization should exceed the byte limit");
+        let mut complete_control = InvocationControl::unbounded();
+        let complete = serialize_xml_with_namespace_mode(
+            &result,
+            &settings,
+            "namespace-limit",
+            71,
+            &mut complete_control,
+            NamespaceMode::CompleteClone,
+        )
+        .expect_err("complete serialization should exceed the byte limit");
+
+        assert_eq!(scoped, complete);
+        assert_eq!(
+            scoped_control.consumed(WorkDomain::SerializedByte),
+            complete_control.consumed(WorkDomain::SerializedByte)
+        );
+    }
+
+    #[test]
+    fn scoped_namespace_stack_matches_complete_clone_at_cancellation() {
+        let result = namespace_scope_result();
+        let settings = xml_settings();
+        let mut scoped_control =
+            InvocationControl::unbounded().cancelling_on_charge(WorkDomain::SerializedByte, 12);
+        let scoped = serialize_xml_with_namespace_mode(
+            &result,
+            &settings,
+            "namespace-cancel",
+            4_096,
+            &mut scoped_control,
+            NamespaceMode::ScopedStack,
+        )
+        .expect_err("scoped serialization should observe cancellation");
+        let mut complete_control =
+            InvocationControl::unbounded().cancelling_on_charge(WorkDomain::SerializedByte, 12);
+        let complete = serialize_xml_with_namespace_mode(
+            &result,
+            &settings,
+            "namespace-cancel",
+            4_096,
+            &mut complete_control,
+            NamespaceMode::CompleteClone,
+        )
+        .expect_err("complete serialization should observe cancellation");
+
+        assert_eq!(scoped, complete);
+        assert_eq!(
+            scoped_control.consumed(WorkDomain::SerializedByte),
+            complete_control.consumed(WorkDomain::SerializedByte)
+        );
+    }
 
     #[test]
     fn bounded_text_runs_match_character_wise_xml_and_html_output() {

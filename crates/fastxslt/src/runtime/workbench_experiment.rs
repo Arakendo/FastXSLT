@@ -4,6 +4,8 @@ use crate::execution_control_experiment::{
     CancellationToken, ControlFailure, InvocationControl, WorkLimits,
 };
 use crate::resources::{ResourceLimits, ResourceSetBuilder};
+#[cfg(test)]
+use crate::runtime::golden_runtime_experiment::serialize_xml_complete_namespace_reference;
 use crate::runtime::golden_runtime_experiment::{
     ExecutionFailure, compile_resource_with_denied, execute_program, serialize_xml,
 };

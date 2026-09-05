@@ -8,7 +8,7 @@ use crate::xslt::golden_semantics_experiment::{Instruction, ValueExpression};
 
 use super::{
     CancellationToken, ExperimentalEngine, InvocationControl, WorkbenchLimits, execute_program,
-    serialize_xml, work_limits,
+    serialize_xml, serialize_xml_complete_namespace_reference, work_limits,
 };
 
 #[test]
@@ -195,6 +195,112 @@ fn measure_namespace_heavy_transform_phases() {
             iterations,
         );
     }
+}
+
+#[cfg(feature = "allocation-observation")]
+#[test]
+#[ignore = "manual release-mode scoped-stack versus complete-clone serializer comparison"]
+fn compare_namespace_scope_serializers() {
+    compare_namespace_serializers(&build_engine(500), "ordinary-for-004-500", 5_000);
+    for (depth, iterations) in [(8_usize, 2_000_usize), (24, 500), (48, 100)] {
+        compare_namespace_serializers(
+            &build_namespace_heavy_engine(depth, 8),
+            &format!("namespace-heavy-depth-{depth}"),
+            iterations,
+        );
+    }
+}
+
+#[cfg(feature = "allocation-observation")]
+fn compare_namespace_serializers(engine: &ExperimentalEngine, request: &str, iterations: usize) {
+    let document = engine
+        .prepared
+        .get(&engine.source_id)
+        .expect("prepared comparison source");
+    let mut execution_control =
+        InvocationControl::new(CancellationToken::new(), work_limits(engine.limits));
+    let semantic = execute_program(&engine.program, &document, request, &mut execution_control)
+        .expect("comparison semantic execution");
+
+    let mut scoped_value = None;
+    let mut scoped_control =
+        InvocationControl::new(CancellationToken::new(), work_limits(engine.limits));
+    let scoped_allocations = allocation_counter::measure(|| {
+        scoped_value = Some(
+            serialize_xml(
+                &semantic,
+                &engine.program.output,
+                request,
+                engine.limits.max_result_bytes,
+                &mut scoped_control,
+            )
+            .expect("scoped namespace serialization"),
+        );
+    });
+    let mut complete_value = None;
+    let mut complete_control =
+        InvocationControl::new(CancellationToken::new(), work_limits(engine.limits));
+    let complete_allocations = allocation_counter::measure(|| {
+        complete_value = Some(
+            serialize_xml_complete_namespace_reference(
+                &semantic,
+                &engine.program.output,
+                request,
+                engine.limits.max_result_bytes,
+                &mut complete_control,
+            )
+            .expect("complete namespace serialization"),
+        );
+    });
+    assert_eq!(scoped_value, complete_value);
+    assert_eq!(
+        scoped_control.consumed(WorkDomain::SerializedByte),
+        complete_control.consumed(WorkDomain::SerializedByte)
+    );
+
+    let mut scoped_samples = Vec::with_capacity(5);
+    let mut complete_samples = Vec::with_capacity(5);
+    for _ in 0..5 {
+        let mut scoped_seconds = 0.0;
+        let mut complete_seconds = 0.0;
+        for _ in 0..iterations {
+            let mut complete_control =
+                InvocationControl::new(CancellationToken::new(), work_limits(engine.limits));
+            let started = Instant::now();
+            let complete = serialize_xml_complete_namespace_reference(
+                &semantic,
+                &engine.program.output,
+                request,
+                engine.limits.max_result_bytes,
+                &mut complete_control,
+            )
+            .expect("timed complete namespace serialization");
+            complete_seconds += started.elapsed().as_secs_f64();
+
+            let mut scoped_control =
+                InvocationControl::new(CancellationToken::new(), work_limits(engine.limits));
+            let started = Instant::now();
+            let scoped = serialize_xml(
+                &semantic,
+                &engine.program.output,
+                request,
+                engine.limits.max_result_bytes,
+                &mut scoped_control,
+            )
+            .expect("timed scoped namespace serialization");
+            scoped_seconds += started.elapsed().as_secs_f64();
+            assert_eq!(scoped, complete);
+        }
+        let divisor = f64::from(u32::try_from(iterations).expect("iterations fit u32"));
+        scoped_samples.push(scoped_seconds * 1_000_000.0 / divisor);
+        complete_samples.push(complete_seconds * 1_000_000.0 / divisor);
+    }
+    scoped_samples.sort_by(f64::total_cmp);
+    complete_samples.sort_by(f64::total_cmp);
+    eprintln!(
+        "request={request} iterations={iterations} scoped_median_us={:.6} complete_median_us={:.6} scoped_allocations={scoped_allocations:?} complete_allocations={complete_allocations:?}",
+        scoped_samples[2], complete_samples[2]
+    );
 }
 
 #[cfg(feature = "allocation-observation")]

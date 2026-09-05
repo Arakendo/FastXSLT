@@ -28,8 +28,14 @@ workers and 2.84-3.75x through native hosting, so it is retained. A first
 static-range direct-destination prototype removed 5,001 allocations at 5,000
 items but increased its largest allocation observation and produced a longer
 host A/B ranging from 6.3% faster to 3.0% slower; it was removed. A materially
-different builder, namespace, frame, registry, unsafe, and public-representation
-candidate remains unadmitted.
+different builder, result-tree namespace, frame, registry, unsafe, and
+public-representation candidate remains unadmitted. The serializer namespace
+candidate did earn retention: a safe invocation-owned scoped stack was
+neutral-to-positive on the shallow ordinary result and 2.84-7.20x faster across
+the namespace-depth fixture, while removing up to 98.6% of allocation requests.
+Its depth-48 cost—about 7.3% more total allocated bytes and 11.1% more peak live
+serializer bytes—is explicit. Complete cloning remains the differential oracle
+and the XHTML5 transient-normalization path.
 [Evidence](../Evidence/for-004-monotonic-child-path-experiment-2026-09-04.md)
 [Paired-attribute evidence](../Evidence/for-004-paired-attribute-lookup-experiment-2026-09-04.md)
 [Work-control evidence](../Evidence/for-004-work-control-shape-2026-09-04.md)
@@ -37,13 +43,10 @@ candidate remains unadmitted.
 [Result-destination evidence](../Evidence/static-range-result-destination-experiment-2026-09-05.md)
 [Namespace-scope evidence](../Evidence/namespace-scope-scaling-fixture-2026-09-05.md)
 
-The namespace-heavy performance fixture now supplies the missing pressure for a
-safe serializer scope-stack comparison. With eight new bindings per level,
-depth 24 to 48 doubled result bytes but increased semantic construction about
-3.9x and serialization about 6.4x. Because the result tree itself also retains
-growing namespace vectors, serializer scope composition and result-tree
-namespace ownership must be attributed separately; neither representation is
-admitted yet.
+The namespace-heavy performance fixture supplied and completed the safe
+serializer scope-stack comparison. Because the result tree itself still retains
+growing namespace vectors, result-tree namespace ownership remains a separate
+future experiment; serializer evidence does not admit that representation.
 
 The
 [second adversarial engine review](../Reviews/adversarial-engine-review-2026-09-03.md)

@@ -6,7 +6,7 @@
 | Source checkpoint | `ee659758a867fa6698e6468043f554223f73d15c`                                                                                                                                                                |
 | Review type       | Adversarial performance and allocation review                                                                                                                                                             |
 | Primary workload  | Pinned XSLT30 `for-004`, 5/50/500 deterministic `order-item` elements                                                                                                                                     |
-| Status            | Complete review; P1 candidates closed, bounded safe-text P2 retained, first result-destination P2 rejected                                                                                                |
+| Status            | Complete review; P1 candidates closed, bounded safe-text and namespace-stack P2 retained, first result-destination P2 rejected                                                                            |
 | Input evidence    | [ASP.NET native boundary breakdown](../Evidence/aspnet-native-boundary-breakdown-2026-09-03.md); [`for-004` exact-decimal activated path](../Evidence/for-004-exact-decimal-activated-path-2026-09-04.md) |
 | Governing review  | [AR-0013 prepared representation and data-layout audit](../Architectural%20Reviews/AR-0013-prepared-representation-and-data-layout-audit.md)                                                              |
 
@@ -224,6 +224,15 @@ undeclarations, multiple prefixes per URI, namespaced attributes, and sibling
 scope changes. Report allocation and latency scaling against depth and binding
 count as well as byte-for-byte output parity.
 
+**Disposition.** Retained as a private safe scoped stack with immutable borrowed
+bindings, one invocation-local slot per distinct prefix, and scalar push/restore
+history. The complete clone path remains the differential oracle and serves the
+XHTML5 mode that synthesizes transient bindings. Paired release measurements
+showed a 1.07x shallow-result improvement and 2.84-7.20x namespace-heavy
+improvements, with up to 98.6% fewer allocation requests. At depth 48, total
+allocated bytes rose 7.3% and peak live serializer bytes rose 11.1%; this is an
+accepted private workload trade, not a claim that every memory measure improved.
+
 ### P3 measurement — Scope cloning outside the atomic frame
 
 `execute_sequence` clones `RuntimeVariables` on entry. Atomic variables use the
@@ -335,13 +344,16 @@ static-range execution into a caller-owned result vector was measured and
 rejected: it removed 5,001 allocation requests at 5,000 items but increased the
 largest allocation observation and its longer ASP.NET A/B ranged from 6.3%
 faster to 3.0% slower. Broader result construction remains open only for a
-materially different candidate. A namespace-heavy fixture now confirms
-superlinear construction and serialization pressure: doubling depth from 24 to
-48 with eight new bindings per level increased serialization about 6.4x and
-serializer allocations about 3.9x. This nominates the safe scope-stack
-comparison, but also shows separate result-tree namespace retention pressure.
-No follow-up accepts a new architecture or authorizes a shortcut around
-resource accounting.
+materially different candidate. A namespace-heavy fixture confirmed
+superlinear construction and serialization pressure, and the nominated safe
+scope stack is now retained. In a paired comparison it was neutral-to-positive
+on the ordinary shallow result and 2.84-7.20x faster across namespace depths
+8-48, with up to 98.6% fewer allocation requests. The depth-48 trade is about
+7.3% more total allocated bytes and 11.1% more peak live serializer bytes. The
+complete clone implementation remains the byte/failure/work-charge oracle and
+the XHTML5 transient-normalization path. Result-tree namespace retention is a
+separate unresolved pressure; no public representation, unsafe path, or
+resource-accounting shortcut is admitted.
 
 [Result-destination negative evidence](../Evidence/static-range-result-destination-experiment-2026-09-05.md)
 

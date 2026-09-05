@@ -394,3 +394,10 @@ provide a concrete hypothesis to test.
   to 48 with eight new bindings per element increased construction about 3.9x
   and serialization about 6.4x, nominating separate serializer-scope and
   result-tree namespace-retention experiments without admitting either.
+- 2026-09-05 -- Retained the safe private serializer scope stack after paired
+  comparison against the complete clone oracle. It was neutral-to-positive on
+  the ordinary shallow result, 2.84-7.20x faster on namespace depths 8-48, and
+  removed up to 98.6% of allocation requests. The depth-48 candidate used 7.3%
+  more total allocated bytes and 11.1% more peak live serializer bytes; that
+  trade remains explicit. No result-tree layout, public provider, unsafe path,
+  or cross-invocation state was admitted.
