@@ -163,6 +163,100 @@ fn measure_for004_work_control_mix() {
     }
 }
 
+#[cfg(feature = "allocation-observation")]
+#[test]
+#[ignore = "manual release-mode result-heavy execution and serialization attribution"]
+fn measure_result_heavy_transform_phases() {
+    for (items, iterations) in [(100_usize, 1_000_usize), (1_000, 200), (5_000, 40)] {
+        let engine = build_result_heavy_engine(items);
+        measure_engine_phases(&engine, &format!("result-heavy-{items}"), iterations);
+    }
+}
+
+#[cfg(feature = "allocation-observation")]
+#[test]
+#[ignore = "manual release-mode text-heavy execution and serialization attribution"]
+fn measure_text_heavy_transform_phases() {
+    for (bytes, iterations) in [(4_096_usize, 2_000_usize), (65_536, 200), (524_288, 20)] {
+        let engine = build_text_heavy_engine(bytes);
+        measure_engine_phases(&engine, &format!("text-heavy-{bytes}"), iterations);
+    }
+}
+
+#[cfg(feature = "allocation-observation")]
+fn measure_engine_phases(engine: &ExperimentalEngine, request: &str, iterations: usize) {
+    let expected = engine.transform(request).expect("warm measured transform");
+    let document = engine
+        .prepared
+        .get(&engine.source_id)
+        .expect("prepared measured source");
+
+    let mut retained_semantic = None;
+    let mut allocation_control =
+        InvocationControl::new(CancellationToken::new(), work_limits(engine.limits));
+    let execution_allocations = allocation_counter::measure(|| {
+        retained_semantic = Some(
+            execute_program(&engine.program, &document, request, &mut allocation_control)
+                .expect("allocation-observed semantic execution"),
+        );
+    });
+    let semantic = retained_semantic
+        .as_ref()
+        .expect("allocation-observed result retained");
+    let mut serialization_control =
+        InvocationControl::new(CancellationToken::new(), work_limits(engine.limits));
+    let serialization_allocations = allocation_counter::measure(|| {
+        let serialized = serialize_xml(
+            semantic,
+            &engine.program.output,
+            request,
+            engine.limits.max_result_bytes,
+            &mut serialization_control,
+        )
+        .expect("allocation-observed serialization");
+        assert_eq!(serialized, expected);
+        black_box(serialized);
+    });
+
+    let mut execution_samples = Vec::with_capacity(5);
+    let mut serialization_samples = Vec::with_capacity(5);
+    for _ in 0..5 {
+        let mut execution_seconds = 0.0;
+        let mut serialization_seconds = 0.0;
+        for _ in 0..iterations {
+            let mut control =
+                InvocationControl::new(CancellationToken::new(), work_limits(engine.limits));
+            let started = Instant::now();
+            let semantic = execute_program(&engine.program, &document, request, &mut control)
+                .expect("measured semantic execution");
+            execution_seconds += started.elapsed().as_secs_f64();
+
+            let started = Instant::now();
+            let serialized = serialize_xml(
+                &semantic,
+                &engine.program.output,
+                request,
+                engine.limits.max_result_bytes,
+                &mut control,
+            )
+            .expect("measured serialization");
+            serialization_seconds += started.elapsed().as_secs_f64();
+            assert_eq!(serialized, expected);
+        }
+        let divisor = f64::from(u32::try_from(iterations).expect("iterations fit u32"));
+        execution_samples.push(execution_seconds * 1_000_000.0 / divisor);
+        serialization_samples.push(serialization_seconds * 1_000_000.0 / divisor);
+    }
+    execution_samples.sort_by(f64::total_cmp);
+    serialization_samples.sort_by(f64::total_cmp);
+    println!(
+        "request={request} iterations={iterations} result_bytes={} execution_median_us={:.6} serialization_median_us={:.6} execution_allocations={execution_allocations:?} serialization_allocations={serialization_allocations:?}",
+        expected.len(),
+        execution_samples[2],
+        serialization_samples[2],
+    );
+}
+
 fn replay_for004_charge_shape(items: usize, mut charge: impl FnMut(WorkDomain)) {
     for _ in 0..items {
         charge(WorkDomain::XPathNodeVisit);
@@ -206,4 +300,40 @@ fn build_engine(items: usize) -> ExperimentalEngine {
         WorkbenchLimits::default(),
     )
     .expect("build measured engine")
+}
+
+#[cfg(feature = "allocation-observation")]
+fn build_result_heavy_engine(items: usize) -> ExperimentalEngine {
+    let stylesheet = format!(
+        r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:for-each select="1 to {items}"><item code="fixed">payload</item></xsl:for-each></out></xsl:template></xsl:stylesheet>"#
+    );
+    ExperimentalEngine::new(
+        format!("urn:fastxslt:result-heavy:{items}:source"),
+        b"<root/>".to_vec(),
+        format!("urn:fastxslt:result-heavy:{items}:stylesheet"),
+        stylesheet.into_bytes(),
+        WorkbenchLimits::default(),
+    )
+    .expect("build result-heavy measured engine")
+}
+
+#[cfg(feature = "allocation-observation")]
+fn build_text_heavy_engine(bytes: usize) -> ExperimentalEngine {
+    let text = "a".repeat(bytes);
+    let stylesheet = format!(
+        r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out>{text}</out></xsl:template></xsl:stylesheet>"#
+    );
+    let limits = WorkbenchLimits {
+        max_result_bytes: bytes + 1_024,
+        max_resource_bytes: bytes + 4_096,
+        ..WorkbenchLimits::default()
+    };
+    ExperimentalEngine::new(
+        format!("urn:fastxslt:text-heavy:{bytes}:source"),
+        b"<root/>".to_vec(),
+        format!("urn:fastxslt:text-heavy:{bytes}:stylesheet"),
+        stylesheet.into_bytes(),
+        limits,
+    )
+    .expect("build text-heavy measured engine")
 }

@@ -381,3 +381,8 @@ provide a concrete hypothesis to test.
   serialization phases, removed per-attribute owned-string and decimal-lexical
   allocations in a private safe activated path, retained complete references,
   and confirmed the gain across five fresh native and isolated ASP.NET runs.
+- 2026-09-05 -- Established distinct result-heavy and text-heavy fixtures. The
+  result fixture nominated append-oriented construction without admitting it.
+  A safe 4 KiB bounded text writer conserved byte limits, charged work, and
+  cancellation against the complete serializer and produced material native
+  and isolated ASP.NET gains, so that private specialization was retained.

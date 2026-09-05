@@ -17,12 +17,20 @@ removed. A retained test-only replay now conserves the evaluator's exact
 `8N + 1` work-charge shape, but its timings include test-only observation work
 and cannot establish production cost. A proposed no-charge production probe was
 rejected before execution because it would globally bypass cancellation and
-budgets. The next control experiment must preserve those semantics; no
-result-builder, serializer, namespace, frame, registry, unsafe, or public
-representation change is admitted by these results.
+budgets. The next control experiment must preserve those semantics. Separate
+result-heavy and text-heavy fixtures now prevent `for-004` from standing in for
+unrelated work: the result fixture establishes roughly eight allocation
+requests per constructed item and nominates an append-oriented builder, while a
+private safe serializer path now emits eligible text in bounded 4 KiB runs.
+That serializer path preserved exact byte-limit and cancellation behavior and
+improved five-process .NET 10 median throughput by 1.33-2.75x through isolated
+workers and 2.84-3.75x through native hosting, so it is retained. The builder,
+namespace, frame, registry, unsafe, and public-representation candidates remain
+unadmitted.
 [Evidence](../Evidence/for-004-monotonic-child-path-experiment-2026-09-04.md)
 [Paired-attribute evidence](../Evidence/for-004-paired-attribute-lookup-experiment-2026-09-04.md)
 [Work-control evidence](../Evidence/for-004-work-control-shape-2026-09-04.md)
+[Result/text evidence](../Evidence/result-and-text-heavy-performance-fixtures-2026-09-05.md)
 
 The
 [second adversarial engine review](../Reviews/adversarial-engine-review-2026-09-03.md)

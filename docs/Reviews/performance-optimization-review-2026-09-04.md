@@ -6,7 +6,7 @@
 | Source checkpoint | `ee659758a867fa6698e6468043f554223f73d15c`                                                                                                                                                                |
 | Review type       | Adversarial performance and allocation review                                                                                                                                                             |
 | Primary workload  | Pinned XSLT30 `for-004`, 5/50/500 deterministic `order-item` elements                                                                                                                                     |
-| Status            | Complete review; optimization candidates are not implementation commitments                                                                                                                               |
+| Status            | Complete review; P1 candidates closed, bounded safe-text P2 retained, result-builder P2 nominated                                                                                                          |
 | Input evidence    | [ASP.NET native boundary breakdown](../Evidence/aspnet-native-boundary-breakdown-2026-09-03.md); [`for-004` exact-decimal activated path](../Evidence/for-004-exact-decimal-activated-path-2026-09-04.md) |
 | Governing review  | [AR-0013 prepared representation and data-layout audit](../Architectural%20Reviews/AR-0013-prepared-representation-and-data-layout-audit.md)                                                              |
 
@@ -41,11 +41,12 @@ plan facts can prove that a child-axis scan is already ordered and unique. The
 specialized decimal evaluator then scans the same attribute slice separately
 for `price` and `qty`.
 
-For result-heavy and text-heavy workloads, two different experiments deserve
-their own fixtures: append-oriented result construction to remove intermediate
-`Vec<ResultNode>` values, and chunked serializer writes to remove per-character
-budget calls and small formatting allocations. Neither should be justified by
-the `for-004` numbers.
+Result-heavy and text-heavy workloads now have separate fixtures. The
+append-oriented result-builder candidate has measured linear allocation
+pressure but has not been prototyped. A private bounded safe-text writer reduced
+local serializer time by 72-77% and improved median throughput through every
+measured native and isolated ASP.NET lane, so it was retained with the complete
+character-wise path as oracle.
 
 ## Evidence and limits
 
@@ -313,13 +314,22 @@ budget enforcement. No weakened artifact ran.
 [Work-control shape evidence](../Evidence/for-004-work-control-shape-2026-09-04.md)
 
 Further work-control measurement does not authorize weaker budget or
-cancellation semantics. Result construction, serializer,
-namespace-scope, frame-cloning, plan/dispatch, registry, and unsafe changes
-remain unadmitted by this follow-up.
+cancellation semantics. Result construction, namespace-scope, frame-cloning,
+plan/dispatch, registry, and unsafe changes remain unadmitted by this follow-up.
 
-The audit identifies two implementation-specific P1 experiments on the measured
-500-item path and three P2 experiments for workloads not yet measured. It does
-not establish a performance defect, accept a new architecture, or authorize a
-shortcut around resource accounting. The next evidence record should either
-demonstrate that monotonic path fusion survives the host boundary or record that
-the remaining evaluator cost is arithmetic/control work and close that avenue.
+The review's workload-separation gate is now satisfied. The result-heavy probe
+observed roughly eight allocation requests per constructed item and nominates,
+but does not admit, the append-oriented builder. The text-heavy probe justified
+one retained safe implementation: XML-safe text without character maps or
+normalization is emitted in at most 4 KiB writes. Exact byte-limit failure,
+charged bytes, partial output, and bounded cancellation observation are
+differentially conserved. Five-process .NET 10 A/B medians improved by
+1.33-2.75x through isolated workers and 2.84-3.75x through native hosting.
+
+[Result and text fixture evidence](../Evidence/result-and-text-heavy-performance-fixtures-2026-09-05.md)
+
+The two implementation-specific P1 experiments are closed without retention.
+Of the P2 experiments, bounded safe-text serialization is retained, result
+construction is now a measured candidate, and namespace-scope work still lacks
+its required targeted fixture. No follow-up accepts a new architecture or
+authorizes a shortcut around resource accounting.

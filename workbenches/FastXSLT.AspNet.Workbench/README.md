@@ -28,6 +28,7 @@ offers:
 - `POST /transform/dotnet-xslt1`
 - `POST /measure/dotnet-xslt1?requests=1000`
 - `POST /benchmark/tiers?requests=250&concurrency=4`
+- `POST /benchmark/text-heavy?requests=100&concurrency=4`
 - `POST /benchmark/native-boundary-breakdown?requests=250`
 - `POST /experiment/worker-recovery`
 - `POST /experiment/cooperative-cancellation`
@@ -223,3 +224,13 @@ The tiered benchmark includes both a bounded pool of isolated workers and a
 bounded pool of independent native engine handles. Each owns its own compiled
 stylesheet and prepared source. The native pool deliberately does not imply
 same-handle concurrency, which is outside the version-zero ABI contract.
+
+The focused text-heavy benchmark uses 4 KiB, 64 KiB, and 512 KiB XML-safe
+literal results to isolate serializer and result-transfer pressure through the
+same native and isolated pools. It excludes the Microsoft and local Saxon lanes
+because it is an implementation A/B fixture rather than an engine comparison.
+Run it with:
+
+```powershell
+./scripts/verify-aspnet-workbench.ps1 -TextHeavyBenchmark -TieredSummaryOnly
+```

@@ -1869,6 +1869,9 @@ fn escape_text(
     html5: bool,
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
+    if character_map.is_empty() && normalization_form == NormalizationForm::None {
+        return escape_text_in_bounded_runs(value, html5, output);
+    }
     write_character_expansion(
         value,
         character_map,
@@ -1887,6 +1890,47 @@ fn escape_text(
         },
         output,
     )
+}
+
+const MAX_SAFE_TEXT_RUN_BYTES: usize = 4_096;
+
+fn escape_text_in_bounded_runs(
+    value: &str,
+    html5: bool,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    let mut run_start = 0;
+    for (index, character) in value.char_indices() {
+        let replacement = match character {
+            '&' => Some("&amp;"),
+            '<' => Some("&lt;"),
+            '>' => Some("&gt;"),
+            _ if html5 && is_c1_control(character) => None,
+            _ => {
+                let prospective_end = index + character.len_utf8();
+                if prospective_end.saturating_sub(run_start) > MAX_SAFE_TEXT_RUN_BYTES
+                    && run_start < index
+                {
+                    output.push_safe_run(&value[run_start..index])?;
+                    run_start = index;
+                }
+                continue;
+            }
+        };
+        if run_start < index {
+            output.push_safe_run(&value[run_start..index])?;
+        }
+        if let Some(replacement) = replacement {
+            output.push_str(replacement)?;
+        } else {
+            output.push_str(&format!("&#x{:X};", u32::from(character)))?;
+        }
+        run_start = index + character.len_utf8();
+    }
+    if run_start < value.len() {
+        output.push_safe_run(&value[run_start..])?;
+    }
+    Ok(())
 }
 
 fn write_character_expansion(
@@ -2008,6 +2052,28 @@ impl<'a> BudgetedString<'a> {
         self.push_str(character.encode_utf8(&mut encoded))
     }
 
+    fn push_safe_run(&mut self, value: &str) -> Result<(), ExecutionFailure> {
+        let remaining = self.byte_limit.saturating_sub(self.value.len());
+        if value.len() <= remaining {
+            return self.push_str(value);
+        }
+
+        let split = value
+            .char_indices()
+            .map(|(index, _)| index)
+            .take_while(|index| *index <= remaining)
+            .last()
+            .unwrap_or(0);
+        if split > 0 {
+            self.push_str(&value[..split])?;
+        }
+        let first_unwritten = value[split..]
+            .chars()
+            .next()
+            .expect("overflowing safe run must retain one character");
+        self.push(first_unwritten)
+    }
+
     fn finish(self) -> String {
         self.value
     }
@@ -2018,9 +2084,97 @@ mod scaling_measurement_tests {
     use std::hint::black_box;
     use std::time::Instant;
 
-    use crate::execution_control_experiment::InvocationControl;
+    use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 
-    use super::{BudgetedString, NormalizationForm, write_character_expansion};
+    use super::{
+        BudgetedString, NormalizationForm, escape_text_in_bounded_runs, write_character_expansion,
+    };
+
+    #[test]
+    fn bounded_text_runs_match_character_wise_xml_and_html_output() {
+        let input = format!("{}<&>🚀\u{85}tail", "a".repeat(4_097));
+        for html5 in [false, true] {
+            let mut optimized_control = InvocationControl::unbounded();
+            let mut optimized =
+                BudgetedString::new(input.len() * 2, "bounded-text-runs", &mut optimized_control);
+            escape_text_in_bounded_runs(&input, html5, &mut optimized)
+                .expect("bounded run serialization");
+
+            let mut reference_control = InvocationControl::unbounded();
+            let mut reference = BudgetedString::new(
+                input.len() * 2,
+                "character-reference",
+                &mut reference_control,
+            );
+            write_character_expansion(
+                &input,
+                &[],
+                NormalizationForm::None,
+                |character, output| match character {
+                    '&' => output.push_str("&amp;"),
+                    '<' => output.push_str("&lt;"),
+                    '>' => output.push_str("&gt;"),
+                    _ if html5 && super::is_c1_control(character) => {
+                        output.push_str(&format!("&#x{:X};", u32::from(character)))
+                    }
+                    _ => output.push(character),
+                },
+                &mut reference,
+            )
+            .expect("character reference serialization");
+            assert_eq!(optimized.finish(), reference.finish());
+        }
+    }
+
+    #[test]
+    fn bounded_text_runs_observe_cancellation_before_the_next_chunk_mutation() {
+        let input = "a".repeat(12_288);
+        let mut control =
+            InvocationControl::unbounded().cancelling_on_charge(WorkDomain::SerializedByte, 1);
+        let mut output = BudgetedString::new(input.len(), "bounded-cancel", &mut control);
+        let failure = escape_text_in_bounded_runs(&input, false, &mut output)
+            .expect_err("second bounded write should observe cancellation");
+        assert_eq!(failure.code, "FXCT0001");
+        assert_eq!(failure.work_domain, Some(WorkDomain::SerializedByte));
+        let written = output.value.len();
+        drop(output);
+        assert_eq!(written, 4_096);
+        assert_eq!(control.consumed(WorkDomain::SerializedByte), 4_096);
+    }
+
+    #[test]
+    fn bounded_text_runs_preserve_character_wise_byte_limit_failure() {
+        let input = format!("{}🚀tail", "a".repeat(4_097));
+        let byte_limit = 4_099;
+        let mut optimized_control = InvocationControl::unbounded();
+        let mut optimized =
+            BudgetedString::new(byte_limit, "bounded-limit", &mut optimized_control);
+        let optimized_failure = escape_text_in_bounded_runs(&input, false, &mut optimized)
+            .expect_err("rocket should cross the byte limit");
+        let optimized_value = optimized.value.clone();
+        drop(optimized);
+
+        let mut reference_control = InvocationControl::unbounded();
+        let mut reference =
+            BudgetedString::new(byte_limit, "bounded-limit", &mut reference_control);
+        let reference_failure = write_character_expansion(
+            &input,
+            &[],
+            NormalizationForm::None,
+            |character, output| output.push(character),
+            &mut reference,
+        )
+        .expect_err("reference rocket should cross the byte limit");
+        let reference_value = reference.value.clone();
+        drop(reference);
+
+        assert_eq!(optimized_failure, reference_failure);
+        assert_eq!(optimized_value, reference_value);
+        assert_eq!(
+            optimized_control.consumed(WorkDomain::SerializedByte),
+            reference_control.consumed(WorkDomain::SerializedByte)
+        );
+    }
 
     #[test]
     #[ignore = "manual release-mode character-map serialization scaling measurement"]

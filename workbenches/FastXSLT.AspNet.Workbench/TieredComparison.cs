@@ -11,6 +11,13 @@ public static class TieredComparison
         new("items-500", 500, 1)
     ];
 
+    private static readonly Tier[] TextHeavyTiers =
+    [
+        new("text-bytes-4096", 4_096, 20),
+        new("text-bytes-65536", 65_536, 4),
+        new("text-bytes-524288", 524_288, 1)
+    ];
+
     public static async Task<TieredComparisonReport> RunAsync(
         string workerPath,
         byte[] modernStylesheet,
@@ -156,6 +163,100 @@ public static class TieredComparison
             measurements);
     }
 
+    public static async Task<TieredComparisonReport> RunTextHeavyAsync(
+        string workerPath,
+        int requests,
+        int maximumInFlight)
+    {
+        requests = Math.Clamp(requests, 1, 10_000);
+        maximumInFlight = Math.Clamp(maximumInFlight, 1, 8);
+        var measurements = new List<TierMeasurement>();
+        var initializations = new List<TierInitialization>();
+        var source = Encoding.UTF8.GetBytes("<root/>");
+
+        foreach (var tier in TextHeavyTiers)
+        {
+            var stylesheet = BuildTextHeavyStylesheet(tier.Items);
+            var expected = $"<out>{new string('a', tier.Items)}</out>";
+            var tierRequests = Math.Min(10_000, checked(requests * tier.RequestMultiplier));
+
+            var isolatedStart = Stopwatch.StartNew();
+            using var isolatedPool = await FastXsltWorkerPool.StartAsync(
+                workerPath,
+                $"urn:fastxslt:text-heavy:{tier.Name}:source",
+                source,
+                $"urn:fastxslt:text-heavy:{tier.Name}:stylesheet",
+                stylesheet,
+                maximumInFlight);
+            isolatedStart.Stop();
+            initializations.Add(Initialization(
+                "FastXSLT isolated",
+                tier,
+                isolatedStart.Elapsed,
+                isolatedPool.ObserveProcesses().WorkingSetBytes,
+                $"aggregate working set of {maximumInFlight} initialized workers"));
+
+            var nativeStart = Stopwatch.StartNew();
+            using var nativePool = NativeFastXsltPool.Create(
+                $"urn:fastxslt:native-text-heavy:{tier.Name}:source",
+                source,
+                $"urn:fastxslt:native-text-heavy:{tier.Name}:stylesheet",
+                stylesheet,
+                maximumInFlight);
+            nativeStart.Stop();
+            initializations.Add(Initialization(
+                "FastXSLT native in-process",
+                tier,
+                nativeStart.Elapsed,
+                ObserveHostWorkingSet(),
+                $"whole ASP.NET host working set after {maximumInFlight} native engines"));
+
+            await RequireResult(
+                () => isolatedPool.TransformAsync($"{tier.Name}-warm-isolated"),
+                expected,
+                "FastXSLT isolated");
+            await RequireResult(
+                () => nativePool.TransformAsync($"{tier.Name}-warm-native"),
+                expected,
+                "FastXSLT native");
+
+            var concurrencies = maximumInFlight == 1
+                ? new[] { 1 }
+                : new[] { 1, maximumInFlight };
+            foreach (var concurrency in concurrencies)
+            {
+                measurements.Add(await MeasureAsync(
+                    "FastXSLT isolated",
+                    tier,
+                    source.Length,
+                    expected,
+                    tierRequests,
+                    concurrency,
+                    identity => isolatedPool.TransformAsync(identity),
+                    isolatedPool.ObserveProcesses));
+            }
+            foreach (var concurrency in concurrencies)
+            {
+                measurements.Add(await MeasureAsync(
+                    "FastXSLT native in-process",
+                    tier,
+                    source.Length,
+                    expected,
+                    tierRequests,
+                    concurrency,
+                    identity => nativePool.TransformAsync(identity),
+                    observeWorkers: null));
+            }
+        }
+
+        return new TieredComparisonReport(
+            requests,
+            maximumInFlight,
+            Environment.ProcessorCount,
+            initializations,
+            measurements);
+    }
+
     private static async Task<TierMeasurement> MeasureAsync(
         string engine,
         Tier tier,
@@ -262,6 +363,17 @@ public static class TieredComparison
         }
         source.Append("</order>");
         return Encoding.UTF8.GetBytes(source.ToString());
+    }
+
+    private static byte[] BuildTextHeavyStylesheet(int textBytes)
+    {
+        var stylesheet = new StringBuilder(
+            "<xsl:stylesheet version=\"3.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\">" +
+            "<xsl:output method=\"xml\" omit-xml-declaration=\"yes\"/>" +
+            "<xsl:template match=\"/\"><out>");
+        stylesheet.Append('a', textBytes);
+        stylesheet.Append("</out></xsl:template></xsl:stylesheet>");
+        return Encoding.UTF8.GetBytes(stylesheet.ToString());
     }
 
     private static long ObserveHostWorkingSet()

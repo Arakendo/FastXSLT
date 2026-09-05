@@ -8,6 +8,7 @@ param(
     [switch]$LocalSaxonCs,
     [switch]$TieredBenchmark,
     [switch]$TieredSummaryOnly,
+    [switch]$TextHeavyBenchmark,
     [switch]$NativeBoundaryBreakdown,
     [switch]$OperationalExperiments,
     [switch]$NativeRegistryPressure,
@@ -16,6 +17,7 @@ param(
     [switch]$NativeRegistryReplacementSoak,
     [int]$TieredRequests = 250,
     [int]$TieredConcurrency = 4,
+    [int]$TextHeavyRequests = 100,
     [int]$RegistryItems = 500,
     [int]$RegistryConcurrency = 4,
     [int]$RegistryGenerations = 2,
@@ -606,6 +608,15 @@ try {
             }
             else {
                 $tiered | ConvertTo-Json -Depth 6
+            }
+        }
+        if ($TextHeavyBenchmark) {
+            $textHeavy = Invoke-RestMethod -Method Post -Uri "$baseAddress/benchmark/text-heavy?requests=$TextHeavyRequests&concurrency=$TieredConcurrency"
+            if ($TieredSummaryOnly) {
+                $textHeavy.measurements | Select-Object engine, tier, requests, concurrency, transformsPerSecond, p50Microseconds, p95Microseconds, p99Microseconds, processorMilliseconds, normalizedProcessorPercent, managedAllocatedBytes, workerWorkingSetAfter
+            }
+            else {
+                $textHeavy | ConvertTo-Json -Depth 6
             }
         }
         if ($NativeBoundaryBreakdown) {
