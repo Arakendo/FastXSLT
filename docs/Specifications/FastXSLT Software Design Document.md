@@ -576,6 +576,16 @@ that node. The conservative value-expression recognizer currently admits
 unqualified relative name paths in addition to the previously admitted
 document-aware path shapes.
 
+Value-expression compilation owns a private typed static context. Its first
+edition-sensitive field distinguishes an exact XSLT 1.0 stylesheet root from
+the modern semantic mode. XPath 1.0 boolean-dominant equality conversion for
+mixed source-free boolean/string or boolean/finite-number literals is applied
+only in that legacy compile mode, after which the plan retains an ordinary
+typed boolean constant. The same expression remains unsupported in modern
+mode. This initial seam does not yet interpret local version declarations,
+general backwards-compatible behavior, path operands, or mixed number/string
+comparison.
+
 Recognized valid expression families that exceed the admitted evaluator remain
 engine-unsupported rather than being forced through the location-path parser.
 The global `QName()` constructor is one such boundary: it is classified before

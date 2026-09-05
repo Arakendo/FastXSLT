@@ -317,6 +317,9 @@ public version-mode contract.
   coercion.
 - [x] Preserve dynamic context for relative boolean name paths, raising the
   lower bound to 762 through two unchanged cases in the shared evaluator.
+- [x] Prototype a typed compile-time XPath 1.0 compatibility mode through
+  boolean-dominant mixed literal equality, raising the lower bound to 768 while
+  the identical modern expressions remain rejected and runtime stays shared.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 50 known executing comparison
@@ -324,7 +327,7 @@ public version-mode contract.
 - [ ] Define expected-error and discretionary/doubts comparison rules.
   - [x] Report doubt-annotated mismatches separately: four of the current 50
     mismatches carry substantive doubts metadata; none is reclassified yet.
-- [ ] Prototype at least one genuine version-dependent behavior through
+- [x] Prototype at least one genuine version-dependent behavior through
   compile-time static context without a second runtime.
 - [ ] Measure pass growth, regression risk, retained state, and hot-path cost as
   shared families land.
@@ -505,6 +508,11 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Relative boolean name-path evaluation raised the lower bound
   from 760 to 762 through two unchanged cases and repaired the shared runtime's
   accidental document-node rebinding.
+- 2026-09-04 -- The first typed compile-time compatibility-mode experiment
+  applied XPath 1.0 boolean-dominant mixed literal equality only to
+  `version="1.0"` stylesheets. Six unchanged cases raised the lower bound from
+  762 to 768; the paired modern stylesheet remains rejected and the executable
+  plan contains no compatibility branch.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

@@ -148,6 +148,9 @@ Exact valid constant short-circuit expressions then reach 760 through two
 unchanged cases without selecting legacy mixed-type coercion.
 Relative boolean name paths then reach 762 through two unchanged cases after
 the shared evaluator preserves the actual dynamic context.
+A first compile-time XPath 1.0 mode then reaches 768 through six mixed
+boolean-literal equality cases while the same expressions remain rejected by
+the modern mode.
 
 ## Outcome
 

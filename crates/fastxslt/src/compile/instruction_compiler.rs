@@ -94,6 +94,43 @@ use super::{
     required_attribute, unsupported,
 };
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ValueCompatibilityMode {
+    Modern,
+    Xslt10,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct ValueStaticContext {
+    compatibility: ValueCompatibilityMode,
+}
+
+impl ValueStaticContext {
+    fn for_element(document: &Document, element: NodeId) -> Self {
+        let mut current = Some(element);
+        while let Some(node) = current {
+            if document.name(node).is_some_and(|name| {
+                name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+                    && matches!(name.local.as_str(), "stylesheet" | "transform")
+            }) {
+                return Self {
+                    compatibility: if optional_attribute(document, node, None, "version")
+                        == Some("1.0")
+                    {
+                        ValueCompatibilityMode::Xslt10
+                    } else {
+                        ValueCompatibilityMode::Modern
+                    },
+                };
+            }
+            current = document.parent(node);
+        }
+        Self {
+            compatibility: ValueCompatibilityMode::Modern,
+        }
+    }
+}
+
 fn compile_sequence(
     document: &Document,
     parent: NodeId,
@@ -927,6 +964,7 @@ fn compile_value_expression(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<ValueExpression, CompileFailure> {
+    let static_context = ValueStaticContext::for_element(document, element);
     if let Some(literal) = xpath_string_literal(expression.trim()) {
         return Ok(ValueExpression::LiteralString(literal.to_owned()));
     }
@@ -979,6 +1017,16 @@ fn compile_value_expression(
     }
     if let Some(value) =
         crate::xpath::constant_boolean_experiment::fold_exact_short_circuit(expression)
+    {
+        return Ok(ValueExpression::SourceFreeScalar(Box::new(
+            ScalarExpression::Boolean(
+                crate::xpath::constant_boolean_experiment::BooleanExpression::Constant(value),
+            ),
+        )));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(value) =
+            crate::xpath::constant_boolean_experiment::fold_xpath10_boolean_equality(expression)
     {
         return Ok(ValueExpression::SourceFreeScalar(Box::new(
             ScalarExpression::Boolean(

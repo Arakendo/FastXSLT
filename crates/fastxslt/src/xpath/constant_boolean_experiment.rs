@@ -161,6 +161,28 @@ pub(crate) fn fold_exact_short_circuit(expression: &str) -> Option<bool> {
     }
 }
 
+pub(crate) fn fold_xpath10_boolean_equality(expression: &str) -> Option<bool> {
+    let expression = strip_balanced_parentheses(expression.trim());
+    let (left, right, equal) = if let Some((left, right)) = split_top_level(expression, "!=") {
+        (left, right, false)
+    } else {
+        let (left, right) = split_top_level(expression, "=")?;
+        (left, right, true)
+    };
+    let (boolean, other) = match (parse_boolean_literal(left), parse_boolean_literal(right)) {
+        (Some(boolean), None) => (boolean, right),
+        (None, Some(boolean)) => (boolean, left),
+        _ => return None,
+    };
+    let other = if let Some(value) = parse_string_literal(other) {
+        !value.is_empty()
+    } else {
+        let value = parse_xpath_number_literal(other)?;
+        value != 0.0 && !value.is_nan()
+    };
+    Some((boolean == other) == equal)
+}
+
 fn compare_numbers(left: f64, operator: BooleanComparison, right: f64) -> bool {
     match operator {
         BooleanComparison::Equal => left.partial_cmp(&right) == Some(std::cmp::Ordering::Equal),
@@ -491,7 +513,8 @@ fn split_top_level<'a>(expression: &'a str, operator: &str) -> Option<(&'a str, 
 mod tests {
     use super::{
         BooleanExpression, BooleanParseFailure, ScalarValue, evaluate, evaluate_scalar,
-        fold_exact_short_circuit, parse, parse_literal_comparison, parse_scalar,
+        fold_exact_short_circuit, fold_xpath10_boolean_equality, parse, parse_literal_comparison,
+        parse_scalar,
     };
     use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 
@@ -502,6 +525,28 @@ mod tests {
         assert_eq!(fold_exact_short_circuit("true() and 1 div 0"), None);
         assert_eq!(fold_exact_short_circuit("false() or 1 div 0"), None);
         assert_eq!(fold_exact_short_circuit("false() and invalid("), None);
+    }
+
+    #[test]
+    fn folds_xpath10_boolean_dominant_mixed_equalities() {
+        for source in [
+            "true()='0'",
+            "false()=''",
+            "true()=2",
+            "false()=0",
+            "0=false()",
+            "'0'=true()",
+        ] {
+            assert_eq!(
+                fold_xpath10_boolean_equality(source),
+                Some(true),
+                "{source}"
+            );
+        }
+        assert_eq!(fold_xpath10_boolean_equality("true()!=2"), Some(false));
+        assert_eq!(fold_xpath10_boolean_equality("1='1'"), None);
+        assert_eq!(fold_xpath10_boolean_equality("true()=false()"), None);
+        assert_eq!(fold_xpath10_boolean_equality("true()=value"), None);
     }
 
     #[test]
