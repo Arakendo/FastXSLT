@@ -26,6 +26,8 @@ const FANOUT_STYLESHEET_ID: &str = "urn:fastxslt:template-fanout:stylesheet";
 const ROOTED_MATCH_SOURCE_ID: &str = "urn:fastxslt:rooted-match:source";
 const ROOTED_MATCH_STYLESHEET_ID: &str = "urn:fastxslt:rooted-match:stylesheet";
 const GLOBAL_CLONE_STYLESHEET_ID: &str = "urn:fastxslt:global-clone:stylesheet";
+const SEQUENCE_FRAME_SOURCE_ID: &str = "urn:fastxslt:sequence-frame:source";
+const SEQUENCE_FRAME_STYLESHEET_ID: &str = "urn:fastxslt:sequence-frame:stylesheet";
 
 fn snapshot() -> crate::resources::ResourceSnapshot {
     let source = include_bytes!("../../../../corpus/golden/hello/input.xml").to_vec();
@@ -327,6 +329,295 @@ fn global_clone_workload(
         .expect("admit global-clone stylesheet");
     compile_resource(&resources.seal(), GLOBAL_CLONE_STYLESHEET_ID)
         .expect("compile global-clone stylesheet")
+}
+
+fn non_atomic_sequence_frame_workload(
+    bindings_per_kind: usize,
+    result_depth: usize,
+) -> (
+    crate::xslt::golden_semantics_experiment::StylesheetProgram,
+    Document,
+) {
+    non_atomic_sequence_frame_workload_with_mutation(bindings_per_kind, result_depth, false)
+}
+
+fn non_atomic_sequence_frame_workload_with_mutation(
+    bindings_per_kind: usize,
+    result_depth: usize,
+    mutate_each_level: bool,
+) -> (
+    crate::xslt::golden_semantics_experiment::StylesheetProgram,
+    Document,
+) {
+    let mut stylesheet = String::from(
+        r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:xs="http://www.w3.org/2001/XMLSchema" version="3.0"><xsl:template match="/">"#,
+    );
+    for index in 0..bindings_per_kind {
+        write!(
+            stylesheet,
+            r#"<xsl:variable name="a{index}" as="xs:integer *"><xsl:for-each select="1 to 8"><value><xsl:value-of select="."/></value></xsl:for-each></xsl:variable><xsl:variable name="n{index}" select="/root/item"/><xsl:variable name="t{index}"><held><item/><item/><item/><item/><item/><item/><item/><item/></held></xsl:variable>"#
+        )
+        .expect("write generated local bindings");
+    }
+    for depth in 0..result_depth {
+        stylesheet.push_str("<level>");
+        if mutate_each_level {
+            write!(
+                stylesheet,
+                r#"<xsl:variable name="da{depth}" as="xs:integer *"><xsl:for-each select="1 to 8"><value><xsl:value-of select="."/></value></xsl:for-each></xsl:variable><xsl:variable name="dn{depth}" select="/root/item"/><xsl:variable name="dt{depth}"><held><item/><item/><item/><item/><item/><item/><item/><item/></held></xsl:variable>"#
+            )
+            .expect("write nested mutation bindings");
+        }
+    }
+    stylesheet.push_str("done");
+    for _ in 0..result_depth {
+        stylesheet.push_str("</level>");
+    }
+    stylesheet.push_str("</xsl:template></xsl:stylesheet>");
+
+    let source = format!("<root>{}</root>", "<item/>".repeat(8)).into_bytes();
+    let stylesheet = stylesheet.into_bytes();
+    let total_bytes = source.len() + stylesheet.len();
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, total_bytes, total_bytes));
+    resources
+        .admit(SEQUENCE_FRAME_SOURCE_ID, source)
+        .expect("admit sequence-frame source");
+    resources
+        .admit(SEQUENCE_FRAME_STYLESHEET_ID, stylesheet)
+        .expect("admit sequence-frame stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, SEQUENCE_FRAME_STYLESHEET_ID)
+        .expect("compile sequence-frame stylesheet");
+    let mut preparation = InvocationControl::unbounded();
+    let parsed = parse_document_controlled(
+        SEQUENCE_FRAME_SOURCE_ID,
+        snapshot
+            .get(SEQUENCE_FRAME_SOURCE_ID)
+            .expect("sequence-frame source bytes"),
+        ParseLimits {
+            max_events: 32,
+            max_depth: 4,
+        },
+        &mut preparation,
+    )
+    .expect("parse sequence-frame source");
+    let document = Document::from_parsed_controlled(parsed, &mut preparation)
+        .expect("construct sequence-frame XDM");
+    (program, document)
+}
+
+#[test]
+fn nested_sequence_clone_observation_tracks_populated_non_atomic_frames() {
+    let bindings = 2;
+    let depth = 3;
+    let (program, source) = non_atomic_sequence_frame_workload(bindings, depth);
+    let mut reference_control =
+        InvocationControl::unbounded().with_complete_sequence_frame_clones();
+    let reference = super::execute_program(
+        &program,
+        &source,
+        "sequence-frame-reference",
+        &mut reference_control,
+    )
+    .expect("execute complete sequence-frame workload");
+    let mut control = InvocationControl::unbounded();
+
+    let result = super::execute_program(&program, &source, "sequence-frame", &mut control)
+        .expect("execute populated sequence-frame workload");
+
+    assert_eq!(result, reference);
+    assert_eq!(
+        control.sequence_frame_clone_observation(),
+        (
+            depth + 1,
+            depth,
+            bindings * depth,
+            bindings * depth,
+            bindings * depth,
+            3 * bindings * depth
+        )
+    );
+}
+
+#[test]
+fn copy_on_write_sequence_frames_match_complete_clones_when_every_level_mutates() {
+    let (program, source) = non_atomic_sequence_frame_workload_with_mutation(4, 4, true);
+    let mut reference_control =
+        InvocationControl::unbounded().with_complete_sequence_frame_clones();
+    let reference = super::execute_program(
+        &program,
+        &source,
+        "sequence-frame-mutating-reference",
+        &mut reference_control,
+    )
+    .expect("execute complete mutating sequence-frame workload");
+    let mut shared_control = InvocationControl::unbounded();
+    let shared = super::execute_program(
+        &program,
+        &source,
+        "sequence-frame-mutating-shared",
+        &mut shared_control,
+    )
+    .expect("execute shared mutating sequence-frame workload");
+
+    assert_eq!(shared, reference);
+    for domain in [
+        WorkDomain::XsltInstruction,
+        WorkDomain::XsltTemplateCandidate,
+        WorkDomain::XPathNodeVisit,
+        WorkDomain::XPathOperation,
+        WorkDomain::XdmStringValueNode,
+        WorkDomain::ResultNode,
+        WorkDomain::ResultTextByte,
+    ] {
+        assert_eq!(
+            shared_control.consumed(domain),
+            reference_control.consumed(domain),
+            "work accounting diverged for {}",
+            domain.name()
+        );
+    }
+
+    let mut reference_cancellation = InvocationControl::unbounded()
+        .with_complete_sequence_frame_clones()
+        .cancelling_on_charge(WorkDomain::XsltInstruction, 12);
+    let reference_failure = super::execute_program(
+        &program,
+        &source,
+        "sequence-frame-mutating-cancel-reference",
+        &mut reference_cancellation,
+    )
+    .expect_err("complete clone oracle should observe cancellation");
+    let mut shared_cancellation =
+        InvocationControl::unbounded().cancelling_on_charge(WorkDomain::XsltInstruction, 12);
+    let shared_failure = super::execute_program(
+        &program,
+        &source,
+        "sequence-frame-mutating-cancel-shared",
+        &mut shared_cancellation,
+    )
+    .expect_err("shared frame should observe cancellation");
+
+    assert_eq!(shared_failure.code, reference_failure.code);
+    assert_eq!(shared_failure.category, reference_failure.category);
+    assert_eq!(shared_failure.work_domain, reference_failure.work_domain);
+    assert_eq!(
+        shared_cancellation.consumed(WorkDomain::XsltInstruction),
+        reference_cancellation.consumed(WorkDomain::XsltInstruction)
+    );
+}
+
+#[cfg(feature = "allocation-observation")]
+#[test]
+#[ignore = "release-mode production-shaped non-atomic sequence-frame clone measurement"]
+fn measure_nested_non_atomic_sequence_frame_cloning() {
+    for bindings in [0_usize, 4, 16] {
+        for depth in [1_usize, 8] {
+            let (program, source) = non_atomic_sequence_frame_workload(bindings, depth);
+            let iterations = if bindings == 16 { 100 } else { 500 };
+            for complete_clones in [true, false] {
+                let mut samples = Vec::with_capacity(5);
+                let mut observed = None;
+                for _ in 0..5 {
+                    let started = Instant::now();
+                    for _ in 0..iterations {
+                        let mut control = if complete_clones {
+                            InvocationControl::unbounded().with_complete_sequence_frame_clones()
+                        } else {
+                            InvocationControl::unbounded()
+                        };
+                        let result = super::execute_program(
+                            &program,
+                            &source,
+                            "sequence-frame-timing",
+                            &mut control,
+                        )
+                        .expect("execute timed sequence-frame workload");
+                        assert_eq!(result.children.len(), 1);
+                        observed = Some(control.sequence_frame_clone_observation());
+                    }
+                    let divisor = f64::from(u32::try_from(iterations).expect("iterations fit u32"));
+                    samples.push(started.elapsed().as_secs_f64() * 1_000_000.0 / divisor);
+                }
+                samples.sort_by(f64::total_cmp);
+
+                let mut allocation_control = if complete_clones {
+                    InvocationControl::unbounded().with_complete_sequence_frame_clones()
+                } else {
+                    InvocationControl::unbounded()
+                };
+                let allocations = allocation_counter::measure(|| {
+                    super::execute_program(
+                        &program,
+                        &source,
+                        "sequence-frame-allocation",
+                        &mut allocation_control,
+                    )
+                    .expect("execute allocation-observed sequence-frame workload");
+                });
+                println!(
+                    "bindings_per_kind={bindings} result_depth={depth} complete_clones={complete_clones} clone_observation={:?} median_us={:.3} allocations={allocations:?}",
+                    observed.expect("one sequence-frame observation"),
+                    samples[2]
+                );
+            }
+        }
+    }
+}
+
+#[cfg(feature = "allocation-observation")]
+#[test]
+#[ignore = "release-mode mutating non-atomic sequence-frame comparison"]
+fn measure_mutating_non_atomic_sequence_frame_cloning() {
+    for bindings in [4_usize, 16] {
+        let depth = 8;
+        let (program, source) =
+            non_atomic_sequence_frame_workload_with_mutation(bindings, depth, true);
+        let iterations = if bindings == 16 { 50 } else { 100 };
+        for complete_clones in [true, false] {
+            let mut samples = Vec::with_capacity(5);
+            for _ in 0..5 {
+                let started = Instant::now();
+                for _ in 0..iterations {
+                    let mut control = if complete_clones {
+                        InvocationControl::unbounded().with_complete_sequence_frame_clones()
+                    } else {
+                        InvocationControl::unbounded()
+                    };
+                    let result = super::execute_program(
+                        &program,
+                        &source,
+                        "sequence-frame-mutating-timing",
+                        &mut control,
+                    )
+                    .expect("execute timed mutating sequence-frame workload");
+                    assert_eq!(result.children.len(), 1);
+                }
+                let divisor = f64::from(u32::try_from(iterations).expect("iterations fit u32"));
+                samples.push(started.elapsed().as_secs_f64() * 1_000_000.0 / divisor);
+            }
+            samples.sort_by(f64::total_cmp);
+
+            let mut allocation_control = if complete_clones {
+                InvocationControl::unbounded().with_complete_sequence_frame_clones()
+            } else {
+                InvocationControl::unbounded()
+            };
+            let allocations = allocation_counter::measure(|| {
+                super::execute_program(
+                    &program,
+                    &source,
+                    "sequence-frame-mutating-allocation",
+                    &mut allocation_control,
+                )
+                .expect("execute allocation-observed mutating sequence-frame workload");
+            });
+            println!(
+                "bindings_per_kind={bindings} result_depth={depth} complete_clones={complete_clones} median_us={:.3} allocations={allocations:?}",
+                samples[2]
+            );
+        }
+    }
 }
 
 #[test]

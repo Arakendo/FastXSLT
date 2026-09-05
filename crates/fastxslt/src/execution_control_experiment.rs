@@ -209,6 +209,13 @@ struct InvocationObservations {
     document_rooted_match_cache_hits: usize,
     document_rooted_match_cache_bytes: usize,
     complete_atomic_frame_clones: bool,
+    complete_sequence_frame_clones: bool,
+    sequence_frames_cloned: usize,
+    nonempty_sequence_frames_cloned: usize,
+    sequence_atomic_sequence_entries_cloned: usize,
+    sequence_source_node_entries_cloned: usize,
+    sequence_temporary_tree_entries_cloned: usize,
+    sequence_local_binding_entries_cloned: usize,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -378,6 +385,52 @@ impl InvocationControl {
     pub(crate) fn with_complete_atomic_frame_clones(mut self) -> Self {
         self.observations.complete_atomic_frame_clones = true;
         self
+    }
+
+    #[cfg(test)]
+    pub(crate) fn complete_sequence_frame_clones(&self) -> bool {
+        self.observations.complete_sequence_frame_clones
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_complete_sequence_frame_clones(mut self) -> Self {
+        self.observations.complete_sequence_frame_clones = true;
+        self
+    }
+
+    #[cfg(test)]
+    pub(crate) fn observe_sequence_frame_clone(
+        &mut self,
+        atomic_sequences: usize,
+        source_nodes: usize,
+        temporary_trees: usize,
+        local_bindings: usize,
+    ) {
+        self.observations.sequence_frames_cloned += 1;
+        self.observations.nonempty_sequence_frames_cloned += usize::from(
+            atomic_sequences != 0
+                || source_nodes != 0
+                || temporary_trees != 0
+                || local_bindings != 0,
+        );
+        self.observations.sequence_atomic_sequence_entries_cloned += atomic_sequences;
+        self.observations.sequence_source_node_entries_cloned += source_nodes;
+        self.observations.sequence_temporary_tree_entries_cloned += temporary_trees;
+        self.observations.sequence_local_binding_entries_cloned += local_bindings;
+    }
+
+    #[cfg(test)]
+    pub(crate) fn sequence_frame_clone_observation(
+        &self,
+    ) -> (usize, usize, usize, usize, usize, usize) {
+        (
+            self.observations.sequence_frames_cloned,
+            self.observations.nonempty_sequence_frames_cloned,
+            self.observations.sequence_atomic_sequence_entries_cloned,
+            self.observations.sequence_source_node_entries_cloned,
+            self.observations.sequence_temporary_tree_entries_cloned,
+            self.observations.sequence_local_binding_entries_cloned,
+        )
     }
 
     pub(crate) fn document_rooted_match_cache_enabled(&self) -> bool {

@@ -76,3 +76,7 @@ but supersede a materially changed decision instead of rewriting its history.
   -- Accepted; hosts own environment-dependent operational numbers by default,
   while FastXSLT owns semantics and enforcement; apply that principle through
   immutable native registry admission and tagged exhaustion statuses.
+- [ADR-0017: Invocation-Owned Copy-on-Write Sequence Frames](ADR-0017-invocation-owned-copy-on-write-sequence-frames.md)
+  -- Accepted; share non-atomic runtime value maps among lexical frames of one
+  invocation, detach safely by value kind, and retain the complete deep-clone
+  oracle.

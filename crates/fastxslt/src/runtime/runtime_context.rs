@@ -80,10 +80,10 @@ pub(super) enum TemporaryNodeKind {
 #[derive(Debug, Clone, Default)]
 pub(super) struct RuntimeVariables {
     pub(super) atomics: Arc<BTreeMap<String, AtomicValue>>,
-    pub(super) atomic_sequences: BTreeMap<String, Vec<AtomicValue>>,
-    pub(super) source_nodes: BTreeMap<String, Vec<NodeId>>,
-    pub(super) temporary_trees: BTreeMap<String, TemporaryTree>,
-    local_bindings: HashSet<String>,
+    pub(super) atomic_sequences: Arc<BTreeMap<String, Vec<AtomicValue>>>,
+    pub(super) source_nodes: Arc<BTreeMap<String, Vec<NodeId>>>,
+    pub(super) temporary_trees: Arc<BTreeMap<String, TemporaryTree>>,
+    local_bindings: Arc<HashSet<String>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -168,19 +168,29 @@ impl RuntimeVariables {
             } else {
                 Arc::clone(atomics)
             },
-            atomic_sequences: BTreeMap::new(),
-            source_nodes: BTreeMap::new(),
-            temporary_trees: BTreeMap::new(),
-            local_bindings: HashSet::new(),
+            atomic_sequences: Arc::new(BTreeMap::new()),
+            source_nodes: Arc::new(BTreeMap::new()),
+            temporary_trees: Arc::new(BTreeMap::new()),
+            local_bindings: Arc::new(HashSet::new()),
         }
     }
 
     fn clear_value_kinds(&mut self, name: &str) {
-        Arc::make_mut(&mut self.atomics).remove(name);
-        self.atomic_sequences.remove(name);
-        self.source_nodes.remove(name);
-        self.temporary_trees.remove(name);
-        self.local_bindings.insert(name.to_owned());
+        if self.atomics.contains_key(name) {
+            Arc::make_mut(&mut self.atomics).remove(name);
+        }
+        if self.atomic_sequences.contains_key(name) {
+            Arc::make_mut(&mut self.atomic_sequences).remove(name);
+        }
+        if self.source_nodes.contains_key(name) {
+            Arc::make_mut(&mut self.source_nodes).remove(name);
+        }
+        if self.temporary_trees.contains_key(name) {
+            Arc::make_mut(&mut self.temporary_trees).remove(name);
+        }
+        if !self.local_bindings.contains(name) {
+            Arc::make_mut(&mut self.local_bindings).insert(name.to_owned());
+        }
     }
 
     pub(super) fn bind_atomic(&mut self, name: String, value: AtomicValue) {
@@ -190,17 +200,17 @@ impl RuntimeVariables {
 
     pub(super) fn bind_atomic_sequence(&mut self, name: String, values: Vec<AtomicValue>) {
         self.clear_value_kinds(&name);
-        self.atomic_sequences.insert(name, values);
+        Arc::make_mut(&mut self.atomic_sequences).insert(name, values);
     }
 
     pub(super) fn bind_source_nodes(&mut self, name: String, nodes: Vec<NodeId>) {
         self.clear_value_kinds(&name);
-        self.source_nodes.insert(name, nodes);
+        Arc::make_mut(&mut self.source_nodes).insert(name, nodes);
     }
 
     pub(super) fn bind_temporary_tree(&mut self, name: String, tree: TemporaryTree) {
         self.clear_value_kinds(&name);
-        self.temporary_trees.insert(name, tree);
+        Arc::make_mut(&mut self.temporary_trees).insert(name, tree);
     }
 
     pub(super) fn source_nodes<'a>(
@@ -229,6 +239,27 @@ impl RuntimeVariables {
 
     pub(super) fn allows_global_fallback(&self, name: &str) -> bool {
         !self.local_bindings.contains(name)
+    }
+
+    #[cfg(test)]
+    pub(super) fn clone_population(&self) -> (usize, usize, usize, usize) {
+        (
+            self.atomic_sequences.len(),
+            self.source_nodes.len(),
+            self.temporary_trees.len(),
+            self.local_bindings.len(),
+        )
+    }
+
+    #[cfg(test)]
+    pub(super) fn clone_complete_for_sequence(&self) -> Self {
+        Self {
+            atomics: Arc::new(self.atomics.as_ref().clone()),
+            atomic_sequences: Arc::new(self.atomic_sequences.as_ref().clone()),
+            source_nodes: Arc::new(self.source_nodes.as_ref().clone()),
+            temporary_trees: Arc::new(self.temporary_trees.as_ref().clone()),
+            local_bindings: Arc::new(self.local_bindings.as_ref().clone()),
+        }
     }
 }
 
@@ -840,9 +871,88 @@ pub(super) fn required_source_context<'a>(
     Ok((source, context))
 }
 
+#[cfg(test)]
+mod frame_sharing_tests {
+    use std::sync::Arc;
+
+    use super::{AtomicValue, RuntimeVariables, TemporaryTree};
+
+    #[test]
+    fn non_atomic_sequence_frames_detach_only_the_mutated_value_kind() {
+        let mut parent = RuntimeVariables::default();
+        parent.bind_atomic_sequence(
+            "sequence".to_owned(),
+            vec![AtomicValue::string("parent".to_owned())],
+        );
+        parent.bind_source_nodes("nodes".to_owned(), Vec::new());
+        parent.bind_temporary_tree(
+            "tree".to_owned(),
+            TemporaryTree {
+                identity: 1,
+                roots: Vec::new(),
+                nodes: Vec::new(),
+            },
+        );
+
+        let mut child = parent.clone();
+        assert!(Arc::ptr_eq(&parent.atomics, &child.atomics));
+        assert!(Arc::ptr_eq(
+            &parent.atomic_sequences,
+            &child.atomic_sequences
+        ));
+        assert!(Arc::ptr_eq(&parent.source_nodes, &child.source_nodes));
+        assert!(Arc::ptr_eq(&parent.temporary_trees, &child.temporary_trees));
+        assert!(Arc::ptr_eq(&parent.local_bindings, &child.local_bindings));
+
+        child.bind_atomic_sequence(
+            "child-sequence".to_owned(),
+            vec![AtomicValue::string("child".to_owned())],
+        );
+        assert!(!Arc::ptr_eq(
+            &parent.atomic_sequences,
+            &child.atomic_sequences
+        ));
+        assert!(Arc::ptr_eq(&parent.source_nodes, &child.source_nodes));
+        assert!(Arc::ptr_eq(&parent.temporary_trees, &child.temporary_trees));
+        assert!(!Arc::ptr_eq(&parent.local_bindings, &child.local_bindings));
+        assert!(!parent.atomic_sequences.contains_key("child-sequence"));
+
+        child.bind_atomic(
+            "sequence".to_owned(),
+            AtomicValue::string("shadow".to_owned()),
+        );
+        assert!(parent.atomic_sequences.contains_key("sequence"));
+        assert!(!child.atomic_sequences.contains_key("sequence"));
+        assert!(child.atomics.contains_key("sequence"));
+        assert!(!parent.atomics.contains_key("sequence"));
+    }
+
+    #[test]
+    fn complete_sequence_frame_oracle_owns_every_map() {
+        let mut parent = RuntimeVariables::default();
+        parent.bind_source_nodes("nodes".to_owned(), Vec::new());
+        let complete = parent.clone_complete_for_sequence();
+
+        assert!(!Arc::ptr_eq(&parent.atomics, &complete.atomics));
+        assert!(!Arc::ptr_eq(
+            &parent.atomic_sequences,
+            &complete.atomic_sequences
+        ));
+        assert!(!Arc::ptr_eq(&parent.source_nodes, &complete.source_nodes));
+        assert!(!Arc::ptr_eq(
+            &parent.temporary_trees,
+            &complete.temporary_trees
+        ));
+        assert!(!Arc::ptr_eq(
+            &parent.local_bindings,
+            &complete.local_bindings
+        ));
+    }
+}
+
 #[cfg(all(test, feature = "allocation-observation"))]
 mod frame_clone_measurement_tests {
-    use std::{hint::black_box, time::Instant};
+    use std::{hint::black_box, sync::Arc, time::Instant};
 
     use crate::execution_control_experiment::InvocationControl;
     use crate::xml::quick_xml_experiment::{ParseLimits, parse_document_controlled};
@@ -870,20 +980,19 @@ mod frame_clone_measurement_tests {
         let mut frame = RuntimeVariables::default();
         for index in 0..bindings {
             let atomic_name = format!("a{index}");
-            frame.atomic_sequences.insert(
+            Arc::make_mut(&mut frame.atomic_sequences).insert(
                 atomic_name.clone(),
                 (0..VECTOR_ITEMS)
                     .map(|item| AtomicValue::string(format!("value-{index}-{item}")))
                     .collect(),
             );
-            frame.local_bindings.insert(atomic_name);
+            Arc::make_mut(&mut frame.local_bindings).insert(atomic_name);
             let node_name = format!("n{index}");
-            frame
-                .source_nodes
+            Arc::make_mut(&mut frame.source_nodes)
                 .insert(node_name.clone(), vec![node; VECTOR_ITEMS]);
-            frame.local_bindings.insert(node_name);
+            Arc::make_mut(&mut frame.local_bindings).insert(node_name);
             let tree_name = format!("t{index}");
-            frame.temporary_trees.insert(
+            Arc::make_mut(&mut frame.temporary_trees).insert(
                 tree_name.clone(),
                 TemporaryTree {
                     identity: u64::try_from(index).expect("measurement index fits u64"),
@@ -897,7 +1006,7 @@ mod frame_clone_measurement_tests {
                         .collect(),
                 },
             );
-            frame.local_bindings.insert(tree_name);
+            Arc::make_mut(&mut frame.local_bindings).insert(tree_name);
         }
         frame
     }
@@ -923,24 +1032,39 @@ mod frame_clone_measurement_tests {
             let frame = populated_frame(bindings);
             let iterations = if bindings <= 16 { 2_000 } else { 200 };
             let atomics = allocation_counter::measure(|| drop(black_box(frame.atomics.clone())));
-            let atomic_sequences =
-                allocation_counter::measure(|| drop(black_box(frame.atomic_sequences.clone())));
-            let source_nodes =
-                allocation_counter::measure(|| drop(black_box(frame.source_nodes.clone())));
-            let temporary_trees =
-                allocation_counter::measure(|| drop(black_box(frame.temporary_trees.clone())));
-            let local_bindings =
-                allocation_counter::measure(|| drop(black_box(frame.local_bindings.clone())));
-            let complete = allocation_counter::measure(|| drop(black_box(frame.clone())));
+            let atomic_sequences = allocation_counter::measure(|| {
+                drop(black_box(frame.atomic_sequences.as_ref().clone()));
+            });
+            let source_nodes = allocation_counter::measure(|| {
+                drop(black_box(frame.source_nodes.as_ref().clone()));
+            });
+            let temporary_trees = allocation_counter::measure(|| {
+                drop(black_box(frame.temporary_trees.as_ref().clone()));
+            });
+            let local_bindings = allocation_counter::measure(|| {
+                drop(black_box(frame.local_bindings.as_ref().clone()));
+            });
+            let complete = allocation_counter::measure(|| {
+                drop(black_box(frame.clone_complete_for_sequence()));
+            });
 
             println!(
                 "bindings_per_kind={bindings} vector_items={VECTOR_ITEMS} atomic_sequences_median_us={:.3} source_nodes_median_us={:.3} temporary_trees_median_us={:.3} local_bindings_median_us={:.3} complete_median_us={:.3} atomics={atomics:?} atomic_sequences={atomic_sequences:?} source_nodes={source_nodes:?} temporary_trees={temporary_trees:?} local_bindings={local_bindings:?} complete={complete:?}",
-                median_clone_us(&frame.atomic_sequences, iterations),
-                median_clone_us(&frame.source_nodes, iterations),
-                median_clone_us(&frame.temporary_trees, iterations),
-                median_clone_us(&frame.local_bindings, iterations),
-                median_clone_us(&frame, iterations),
+                median_clone_us(frame.atomic_sequences.as_ref(), iterations),
+                median_clone_us(frame.source_nodes.as_ref(), iterations),
+                median_clone_us(frame.temporary_trees.as_ref(), iterations),
+                median_clone_us(frame.local_bindings.as_ref(), iterations),
+                median_clone_us(&CompleteFrameClone(&frame), iterations),
             );
+        }
+    }
+
+    struct CompleteFrameClone<'a>(&'a RuntimeVariables);
+
+    impl Clone for CompleteFrameClone<'_> {
+        fn clone(&self) -> Self {
+            drop(self.0.clone_complete_for_sequence());
+            Self(self.0)
         }
     }
 }

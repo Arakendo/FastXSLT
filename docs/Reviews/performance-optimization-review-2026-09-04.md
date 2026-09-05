@@ -6,7 +6,7 @@
 | Source checkpoint | `ee659758a867fa6698e6468043f554223f73d15c`                                                                                                                                                                |
 | Review type       | Adversarial performance and allocation review                                                                                                                                                             |
 | Primary workload  | Pinned XSLT30 `for-004`, 5/50/500 deterministic `order-item` elements                                                                                                                                     |
-| Status            | Complete review; P1 candidates closed, bounded safe-text and namespace-stack P2 retained, first result-destination P2 rejected                                                                            |
+| Status            | Complete review; P1 candidates closed, bounded safe-text, namespace-stack, and sequence-frame COW retained; first result-destination P2 rejected                                                           |
 | Input evidence    | [ASP.NET native boundary breakdown](../Evidence/aspnet-native-boundary-breakdown-2026-09-03.md); [`for-004` exact-decimal activated path](../Evidence/for-004-exact-decimal-activated-path-2026-09-04.md) |
 | Governing review  | [AR-0013 prepared representation and data-layout audit](../Architectural%20Reviews/AR-0013-prepared-representation-and-data-layout-audit.md)                                                              |
 
@@ -243,17 +243,22 @@ for `for-004`. Instrument clone counts and bytes by field and call-site before
 extending sharing. Any change must remain invocation-private and preserve the
 complete-clone oracle.
 
-**Measurement disposition.** The only explicit complete frame clone is at
+**Disposition.** The only explicit complete frame clone is at
 `execute_sequence`. A valid synthetic release probe shows that an empty
 non-atomic frame clones without allocation in about 0.034 us, while 256
 disjoint bindings per non-atomic kind clone 524,188 requested bytes across
 6,774 allocations in about 334 us. Temporary trees contribute 66.2% of those
-bytes and atomic sequences 21.0%. This confirms conditional pressure but not a
-production bottleneck: no frame representation changes until a real nested
-compiled workload demonstrates clone frequency, retained-memory pressure,
-mutation/detachment behavior, and host-visible benefit.
+bytes and atomic sequences 21.0%. A real compiled nested workload then
+demonstrated the pressure. At 16 bindings per non-atomic kind and depth eight,
+a safe invocation-owned COW candidate improved 635.092 us to 82.591 us,
+removed 86.2% of allocation requests, and reduced peak observed bytes by 84.1%.
+A hostile workload that mutated every value kind at every level was neutral at
+the largest shape. The candidate is retained under ADR-0017 with safe per-kind
+detachment and the complete deep-clone differential oracle. No ASP.NET fixture
+currently activates this shape, so no consumer-wide throughput claim is made.
 
 [Non-atomic frame evidence](../Evidence/runtime-frame-non-atomic-clone-attribution-2026-09-05.md)
+[Nested COW evidence](../Evidence/runtime-frame-nested-copy-on-write-2026-09-05.md)
 
 ### P3 — Leave plan/dispatch and registries unchanged without new evidence
 
@@ -336,8 +341,10 @@ budget enforcement. No weakened artifact ran.
 [Work-control shape evidence](../Evidence/for-004-work-control-shape-2026-09-04.md)
 
 Further work-control measurement does not authorize weaker budget or
-cancellation semantics. Result construction, namespace-scope, frame-cloning,
-plan/dispatch, registry, and unsafe changes remain unadmitted by this follow-up.
+cancellation semantics. Result construction, plan/dispatch, registry, and
+unsafe changes remain unadmitted by that follow-up; the separately measured
+namespace-scope and sequence-frame candidates were decided through their own
+evidence and accepted constraints.
 
 The review's workload-separation gate is now satisfied. The result-heavy probe
 observed roughly eight allocation requests per constructed item and nominates,
@@ -367,6 +374,14 @@ the XHTML5 transient-normalization path. Result-tree namespace retention is a
 separate unresolved pressure; no public representation, unsafe path, or
 resource-accounting shortcut is admitted.
 
+The non-atomic sequence-frame candidate is also retained under ADR-0017. Its
+compiled read-only depth-eight shape improved 7.69x and reduced peak observed
+bytes by 84.1%; forcing all value kinds to detach at every level was neutral at
+the largest counter-case. Sharing remains inside one invocation and the
+complete deep-clone path remains the semantic and measurement oracle.
+
 [Result-destination negative evidence](../Evidence/static-range-result-destination-experiment-2026-09-05.md)
 
 [Namespace-scope fixture evidence](../Evidence/namespace-scope-scaling-fixture-2026-09-05.md)
+
+[Sequence-frame COW evidence](../Evidence/runtime-frame-nested-copy-on-write-2026-09-05.md)

@@ -276,6 +276,13 @@ requested/peak-live bytes, and 70.1 us local median while retaining the complete
 clone oracle. ADR-0014 admits that narrow invocation-owned representation; it
 does not admit a parent chain or cross-invocation sharing.
 
+A subsequent compiled nested workload confirmed that the remaining non-atomic
+maps also incurred material repeated cloning. Safe per-kind copy-on-write
+improved the largest read-only nested shape by 7.69x and reduced peak observed
+bytes by 84.1%; forcing every kind to detach at every level was neutral at the
+largest counter-case. ADR-0017 admits that invocation-owned representation while
+preserving a complete deep-clone oracle and forbidding cross-invocation sharing.
+
 Prepared-XDM anatomy is also now measured on a 3,002-node deliberately
 repetitive source. Node records account for 83.0% of the 1,223,367-byte capacity
 estimate, repeated source-resource strings 7.6%, relationships 5.9%, and
@@ -296,10 +303,11 @@ allocation-bound.
 
 ## Disposition
 
-**Incubating.** Preserve the audit and candidate inventory, but select no data
-structure, index, cache, representation, unsafe exception, or public type. Normal
-standards-driven implementation continues until profiles or consumer workloads
-provide a concrete hypothesis to test.
+**Incubating.** Preserve the broader audit and candidate inventory. Only the
+narrow representations separately accepted by ADR-0013, ADR-0014, and ADR-0017
+are selected; no general index, cache, unsafe exception, or public type follows
+from this review. Normal standards-driven implementation continues until
+profiles or consumer workloads provide another concrete hypothesis to test.
 
 ## Required follow-up
 
@@ -319,6 +327,9 @@ provide a concrete hypothesis to test.
   membership against its complete charged reference.
 - [x] Compare and admit the narrow safe invocation-owned copy-on-write atomic
   frame against its complete-clone reference.
+- [x] Attribute populated non-atomic frame clones in a compiled nested workload
+  and compare safe per-kind copy-on-write against read-only and mutation-heavy
+  complete-clone references.
 - [ ] Add duplication, reference-count/synchronization, and scratch-capacity
   probes only where profiles or representative workloads nominate them.
 - [ ] Verify each experiment preserves deterministic retained/peak attribution
@@ -407,3 +418,7 @@ provide a concrete hypothesis to test.
   allocations, with temporary trees contributing 66.2% and atomic sequences
   21.0%. No broader sharing was admitted without a production-shaped nested
   workload and mutation/detachment evidence.
+- 2026-09-05 -- Accepted ADR-0017 after a compiled nested workload showed a
+  7.69x read-only gain and 84.1% lower peak observed bytes from safe per-kind
+  COW. A mutation-at-every-level counter-case was neutral at the largest shape;
+  the complete deep-clone path remains the differential oracle.

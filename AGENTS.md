@@ -70,6 +70,11 @@ contract.
   invocation, every mutation uses safe copy-on-write isolation, and the
   complete-clone path remains a test oracle. Do not extend frame sharing across
   invocations, prepared inputs, workers, snapshots, or generations.
+- Follow ADR-0017 for non-atomic runtime sequence frames: share value-kind maps
+  only among lexical frames of one invocation, detach the affected kind and
+  shadow metadata through safe copy-on-write mutation, and retain the complete
+  deep-clone test oracle. Do not share runtime values across invocations,
+  prepared inputs, workers, snapshots, or generations.
 - Follow ADR-0013 for document-rooted match paths: lazily build only bounded
   invocation-owned membership keyed by the current compiled template, preserve
   the complete charged evaluator as fallback and differential oracle, and do

@@ -668,7 +668,23 @@ fn execute_sequence(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    let (mut result, mut scope) = (Vec::new(), variables.clone());
+    #[cfg(test)]
+    {
+        let (atomic_sequences, source_nodes, temporary_trees, local_bindings) =
+            variables.clone_population();
+        control.observe_sequence_frame_clone(
+            atomic_sequences,
+            source_nodes,
+            temporary_trees,
+            local_bindings,
+        );
+    }
+    let mut result = Vec::new();
+    let mut scope = variables.clone();
+    #[cfg(test)]
+    if control.complete_sequence_frame_clones() {
+        scope = variables.clone_complete_for_sequence();
+    }
     for instruction in instructions {
         charge_xslt_instruction(control, inputs.request_id)?;
         execute_instruction(
