@@ -322,6 +322,8 @@ public version-mode contract.
   the identical modern expressions remain rejected and runtime stays shared.
 - [x] Extend that compile-time mode through constant number/string equality,
   raising the lower bound to 770 while retaining modern comparison behavior.
+- [x] Route source-free literal `and`/`or` expressions into the shared typed
+  evaluator, raising the lower bound to 773 with a modern lifecycle sentinel.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 50 known executing comparison
@@ -518,6 +520,9 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-05 -- Constant number/string equality reused the same compile-selected
   compatibility boundary and raised the lower bound from 768 to 770. Both
   leading-zero operand orders pass; the modern stylesheet remains rejected.
+- 2026-09-05 -- Shared source-free literal boolean composition raised the lower
+  bound from 770 to 773. A version 3.0 lifecycle sentinel executes the same
+  typed evaluator, so this is not a legacy-only runtime path.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

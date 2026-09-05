@@ -276,6 +276,7 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Relative Boolean-Path Tranche](oasis-xslt10-relative-boolean-path-tranche-2026-09-04.md)
 - [OASIS XSLT 1.0 Compile-Time Boolean-Coercion Tranche](oasis-xslt10-compile-time-boolean-coercion-tranche-2026-09-04.md)
 - [OASIS XSLT 1.0 Number/String Equality Tranche](oasis-xslt10-number-string-equality-tranche-2026-09-05.md)
+- [OASIS XSLT 1.0 Source-Free Literal Boolean Composition](oasis-xslt10-source-free-literal-boolean-composition-2026-09-05.md)
 - [AR-0016 Source Access Inventory and Safe Reference](ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md)
 - [AR-0016 Visibility-View Prototype](ar-0016-visibility-view-prototype-2026-08-30.md)
 - [Peer Review: AR-0016 Decision Readiness](peer-ar-0016-decision-readiness-monday-2026-08-30.md)

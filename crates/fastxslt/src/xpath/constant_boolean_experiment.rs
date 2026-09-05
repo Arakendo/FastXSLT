@@ -98,6 +98,8 @@ pub(crate) fn recognizes_scalar(expression: &str) -> bool {
     ["true(", "false(", "not(", "boolean("]
         .iter()
         .any(|function| expression.contains(function))
+        || split_top_level(expression.trim(), " and ").is_some()
+        || split_top_level(expression.trim(), " or ").is_some()
 }
 
 pub(crate) fn parse_literal_comparison(expression: &str) -> Option<BooleanExpression> {
@@ -606,6 +608,15 @@ mod tests {
             );
             assert!(control.consumed(WorkDomain::XPathOperation) > 0);
         }
+    }
+
+    #[test]
+    fn recognizes_source_free_literal_boolean_composition() {
+        for source in ["'foo' and 'fop'", "'1' and '0'", "0 or ''"] {
+            assert!(super::recognizes_scalar(source), "{source}");
+            assert!(parse(source).is_ok(), "{source}");
+        }
+        assert!(!super::recognizes_scalar("child::and"));
     }
 
     #[test]

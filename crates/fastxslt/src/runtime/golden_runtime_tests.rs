@@ -1436,6 +1436,34 @@ fn xpath10_mixed_boolean_equality_is_selected_at_compilation() {
 }
 
 #[test]
+fn source_free_literal_boolean_composition_uses_shared_modern_semantics() {
+    const SOURCE: &str = "urn:fastxslt:literal-boolean-composition:source";
+    const STYLESHEET: &str = "urn:fastxslt:literal-boolean-composition:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="'foo' and 'fop'"/>|<xsl:value-of select="'1' and '0'"/>|<xsl:value-of select="0 or ''"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile boolean composition");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("literal-boolean-composition", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute boolean composition");
+    assert_eq!(
+        results.by_request["literal-boolean-composition"].serialized,
+        "true|true|false"
+    );
+}
+
+#[test]
 fn xpath_constant_integral_numeric_expressions_fold_exact_results() {
     const SOURCE: &str = "urn:fastxslt:integral-functions:source";
     const STYLESHEET: &str = "urn:fastxslt:integral-functions:stylesheet";

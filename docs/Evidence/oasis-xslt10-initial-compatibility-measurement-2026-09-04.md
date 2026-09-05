@@ -155,6 +155,9 @@ A second compatibility-only constant equality tranche converts string operands
 to numbers when paired with numeric operands and reaches 770 through the two
 unchanged leading-zero cases `boolean14` and `boolean81`. Modern comparison
 semantics remain unchanged.
+Shared source-free literal `and`/`or` activation then reaches 773 through
+`boolean20`, `boolean23`, and `boolean27`; a version 3.0 lifecycle sentinel
+proves the typed evaluator remains common to both paths.
 
 ## Outcome
 
