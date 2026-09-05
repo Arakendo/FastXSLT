@@ -978,6 +978,15 @@ fn compile_value_expression(
         return Ok(ValueExpression::LiteralString(literal));
     }
     if let Some(value) =
+        crate::xpath::constant_numeric_experiment::fold_boolean_number_equality(expression)
+    {
+        return Ok(ValueExpression::SourceFreeScalar(Box::new(
+            ScalarExpression::Boolean(
+                crate::xpath::constant_boolean_experiment::BooleanExpression::Constant(value),
+            ),
+        )));
+    }
+    if let Some(value) =
         crate::xpath::constant_numeric_experiment::fold_integral_equality(expression)
     {
         return Ok(ValueExpression::SourceFreeScalar(Box::new(

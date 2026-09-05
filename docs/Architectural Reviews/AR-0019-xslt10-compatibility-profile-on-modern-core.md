@@ -310,6 +310,8 @@ public version-mode contract.
 - [x] Compile zero-argument `number()` to the same typed operation with an
   explicit context-item path, raising the lower bound to 756 through three
   unchanged catalog identities without a version branch.
+- [x] Fold exact boolean-to-number equalities, raising the lower bound to 758
+  through two unchanged cases without claiming general numeric comparison.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 50 known executing comparison
@@ -490,6 +492,8 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Zero-argument `number()` raised the lower bound from 753 to 756
   through three unchanged identities by compiling its implicit context item to
   the same typed path operation.
+- 2026-09-04 -- Exact boolean-to-number equality folding raised the lower bound
+  from 756 to 758 through two unchanged cases.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

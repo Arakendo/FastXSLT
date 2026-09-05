@@ -143,6 +143,7 @@ raises it to 753 through four unchanged cases while retaining the modern
 zero-or-one cardinality boundary.
 Zero-argument `number()` then reaches 756 through three unchanged identities by
 compiling the implicit context item to the same typed number-path operation.
+Exact boolean-to-number equalities then reach 758 through two unchanged cases.
 
 ## Outcome
 

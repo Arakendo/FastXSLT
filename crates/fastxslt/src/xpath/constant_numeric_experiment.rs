@@ -55,6 +55,22 @@ pub(crate) fn fold_number_conversion(expression: &str) -> Option<String> {
     canonical_finite_decimal(argument.trim())
 }
 
+pub(crate) fn fold_boolean_number_equality(expression: &str) -> Option<bool> {
+    let compact = expression
+        .bytes()
+        .filter(|byte| !byte.is_ascii_whitespace())
+        .collect::<Vec<_>>();
+    match compact.as_slice() {
+        b"number(true())=1" | b"1=number(true())" | b"number(false())=0" | b"0=number(false())" => {
+            Some(true)
+        }
+        b"number(true())=0" | b"0=number(true())" | b"number(false())=1" | b"1=number(false())" => {
+            Some(false)
+        }
+        _ => None,
+    }
+}
+
 pub(crate) fn number_function_call(expression: &str) -> Option<&str> {
     let argument = expression
         .trim()
@@ -533,9 +549,9 @@ mod tests {
 
     use super::{
         ConstantNumericFailure, IntegralFunction, compare, evaluate_integral_lexical,
-        evaluate_number_lexical, fold_exact_integral_arithmetic, fold_integral_equality,
-        fold_integral_function, fold_number_conversion, integral_function_call,
-        number_function_call,
+        evaluate_number_lexical, fold_boolean_number_equality, fold_exact_integral_arithmetic,
+        fold_integral_equality, fold_integral_function, fold_number_conversion,
+        integral_function_call, number_function_call,
     };
 
     #[test]
@@ -640,5 +656,23 @@ mod tests {
         assert_eq!(number_function_call("number()"), Some(""));
         assert_eq!(evaluate_number_lexical(" 001.2500 "), Ok("1.25".to_owned()));
         assert_eq!(evaluate_number_lexical("abc"), Ok("NaN".to_owned()));
+    }
+
+    #[test]
+    fn folds_exact_boolean_number_equalities() {
+        assert_eq!(
+            fold_boolean_number_equality("number(true()) = 1"),
+            Some(true)
+        );
+        assert_eq!(
+            fold_boolean_number_equality("0=number(false())"),
+            Some(true)
+        );
+        assert_eq!(
+            fold_boolean_number_equality("number(true())=0"),
+            Some(false)
+        );
+        assert_eq!(fold_boolean_number_equality("number(source)=1"), None);
+        assert_eq!(fold_boolean_number_equality("number(true())!=1"), None);
     }
 }
