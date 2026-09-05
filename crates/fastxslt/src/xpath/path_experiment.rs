@@ -139,6 +139,9 @@ impl PathStep {
     }
 
     fn from_validated(value: &str) -> Option<Self> {
+        if value == "." {
+            return Some(Self::SelfAnyNode);
+        }
         if value == ".." {
             return Some(Self::ParentAnyNode);
         }
@@ -528,14 +531,6 @@ pub(crate) fn parse_location_path(
 
     let (steps, step_position_predicates) = parsed_steps.expect("checked above");
     validate_unambiguous_step_syntax(&steps, expression, &location)?;
-    if steps.iter().any(|step| step == ".") {
-        return Err(PathFailure::Unsupported {
-            detail: format!(
-                "the private slice supports the context item only as the complete expression: {expression}"
-            ),
-            location,
-        });
-    }
     if steps.iter().any(|step| has_unadmitted_name_test(step)) {
         if steps.iter().any(|step| {
             step.chars().any(|character| {
@@ -660,7 +655,11 @@ fn has_unadmitted_name_test(step: &str) -> bool {
         .or_else(|| step.strip_prefix("preceding::"))
         .or_else(|| step.strip_prefix("preceding-sibling::"))
         .or_else(|| step.strip_prefix('@'))
-        .unwrap_or(if step == ".." { "node()" } else { step });
+        .unwrap_or(if matches!(step, "." | "..") {
+            "node()"
+        } else {
+            step
+        });
     let admitted_axis_kind = (!step.contains("::")
         || step.starts_with("child::")
         || step.starts_with("following::")

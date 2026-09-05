@@ -114,6 +114,10 @@ The following
 [static AVT brace-escaping tranche](oasis-xslt10-static-avt-brace-escaping-tranche-2026-09-04.md)
 raises it to 728 through four unchanged literal-result-attribute cases while
 leaving dynamic attribute value templates explicit.
+The following
+[composed context-step tranche](oasis-xslt10-composed-context-step-tranche-2026-09-04.md)
+raises it to 729 by treating `.` inside a path as the standard abbreviated
+`self::node()` step.
 
 ## Outcome
 

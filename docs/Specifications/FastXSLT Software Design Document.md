@@ -829,6 +829,11 @@ each visit and using the same bounded recursive copy path. When an initial
 template enters without a context item, the selection reports `XPDY0002` at the
 instruction location. This does not admit general axis expressions for
 `xsl:copy-of`.
+Within the shared typed location-path grammar, `.` is the context-item origin
+when it is the complete expression and the abbreviated `self::node()` step when
+composed after another step. The latter uses the ordinary charged self-axis
+evaluation and document-order normalization; it does not introduce a separate
+compatibility evaluator or admit general filter-expression composition.
 When no output method is declared, an XHTML-namespaced `html` document element
 selects the XHTML serializer and its content-type behavior. A null-namespace
 `html` selects the still-unsupported HTML method; the two inference rules must

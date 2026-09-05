@@ -283,6 +283,9 @@ public version-mode contract.
 - [x] Compile doubled AVT braces in static literal-result attributes through
   the ordinary retained text representation, raising the lower bound to 728
   through four unchanged passes while leaving dynamic AVTs unsupported.
+- [x] Compose `.` as the shared abbreviated `self::node()` path step, raising
+  the lower bound to 729 through unchanged `axes98` without a compatibility
+  evaluator.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -432,6 +435,9 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Static doubled-brace AVT escaping raised the lower bound from
   724 to 728. Four newly executing identities pass; three other cases cross
   compilation and retain visible runtime failures rather than receiving credit.
+- 2026-09-04 -- The shared path grammar now composes `.` as abbreviated
+  `self::node()`, raising the lower bound from 728 to 729 through unchanged
+  `axes98` without changing any later-failure or wrong-answer category.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

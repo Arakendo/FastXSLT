@@ -277,6 +277,29 @@ fn selects_the_context_item_without_navigation() {
 }
 
 #[test]
+fn abbreviated_self_step_composes_inside_a_path() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root a=\"1\" b=\"2\"/>",
+        ParseLimits {
+            max_events: 8,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let path = parse_location_path("@*/.", location()).expect("composed self step should parse");
+    let mut control = InvocationControl::unbounded();
+
+    let selected = evaluate_location_path_controlled(&document, root, &path, &mut control)
+        .expect("composed self step should execute");
+
+    assert_eq!(selected, document.attributes(root));
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 4);
+}
+
+#[test]
 fn explicit_context_descendant_path_stays_inside_the_context_subtree() {
     let parsed = parse_document(
         "memory:source.xml",
