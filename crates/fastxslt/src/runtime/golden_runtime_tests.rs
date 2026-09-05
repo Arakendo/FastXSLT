@@ -1402,7 +1402,7 @@ fn xpath10_mixed_boolean_equality_is_selected_at_compilation() {
     const SOURCE: &str = "urn:fastxslt:xpath10-boolean-coercion:source";
     const LEGACY: &str = "urn:fastxslt:xpath10-boolean-coercion:legacy";
     const MODERN: &str = "urn:fastxslt:xpath10-boolean-coercion:modern";
-    let body = r#"<xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="true()='0'"/>|<xsl:value-of select="false()=''"/>|<xsl:value-of select="true()=2"/>|<xsl:value-of select="false()=0"/>|<xsl:value-of select="0=false()"/>|<xsl:value-of select="'0'=true()"/></xsl:template>"#;
+    let body = r#"<xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="true()='0'"/>|<xsl:value-of select="false()=''"/>|<xsl:value-of select="true()=2"/>|<xsl:value-of select="false()=0"/>|<xsl:value-of select="0=false()"/>|<xsl:value-of select="'0'=true()"/>|<xsl:value-of select="1='001'"/>|<xsl:value-of select="0='false'"/>|<xsl:value-of select="0!='false'"/></xsl:template>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 16_384));
     resources
         .admit(SOURCE, br"<doc/>".to_vec())
@@ -1431,7 +1431,7 @@ fn xpath10_mixed_boolean_equality_is_selected_at_compilation() {
     let results = execute_transform_set(builder.seal()).expect("execute XPath 1.0 coercion");
     assert_eq!(
         results.by_request["xpath10-coercion"].serialized,
-        "true|true|true|true|true|true"
+        "true|true|true|true|true|true|true|false|true"
     );
 }
 

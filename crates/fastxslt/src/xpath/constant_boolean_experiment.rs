@@ -161,7 +161,7 @@ pub(crate) fn fold_exact_short_circuit(expression: &str) -> Option<bool> {
     }
 }
 
-pub(crate) fn fold_xpath10_boolean_equality(expression: &str) -> Option<bool> {
+pub(crate) fn fold_xpath10_mixed_equality(expression: &str) -> Option<bool> {
     let expression = strip_balanced_parentheses(expression.trim());
     let (left, right, equal) = if let Some((left, right)) = split_top_level(expression, "!=") {
         (left, right, false)
@@ -169,18 +169,43 @@ pub(crate) fn fold_xpath10_boolean_equality(expression: &str) -> Option<bool> {
         let (left, right) = split_top_level(expression, "=")?;
         (left, right, true)
     };
-    let (boolean, other) = match (parse_boolean_literal(left), parse_boolean_literal(right)) {
-        (Some(boolean), None) => (boolean, right),
-        (None, Some(boolean)) => (boolean, left),
-        _ => return None,
+    match (parse_boolean_literal(left), parse_boolean_literal(right)) {
+        (Some(boolean), None) => {
+            let other = xpath10_literal_boolean(right)?;
+            return Some((boolean == other) == equal);
+        }
+        (None, Some(boolean)) => {
+            let other = xpath10_literal_boolean(left)?;
+            return Some((boolean == other) == equal);
+        }
+        _ => {}
+    }
+
+    let (number, string) = match (
+        parse_xpath_number_literal(left),
+        parse_string_literal(right),
+    ) {
+        (Some(number), Some(string)) => (number, string),
+        _ => match (
+            parse_xpath_number_literal(right),
+            parse_string_literal(left),
+        ) {
+            (Some(number), Some(string)) => (number, string),
+            _ => return None,
+        },
     };
-    let other = if let Some(value) = parse_string_literal(other) {
-        !value.is_empty()
+    let string = parse_xpath_number_literal(string).unwrap_or(f64::NAN);
+    let comparison = compare_numbers(number, BooleanComparison::Equal, string);
+    Some(comparison == equal)
+}
+
+fn xpath10_literal_boolean(source: &str) -> Option<bool> {
+    if let Some(value) = parse_string_literal(source) {
+        Some(!value.is_empty())
     } else {
-        let value = parse_xpath_number_literal(other)?;
-        value != 0.0 && !value.is_nan()
-    };
-    Some((boolean == other) == equal)
+        let value = parse_xpath_number_literal(source)?;
+        Some(value != 0.0 && !value.is_nan())
+    }
 }
 
 fn compare_numbers(left: f64, operator: BooleanComparison, right: f64) -> bool {
@@ -513,7 +538,7 @@ fn split_top_level<'a>(expression: &'a str, operator: &str) -> Option<(&'a str, 
 mod tests {
     use super::{
         BooleanExpression, BooleanParseFailure, ScalarValue, evaluate, evaluate_scalar,
-        fold_exact_short_circuit, fold_xpath10_boolean_equality, parse, parse_literal_comparison,
+        fold_exact_short_circuit, fold_xpath10_mixed_equality, parse, parse_literal_comparison,
         parse_scalar,
     };
     use crate::execution_control_experiment::{InvocationControl, WorkDomain};
@@ -528,7 +553,7 @@ mod tests {
     }
 
     #[test]
-    fn folds_xpath10_boolean_dominant_mixed_equalities() {
+    fn folds_xpath10_mixed_literal_equalities() {
         for source in [
             "true()='0'",
             "false()=''",
@@ -537,16 +562,20 @@ mod tests {
             "0=false()",
             "'0'=true()",
         ] {
-            assert_eq!(
-                fold_xpath10_boolean_equality(source),
-                Some(true),
-                "{source}"
-            );
+            assert_eq!(fold_xpath10_mixed_equality(source), Some(true), "{source}");
         }
-        assert_eq!(fold_xpath10_boolean_equality("true()!=2"), Some(false));
-        assert_eq!(fold_xpath10_boolean_equality("1='1'"), None);
-        assert_eq!(fold_xpath10_boolean_equality("true()=false()"), None);
-        assert_eq!(fold_xpath10_boolean_equality("true()=value"), None);
+        assert_eq!(fold_xpath10_mixed_equality("true()!=2"), Some(false));
+        for (source, expected) in [
+            ("1='1'", true),
+            ("1='001'", true),
+            ("' -1 '=-1", true),
+            ("0='false'", false),
+            ("0!='false'", true),
+        ] {
+            assert_eq!(fold_xpath10_mixed_equality(source), Some(expected));
+        }
+        assert_eq!(fold_xpath10_mixed_equality("true()=false()"), None);
+        assert_eq!(fold_xpath10_mixed_equality("true()=value"), None);
     }
 
     #[test]

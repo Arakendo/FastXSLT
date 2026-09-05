@@ -151,6 +151,10 @@ the shared evaluator preserves the actual dynamic context.
 A first compile-time XPath 1.0 mode then reaches 768 through six mixed
 boolean-literal equality cases while the same expressions remain rejected by
 the modern mode.
+A second compatibility-only constant equality tranche converts string operands
+to numbers when paired with numeric operands and reaches 770 through the two
+unchanged leading-zero cases `boolean14` and `boolean81`. Modern comparison
+semantics remain unchanged.
 
 ## Outcome
 

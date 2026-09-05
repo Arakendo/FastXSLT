@@ -1026,7 +1026,7 @@ fn compile_value_expression(
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(value) =
-            crate::xpath::constant_boolean_experiment::fold_xpath10_boolean_equality(expression)
+            crate::xpath::constant_boolean_experiment::fold_xpath10_mixed_equality(expression)
     {
         return Ok(ValueExpression::SourceFreeScalar(Box::new(
             ScalarExpression::Boolean(

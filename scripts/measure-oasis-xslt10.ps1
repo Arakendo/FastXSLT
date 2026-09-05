@@ -30,7 +30,12 @@ $priorRoot = $env:FASTXSLT_OASIS_XSLT10_ROOT
 $priorTraceCase = $env:FASTXSLT_OASIS_XSLT10_TRACE_CASE
 try {
     $env:FASTXSLT_OASIS_XSLT10_ROOT = $resolvedTests
-    $env:FASTXSLT_OASIS_XSLT10_TRACE_CASE = $TraceCase
+    if ([string]::IsNullOrWhiteSpace($TraceCase)) {
+        Remove-Item Env:FASTXSLT_OASIS_XSLT10_TRACE_CASE -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:FASTXSLT_OASIS_XSLT10_TRACE_CASE = $TraceCase
+    }
     & cargo test --release -p fastxslt --all-features measures_local_oasis_xslt10_compatibility -- --ignored --nocapture
     if ($LASTEXITCODE -ne 0) {
         throw "OASIS XSLT 1.0 compatibility measurement failed with exit code $LASTEXITCODE"

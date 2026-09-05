@@ -603,6 +603,14 @@ fn xml_equivalent(actual: &str, expected: &[u8]) -> Result<bool, String> {
     ))
 }
 
+#[test]
+fn oasis_xml_comparator_ignores_serialization_only_empty_element_and_prolog_spacing() {
+    let actual = r#"<?xml version="1.0" encoding="UTF-8"?><out test="hello"></out>"#;
+    let expected = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<out test=\"hello\"/>\r\n";
+
+    assert_eq!(xml_equivalent(actual, expected), Ok(true));
+}
+
 fn decode_expected_xml(expected: &[u8]) -> Result<String, String> {
     if let Some(payload) = expected.strip_prefix(&[0xFF, 0xFE]) {
         if payload.len() % 2 != 0 {
