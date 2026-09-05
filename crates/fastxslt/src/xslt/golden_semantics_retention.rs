@@ -500,6 +500,9 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::EmptyLocationPath(path)
         | ValueExpression::NumberPath(path)
         | ValueExpression::IntegralFunctionPath { path, .. } => path.known_owned_capacity_bytes(),
+        ValueExpression::BinaryNumeric(expression) => {
+            size_of_val(expression.as_ref()) + expression.known_owned_capacity_bytes()
+        }
         ValueExpression::ContextNodeName
         | ValueExpression::ContextNodeLocalName
         | ValueExpression::ContextNodeNamespaceUri

@@ -1538,6 +1538,52 @@ fn xpath10_ordered_literal_comparison_is_selected_at_compilation() {
 }
 
 #[test]
+fn binary_numeric_paths_share_execution_with_compiled_cardinality_policy() {
+    const SOURCE: &str = "urn:fastxslt:binary-numeric:source";
+    const LEGACY: &str = "urn:fastxslt:binary-numeric:legacy";
+    const MODERN: &str = "urn:fastxslt:binary-numeric:modern";
+    let body = r#"<xsl:output method="text"/><xsl:template match="/"><xsl:apply-templates select="doc"/></xsl:template><xsl:template match="doc"><xsl:value-of select="n1+n2"/>|<xsl:value-of select="(n1/@attrib)*(n2/@attrib)"/></xsl:template>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            br"<doc><n1 attrib='5'>3</n1><n1 attrib='100'>100</n1><n2 attrib='5'>6</n2></doc>"
+                .to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            LEGACY,
+            format!(r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit legacy stylesheet");
+    resources
+        .admit(
+            MODERN,
+            format!(r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit modern stylesheet");
+    let snapshot = resources.seal();
+    let legacy = compile_resource(&snapshot, LEGACY).expect("compile XPath 1.0 arithmetic");
+    let modern = compile_resource(&snapshot, MODERN).expect("compile modern arithmetic");
+
+    let mut legacy_builder = TransformSetBuilder::new(snapshot.clone(), legacy, 1, policy(4_096));
+    legacy_builder
+        .add(request("legacy-binary", "legacy-result", SOURCE))
+        .expect("admit legacy request");
+    let results = execute_transform_set(legacy_builder.seal()).expect("execute legacy arithmetic");
+    assert_eq!(results.by_request["legacy-binary"].serialized, "9|25");
+
+    let mut modern_builder = TransformSetBuilder::new(snapshot, modern, 1, policy(4_096));
+    modern_builder
+        .add(request("modern-binary", "modern-result", SOURCE))
+        .expect("admit modern request");
+    let failure = execute_transform_set(modern_builder.seal())
+        .expect_err("modern path cardinality remains enforced");
+    assert_eq!(failure.code, "XPTY0004");
+}
+
+#[test]
 fn xpath_constant_integral_numeric_expressions_fold_exact_results() {
     const SOURCE: &str = "urn:fastxslt:integral-functions:source";
     const STYLESHEET: &str = "urn:fastxslt:integral-functions:stylesheet";

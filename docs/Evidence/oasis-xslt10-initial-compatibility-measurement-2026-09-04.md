@@ -165,6 +165,10 @@ remain rejected.
 Compile-selected XPath 1.0 ordered literal conversion then reaches 777 through
 `boolean49`. That expected-result match also retains suite doubts metadata, and
 the modern mixed-type expression remains rejected.
+Typed source-dependent addition and multiplication then reach 782 through
+`math55` to `math59`. The compiler selects XPath 1.0 first-node conversion or
+modern zero-or-one cardinality before execution; all five newly matched cases
+retain their suite doubts metadata.
 
 ## Outcome
 

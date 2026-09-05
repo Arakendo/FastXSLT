@@ -3,6 +3,9 @@
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{NodeId, SourceLocation, StringValueVisitFailure};
+use crate::xpath::binary_numeric_experiment::{
+    BinaryNumericEvaluationFailure, BinaryNumericExpression, evaluate as evaluate_binary_numeric,
+};
 use crate::xpath::case_conversion_experiment::{
     CaseConversionExpression, CaseFailure, CaseValue, evaluate_compiled as evaluate_case_conversion,
 };
@@ -160,6 +163,9 @@ pub(super) fn execute_value_of(
         ValueExpression::NumberPath(path) => {
             append_number_path(inputs, context, path, result, control)?;
         }
+        ValueExpression::BinaryNumeric(expression) => {
+            append_binary_numeric(inputs, context, expression, result, control)?;
+        }
         ValueExpression::ContextNodeStringLength(location) => {
             append_context_node_string_length(inputs, context, location, result, control)?;
         }
@@ -260,6 +266,53 @@ pub(super) fn execute_value_of(
         }
     }
     Ok(())
+}
+
+fn append_binary_numeric(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expression: &BinaryNumericExpression,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let value =
+        evaluate_binary_numeric(expression, source, context, control).map_err(|failure| {
+            match failure {
+                BinaryNumericEvaluationFailure::Control(failure) => {
+                    control_failure(failure, inputs.request_id)
+                }
+                BinaryNumericEvaluationFailure::Cardinality => failure_at(
+                    "XPTY0004",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    expression.location.clone(),
+                    "binary numeric operands require zero or one selected node",
+                ),
+                BinaryNumericEvaluationFailure::EmptyOperand => failure_at(
+                    "FXRT1022",
+                    FailureCategory::Unsupported,
+                    Some(inputs.request_id),
+                    expression.location.clone(),
+                    "empty binary numeric operands are outside the admitted exact-integer slice",
+                ),
+                BinaryNumericEvaluationFailure::UnsupportedLexical => failure_at(
+                    "FXRT1022",
+                    FailureCategory::Unsupported,
+                    Some(inputs.request_id),
+                    expression.location.clone(),
+                    "binary numeric operands are outside the admitted exact-integer lexical slice",
+                ),
+                BinaryNumericEvaluationFailure::Overflow => failure_at(
+                    "FOAR0002",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    expression.location.clone(),
+                    "binary numeric operation exceeds the checked integer domain",
+                ),
+            }
+        })?;
+    append_text(result, &value, inputs.request_id, control)
 }
 
 fn append_empty_location_path(

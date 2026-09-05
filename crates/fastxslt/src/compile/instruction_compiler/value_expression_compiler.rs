@@ -114,6 +114,9 @@ pub(super) fn compile_value_expression(
     {
         return Ok(ValueExpression::LiteralString(literal));
     }
+    if let Some(value) = compile_binary_numeric_path(expression, location, static_context) {
+        return Ok(value);
+    }
     if let Some(literal) =
         crate::xpath::constant_numeric_experiment::fold_number_conversion(expression)
     {
@@ -354,6 +357,33 @@ pub(super) fn compile_value_expression(
     } else {
         compile_location_path_or_missing_context(expression, location)?
     })
+}
+
+fn compile_binary_numeric_path(
+    expression: &str,
+    location: &SourceLocation,
+    static_context: ValueStaticContext,
+) -> Option<ValueExpression> {
+    let (left, operator, right) = crate::xpath::binary_numeric_experiment::split_paths(expression)?;
+    let left = parse_location_path(left, location.clone()).ok()?;
+    let right = parse_location_path(right, location.clone()).ok()?;
+    let selection = match static_context.compatibility {
+        ValueCompatibilityMode::Xslt10 => {
+            crate::xpath::binary_numeric_experiment::NumericOperandSelection::FirstInDocumentOrder
+        }
+        ValueCompatibilityMode::Modern => {
+            crate::xpath::binary_numeric_experiment::NumericOperandSelection::ZeroOrOne
+        }
+    };
+    Some(ValueExpression::BinaryNumeric(Box::new(
+        crate::xpath::binary_numeric_experiment::BinaryNumericExpression {
+            left,
+            operator,
+            right,
+            selection,
+            location: location.clone(),
+        },
+    )))
 }
 
 fn compile_location_path_or_missing_context(

@@ -330,6 +330,10 @@ public version-mode contract.
 - [x] Apply XPath 1.0 numeric conversion to ordered source-free string/number
   comparisons, reaching 777 through one doubt-annotated expected-result match
   while retaining the modern mixed-type boundary.
+- [x] Compile bounded addition and multiplication between typed location paths
+  with a static-context-selected first-node or zero-or-one policy, reaching 782
+  through five doubt-annotated expected-result matches without a runtime
+  version branch.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 50 known executing comparison
@@ -536,6 +540,10 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-05 -- Compile-selected XPath 1.0 ordered literal conversion raised
   the measured expected-result matches from 776 to 777. The promoted case is
   doubt-annotated, and modern mixed-type comparison remains rejected.
+- 2026-09-05 -- A shared typed binary-numeric path plan raised the measured
+  expected-result matches from 777 to 782 through five doubt-annotated
+  addition/multiplication cases. XSLT 1.0 first-node and modern zero-or-one
+  cardinality are selected at compilation; runtime remains shared.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

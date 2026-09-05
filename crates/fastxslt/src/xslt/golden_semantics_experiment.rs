@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
+use crate::xpath::binary_numeric_experiment::BinaryNumericExpression;
 use crate::xpath::case_conversion_experiment::CaseConversionExpression;
 use crate::xpath::castable_experiment::{CastExpression, CastableExpression};
 use crate::xpath::constant_boolean_experiment::ScalarExpression;
@@ -509,6 +510,7 @@ pub(crate) enum ValueExpression {
         path: LocationPath,
     },
     NumberPath(LocationPath),
+    BinaryNumeric(Box<BinaryNumericExpression>),
     ContextNodeStringLength(SourceLocation),
     ContextPosition(SourceLocation),
     ContextSize(SourceLocation),
