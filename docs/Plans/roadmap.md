@@ -14,10 +14,14 @@ production path. The separately scoped paired-attribute lookup also removed
 real redundant visits and improved its focused loop, but its 500-item host A/B
 was flat sequentially and slower under four native handles, so it too was
 removed. A retained test-only replay now conserves the evaluator's exact
-`8N + 1` work-charge shape, but its timings include test-only observation work
-and cannot establish production cost. A proposed no-charge production probe was
-rejected before execution because it would globally bypass cancellation and
-budgets. The next control experiment must preserve those semantics. Separate
+`8N + 1` work-charge shape. A proposed no-charge production probe was rejected
+before execution because it would globally bypass cancellation and budgets. A
+later candidate preserved every charge and control check while removing
+test-only release state and permitting inlining, but its longer .NET 10 A/B was
+22% slower sequentially and 6.5% faster at four-way concurrency, reversing the
+short-run directions amid visible bimodality. It was removed, and work-control
+optimization is closed until new production attribution nominates a materially
+different mechanism. Separate
 result-heavy and text-heavy fixtures now prevent `for-004` from standing in for
 unrelated work: the result fixture establishes roughly eight allocation
 requests per constructed item and nominates append-oriented construction, while a
@@ -39,6 +43,7 @@ and the XHTML5 transient-normalization path.
 [Evidence](../Evidence/for-004-monotonic-child-path-experiment-2026-09-04.md)
 [Paired-attribute evidence](../Evidence/for-004-paired-attribute-lookup-experiment-2026-09-04.md)
 [Work-control evidence](../Evidence/for-004-work-control-shape-2026-09-04.md)
+[Production work-control evidence](../Evidence/for-004-work-control-production-experiment-2026-09-05.md)
 [Result/text evidence](../Evidence/result-and-text-heavy-performance-fixtures-2026-09-05.md)
 [Result-destination evidence](../Evidence/static-range-result-destination-experiment-2026-09-05.md)
 [Namespace-scope evidence](../Evidence/namespace-scope-scaling-fixture-2026-09-05.md)

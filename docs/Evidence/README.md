@@ -171,6 +171,7 @@ pressure architecture but does not silently create a public guarantee.
 - [`for-004` Monotonic Child-Path Experiment](for-004-monotonic-child-path-experiment-2026-09-04.md)
 - [`for-004` Paired-Attribute Lookup Experiment](for-004-paired-attribute-lookup-experiment-2026-09-04.md)
 - [`for-004` Work-Control Shape Measurement](for-004-work-control-shape-2026-09-04.md)
+- [`for-004` Work-Control Production Experiment](for-004-work-control-production-experiment-2026-09-05.md)
 - [ASP.NET Worker Recovery and Generation Replacement](aspnet-worker-recovery-and-generation-replacement-2026-08-26.md)
 - [Peer Review: Execution-Loss Provenance and Quarantine](peer-execution-loss-quarantine-review-monday-2026-09-03.md)
 - [ASP.NET Pre-Dispatch Cooperative Cancellation](aspnet-predispatch-cooperative-cancellation-2026-08-26.md)

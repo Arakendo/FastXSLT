@@ -4,7 +4,7 @@
 | --- | --- |
 | Date | 2026-09-04 |
 | Source checkpoint | `ee659758a867fa6698e6468043f554223f73d15c` plus the uncommitted performance review |
-| Status | Charge inventory complete; production timing attribution unresolved |
+| Status | Charge inventory complete; production candidate later measured and rejected |
 | Related review | [Performance optimization review](../Reviews/performance-optimization-review-2026-09-04.md) |
 
 ## Question
@@ -60,5 +60,10 @@ cancellation observation, failure domain, accepted-work count, and deterministic
 fault behavior while comparing a narrow implementation technique through the
 real host boundary.
 
-The two P1 scan candidates are closed. The work-control timing question remains
-open, but now with an exact workload denominator and an explicit safety gate.
+The two P1 scan candidates are closed. A later production-shaped candidate kept
+every charge and control check while removing test-only state from release code
+and making the small dispatch eligible for inlining. Its longer ASP.NET
+comparison was contradictory across sequential and four-way lanes, so it was
+rejected and the production implementation restored.
+
+[Production experiment](for-004-work-control-production-experiment-2026-09-05.md)

@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Incubating |
 | Opened | 2026-08-27 |
-| Last reviewed | 2026-09-04 |
+| Last reviewed | 2026-09-05 |
 | Scope | XDM, compiled stylesheet, execution plan, prepared input, and invocation-local storage |
 | Trigger | Explore whether deliberately prepared representations can improve repeated execution rather than inheriting conventional engine layouts without evidence |
 | Related ADRs | ADR-0002, ADR-0003, ADR-0004, ADR-0007 |
@@ -358,7 +358,7 @@ profiles or consumer workloads provide another concrete hypothesis to test.
   work charges, and native/isolated host behavior.
 - [ ] Prototype each future nominated representation hypothesis in safe Rust and differentially verify
   it before considering any optimized or unsafe successor.
-- [ ] Record negative experiments so later work does not repeat attractive dead
+- [x] Record negative experiments so later work does not repeat attractive dead
   ends without new evidence.
 
 ## Reopening triggers
@@ -436,3 +436,7 @@ profiles or consumer workloads provide another concrete hypothesis to test.
   slices improved depth-48 construction 42.03x and reduced peak observed bytes
   by 95.3%, with semantic/work parity, concurrent invocation evidence, and
   result lifetime beyond the generation owner.
+- 2026-09-05 -- Rejected a production work-control cleanup after its ASP.NET
+  direction reversed between sequential and concurrent lanes and between short
+  and longer samples. Every charge and control check was preserved during the
+  experiment; the complete production implementation was restored.

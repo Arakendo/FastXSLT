@@ -6,7 +6,7 @@
 | Source checkpoint | `ee659758a867fa6698e6468043f554223f73d15c`                                                                                                                                                                |
 | Review type       | Adversarial performance and allocation review                                                                                                                                                             |
 | Primary workload  | Pinned XSLT30 `for-004`, 5/50/500 deterministic `order-item` elements                                                                                                                                     |
-| Status            | Complete review; P1 candidates closed; bounded safe-text, namespace-stack, sequence-frame COW, and compiled result namespaces retained; first result-destination P2 rejected                        |
+| Status            | Complete review; P1 and work-control candidates closed; bounded safe-text, namespace-stack, sequence-frame COW, and compiled result namespaces retained; first result-destination P2 rejected           |
 | Input evidence    | [ASP.NET native boundary breakdown](../Evidence/aspnet-native-boundary-breakdown-2026-09-03.md); [`for-004` exact-decimal activated path](../Evidence/for-004-exact-decimal-activated-path-2026-09-04.md) |
 | Governing review  | [AR-0013 prepared representation and data-layout audit](../Architectural%20Reviews/AR-0013-prepared-representation-and-data-layout-audit.md)                                                              |
 
@@ -333,12 +333,22 @@ slower. The complete separate lookup was restored.
 
 Both implementation P1 candidates are therefore closed. Production-shaped
 work-control inventory confirms `8N + 1` charge calls for the measured evaluator.
-Its replay timing is test-build-biased by test-only observation bookkeeping, so
-production cost attribution remains unresolved. A no-charge production build
-was rejected before execution because it would globally weaken cancellation and
-budget enforcement. No weakened artifact ran.
+Its replay timing is test-build-biased by test-only observation bookkeeping. A
+no-charge production build was rejected before execution because it would
+globally weaken cancellation and budget enforcement. No weakened artifact ran.
+
+A subsequent safe production candidate retained every charge and control check,
+compiled deterministic test-fault state only for tests, and made the small
+dispatch eligible for inlining. Its ASP.NET comparisons reversed direction
+between sample durations and between sequential and four-way lanes. The longer
+medians were 22% worse sequentially and 6.5% better at four-way concurrency,
+with visible bimodality and unchanged managed allocation. The candidate was
+removed. Work-control optimization for this path is closed absent new profiler
+attribution or a materially different semantics-preserving mechanism.
 
 [Work-control shape evidence](../Evidence/for-004-work-control-shape-2026-09-04.md)
+
+[Production work-control experiment](../Evidence/for-004-work-control-production-experiment-2026-09-05.md)
 
 Further work-control measurement does not authorize weaker budget or
 cancellation semantics. Result construction, plan/dispatch, registry, and
