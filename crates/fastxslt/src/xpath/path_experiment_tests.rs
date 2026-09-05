@@ -149,6 +149,33 @@ fn following_axis_excludes_context_descendants_and_applies_forward_positions() {
 }
 
 #[test]
+fn following_axis_filters_explicit_non_element_node_kinds() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root><context/><!--note--><?work ready?>tail<after/></root>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 3,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let context = document.children(root)[0];
+
+    for (expression, expected) in [
+        ("following::comment()", "note"),
+        ("following::processing-instruction()", "ready"),
+        ("following::text()", "tail"),
+    ] {
+        let path = parse_location_path(expression, location()).expect("following kind-test path");
+        let selected = evaluate_location_path(&document, context, &path);
+        assert_eq!(selected.len(), 1, "{expression}");
+        assert_eq!(document.string_value(selected[0]), expected, "{expression}");
+    }
+}
+
+#[test]
 fn selects_the_context_item_without_navigation() {
     let parsed = parse_document(
         "memory:source.xml",

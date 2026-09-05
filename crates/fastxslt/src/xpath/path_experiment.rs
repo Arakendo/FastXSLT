@@ -89,6 +89,9 @@ pub(crate) enum PathStep {
     FollowingNamed(String),
     FollowingAnyElement,
     FollowingAnyNode,
+    FollowingText,
+    FollowingComment,
+    FollowingProcessingInstruction,
     FollowingSiblingNamed(String),
     FollowingSiblingAnyElement,
     FollowingSiblingAnyNode,
@@ -185,7 +188,9 @@ impl PathStep {
             return match name_test {
                 "*" => Some(Self::FollowingAnyElement),
                 "node()" => Some(Self::FollowingAnyNode),
-                "text()" => None,
+                "text()" => Some(Self::FollowingText),
+                "comment()" => Some(Self::FollowingComment),
+                "processing-instruction()" => Some(Self::FollowingProcessingInstruction),
                 _ => Some(Self::FollowingNamed(name_test.to_owned())),
             };
         }
@@ -271,7 +276,12 @@ impl PathStep {
     fn uses_following_axis(&self) -> bool {
         matches!(
             self,
-            Self::FollowingNamed(_) | Self::FollowingAnyElement | Self::FollowingAnyNode
+            Self::FollowingNamed(_)
+                | Self::FollowingAnyElement
+                | Self::FollowingAnyNode
+                | Self::FollowingText
+                | Self::FollowingComment
+                | Self::FollowingProcessingInstruction
         )
     }
 
@@ -327,9 +337,11 @@ impl PartialEq<&str> for PathStep {
             | Self::FollowingSiblingAnyNode
             | Self::PrecedingAnyNode
             | Self::PrecedingSiblingAnyNode => *other == "node()",
-            Self::ChildText => *other == "text()",
-            Self::ChildComment => *other == "comment()",
-            Self::ChildProcessingInstruction => *other == "processing-instruction()",
+            Self::ChildText | Self::FollowingText => *other == "text()",
+            Self::ChildComment | Self::FollowingComment => *other == "comment()",
+            Self::ChildProcessingInstruction | Self::FollowingProcessingInstruction => {
+                *other == "processing-instruction()"
+            }
             Self::ChildProcessingInstructionNamed(target) => {
                 processing_instruction_target(other).is_some_and(|other| other == target)
             }
@@ -565,18 +577,19 @@ fn has_unadmitted_name_test(step: &str) -> bool {
         .or_else(|| step.strip_prefix("preceding-sibling::"))
         .or_else(|| step.strip_prefix('@'))
         .unwrap_or(if step == ".." { "node()" } else { step });
-    let admitted_child_kind = (!step.contains("::") || step.starts_with("child::"))
-        && matches!(
-            name_test,
-            "element()" | "comment()" | "processing-instruction()"
-        );
+    let admitted_axis_kind =
+        (!step.contains("::") || step.starts_with("child::") || step.starts_with("following::"))
+            && matches!(
+                name_test,
+                "element()" | "comment()" | "processing-instruction()"
+            );
     let admitted_named_processing_instruction = (!step.contains("::")
         || step.starts_with("child::"))
         && processing_instruction_target(name_test).is_some();
     let admitted_local_wildcard = (!step.contains("::") || step.starts_with("child::"))
         && name_test.strip_prefix("*:").is_some_and(is_ascii_ncname);
     !matches!(name_test, "*" | "node()" | "text()")
-        && !admitted_child_kind
+        && !admitted_axis_kind
         && !admitted_named_processing_instruction
         && !admitted_local_wildcard
         && !is_ascii_ncname(name_test)
@@ -1066,9 +1079,11 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
         | PathStep::FollowingSiblingAnyNode
         | PathStep::PrecedingAnyNode
         | PathStep::PrecedingSiblingAnyNode => true,
-        PathStep::ChildText => document.kind(child) == NodeKind::Text,
-        PathStep::ChildComment => document.kind(child) == NodeKind::Comment,
-        PathStep::ChildProcessingInstruction => {
+        PathStep::ChildText | PathStep::FollowingText => document.kind(child) == NodeKind::Text,
+        PathStep::ChildComment | PathStep::FollowingComment => {
+            document.kind(child) == NodeKind::Comment
+        }
+        PathStep::ChildProcessingInstruction | PathStep::FollowingProcessingInstruction => {
             document.kind(child) == NodeKind::ProcessingInstruction
         }
         PathStep::ChildProcessingInstructionNamed(required) => {
