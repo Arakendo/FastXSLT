@@ -262,6 +262,7 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Context String-Value AVT Tranche](oasis-xslt10-context-string-avt-tranche-2026-09-04.md)
 - [OASIS XSLT 1.0 Exact Integral Arithmetic Tranche](oasis-xslt10-exact-integral-arithmetic-tranche-2026-09-04.md)
 - [OASIS XSLT 1.0 Static Finite Number-Conversion Tranche](oasis-xslt10-static-finite-number-conversion-tranche-2026-09-04.md)
+- [OASIS XSLT 1.0 Number Path and NaN Tranche](oasis-xslt10-number-path-and-nan-tranche-2026-09-04.md)
 - [AR-0016 Source Access Inventory and Safe Reference](ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md)
 - [AR-0016 Visibility-View Prototype](ar-0016-visibility-view-prototype-2026-08-30.md)
 - [Peer Review: AR-0016 Decision Readiness](peer-ar-0016-decision-readiness-monday-2026-08-30.md)

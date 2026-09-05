@@ -157,6 +157,9 @@ pub(super) fn execute_value_of(
         ValueExpression::IntegralFunctionPath { function, path } => {
             append_integral_function_path(inputs, context, *function, path, result, control)?;
         }
+        ValueExpression::NumberPath(path) => {
+            append_number_path(inputs, context, path, result, control)?;
+        }
         ValueExpression::ContextNodeStringLength(location) => {
             append_context_node_string_length(inputs, context, location, result, control)?;
         }
@@ -1300,6 +1303,60 @@ fn append_integral_function_path(
             )
         }
     })?;
+    append_text(result, &value, inputs.request_id, control)
+}
+
+fn append_number_path(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let selected = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    if selected.len() > 1 {
+        return Err(failure_at(
+            "XPTY0004",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            path.location.clone(),
+            "fn:number requires a zero-or-one item argument",
+        ));
+    }
+    let Some(node) = selected.first().copied() else {
+        return append_text(result, "NaN", inputs.request_id, control);
+    };
+    let lexical = source
+        .string_value_controlled(node, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let value = crate::xpath::constant_numeric_experiment::evaluate_number_lexical(&lexical)
+        .map_err(|numeric_failure| match numeric_failure {
+            crate::xpath::constant_numeric_experiment::ConstantNumericFailure::Invalid => {
+                failure_at(
+                    "FORG0001",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    path.location.clone(),
+                    format!("value is not a valid finite numeric lexical: {lexical}"),
+                )
+            }
+            crate::xpath::constant_numeric_experiment::ConstantNumericFailure::Unsupported => {
+                failure_at(
+                    "FXRT1015",
+                    FailureCategory::Unsupported,
+                    Some(inputs.request_id),
+                    path.location.clone(),
+                    format!(
+                        "numeric lexical is outside the admitted finite-decimal slice: {lexical}"
+                    ),
+                )
+            }
+        })?;
     append_text(result, &value, inputs.request_id, control)
 }
 

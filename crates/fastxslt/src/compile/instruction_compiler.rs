@@ -973,7 +973,7 @@ fn compile_value_expression(
         return Ok(ValueExpression::LiteralString(literal));
     }
     if let Some(literal) =
-        crate::xpath::constant_numeric_experiment::fold_finite_number_conversion(expression)
+        crate::xpath::constant_numeric_experiment::fold_number_conversion(expression)
     {
         return Ok(ValueExpression::LiteralString(literal));
     }
@@ -988,6 +988,9 @@ fn compile_value_expression(
     }
     if let Some(value) = compile_integral_function_path(document, element, expression, location)? {
         return Ok(value);
+    }
+    if let Some(path) = compile_number_path(document, element, expression, location)? {
+        return Ok(ValueExpression::NumberPath(path));
     }
     if let Some(path) = compile_string_path(document, element, expression, location) {
         return Ok(ValueExpression::StringPath(path));
@@ -1613,6 +1616,31 @@ fn compile_integral_function_path(
         function,
         path,
     }))
+}
+
+fn compile_number_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<LocationPath>, CompileFailure> {
+    let Some(argument) =
+        crate::xpath::constant_numeric_experiment::number_function_call(expression)
+    else {
+        return Ok(None);
+    };
+    let mut path = parse_location_path(argument, location.clone()).map_err(map_path_failure)?;
+    if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+        for step in &mut path.steps {
+            if let PathStep::ChildNamed(local) = step {
+                *step = PathStep::ChildExpandedName(ExpandedName {
+                    namespace: Some(namespace.to_owned()),
+                    local: local.clone(),
+                });
+            }
+        }
+    }
+    Ok(Some(path))
 }
 
 fn compile_string_path(

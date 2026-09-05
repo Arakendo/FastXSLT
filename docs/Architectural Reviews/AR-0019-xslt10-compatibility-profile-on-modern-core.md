@@ -304,6 +304,9 @@ public version-mode contract.
 - [x] Fold source-free finite `number()` conversion over decimal literals and
   quoted decimal lexical values, raising the lower bound to 749 through two
   unchanged passes without runtime version dispatch.
+- [x] Add a typed, work-charged `number()` path operation plus shared
+  empty/non-convertible `NaN` behavior, raising the lower bound to 753 through
+  four unchanged passes while retaining modern zero-or-one cardinality.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 50 known executing comparison
@@ -477,6 +480,10 @@ maintained redistributable legacy suite becomes available.
   747 to 749. Both newly initialized cases pass without changing a mismatch or
   later-failure category; dynamic and special-value conversion remain outside
   the slice.
+- 2026-09-04 -- Typed `number()` paths plus shared empty/non-convertible `NaN`
+  behavior raised the lower bound from 749 to 753. All four newly initialized
+  cases pass without changing a mismatch or later-failure category; multi-node
+  conversion retains `XPTY0004`.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

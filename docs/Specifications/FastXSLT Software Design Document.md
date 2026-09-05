@@ -542,9 +542,17 @@ than being approximated through binary floating point.
 
 `number()` around one source-free finite decimal literal or quoted finite
 decimal lexical value may likewise be folded to its canonical decimal string.
-Context and path conversion, compound arithmetic arguments, NaN, infinity,
-exponent notation, and general numeric formatting remain outside this narrow
-value-expression form.
+Context conversion, compound arithmetic arguments, infinity, exponent
+notation, and general numeric formatting remain outside this narrow static
+value-expression form. Quoted ordinary non-convertible values fold to `NaN`;
+special numeric lexicals remain explicit.
+
+A typed `number(location-path)` value operation evaluates the shared path,
+requires zero or one selected node, and converts its XDM string value to a
+canonical finite decimal. Empty selections and ordinary non-convertible
+lexicals produce `NaN`. Exponent and infinity lexicals remain unsupported, and
+the operation does not adopt XSLT 1.0's first-node conversion for a multi-node
+selection.
 
 Recognized valid expression families that exceed the admitted evaluator remain
 engine-unsupported rather than being forced through the location-path parser.

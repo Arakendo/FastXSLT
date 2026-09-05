@@ -492,6 +492,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::GeneratedNodeIdentity(path)
         | ValueExpression::GeneratedRootIdentity(path)
         | ValueExpression::EmptyLocationPath(path)
+        | ValueExpression::NumberPath(path)
         | ValueExpression::IntegralFunctionPath { path, .. } => path.known_owned_capacity_bytes(),
         ValueExpression::ContextNodeName
         | ValueExpression::ContextNodeLocalName

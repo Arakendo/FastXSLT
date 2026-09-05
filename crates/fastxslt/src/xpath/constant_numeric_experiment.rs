@@ -44,16 +44,44 @@ pub(crate) fn fold_exact_integral_arithmetic(expression: &str) -> Option<String>
         .then(|| value.numerator.div_euclid(value.denominator).to_string())
 }
 
-pub(crate) fn fold_finite_number_conversion(expression: &str) -> Option<String> {
-    let expression = expression.trim();
+pub(crate) fn fold_number_conversion(expression: &str) -> Option<String> {
+    let argument = number_function_call(expression)?;
+    if let Some(lexical) = xpath_string_literal(argument) {
+        return evaluate_number_lexical(lexical).ok();
+    }
+    canonical_finite_decimal(argument.trim())
+}
+
+pub(crate) fn number_function_call(expression: &str) -> Option<&str> {
     let argument = expression
+        .trim()
         .strip_prefix("number")?
         .trim_start_matches([' ', '\t', '\r', '\n'])
         .strip_prefix('(')?
         .strip_suffix(')')?
         .trim();
-    let lexical = xpath_string_literal(argument).unwrap_or(argument);
-    canonical_finite_decimal(lexical.trim())
+    (!argument.is_empty()).then_some(argument)
+}
+
+pub(crate) fn evaluate_number_lexical(lexical: &str) -> Result<String, ConstantNumericFailure> {
+    let lexical = lexical.trim();
+    if let Some(value) = canonical_finite_decimal(lexical) {
+        return Ok(value);
+    }
+    let numeric_extension = lexical
+        .bytes()
+        .all(|byte| byte.is_ascii_digit() || matches!(byte, b'+' | b'-' | b'.' | b'e' | b'E'))
+        && (lexical.contains(['e', 'E']) || lexical.starts_with('.') || lexical.ends_with('.'));
+    if numeric_extension
+        || matches!(
+            lexical,
+            "NaN" | "INF" | "+INF" | "-INF" | "Infinity" | "+Infinity" | "-Infinity"
+        )
+    {
+        Err(ConstantNumericFailure::Unsupported)
+    } else {
+        Ok("NaN".to_owned())
+    }
 }
 
 fn xpath_string_literal(expression: &str) -> Option<&str> {
@@ -502,8 +530,9 @@ mod tests {
 
     use super::{
         ConstantNumericFailure, IntegralFunction, compare, evaluate_integral_lexical,
-        fold_exact_integral_arithmetic, fold_finite_number_conversion, fold_integral_equality,
-        fold_integral_function, integral_function_call,
+        evaluate_number_lexical, fold_exact_integral_arithmetic, fold_integral_equality,
+        fold_integral_function, fold_number_conversion, integral_function_call,
+        number_function_call,
     };
 
     #[test]
@@ -589,22 +618,24 @@ mod tests {
     }
 
     #[test]
-    fn folds_only_finite_decimal_number_conversions() {
+    fn folds_admitted_number_conversions_and_nan_results() {
+        assert_eq!(fold_number_conversion("number(2)"), Some("2".to_owned()));
         assert_eq!(
-            fold_finite_number_conversion("number(2)"),
-            Some("2".to_owned())
-        );
-        assert_eq!(
-            fold_finite_number_conversion("number( '003.500' )"),
+            fold_number_conversion("number( '003.500' )"),
             Some("3.5".to_owned())
         );
+        assert_eq!(fold_number_conversion("number(-0)"), Some("0".to_owned()));
         assert_eq!(
-            fold_finite_number_conversion("number(-0)"),
-            Some("0".to_owned())
+            fold_number_conversion("number('abc')"),
+            Some("NaN".to_owned())
         );
-        assert_eq!(fold_finite_number_conversion("number('NaN')"), None);
-        assert_eq!(fold_finite_number_conversion("number(source)"), None);
-        assert_eq!(fold_finite_number_conversion("number(1 div 2)"), None);
-        assert_eq!(fold_finite_number_conversion("not-number(2)"), None);
+        assert_eq!(fold_number_conversion("number('NaN')"), None);
+        assert_eq!(fold_number_conversion("number(source)"), None);
+        assert_eq!(fold_number_conversion("number(1 div 2)"), None);
+        assert_eq!(fold_number_conversion("not-number(2)"), None);
+        assert_eq!(number_function_call("number(source)"), Some("source"));
+        assert_eq!(number_function_call("number()"), None);
+        assert_eq!(evaluate_number_lexical(" 001.2500 "), Ok("1.25".to_owned()));
+        assert_eq!(evaluate_number_lexical("abc"), Ok("NaN".to_owned()));
     }
 }

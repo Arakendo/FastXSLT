@@ -506,6 +506,7 @@ pub(crate) enum ValueExpression {
         function: crate::xpath::constant_numeric_experiment::IntegralFunction,
         path: LocationPath,
     },
+    NumberPath(LocationPath),
     ContextNodeStringLength(SourceLocation),
     ContextPosition(SourceLocation),
     ContextSize(SourceLocation),

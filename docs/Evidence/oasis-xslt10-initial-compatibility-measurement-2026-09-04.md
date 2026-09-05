@@ -138,6 +138,9 @@ to 747 through nine unchanged cases without adding a later failure or mismatch.
 Static finite `number()` conversion then raises it to 749 through two unchanged
 cases while leaving context, path, NaN, infinity, and compound arguments
 explicitly unsupported.
+Typed path conversion plus shared empty/non-convertible `NaN` behavior then
+raises it to 753 through four unchanged cases while retaining the modern
+zero-or-one cardinality boundary.
 
 ## Outcome
 
