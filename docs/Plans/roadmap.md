@@ -469,6 +469,15 @@ extracts balanced branch parsing, recursive conditional structure, typed-path
 operands, and schema-prefix validation into a 255-line private child. The
 1,813-line parent retains sequence-constructor and expression-family dispatch;
 the extraction changes neither compiled plans nor corpus dispositions.
+Subsequent standards tranches grew value-expression selection into an
+independently testable responsibility and raised the parent to 2,526 lines,
+reopening the recorded decomposition trigger. The
+[value-expression compiler decomposition](../Evidence/instruction-value-expression-compiler-decomposition-2026-09-05.md)
+moves the complete typed `xsl:value-of` selection, its private static
+compatibility context, and its path/function helpers into a 1,100-line private
+child. The 1,451-line parent retains sequence-constructor traversal and calls
+one typed entry point; the unchanged OASIS sweep remains 777 passes, 50
+mismatches, and 201 execution failures.
 The shared XSLT30 corpus test unit then reached 1,117 lines while owning both
 template-dispatch and XPath path-expression campaigns. Its
 [test-owner decomposition review](../Evidence/xslt30-corpus-test-owner-decomposition-review-2026-08-29.md)
