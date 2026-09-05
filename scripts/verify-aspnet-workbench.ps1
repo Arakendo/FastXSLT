@@ -9,6 +9,7 @@ param(
     [switch]$TieredBenchmark,
     [switch]$TieredSummaryOnly,
     [switch]$TextHeavyBenchmark,
+    [switch]$ResultHeavyBenchmark,
     [switch]$NativeBoundaryBreakdown,
     [switch]$OperationalExperiments,
     [switch]$NativeRegistryPressure,
@@ -18,6 +19,7 @@ param(
     [int]$TieredRequests = 250,
     [int]$TieredConcurrency = 4,
     [int]$TextHeavyRequests = 100,
+    [int]$ResultHeavyRequests = 50,
     [int]$RegistryItems = 500,
     [int]$RegistryConcurrency = 4,
     [int]$RegistryGenerations = 2,
@@ -617,6 +619,15 @@ try {
             }
             else {
                 $textHeavy | ConvertTo-Json -Depth 6
+            }
+        }
+        if ($ResultHeavyBenchmark) {
+            $resultHeavy = Invoke-RestMethod -Method Post -Uri "$baseAddress/benchmark/result-heavy?requests=$ResultHeavyRequests&concurrency=$TieredConcurrency"
+            if ($TieredSummaryOnly) {
+                $resultHeavy.measurements | Select-Object engine, tier, requests, concurrency, transformsPerSecond, p50Microseconds, p95Microseconds, p99Microseconds, processorMilliseconds, normalizedProcessorPercent, managedAllocatedBytes, workerWorkingSetAfter
+            }
+            else {
+                $resultHeavy | ConvertTo-Json -Depth 6
             }
         }
         if ($NativeBoundaryBreakdown) {

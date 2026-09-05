@@ -117,6 +117,10 @@ boundaries. This does not admit direct serialization from instructions, unsafe
 code, a public serializer contract, unbounded cancellation latency, stack-buffer
 numeric formatting, or a capacity-estimation policy.
 
-Keep the append-oriented result builder as the next measured P2 candidate. Its
-fixture now establishes pressure, but AR-0013 still requires a safe differential
-prototype and host-visible evidence before retention.
+The first narrow append experiment executed a static integer range directly
+into one caller-owned vector. It removed 5,001 allocations at 5,000 items but
+increased the largest allocation observation and produced mixed host results,
+so it was removed. The fixture remains the admission gate for a materially
+different result-builder design.
+
+[Negative result-destination experiment](static-range-result-destination-experiment-2026-09-05.md)

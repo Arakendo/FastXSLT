@@ -20,17 +20,21 @@ rejected before execution because it would globally bypass cancellation and
 budgets. The next control experiment must preserve those semantics. Separate
 result-heavy and text-heavy fixtures now prevent `for-004` from standing in for
 unrelated work: the result fixture establishes roughly eight allocation
-requests per constructed item and nominates an append-oriented builder, while a
+requests per constructed item and nominates append-oriented construction, while a
 private safe serializer path now emits eligible text in bounded 4 KiB runs.
 That serializer path preserved exact byte-limit and cancellation behavior and
 improved five-process .NET 10 median throughput by 1.33-2.75x through isolated
-workers and 2.84-3.75x through native hosting, so it is retained. The builder,
-namespace, frame, registry, unsafe, and public-representation candidates remain
-unadmitted.
+workers and 2.84-3.75x through native hosting, so it is retained. A first
+static-range direct-destination prototype removed 5,001 allocations at 5,000
+items but increased its largest allocation observation and produced a longer
+host A/B ranging from 6.3% faster to 3.0% slower; it was removed. A materially
+different builder, namespace, frame, registry, unsafe, and public-representation
+candidate remains unadmitted.
 [Evidence](../Evidence/for-004-monotonic-child-path-experiment-2026-09-04.md)
 [Paired-attribute evidence](../Evidence/for-004-paired-attribute-lookup-experiment-2026-09-04.md)
 [Work-control evidence](../Evidence/for-004-work-control-shape-2026-09-04.md)
 [Result/text evidence](../Evidence/result-and-text-heavy-performance-fixtures-2026-09-05.md)
+[Result-destination evidence](../Evidence/static-range-result-destination-experiment-2026-09-05.md)
 
 The
 [second adversarial engine review](../Reviews/adversarial-engine-review-2026-09-03.md)

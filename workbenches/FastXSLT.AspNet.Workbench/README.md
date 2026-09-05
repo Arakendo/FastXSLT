@@ -29,6 +29,7 @@ offers:
 - `POST /measure/dotnet-xslt1?requests=1000`
 - `POST /benchmark/tiers?requests=250&concurrency=4`
 - `POST /benchmark/text-heavy?requests=100&concurrency=4`
+- `POST /benchmark/result-heavy?requests=50&concurrency=4`
 - `POST /benchmark/native-boundary-breakdown?requests=250`
 - `POST /experiment/worker-recovery`
 - `POST /experiment/cooperative-cancellation`
@@ -233,4 +234,12 @@ Run it with:
 
 ```powershell
 ./scripts/verify-aspnet-workbench.ps1 -TextHeavyBenchmark -TieredSummaryOnly
+```
+
+The companion result-heavy fixture constructs 100, 1,000, or 5,000 elements
+with attributes and text. It targets semantic result construction rather than
+serializer-safe text runs:
+
+```powershell
+./scripts/verify-aspnet-workbench.ps1 -ResultHeavyBenchmark -TieredSummaryOnly
 ```

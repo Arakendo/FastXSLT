@@ -6,7 +6,7 @@
 | Source checkpoint | `ee659758a867fa6698e6468043f554223f73d15c`                                                                                                                                                                |
 | Review type       | Adversarial performance and allocation review                                                                                                                                                             |
 | Primary workload  | Pinned XSLT30 `for-004`, 5/50/500 deterministic `order-item` elements                                                                                                                                     |
-| Status            | Complete review; P1 candidates closed, bounded safe-text P2 retained, result-builder P2 nominated                                                                                                          |
+| Status            | Complete review; P1 candidates closed, bounded safe-text P2 retained, first result-destination P2 rejected                                                                                                |
 | Input evidence    | [ASP.NET native boundary breakdown](../Evidence/aspnet-native-boundary-breakdown-2026-09-03.md); [`for-004` exact-decimal activated path](../Evidence/for-004-exact-decimal-activated-path-2026-09-04.md) |
 | Governing review  | [AR-0013 prepared representation and data-layout audit](../Architectural%20Reviews/AR-0013-prepared-representation-and-data-layout-audit.md)                                                              |
 
@@ -43,7 +43,8 @@ for `price` and `qty`.
 
 Result-heavy and text-heavy workloads now have separate fixtures. The
 append-oriented result-builder candidate has measured linear allocation
-pressure but has not been prototyped. A private bounded safe-text writer reduced
+pressure. Its first narrow direct-destination prototype was rejected after
+mixed host results and a larger peak allocation. A private bounded safe-text writer reduced
 local serializer time by 72-77% and improved median throughput through every
 measured native and isolated ASP.NET lane, so it was retained with the complete
 character-wise path as oracle.
@@ -329,7 +330,13 @@ differentially conserved. Five-process .NET 10 A/B medians improved by
 [Result and text fixture evidence](../Evidence/result-and-text-heavy-performance-fixtures-2026-09-05.md)
 
 The two implementation-specific P1 experiments are closed without retention.
-Of the P2 experiments, bounded safe-text serialization is retained, result
-construction is now a measured candidate, and namespace-scope work still lacks
-its required targeted fixture. No follow-up accepts a new architecture or
-authorizes a shortcut around resource accounting.
+Of the P2 experiments, bounded safe-text serialization is retained. Direct
+static-range execution into a caller-owned result vector was measured and
+rejected: it removed 5,001 allocation requests at 5,000 items but increased the
+largest allocation observation and its longer ASP.NET A/B ranged from 6.3%
+faster to 3.0% slower. Broader result construction remains open only for a
+materially different candidate. Namespace-scope work still lacks its required
+targeted fixture. No follow-up accepts a new architecture or authorizes a
+shortcut around resource accounting.
+
+[Result-destination negative evidence](../Evidence/static-range-result-destination-experiment-2026-09-05.md)

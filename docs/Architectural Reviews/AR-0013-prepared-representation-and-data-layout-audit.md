@@ -386,3 +386,7 @@ provide a concrete hypothesis to test.
   A safe 4 KiB bounded text writer conserved byte limits, charged work, and
   cancellation against the complete serializer and produced material native
   and isolated ASP.NET gains, so that private specialization was retained.
+- 2026-09-05 -- Rejected a safe static-range direct-result destination after it
+  removed 5,001 allocation requests but increased the largest allocation
+  observation and produced mixed longer ASP.NET results. The complete
+  production implementation was restored and the negative result recorded.

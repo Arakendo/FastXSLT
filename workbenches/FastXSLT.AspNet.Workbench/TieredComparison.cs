@@ -18,6 +18,13 @@ public static class TieredComparison
         new("text-bytes-524288", 524_288, 1)
     ];
 
+    private static readonly Tier[] ResultHeavyTiers =
+    [
+        new("result-items-100", 100, 10),
+        new("result-items-1000", 1_000, 2),
+        new("result-items-5000", 5_000, 1)
+    ];
+
     public static async Task<TieredComparisonReport> RunAsync(
         string workerPath,
         byte[] modernStylesheet,
@@ -166,26 +173,49 @@ public static class TieredComparison
     public static async Task<TieredComparisonReport> RunTextHeavyAsync(
         string workerPath,
         int requests,
+        int maximumInFlight) => await RunFocusedAsync(
+            workerPath,
+            "text-heavy",
+            TextHeavyTiers,
+            BuildTextHeavyFixture,
+            requests,
+            maximumInFlight);
+
+    public static async Task<TieredComparisonReport> RunResultHeavyAsync(
+        string workerPath,
+        int requests,
+        int maximumInFlight) => await RunFocusedAsync(
+            workerPath,
+            "result-heavy",
+            ResultHeavyTiers,
+            BuildResultHeavyFixture,
+            requests,
+            maximumInFlight);
+
+    private static async Task<TieredComparisonReport> RunFocusedAsync(
+        string workerPath,
+        string workload,
+        IReadOnlyList<Tier> tiers,
+        Func<Tier, (byte[] Source, byte[] Stylesheet, string Expected)> buildFixture,
+        int requests,
         int maximumInFlight)
     {
         requests = Math.Clamp(requests, 1, 10_000);
         maximumInFlight = Math.Clamp(maximumInFlight, 1, 8);
         var measurements = new List<TierMeasurement>();
         var initializations = new List<TierInitialization>();
-        var source = Encoding.UTF8.GetBytes("<root/>");
 
-        foreach (var tier in TextHeavyTiers)
+        foreach (var tier in tiers)
         {
-            var stylesheet = BuildTextHeavyStylesheet(tier.Items);
-            var expected = $"<out>{new string('a', tier.Items)}</out>";
+            var (source, stylesheet, expected) = buildFixture(tier);
             var tierRequests = Math.Min(10_000, checked(requests * tier.RequestMultiplier));
 
             var isolatedStart = Stopwatch.StartNew();
             using var isolatedPool = await FastXsltWorkerPool.StartAsync(
                 workerPath,
-                $"urn:fastxslt:text-heavy:{tier.Name}:source",
+                $"urn:fastxslt:{workload}:{tier.Name}:source",
                 source,
-                $"urn:fastxslt:text-heavy:{tier.Name}:stylesheet",
+                $"urn:fastxslt:{workload}:{tier.Name}:stylesheet",
                 stylesheet,
                 maximumInFlight);
             isolatedStart.Stop();
@@ -198,9 +228,9 @@ public static class TieredComparison
 
             var nativeStart = Stopwatch.StartNew();
             using var nativePool = NativeFastXsltPool.Create(
-                $"urn:fastxslt:native-text-heavy:{tier.Name}:source",
+                $"urn:fastxslt:native-{workload}:{tier.Name}:source",
                 source,
-                $"urn:fastxslt:native-text-heavy:{tier.Name}:stylesheet",
+                $"urn:fastxslt:native-{workload}:{tier.Name}:stylesheet",
                 stylesheet,
                 maximumInFlight);
             nativeStart.Stop();
@@ -365,15 +395,38 @@ public static class TieredComparison
         return Encoding.UTF8.GetBytes(source.ToString());
     }
 
-    private static byte[] BuildTextHeavyStylesheet(int textBytes)
+    private static (byte[] Source, byte[] Stylesheet, string Expected) BuildTextHeavyFixture(
+        Tier tier)
     {
+        var text = new string('a', tier.Items);
         var stylesheet = new StringBuilder(
             "<xsl:stylesheet version=\"3.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\">" +
             "<xsl:output method=\"xml\" omit-xml-declaration=\"yes\"/>" +
             "<xsl:template match=\"/\"><out>");
-        stylesheet.Append('a', textBytes);
+        stylesheet.Append(text);
         stylesheet.Append("</out></xsl:template></xsl:stylesheet>");
-        return Encoding.UTF8.GetBytes(stylesheet.ToString());
+        return (
+            Encoding.UTF8.GetBytes("<root/>"),
+            Encoding.UTF8.GetBytes(stylesheet.ToString()),
+            $"<out>{text}</out>");
+    }
+
+    private static (byte[] Source, byte[] Stylesheet, string Expected) BuildResultHeavyFixture(
+        Tier tier)
+    {
+        var stylesheet = Encoding.UTF8.GetBytes(
+            $"<xsl:stylesheet version=\"3.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\">" +
+            "<xsl:output method=\"xml\" omit-xml-declaration=\"yes\"/>" +
+            $"<xsl:template match=\"/\"><out><xsl:for-each select=\"1 to {tier.Items}\">" +
+            "<item code=\"fixed\">payload</item></xsl:for-each></out></xsl:template>" +
+            "</xsl:stylesheet>");
+        var expected = new StringBuilder("<out>");
+        for (var index = 0; index < tier.Items; index++)
+        {
+            expected.Append("<item code=\"fixed\">payload</item>");
+        }
+        expected.Append("</out>");
+        return (Encoding.UTF8.GetBytes("<root/>"), stylesheet, expected.ToString());
     }
 
     private static long ObserveHostWorkingSet()

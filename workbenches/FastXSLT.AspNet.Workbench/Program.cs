@@ -211,6 +211,21 @@ app.MapPost("/benchmark/text-heavy", async (int? requests, int? concurrency) =>
         tieredBenchmarkGate.Release();
     }
 });
+app.MapPost("/benchmark/result-heavy", async (int? requests, int? concurrency) =>
+{
+    await tieredBenchmarkGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await TieredComparison.RunResultHeavyAsync(
+            workerPath,
+            Math.Clamp(requests ?? 50, 1, 10_000),
+            Math.Clamp(concurrency ?? 4, 1, 8)));
+    }
+    finally
+    {
+        tieredBenchmarkGate.Release();
+    }
+});
 app.MapPost("/benchmark/native-boundary-breakdown", async (int? requests) =>
 {
     await tieredBenchmarkGate.WaitAsync();
