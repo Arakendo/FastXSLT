@@ -6,6 +6,24 @@ standards scope are decided.
 
 ## Current critical path
 
+The first P1 experiment from the 2026-09-04 performance review is complete and
+was deliberately not retained. A compile-selected monotonic child scan removed
+most transient path allocation in its focused probe but did not deliver a
+repeatable ASP.NET gain; the complete controlled evaluator remains the sole
+production path. The separately scoped paired-attribute lookup also removed
+real redundant visits and improved its focused loop, but its 500-item host A/B
+was flat sequentially and slower under four native handles, so it too was
+removed. A retained test-only replay now conserves the evaluator's exact
+`8N + 1` work-charge shape, but its timings include test-only observation work
+and cannot establish production cost. A proposed no-charge production probe was
+rejected before execution because it would globally bypass cancellation and
+budgets. The next control experiment must preserve those semantics; no
+result-builder, serializer, namespace, frame, registry, unsafe, or public
+representation change is admitted by these results.
+[Evidence](../Evidence/for-004-monotonic-child-path-experiment-2026-09-04.md)
+[Paired-attribute evidence](../Evidence/for-004-paired-attribute-lookup-experiment-2026-09-04.md)
+[Work-control evidence](../Evidence/for-004-work-control-shape-2026-09-04.md)
+
 The
 [second adversarial engine review](../Reviews/adversarial-engine-review-2026-09-03.md)
 found seven new mechanisms after confirming the earlier twelve repairs remain

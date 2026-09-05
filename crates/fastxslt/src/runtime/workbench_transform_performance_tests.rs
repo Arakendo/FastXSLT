@@ -1,5 +1,6 @@
-use std::time::Instant;
+use std::{hint::black_box, time::Instant};
 
+use crate::execution_control_experiment::WorkDomain;
 use crate::xpath::decimal_sum_for_experiment::{
     DecimalSumForExpression, evaluate as evaluate_decimal_sum,
 };
@@ -99,6 +100,83 @@ fn measure_workbench_transform_phases() {
             );
         }
     }
+}
+
+#[test]
+#[ignore = "manual release-mode for-004 production-shaped work-control replay"]
+fn measure_for004_work_control_mix() {
+    const SAMPLES: usize = 5;
+    for (items, iterations) in [
+        (5_usize, 100_000_usize),
+        (50, 20_000),
+        (500, 2_000),
+        (5_000, 200),
+    ] {
+        let mut baseline_microseconds = Vec::with_capacity(SAMPLES);
+        let mut charged_microseconds = Vec::with_capacity(SAMPLES);
+        for _ in 0..SAMPLES {
+            let started = Instant::now();
+            for _ in 0..iterations {
+                replay_for004_charge_shape(items, |domain| {
+                    black_box(domain);
+                });
+            }
+            baseline_microseconds.push(
+                started.elapsed().as_secs_f64() * 1_000_000.0
+                    / f64::from(u32::try_from(iterations).expect("iterations fit u32")),
+            );
+
+            let mut control = InvocationControl::unbounded();
+            let started = Instant::now();
+            for _ in 0..iterations {
+                replay_for004_charge_shape(items, |domain| {
+                    black_box(control.charge(domain, 1)).expect("unbounded charge");
+                });
+            }
+            charged_microseconds.push(
+                started.elapsed().as_secs_f64() * 1_000_000.0
+                    / f64::from(u32::try_from(iterations).expect("iterations fit u32")),
+            );
+
+            assert_eq!(
+                control.consumed(WorkDomain::XPathNodeVisit),
+                iterations * items * 4
+            );
+            assert_eq!(
+                control.consumed(WorkDomain::XdmStringValueNode),
+                iterations * items * 2
+            );
+            assert_eq!(
+                control.consumed(WorkDomain::XPathOperation),
+                iterations * (items * 2 + 1)
+            );
+        }
+        baseline_microseconds.sort_by(f64::total_cmp);
+        charged_microseconds.sort_by(f64::total_cmp);
+        let baseline = baseline_microseconds[SAMPLES / 2];
+        let charged = charged_microseconds[SAMPLES / 2];
+        println!(
+            "items={items} iterations={iterations} charges={} baseline_us={baseline:.6} charged_us={charged:.6} delta_us={:.6}",
+            items * 8 + 1,
+            charged - baseline
+        );
+    }
+}
+
+fn replay_for004_charge_shape(items: usize, mut charge: impl FnMut(WorkDomain)) {
+    for _ in 0..items {
+        charge(WorkDomain::XPathNodeVisit);
+    }
+    for _ in 0..items {
+        charge(WorkDomain::XPathNodeVisit);
+        charge(WorkDomain::XPathNodeVisit);
+        charge(WorkDomain::XPathNodeVisit);
+        charge(WorkDomain::XdmStringValueNode);
+        charge(WorkDomain::XdmStringValueNode);
+        charge(WorkDomain::XPathOperation);
+        charge(WorkDomain::XPathOperation);
+    }
+    charge(WorkDomain::XPathOperation);
 }
 
 fn find_decimal_expression(instructions: &[Instruction]) -> Option<&DecimalSumForExpression> {

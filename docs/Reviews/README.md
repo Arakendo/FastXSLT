@@ -9,3 +9,5 @@ are recorded separately under `docs/Evidence` and sequenced in the roadmap.
   — resolved and maintainer-signed-off on 2026-08-31
 - [Adversarial Engine Review -- 2026-09-03](adversarial-engine-review-2026-09-03.md)
   — open review of subsequent implementation and evidence growth
+- [Performance Optimization Review -- 2026-09-04](performance-optimization-review-2026-09-04.md)
+  — ranked engine optimization candidates after native-boundary localization
