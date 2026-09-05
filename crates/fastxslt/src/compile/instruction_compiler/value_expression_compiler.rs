@@ -364,11 +364,8 @@ fn compile_binary_numeric_path(
     location: &SourceLocation,
     static_context: ValueStaticContext,
 ) -> Option<ValueExpression> {
-    let (left, operator, right) = crate::xpath::binary_numeric_experiment::split_paths(expression)?;
-    let (left, negate_left) = crate::xpath::binary_numeric_experiment::signed_path(left)?;
-    let (right, negate_right) = crate::xpath::binary_numeric_experiment::signed_path(right)?;
-    let left = parse_location_path(left, location.clone()).ok()?;
-    let right = parse_location_path(right, location.clone()).ok()?;
+    crate::xpath::binary_numeric_experiment::split_paths(expression)?;
+    let root = compile_binary_numeric_node(expression, location)?;
     let selection = match static_context.compatibility {
         ValueCompatibilityMode::Xslt10 => {
             crate::xpath::binary_numeric_experiment::NumericOperandSelection::FirstInDocumentOrder
@@ -379,15 +376,32 @@ fn compile_binary_numeric_path(
     };
     Some(ValueExpression::BinaryNumeric(Box::new(
         crate::xpath::binary_numeric_experiment::BinaryNumericExpression {
-            left,
-            negate_left,
-            operator,
-            right,
-            negate_right,
+            root,
             selection,
             location: location.clone(),
         },
     )))
+}
+
+fn compile_binary_numeric_node(
+    expression: &str,
+    location: &SourceLocation,
+) -> Option<crate::xpath::binary_numeric_experiment::BinaryNumericNode> {
+    use crate::xpath::binary_numeric_experiment::BinaryNumericNode;
+    if let Some((left, operator, right)) =
+        crate::xpath::binary_numeric_experiment::split_paths(expression)
+    {
+        return Some(BinaryNumericNode::Operation {
+            left: Box::new(compile_binary_numeric_node(left, location)?),
+            operator,
+            right: Box::new(compile_binary_numeric_node(right, location)?),
+        });
+    }
+    let (path, negate) = crate::xpath::binary_numeric_experiment::signed_path(expression)?;
+    Some(BinaryNumericNode::Path {
+        path: parse_location_path(path, location.clone()).ok()?,
+        negate,
+    })
 }
 
 fn compile_location_path_or_missing_context(

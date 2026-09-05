@@ -178,6 +178,10 @@ all five matches retain doubts metadata.
 Token-delimited path modulo then reaches 796 through `math79` to `math82`.
 All four matches retain doubts metadata; chained and nested arithmetic remain a
 separate parser/typed-tree frontier.
+A recursive path-only operator tree then reaches 798 through `math87` and its
+Microsoft repeated-division counterpart. Both retain doubts metadata;
+`math86` advances to a visible exact-decimal representation boundary and
+receives no credit.
 
 ## Outcome
 

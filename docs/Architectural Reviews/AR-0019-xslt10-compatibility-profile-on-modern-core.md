@@ -344,6 +344,9 @@ public version-mode contract.
 - [x] Add token-delimited checked path modulo, reaching 796 through four more
   doubt-annotated matches, then stop the bounded recognizer before the chained
   and nested arithmetic frontier.
+- [x] Replace the exact binary form with an owned recursive path-only operator
+  tree, reaching 798 through two repeated-division matches while exposing one
+  exact-decimal runtime boundary without credit.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 50 known executing comparison
@@ -564,6 +567,10 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-05 -- Checked path modulo raised the measured expected-result matches
   from 792 to 796 through four doubt-annotated cases. The next arithmetic cases
   require a real expression tree, so the bounded recognizer stops here.
+- 2026-09-05 -- The path plan became a recursive precedence-preserving operator
+  tree and raised expected-result matches from 796 to 798 through two
+  doubt-annotated repeated-division cases. One additional case now reaches the
+  explicit non-integer lexical boundary and remains uncredited.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

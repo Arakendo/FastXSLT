@@ -22,21 +22,40 @@ pub(crate) enum NumericOperandSelection {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct BinaryNumericExpression {
-    pub(crate) left: LocationPath,
-    pub(crate) negate_left: bool,
-    pub(crate) operator: BinaryNumericOperator,
-    pub(crate) right: LocationPath,
-    pub(crate) negate_right: bool,
+    pub(crate) root: BinaryNumericNode,
     pub(crate) selection: NumericOperandSelection,
     pub(crate) location: SourceLocation,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum BinaryNumericNode {
+    Path {
+        path: LocationPath,
+        negate: bool,
+    },
+    Operation {
+        left: Box<Self>,
+        operator: BinaryNumericOperator,
+        right: Box<Self>,
+    },
 }
 
 impl BinaryNumericExpression {
     #[cfg(feature = "workbench")]
     pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
-        self.left.known_owned_capacity_bytes()
-            + self.right.known_owned_capacity_bytes()
-            + self.location.resource.capacity()
+        self.root.known_owned_capacity_bytes() + self.location.resource.capacity()
+    }
+}
+
+impl BinaryNumericNode {
+    #[cfg(feature = "workbench")]
+    fn known_owned_capacity_bytes(&self) -> usize {
+        match self {
+            Self::Path { path, .. } => path.known_owned_capacity_bytes(),
+            Self::Operation { left, right, .. } => {
+                left.known_owned_capacity_bytes() + right.known_owned_capacity_bytes()
+            }
+        }
     }
 }
 
@@ -54,7 +73,8 @@ pub(crate) enum BinaryNumericEvaluationFailure {
 pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperator, &str)> {
     let expression = expression.trim();
     let mut depth = 0usize;
-    let mut candidate = None;
+    let mut additive_candidate = None;
+    let mut multiplicative_candidate = None;
     for (index, character) in expression.char_indices() {
         match character {
             '(' => depth = depth.checked_add(1)?,
@@ -73,10 +93,7 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
                 {
                     continue;
                 }
-                if candidate.is_some() {
-                    return None;
-                }
-                candidate = Some((
+                let candidate = (
                     index,
                     match character {
                         '+' => BinaryNumericOperator::Add,
@@ -85,27 +102,26 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
                         _ => unreachable!(),
                     },
                     1,
-                ));
+                );
+                if matches!(character, '+' | '-') {
+                    additive_candidate = Some(candidate);
+                } else {
+                    multiplicative_candidate = Some(candidate);
+                }
             }
             'd' if depth == 0
                 && expression[index..].starts_with("div")
                 && expression[..index].ends_with(char::is_whitespace)
                 && expression[index + 3..].starts_with(char::is_whitespace) =>
             {
-                if candidate.is_some() {
-                    return None;
-                }
-                candidate = Some((index, BinaryNumericOperator::Divide, 3));
+                multiplicative_candidate = Some((index, BinaryNumericOperator::Divide, 3));
             }
             'm' if depth == 0
                 && expression[index..].starts_with("mod")
                 && expression[..index].ends_with(char::is_whitespace)
                 && expression[index + 3..].starts_with(char::is_whitespace) =>
             {
-                if candidate.is_some() {
-                    return None;
-                }
-                candidate = Some((index, BinaryNumericOperator::Modulo, 3));
+                multiplicative_candidate = Some((index, BinaryNumericOperator::Modulo, 3));
             }
             _ => {}
         }
@@ -113,7 +129,7 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
     if depth != 0 {
         return None;
     }
-    let (index, operator, operator_width) = candidate?;
+    let (index, operator, operator_width) = additive_candidate.or(multiplicative_candidate)?;
     let right_index = index + operator_width;
     let left = strip_balanced_parentheses(expression[..index].trim());
     let right = strip_balanced_parentheses(expression[right_index..].trim());
@@ -135,27 +151,40 @@ pub(crate) fn evaluate(
     context: NodeId,
     control: &mut InvocationControl,
 ) -> Result<String, BinaryNumericEvaluationFailure> {
-    let left = operand_value(
+    let value = evaluate_node(
+        &expression.root,
         document,
         context,
-        &expression.left,
-        expression.negate_left,
         expression.selection,
         control,
     )?;
-    let right = operand_value(
-        document,
-        context,
-        &expression.right,
-        expression.negate_right,
-        expression.selection,
-        control,
-    )?;
-    control
-        .charge(WorkDomain::XPathOperation, 1)
-        .map_err(BinaryNumericEvaluationFailure::Control)?;
-    let value = apply_operator(left, expression.operator, right)?;
     Ok(value.to_string())
+}
+
+fn evaluate_node(
+    node: &BinaryNumericNode,
+    document: &Document,
+    context: NodeId,
+    selection: NumericOperandSelection,
+    control: &mut InvocationControl,
+) -> Result<i128, BinaryNumericEvaluationFailure> {
+    match node {
+        BinaryNumericNode::Path { path, negate } => {
+            operand_value(document, context, path, *negate, selection, control)
+        }
+        BinaryNumericNode::Operation {
+            left,
+            operator,
+            right,
+        } => {
+            let left = evaluate_node(left, document, context, selection, control)?;
+            let right = evaluate_node(right, document, context, selection, control)?;
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(BinaryNumericEvaluationFailure::Control)?;
+            apply_operator(left, *operator, right)
+        }
+    }
 }
 
 fn apply_operator(
@@ -291,7 +320,15 @@ mod tests {
             split_paths("-n-2 --n-1"),
             Some(("-n-2", BinaryNumericOperator::Subtract, "-n-1"))
         );
-        for expression in ["n1", "n1+n2+n3", "(n1+n2)", "n1/ *", "/*/"] {
+        assert_eq!(
+            split_paths("n1*n2*n3"),
+            Some(("n1*n2", BinaryNumericOperator::Multiply, "n3"))
+        );
+        assert_eq!(
+            split_paths("n1*n2+n3*n4"),
+            Some(("n1*n2", BinaryNumericOperator::Add, "n3*n4"))
+        );
+        for expression in ["n1", "(n1)", "n1/ *", "/*/"] {
             assert_eq!(split_paths(expression), None, "{expression}");
         }
     }

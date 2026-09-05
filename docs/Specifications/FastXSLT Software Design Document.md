@@ -544,19 +544,22 @@ parsing or version dispatch. Fractional results, division by zero, overflow,
 NaN/infinity, and path-dependent operands remain explicit boundaries rather
 than being approximated through binary floating point.
 
-A separate bounded binary-numeric plan admits `+`, `*`, whitespace-delimited
-`-`, and token-delimited `div`/`mod` between two typed location paths. The compiler
-retains both paths and selects operand cardinality from stylesheet static
-context: XSLT 1.0 uses the first node in document order, while the modern mode
-requires zero or one node. Runtime evaluates both paths under ordinary work
-control and performs checked integer arithmetic without a version branch.
+A separate bounded numeric-path plan admits `+`, `*`, whitespace-delimited
+`-`, and token-delimited `div`/`mod` over typed location paths. The compiler
+retains a recursive operator tree and selects operand cardinality from
+stylesheet static context: XSLT 1.0 uses the first node in document order,
+while the modern mode requires zero or one node. Runtime evaluates every leaf
+under ordinary work control and performs checked integer arithmetic without a
+version branch.
 Division is admitted only for a nonzero, exactly integral quotient. Empty
-operands, non-integer lexicals, overflow, fractional or zero division, chained
-expressions, numeric promotion, and general atomization remain outside
+operands, non-integer lexicals, overflow, fractional or zero division, non-path
+leaves, numeric promotion, and general atomization remain outside
 this initial form. Each operand may retain one explicit unary-negation bit,
 including around a parenthesized path; repeated signs and unary general
 expressions remain unsupported. Modulo uses the same checked integer domain and
-rejects a zero divisor.
+rejects a zero divisor. Supported path operations compose recursively with
+ordinary arithmetic precedence and left associativity; this private tree is not
+a general public XPath AST.
 
 `number()` around one source-free finite decimal literal or quoted finite
 decimal lexical value may likewise be folded to its canonical decimal string.
