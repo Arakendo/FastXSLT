@@ -1629,6 +1629,7 @@ fn compile_number_path(
     else {
         return Ok(None);
     };
+    let argument = if argument.is_empty() { "." } else { argument };
     let mut path = parse_location_path(argument, location.clone()).map_err(map_path_failure)?;
     if let Some(namespace) = effective_xpath_default_namespace(document, element) {
         for step in &mut path.steps {

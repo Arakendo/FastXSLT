@@ -554,6 +554,11 @@ lexicals produce `NaN`. Exponent and infinity lexicals remain unsupported, and
 the operation does not adopt XSLT 1.0's first-node conversion for a multi-node
 selection.
 
+The zero-argument `number()` form compiles its implicit context item as the
+explicit `.` path and reuses the same typed operation. Missing dynamic context
+therefore remains an ordinary context error rather than acquiring a separate
+legacy execution path.
+
 Recognized valid expression families that exceed the admitted evaluator remain
 engine-unsupported rather than being forced through the location-path parser.
 The global `QName()` constructor is one such boundary: it is classified before

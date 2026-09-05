@@ -307,6 +307,9 @@ public version-mode contract.
 - [x] Add a typed, work-charged `number()` path operation plus shared
   empty/non-convertible `NaN` behavior, raising the lower bound to 753 through
   four unchanged passes while retaining modern zero-or-one cardinality.
+- [x] Compile zero-argument `number()` to the same typed operation with an
+  explicit context-item path, raising the lower bound to 756 through three
+  unchanged catalog identities without a version branch.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 50 known executing comparison
@@ -484,6 +487,9 @@ maintained redistributable legacy suite becomes available.
   behavior raised the lower bound from 749 to 753. All four newly initialized
   cases pass without changing a mismatch or later-failure category; multi-node
   conversion retains `XPTY0004`.
+- 2026-09-04 -- Zero-argument `number()` raised the lower bound from 753 to 756
+  through three unchanged identities by compiling its implicit context item to
+  the same typed path operation.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

@@ -46,6 +46,9 @@ pub(crate) fn fold_exact_integral_arithmetic(expression: &str) -> Option<String>
 
 pub(crate) fn fold_number_conversion(expression: &str) -> Option<String> {
     let argument = number_function_call(expression)?;
+    if argument.is_empty() {
+        return None;
+    }
     if let Some(lexical) = xpath_string_literal(argument) {
         return evaluate_number_lexical(lexical).ok();
     }
@@ -60,7 +63,7 @@ pub(crate) fn number_function_call(expression: &str) -> Option<&str> {
         .strip_prefix('(')?
         .strip_suffix(')')?
         .trim();
-    (!argument.is_empty()).then_some(argument)
+    Some(argument)
 }
 
 pub(crate) fn evaluate_number_lexical(lexical: &str) -> Result<String, ConstantNumericFailure> {
@@ -634,7 +637,7 @@ mod tests {
         assert_eq!(fold_number_conversion("number(1 div 2)"), None);
         assert_eq!(fold_number_conversion("not-number(2)"), None);
         assert_eq!(number_function_call("number(source)"), Some("source"));
-        assert_eq!(number_function_call("number()"), None);
+        assert_eq!(number_function_call("number()"), Some(""));
         assert_eq!(evaluate_number_lexical(" 001.2500 "), Ok("1.25".to_owned()));
         assert_eq!(evaluate_number_lexical("abc"), Ok("NaN".to_owned()));
     }

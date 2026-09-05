@@ -1418,7 +1418,7 @@ fn xpath_number_conversion_handles_finite_and_nan_results() {
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="number(2)"/>|<xsl:value-of select="number('003.500')"/>|<xsl:value-of select="number(-0)"/>|<xsl:value-of select="number(doc/n)"/>|<xsl:value-of select="number(doc/missing)"/>|<xsl:value-of select="number(doc/invalid)"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="number(2)"/>|<xsl:value-of select="number('003.500')"/>|<xsl:value-of select="number(-0)"/>|<xsl:value-of select="number(doc/n)"/>|<xsl:value-of select="number(doc/missing)"/>|<xsl:value-of select="number(doc/invalid)"/>|<xsl:value-of select="number()"/></xsl:template></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit stylesheet");
     let snapshot = resources.seal();
@@ -1432,7 +1432,7 @@ fn xpath_number_conversion_handles_finite_and_nan_results() {
     let results = execute_transform_set(builder.seal()).expect("execute number conversions");
     assert_eq!(
         results.by_request["number-conversion"].serialized,
-        "2|3.5|0|4.25|NaN|NaN"
+        "2|3.5|0|4.25|NaN|NaN|NaN"
     );
 }
 
