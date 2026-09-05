@@ -126,6 +126,10 @@ The following
 [expanded-axis wildcard pattern tranche](oasis-xslt10-expanded-axis-wildcard-pattern-tranche-2026-09-04.md)
 raises it to 734 by canonicalizing `attribute::*` and `child::*` to the existing
 typed wildcard patterns.
+The following
+[expanded attribute-node pattern tranche](oasis-xslt10-expanded-attribute-node-pattern-tranche-2026-09-04.md)
+raises it to 737 by canonicalizing `attribute::node()` to the same typed
+any-attribute pattern and priority.
 
 ## Outcome
 

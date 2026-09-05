@@ -94,7 +94,7 @@ pub(super) fn compile_match_pattern(
                 },
             }
         }
-        "@*" | "attribute()" | "attribute::*" => MatchPattern::AnyAttribute,
+        "@*" | "attribute()" | "attribute::*" | "attribute::node()" => MatchPattern::AnyAttribute,
         attribute if attribute.starts_with('@') && is_ascii_ncname(&attribute[1..]) => {
             MatchPattern::Attribute(crate::xml::quick_xml_experiment::ExpandedName {
                 namespace: None,

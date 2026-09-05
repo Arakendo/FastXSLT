@@ -582,7 +582,10 @@ predicates, axes, and general union operands remain unsupported.
 For simple wildcard node-test patterns, `attribute::*` and `child::*` are
 canonical spellings of the already-admitted `@*` and `*` forms. They compile to
 the same typed pattern and node-test default priority, without runtime version
-selection. Other expanded-axis pattern forms remain outside this bounded slice.
+selection. `attribute::node()` also compiles to the any-attribute pattern
+because attribute is the axis's principal node kind, preserving the same
+default priority and conflict behavior. Other expanded-axis pattern forms
+remain outside this bounded slice.
 
 `xsl:next-match` preserves temporary focus, current mode, and matched-template
 identity. It selects the highest eligible lower-ranked applicable rule using

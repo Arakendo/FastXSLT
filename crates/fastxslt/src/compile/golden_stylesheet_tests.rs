@@ -947,6 +947,21 @@ fn canonicalizes_expanded_axis_wildcard_patterns() {
             .iter()
             .all(|rule| rule.priority == TemplatePriority::NODE_TEST_DEFAULT)
     );
+
+    let node_test = parse_stylesheet(
+        "memory:expanded-attribute-node-pattern.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="attribute::node()"/></xsl:stylesheet>"#,
+    );
+    let node_test_program =
+        compile_stylesheet(&node_test).expect("expanded attribute node-test pattern");
+    assert!(matches!(
+        node_test_program.matched_templates[0].pattern,
+        MatchPattern::AnyAttribute
+    ));
+    assert_eq!(
+        node_test_program.matched_templates[0].priority,
+        TemplatePriority::NODE_TEST_DEFAULT
+    );
 }
 
 #[test]
