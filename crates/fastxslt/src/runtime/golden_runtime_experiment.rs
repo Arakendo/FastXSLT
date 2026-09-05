@@ -1,6 +1,7 @@
 use std::{
     cell::RefCell,
     collections::{BTreeMap, HashSet},
+    sync::Arc,
 };
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
@@ -1295,7 +1296,7 @@ fn execute_source_element_copy(
                     .name(node)
                     .expect("element context has a name")
                     .clone(),
-                namespaces: source.in_scope_namespaces(node),
+                namespaces: source.in_scope_namespaces(node).into(),
                 attributes: materialize_literal_attributes(
                     attributes,
                     variables,
@@ -1413,9 +1414,16 @@ fn execute_literal_element(
             child => children.push(child),
         }
     }
+    let result_namespaces = Arc::clone(namespaces);
+    #[cfg(test)]
+    let result_namespaces = if control.complete_result_namespace_clones() {
+        Arc::from(namespaces.as_ref())
+    } else {
+        result_namespaces
+    };
     Ok(ResultNode::Element {
         name: name.clone(),
-        namespaces: namespaces.clone(),
+        namespaces: result_namespaces,
         attributes,
         children,
     })
@@ -2485,7 +2493,7 @@ fn copy_source_node(
                     .name(node)
                     .expect("source element nodes have names")
                     .clone(),
-                namespaces: source.in_scope_namespaces(node),
+                namespaces: source.in_scope_namespaces(node).into(),
                 attributes,
                 children,
             }])
@@ -2899,7 +2907,7 @@ fn apply_shallow_copy_template(
                     .name(node)
                     .expect("source element has a name")
                     .clone(),
-                namespaces: source.namespace_declarations(node).to_vec(),
+                namespaces: source.namespace_declarations(node).to_vec().into(),
                 attributes,
                 children: generated_children,
             }])

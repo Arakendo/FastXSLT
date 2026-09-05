@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
@@ -336,7 +338,7 @@ pub(crate) enum Instruction {
     LiteralElement {
         origin: ElementConstructorOrigin,
         name: ExpandedName,
-        namespaces: Vec<NamespaceBinding>,
+        namespaces: Arc<[NamespaceBinding]>,
         attributes: Vec<LiteralAttribute>,
         computed_attributes: Vec<ComputedAttribute>,
         body: Vec<Instruction>,

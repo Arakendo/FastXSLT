@@ -1,4 +1,4 @@
-use std::mem::size_of;
+use std::{mem::size_of, sync::Arc};
 
 use super::{
     ApplySelection, BooleanExpression, CastExpression, CastableExpression, CharacterMapDefinition,
@@ -460,18 +460,24 @@ fn copy_owned(
 
 fn literal_element_owned(
     name: &ExpandedName,
-    namespaces: &Vec<NamespaceBinding>,
+    namespaces: &Arc<[NamespaceBinding]>,
     attributes: &Vec<LiteralAttribute>,
     computed_attributes: &Vec<ComputedAttribute>,
     body: &Vec<Instruction>,
     location: &SourceLocation,
 ) -> usize {
     name_owned(name)
-        + vec_owned(namespaces, namespace_owned)
+        + arc_slice_owned(namespaces, namespace_owned)
         + vec_owned(attributes, literal_attribute_owned)
         + vec_owned(computed_attributes, computed_attribute_owned)
         + vec_owned(body, instruction_owned)
         + location_owned(location)
+}
+
+fn arc_slice_owned<T>(values: &Arc<[T]>, nested: impl Fn(&T) -> usize) -> usize {
+    2 * size_of::<usize>()
+        + values.len() * size_of::<T>()
+        + values.iter().map(nested).sum::<usize>()
 }
 
 #[expect(

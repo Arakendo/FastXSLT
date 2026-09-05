@@ -1,5 +1,7 @@
 //! Private semantic result-tree representation and literal-attribute materialization.
 
+use std::sync::Arc;
+
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xslt::golden_semantics_experiment::{
@@ -13,7 +15,7 @@ use super::{ExecutionFailure, FailureCategory, control_failure, failure_at};
 pub(super) enum ResultNode {
     Element {
         name: ExpandedName,
-        namespaces: Vec<NamespaceBinding>,
+        namespaces: Arc<[NamespaceBinding]>,
         attributes: Vec<ResultAttribute>,
         children: Vec<ResultNode>,
     },

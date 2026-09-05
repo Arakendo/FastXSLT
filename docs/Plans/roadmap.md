@@ -47,8 +47,12 @@ and the XHTML5 transient-normalization path.
 
 The namespace-heavy performance fixture supplied and completed the safe
 serializer scope-stack comparison. Because the result tree itself still retains
-growing namespace vectors, result-tree namespace ownership remains a separate
-future experiment; serializer evidence does not admit that representation.
+growing namespace vectors, result-tree namespace ownership was measured
+separately. ADR-0018 now lets static result elements retain immutable compiled
+namespace slices: depth-48 semantic construction improved 42.03x, removed 98.0%
+of allocation requests, and reduced peak observed bytes by 95.3%. Dynamic and
+source-derived namespace state remains result-owned, and the complete-copy path
+remains the oracle.
 
 The runtime-frame clone question is now closed for the private non-atomic maps.
 A real compiled nested workload confirmed repeated populated frame clones; at

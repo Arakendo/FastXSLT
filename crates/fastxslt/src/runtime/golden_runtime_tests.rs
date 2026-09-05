@@ -103,7 +103,7 @@ fn golden_transform_executes_through_an_unordered_identified_set() {
                 namespace: None,
                 local: "message".to_owned(),
             },
-            namespaces: Vec::new(),
+            namespaces: Vec::new().into(),
             attributes: Vec::new(),
             children: vec![ResultNode::Text("Hello, FastXSLT!".to_owned())],
         }]
@@ -440,7 +440,7 @@ fn one_prepared_source_supports_preserving_and_stripping_stylesheets_without_mut
                 namespace: None,
                 local: "out".to_owned(),
             },
-            namespaces: Vec::new(),
+            namespaces: Vec::new().into(),
             attributes: Vec::new(),
             children: vec![ResultNode::Text("  A\n  B  ".to_owned())],
         }]
@@ -452,7 +452,7 @@ fn one_prepared_source_supports_preserving_and_stripping_stylesheets_without_mut
                 namespace: None,
                 local: "out".to_owned(),
             },
-            namespaces: Vec::new(),
+            namespaces: Vec::new().into(),
             attributes: Vec::new(),
             children: vec![ResultNode::Text("AB".to_owned())],
         }]
@@ -1999,7 +1999,7 @@ fn node_template_parameter_shadows_same_named_global_atomic_in_both_frame_paths(
                     namespace: None,
                     local: "out".to_owned(),
                 },
-                namespaces: Vec::new(),
+                namespaces: Vec::new().into(),
                 attributes: Vec::new(),
                 children: vec![ResultNode::Text("node".to_owned())],
             }]
@@ -2175,7 +2175,7 @@ fn absent_output_declaration_does_not_silently_apply_html_serialization() {
                 namespace: None,
                 local: "html".to_owned(),
             },
-            namespaces: Vec::new(),
+            namespaces: Vec::new().into(),
             attributes: Vec::new(),
             children: Vec::new(),
         }],
@@ -2222,11 +2222,12 @@ fn absent_method_selects_xhtml_for_an_xhtml_html_document_element() {
             namespaces: vec![crate::xml::quick_xml_experiment::NamespaceBinding {
                 prefix: None,
                 namespace: "http://www.w3.org/1999/xhtml".to_owned(),
-            }],
+            }]
+            .into(),
             attributes: Vec::new(),
             children: vec![ResultNode::Element {
                 name: xhtml_name("br"),
-                namespaces: Vec::new(),
+                namespaces: Vec::new().into(),
                 attributes: Vec::new(),
                 children: Vec::new(),
             }],
@@ -2276,7 +2277,7 @@ fn requested_indentation_formats_only_element_only_child_sequences() {
                 namespace: None,
                 local: "out".to_owned(),
             },
-            namespaces: Vec::new(),
+            namespaces: Vec::new().into(),
             attributes: Vec::new(),
             children: vec![
                 ResultNode::Element {
@@ -2284,14 +2285,14 @@ fn requested_indentation_formats_only_element_only_child_sequences() {
                         namespace: None,
                         local: "group".to_owned(),
                     },
-                    namespaces: Vec::new(),
+                    namespaces: Vec::new().into(),
                     attributes: Vec::new(),
                     children: vec![ResultNode::Element {
                         name: crate::xml::quick_xml_experiment::ExpandedName {
                             namespace: None,
                             local: "item".to_owned(),
                         },
-                        namespaces: Vec::new(),
+                        namespaces: Vec::new().into(),
                         attributes: Vec::new(),
                         children: vec![ResultNode::Text("value".to_owned())],
                     }],
@@ -2301,7 +2302,7 @@ fn requested_indentation_formats_only_element_only_child_sequences() {
                         namespace: None,
                         local: "mixed".to_owned(),
                     },
-                    namespaces: Vec::new(),
+                    namespaces: Vec::new().into(),
                     attributes: Vec::new(),
                     children: vec![
                         ResultNode::Text("left".to_owned()),
@@ -2310,7 +2311,7 @@ fn requested_indentation_formats_only_element_only_child_sequences() {
                                 namespace: None,
                                 local: "em".to_owned(),
                             },
-                            namespaces: Vec::new(),
+                            namespaces: Vec::new().into(),
                             attributes: Vec::new(),
                             children: Vec::new(),
                         },
@@ -2370,12 +2371,13 @@ fn xhtml_content_type_replaces_an_existing_meta_without_mutating_result_content(
             namespaces: vec![crate::xml::quick_xml_experiment::NamespaceBinding {
                 prefix: None,
                 namespace: "http://www.w3.org/1999/xhtml".to_owned(),
-            }],
+            }]
+            .into(),
             attributes: Vec::new(),
             children: vec![
                 ResultNode::Element {
                     name: xhtml_name("meta"),
-                    namespaces: Vec::new(),
+                    namespaces: Vec::new().into(),
                     attributes: vec![
                         attribute("http-equiv", "Content-Type"),
                         attribute("media-type", "stale/type"),
@@ -2441,7 +2443,7 @@ fn serializer_uses_the_predefined_xml_prefix_without_a_namespace_declaration() {
                 namespace: None,
                 local: "out".to_owned(),
             },
-            namespaces: Vec::new(),
+            namespaces: Vec::new().into(),
             attributes: vec![ResultAttribute {
                 name: crate::xml::quick_xml_experiment::ExpandedName {
                     namespace: Some("http://www.w3.org/XML/1998/namespace".to_owned()),
@@ -2502,14 +2504,15 @@ fn namespaced_element_names_use_retained_bindings_and_undeclare_defaults() {
                     prefix: None,
                     namespace: "urn:default".to_owned(),
                 },
-            ],
+            ]
+            .into(),
             attributes: Vec::new(),
             children: vec![ResultNode::Element {
                 name: crate::xml::quick_xml_experiment::ExpandedName {
                     namespace: None,
                     local: "child".to_owned(),
                 },
-                namespaces: Vec::new(),
+                namespaces: Vec::new().into(),
                 attributes: Vec::new(),
                 children: Vec::new(),
             }],
@@ -2554,7 +2557,7 @@ fn text_output_concatenates_descendant_text_without_markup_or_escaping() {
                 namespace: None,
                 local: "root".to_owned(),
             },
-            namespaces: Vec::new(),
+            namespaces: Vec::new().into(),
             attributes: Vec::new(),
             children: vec![
                 ResultNode::Text("A < B & C".to_owned()),
@@ -2563,7 +2566,7 @@ fn text_output_concatenates_descendant_text_without_markup_or_escaping() {
                         namespace: None,
                         local: "nested".to_owned(),
                     },
-                    namespaces: Vec::new(),
+                    namespaces: Vec::new().into(),
                     attributes: Vec::new(),
                     children: vec![ResultNode::Text(" + nested".to_owned())],
                 },
@@ -2653,7 +2656,8 @@ fn xml_compatible_xhtml_output_honors_explicit_declaration_omission() {
             namespaces: vec![crate::xml::quick_xml_experiment::NamespaceBinding {
                 prefix: None,
                 namespace: "http://www.w3.org/1999/xhtml".to_owned(),
-            }],
+            }]
+            .into(),
             attributes: Vec::new(),
             children: Vec::new(),
         }],
@@ -2700,7 +2704,8 @@ fn xhtml_doctype_bytes_are_bounded_with_the_rest_of_serialization() {
             namespaces: vec![crate::xml::quick_xml_experiment::NamespaceBinding {
                 prefix: None,
                 namespace: "http://www.w3.org/1999/xhtml".to_owned(),
-            }],
+            }]
+            .into(),
             attributes: Vec::new(),
             children: Vec::new(),
         }],
@@ -2805,7 +2810,7 @@ fn byte_serialization_emits_bounded_ascii_iso_8859_1() {
                 namespace: None,
                 local: "out".to_owned(),
             },
-            namespaces: Vec::new(),
+            namespaces: Vec::new().into(),
             attributes: Vec::new(),
             children: vec![ResultNode::Text("ASCII result".to_owned())],
         }],
@@ -2865,7 +2870,8 @@ fn us_ascii_cdata_expansion_is_bounded_and_rejects_other_non_ascii_content() {
             namespaces: vec![crate::xml::quick_xml_experiment::NamespaceBinding {
                 prefix: None,
                 namespace: "http://www.w3.org/1999/xhtml".to_owned(),
-            }],
+            }]
+            .into(),
             attributes: Vec::new(),
             children: vec![ResultNode::Text("ç".to_owned())],
         }],

@@ -80,3 +80,7 @@ but supersede a materially changed decision instead of rewriting its history.
   -- Accepted; share non-atomic runtime value maps among lexical frames of one
   invocation, detach safely by value kind, and retain the complete deep-clone
   oracle.
+- [ADR-0018: Shared Compiled Result-Namespace Slices](ADR-0018-shared-compiled-result-namespace-slices.md)
+  -- Accepted; let static result elements retain immutable stylesheet-derived
+  namespace slices while preserving a complete-copy oracle and independent
+  result lifetime.

@@ -210,6 +210,7 @@ struct InvocationObservations {
     document_rooted_match_cache_bytes: usize,
     complete_atomic_frame_clones: bool,
     complete_sequence_frame_clones: bool,
+    complete_result_namespace_clones: bool,
     sequence_frames_cloned: usize,
     nonempty_sequence_frames_cloned: usize,
     sequence_atomic_sequence_entries_cloned: usize,
@@ -395,6 +396,17 @@ impl InvocationControl {
     #[cfg(test)]
     pub(crate) fn with_complete_sequence_frame_clones(mut self) -> Self {
         self.observations.complete_sequence_frame_clones = true;
+        self
+    }
+
+    #[cfg(test)]
+    pub(crate) fn complete_result_namespace_clones(&self) -> bool {
+        self.observations.complete_result_namespace_clones
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_complete_result_namespace_clones(mut self) -> Self {
+        self.observations.complete_result_namespace_clones = true;
         self
     }
 

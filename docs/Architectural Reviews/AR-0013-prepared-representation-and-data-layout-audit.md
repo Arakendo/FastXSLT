@@ -283,6 +283,14 @@ bytes by 84.1%; forcing every kind to detach at every level was neutral at the
 largest counter-case. ADR-0017 admits that invocation-owned representation while
 preserving a complete deep-clone oracle and forbidding cross-invocation sharing.
 
+The namespace-depth fixture also attributed result-construction duplication to
+deep-copying immutable compiled namespace slices. Safe shared ownership improved
+the depth-48 semantic path by 42.03x and reduced peak observed bytes by 95.3%,
+while the ordinary shallow control was neutral-to-positive. ADR-0018 admits only
+stylesheet-derived per-element slices; dynamic namespaces remain result-owned,
+results outlive their generation owner safely, and no cross-generation
+interning follows.
+
 Prepared-XDM anatomy is also now measured on a 3,002-node deliberately
 repetitive source. Node records account for 83.0% of the 1,223,367-byte capacity
 estimate, repeated source-resource strings 7.6%, relationships 5.9%, and
@@ -330,6 +338,8 @@ profiles or consumer workloads provide another concrete hypothesis to test.
 - [x] Attribute populated non-atomic frame clones in a compiled nested workload
   and compare safe per-kind copy-on-write against read-only and mutation-heavy
   complete-clone references.
+- [x] Attribute namespace-heavy semantic result construction and compare shared
+  immutable compiled slices against the complete-copy result oracle.
 - [ ] Add duplication, reference-count/synchronization, and scratch-capacity
   probes only where profiles or representative workloads nominate them.
 - [ ] Verify each experiment preserves deterministic retained/peak attribution
@@ -422,3 +432,7 @@ profiles or consumer workloads provide another concrete hypothesis to test.
   7.69x read-only gain and 84.1% lower peak observed bytes from safe per-kind
   COW. A mutation-at-every-level counter-case was neutral at the largest shape;
   the complete deep-clone path remains the differential oracle.
+- 2026-09-05 -- Accepted ADR-0018 after immutable compiled result-namespace
+  slices improved depth-48 construction 42.03x and reduced peak observed bytes
+  by 95.3%, with semantic/work parity, concurrent invocation evidence, and
+  result lifetime beyond the generation owner.

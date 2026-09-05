@@ -353,7 +353,7 @@ fn compile_literal_element(
             .name(element)
             .expect("literal result element has a name")
             .clone(),
-        namespaces: literal_result_namespaces(document, element),
+        namespaces: literal_result_namespaces(document, element).into(),
         attributes,
         computed_attributes,
         body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
@@ -394,7 +394,7 @@ fn compile_static_computed_element(
     Ok(Instruction::LiteralElement {
         origin: ElementConstructorOrigin::ComputedStatic,
         name,
-        namespaces,
+        namespaces: namespaces.into(),
         attributes: Vec::new(),
         computed_attributes,
         body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,

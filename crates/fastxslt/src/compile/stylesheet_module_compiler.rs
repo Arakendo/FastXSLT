@@ -699,7 +699,7 @@ fn compile_simplified_stylesheet_at(
         body: vec![Instruction::LiteralElement {
             origin: crate::xslt::golden_semantics_experiment::ElementConstructorOrigin::Literal,
             name: root_name.clone(),
-            namespaces: literal_result_namespaces(document, root),
+            namespaces: literal_result_namespaces(document, root).into(),
             attributes: Vec::new(),
             computed_attributes: Vec::new(),
             body: compile_sequence_excluding(document, root, &[])?,

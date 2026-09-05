@@ -6,7 +6,7 @@
 | Source checkpoint | `ee659758a867fa6698e6468043f554223f73d15c`                                                                                                                                                                |
 | Review type       | Adversarial performance and allocation review                                                                                                                                                             |
 | Primary workload  | Pinned XSLT30 `for-004`, 5/50/500 deterministic `order-item` elements                                                                                                                                     |
-| Status            | Complete review; P1 candidates closed, bounded safe-text, namespace-stack, and sequence-frame COW retained; first result-destination P2 rejected                                                           |
+| Status            | Complete review; P1 candidates closed; bounded safe-text, namespace-stack, sequence-frame COW, and compiled result namespaces retained; first result-destination P2 rejected                        |
 | Input evidence    | [ASP.NET native boundary breakdown](../Evidence/aspnet-native-boundary-breakdown-2026-09-03.md); [`for-004` exact-decimal activated path](../Evidence/for-004-exact-decimal-activated-path-2026-09-04.md) |
 | Governing review  | [AR-0013 prepared representation and data-layout audit](../Architectural%20Reviews/AR-0013-prepared-representation-and-data-layout-audit.md)                                                              |
 
@@ -371,8 +371,12 @@ on the ordinary shallow result and 2.84-7.20x faster across namespace depths
 7.3% more total allocated bytes and 11.1% more peak live serializer bytes. The
 complete clone implementation remains the byte/failure/work-charge oracle and
 the XHTML5 transient-normalization path. Result-tree namespace retention is a
-separate unresolved pressure; no public representation, unsafe path, or
-resource-accounting shortcut is admitted.
+separately resolved under ADR-0018: immutable stylesheet-derived slices are
+retained by static result elements. Depth-48 construction improved 42.03x,
+removed 98.0% of allocation requests, and reduced peak observed bytes by 95.3%;
+the shallow result was neutral-to-positive. Dynamic/source namespaces remain
+result-owned and a complete-copy oracle remains test-only. No public
+representation, unsafe path, or resource-accounting shortcut is admitted.
 
 The non-atomic sequence-frame candidate is also retained under ADR-0017. Its
 compiled read-only depth-eight shape improved 7.69x and reduced peak observed

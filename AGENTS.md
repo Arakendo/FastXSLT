@@ -75,6 +75,11 @@ contract.
   shadow metadata through safe copy-on-write mutation, and retain the complete
   deep-clone test oracle. Do not share runtime values across invocations,
   prepared inputs, workers, snapshots, or generations.
+- Follow ADR-0018 for statically compiled result namespaces: semantic result
+  elements may retain immutable stylesheet-derived namespace slices, including
+  across concurrent invocations, but dynamic/source namespaces remain
+  result-owned and results must safely outlive the compiled generation owner.
+  Keep the complete-copy test oracle; do not infer cross-generation interning.
 - Follow ADR-0013 for document-rooted match paths: lazily build only bounded
   invocation-owned membership keyed by the current compiled template, preserve
   the complete charged evaluator as fallback and differential oracle, and do

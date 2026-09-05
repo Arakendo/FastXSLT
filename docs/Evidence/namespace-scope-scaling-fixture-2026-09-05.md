@@ -4,7 +4,7 @@
 | --- | --- |
 | Date | 2026-09-05 |
 | Source checkpoint | `d739bcc` plus the scoped-stack implementation and comparison described here |
-| Status | Safe private scoped stack retained; complete clone remains the differential oracle |
+| Status | Serializer scope stack and compiled result-namespace sharing retained; complete references remain |
 | Related review | [Performance optimization review](../Reviews/performance-optimization-review-2026-09-04.md) |
 | Governing review | [AR-0013](../Architectural%20Reviews/AR-0013-prepared-representation-and-data-layout-audit.md) |
 
@@ -101,5 +101,35 @@ host dependency.
 
 The serializer stack is retained. It does not admit a public namespace API,
 unsafe code, cross-invocation state, or a result-tree namespace representation.
-Semantic result construction still exhibits separate superlinear namespace
-retention and remains a future, independently evidenced experiment.
+Semantic result construction exhibited separate superlinear namespace
+retention and was therefore measured independently below.
+
+## Compiled result-namespace ownership comparison
+
+The follow-up attributed semantic construction independently. The depth-48
+compiled plan contains 384 distinct declarations but retains 9,408 binding
+occurrences across its 48 literal element plans, including 350,544 bytes of
+repeated prefix/URI string capacity. The reference runtime deep-copied those
+immutable compiled values into every semantic result.
+
+A safe candidate stores each compiled element's namespace bindings in an
+immutable `Arc` slice and lets its result node retain that slice. A test-only
+complete-copy path remains the differential oracle.
+
+| Workload | Shared slice | Complete copy | Speedup | Shared allocations/bytes/peak | Complete allocations/bytes/peak |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| ordinary `for-004`, 500 items | 33.945 us | 35.230 us | 1.04x | 30 / 22,361 / 10,472 | 31 / 22,377 / 10,472 |
+| namespace depth 8 | 3.568 us | 29.144 us | 8.17x | 71 / 10,695 / 7,111 | 655 / 35,015 / 31,431 |
+| namespace depth 24 | 10.235 us | 219.251 us | 21.42x | 199 / 30,783 / 20,031 | 5,023 / 234,447 / 223,695 |
+| namespace depth 48 | 19.850 us | 834.306 us | 42.03x | 391 / 60,927 / 39,423 | 19,255 / 863,823 / 842,319 |
+
+At depth 48, sharing removes 98.0% of allocation requests, 92.9% of requested
+bytes, and 95.3% of peak live requested bytes from semantic construction.
+Focused tests preserve the full semantic result and exact work-domain totals.
+The result serializes correctly after the originating engine generation is
+dropped, and eight concurrent invocations over one compiled stylesheet produce
+identical bytes.
+
+ADR-0018 retains this private compiled/result ownership representation. It does
+not share dynamic or source-derived namespace state, expose result internals, or
+admit interning across element plans or generations.

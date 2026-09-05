@@ -92,6 +92,10 @@ open:
 - A compiled stylesheet contains stylesheet-derived static state only. Source
   documents, invocation parameters, messages, clocks, resolver state, budgets,
   and other per-transform mutable state belong to a runtime invocation.
+- Statically compiled element namespace bindings are immutable stylesheet state.
+  Semantic result elements may own a reference-counted slice of those bindings
+  under ADR-0018; dynamic/source namespaces remain result-owned, and no result
+  borrows from the compiled generation.
 - A compiled global variable or parameter declaration may retain its
   stylesheet-defined default expression or value, but each invocation owns the
   resulting binding value and any host-supplied parameter override. Compilation

@@ -2119,7 +2119,7 @@ mod scaling_measurement_tests {
     fn namespace_scope_result() -> SemanticResult {
         let unnamespaced_grandchild = ResultNode::Element {
             name: expanded_name(None, "plain"),
-            namespaces: Vec::new(),
+            namespaces: Vec::new().into(),
             attributes: Vec::new(),
             children: Vec::new(),
         };
@@ -2128,7 +2128,8 @@ mod scaling_measurement_tests {
             namespaces: vec![
                 namespace_binding(Some("q"), "urn:shared"),
                 namespace_binding(Some("p"), "urn:shadow"),
-            ],
+            ]
+            .into(),
             attributes: vec![ResultAttribute {
                 name: expanded_name(Some("urn:shadow"), "value"),
                 value: "one".to_owned(),
@@ -2137,7 +2138,7 @@ mod scaling_measurement_tests {
         };
         let restored_sibling = ResultNode::Element {
             name: expanded_name(Some("urn:shared"), "sibling"),
-            namespaces: Vec::new(),
+            namespaces: Vec::new().into(),
             attributes: vec![ResultAttribute {
                 name: expanded_name(Some("urn:shared"), "value"),
                 value: "two".to_owned(),
@@ -2151,7 +2152,8 @@ mod scaling_measurement_tests {
                     namespace_binding(Some("p"), "urn:shared"),
                     namespace_binding(Some("q"), "urn:shared"),
                     namespace_binding(None, "urn:default"),
-                ],
+                ]
+                .into(),
                 attributes: vec![ResultAttribute {
                     name: expanded_name(Some("urn:shared"), "value"),
                     value: "root".to_owned(),

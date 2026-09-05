@@ -521,7 +521,7 @@ fn copy_temporary_focus(
             )?);
             Ok(vec![ResultNode::Element {
                 name: name.clone(),
-                namespaces: namespaces.clone(),
+                namespaces: namespaces.clone().into(),
                 attributes: result_attributes,
                 children,
             }])
@@ -607,7 +607,7 @@ fn copy_temporary_node(
             }
             Ok(vec![ResultNode::Element {
                 name: name.clone(),
-                namespaces: namespaces.clone(),
+                namespaces: namespaces.clone().into(),
                 attributes: result_attributes,
                 children,
             }])
@@ -704,7 +704,7 @@ pub(super) fn execute_temporary_copy(
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
             Ok(vec![ResultNode::Element {
                 name: name.clone(),
-                namespaces: namespaces.clone(),
+                namespaces: namespaces.clone().into(),
                 attributes: materialize_literal_attributes(
                     attributes,
                     variables,

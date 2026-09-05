@@ -189,12 +189,213 @@ fn measure_text_heavy_transform_phases() {
 fn measure_namespace_heavy_transform_phases() {
     for (depth, iterations) in [(8_usize, 2_000_usize), (24, 500), (48, 100)] {
         let engine = build_namespace_heavy_engine(depth, 8);
+        let root = engine
+            .program
+            .root_template
+            .as_ref()
+            .expect("namespace fixture root template");
+        let (elements, entries, retained_string_capacity) =
+            nested_literal_namespace_retention(&root.body);
+        println!(
+            "namespace_plan_depth={depth} literal_elements={elements} retained_namespace_entries={entries} retained_string_capacity={retained_string_capacity}"
+        );
         measure_engine_phases(
             &engine,
             &format!("namespace-heavy-depth-{depth}"),
             iterations,
         );
     }
+}
+
+#[cfg(feature = "allocation-observation")]
+#[test]
+fn shared_result_namespaces_match_the_complete_copy_reference() {
+    let engine = build_namespace_heavy_engine(4, 3);
+    let document = engine
+        .prepared
+        .get(&engine.source_id)
+        .expect("prepared namespace source");
+    let mut complete_control =
+        InvocationControl::new(CancellationToken::new(), work_limits(engine.limits))
+            .with_complete_result_namespace_clones();
+    let complete = execute_program(
+        &engine.program,
+        &document,
+        "namespace-result-complete",
+        &mut complete_control,
+    )
+    .expect("execute complete namespace copy reference");
+    let mut shared_control =
+        InvocationControl::new(CancellationToken::new(), work_limits(engine.limits));
+    let shared = execute_program(
+        &engine.program,
+        &document,
+        "namespace-result-shared",
+        &mut shared_control,
+    )
+    .expect("execute shared result namespaces");
+
+    assert_eq!(shared, complete);
+    for domain in [
+        WorkDomain::XsltInstruction,
+        WorkDomain::XsltTemplateCandidate,
+        WorkDomain::ResultNode,
+        WorkDomain::ResultTextByte,
+    ] {
+        assert_eq!(
+            shared_control.consumed(domain),
+            complete_control.consumed(domain)
+        );
+    }
+}
+
+#[cfg(feature = "allocation-observation")]
+#[test]
+fn shared_result_namespaces_outlive_the_compiled_generation_owner() {
+    let engine = build_namespace_heavy_engine(4, 3);
+    let output = engine.program.output.clone();
+    let result_limit = engine.limits.max_result_bytes;
+    let semantic = {
+        let document = engine
+            .prepared
+            .get(&engine.source_id)
+            .expect("prepared namespace source");
+        let mut control =
+            InvocationControl::new(CancellationToken::new(), work_limits(engine.limits));
+        execute_program(
+            &engine.program,
+            &document,
+            "namespace-generation-lifetime",
+            &mut control,
+        )
+        .expect("execute shared result namespaces")
+    };
+    drop(engine);
+
+    let mut serialization = InvocationControl::unbounded();
+    let serialized = serialize_xml(
+        &semantic,
+        &output,
+        "namespace-generation-lifetime",
+        result_limit,
+        &mut serialization,
+    )
+    .expect("serialize after dropping the engine generation");
+
+    assert!(serialized.contains("payload"));
+    assert!(serialized.contains("urn:fastxslt:namespace-heavy:3:2"));
+}
+
+#[cfg(feature = "allocation-observation")]
+#[test]
+fn concurrent_invocations_share_only_immutable_compiled_namespace_slices() {
+    let engine = build_namespace_heavy_engine(4, 3);
+    let expected = engine
+        .transform("namespace-concurrency-reference")
+        .expect("execute namespace concurrency reference");
+
+    std::thread::scope(|scope| {
+        let handles: Vec<_> = (0..8)
+            .map(|index| {
+                let engine = &engine;
+                scope.spawn(move || {
+                    engine
+                        .transform(&format!("namespace-concurrency-{index}"))
+                        .expect("execute concurrent namespace transform")
+                })
+            })
+            .collect();
+        for handle in handles {
+            assert_eq!(handle.join().expect("join namespace transform"), expected);
+        }
+    });
+}
+
+#[cfg(feature = "allocation-observation")]
+#[test]
+#[ignore = "manual release-mode shared versus complete result-namespace comparison"]
+fn compare_result_namespace_ownership() {
+    compare_result_namespace_engine(&build_engine(500), "ordinary-for-004-500", 5_000);
+    for (depth, iterations) in [(8_usize, 2_000_usize), (24, 500), (48, 100)] {
+        let engine = build_namespace_heavy_engine(depth, 8);
+        compare_result_namespace_engine(&engine, &format!("namespace-depth-{depth}"), iterations);
+    }
+}
+
+#[cfg(feature = "allocation-observation")]
+fn compare_result_namespace_engine(engine: &ExperimentalEngine, label: &str, iterations: usize) {
+    let document = engine
+        .prepared
+        .get(&engine.source_id)
+        .expect("prepared namespace source");
+    for complete_clones in [true, false] {
+        let mut samples = Vec::with_capacity(5);
+        for _ in 0..5 {
+            let started = Instant::now();
+            for _ in 0..iterations {
+                let mut control =
+                    InvocationControl::new(CancellationToken::new(), work_limits(engine.limits));
+                if complete_clones {
+                    control = control.with_complete_result_namespace_clones();
+                }
+                let result = execute_program(
+                    &engine.program,
+                    &document,
+                    "result-namespace-timing",
+                    &mut control,
+                )
+                .expect("execute namespace result timing");
+                drop(result);
+            }
+            let divisor = f64::from(u32::try_from(iterations).expect("iterations fit u32"));
+            samples.push(started.elapsed().as_secs_f64() * 1_000_000.0 / divisor);
+        }
+        samples.sort_by(f64::total_cmp);
+
+        let mut control =
+            InvocationControl::new(CancellationToken::new(), work_limits(engine.limits));
+        if complete_clones {
+            control = control.with_complete_result_namespace_clones();
+        }
+        let allocations = allocation_counter::measure(|| {
+            execute_program(
+                &engine.program,
+                &document,
+                "result-namespace-allocation",
+                &mut control,
+            )
+            .expect("execute namespace result allocation");
+        });
+        println!(
+            "workload={label} complete_clones={complete_clones} median_us={:.3} allocations={allocations:?}",
+            samples[2]
+        );
+    }
+}
+
+#[cfg(feature = "allocation-observation")]
+fn nested_literal_namespace_retention(instructions: &[Instruction]) -> (usize, usize, usize) {
+    let mut elements = 0;
+    let mut entries = 0;
+    let mut retained_string_capacity = 0;
+    let mut current = instructions;
+    while let [
+        Instruction::LiteralElement {
+            namespaces, body, ..
+        },
+    ] = current
+    {
+        elements += 1;
+        entries += namespaces.len();
+        retained_string_capacity += namespaces
+            .iter()
+            .map(|binding| {
+                binding.prefix.as_ref().map_or(0, String::capacity) + binding.namespace.capacity()
+            })
+            .sum::<usize>();
+        current = body;
+    }
+    (elements, entries, retained_string_capacity)
 }
 
 #[cfg(feature = "allocation-observation")]
