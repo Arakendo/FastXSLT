@@ -924,6 +924,32 @@ fn retains_bounded_exact_template_priority_and_classifies_other_lexicals() {
 }
 
 #[test]
+fn canonicalizes_expanded_axis_wildcard_patterns() {
+    let stylesheet = parse_stylesheet(
+        "memory:expanded-axis-patterns.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="attribute::*"/><xsl:template match="child::*"/></xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&stylesheet).expect("expanded axis wildcard patterns");
+
+    assert_eq!(program.matched_templates.len(), 2);
+    assert!(matches!(
+        program.matched_templates[0].pattern,
+        MatchPattern::AnyAttribute
+    ));
+    assert!(matches!(
+        program.matched_templates[1].pattern,
+        MatchPattern::AnyElement
+    ));
+    assert!(
+        program
+            .matched_templates
+            .iter()
+            .all(|rule| rule.priority == TemplatePriority::NODE_TEST_DEFAULT)
+    );
+}
+
+#[test]
 fn compiles_bounded_attribute_presence_match_predicate() {
     let stylesheet = parse_stylesheet(
             "memory:attribute-pattern.xsl",

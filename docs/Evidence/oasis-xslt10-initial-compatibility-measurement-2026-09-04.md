@@ -122,6 +122,10 @@ The following
 [axis-separator whitespace tranche](oasis-xslt10-axis-separator-whitespace-tranche-2026-09-04.md)
 raises it to 731 through two unchanged attribute-axis cases while retaining one
 newly exposed multi-node conversion boundary.
+The following
+[expanded-axis wildcard pattern tranche](oasis-xslt10-expanded-axis-wildcard-pattern-tranche-2026-09-04.md)
+raises it to 734 by canonicalizing `attribute::*` and `child::*` to the existing
+typed wildcard patterns.
 
 ## Outcome
 

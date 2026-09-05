@@ -289,6 +289,9 @@ public version-mode contract.
 - [x] Recognize XPath whitespace around the shared `::` axis separator,
   raising the lower bound to 731 through two unchanged attribute-axis passes
   while retaining modern multi-node conversion behavior.
+- [x] Canonicalize expanded-axis `attribute::*` and `child::*` match patterns
+  to the existing typed wildcards, raising the lower bound to 734 through three
+  unchanged passes without a runtime version branch.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -445,6 +448,9 @@ maintained redistributable legacy suite becomes available.
   lower bound from 729 to 731. Two cases pass; a third retains the visible
   modern multi-node conversion boundary rather than taking the legacy first
   node.
+- 2026-09-04 -- Expanded-axis wildcard patterns raised the lower bound from 731
+  to 734. All three newly initialized cases pass through the existing wildcard
+  pattern operations and default priority.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

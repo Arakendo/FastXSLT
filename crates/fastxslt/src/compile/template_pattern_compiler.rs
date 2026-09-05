@@ -94,14 +94,14 @@ pub(super) fn compile_match_pattern(
                 },
             }
         }
-        "@*" | "attribute()" => MatchPattern::AnyAttribute,
+        "@*" | "attribute()" | "attribute::*" => MatchPattern::AnyAttribute,
         attribute if attribute.starts_with('@') && is_ascii_ncname(&attribute[1..]) => {
             MatchPattern::Attribute(crate::xml::quick_xml_experiment::ExpandedName {
                 namespace: None,
                 local: attribute[1..].to_owned(),
             })
         }
-        "*" | "element()" => MatchPattern::AnyElement,
+        "*" | "element()" | "child::*" => MatchPattern::AnyElement,
         name if is_ascii_ncname(name) => {
             MatchPattern::Element(crate::xml::quick_xml_experiment::ExpandedName {
                 namespace: effective_xpath_default_namespace(document, element).map(str::to_owned),

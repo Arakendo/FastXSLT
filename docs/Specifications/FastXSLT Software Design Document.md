@@ -579,6 +579,11 @@ compiled priority determine the winning semantic rank, with later declaration
 order used only for tied recovery where policy permits it. Wildcards,
 predicates, axes, and general union operands remain unsupported.
 
+For simple wildcard node-test patterns, `attribute::*` and `child::*` are
+canonical spellings of the already-admitted `@*` and `*` forms. They compile to
+the same typed pattern and node-test default priority, without runtime version
+selection. Other expanded-axis pattern forms remain outside this bounded slice.
+
 `xsl:next-match` preserves temporary focus, current mode, and matched-template
 identity. It selects the highest eligible lower-ranked applicable rule using
 the same ranking and ambiguity policy as source-tree continuation; exhaustion
