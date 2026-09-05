@@ -42,11 +42,20 @@ and the XHTML5 transient-normalization path.
 [Result/text evidence](../Evidence/result-and-text-heavy-performance-fixtures-2026-09-05.md)
 [Result-destination evidence](../Evidence/static-range-result-destination-experiment-2026-09-05.md)
 [Namespace-scope evidence](../Evidence/namespace-scope-scaling-fixture-2026-09-05.md)
+[Runtime-frame clone evidence](../Evidence/runtime-frame-non-atomic-clone-attribution-2026-09-05.md)
 
 The namespace-heavy performance fixture supplied and completed the safe
 serializer scope-stack comparison. Because the result tree itself still retains
 growing namespace vectors, result-tree namespace ownership remains a separate
 future experiment; serializer evidence does not admit that representation.
+
+The remaining runtime-frame clone question is now attributed but not optimized.
+The ordinary empty non-atomic frame clones without allocation in about 0.034 us.
+A valid synthetic frame with 256 disjoint bindings per non-atomic kind requests
+524,188 clone bytes across 6,774 allocations, dominated by temporary trees, but
+that is conditional mechanism pressure rather than a representative transform.
+The next gate is a real nested compiled workload with populated non-atomic
+locals, clone-frequency and detachment observations, and host-visible evidence.
 
 The
 [second adversarial engine review](../Reviews/adversarial-engine-review-2026-09-03.md)

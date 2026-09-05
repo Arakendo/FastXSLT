@@ -243,6 +243,18 @@ for `for-004`. Instrument clone counts and bytes by field and call-site before
 extending sharing. Any change must remain invocation-private and preserve the
 complete-clone oracle.
 
+**Measurement disposition.** The only explicit complete frame clone is at
+`execute_sequence`. A valid synthetic release probe shows that an empty
+non-atomic frame clones without allocation in about 0.034 us, while 256
+disjoint bindings per non-atomic kind clone 524,188 requested bytes across
+6,774 allocations in about 334 us. Temporary trees contribute 66.2% of those
+bytes and atomic sequences 21.0%. This confirms conditional pressure but not a
+production bottleneck: no frame representation changes until a real nested
+compiled workload demonstrates clone frequency, retained-memory pressure,
+mutation/detachment behavior, and host-visible benefit.
+
+[Non-atomic frame evidence](../Evidence/runtime-frame-non-atomic-clone-attribution-2026-09-05.md)
+
 ### P3 — Leave plan/dispatch and registries unchanged without new evidence
 
 The broad plan-dispatch share is unmeasured here, and the current 500-item phase

@@ -401,3 +401,9 @@ provide a concrete hypothesis to test.
   more total allocated bytes and 11.1% more peak live serializer bytes; that
   trade remains explicit. No result-tree layout, public provider, unsafe path,
   or cross-invocation state was admitted.
+- 2026-09-05 -- Attributed the sole complete `RuntimeVariables` clone by field.
+  Empty non-atomic frames cloned without allocation; a valid synthetic shape
+  with 256 disjoint bindings per kind requested 524,188 bytes across 6,774
+  allocations, with temporary trees contributing 66.2% and atomic sequences
+  21.0%. No broader sharing was admitted without a production-shaped nested
+  workload and mutation/detachment evidence.

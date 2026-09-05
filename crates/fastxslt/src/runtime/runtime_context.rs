@@ -839,3 +839,108 @@ pub(super) fn required_source_context<'a>(
     })?;
     Ok((source, context))
 }
+
+#[cfg(all(test, feature = "allocation-observation"))]
+mod frame_clone_measurement_tests {
+    use std::{hint::black_box, time::Instant};
+
+    use crate::execution_control_experiment::InvocationControl;
+    use crate::xml::quick_xml_experiment::{ParseLimits, parse_document_controlled};
+
+    use super::{
+        AtomicValue, Document, RuntimeVariables, TemporaryNode, TemporaryNodeKind, TemporaryTree,
+    };
+
+    const VECTOR_ITEMS: usize = 8;
+
+    fn populated_frame(bindings: usize) -> RuntimeVariables {
+        let mut parse_control = InvocationControl::unbounded();
+        let parsed = parse_document_controlled(
+            "urn:fastxslt:frame-clone-measurement",
+            b"<root/>",
+            ParseLimits {
+                max_events: 16,
+                max_depth: 4,
+            },
+            &mut parse_control,
+        )
+        .expect("parse frame measurement document");
+        let document = Document::from_parsed(parsed).expect("build frame measurement document");
+        let node = document.document_node();
+        let mut frame = RuntimeVariables::default();
+        for index in 0..bindings {
+            let atomic_name = format!("a{index}");
+            frame.atomic_sequences.insert(
+                atomic_name.clone(),
+                (0..VECTOR_ITEMS)
+                    .map(|item| AtomicValue::string(format!("value-{index}-{item}")))
+                    .collect(),
+            );
+            frame.local_bindings.insert(atomic_name);
+            let node_name = format!("n{index}");
+            frame
+                .source_nodes
+                .insert(node_name.clone(), vec![node; VECTOR_ITEMS]);
+            frame.local_bindings.insert(node_name);
+            let tree_name = format!("t{index}");
+            frame.temporary_trees.insert(
+                tree_name.clone(),
+                TemporaryTree {
+                    identity: u64::try_from(index).expect("measurement index fits u64"),
+                    roots: vec![0],
+                    nodes: (0..VECTOR_ITEMS)
+                        .map(|item| TemporaryNode {
+                            kind: TemporaryNodeKind::Text(format!("temporary-{index}-{item}")),
+                            parent: None,
+                            children: Vec::new(),
+                        })
+                        .collect(),
+                },
+            );
+            frame.local_bindings.insert(tree_name);
+        }
+        frame
+    }
+
+    fn median_clone_us<T: Clone>(value: &T, iterations: usize) -> f64 {
+        let mut samples = Vec::with_capacity(5);
+        let divisor = f64::from(u32::try_from(iterations).expect("iterations fit u32"));
+        for _ in 0..5 {
+            let started = Instant::now();
+            for _ in 0..iterations {
+                drop(black_box(value.clone()));
+            }
+            samples.push(started.elapsed().as_secs_f64() * 1_000_000.0 / divisor);
+        }
+        samples.sort_by(f64::total_cmp);
+        samples[2]
+    }
+
+    #[test]
+    #[ignore = "manual release-mode non-atomic runtime-frame clone attribution"]
+    fn measure_non_atomic_runtime_frame_clone_fields() {
+        for bindings in [0_usize, 16, 64, 256] {
+            let frame = populated_frame(bindings);
+            let iterations = if bindings <= 16 { 2_000 } else { 200 };
+            let atomics = allocation_counter::measure(|| drop(black_box(frame.atomics.clone())));
+            let atomic_sequences =
+                allocation_counter::measure(|| drop(black_box(frame.atomic_sequences.clone())));
+            let source_nodes =
+                allocation_counter::measure(|| drop(black_box(frame.source_nodes.clone())));
+            let temporary_trees =
+                allocation_counter::measure(|| drop(black_box(frame.temporary_trees.clone())));
+            let local_bindings =
+                allocation_counter::measure(|| drop(black_box(frame.local_bindings.clone())));
+            let complete = allocation_counter::measure(|| drop(black_box(frame.clone())));
+
+            println!(
+                "bindings_per_kind={bindings} vector_items={VECTOR_ITEMS} atomic_sequences_median_us={:.3} source_nodes_median_us={:.3} temporary_trees_median_us={:.3} local_bindings_median_us={:.3} complete_median_us={:.3} atomics={atomics:?} atomic_sequences={atomic_sequences:?} source_nodes={source_nodes:?} temporary_trees={temporary_trees:?} local_bindings={local_bindings:?} complete={complete:?}",
+                median_clone_us(&frame.atomic_sequences, iterations),
+                median_clone_us(&frame.source_nodes, iterations),
+                median_clone_us(&frame.temporary_trees, iterations),
+                median_clone_us(&frame.local_bindings, iterations),
+                median_clone_us(&frame, iterations),
+            );
+        }
+    }
+}
