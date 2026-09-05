@@ -11,6 +11,7 @@ pub(crate) enum BinaryNumericOperator {
     Subtract,
     Multiply,
     Divide,
+    Modulo,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -45,7 +46,7 @@ pub(crate) enum BinaryNumericEvaluationFailure {
     Cardinality,
     EmptyOperand,
     UnsupportedLexical,
-    DivisionByZero,
+    ZeroDivisor,
     NonIntegral,
     Overflow,
 }
@@ -95,6 +96,16 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
                     return None;
                 }
                 candidate = Some((index, BinaryNumericOperator::Divide, 3));
+            }
+            'm' if depth == 0
+                && expression[index..].starts_with("mod")
+                && expression[..index].ends_with(char::is_whitespace)
+                && expression[index + 3..].starts_with(char::is_whitespace) =>
+            {
+                if candidate.is_some() {
+                    return None;
+                }
+                candidate = Some((index, BinaryNumericOperator::Modulo, 3));
             }
             _ => {}
         }
@@ -162,8 +173,8 @@ fn apply_operator(
         BinaryNumericOperator::Multiply => left
             .checked_mul(right)
             .ok_or(BinaryNumericEvaluationFailure::Overflow),
-        BinaryNumericOperator::Divide if right == 0 => {
-            Err(BinaryNumericEvaluationFailure::DivisionByZero)
+        BinaryNumericOperator::Divide | BinaryNumericOperator::Modulo if right == 0 => {
+            Err(BinaryNumericEvaluationFailure::ZeroDivisor)
         }
         BinaryNumericOperator::Divide => {
             let remainder = left
@@ -175,6 +186,9 @@ fn apply_operator(
             left.checked_div(right)
                 .ok_or(BinaryNumericEvaluationFailure::Overflow)
         }
+        BinaryNumericOperator::Modulo => left
+            .checked_rem(right)
+            .ok_or(BinaryNumericEvaluationFailure::Overflow),
     }
 }
 
@@ -270,6 +284,10 @@ mod tests {
             Some(("div", BinaryNumericOperator::Divide, "mod"))
         );
         assert_eq!(
+            split_paths("div mod mod"),
+            Some(("div", BinaryNumericOperator::Modulo, "mod"))
+        );
+        assert_eq!(
             split_paths("-n-2 --n-1"),
             Some(("-n-2", BinaryNumericOperator::Subtract, "-n-1"))
         );
@@ -294,7 +312,12 @@ mod tests {
         );
         assert_eq!(
             apply_operator(7, BinaryNumericOperator::Divide, 0),
-            Err(BinaryNumericEvaluationFailure::DivisionByZero)
+            Err(BinaryNumericEvaluationFailure::ZeroDivisor)
+        );
+        assert_eq!(apply_operator(7, BinaryNumericOperator::Modulo, 4), Ok(3));
+        assert_eq!(
+            apply_operator(7, BinaryNumericOperator::Modulo, 0),
+            Err(BinaryNumericEvaluationFailure::ZeroDivisor)
         );
     }
 }

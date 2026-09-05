@@ -175,6 +175,9 @@ remain distinct from subtraction, and all five matches retain doubts metadata.
 Explicit unary signs on typed path operands then reach 792 through `math63`,
 `math65`, and `math67` to `math69`. The compiled operands retain their signs;
 all five matches retain doubts metadata.
+Token-delimited path modulo then reaches 796 through `math79` to `math82`.
+All four matches retain doubts metadata; chained and nested arithmetic remain a
+separate parser/typed-tree frontier.
 
 ## Outcome
 

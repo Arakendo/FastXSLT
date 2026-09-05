@@ -302,12 +302,12 @@ fn append_binary_numeric(
                 expression.location.clone(),
                 "binary numeric operands are outside the admitted exact-integer lexical slice",
             ),
-            BinaryNumericEvaluationFailure::DivisionByZero => failure_at(
+            BinaryNumericEvaluationFailure::ZeroDivisor => failure_at(
                 "FXRT1022",
                 FailureCategory::Unsupported,
                 Some(inputs.request_id),
                 expression.location.clone(),
-                "source-dependent division by zero is outside the admitted numeric slice",
+                "a zero divisor is outside the admitted source-dependent numeric slice",
             ),
             BinaryNumericEvaluationFailure::NonIntegral => failure_at(
                 "FXRT1022",

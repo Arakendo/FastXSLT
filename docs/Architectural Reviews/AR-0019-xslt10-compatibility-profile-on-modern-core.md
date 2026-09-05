@@ -341,6 +341,9 @@ public version-mode contract.
 - [x] Retain one explicit unary-negation bit on each typed path operand,
   reaching 792 through five more doubt-annotated matches without confusing
   NCName hyphens or admitting general expression trees.
+- [x] Add token-delimited checked path modulo, reaching 796 through four more
+  doubt-annotated matches, then stop the bounded recognizer before the chained
+  and nested arithmetic frontier.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 50 known executing comparison
@@ -558,6 +561,9 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-05 -- Explicit unary signs on typed path operands raised the measured
   expected-result matches from 787 to 792 through five more doubt-annotated
   cases. Signs are retained in the compiled plan and runtime remains shared.
+- 2026-09-05 -- Checked path modulo raised the measured expected-result matches
+  from 792 to 796 through four doubt-annotated cases. The next arithmetic cases
+  require a real expression tree, so the bounded recognizer stops here.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

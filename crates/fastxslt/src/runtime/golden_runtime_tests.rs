@@ -1542,7 +1542,7 @@ fn binary_numeric_paths_share_execution_with_compiled_cardinality_policy() {
     const SOURCE: &str = "urn:fastxslt:binary-numeric:source";
     const LEGACY: &str = "urn:fastxslt:binary-numeric:legacy";
     const MODERN: &str = "urn:fastxslt:binary-numeric:modern";
-    let body = r#"<xsl:output method="text"/><xsl:template match="/"><xsl:apply-templates select="doc"/></xsl:template><xsl:template match="doc"><xsl:value-of select="n1+n2"/>|<xsl:value-of select="(n1/@attrib)*(n2/@attrib)"/>|<xsl:value-of select="n-2 - n-1"/>|<xsl:value-of select="div div mod"/>|<xsl:value-of select="n-2+-n-1"/>|<xsl:value-of select="n-2 - -n-1"/>|<xsl:value-of select="-n-2 --n-1"/>|<xsl:value-of select="-n-2/@attrib --n-1/@attrib"/>|<xsl:value-of select="-(n-2/@attrib) - -(n-1/@attrib)"/></xsl:template>"#;
+    let body = r#"<xsl:output method="text"/><xsl:template match="/"><xsl:apply-templates select="doc"/></xsl:template><xsl:template match="doc"><xsl:value-of select="n1+n2"/>|<xsl:value-of select="(n1/@attrib)*(n2/@attrib)"/>|<xsl:value-of select="n-2 - n-1"/>|<xsl:value-of select="div div mod"/>|<xsl:value-of select="n-2+-n-1"/>|<xsl:value-of select="n-2 - -n-1"/>|<xsl:value-of select="-n-2 --n-1"/>|<xsl:value-of select="-n-2/@attrib --n-1/@attrib"/>|<xsl:value-of select="-(n-2/@attrib) - -(n-1/@attrib)"/>|<xsl:value-of select="n-2 mod n-1"/>|<xsl:value-of select="div mod mod"/></xsl:template>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 16_384));
     resources
         .admit(
@@ -1574,7 +1574,7 @@ fn binary_numeric_paths_share_execution_with_compiled_cardinality_policy() {
     let results = execute_transform_set(legacy_builder.seal()).expect("execute legacy arithmetic");
     assert_eq!(
         results.by_request["legacy-binary"].serialized,
-        "9|25|4|2|4|10|-4|8|8"
+        "9|25|4|2|4|10|-4|8|8|1|0"
     );
 
     let mut modern_builder = TransformSetBuilder::new(snapshot, modern, 1, policy(4_096));
