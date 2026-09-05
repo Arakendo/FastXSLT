@@ -282,6 +282,7 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Ordered Literal Comparison](oasis-xslt10-ordered-literal-comparison-2026-09-05.md)
 - [OASIS XSLT 1.0 Binary Numeric Path Tranche](oasis-xslt10-binary-numeric-path-tranche-2026-09-05.md)
 - [OASIS XSLT 1.0 Path Subtraction and Exact Division Tranche](oasis-xslt10-path-subtraction-division-tranche-2026-09-05.md)
+- [OASIS XSLT 1.0 Signed Path Arithmetic Tranche](oasis-xslt10-signed-path-arithmetic-tranche-2026-09-05.md)
 - [AR-0016 Source Access Inventory and Safe Reference](ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md)
 - [AR-0016 Visibility-View Prototype](ar-0016-visibility-view-prototype-2026-08-30.md)
 - [Peer Review: AR-0016 Decision Readiness](peer-ar-0016-decision-readiness-monday-2026-08-30.md)

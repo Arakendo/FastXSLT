@@ -22,8 +22,10 @@ pub(crate) enum NumericOperandSelection {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct BinaryNumericExpression {
     pub(crate) left: LocationPath,
+    pub(crate) negate_left: bool,
     pub(crate) operator: BinaryNumericOperator,
     pub(crate) right: LocationPath,
+    pub(crate) negate_right: bool,
     pub(crate) selection: NumericOperandSelection,
     pub(crate) location: SourceLocation,
 }
@@ -65,7 +67,8 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
                 }
                 if character == '-'
                     && !(expression[..index].ends_with(char::is_whitespace)
-                        && expression[index + 1..].starts_with(char::is_whitespace))
+                        && (expression[index + 1..].starts_with(char::is_whitespace)
+                            || expression[index + 1..].starts_with('-')))
                 {
                     continue;
                 }
@@ -106,6 +109,15 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
     (!left.is_empty() && !right.is_empty()).then_some((left, operator, right))
 }
 
+pub(crate) fn signed_path(expression: &str) -> Option<(&str, bool)> {
+    let expression = expression.trim();
+    let (expression, negate) = expression
+        .strip_prefix('-')
+        .map_or((expression, false), |path| (path.trim(), true));
+    let expression = strip_balanced_parentheses(expression);
+    (!expression.is_empty()).then_some((expression, negate))
+}
+
 pub(crate) fn evaluate(
     expression: &BinaryNumericExpression,
     document: &Document,
@@ -116,6 +128,7 @@ pub(crate) fn evaluate(
         document,
         context,
         &expression.left,
+        expression.negate_left,
         expression.selection,
         control,
     )?;
@@ -123,6 +136,7 @@ pub(crate) fn evaluate(
         document,
         context,
         &expression.right,
+        expression.negate_right,
         expression.selection,
         control,
     )?;
@@ -168,6 +182,7 @@ fn operand_value(
     document: &Document,
     context: NodeId,
     path: &LocationPath,
+    negate: bool,
     selection: NumericOperandSelection,
     control: &mut InvocationControl,
 ) -> Result<i128, BinaryNumericEvaluationFailure> {
@@ -186,10 +201,17 @@ fn operand_value(
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(BinaryNumericEvaluationFailure::Control)?;
-    lexical
+    let value = lexical
         .trim()
         .parse::<i128>()
-        .map_err(|_| BinaryNumericEvaluationFailure::UnsupportedLexical)
+        .map_err(|_| BinaryNumericEvaluationFailure::UnsupportedLexical)?;
+    if negate {
+        value
+            .checked_neg()
+            .ok_or(BinaryNumericEvaluationFailure::Overflow)
+    } else {
+        Ok(value)
+    }
 }
 
 fn strip_balanced_parentheses(mut expression: &str) -> &str {
@@ -225,7 +247,8 @@ fn strip_balanced_parentheses(mut expression: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::{
-        BinaryNumericEvaluationFailure, BinaryNumericOperator, apply_operator, split_paths,
+        BinaryNumericEvaluationFailure, BinaryNumericOperator, apply_operator, signed_path,
+        split_paths,
     };
 
     #[test]
@@ -246,9 +269,20 @@ mod tests {
             split_paths("div div mod"),
             Some(("div", BinaryNumericOperator::Divide, "mod"))
         );
+        assert_eq!(
+            split_paths("-n-2 --n-1"),
+            Some(("-n-2", BinaryNumericOperator::Subtract, "-n-1"))
+        );
         for expression in ["n1", "n1+n2+n3", "(n1+n2)", "n1/ *", "/*/"] {
             assert_eq!(split_paths(expression), None, "{expression}");
         }
+    }
+
+    #[test]
+    fn separates_unary_signs_from_hyphenated_path_names() {
+        assert_eq!(signed_path("n-2"), Some(("n-2", false)));
+        assert_eq!(signed_path("-n-2"), Some(("n-2", true)));
+        assert_eq!(signed_path("-(n-2/@a)"), Some(("n-2/@a", true)));
     }
 
     #[test]

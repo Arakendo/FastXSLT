@@ -172,6 +172,9 @@ retain their suite doubts metadata.
 Whitespace-delimited path subtraction and exact integral path division then
 reach 787 through `math61` and `math71` to `math74`. Hyphens in element names
 remain distinct from subtraction, and all five matches retain doubts metadata.
+Explicit unary signs on typed path operands then reach 792 through `math63`,
+`math65`, and `math67` to `math69`. The compiled operands retain their signs;
+all five matches retain doubts metadata.
 
 ## Outcome
 

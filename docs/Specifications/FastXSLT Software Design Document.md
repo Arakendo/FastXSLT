@@ -551,9 +551,11 @@ context: XSLT 1.0 uses the first node in document order, while the modern mode
 requires zero or one node. Runtime evaluates both paths under ordinary work
 control and performs checked integer arithmetic without a version branch.
 Division is admitted only for a nonzero, exactly integral quotient. Empty
-operands, non-integer lexicals, overflow, fractional or zero division, unary or
-chained expressions, numeric promotion, and general atomization remain outside
-this initial form.
+operands, non-integer lexicals, overflow, fractional or zero division, chained
+expressions, numeric promotion, and general atomization remain outside
+this initial form. Each operand may retain one explicit unary-negation bit,
+including around a parenthesized path; repeated signs and unary general
+expressions remain unsupported.
 
 `number()` around one source-free finite decimal literal or quoted finite
 decimal lexical value may likewise be folded to its canonical decimal string.

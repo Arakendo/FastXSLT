@@ -365,6 +365,8 @@ fn compile_binary_numeric_path(
     static_context: ValueStaticContext,
 ) -> Option<ValueExpression> {
     let (left, operator, right) = crate::xpath::binary_numeric_experiment::split_paths(expression)?;
+    let (left, negate_left) = crate::xpath::binary_numeric_experiment::signed_path(left)?;
+    let (right, negate_right) = crate::xpath::binary_numeric_experiment::signed_path(right)?;
     let left = parse_location_path(left, location.clone()).ok()?;
     let right = parse_location_path(right, location.clone()).ok()?;
     let selection = match static_context.compatibility {
@@ -378,8 +380,10 @@ fn compile_binary_numeric_path(
     Some(ValueExpression::BinaryNumeric(Box::new(
         crate::xpath::binary_numeric_experiment::BinaryNumericExpression {
             left,
+            negate_left,
             operator,
             right,
+            negate_right,
             selection,
             location: location.clone(),
         },
