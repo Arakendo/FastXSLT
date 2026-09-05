@@ -457,9 +457,10 @@ and apply positional predicates in reverse axis order, while forward axes use
 document order; surviving nodes then participate in ordinary path
 document-order normalization. Candidate traversal is work charged. This does
 not admit namespace-qualified forward or reverse-axis tests. The `following`
-axis additionally admits explicit `text()`, `comment()`, and
-`processing-instruction()` tests; those kind tests remain unsupported on the
-other three axes.
+`following` and `preceding` additionally admit explicit `text()`, `comment()`,
+and `processing-instruction()` tests while retaining their respective forward-
+and reverse-axis positional behavior. Those kind tests remain unsupported on
+the two sibling axes.
 The exact `string-length(.) = nonnegative-integer` conditional form counts
 Unicode codepoints in the controlled context string value and charges the scan
 to XPath work. It does not admit general string functions, alternate operands,

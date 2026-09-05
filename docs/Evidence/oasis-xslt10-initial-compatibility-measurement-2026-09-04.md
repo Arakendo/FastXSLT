@@ -107,6 +107,9 @@ per-context positional predicates.
 The following
 [self node-kind tranche](oasis-xslt10-self-node-kind-tranche-2026-09-04.md)
 raises it to 721 through three explicit XDM kind tests.
+The following
+[preceding node-kind tranche](oasis-xslt10-preceding-node-kind-tranche-2026-09-04.md)
+raises it to 724 through three composed reverse-axis paths.
 
 ## Outcome
 

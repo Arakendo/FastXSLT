@@ -119,6 +119,46 @@ fn reverse_axes_apply_positions_in_axis_order_then_normalize_document_order() {
 }
 
 #[test]
+fn preceding_axis_filters_non_element_kinds_before_reverse_positions() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root>lead<!--first--><?one ready?><a/>middle<!--nearest--><?two ready?><context/></root>",
+        ParseLimits {
+            max_events: 20,
+            max_depth: 3,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let context = *document.children(root).last().expect("context child");
+    let nearest_comment =
+        parse_location_path("preceding::comment()[1]", location()).expect("preceding comment path");
+    let farthest_pi =
+        parse_location_path("preceding::processing-instruction()[last()]", location())
+            .expect("preceding processing-instruction path");
+    let all_text =
+        parse_location_path("preceding::text()", location()).expect("preceding text path");
+
+    let selected_comment = evaluate_location_path(&document, context, &nearest_comment);
+    let selected_pi = evaluate_location_path(&document, context, &farthest_pi);
+    let selected_text = evaluate_location_path(&document, context, &all_text);
+
+    assert_eq!(document.value(selected_comment[0]), Some("nearest"));
+    assert_eq!(
+        document.name(selected_pi[0]).expect("PI target").local,
+        "one"
+    );
+    assert_eq!(
+        selected_text
+            .into_iter()
+            .map(|node| document.value(node).expect("text value"))
+            .collect::<Vec<_>>(),
+        ["lead", "middle"]
+    );
+}
+
+#[test]
 fn ancestor_axes_apply_positions_in_reverse_axis_order() {
     let parsed = parse_document(
         "memory:source.xml",

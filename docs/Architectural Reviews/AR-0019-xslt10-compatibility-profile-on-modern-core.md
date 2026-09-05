@@ -277,6 +277,9 @@ public version-mode contract.
 - [x] Add explicit text, comment, and processing-instruction tests to the
   shared `self` axis, raising the lower bound to 721 through three unchanged
   passes.
+- [x] Add explicit text, comment, and processing-instruction tests to the
+  shared `preceding` axis, raising the lower bound to 724 through three
+  unchanged composed-path passes.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -420,6 +423,9 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Explicit non-element kind tests on `self` raised the lower
   bound from 718 to 721. All three newly initialized cases pass without changing
   any later-failure or wrong-answer category.
+- 2026-09-04 -- Explicit non-element kind tests on `preceding` raised the lower
+  bound from 721 to 724. All three newly initialized composed-axis cases pass
+  without changing any later-failure or wrong-answer category.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

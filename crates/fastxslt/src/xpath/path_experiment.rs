@@ -101,6 +101,9 @@ pub(crate) enum PathStep {
     PrecedingNamed(String),
     PrecedingAnyElement,
     PrecedingAnyNode,
+    PrecedingText,
+    PrecedingComment,
+    PrecedingProcessingInstruction,
     PrecedingSiblingNamed(String),
     PrecedingSiblingAnyElement,
     PrecedingSiblingAnyNode,
@@ -201,12 +204,7 @@ impl PathStep {
             };
         }
         if let Some(name_test) = value.strip_prefix("preceding::") {
-            return match name_test {
-                "*" => Some(Self::PrecedingAnyElement),
-                "node()" => Some(Self::PrecedingAnyNode),
-                "text()" => None,
-                _ => Some(Self::PrecedingNamed(name_test.to_owned())),
-            };
+            return Some(Self::from_preceding_name_test(name_test));
         }
         if let Some(name_test) = value.strip_prefix("preceding-sibling::") {
             return match name_test {
@@ -259,6 +257,17 @@ impl PathStep {
             "comment()" => Self::SelfComment,
             "processing-instruction()" => Self::SelfProcessingInstruction,
             _ => Self::SelfNamed(name_test.to_owned()),
+        }
+    }
+
+    fn from_preceding_name_test(name_test: &str) -> Self {
+        match name_test {
+            "*" => Self::PrecedingAnyElement,
+            "node()" => Self::PrecedingAnyNode,
+            "text()" => Self::PrecedingText,
+            "comment()" => Self::PrecedingComment,
+            "processing-instruction()" => Self::PrecedingProcessingInstruction,
+            _ => Self::PrecedingNamed(name_test.to_owned()),
         }
     }
 
@@ -344,7 +353,12 @@ impl PathStep {
     fn uses_preceding_axis(&self) -> bool {
         matches!(
             self,
-            Self::PrecedingNamed(_) | Self::PrecedingAnyElement | Self::PrecedingAnyNode
+            Self::PrecedingNamed(_)
+                | Self::PrecedingAnyElement
+                | Self::PrecedingAnyNode
+                | Self::PrecedingText
+                | Self::PrecedingComment
+                | Self::PrecedingProcessingInstruction
         )
     }
 
@@ -399,13 +413,17 @@ impl PartialEq<&str> for PathStep {
             | Self::FollowingSiblingAnyNode
             | Self::PrecedingAnyNode
             | Self::PrecedingSiblingAnyNode => *other == "node()",
-            Self::ChildText | Self::SelfText | Self::FollowingText => *other == "text()",
-            Self::ChildComment | Self::SelfComment | Self::FollowingComment => {
-                *other == "comment()"
+            Self::ChildText | Self::SelfText | Self::FollowingText | Self::PrecedingText => {
+                *other == "text()"
             }
+            Self::ChildComment
+            | Self::SelfComment
+            | Self::FollowingComment
+            | Self::PrecedingComment => *other == "comment()",
             Self::ChildProcessingInstruction
             | Self::SelfProcessingInstruction
-            | Self::FollowingProcessingInstruction => *other == "processing-instruction()",
+            | Self::FollowingProcessingInstruction
+            | Self::PrecedingProcessingInstruction => *other == "processing-instruction()",
             Self::ChildProcessingInstructionNamed(target) => {
                 processing_instruction_target(other).is_some_and(|other| other == target)
             }
@@ -646,6 +664,7 @@ fn has_unadmitted_name_test(step: &str) -> bool {
     let admitted_axis_kind = (!step.contains("::")
         || step.starts_with("child::")
         || step.starts_with("following::")
+        || step.starts_with("preceding::")
         || step.starts_with("self::"))
         && matches!(
             name_test,
@@ -1144,15 +1163,18 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
         | PathStep::FollowingSiblingAnyNode
         | PathStep::PrecedingAnyNode
         | PathStep::PrecedingSiblingAnyNode => true,
-        PathStep::ChildText | PathStep::SelfText | PathStep::FollowingText => {
-            document.kind(child) == NodeKind::Text
-        }
-        PathStep::ChildComment | PathStep::SelfComment | PathStep::FollowingComment => {
-            document.kind(child) == NodeKind::Comment
-        }
+        PathStep::ChildText
+        | PathStep::SelfText
+        | PathStep::FollowingText
+        | PathStep::PrecedingText => document.kind(child) == NodeKind::Text,
+        PathStep::ChildComment
+        | PathStep::SelfComment
+        | PathStep::FollowingComment
+        | PathStep::PrecedingComment => document.kind(child) == NodeKind::Comment,
         PathStep::ChildProcessingInstruction
         | PathStep::SelfProcessingInstruction
-        | PathStep::FollowingProcessingInstruction => {
+        | PathStep::FollowingProcessingInstruction
+        | PathStep::PrecedingProcessingInstruction => {
             document.kind(child) == NodeKind::ProcessingInstruction
         }
         PathStep::ChildProcessingInstructionNamed(required) => {
