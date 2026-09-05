@@ -298,6 +298,9 @@ public version-mode contract.
 - [x] Compile the exact `{.}` AVT to a typed context string-value operation and
   charge source/temporary traversal, raising the lower bound to 738 while two
   line-ending comparison mismatches remain explicitly uncredited.
+- [x] Expose checked source-free binary arithmetic only when its exact-rational
+  result is integral, raising the lower bound to 747 through nine unchanged
+  passes without runtime version dispatch.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 50 known executing comparison
@@ -464,6 +467,9 @@ maintained redistributable legacy suite becomes available.
   string-value operation across source and temporary trees. One of three newly
   executed cases passes; two line-ending mismatches remain visible and receive
   no compatibility credit, raising the lower bound from 737 to 738.
+- 2026-09-04 -- Checked source-free binary arithmetic with an exact integral
+  result raised the lower bound from 738 to 747. All nine newly initialized
+  cases pass without changing a mismatch or later-failure category.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

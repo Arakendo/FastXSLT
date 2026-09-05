@@ -133,6 +133,8 @@ any-attribute pattern and priority.
 The exact `{.}` AVT then raises it to 738 through a shared charged context
 string-value operation; two additional cases reach visible line-ending
 comparison mismatches and remain uncredited.
+Checked source-free arithmetic with an exactly integral result then raises it
+to 747 through nine unchanged cases without adding a later failure or mismatch.
 
 ## Outcome
 

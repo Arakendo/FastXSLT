@@ -1373,7 +1373,7 @@ fn xpath10_literal_comparisons_preserve_atomic_semantics() {
 }
 
 #[test]
-fn xpath_constant_integral_functions_fold_exact_results() {
+fn xpath_constant_integral_numeric_expressions_fold_exact_results() {
     const SOURCE: &str = "urn:fastxslt:integral-functions:source";
     const STYLESHEET: &str = "urn:fastxslt:integral-functions:stylesheet";
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
@@ -1386,7 +1386,7 @@ fn xpath_constant_integral_functions_fold_exact_results() {
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="floor(1.9)"/>|<xsl:value-of select="floor(-1.5)"/>|<xsl:value-of select="ceiling(1.1)"/>|<xsl:value-of select="ceiling(-1.5)"/>|<xsl:value-of select="round(2.5)"/>|<xsl:value-of select="round(-2.5)"/>|<xsl:value-of select="floor(1.9)=1"/>|<xsl:value-of select="round(-1.5)=-1"/>|<xsl:value-of select="floor(doc/low)"/>|<xsl:value-of select="ceiling(doc/high)"/>|<xsl:value-of select="round(doc/high)"/>|<xsl:value-of select="floor(doc/missing)"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="floor(1.9)"/>|<xsl:value-of select="floor(-1.5)"/>|<xsl:value-of select="ceiling(1.1)"/>|<xsl:value-of select="ceiling(-1.5)"/>|<xsl:value-of select="round(2.5)"/>|<xsl:value-of select="round(-2.5)"/>|<xsl:value-of select="floor(1.9)=1"/>|<xsl:value-of select="round(-1.5)=-1"/>|<xsl:value-of select="floor(doc/low)"/>|<xsl:value-of select="ceiling(doc/high)"/>|<xsl:value-of select="round(doc/high)"/>|<xsl:value-of select="floor(doc/missing)"/>|<xsl:value-of select="2*3"/>|<xsl:value-of select="7 - -3"/>|<xsl:value-of select="6 div -2"/></xsl:template></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit stylesheet");
     let snapshot = resources.seal();
@@ -1400,7 +1400,7 @@ fn xpath_constant_integral_functions_fold_exact_results() {
     let results = execute_transform_set(builder.seal()).expect("execute integral functions");
     assert_eq!(
         results.by_request["integral-functions"].serialized,
-        "1|-2|2|-1|3|-2|true|true|-2|3|3|"
+        "1|-2|2|-1|3|-2|true|true|-2|3|3||6|10|-3"
     );
 }
 

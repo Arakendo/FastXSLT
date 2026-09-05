@@ -36,6 +36,32 @@ pub(crate) fn fold_integral_function(expression: &str) -> Option<String> {
     (value.denominator == 1).then(|| value.numerator.to_string())
 }
 
+pub(crate) fn fold_exact_integral_arithmetic(expression: &str) -> Option<String> {
+    let expression = expression.trim();
+    contains_binary_arithmetic_operator(expression)?;
+    let value = evaluate(expression).ok()?;
+    (value.numerator.rem_euclid(value.denominator) == 0)
+        .then(|| value.numerator.div_euclid(value.denominator).to_string())
+}
+
+fn contains_binary_arithmetic_operator(expression: &str) -> Option<()> {
+    let first = expression
+        .char_indices()
+        .find_map(|(index, character)| (!character.is_ascii_whitespace()).then_some(index))?;
+    expression
+        .char_indices()
+        .any(|(index, character)| {
+            matches!(character, '+' | '*') || (character == '-' && index > first)
+        })
+        .then_some(())
+        .or_else(|| {
+            expression
+                .split_ascii_whitespace()
+                .any(|token| matches!(token, "div" | "mod"))
+                .then_some(())
+        })
+}
+
 pub(crate) fn integral_function_call(expression: &str) -> Option<(IntegralFunction, &str)> {
     let expression = expression.trim();
     for (name, function) in [
@@ -429,7 +455,8 @@ mod tests {
 
     use super::{
         ConstantNumericFailure, IntegralFunction, compare, evaluate_integral_lexical,
-        fold_integral_equality, fold_integral_function, integral_function_call,
+        fold_exact_integral_arithmetic, fold_integral_equality, fold_integral_function,
+        integral_function_call,
     };
 
     #[test]
@@ -492,5 +519,25 @@ mod tests {
             compare("1 div 0", "0"),
             Err(ConstantNumericFailure::Invalid)
         );
+    }
+
+    #[test]
+    fn folds_only_exact_integral_binary_arithmetic() {
+        assert_eq!(fold_exact_integral_arithmetic("2*3"), Some("6".to_owned()));
+        assert_eq!(
+            fold_exact_integral_arithmetic("3 + 6"),
+            Some("9".to_owned())
+        );
+        assert_eq!(
+            fold_exact_integral_arithmetic("6 div 2"),
+            Some("3".to_owned())
+        );
+        assert_eq!(
+            fold_exact_integral_arithmetic("5 mod 2"),
+            Some("1".to_owned())
+        );
+        assert_eq!(fold_exact_integral_arithmetic("1 div 2"), None);
+        assert_eq!(fold_exact_integral_arithmetic("7"), None);
+        assert_eq!(fold_exact_integral_arithmetic("1 div 0"), None);
     }
 }

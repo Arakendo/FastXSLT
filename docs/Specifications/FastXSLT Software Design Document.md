@@ -533,6 +533,13 @@ division by zero reports `FOAR0001`, while a selected non-integral quotient
 remains explicitly unsupported. This form does not admit general casting,
 numeric promotion, conditional operands, or branch expressions.
 
+Source-free binary arithmetic may be folded at compilation when the checked
+exact-rational evaluator produces an exactly integral result. The retained plan
+contains the canonical integer lexical value, so execution performs no numeric
+parsing or version dispatch. Fractional results, division by zero, overflow,
+NaN/infinity, and path-dependent operands remain explicit boundaries rather
+than being approximated through binary floating point.
+
 Recognized valid expression families that exceed the admitted evaluator remain
 engine-unsupported rather than being forced through the location-path parser.
 The global `QName()` constructor is one such boundary: it is classified before
