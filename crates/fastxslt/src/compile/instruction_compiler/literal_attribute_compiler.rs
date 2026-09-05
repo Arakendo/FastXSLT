@@ -41,6 +41,9 @@ fn parse_literal_attribute_value(
     if lexical == "{local-name()}" {
         return Ok(LiteralAttributeValue::ContextLocalName);
     }
+    if lexical == "{.}" {
+        return Ok(LiteralAttributeValue::ContextStringValue);
+    }
     if let Some(variable) = lexical
         .strip_prefix("{$")
         .and_then(|value| value.strip_suffix('}'))
@@ -102,5 +105,14 @@ mod tests {
         );
         assert!(parse_literal_attribute_value("before{.}after", &location()).is_err());
         assert!(parse_literal_attribute_value("{{broken}", &location()).is_err());
+    }
+
+    #[test]
+    fn compiles_context_string_value_avt() {
+        assert_eq!(
+            parse_literal_attribute_value("{.}", &location())
+                .expect("the context-item string-value AVT should compile"),
+            LiteralAttributeValue::ContextStringValue
+        );
     }
 }

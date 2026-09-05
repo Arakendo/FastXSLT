@@ -565,6 +565,33 @@ pub(super) fn temporary_tree_string_value(
     Ok(value)
 }
 
+pub(super) fn temporary_node_string_value(
+    tree: &TemporaryTree,
+    node: usize,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let mut value = String::new();
+    let mut pending = vec![node];
+    while let Some(node) = pending.pop() {
+        control
+            .charge(WorkDomain::XdmStringValueNode, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        match &tree.nodes[node].kind {
+            TemporaryNodeKind::Attribute { value: lexical, .. }
+            | TemporaryNodeKind::Text(lexical)
+            | TemporaryNodeKind::Comment(lexical)
+            | TemporaryNodeKind::ProcessingInstruction { value: lexical, .. } => {
+                value.push_str(lexical);
+            }
+            TemporaryNodeKind::Element { .. } => {
+                pending.extend(tree.nodes[node].children.iter().rev().copied());
+            }
+        }
+    }
+    Ok(value)
+}
+
 pub(super) fn temporary_document_identity(
     tree: &TemporaryTree,
     descendant_local: Option<&str>,

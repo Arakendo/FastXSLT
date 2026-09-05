@@ -17,8 +17,8 @@ use super::runtime_failure::{
 };
 use super::template_selector::accepts_mode as template_accepts_mode;
 use super::{
-    SequenceContext, SequenceFocus, TemporaryFocus, charge_xslt_instruction, execute_sequence,
-    materialize_literal_attributes,
+    LiteralAttributeFocus, SequenceContext, SequenceFocus, TemporaryFocus, charge_xslt_instruction,
+    execute_sequence, literal_attributes_require_context_string, materialize_literal_attributes,
 };
 
 pub(super) fn apply_temporary_template(
@@ -689,6 +689,16 @@ pub(super) fn execute_temporary_copy(
         TemporaryNodeKind::Element {
             name, namespaces, ..
         } => {
+            let context_string = literal_attributes_require_context_string(attributes)
+                .then(|| {
+                    super::runtime_context::temporary_node_string_value(
+                        tree,
+                        node,
+                        inputs.request_id,
+                        control,
+                    )
+                })
+                .transpose()?;
             control
                 .charge(WorkDomain::ResultNode, 1)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
@@ -698,9 +708,12 @@ pub(super) fn execute_temporary_copy(
                 attributes: materialize_literal_attributes(
                     attributes,
                     variables,
-                    execution.focus_position,
-                    execution.focus_size,
-                    Some(name),
+                    LiteralAttributeFocus {
+                        position: execution.focus_position,
+                        size: execution.focus_size,
+                        name: Some(name),
+                        value: context_string.as_deref(),
+                    },
                     inputs.request_id,
                     control,
                 )?,

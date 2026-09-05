@@ -295,12 +295,15 @@ public version-mode contract.
 - [x] Canonicalize `attribute::node()` to the same typed any-attribute pattern
   and node-test default priority, raising the lower bound to 737 through three
   unchanged passes including conflict-recovery pressure.
+- [x] Compile the exact `{.}` AVT to a typed context string-value operation and
+  charge source/temporary traversal, raising the lower bound to 738 while two
+  line-ending comparison mismatches remain explicitly uncredited.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
-- [ ] Resolve or explicitly classify the 48 known executing comparison
+- [ ] Resolve or explicitly classify the 50 known executing comparison
   mismatches.
 - [ ] Define expected-error and discretionary/doubts comparison rules.
-  - [x] Report doubt-annotated mismatches separately: three of the current 30
+  - [x] Report doubt-annotated mismatches separately: four of the current 50
     mismatches carry substantive doubts metadata; none is reclassified yet.
 - [ ] Prototype at least one genuine version-dependent behavior through
   compile-time static context without a second runtime.
@@ -457,6 +460,10 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Expanded `attribute::node()` patterns raised the lower bound
   from 734 to 737. All three newly initialized cases pass while preserving the
   existing attribute-wildcard priority and tied-rule recovery behavior.
+- 2026-09-04 -- The exact `{.}` AVT now uses one typed, work-charged context
+  string-value operation across source and temporary trees. One of three newly
+  executed cases passes; two line-ending mismatches remain visible and receive
+  no compatibility credit, raising the lower bound from 737 to 738.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

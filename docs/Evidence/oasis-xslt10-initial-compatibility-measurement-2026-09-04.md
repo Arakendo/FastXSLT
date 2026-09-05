@@ -130,6 +130,9 @@ The following
 [expanded attribute-node pattern tranche](oasis-xslt10-expanded-attribute-node-pattern-tranche-2026-09-04.md)
 raises it to 737 by canonicalizing `attribute::node()` to the same typed
 any-attribute pattern and priority.
+The exact `{.}` AVT then raises it to 738 through a shared charged context
+string-value operation; two additional cases reach visible line-ending
+comparison mismatches and remain uncredited.
 
 ## Outcome
 

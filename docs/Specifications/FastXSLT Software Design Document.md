@@ -587,6 +587,12 @@ because attribute is the axis's principal node kind, preserving the same
 default priority and conflict behavior. Other expanded-axis pattern forms
 remain outside this bounded slice.
 
+The admitted literal-result-attribute AVT subset includes the exact context
+item form `{.}`. Compilation records it as a typed operation. Execution obtains
+the complete XPath string value from the active source or temporary-tree owner,
+charges the traversal, and computes it only for an attribute set that requires
+it. Mixed literal/expression AVTs remain outside this narrow subset.
+
 `xsl:next-match` preserves temporary focus, current mode, and matched-template
 identity. It selects the highest eligible lower-ranked applicable rule using
 the same ranking and ambiguity policy as source-tree continuation; exhaustion

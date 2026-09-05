@@ -53,7 +53,8 @@ mod variable_filtered_path;
 pub(super) use resource_compiler::compile_resource;
 pub(super) use resource_compiler::compile_resource_with_denied;
 use result_tree::{
-    ResultAttribute, ResultNode, materialize_computed_attributes, materialize_literal_attributes,
+    LiteralAttributeFocus, ResultAttribute, ResultNode, literal_attributes_require_context_string,
+    materialize_computed_attributes, materialize_literal_attributes,
 };
 use runtime_context::{
     InvocationParameter, RuntimeVariables, SequenceInputs, TemporaryNodeKind, TemporaryTree,
@@ -1266,6 +1267,10 @@ fn execute_source_element_copy(
     match source.kind(node) {
         NodeKind::Document => execute_sequence(inputs, body, execution, variables, control),
         NodeKind::Element => {
+            let context_string = literal_attributes_require_context_string(attributes)
+                .then(|| source.string_value_controlled(node, control))
+                .transpose()
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
             control
                 .charge(WorkDomain::ResultNode, 1)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
@@ -1278,9 +1283,12 @@ fn execute_source_element_copy(
                 attributes: materialize_literal_attributes(
                     attributes,
                     variables,
-                    execution.focus_position,
-                    execution.focus_size,
-                    source.name(node),
+                    LiteralAttributeFocus {
+                        position: execution.focus_position,
+                        size: execution.focus_size,
+                        name: source.name(node),
+                        value: context_string.as_deref(),
+                    },
                     inputs.request_id,
                     control,
                 )?,
@@ -1336,12 +1344,19 @@ fn execute_literal_element(
     control
         .charge(WorkDomain::ResultNode, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let context_string = literal_attributes_require_context_string(attributes)
+        .then(|| execution_context_string_value(inputs, execution, control))
+        .transpose()?
+        .flatten();
     let mut attributes = materialize_literal_attributes(
         attributes,
         variables,
-        execution.focus_position,
-        execution.focus_size,
-        execution_context_name(inputs, execution),
+        LiteralAttributeFocus {
+            position: execution.focus_position,
+            size: execution.focus_size,
+            name: execution_context_name(inputs, execution),
+            value: context_string.as_deref(),
+        },
         inputs.request_id,
         control,
     )?;
@@ -1425,6 +1440,38 @@ fn execution_context_value<'a>(
     execution
         .node
         .and_then(|node| inputs.source.and_then(|source| source.value(node)))
+}
+
+fn execution_context_string_value(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<Option<String>, ExecutionFailure> {
+    if let Some(focus) = execution.temporary_focus {
+        return match focus {
+            TemporaryFocus::Document(tree) => {
+                runtime_context::temporary_tree_string_value(tree, inputs.request_id, control)
+                    .map(Some)
+            }
+            TemporaryFocus::Node(tree, node) => {
+                runtime_context::temporary_node_string_value(tree, node, inputs.request_id, control)
+                    .map(Some)
+            }
+        };
+    }
+    if let Some(value) = execution.atomic_focus {
+        return Ok(Some(value.to_string()));
+    }
+    execution
+        .node
+        .map(|node| {
+            inputs
+                .source
+                .expect("source focus requires a source document")
+                .string_value_controlled(node, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))
+        })
+        .transpose()
 }
 
 fn execute_apply_instruction(

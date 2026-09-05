@@ -32,6 +32,12 @@ pub(super) struct ResultAttribute {
     pub(super) value: String,
 }
 
+pub(super) fn literal_attributes_require_context_string(attributes: &[LiteralAttribute]) -> bool {
+    attributes
+        .iter()
+        .any(|attribute| attribute.value == LiteralAttributeValue::ContextStringValue)
+}
+
 struct AttributeContext<'a> {
     variables: &'a RuntimeVariables,
     focus_position: usize,
@@ -41,21 +47,27 @@ struct AttributeContext<'a> {
     request_id: &'a str,
 }
 
+#[derive(Clone, Copy)]
+pub(super) struct LiteralAttributeFocus<'a> {
+    pub(super) position: usize,
+    pub(super) size: usize,
+    pub(super) name: Option<&'a ExpandedName>,
+    pub(super) value: Option<&'a str>,
+}
+
 pub(super) fn materialize_literal_attributes(
     attributes: &[LiteralAttribute],
     variables: &RuntimeVariables,
-    context_position: usize,
-    context_size: usize,
-    context_name: Option<&ExpandedName>,
+    focus: LiteralAttributeFocus<'_>,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultAttribute>, ExecutionFailure> {
     let context = AttributeContext {
         variables,
-        focus_position: context_position,
-        focus_size: context_size,
-        context_name,
-        context_value: None,
+        focus_position: focus.position,
+        focus_size: focus.size,
+        context_name: focus.name,
+        context_value: focus.value,
         request_id,
     };
     attributes
@@ -135,6 +147,18 @@ fn materialize_attribute(
         LiteralAttributeValue::ContextLocalName => context
             .context_name
             .map_or_else(String::new, |name| name.local.clone()),
+        LiteralAttributeValue::ContextStringValue => context
+            .context_value
+            .ok_or_else(|| {
+                failure_at(
+                    "XPDY0002",
+                    FailureCategory::Invalid,
+                    Some(context.request_id),
+                    location.clone(),
+                    "the context item is absent for the attribute value template",
+                )
+            })?
+            .to_owned(),
         LiteralAttributeValue::ContextIntegerIncrement(increment) => {
             let lexical = context.context_value.ok_or_else(|| {
                 failure_at(
