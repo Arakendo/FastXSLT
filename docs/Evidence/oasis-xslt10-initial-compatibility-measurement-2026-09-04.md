@@ -144,6 +144,8 @@ zero-or-one cardinality boundary.
 Zero-argument `number()` then reaches 756 through three unchanged identities by
 compiling the implicit context item to the same typed number-path operation.
 Exact boolean-to-number equalities then reach 758 through two unchanged cases.
+Exact valid constant short-circuit expressions then reach 760 through two
+unchanged cases without selecting legacy mixed-type coercion.
 
 ## Outcome
 

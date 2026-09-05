@@ -563,6 +563,12 @@ Exact source-free equalities between `number(true())` or `number(false())` and
 their `1` or `0` numeric values may compile directly to a typed boolean
 constant. This does not admit general numeric comparison or runtime coercion.
 
+The exact valid constant short-circuit forms `false() and 1 div 0` and
+`true() or 1 div 0` may likewise compile to typed boolean constants. This
+preserves the shared lazy boolean result without evaluating the unreachable
+operand, but does not admit arbitrary partial expressions or legacy mixed-type
+coercion.
+
 Recognized valid expression families that exceed the admitted evaluator remain
 engine-unsupported rather than being forced through the location-path parser.
 The global `QName()` constructor is one such boundary: it is classified before

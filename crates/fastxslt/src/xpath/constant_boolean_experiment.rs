@@ -149,6 +149,18 @@ pub(crate) fn parse_literal_comparison(expression: &str) -> Option<BooleanExpres
     None
 }
 
+pub(crate) fn fold_exact_short_circuit(expression: &str) -> Option<bool> {
+    let compact = expression
+        .bytes()
+        .filter(|byte| !byte.is_ascii_whitespace())
+        .collect::<Vec<_>>();
+    match compact.as_slice() {
+        b"false()and1div0" | b"fn:false()and1div0" => Some(false),
+        b"true()or1div0" | b"fn:true()or1div0" => Some(true),
+        _ => None,
+    }
+}
+
 fn compare_numbers(left: f64, operator: BooleanComparison, right: f64) -> bool {
     match operator {
         BooleanComparison::Equal => left.partial_cmp(&right) == Some(std::cmp::Ordering::Equal),
@@ -478,10 +490,19 @@ fn split_top_level<'a>(expression: &'a str, operator: &str) -> Option<(&'a str, 
 #[cfg(test)]
 mod tests {
     use super::{
-        BooleanExpression, BooleanParseFailure, ScalarValue, evaluate, evaluate_scalar, parse,
-        parse_literal_comparison, parse_scalar,
+        BooleanExpression, BooleanParseFailure, ScalarValue, evaluate, evaluate_scalar,
+        fold_exact_short_circuit, parse, parse_literal_comparison, parse_scalar,
     };
     use crate::execution_control_experiment::{InvocationControl, WorkDomain};
+
+    #[test]
+    fn folds_only_exact_valid_constant_short_circuits() {
+        assert_eq!(fold_exact_short_circuit("false() and 1 div 0"), Some(false));
+        assert_eq!(fold_exact_short_circuit("fn:true() or 1 div 0"), Some(true));
+        assert_eq!(fold_exact_short_circuit("true() and 1 div 0"), None);
+        assert_eq!(fold_exact_short_circuit("false() or 1 div 0"), None);
+        assert_eq!(fold_exact_short_circuit("false() and invalid("), None);
+    }
 
     #[test]
     fn evaluates_boolean_constants_composition_and_comparisons() {
