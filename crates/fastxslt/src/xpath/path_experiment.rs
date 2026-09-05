@@ -86,6 +86,9 @@ pub(crate) enum PathStep {
     DescendantOrSelfNamed(String),
     DescendantOrSelfAnyElement,
     DescendantOrSelfAnyNode,
+    FollowingNamed(String),
+    FollowingAnyElement,
+    FollowingAnyNode,
     FollowingSiblingNamed(String),
     FollowingSiblingAnyElement,
     FollowingSiblingAnyNode,
@@ -109,6 +112,7 @@ impl PathStep {
             | Self::SelfNamed(value)
             | Self::DescendantNamed(value)
             | Self::DescendantOrSelfNamed(value)
+            | Self::FollowingNamed(value)
             | Self::FollowingSiblingNamed(value)
             | Self::PrecedingNamed(value)
             | Self::PrecedingSiblingNamed(value) => value.capacity(),
@@ -175,6 +179,14 @@ impl PathStep {
                 "node()" => Some(Self::FollowingSiblingAnyNode),
                 "text()" => None,
                 _ => Some(Self::FollowingSiblingNamed(name_test.to_owned())),
+            };
+        }
+        if let Some(name_test) = value.strip_prefix("following::") {
+            return match name_test {
+                "*" => Some(Self::FollowingAnyElement),
+                "node()" => Some(Self::FollowingAnyNode),
+                "text()" => None,
+                _ => Some(Self::FollowingNamed(name_test.to_owned())),
             };
         }
         if let Some(name_test) = value.strip_prefix("preceding::") {
@@ -256,6 +268,13 @@ impl PathStep {
         )
     }
 
+    fn uses_following_axis(&self) -> bool {
+        matches!(
+            self,
+            Self::FollowingNamed(_) | Self::FollowingAnyElement | Self::FollowingAnyNode
+        )
+    }
+
     fn uses_preceding_axis(&self) -> bool {
         matches!(
             self,
@@ -283,6 +302,7 @@ impl PartialEq<&str> for PathStep {
             | Self::SelfNamed(value)
             | Self::DescendantNamed(value)
             | Self::DescendantOrSelfNamed(value)
+            | Self::FollowingNamed(value)
             | Self::FollowingSiblingNamed(value)
             | Self::PrecedingNamed(value)
             | Self::PrecedingSiblingNamed(value) => value == *other,
@@ -294,6 +314,7 @@ impl PartialEq<&str> for PathStep {
             | Self::SelfAnyElement
             | Self::DescendantAnyElement
             | Self::DescendantOrSelfAnyElement
+            | Self::FollowingAnyElement
             | Self::FollowingSiblingAnyElement
             | Self::PrecedingAnyElement
             | Self::PrecedingSiblingAnyElement => *other == "*",
@@ -302,6 +323,7 @@ impl PartialEq<&str> for PathStep {
             | Self::SelfAnyNode
             | Self::DescendantAnyNode
             | Self::DescendantOrSelfAnyNode
+            | Self::FollowingAnyNode
             | Self::FollowingSiblingAnyNode
             | Self::PrecedingAnyNode
             | Self::PrecedingSiblingAnyNode => *other == "node()",
@@ -537,6 +559,7 @@ fn has_unadmitted_name_test(step: &str) -> bool {
         .or_else(|| step.strip_prefix("self::"))
         .or_else(|| step.strip_prefix("descendant::"))
         .or_else(|| step.strip_prefix("descendant-or-self::"))
+        .or_else(|| step.strip_prefix("following::"))
         .or_else(|| step.strip_prefix("following-sibling::"))
         .or_else(|| step.strip_prefix("preceding::"))
         .or_else(|| step.strip_prefix("preceding-sibling::"))
@@ -904,6 +927,7 @@ pub(crate) fn evaluate_location_path_controlled(
                 if (step_index != 0 || !path.origin.is_leading_descendant())
                     && !step.uses_descendant_axis()
                     && !step.uses_descendant_or_self_axis()
+                    && !step.uses_following_axis()
                     && !step.uses_preceding_axis()
                 {
                     control.charge(WorkDomain::XPathNodeVisit, 1)?;
@@ -994,6 +1018,8 @@ fn step_candidates(
         descendant_nodes(document, node, control)
     } else if step.uses_descendant_or_self_axis() {
         descendant_or_self_nodes(document, node, control)
+    } else if step.uses_following_axis() {
+        following_nodes(document, node, control)
     } else if step.uses_following_sibling_axis() {
         Ok(following_siblings(document, node))
     } else if step.uses_preceding_axis() {
@@ -1027,6 +1053,7 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
         | PathStep::SelfAnyElement
         | PathStep::DescendantAnyElement
         | PathStep::DescendantOrSelfAnyElement
+        | PathStep::FollowingAnyElement
         | PathStep::FollowingSiblingAnyElement
         | PathStep::PrecedingAnyElement
         | PathStep::PrecedingSiblingAnyElement => document.kind(child) == NodeKind::Element,
@@ -1035,6 +1062,7 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
         | PathStep::SelfAnyNode
         | PathStep::DescendantAnyNode
         | PathStep::DescendantOrSelfAnyNode
+        | PathStep::FollowingAnyNode
         | PathStep::FollowingSiblingAnyNode
         | PathStep::PrecedingAnyNode
         | PathStep::PrecedingSiblingAnyNode => true,
@@ -1073,6 +1101,7 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
         }
         PathStep::DescendantNamed(required)
         | PathStep::DescendantOrSelfNamed(required)
+        | PathStep::FollowingNamed(required)
         | PathStep::FollowingSiblingNamed(required)
         | PathStep::PrecedingNamed(required)
         | PathStep::PrecedingSiblingNamed(required) => {
@@ -1095,6 +1124,22 @@ fn following_siblings(document: &Document, context: NodeId) -> Vec<NodeId> {
         .skip_while(|candidate| *candidate != context)
         .skip(1)
         .collect()
+}
+
+fn following_nodes(
+    document: &Document,
+    context: NodeId,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ControlFailure> {
+    let descendants: HashSet<_> = descendant_nodes(document, context, control)?
+        .into_iter()
+        .collect();
+    let context_order = document.document_order(context);
+    let mut following = descendant_nodes(document, document.document_node(), control)?;
+    following.retain(|candidate| {
+        document.document_order(*candidate) > context_order && !descendants.contains(candidate)
+    });
+    Ok(following)
 }
 
 fn preceding_siblings(document: &Document, context: NodeId) -> Vec<NodeId> {

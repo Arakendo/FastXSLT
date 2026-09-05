@@ -94,6 +94,9 @@ The following
 [reverse-axis tranche](oasis-xslt10-reverse-axis-tranche-2026-09-04.md)
 raises it to 686 through 24 unchanged passes with reverse-axis positional
 semantics.
+The following
+[following-axis tranche](oasis-xslt10-following-axis-tranche-2026-09-04.md)
+raises it to 694 through eight unchanged forward-axis passes.
 
 ## Outcome
 

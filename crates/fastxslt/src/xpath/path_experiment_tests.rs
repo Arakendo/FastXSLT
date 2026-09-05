@@ -119,6 +119,36 @@ fn reverse_axes_apply_positions_in_axis_order_then_normalize_document_order() {
 }
 
 #[test]
+fn following_axis_excludes_context_descendants_and_applies_forward_positions() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root><context><excluded/></context><after><inside/></after><tail/></root>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let context = document.children(root)[0];
+    let all = parse_location_path("following::*", location()).expect("following path");
+    let first = parse_location_path("following::*[1]", location()).expect("first following path");
+    let last =
+        parse_location_path("following::*[last()]", location()).expect("last following path");
+
+    let names = |path| {
+        evaluate_location_path(&document, context, path)
+            .into_iter()
+            .map(|node| document.name(node).expect("selected element").local.clone())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(names(&all), ["after", "inside", "tail"]);
+    assert_eq!(names(&first), ["after"]);
+    assert_eq!(names(&last), ["tail"]);
+}
+
+#[test]
 fn selects_the_context_item_without_navigation() {
     let parsed = parse_document(
         "memory:source.xml",

@@ -265,6 +265,9 @@ public version-mode contract.
 - [x] Add work-charged `preceding-sibling` and `preceding` axes with correct
   reverse-axis positional semantics, raising the lower bound to 686 through 24
   unchanged passes.
+- [x] Add a work-charged `following` axis with context-descendant exclusion and
+  forward positional semantics, raising the lower bound to 694 through eight
+  unchanged passes.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -395,6 +398,9 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Shared `preceding-sibling` and `preceding` path axes raised the
   lower bound from 662 to 686. All 24 newly initialized cases pass; reverse-axis
   positions are applied before ordinary document-order normalization.
+- 2026-09-04 -- The shared `following` path axis raised the lower bound from
+  686 to 694. All eight newly initialized cases pass without changing any
+  mismatch, comparator-gap, runtime-failure, or unexpected-success count.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated
