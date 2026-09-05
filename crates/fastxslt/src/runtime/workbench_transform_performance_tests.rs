@@ -1,4 +1,4 @@
-use std::{hint::black_box, time::Instant};
+use std::{fmt::Write as _, hint::black_box, time::Instant};
 
 use crate::execution_control_experiment::WorkDomain;
 use crate::xpath::decimal_sum_for_experiment::{
@@ -184,6 +184,20 @@ fn measure_text_heavy_transform_phases() {
 }
 
 #[cfg(feature = "allocation-observation")]
+#[test]
+#[ignore = "manual release-mode namespace-heavy execution and serialization attribution"]
+fn measure_namespace_heavy_transform_phases() {
+    for (depth, iterations) in [(8_usize, 2_000_usize), (24, 500), (48, 100)] {
+        let engine = build_namespace_heavy_engine(depth, 8);
+        measure_engine_phases(
+            &engine,
+            &format!("namespace-heavy-depth-{depth}"),
+            iterations,
+        );
+    }
+}
+
+#[cfg(feature = "allocation-observation")]
 fn measure_engine_phases(engine: &ExperimentalEngine, request: &str, iterations: usize) {
     let expected = engine.transform(request).expect("warm measured transform");
     let document = engine
@@ -336,4 +350,40 @@ fn build_text_heavy_engine(bytes: usize) -> ExperimentalEngine {
         limits,
     )
     .expect("build text-heavy measured engine")
+}
+
+#[cfg(feature = "allocation-observation")]
+fn build_namespace_heavy_engine(depth: usize, bindings_per_element: usize) -> ExperimentalEngine {
+    let mut stylesheet = String::from(
+        r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/">"#,
+    );
+    for level in 0..depth {
+        write!(&mut stylesheet, "<p{level}_0:e{level}").expect("write namespace fixture");
+        for binding in 0..bindings_per_element {
+            write!(
+                &mut stylesheet,
+                " xmlns:p{level}_{binding}=\"urn:fastxslt:namespace-heavy:{level}:{binding}\""
+            )
+            .expect("write namespace binding");
+        }
+        write!(&mut stylesheet, " p{level}_0:a=\"{level}\">").expect("write namespace attribute");
+    }
+    stylesheet.push_str("payload");
+    for level in (0..depth).rev() {
+        write!(&mut stylesheet, "</p{level}_0:e{level}>").expect("write namespace fixture close");
+    }
+    stylesheet.push_str("</xsl:template></xsl:stylesheet>");
+    let limits = WorkbenchLimits {
+        max_resource_bytes: stylesheet.len() + 1_024,
+        max_xml_depth: depth + 8,
+        ..WorkbenchLimits::default()
+    };
+    ExperimentalEngine::new(
+        format!("urn:fastxslt:namespace-heavy:{depth}:source"),
+        b"<root/>".to_vec(),
+        format!("urn:fastxslt:namespace-heavy:{depth}:stylesheet"),
+        stylesheet.into_bytes(),
+        limits,
+    )
+    .expect("build namespace-heavy measured engine")
 }

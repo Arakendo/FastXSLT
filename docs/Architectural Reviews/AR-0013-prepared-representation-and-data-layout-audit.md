@@ -390,3 +390,7 @@ provide a concrete hypothesis to test.
   removed 5,001 allocation requests but increased the largest allocation
   observation and produced mixed longer ASP.NET results. The complete
   production implementation was restored and the negative result recorded.
+- 2026-09-05 -- Added a namespace-heavy depth fixture. Doubling depth from 24
+  to 48 with eight new bindings per element increased construction about 3.9x
+  and serialization about 6.4x, nominating separate serializer-scope and
+  result-tree namespace-retention experiments without admitting either.

@@ -335,8 +335,14 @@ static-range execution into a caller-owned result vector was measured and
 rejected: it removed 5,001 allocation requests at 5,000 items but increased the
 largest allocation observation and its longer ASP.NET A/B ranged from 6.3%
 faster to 3.0% slower. Broader result construction remains open only for a
-materially different candidate. Namespace-scope work still lacks its required
-targeted fixture. No follow-up accepts a new architecture or authorizes a
-shortcut around resource accounting.
+materially different candidate. A namespace-heavy fixture now confirms
+superlinear construction and serialization pressure: doubling depth from 24 to
+48 with eight new bindings per level increased serialization about 6.4x and
+serializer allocations about 3.9x. This nominates the safe scope-stack
+comparison, but also shows separate result-tree namespace retention pressure.
+No follow-up accepts a new architecture or authorizes a shortcut around
+resource accounting.
 
 [Result-destination negative evidence](../Evidence/static-range-result-destination-experiment-2026-09-05.md)
+
+[Namespace-scope fixture evidence](../Evidence/namespace-scope-scaling-fixture-2026-09-05.md)

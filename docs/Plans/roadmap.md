@@ -35,6 +35,15 @@ candidate remains unadmitted.
 [Work-control evidence](../Evidence/for-004-work-control-shape-2026-09-04.md)
 [Result/text evidence](../Evidence/result-and-text-heavy-performance-fixtures-2026-09-05.md)
 [Result-destination evidence](../Evidence/static-range-result-destination-experiment-2026-09-05.md)
+[Namespace-scope evidence](../Evidence/namespace-scope-scaling-fixture-2026-09-05.md)
+
+The namespace-heavy performance fixture now supplies the missing pressure for a
+safe serializer scope-stack comparison. With eight new bindings per level,
+depth 24 to 48 doubled result bytes but increased semantic construction about
+3.9x and serialization about 6.4x. Because the result tree itself also retains
+growing namespace vectors, serializer scope composition and result-tree
+namespace ownership must be attributed separately; neither representation is
+admitted yet.
 
 The
 [second adversarial engine review](../Reviews/adversarial-engine-review-2026-09-03.md)
