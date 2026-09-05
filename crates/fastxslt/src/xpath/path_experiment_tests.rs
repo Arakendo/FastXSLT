@@ -300,6 +300,17 @@ fn abbreviated_self_step_composes_inside_a_path() {
 }
 
 #[test]
+fn axis_separator_allows_xpath_whitespace() {
+    let child = parse_location_path("child \t::\r\n sub", location())
+        .expect("whitespace before and after the child-axis separator should parse");
+    let attribute = parse_location_path("attribute :: *", location())
+        .expect("whitespace around the attribute-axis separator should parse");
+
+    assert_eq!(child.steps, ["sub"]);
+    assert_eq!(attribute.steps, ["*"]);
+}
+
+#[test]
 fn explicit_context_descendant_path_stays_inside_the_context_subtree() {
     let parsed = parse_document(
         "memory:source.xml",

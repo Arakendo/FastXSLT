@@ -834,6 +834,10 @@ when it is the complete expression and the abbreviated `self::node()` step when
 composed after another step. The latter uses the ordinary charged self-axis
 evaluation and document-order normalization; it does not introduce a separate
 compatibility evaluator or admit general filter-expression composition.
+XPath tab, line-feed, carriage-return, and space characters may surround the
+`::` axis separator. Compilation removes only that token-boundary whitespace
+before normal axis-name, node-test, and QName validation; it does not loosen
+whitespace handling inside those tokens.
 When no output method is declared, an XHTML-namespaced `html` document element
 selects the XHTML serializer and its content-type behavior. A null-namespace
 `html` selects the still-unsupported HTML method; the two inference rules must

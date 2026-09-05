@@ -529,7 +529,10 @@ pub(crate) fn parse_location_path(
         });
     }
 
-    let (steps, step_position_predicates) = parsed_steps.expect("checked above");
+    let (mut steps, step_position_predicates) = parsed_steps.expect("checked above");
+    for step in &mut steps {
+        normalize_axis_separator_whitespace(step);
+    }
     validate_unambiguous_step_syntax(&steps, expression, &location)?;
     if steps.iter().any(|step| has_unadmitted_name_test(step)) {
         if steps.iter().any(|step| {
@@ -558,6 +561,21 @@ pub(crate) fn parse_location_path(
         step_position_predicates,
         location,
     })
+}
+
+fn normalize_axis_separator_whitespace(step: &mut String) {
+    let Some((axis, node_test)) = step.split_once("::") else {
+        return;
+    };
+    let axis = axis.trim_end_matches(is_xpath_whitespace);
+    let node_test = node_test.trim_start_matches(is_xpath_whitespace);
+    if axis.len() + 2 + node_test.len() != step.len() {
+        *step = format!("{axis}::{node_test}");
+    }
+}
+
+fn is_xpath_whitespace(character: char) -> bool {
+    matches!(character, '\u{9}' | '\u{A}' | '\u{D}' | ' ')
 }
 
 /// Parses the deliberately narrow qualified-child path needed by static `XPath`

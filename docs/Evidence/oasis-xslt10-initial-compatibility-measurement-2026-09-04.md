@@ -118,6 +118,10 @@ The following
 [composed context-step tranche](oasis-xslt10-composed-context-step-tranche-2026-09-04.md)
 raises it to 729 by treating `.` inside a path as the standard abbreviated
 `self::node()` step.
+The following
+[axis-separator whitespace tranche](oasis-xslt10-axis-separator-whitespace-tranche-2026-09-04.md)
+raises it to 731 through two unchanged attribute-axis cases while retaining one
+newly exposed multi-node conversion boundary.
 
 ## Outcome
 

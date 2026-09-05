@@ -286,6 +286,9 @@ public version-mode contract.
 - [x] Compose `.` as the shared abbreviated `self::node()` path step, raising
   the lower bound to 729 through unchanged `axes98` without a compatibility
   evaluator.
+- [x] Recognize XPath whitespace around the shared `::` axis separator,
+  raising the lower bound to 731 through two unchanged attribute-axis passes
+  while retaining modern multi-node conversion behavior.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -438,6 +441,10 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- The shared path grammar now composes `.` as abbreviated
   `self::node()`, raising the lower bound from 728 to 729 through unchanged
   `axes98` without changing any later-failure or wrong-answer category.
+- 2026-09-04 -- XPath whitespace around the `::` axis separator raised the
+  lower bound from 729 to 731. Two cases pass; a third retains the visible
+  modern multi-node conversion boundary rather than taking the legacy first
+  node.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

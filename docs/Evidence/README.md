@@ -256,6 +256,7 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Preceding Node-Kind Tranche](oasis-xslt10-preceding-node-kind-tranche-2026-09-04.md)
 - [OASIS XSLT 1.0 Static AVT Brace-Escaping Tranche](oasis-xslt10-static-avt-brace-escaping-tranche-2026-09-04.md)
 - [OASIS XSLT 1.0 Composed Context-Step Tranche](oasis-xslt10-composed-context-step-tranche-2026-09-04.md)
+- [OASIS XSLT 1.0 Axis-Separator Whitespace Tranche](oasis-xslt10-axis-separator-whitespace-tranche-2026-09-04.md)
 - [AR-0016 Source Access Inventory and Safe Reference](ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md)
 - [AR-0016 Visibility-View Prototype](ar-0016-visibility-view-prototype-2026-08-30.md)
 - [Peer Review: AR-0016 Decision Readiness](peer-ar-0016-decision-readiness-monday-2026-08-30.md)
