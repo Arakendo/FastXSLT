@@ -218,11 +218,14 @@ evaluator.
 Compile-selected XPath 1.0 literal division by zero then reaches 776 through
 three expected-result matches carrying suite doubts metadata. The modern
 decimal expressions remain errors, and runtime has no version branch.
+Compile-selected numeric conversion for ordered literal comparisons then
+reaches 777 through one further doubt-annotated expected-result match while
+retaining the modern mixed-type boundary.
 It retains
 19 comparator gaps and 35
 supplemental-data cases as explicitly not admitted, and gives every other case
 a structured initialization, execution, or infrastructure observation. This
-is a strict 28.30% lower bound over the suite's 2,742 standard-operation cases,
+is a strict 28.34% lower bound over the suite's 2,742 standard-operation cases,
 not an XSLT 1.0 conformance claim. The initial sweep also found and drove a shared
 source-node-variable path repair, so AR-0019 now studies whether legacy
 compatibility can progress on the modern compiler/runtime rather than through a
@@ -258,6 +261,7 @@ second engine.
 [Number/string equality evidence](../Evidence/oasis-xslt10-number-string-equality-tranche-2026-09-05.md)
 [Literal boolean-composition evidence](../Evidence/oasis-xslt10-source-free-literal-boolean-composition-2026-09-05.md)
 [Non-finite literal-division evidence](../Evidence/oasis-xslt10-non-finite-literal-division-2026-09-05.md)
+[Ordered literal-comparison evidence](../Evidence/oasis-xslt10-ordered-literal-comparison-2026-09-05.md)
 [Context name and PI pattern evidence](../Evidence/oasis-xslt10-context-name-and-pi-pattern-tranche-2026-09-04.md)
 [Context expanded-name evidence](../Evidence/oasis-xslt10-context-expanded-name-tranche-2026-09-04.md)
 [Context string evidence](../Evidence/oasis-xslt10-context-string-tranche-2026-09-04.md)
@@ -1804,7 +1808,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 776 expected-result matches after shared construction/copy/path/context-function/focus/node-identity/literal-comparison/static-string-function/constant-numeric, lexical-recognition, and compile-time compatibility tranches plus descendant-pattern, include-order, comment-text, and leading-descendant repairs. The newest three matches retain suite doubts metadata. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 777 expected-result matches after shared construction/copy/path/context-function/focus/node-identity/literal-comparison/static-string-function/constant-numeric, lexical-recognition, and compile-time compatibility tranches plus descendant-pattern, include-order, comment-text, and leading-descendant repairs. The newest four matches retain suite doubts metadata. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -3499,6 +3503,9 @@ host lifecycle.
 - [x] Raise it to 776 through compile-selected XPath 1.0 non-finite literal
   division; retain the doubts metadata on all three expected-result matches and
   prove equivalent modern decimal expressions remain rejected.
+- [x] Raise it to 777 through compile-selected XPath 1.0 numeric conversion for
+  ordered literal comparisons; retain the doubt metadata and modern mixed-type
+  boundary.
 - [ ] Give each standard and expected-error case one reproducible final
   disposition under a versioned local overlay/report, applying duplicate-safe
   identity and doubts/discretionary metadata.

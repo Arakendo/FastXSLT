@@ -588,10 +588,12 @@ only in that legacy compile mode, after which the plan retains an ordinary
 typed boolean constant. Literal finite-number division by literal zero may
 likewise compile to the XPath 1.0 `Infinity`, `-Infinity`, or `NaN` lexical
 result, including its typed effective boolean value. The equivalent modern
-decimal division remains an error, and execution performs no version branch.
-This initial seam does not yet interpret local version declarations, general
-backwards-compatible behavior, path operands, or ordered mixed-type
-comparison.
+decimal division remains an error. Ordered comparisons between source-free
+string and finite-number literals use XPath 1.0 numeric conversion in the
+legacy mode while the equivalent modern mixed-type expression stays outside
+the admitted slice. Execution performs no version branch. This initial seam
+does not yet interpret local version declarations, general backwards-compatible
+behavior, path operands, or non-literal mixed-type comparison.
 
 Recognized valid expression families that exceed the admitted evaluator remain
 engine-unsupported rather than being forced through the location-path parser.

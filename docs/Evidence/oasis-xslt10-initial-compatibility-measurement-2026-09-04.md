@@ -162,6 +162,9 @@ Compile-selected XPath 1.0 non-finite literal division then reaches 776 through
 `boolean37`, `boolean38`, and `boolean39`. Those three expected-result matches
 retain their suite doubts metadata, and equivalent modern decimal expressions
 remain rejected.
+Compile-selected XPath 1.0 ordered literal conversion then reaches 777 through
+`boolean49`. That expected-result match also retains suite doubts metadata, and
+the modern mixed-type expression remains rejected.
 
 ## Outcome
 

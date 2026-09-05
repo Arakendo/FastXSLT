@@ -201,6 +201,32 @@ pub(crate) fn fold_xpath10_mixed_equality(expression: &str) -> Option<bool> {
     Some(comparison == equal)
 }
 
+pub(crate) fn fold_xpath10_ordered_literal_comparison(expression: &str) -> Option<bool> {
+    let expression = strip_balanced_parentheses(expression.trim());
+    for (lexical, operator) in [
+        ("<=", BooleanComparison::LessThanOrEqual),
+        (">=", BooleanComparison::GreaterThanOrEqual),
+        ("<", BooleanComparison::LessThan),
+        (">", BooleanComparison::GreaterThan),
+    ] {
+        let Some((left, right)) = split_top_level(expression, lexical) else {
+            continue;
+        };
+        let (left, left_is_string) = xpath10_ordered_literal_operand(left)?;
+        let (right, right_is_string) = xpath10_ordered_literal_operand(right)?;
+        return (left_is_string || right_is_string).then(|| compare_numbers(left, operator, right));
+    }
+    None
+}
+
+fn xpath10_ordered_literal_operand(source: &str) -> Option<(f64, bool)> {
+    if let Some(value) = parse_string_literal(source) {
+        Some((parse_xpath_number_literal(value).unwrap_or(f64::NAN), true))
+    } else {
+        parse_xpath_number_literal(source).map(|value| (value, false))
+    }
+}
+
 fn xpath10_literal_boolean(source: &str) -> Option<bool> {
     if let Some(value) = parse_string_literal(source) {
         Some(!value.is_empty())
@@ -540,8 +566,8 @@ fn split_top_level<'a>(expression: &'a str, operator: &str) -> Option<(&'a str, 
 mod tests {
     use super::{
         BooleanExpression, BooleanParseFailure, ScalarValue, evaluate, evaluate_scalar,
-        fold_exact_short_circuit, fold_xpath10_mixed_equality, parse, parse_literal_comparison,
-        parse_scalar,
+        fold_exact_short_circuit, fold_xpath10_mixed_equality,
+        fold_xpath10_ordered_literal_comparison, parse, parse_literal_comparison, parse_scalar,
     };
     use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 
@@ -578,6 +604,24 @@ mod tests {
         }
         assert_eq!(fold_xpath10_mixed_equality("true()=false()"), None);
         assert_eq!(fold_xpath10_mixed_equality("true()=value"), None);
+    }
+
+    #[test]
+    fn folds_xpath10_ordered_literals_by_numeric_conversion() {
+        for (source, expected) in [
+            ("'2' > '1'", true),
+            ("'10' > '2'", true),
+            ("2 < '10'", true),
+            ("'not-a-number' <= 4", false),
+        ] {
+            assert_eq!(
+                fold_xpath10_ordered_literal_comparison(source),
+                Some(expected),
+                "{source}"
+            );
+        }
+        assert_eq!(fold_xpath10_ordered_literal_comparison("2 < 10"), None);
+        assert_eq!(fold_xpath10_ordered_literal_comparison("left < '10'"), None);
     }
 
     #[test]

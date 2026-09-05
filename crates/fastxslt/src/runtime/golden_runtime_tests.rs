@@ -1501,6 +1501,43 @@ fn xpath10_non_finite_literal_division_is_selected_at_compilation() {
 }
 
 #[test]
+fn xpath10_ordered_literal_comparison_is_selected_at_compilation() {
+    const SOURCE: &str = "urn:fastxslt:xpath10-ordered-literal:source";
+    const LEGACY: &str = "urn:fastxslt:xpath10-ordered-literal:legacy";
+    const MODERN: &str = "urn:fastxslt:xpath10-ordered-literal:modern";
+    let body = r#"<xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="'2' &gt; '1'"/>|<xsl:value-of select="'10' &gt; '2'"/>|<xsl:value-of select="2 &lt; '10'"/>|<xsl:value-of select="'bad' &lt; 4"/></xsl:template>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 16_384));
+    resources
+        .admit(SOURCE, br"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            LEGACY,
+            format!(r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit legacy stylesheet");
+    resources
+        .admit(
+            MODERN,
+            format!(r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit modern stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, LEGACY).expect("compile XPath 1.0 comparison");
+    compile_resource(&snapshot, MODERN).expect_err("modern mixed comparison stays rejected");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("xpath10-ordered-literal", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute XPath 1.0 comparison");
+    assert_eq!(
+        results.by_request["xpath10-ordered-literal"].serialized,
+        "true|true|true|false"
+    );
+}
+
+#[test]
 fn xpath_constant_integral_numeric_expressions_fold_exact_results() {
     const SOURCE: &str = "urn:fastxslt:integral-functions:source";
     const STYLESHEET: &str = "urn:fastxslt:integral-functions:stylesheet";
