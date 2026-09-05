@@ -276,42 +276,55 @@ fn append_binary_numeric(
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
-    let value =
-        evaluate_binary_numeric(expression, source, context, control).map_err(|failure| {
-            match failure {
-                BinaryNumericEvaluationFailure::Control(failure) => {
-                    control_failure(failure, inputs.request_id)
-                }
-                BinaryNumericEvaluationFailure::Cardinality => failure_at(
-                    "XPTY0004",
-                    FailureCategory::Invalid,
-                    Some(inputs.request_id),
-                    expression.location.clone(),
-                    "binary numeric operands require zero or one selected node",
-                ),
-                BinaryNumericEvaluationFailure::EmptyOperand => failure_at(
-                    "FXRT1022",
-                    FailureCategory::Unsupported,
-                    Some(inputs.request_id),
-                    expression.location.clone(),
-                    "empty binary numeric operands are outside the admitted exact-integer slice",
-                ),
-                BinaryNumericEvaluationFailure::UnsupportedLexical => failure_at(
-                    "FXRT1022",
-                    FailureCategory::Unsupported,
-                    Some(inputs.request_id),
-                    expression.location.clone(),
-                    "binary numeric operands are outside the admitted exact-integer lexical slice",
-                ),
-                BinaryNumericEvaluationFailure::Overflow => failure_at(
-                    "FOAR0002",
-                    FailureCategory::Invalid,
-                    Some(inputs.request_id),
-                    expression.location.clone(),
-                    "binary numeric operation exceeds the checked integer domain",
-                ),
+    let value = evaluate_binary_numeric(expression, source, context, control).map_err(
+        |failure| match failure {
+            BinaryNumericEvaluationFailure::Control(failure) => {
+                control_failure(failure, inputs.request_id)
             }
-        })?;
+            BinaryNumericEvaluationFailure::Cardinality => failure_at(
+                "XPTY0004",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                expression.location.clone(),
+                "binary numeric operands require zero or one selected node",
+            ),
+            BinaryNumericEvaluationFailure::EmptyOperand => failure_at(
+                "FXRT1022",
+                FailureCategory::Unsupported,
+                Some(inputs.request_id),
+                expression.location.clone(),
+                "empty binary numeric operands are outside the admitted exact-integer slice",
+            ),
+            BinaryNumericEvaluationFailure::UnsupportedLexical => failure_at(
+                "FXRT1022",
+                FailureCategory::Unsupported,
+                Some(inputs.request_id),
+                expression.location.clone(),
+                "binary numeric operands are outside the admitted exact-integer lexical slice",
+            ),
+            BinaryNumericEvaluationFailure::DivisionByZero => failure_at(
+                "FXRT1022",
+                FailureCategory::Unsupported,
+                Some(inputs.request_id),
+                expression.location.clone(),
+                "source-dependent division by zero is outside the admitted numeric slice",
+            ),
+            BinaryNumericEvaluationFailure::NonIntegral => failure_at(
+                "FXRT1022",
+                FailureCategory::Unsupported,
+                Some(inputs.request_id),
+                expression.location.clone(),
+                "a non-integral source-dependent quotient is outside the admitted numeric slice",
+            ),
+            BinaryNumericEvaluationFailure::Overflow => failure_at(
+                "FOAR0002",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                expression.location.clone(),
+                "binary numeric operation exceeds the checked integer domain",
+            ),
+        },
+    )?;
     append_text(result, &value, inputs.request_id, control)
 }
 

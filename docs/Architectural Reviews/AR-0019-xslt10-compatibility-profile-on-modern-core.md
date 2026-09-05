@@ -334,6 +334,10 @@ public version-mode contract.
   with a static-context-selected first-node or zero-or-one policy, reaching 782
   through five doubt-annotated expected-result matches without a runtime
   version branch.
+- [x] Extend the same typed plan through whitespace-delimited path subtraction
+  and exact integral path division, reaching 787 through five more
+  doubt-annotated matches while keeping hyphenated names and general numeric
+  division explicit.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 50 known executing comparison
@@ -544,6 +548,10 @@ maintained redistributable legacy suite becomes available.
   expected-result matches from 777 to 782 through five doubt-annotated
   addition/multiplication cases. XSLT 1.0 first-node and modern zero-or-one
   cardinality are selected at compilation; runtime remains shared.
+- 2026-09-05 -- Whitespace-delimited subtraction and exact path division raised
+  the measured expected-result matches from 782 to 787 through five more
+  doubt-annotated cases. The bounded parser distinguishes hyphenated names and
+  retains fractional and zero division as explicit unsupported boundaries.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

@@ -1542,12 +1542,12 @@ fn binary_numeric_paths_share_execution_with_compiled_cardinality_policy() {
     const SOURCE: &str = "urn:fastxslt:binary-numeric:source";
     const LEGACY: &str = "urn:fastxslt:binary-numeric:legacy";
     const MODERN: &str = "urn:fastxslt:binary-numeric:modern";
-    let body = r#"<xsl:output method="text"/><xsl:template match="/"><xsl:apply-templates select="doc"/></xsl:template><xsl:template match="doc"><xsl:value-of select="n1+n2"/>|<xsl:value-of select="(n1/@attrib)*(n2/@attrib)"/></xsl:template>"#;
+    let body = r#"<xsl:output method="text"/><xsl:template match="/"><xsl:apply-templates select="doc"/></xsl:template><xsl:template match="doc"><xsl:value-of select="n1+n2"/>|<xsl:value-of select="(n1/@attrib)*(n2/@attrib)"/>|<xsl:value-of select="n-2 - n-1"/>|<xsl:value-of select="div div mod"/></xsl:template>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 16_384));
     resources
         .admit(
             SOURCE,
-            br"<doc><n1 attrib='5'>3</n1><n1 attrib='100'>100</n1><n2 attrib='5'>6</n2></doc>"
+            br"<doc><n1 attrib='5'>3</n1><n1 attrib='100'>100</n1><n2 attrib='5'>6</n2><n-1>3</n-1><n-2>7</n-2><div>8</div><mod>4</mod></doc>"
                 .to_vec(),
         )
         .expect("admit source");
@@ -1572,7 +1572,7 @@ fn binary_numeric_paths_share_execution_with_compiled_cardinality_policy() {
         .add(request("legacy-binary", "legacy-result", SOURCE))
         .expect("admit legacy request");
     let results = execute_transform_set(legacy_builder.seal()).expect("execute legacy arithmetic");
-    assert_eq!(results.by_request["legacy-binary"].serialized, "9|25");
+    assert_eq!(results.by_request["legacy-binary"].serialized, "9|25|4|2");
 
     let mut modern_builder = TransformSetBuilder::new(snapshot, modern, 1, policy(4_096));
     modern_builder

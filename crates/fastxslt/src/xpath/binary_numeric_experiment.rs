@@ -8,7 +8,9 @@ use super::path_experiment::{LocationPath, evaluate_location_path_controlled};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum BinaryNumericOperator {
     Add,
+    Subtract,
     Multiply,
+    Divide,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -41,6 +43,8 @@ pub(crate) enum BinaryNumericEvaluationFailure {
     Cardinality,
     EmptyOperand,
     UnsupportedLexical,
+    DivisionByZero,
+    NonIntegral,
     Overflow,
 }
 
@@ -52,10 +56,16 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
         match character {
             '(' => depth = depth.checked_add(1)?,
             ')' => depth = depth.checked_sub(1)?,
-            '+' | '*' if depth == 0 => {
+            '+' | '-' | '*' if depth == 0 => {
                 if character == '*'
                     && (expression[..index].ends_with('/')
                         || expression[index + 1..].starts_with('/'))
+                {
+                    continue;
+                }
+                if character == '-'
+                    && !(expression[..index].ends_with(char::is_whitespace)
+                        && expression[index + 1..].starts_with(char::is_whitespace))
                 {
                     continue;
                 }
@@ -64,12 +74,24 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
                 }
                 candidate = Some((
                     index,
-                    if character == '+' {
-                        BinaryNumericOperator::Add
-                    } else {
-                        BinaryNumericOperator::Multiply
+                    match character {
+                        '+' => BinaryNumericOperator::Add,
+                        '-' => BinaryNumericOperator::Subtract,
+                        '*' => BinaryNumericOperator::Multiply,
+                        _ => unreachable!(),
                     },
+                    1,
                 ));
+            }
+            'd' if depth == 0
+                && expression[index..].starts_with("div")
+                && expression[..index].ends_with(char::is_whitespace)
+                && expression[index + 3..].starts_with(char::is_whitespace) =>
+            {
+                if candidate.is_some() {
+                    return None;
+                }
+                candidate = Some((index, BinaryNumericOperator::Divide, 3));
             }
             _ => {}
         }
@@ -77,8 +99,8 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
     if depth != 0 {
         return None;
     }
-    let (index, operator) = candidate?;
-    let right_index = index + expression[index..].chars().next()?.len_utf8();
+    let (index, operator, operator_width) = candidate?;
+    let right_index = index + operator_width;
     let left = strip_balanced_parentheses(expression[..index].trim());
     let right = strip_balanced_parentheses(expression[right_index..].trim());
     (!left.is_empty() && !right.is_empty()).then_some((left, operator, right))
@@ -107,12 +129,39 @@ pub(crate) fn evaluate(
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(BinaryNumericEvaluationFailure::Control)?;
-    let value = match expression.operator {
-        BinaryNumericOperator::Add => left.checked_add(right),
-        BinaryNumericOperator::Multiply => left.checked_mul(right),
-    }
-    .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
+    let value = apply_operator(left, expression.operator, right)?;
     Ok(value.to_string())
+}
+
+fn apply_operator(
+    left: i128,
+    operator: BinaryNumericOperator,
+    right: i128,
+) -> Result<i128, BinaryNumericEvaluationFailure> {
+    match operator {
+        BinaryNumericOperator::Add => left
+            .checked_add(right)
+            .ok_or(BinaryNumericEvaluationFailure::Overflow),
+        BinaryNumericOperator::Subtract => left
+            .checked_sub(right)
+            .ok_or(BinaryNumericEvaluationFailure::Overflow),
+        BinaryNumericOperator::Multiply => left
+            .checked_mul(right)
+            .ok_or(BinaryNumericEvaluationFailure::Overflow),
+        BinaryNumericOperator::Divide if right == 0 => {
+            Err(BinaryNumericEvaluationFailure::DivisionByZero)
+        }
+        BinaryNumericOperator::Divide => {
+            let remainder = left
+                .checked_rem(right)
+                .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
+            if remainder != 0 {
+                return Err(BinaryNumericEvaluationFailure::NonIntegral);
+            }
+            left.checked_div(right)
+                .ok_or(BinaryNumericEvaluationFailure::Overflow)
+        }
+    }
 }
 
 fn operand_value(
@@ -175,10 +224,12 @@ fn strip_balanced_parentheses(mut expression: &str) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use super::{BinaryNumericOperator, split_paths};
+    use super::{
+        BinaryNumericEvaluationFailure, BinaryNumericOperator, apply_operator, split_paths,
+    };
 
     #[test]
-    fn splits_only_one_top_level_addition_or_multiplication() {
+    fn splits_only_one_bounded_top_level_operator() {
         assert_eq!(
             split_paths("n1+n2"),
             Some(("n1", BinaryNumericOperator::Add, "n2"))
@@ -187,8 +238,29 @@ mod tests {
             split_paths("(n1/@a) * (n2/@a)"),
             Some(("n1/@a", BinaryNumericOperator::Multiply, "n2/@a"))
         );
+        assert_eq!(
+            split_paths("n-2 - n-1"),
+            Some(("n-2", BinaryNumericOperator::Subtract, "n-1"))
+        );
+        assert_eq!(
+            split_paths("div div mod"),
+            Some(("div", BinaryNumericOperator::Divide, "mod"))
+        );
         for expression in ["n1", "n1+n2+n3", "(n1+n2)", "n1/ *", "/*/"] {
             assert_eq!(split_paths(expression), None, "{expression}");
         }
+    }
+
+    #[test]
+    fn exact_division_refuses_fractional_and_zero_results() {
+        assert_eq!(apply_operator(8, BinaryNumericOperator::Divide, 4), Ok(2));
+        assert_eq!(
+            apply_operator(7, BinaryNumericOperator::Divide, 4),
+            Err(BinaryNumericEvaluationFailure::NonIntegral)
+        );
+        assert_eq!(
+            apply_operator(7, BinaryNumericOperator::Divide, 0),
+            Err(BinaryNumericEvaluationFailure::DivisionByZero)
+        );
     }
 }

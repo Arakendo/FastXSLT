@@ -544,14 +544,16 @@ parsing or version dispatch. Fractional results, division by zero, overflow,
 NaN/infinity, and path-dependent operands remain explicit boundaries rather
 than being approximated through binary floating point.
 
-A separate bounded binary-numeric plan admits `+` and `*` between two typed
-location paths. The compiler retains both paths and selects operand cardinality
-from stylesheet static context: XSLT 1.0 uses the first node in document order,
-while the modern mode requires zero or one node. Runtime evaluates both paths
-under ordinary work control and performs checked integer arithmetic without a
-version branch. Empty operands, non-integer lexicals, overflow, other
-operators, chained expressions, numeric promotion, and general atomization
-remain outside this initial form.
+A separate bounded binary-numeric plan admits `+`, `*`, whitespace-delimited
+`-`, and token-delimited `div` between two typed location paths. The compiler
+retains both paths and selects operand cardinality from stylesheet static
+context: XSLT 1.0 uses the first node in document order, while the modern mode
+requires zero or one node. Runtime evaluates both paths under ordinary work
+control and performs checked integer arithmetic without a version branch.
+Division is admitted only for a nonzero, exactly integral quotient. Empty
+operands, non-integer lexicals, overflow, fractional or zero division, unary or
+chained expressions, numeric promotion, and general atomization remain outside
+this initial form.
 
 `number()` around one source-free finite decimal literal or quoted finite
 decimal lexical value may likewise be folded to its canonical decimal string.

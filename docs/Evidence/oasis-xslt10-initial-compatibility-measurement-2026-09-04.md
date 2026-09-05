@@ -169,6 +169,9 @@ Typed source-dependent addition and multiplication then reach 782 through
 `math55` to `math59`. The compiler selects XPath 1.0 first-node conversion or
 modern zero-or-one cardinality before execution; all five newly matched cases
 retain their suite doubts metadata.
+Whitespace-delimited path subtraction and exact integral path division then
+reach 787 through `math61` and `math71` to `math74`. Hyphens in element names
+remain distinct from subtraction, and all five matches retain doubts metadata.
 
 ## Outcome
 
