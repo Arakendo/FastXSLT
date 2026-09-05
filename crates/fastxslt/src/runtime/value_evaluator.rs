@@ -282,27 +282,26 @@ fn append_document_boolean(
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
-    let (source, _) = required_source_context(inputs, context)?;
-    let value =
-        evaluate_document_boolean(expression, source, control).map_err(|evaluation_failure| {
-            match evaluation_failure {
-                EffectiveBooleanFailure::Control(control) => {
-                    control_failure(control, inputs.request_id)
-                }
-                EffectiveBooleanFailure::InvalidTypeOrCardinality => failure(
-                    "FORG0006",
-                    FailureCategory::Invalid,
-                    Some(inputs.request_id),
-                    "effective boolean value is undefined for the supplied sequence",
-                ),
-                EffectiveBooleanFailure::Path(_) | EffectiveBooleanFailure::Unsupported => failure(
-                    "FXRT1020",
-                    FailureCategory::Unsupported,
-                    Some(inputs.request_id),
-                    "compiled document-aware boolean expression violated its runtime contract",
-                ),
+    let (source, context) = required_source_context(inputs, context)?;
+    let value = evaluate_document_boolean(expression, source, context, control).map_err(
+        |evaluation_failure| match evaluation_failure {
+            EffectiveBooleanFailure::Control(control) => {
+                control_failure(control, inputs.request_id)
             }
-        })?;
+            EffectiveBooleanFailure::InvalidTypeOrCardinality => failure(
+                "FORG0006",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                "effective boolean value is undefined for the supplied sequence",
+            ),
+            EffectiveBooleanFailure::Path(_) | EffectiveBooleanFailure::Unsupported => failure(
+                "FXRT1020",
+                FailureCategory::Unsupported,
+                Some(inputs.request_id),
+                "compiled document-aware boolean expression violated its runtime contract",
+            ),
+        },
+    )?;
     append_boolean(inputs, value, result, control)
 }
 

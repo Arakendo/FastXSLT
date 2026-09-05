@@ -315,6 +315,8 @@ public version-mode contract.
 - [x] Fold exact valid constant short-circuit expressions, raising the lower
   bound to 760 through two unchanged cases without selecting legacy mixed-type
   coercion.
+- [x] Preserve dynamic context for relative boolean name paths, raising the
+  lower bound to 762 through two unchanged cases in the shared evaluator.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 50 known executing comparison
@@ -500,6 +502,9 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Exact valid constant short-circuit folding raised the lower
   bound from 758 to 760 through two unchanged cases while leaving mixed-type
   XPath 1.0 coercion behind the explicit version boundary.
+- 2026-09-04 -- Relative boolean name-path evaluation raised the lower bound
+  from 760 to 762 through two unchanged cases and repaired the shared runtime's
+  accidental document-node rebinding.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

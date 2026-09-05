@@ -569,6 +569,13 @@ preserves the shared lazy boolean result without evaluating the unreachable
 operand, but does not admit arbitrary partial expressions or legacy mixed-type
 coercion.
 
+Document-aware effective-boolean-value paths execute from the caller's actual
+dynamic context. A document-rooted caller supplies the document node
+explicitly; a template-scoped relative path must not be silently rebound to
+that node. The conservative value-expression recognizer currently admits
+unqualified relative name paths in addition to the previously admitted
+document-aware path shapes.
+
 Recognized valid expression families that exceed the admitted evaluator remain
 engine-unsupported rather than being forced through the location-path parser.
 The global `QName()` constructor is one such boundary: it is classified before

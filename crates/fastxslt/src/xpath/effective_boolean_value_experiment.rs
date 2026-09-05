@@ -54,11 +54,27 @@ impl DocumentBooleanExpression {
 
 pub(crate) fn recognizes(expression: &str) -> bool {
     let expression = expression.trim();
-    (expression.starts_with("not(")
+    let is_boolean_call = expression.starts_with("not(")
         || expression.starts_with("fn:not(")
         || expression.starts_with("boolean(")
-        || expression.starts_with("fn:boolean("))
-        && contains_unquoted_slash(expression)
+        || expression.starts_with("fn:boolean(");
+    is_boolean_call
+        && (contains_unquoted_slash(expression)
+            || function_argument(expression, &["not", "fn:not", "boolean", "fn:boolean"])
+                .is_some_and(is_unqualified_name))
+}
+
+fn is_unqualified_name(argument: &str) -> bool {
+    let mut characters = argument.trim().chars();
+    characters
+        .next()
+        .is_some_and(|character| character == '_' || character.is_ascii_alphabetic())
+        && characters.all(|character| {
+            character == '_'
+                || character == '-'
+                || character == '.'
+                || character.is_ascii_alphanumeric()
+        })
 }
 
 fn contains_unquoted_slash(expression: &str) -> bool {
@@ -104,12 +120,13 @@ pub(crate) fn evaluate(
     control: &mut InvocationControl,
 ) -> Result<bool, EffectiveBooleanFailure> {
     let expression = parse(expression, location)?;
-    evaluate_compiled(&expression, document, control)
+    evaluate_compiled(&expression, document, document.document_node(), control)
 }
 
 pub(crate) fn evaluate_compiled(
     expression: &DocumentBooleanExpression,
     document: &Document,
+    context: crate::xdm::owned_tree_experiment::NodeId,
     control: &mut InvocationControl,
 ) -> Result<bool, EffectiveBooleanFailure> {
     control
@@ -120,13 +137,8 @@ pub(crate) fn evaluate_compiled(
         match item {
             DocumentBooleanItem::Atomic(item) => items.push(*item),
             DocumentBooleanItem::Path(path) => {
-                let nodes = evaluate_location_path_controlled(
-                    document,
-                    document.document_node(),
-                    path,
-                    control,
-                )
-                .map_err(EffectiveBooleanFailure::Control)?;
+                let nodes = evaluate_location_path_controlled(document, context, path, control)
+                    .map_err(EffectiveBooleanFailure::Control)?;
                 items.extend(nodes.into_iter().map(|_| EffectiveItem::Node));
             }
         }
