@@ -307,6 +307,13 @@ matching named-element sibling sequence, while the exact `{position()}` and
 `{last()}` literal-result AVTs observe the invocation focus. This does not admit
 general focus functions, positional expressions, or arbitrary AVTs.
 
+Static literal-result attributes recognize doubled AVT braces: `{{` and `}}`
+compile to literal `{` and `}` characters in the retained attribute value.
+Unpaired braces and dynamic expressions remain explicit unsupported syntax.
+Dynamic AVTs must eventually obtain their context through typed XDM value
+evaluation; the runtime's optional atomic context value is not a substitute for
+an element or document node's string value.
+
 The private conditional slice executes `xsl:if` and ordered `xsl:choose`
 branches from one compiled representation. It admits a bare unprefixed child
 name as a relative existence test, constant numeric and string equality,

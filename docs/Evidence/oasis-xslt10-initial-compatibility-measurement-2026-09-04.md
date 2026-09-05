@@ -110,6 +110,10 @@ raises it to 721 through three explicit XDM kind tests.
 The following
 [preceding node-kind tranche](oasis-xslt10-preceding-node-kind-tranche-2026-09-04.md)
 raises it to 724 through three composed reverse-axis paths.
+The following
+[static AVT brace-escaping tranche](oasis-xslt10-static-avt-brace-escaping-tranche-2026-09-04.md)
+raises it to 728 through four unchanged literal-result-attribute cases while
+leaving dynamic attribute value templates explicit.
 
 ## Outcome
 

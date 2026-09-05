@@ -55,6 +55,9 @@ fn parse_literal_attribute_value(
         ));
     }
     if lexical.contains(['{', '}']) {
+        if let Some(text) = unescape_static_braces(lexical) {
+            return Ok(LiteralAttributeValue::Text(text));
+        }
         return Err(unsupported(
             "FXST1031",
             format!("unsupported attribute value template: {lexical}"),
@@ -62,4 +65,42 @@ fn parse_literal_attribute_value(
         ));
     }
     Ok(LiteralAttributeValue::Text(lexical.to_owned()))
+}
+
+fn unescape_static_braces(lexical: &str) -> Option<String> {
+    let mut characters = lexical.chars().peekable();
+    let mut result = String::with_capacity(lexical.len());
+    while let Some(character) = characters.next() {
+        if matches!(character, '{' | '}') {
+            characters.next_if_eq(&character)?;
+        }
+        result.push(character);
+    }
+    Some(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::xdm::owned_tree_experiment::SourceLocation;
+    use crate::xslt::golden_semantics_experiment::LiteralAttributeValue;
+
+    use super::parse_literal_attribute_value;
+
+    fn location() -> SourceLocation {
+        SourceLocation {
+            resource: "memory:stylesheet.xsl".to_owned(),
+            span: 10..20,
+        }
+    }
+
+    #[test]
+    fn unescapes_only_paired_static_avt_braces() {
+        assert_eq!(
+            parse_literal_attribute_value("{{font:helvetica}}", &location())
+                .expect("paired braces should be static text"),
+            LiteralAttributeValue::Text("{font:helvetica}".to_owned())
+        );
+        assert!(parse_literal_attribute_value("before{.}after", &location()).is_err());
+        assert!(parse_literal_attribute_value("{{broken}", &location()).is_err());
+    }
 }

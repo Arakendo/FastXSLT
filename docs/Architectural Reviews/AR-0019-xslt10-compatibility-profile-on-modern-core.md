@@ -280,6 +280,9 @@ public version-mode contract.
 - [x] Add explicit text, comment, and processing-instruction tests to the
   shared `preceding` axis, raising the lower bound to 724 through three
   unchanged composed-path passes.
+- [x] Compile doubled AVT braces in static literal-result attributes through
+  the ordinary retained text representation, raising the lower bound to 728
+  through four unchanged passes while leaving dynamic AVTs unsupported.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -426,6 +429,9 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Explicit non-element kind tests on `preceding` raised the lower
   bound from 721 to 724. All three newly initialized composed-axis cases pass
   without changing any later-failure or wrong-answer category.
+- 2026-09-04 -- Static doubled-brace AVT escaping raised the lower bound from
+  724 to 728. Four newly executing identities pass; three other cases cross
+  compilation and retain visible runtime failures rather than receiving credit.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated
