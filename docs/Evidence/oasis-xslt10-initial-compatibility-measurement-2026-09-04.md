@@ -104,6 +104,9 @@ The following
 [ancestor-axis tranche](oasis-xslt10-ancestor-axis-tranche-2026-09-04.md)
 raises it to 718 and repairs leading-`//` evaluation for arbitrary axes and
 per-context positional predicates.
+The following
+[self node-kind tranche](oasis-xslt10-self-node-kind-tranche-2026-09-04.md)
+raises it to 721 through three explicit XDM kind tests.
 
 ## Outcome
 

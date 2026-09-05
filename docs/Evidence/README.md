@@ -252,6 +252,7 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Following-Axis Tranche](oasis-xslt10-following-axis-tranche-2026-09-04.md)
 - [OASIS XSLT 1.0 Following Node-Kind Tranche](oasis-xslt10-following-node-kind-tranche-2026-09-04.md)
 - [OASIS XSLT 1.0 Ancestor-Axis Tranche](oasis-xslt10-ancestor-axis-tranche-2026-09-04.md)
+- [OASIS XSLT 1.0 Self Node-Kind Tranche](oasis-xslt10-self-node-kind-tranche-2026-09-04.md)
 - [AR-0016 Source Access Inventory and Safe Reference](ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md)
 - [AR-0016 Visibility-View Prototype](ar-0016-visibility-view-prototype-2026-08-30.md)
 - [Peer Review: AR-0016 Decision Readiness](peer-ar-0016-decision-readiness-monday-2026-08-30.md)

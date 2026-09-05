@@ -288,7 +288,7 @@ fn root_path_selects_the_document_node_from_an_element_context() {
 fn self_steps_preserve_typed_element_attribute_and_text_contexts() {
     let parsed = parse_document(
         "memory:source.xml",
-        b"<root a=\"1\">text<child/></root>",
+        b"<root a=\"1\">text<!--c--><?p x?><child/></root>",
         ParseLimits {
             max_events: 16,
             max_depth: 4,
@@ -302,12 +302,19 @@ fn self_steps_preserve_typed_element_attribute_and_text_contexts() {
     let text_path = parse_location_path("text()", location()).expect("text kind test should parse");
     let attribute = evaluate_location_path(&document, root, &attribute_path)[0];
     let text = evaluate_location_path(&document, root, &text_path)[0];
+    let comment = document.children(root)[1];
+    let processing_instruction = document.children(root)[2];
     let self_element =
         parse_location_path("self::*", location()).expect("self element wildcard should parse");
     let self_named =
         parse_location_path("self::root", location()).expect("named self step should parse");
     let self_node =
         parse_location_path("self::node()", location()).expect("self node test should parse");
+    let self_text = parse_location_path("self::text()", location()).expect("self text test");
+    let self_comment =
+        parse_location_path("self::comment()", location()).expect("self comment test");
+    let self_pi = parse_location_path("self::processing-instruction()", location())
+        .expect("self processing-instruction test");
     let descendant_or_self_node = parse_location_path("descendant-or-self::node()", location())
         .expect("descendant-or-self node test should parse");
     let mut control = InvocationControl::unbounded();
@@ -323,6 +330,18 @@ fn self_steps_preserve_typed_element_attribute_and_text_contexts() {
         [attribute]
     );
     assert_eq!(evaluate_location_path(&document, text, &self_node), [text]);
+    assert_eq!(evaluate_location_path(&document, text, &self_text), [text]);
+    assert_eq!(
+        evaluate_location_path(&document, comment, &self_comment),
+        [comment]
+    );
+    assert_eq!(
+        evaluate_location_path(&document, processing_instruction, &self_pi),
+        [processing_instruction]
+    );
+    assert!(evaluate_location_path(&document, root, &self_text).is_empty());
+    assert!(evaluate_location_path(&document, text, &self_comment).is_empty());
+    assert!(evaluate_location_path(&document, text, &self_pi).is_empty());
     assert_eq!(
         evaluate_location_path(&document, attribute, &descendant_or_self_node),
         [attribute]
@@ -340,7 +359,7 @@ fn self_steps_preserve_typed_element_attribute_and_text_contexts() {
     );
     assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 1);
 
-    for expression in ["attribute::text()", "parent::text()", "self::text()"] {
+    for expression in ["attribute::text()", "parent::text()"] {
         assert!(matches!(
             parse_location_path(expression, location()),
             Err(PathFailure::Unsupported { .. })

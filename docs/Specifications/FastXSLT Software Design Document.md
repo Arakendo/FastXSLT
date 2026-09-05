@@ -443,6 +443,11 @@ toward the document root, apply positional predicates in reverse-axis order,
 charge candidate visits, and then participate in ordinary document-order path
 normalization. Namespace-qualified ancestor tests and non-node principal kinds
 remain unsupported.
+The `self` axis additionally admits explicit `text()`, `comment()`, and
+`processing-instruction()` tests alongside its named-element, any-element, and
+any-node forms. The single context candidate is work charged and retained only
+when its XDM kind matches. Named processing-instruction tests on `self` remain
+unsupported.
 The `following`, `following-sibling`, `preceding-sibling`, and `preceding` axes
 admit unqualified named-element, any-element, and any-node tests. Sibling axes
 inspect only children on the requested side of the context node under the same
