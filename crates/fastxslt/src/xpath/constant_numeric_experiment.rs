@@ -15,6 +15,12 @@ pub(crate) enum IntegralFunction {
     Round,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Xslt10NonFiniteValue {
+    Boolean(bool),
+    Lexical(&'static str),
+}
+
 pub(crate) fn compare(left: &str, right: &str) -> Result<Ordering, ConstantNumericFailure> {
     let left = evaluate(left)?;
     let right = evaluate(right)?;
@@ -53,6 +59,43 @@ pub(crate) fn fold_number_conversion(expression: &str) -> Option<String> {
         return evaluate_number_lexical(lexical).ok();
     }
     canonical_finite_decimal(argument.trim())
+}
+
+pub(crate) fn fold_xslt10_non_finite_division(expression: &str) -> Option<Xslt10NonFiniteValue> {
+    let expression = expression.trim();
+    let (division, as_boolean) = expression
+        .strip_prefix("boolean")
+        .map(str::trim_start)
+        .and_then(|argument| argument.strip_prefix('('))
+        .and_then(|argument| argument.strip_suffix(')'))
+        .map_or((expression, false), |argument| (argument.trim(), true));
+    let mut operands = division.split_ascii_whitespace();
+    let left = operands.next()?;
+    if operands.next()? != "div" {
+        return None;
+    }
+    let right = operands.next()?;
+    if operands.next().is_some()
+        || !is_admitted_decimal_lexical(left)
+        || !is_admitted_decimal_lexical(right)
+    {
+        return None;
+    }
+    let left = evaluate(left).ok()?;
+    let right = evaluate(right).ok()?;
+    if right.numerator != 0 {
+        return None;
+    }
+    if as_boolean {
+        return Some(Xslt10NonFiniteValue::Boolean(left.numerator != 0));
+    }
+    Some(Xslt10NonFiniteValue::Lexical(
+        match left.numerator.cmp(&0) {
+            Ordering::Less => "-Infinity",
+            Ordering::Equal => "NaN",
+            Ordering::Greater => "Infinity",
+        },
+    ))
 }
 
 pub(crate) fn fold_boolean_number_equality(expression: &str) -> Option<bool> {
@@ -548,10 +591,11 @@ mod tests {
     use std::cmp::Ordering;
 
     use super::{
-        ConstantNumericFailure, IntegralFunction, compare, evaluate_integral_lexical,
-        evaluate_number_lexical, fold_boolean_number_equality, fold_exact_integral_arithmetic,
-        fold_integral_equality, fold_integral_function, fold_number_conversion,
-        integral_function_call, number_function_call,
+        ConstantNumericFailure, IntegralFunction, Xslt10NonFiniteValue, compare,
+        evaluate_integral_lexical, evaluate_number_lexical, fold_boolean_number_equality,
+        fold_exact_integral_arithmetic, fold_integral_equality, fold_integral_function,
+        fold_number_conversion, fold_xslt10_non_finite_division, integral_function_call,
+        number_function_call,
     };
 
     #[test]
@@ -656,6 +700,29 @@ mod tests {
         assert_eq!(number_function_call("number()"), Some(""));
         assert_eq!(evaluate_number_lexical(" 001.2500 "), Ok("1.25".to_owned()));
         assert_eq!(evaluate_number_lexical("abc"), Ok("NaN".to_owned()));
+    }
+
+    #[test]
+    fn folds_xpath10_literal_division_by_zero_without_changing_exact_arithmetic() {
+        for (expression, expected) in [
+            ("1 div 0", Xslt10NonFiniteValue::Lexical("Infinity")),
+            ("-1 div +0", Xslt10NonFiniteValue::Lexical("-Infinity")),
+            ("-0 div 0", Xslt10NonFiniteValue::Lexical("NaN")),
+            ("boolean(1 div 0)", Xslt10NonFiniteValue::Boolean(true)),
+            ("boolean(0 div 0)", Xslt10NonFiniteValue::Boolean(false)),
+        ] {
+            assert_eq!(fold_xslt10_non_finite_division(expression), Some(expected));
+        }
+        for expression in [
+            "1 div 2",
+            "1div0",
+            "value div 0",
+            "1 div 0 div 0",
+            "boolean()",
+        ] {
+            assert_eq!(fold_xslt10_non_finite_division(expression), None);
+        }
+        assert_eq!(fold_exact_integral_arithmetic("1 div 0"), None);
     }
 
     #[test]

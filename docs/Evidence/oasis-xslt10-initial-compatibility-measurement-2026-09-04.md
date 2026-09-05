@@ -158,6 +158,10 @@ semantics remain unchanged.
 Shared source-free literal `and`/`or` activation then reaches 773 through
 `boolean20`, `boolean23`, and `boolean27`; a version 3.0 lifecycle sentinel
 proves the typed evaluator remains common to both paths.
+Compile-selected XPath 1.0 non-finite literal division then reaches 776 through
+`boolean37`, `boolean38`, and `boolean39`. Those three expected-result matches
+retain their suite doubts metadata, and equivalent modern decimal expressions
+remain rejected.
 
 ## Outcome
 

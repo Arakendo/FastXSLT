@@ -1034,6 +1034,21 @@ fn compile_value_expression(
             ),
         )));
     }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(value) =
+            crate::xpath::constant_numeric_experiment::fold_xslt10_non_finite_division(expression)
+    {
+        return Ok(match value {
+            crate::xpath::constant_numeric_experiment::Xslt10NonFiniteValue::Boolean(value) => {
+                ValueExpression::SourceFreeScalar(Box::new(ScalarExpression::Boolean(
+                    crate::xpath::constant_boolean_experiment::BooleanExpression::Constant(value),
+                )))
+            }
+            crate::xpath::constant_numeric_experiment::Xslt10NonFiniteValue::Lexical(value) => {
+                ValueExpression::LiteralString(value.to_owned())
+            }
+        });
+    }
     if let Some(value) =
         crate::xpath::constant_numeric_experiment::fold_boolean_number_equality(expression)
     {
