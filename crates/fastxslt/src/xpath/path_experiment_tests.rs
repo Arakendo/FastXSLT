@@ -80,6 +80,45 @@ fn qualified_child_steps_reject_unbound_prefixes() {
 }
 
 #[test]
+fn reverse_axes_apply_positions_in_axis_order_then_normalize_document_order() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root><outside/><scope><first/><second/><context/></scope></root>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let scope = document.children(root)[1];
+    let context = document.children(scope)[2];
+
+    let sibling_nearest = parse_location_path("preceding-sibling::*[1]", location())
+        .expect("preceding-sibling nearest path");
+    let sibling_farthest = parse_location_path("preceding-sibling::*[last()]", location())
+        .expect("preceding-sibling farthest path");
+    let preceding_nearest =
+        parse_location_path("preceding::*[1]", location()).expect("preceding nearest path");
+    let preceding_farthest =
+        parse_location_path("preceding::*[last()]", location()).expect("preceding farthest path");
+
+    let selected_name = |path| {
+        let selected = evaluate_location_path(&document, context, path);
+        document
+            .name(selected[0])
+            .expect("selected element")
+            .local
+            .clone()
+    };
+    assert_eq!(selected_name(&sibling_nearest), "second");
+    assert_eq!(selected_name(&sibling_farthest), "first");
+    assert_eq!(selected_name(&preceding_nearest), "second");
+    assert_eq!(selected_name(&preceding_farthest), "outside");
+}
+
+#[test]
 fn selects_the_context_item_without_navigation() {
     let parsed = parse_document(
         "memory:source.xml",

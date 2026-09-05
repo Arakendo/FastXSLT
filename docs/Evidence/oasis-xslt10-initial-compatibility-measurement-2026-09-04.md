@@ -90,6 +90,10 @@ The following
 [qualified attribute path tranche](oasis-xslt10-qualified-attribute-path-tranche-2026-09-04.md)
 raises it to 662 while retaining lexical-prefix reconstruction as an explicit
 boundary.
+The following
+[reverse-axis tranche](oasis-xslt10-reverse-axis-tranche-2026-09-04.md)
+raises it to 686 through 24 unchanged passes with reverse-axis positional
+semantics.
 
 ## Outcome
 

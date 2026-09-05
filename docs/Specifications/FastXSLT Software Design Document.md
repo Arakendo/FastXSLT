@@ -434,12 +434,14 @@ The `.//` abbreviation begins descendant navigation at the supplied context
 node, unlike leading `//`, which begins at the document node. Both reuse the
 same typed descendant steps, document-order normalization, deduplication, and
 work accounting; this does not admit arbitrary primary expressions before `//`.
-The forward `following-sibling` axis admits unqualified named-element, any
-element, and any-node tests. It inspects only children after the context node
-under the same parent, filters by the node test before applying a positional
-predicate, charges candidate visits, and participates in ordinary path
-document-order normalization. It does not admit namespace-qualified tests or
-the `following`, `preceding`, or `preceding-sibling` axes.
+The `following-sibling`, `preceding-sibling`, and `preceding` axes admit
+unqualified named-element, any-element, and any-node tests. Sibling axes inspect
+only children on the requested side of the context node under the same parent.
+The `preceding` axis excludes ancestors, attributes, and the document node.
+Reverse axes filter and apply positional predicates in reverse axis order, then
+participate in ordinary path document-order normalization. Candidate traversal
+is work charged. This does not admit namespace-qualified reverse-axis tests or
+the `following` axis.
 The exact `string-length(.) = nonnegative-integer` conditional form counts
 Unicode codepoints in the controlled context string value and charges the scan
 to XPath work. It does not admit general string functions, alternate operands,

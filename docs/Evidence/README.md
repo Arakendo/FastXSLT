@@ -248,6 +248,7 @@ pressure architecture but does not silently create a public guarantee.
 - [Native Boundary Diagnostic-Test Decomposition](native-boundary-diagnostic-test-decomposition-2026-08-28.md)
 - [OASIS XSLT 1.0 Name Path Tranche](oasis-xslt10-name-path-tranche-2026-09-04.md)
 - [OASIS XSLT 1.0 Qualified Attribute Path Tranche](oasis-xslt10-qualified-attribute-path-tranche-2026-09-04.md)
+- [OASIS XSLT 1.0 Reverse-Axis Tranche](oasis-xslt10-reverse-axis-tranche-2026-09-04.md)
 - [AR-0016 Source Access Inventory and Safe Reference](ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md)
 - [AR-0016 Visibility-View Prototype](ar-0016-visibility-view-prototype-2026-08-30.md)
 - [Peer Review: AR-0016 Decision Readiness](peer-ar-0016-decision-readiness-monday-2026-08-30.md)
