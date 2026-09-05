@@ -63,7 +63,7 @@ mod tests {
         .expect("count expression should execute");
 
         assert_eq!(count, 2);
-        assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 9);
+        assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 16);
         assert!(matches!(
             evaluate(
                 "count(//center)",

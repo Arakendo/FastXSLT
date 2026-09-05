@@ -85,10 +85,9 @@ fn accepts_supported_ncname_punctuation_without_claiming_unicode_names() {
         parse_location_path("café/name", location()),
         Err(PathFailure::Unsupported { .. })
     ));
-    assert!(matches!(
-        parse_location_path("catalog/ancestor::node()", location()),
-        Err(PathFailure::Unsupported { .. })
-    ));
+    let ancestor_node = parse_location_path("catalog/ancestor::node()", location())
+        .expect("the admitted ancestor node test should parse");
+    assert_eq!(ancestor_node.steps[1], "node()");
     let self_node = parse_location_path("catalog/self::node()", location())
         .expect("the admitted self node test should parse");
     assert_eq!(self_node.steps[1], "node()");

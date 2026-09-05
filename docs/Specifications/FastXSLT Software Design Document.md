@@ -430,10 +430,19 @@ whole seconds for normalized integer extraction. This does not admit a public
 duration representation, exact fractional-second component extraction,
 arbitrary-precision duration storage, general duration arithmetic, or a
 general function-call grammar.
-The `.//` abbreviation begins descendant navigation at the supplied context
-node, unlike leading `//`, which begins at the document node. Both reuse the
-same typed descendant steps, document-order normalization, deduplication, and
-work accounting; this does not admit arbitrary primary expressions before `//`.
+The `.//` abbreviation expands descendant-or-self contexts from the supplied
+context node, unlike leading `//`, which expands them from the document node.
+The following typed step is evaluated independently for each expanded context,
+so its axis and positional predicates retain XPath semantics before ordinary
+document-order normalization and identity deduplication. Context expansion and
+step evaluation are work charged. This does not admit arbitrary primary
+expressions before `//`.
+The `ancestor` and `ancestor-or-self` axes admit unqualified named-element,
+any-element, and any-node tests. They construct candidates from the context
+toward the document root, apply positional predicates in reverse-axis order,
+charge candidate visits, and then participate in ordinary document-order path
+normalization. Namespace-qualified ancestor tests and non-node principal kinds
+remain unsupported.
 The `following`, `following-sibling`, `preceding-sibling`, and `preceding` axes
 admit unqualified named-element, any-element, and any-node tests. Sibling axes
 inspect only children on the requested side of the context node under the same

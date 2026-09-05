@@ -119,6 +119,46 @@ fn reverse_axes_apply_positions_in_axis_order_then_normalize_document_order() {
 }
 
 #[test]
+fn ancestor_axes_apply_positions_in_reverse_axis_order() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root><middle><leaf/></middle></root>",
+        ParseLimits {
+            max_events: 8,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let middle = document.children(root)[0];
+    let leaf = document.children(middle)[0];
+
+    for (expression, expected) in [
+        ("ancestor::*[1]", "middle"),
+        ("ancestor::*[last()]", "root"),
+        ("ancestor-or-self::*[1]", "leaf"),
+        ("ancestor-or-self::*[last()]", "root"),
+    ] {
+        let path = parse_location_path(expression, location()).expect("ancestor path");
+        let selected = evaluate_location_path(&document, leaf, &path);
+        assert_eq!(selected.len(), 1, "{expression}");
+        assert_eq!(
+            document.name(selected[0]).expect("selected element").local,
+            expected,
+            "{expression}"
+        );
+    }
+
+    let all = parse_location_path("ancestor-or-self::node()", location())
+        .expect("ancestor-or-self node path");
+    assert_eq!(
+        evaluate_location_path(&document, leaf, &all),
+        [document.document_node(), root, middle, leaf]
+    );
+}
+
+#[test]
 fn following_axis_excludes_context_descendants_and_applies_forward_positions() {
     let parsed = parse_document(
         "memory:source.xml",
@@ -402,7 +442,7 @@ fn leading_descendant_origin_unifies_explicit_and_abbreviated_child_steps() {
         .len(),
         5
     );
-    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 5);
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 11);
 
     let self_nodes =
         parse_location_path("//self::node()", location()).expect("self node test should parse");
@@ -423,7 +463,67 @@ fn leading_descendant_origin_unifies_explicit_and_abbreviated_child_steps() {
         evaluate_location_path(&document, selected[1], &self_elements).len(),
         3
     );
-    assert_eq!(self_control.consumed(WorkDomain::XPathNodeVisit), 6);
+    assert_eq!(self_control.consumed(WorkDomain::XPathNodeVisit), 12);
+}
+
+#[test]
+fn leading_descendant_expands_contexts_before_evaluating_an_arbitrary_axis() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root><leaf/><middle><nested/></middle><sibling/></root>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 5,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let path = parse_location_path("//ancestor::*", location())
+        .expect("leading descendant ancestor step should parse");
+
+    let selected = evaluate_location_path(&document, document.document_node(), &path);
+    let names: Vec<_> = selected
+        .into_iter()
+        .map(|node| {
+            document
+                .name(node)
+                .expect("element should have a name")
+                .local
+                .clone()
+        })
+        .collect();
+
+    assert_eq!(names, ["root", "middle"]);
+}
+
+#[test]
+fn leading_descendant_applies_a_step_predicate_per_expanded_context() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root><a id='one'/><a id='two'/><group><a id='three'/><a id='four'/></group></root>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 5,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let path = parse_location_path("//a[1]", location())
+        .expect("leading descendant positional step should parse");
+
+    let selected = evaluate_location_path(&document, document.document_node(), &path);
+    let ids: Vec<_> = selected
+        .into_iter()
+        .map(|node| {
+            let attribute = document.attributes(node)[0];
+            document
+                .value(attribute)
+                .expect("id should have a value")
+                .to_owned()
+        })
+        .collect();
+
+    assert_eq!(ids, ["one", "three"]);
 }
 
 #[test]
@@ -461,7 +561,7 @@ fn internal_descendant_abbreviation_lowers_to_a_typed_step_and_deduplicates() {
         "center"
     );
     assert_eq!(document.name(selected[2]).expect("b name").local, "b");
-    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 14);
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 20);
 }
 
 #[test]
@@ -492,7 +592,7 @@ fn internal_descendant_abbreviation_composes_with_attribute_steps() {
     .expect("internal descendant attribute composition should execute");
 
     assert_eq!(selected.len(), 4);
-    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 15);
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 21);
     assert!(
         selected
             .iter()
@@ -528,7 +628,7 @@ fn normalize_space_text_predicate_uses_xml_whitespace_effective_boolean_value() 
     assert_eq!(selected.len(), 2);
     assert_eq!(document.value(selected[0]), Some(" value "));
     assert_eq!(document.value(selected[1]), Some("tail"));
-    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 7);
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 15);
 }
 
 #[test]
@@ -572,7 +672,7 @@ fn descendant_or_self_steps_include_self_and_deduplicate_overlapping_contexts() 
     assert_eq!(selected[0], outer);
     assert_eq!(selected[1], document.children(outer)[0]);
     assert_eq!(selected[2], document.children(selected[1])[0]);
-    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 10);
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 15);
     assert!(matches!(
         parse_location_path("descendant-or-self::text()", location()),
         Err(PathFailure::Unsupported { .. })
@@ -729,7 +829,7 @@ fn attribute_axis_selects_attributes_but_not_namespace_nodes() {
             .expect("leading attribute expansion should execute");
     assert_eq!(all_attributes.len(), 3);
     assert_eq!(evaluate_location_path(&document, root, &named).len(), 2);
-    assert_eq!(descendant_control.consumed(WorkDomain::XPathNodeVisit), 5);
+    assert_eq!(descendant_control.consumed(WorkDomain::XPathNodeVisit), 6);
 }
 
 #[test]
@@ -935,7 +1035,7 @@ fn searches_descendants_and_filters_by_a_named_ancestor() {
             name: "element2".to_owned(),
         })
     );
-    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 11);
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 19);
 }
 
 #[test]
@@ -994,7 +1094,7 @@ fn attribute_predicate_inspects_attributes_without_making_them_children() {
     assert_eq!(document.string_value(selected[0]), "right");
     assert_eq!(document.children(selected[0]).len(), 1);
     assert_eq!(document.attributes(selected[0]).len(), 1);
-    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 5);
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 10);
     assert_eq!(
         path.final_predicate,
         Some(ExistencePredicate {
@@ -1063,7 +1163,7 @@ fn parent_predicate_checks_only_the_immediate_parent() {
 
     assert_eq!(selected.len(), 1);
     assert_eq!(document.string_value(selected[0]), "right");
-    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 9);
+    assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 17);
     assert_eq!(
         path.final_predicate,
         Some(ExistencePredicate {

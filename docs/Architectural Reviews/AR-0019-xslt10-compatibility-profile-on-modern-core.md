@@ -271,6 +271,9 @@ public version-mode contract.
 - [x] Add explicit text, comment, and processing-instruction tests to the
   shared `following` axis, raising the lower bound to 697 while leaving two
   later whitespace-profile failures visible.
+- [x] Add work-charged `ancestor` and `ancestor-or-self` axes and repair
+  leading-`//` context expansion, raising the lower bound to 718 through 21
+  unchanged passes while retaining one multi-node legacy conversion boundary.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 48 known executing comparison
@@ -407,6 +410,10 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Explicit non-element kind tests on `following` raised the lower
   bound from 694 to 697. Three cases pass; two more reach the existing
   `xsl:strip-space`/`xml:space` runtime boundary and remain uncredited.
+- 2026-09-04 -- Shared `ancestor` and `ancestor-or-self` axes plus correct
+  leading-`//` context expansion raised the lower bound from 697 to 718. All 21
+  newly executing cases pass; one additional initialized case stops at the
+  explicit modern multi-node conversion boundary.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

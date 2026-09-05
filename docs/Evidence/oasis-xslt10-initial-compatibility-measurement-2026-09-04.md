@@ -100,6 +100,10 @@ raises it to 694 through eight unchanged forward-axis passes.
 The following
 [following node-kind tranche](oasis-xslt10-following-node-kind-tranche-2026-09-04.md)
 raises it to 697 while leaving two later whitespace-profile failures visible.
+The following
+[ancestor-axis tranche](oasis-xslt10-ancestor-axis-tranche-2026-09-04.md)
+raises it to 718 and repairs leading-`//` evaluation for arbitrary axes and
+per-context positional predicates.
 
 ## Outcome
 
