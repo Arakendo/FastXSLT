@@ -540,6 +540,12 @@ parsing or version dispatch. Fractional results, division by zero, overflow,
 NaN/infinity, and path-dependent operands remain explicit boundaries rather
 than being approximated through binary floating point.
 
+`number()` around one source-free finite decimal literal or quoted finite
+decimal lexical value may likewise be folded to its canonical decimal string.
+Context and path conversion, compound arithmetic arguments, NaN, infinity,
+exponent notation, and general numeric formatting remain outside this narrow
+value-expression form.
+
 Recognized valid expression families that exceed the admitted evaluator remain
 engine-unsupported rather than being forced through the location-path parser.
 The global `QName()` constructor is one such boundary: it is classified before

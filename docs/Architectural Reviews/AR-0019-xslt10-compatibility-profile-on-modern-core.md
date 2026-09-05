@@ -301,6 +301,9 @@ public version-mode contract.
 - [x] Expose checked source-free binary arithmetic only when its exact-rational
   result is integral, raising the lower bound to 747 through nine unchanged
   passes without runtime version dispatch.
+- [x] Fold source-free finite `number()` conversion over decimal literals and
+  quoted decimal lexical values, raising the lower bound to 749 through two
+  unchanged passes without runtime version dispatch.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 50 known executing comparison
@@ -470,6 +473,10 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-04 -- Checked source-free binary arithmetic with an exact integral
   result raised the lower bound from 738 to 747. All nine newly initialized
   cases pass without changing a mismatch or later-failure category.
+- 2026-09-04 -- Static finite `number()` conversion raised the lower bound from
+  747 to 749. Both newly initialized cases pass without changing a mismatch or
+  later-failure category; dynamic and special-value conversion remain outside
+  the slice.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

@@ -972,6 +972,11 @@ fn compile_value_expression(
     {
         return Ok(ValueExpression::LiteralString(literal));
     }
+    if let Some(literal) =
+        crate::xpath::constant_numeric_experiment::fold_finite_number_conversion(expression)
+    {
+        return Ok(ValueExpression::LiteralString(literal));
+    }
     if let Some(value) =
         crate::xpath::constant_numeric_experiment::fold_integral_equality(expression)
     {

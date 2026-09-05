@@ -1405,6 +1405,35 @@ fn xpath_constant_integral_numeric_expressions_fold_exact_results() {
 }
 
 #[test]
+fn xpath_static_finite_number_conversion_uses_canonical_lexical_values() {
+    const SOURCE: &str = "urn:fastxslt:number-conversion:source";
+    const STYLESHEET: &str = "urn:fastxslt:number-conversion:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="number(2)"/>|<xsl:value-of select="number('003.500')"/>|<xsl:value-of select="number(-0)"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile finite number conversions");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("number-conversion", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute number conversions");
+    assert_eq!(
+        results.by_request["number-conversion"].serialized,
+        "2|3.5|0"
+    );
+}
+
+#[test]
 fn xpath_integral_path_rejects_more_than_one_node() {
     const SOURCE: &str = "urn:fastxslt:integral-many:source";
     const STYLESHEET: &str = "urn:fastxslt:integral-many:stylesheet";

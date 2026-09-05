@@ -135,6 +135,9 @@ string-value operation; two additional cases reach visible line-ending
 comparison mismatches and remain uncredited.
 Checked source-free arithmetic with an exactly integral result then raises it
 to 747 through nine unchanged cases without adding a later failure or mismatch.
+Static finite `number()` conversion then raises it to 749 through two unchanged
+cases while leaving context, path, NaN, infinity, and compound arguments
+explicitly unsupported.
 
 ## Outcome
 

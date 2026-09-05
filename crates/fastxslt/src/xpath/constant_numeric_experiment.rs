@@ -44,6 +44,53 @@ pub(crate) fn fold_exact_integral_arithmetic(expression: &str) -> Option<String>
         .then(|| value.numerator.div_euclid(value.denominator).to_string())
 }
 
+pub(crate) fn fold_finite_number_conversion(expression: &str) -> Option<String> {
+    let expression = expression.trim();
+    let argument = expression
+        .strip_prefix("number")?
+        .trim_start_matches([' ', '\t', '\r', '\n'])
+        .strip_prefix('(')?
+        .strip_suffix(')')?
+        .trim();
+    let lexical = xpath_string_literal(argument).unwrap_or(argument);
+    canonical_finite_decimal(lexical.trim())
+}
+
+fn xpath_string_literal(expression: &str) -> Option<&str> {
+    for quote in ['\'', '"'] {
+        if let Some(value) = expression
+            .strip_prefix(quote)
+            .and_then(|value| value.strip_suffix(quote))
+        {
+            return (!value.contains(quote)).then_some(value);
+        }
+    }
+    None
+}
+
+fn canonical_finite_decimal(lexical: &str) -> Option<String> {
+    if !is_admitted_decimal_lexical(lexical) {
+        return None;
+    }
+    let (negative, unsigned) = lexical
+        .strip_prefix('-')
+        .map_or((false, lexical), |value| (true, value));
+    let unsigned = unsigned.strip_prefix('+').unwrap_or(unsigned);
+    let (integer, fraction) = unsigned
+        .split_once('.')
+        .map_or((unsigned, ""), |parts| parts);
+    let integer = integer.trim_start_matches('0');
+    let integer = if integer.is_empty() { "0" } else { integer };
+    let fraction = fraction.trim_end_matches('0');
+    let is_zero = integer == "0" && fraction.is_empty();
+    let sign = if negative && !is_zero { "-" } else { "" };
+    if fraction.is_empty() {
+        Some(format!("{sign}{integer}"))
+    } else {
+        Some(format!("{sign}{integer}.{fraction}"))
+    }
+}
+
 fn contains_binary_arithmetic_operator(expression: &str) -> Option<()> {
     let first = expression
         .char_indices()
@@ -455,8 +502,8 @@ mod tests {
 
     use super::{
         ConstantNumericFailure, IntegralFunction, compare, evaluate_integral_lexical,
-        fold_exact_integral_arithmetic, fold_integral_equality, fold_integral_function,
-        integral_function_call,
+        fold_exact_integral_arithmetic, fold_finite_number_conversion, fold_integral_equality,
+        fold_integral_function, integral_function_call,
     };
 
     #[test]
@@ -539,5 +586,25 @@ mod tests {
         assert_eq!(fold_exact_integral_arithmetic("1 div 2"), None);
         assert_eq!(fold_exact_integral_arithmetic("7"), None);
         assert_eq!(fold_exact_integral_arithmetic("1 div 0"), None);
+    }
+
+    #[test]
+    fn folds_only_finite_decimal_number_conversions() {
+        assert_eq!(
+            fold_finite_number_conversion("number(2)"),
+            Some("2".to_owned())
+        );
+        assert_eq!(
+            fold_finite_number_conversion("number( '003.500' )"),
+            Some("3.5".to_owned())
+        );
+        assert_eq!(
+            fold_finite_number_conversion("number(-0)"),
+            Some("0".to_owned())
+        );
+        assert_eq!(fold_finite_number_conversion("number('NaN')"), None);
+        assert_eq!(fold_finite_number_conversion("number(source)"), None);
+        assert_eq!(fold_finite_number_conversion("number(1 div 2)"), None);
+        assert_eq!(fold_finite_number_conversion("not-number(2)"), None);
     }
 }
