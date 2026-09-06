@@ -399,3 +399,11 @@ complete deep-clone path remains the semantic and measurement oracle.
 [Namespace-scope fixture evidence](../Evidence/namespace-scope-scaling-fixture-2026-09-05.md)
 
 [Sequence-frame COW evidence](../Evidence/runtime-frame-nested-copy-on-write-2026-09-05.md)
+
+A subsequent five-process rerun of the same post-specialization .NET 10 tier
+protocol found no material regression in the larger semantic-work lanes. The
+small fixed-overhead isolated lanes declined modestly, while native 500-item
+samples were bimodal but retained a stable median. These observations do not
+reopen the completed audit.
+
+[Post-audit tiered rerun](../Evidence/aspnet-post-performance-audit-tiered-rerun-2026-09-05.md)

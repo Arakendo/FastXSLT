@@ -3664,6 +3664,227 @@ architectural review. Their presence in this list is not a commitment. WASM now
 has stated future consumer pressure and is tracked separately by AR-0015, but it
 does not enter the current critical path without a named runtime and workload.
 
+### Rejected pre-execution preparation pipeline
+
+[AR-0020](../Architectural%20Reviews/AR-0020-bounded-pre-execution-preparation-pipeline.md)
+preserves the proposal to overlap raw-document preparation with transformation
+without selecting a permanent packer thread. The experiment treats worker-
+local preparation, one preparation worker, and a bounded preparation pool as
+alternatives over immutable handle-based execution packets. Combined workers
+remain the private baseline. Hosts own meaningful total resource ceilings and
+service policy; FastXSLT owns internal preparation/execution partitioning,
+queue topology, and worker assignment. The candidate external concurrency
+meaning is one maximum total worker budget, not separate preparation and
+execution allowances; no public API spelling is selected yet. Current evidence
+concluded the experiment with a negative disposition: adaptive staging is
+absent from the prototype, and combined/local execution remains the baseline.
+The unchecked items below are dormant reopening requirements, not current
+roadmap commitments. No ADR was needed because the review selected no new
+runtime architecture or public contract.
+
+- [ ] Obtain a representative raw-document batch with semantic sentinels,
+  source-size/reuse distributions, and host-owned memory and latency limits.
+- [x] Keep staging and adaptive topology selection out of the prototype path.
+  Reopen controller wiring only after the representative workload above shows
+  a repeatable combined-mode deficiency and a material low-risk opportunity;
+  synthetic wins alone are insufficient.
+- [x] Attribute preparation time, execution time, queue wait, ready-packet
+  count/bytes, and aggregate executing prepared bytes in the topology-free
+  reference.
+- [ ] Add per-worker prepared-byte attribution and worker starvation/utilization
+  observations when real execution workers enter the comparison.
+- [x] Establish a topology-free immutable execution packet over the existing
+  controlled preparation seam, with explicit duplicate shared-source
+  preparation and count/known-prepared-capacity queue admission.
+- [x] Establish with a preliminary pinned-stylesheet release probe that raw XML
+  preparation is material relative to execution at 50- and 500-item generated
+  source tiers; retain this as permission to compare topologies, not a product
+  performance claim.
+- [ ] Compare zero, one, and multiple preparation workers with count and byte-
+  bounded backpressure, cancellation, failure, and generation-drain parity.
+  Report direct sequential latency separately from one-preparer/one-transform-
+  worker pipelined throughput; the latter overlaps requests but still executes
+  only one transform at a time.
+- [x] Prove the threaded mechanics for one and four preparers feeding one
+  transform worker across simultaneous count/capacity bounds while conserving
+  the result sentinel and an active-transform high-water of one.
+- [x] Run the preliminary same-process A/B/C throughput comparison: one
+  preparer improved the generated-source lane modestly, while four improved it
+  materially and kept total prepared pressure within two ready packets plus one
+  active packet. Do not treat this as topology selection.
+- [x] Run an equal-ten-thread comparison using 10 combined workers as the
+  control against staged 9/1, 8/2, 7/3, and 5/5 preparation/execution splits;
+  retain throughput, latency, starvation, and prepared-byte pressure together.
+  Medium sources favored asymmetric staging; larger sources favored combined
+  workers, so no fixed topology is selected.
+- [x] Run a longer mixed 4:3:1 small/medium/large batch in clustered and
+  interleaved orders. Combined workers were the more robust throughput lane;
+  7/3 traded worse small tails for occasionally better large tails, and
+  interleaving improved every topology. Treat distribution/order as workload
+  observations, not host-facing scheduler controls.
+- [x] Exclude preparation/execution thread ratios, queue topology, and worker
+  assignment from the supported host configuration surface. Hosts may supply
+  externally meaningful total concurrency, prepared-capacity limits, and later
+  evidenced service objectives; FastXSLT owns their internal allocation.
+- [x] Define the candidate concurrency envelope as "use up to N total workers"
+  without promising N simultaneous transforms or fixed worker roles. Require
+  every dispatcher reassignment to remain inside that total and the host's
+  prepared-capacity ceiling.
+- [ ] Derive and falsify a conservative engine-owned staging activation rule
+  across uniform, mixed, differently ordered, and representative consumer
+  workloads. Staging remains private and disabled until that rule exists.
+- [ ] Compare a fixed-total-worker controller that rests in combined/local mode
+  and opportunistically reassigns idle capacity to preparation only under
+  sustained executor starvation. Use smoothed observations and hysteresis;
+  ready-byte/age pressure, executor saturation, and per-size tail regression
+  must stop preparation ahead. Do not dynamically create/destroy threads in
+  this first adaptive experiment.
+- [x] Add a topology-free deterministic controller reference proving sustained
+  activation, ready-work priority, minimum dwell, relief hysteresis, and
+  immediate byte/age/small-tail retreat. Its example thresholds are mechanics,
+  not defaults, and it is not wired into the runtime dispatcher.
+- [ ] Resolve the activation-observability gap: combined workers expose phase
+  timings but no distinct executor starvation or ready-queue pressure. Compare
+  a validated workload classifier with a bounded staged trial and rollback;
+  do not use phase-time ratio alone after the 50/500 topology reversal.
+- [x] Replay a bounded 7/3 trial against combined-10 with separate throughput,
+  worst-size-p95, and prepared-high-water gates. Two runs rejected all uniform
+  and mixed candidates. The favorable uniform-50 ratio varied from 1.032 to
+  1.545 while memory stayed 2.4-2.6x, so one short trial cannot select topology.
+- [ ] Reject the controller if bursty or phase-changing workloads expose
+  oscillation, starvation, memory amplification, cancellation regression, or
+  unstable latency-class tradeoffs even when aggregate throughput improves.
+- [ ] Repeat any successful controller rule on at least two materially
+  different processor/cache/memory/scheduler environments. Do not promote a
+  ratio or activation rule calibrated only on the current machine.
+- [x] Retain combined workers as the baseline and keep staging out of runtime
+  code as a useful negative experiment rather than exposing manual topology
+  controls.
+- [ ] Retain the already-warm ASP.NET workload as a negative control for queue-
+  hop overhead; do not infer value from a benchmark that excludes preparation.
+- [ ] Require a later ADR before selecting a supported lifecycle, prepared-state
+  ownership change, cache/single-flight policy, or public packet/queue contract.
+
+### Bounded isolated transport batching
+
+[AR-0021](../Architectural%20Reviews/AR-0021-bounded-isolated-transport-batching.md)
+is accepted through
+[ADR-0019](../ADR/ADR-0019-bounded-incremental-isolated-transform-set-transport.md)
+after answering the core feasibility question positively.
+It tracks the measured roughly 42-53 microsecond sequential premium of one warm
+isolated request-response transaction over the native lane. Persistent workers,
+binary length-prefixed framing, and retained compiled/prepared state are already
+present. The next question is whether a bounded transport transaction can
+amortize pipe, flush, wakeup, and framing work across independent requests.
+This is transport batching under ADR-0005, not semantic batching, preparation
+staging, or a new scheduler. It is a host-boundary experiment and does not
+displace the standards critical path unless attribution confirms a material
+opportunity.
+
+ADR-0019 selects the smallest evidence-backed behavioral transport contract:
+bounded
+incremental input-order correlation and delivery, one sequential execution lane
+per worker, conservative completion truth after loss, no hidden retry,
+host-owned external ceilings, and private batch-of-one/aggregate oracles. It
+does not stabilize the concrete wire representation and intentionally does not
+select a host API, batch size, completion-order delivery, or multi-lane worker.
+
+- [x] Attribute the existing batch-of-one boundary before changing its
+  protocol: managed encode/queue, pipe write/flush, worker receive/decode,
+  engine execution, and the remaining result/pipe/managed-read region. The
+  first safe probe does not yet separate result write/flush from that residue.
+- [x] Add the ADR-0019 private version-one incremental operation. Its bounded
+  length-delimited envelope rejects unknown versions as `FXWB1005` before
+  member decoding, echoes the admitted version, preserves stream framing and
+  same-worker recovery, and does not expose the wire layout as a public
+  protocol.
+- [x] Compare private bounded batch sizes 1, 8, 32, and 128 across the existing
+  5/50/500-item warm tiers with randomized or time-balanced lane order. A
+  first three-run rotated comparison found 5.22x/3.69x/2.01x batch-128 median
+  gains; later fault and resource-pressure gates preserve the candidate without
+  selecting a default.
+- [x] Preserve per-member identity, diagnostics, cancellation, budgets,
+  sibling-result invisibility, and batch-of-one parity; keep one sequential
+  execution lane per worker for the first experiment. Rust and ASP.NET controls
+  now prove aggregate/incremental success, cancellation, zero-instruction-limit,
+  active cancellation, loss classification, correlation, and recovery.
+- [x] Bound member count, encoded command bytes, admitted unresolved members,
+  cumulative result bytes, and retained completed outcomes. The current one-
+  transaction/one-lane worker makes unresolved members a decreasing subset of
+  the 128-member batch and admits no second transaction behind the client gate.
+  Versioned command and response envelopes retain exact 1 MiB ceilings;
+  incremental callback delivery retains no adapter outcome collection, while
+  the collecting path reports its exact high-water. A future queue or multi-
+  lane worker must reopen this accounting equivalence.
+- [ ] Measure per-member throughput and tail latency, time to first/final
+  result, managed allocation, worker CPU, aggregate memory, and failure radius.
+  The first result-pressure matrix now covers exact 3.3/33/165 KiB outcomes:
+  batching remains useful at 3.3 KiB, becomes marginal at 33 KiB, and has no
+  repeatable throughput benefit at 165 KiB. Aggregate framing makes first equal
+  final result time and exposes 16-30 ms median transaction p50 at the largest
+  tested batches; queue residence and exact private-memory attribution remain.
+  The current client admits one transaction per worker under its gate, so no
+  second batch queues in the worker; later members instead reside in the
+  bounded decoded command behind earlier sequential members. Do not describe
+  that as an unbounded scheduler queue or invent another quota for it.
+- [x] Compare aggregate framing with private incremental input-order outcomes.
+  Incremental delivery moves representative multi-worker first-result p50 from
+  4.425 to 0.219 ms, 21.373 to 1.274 ms, and 26.685 to 6.820 ms while generally
+  retaining final throughput. It preserves controlled cancellation/budget
+  diagnostics and worker reuse, but remains experimental pending consumer
+  backpressure and a supported delivery surface. Cumulative-limit evidence now
+  retains six complete 165 KiB outcomes, classifies the executed next member
+  ambiguous and the suffix unstarted, performs no retry, and reuses the worker.
+  A four-member 165 KiB slow-reader probe also propagates 90 ms of deliberate
+  host delay without an engine-side completed-outcome vector and preserves
+  exact recovery. A private non-retaining callback then delivers four exact
+  outcomes before terminal completion; callback abandonment after two outcomes
+  retires the desynchronized worker without retry, and a replacement recovers.
+  A supported callback/async-enumeration and abandonment contract remains open;
+  completion-order delivery remains unjustified.
+  Worker loss after the first callback now produces a typed private observation
+  with one complete prefix member and three conservatively ambiguous remaining
+  members; it does not invent an unstarted suffix without worker phase evidence.
+  Exact accounting for the four-member large-result case records a 109-byte
+  command, 660,198-byte response sequence, and a 165,047-byte non-retaining
+  adapter high-water versus 660,188 bytes when collecting all four outcomes.
+  These are wire-equivalent charges, not allocator or process-memory claims.
+- [x] Fault-inject member failure/cancellation plus malformed or truncated
+  transport and worker loss before nominating a production protocol. Kill at
+  multiple member/transfer positions; classify only fully observed correlated
+  outcomes as complete, preserve ambiguity for the rest, and never retry
+  implicitly. The first/middle/last aggregate-response loss probe now proves
+  worker-finished-but-untransferred and active members remain ambiguous, the
+  later sequential suffix is unstarted, no killed member is retried, and a
+  fresh worker recovers. A second fault probe fully transfers two correlated
+  outcomes, truncates the third result payload at exactly half, and proves the
+  complete prefix stays complete while the partial member remains ambiguous
+  and the suffix unstarted. A deliberately incomplete command now exits before
+  supervisor admission with every member unstarted, while a complete flushed
+  command terminated before any acknowledgement or outcome leaves the entire
+  set ambiguous. Neither path retries and fresh-worker recovery remains intact.
+  A private supervisor-driven state machine also cancels member 2 after its
+  first real charge, preserves successful earlier/later siblings and exact
+  `FXCT0001`, keeps active-transform high-water at one, and reuses the worker.
+  Twenty-five unbarriered races across immediate/1 ms/5 ms signals then
+  produced only valid cancellation or already-committed completion (20/5),
+  with zero sibling failures and successful reuse. The semantic-control fault
+  tranche is complete; pressure measurement remains.
+- [x] Sweep 1/2/4/8 worker processes separately so process-count scaling and
+  duplicated compiled/prepared memory are not confused with transport
+  amortization. The first 8,192-member matrix records throughput, exact wire
+  bytes, failure radius, managed allocation, and observed working set. It finds
+  non-monotonic batch-size results and CPU timer quantization in shorter cells.
+  A three-run rotated 65,536-member follow-up makes CPU observable throughout,
+  confirms batch 32 over 128 at 2/4/8 workers for 500-item work, and exposes a
+  four-to-eight-worker large-work plateau plus material 8-worker variance. No
+  default follows; the later result-heavy and incremental matrices show why
+  member count alone cannot select policy.
+- [x] Accept a later ADR before stabilizing an isolated transform-set transport
+  contract. ADR-0019 selects incremental input-order transport and conservative
+  failure collection; concrete public host API types and multi-lane workers
+  remain open.
+
 ### Execution-loss provenance and host quarantine
 
 [AR-0018](../Architectural%20Reviews/AR-0018-execution-loss-provenance-and-host-owned-quarantine.md)

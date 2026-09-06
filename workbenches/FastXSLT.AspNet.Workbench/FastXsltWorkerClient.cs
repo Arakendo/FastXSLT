@@ -2,7 +2,7 @@ using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Text;
 
-public sealed class FastXsltWorkerClient : IDisposable
+public sealed partial class FastXsltWorkerClient : IDisposable
 {
     private const byte Initialize = 1;
     private const byte Transform = 2;
@@ -14,13 +14,27 @@ public sealed class FastXsltWorkerClient : IDisposable
     private const byte UnpausedControlledTransform = 8;
     private const byte InstructionLimitedTransform = 9;
     private const byte InitializeWithStylesheetDependency = 10;
+    private const byte MeasuredTransform = 11;
+    private const byte TransformBatch = 12;
+    private const byte ControlledTransformBatch = 13;
+    private const byte BatchLossProbe = 14;
+    private const byte BatchTransferLossProbe = 15;
+    private const byte ActiveCancellationBatch = 16;
+    private const byte NaturalCancellationBatch = 17;
     private const byte Ready = 0x81;
     private const byte Result = 0x82;
     private const byte Stopped = 0x83;
     private const byte ProbeStarted = 0x84;
     private const byte TransformStarted = 0x85;
+    private const byte MeasuredResult = 0x86;
+    private const byte BatchResult = 0x87;
+    private const byte BatchAcknowledged = 0x88;
+    private const byte BatchMemberStarted = 0x89;
+    private const byte BatchMemberFinished = 0x8a;
+    private const byte BatchIncrementalOutcome = 0x8b;
     private const byte Error = 0xff;
     private const int MaximumFrameBytes = 1_048_576;
+    private const int MaximumBatchMembers = 128;
 
     private readonly Process _process;
     private readonly Stream _input;
@@ -172,6 +186,540 @@ public sealed class FastXsltWorkerClient : IDisposable
         finally
         {
             _gate.Release();
+        }
+    }
+
+    public async Task<IsolatedWorkerMeasuredTransform> TransformMeasuredAsync(
+        string requestIdentity)
+    {
+        var totalStarted = Stopwatch.GetTimestamp();
+        var gateStarted = totalStarted;
+        await _gate.WaitAsync();
+        var gateElapsed = Stopwatch.GetElapsedTime(gateStarted);
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
+            var writeStarted = Stopwatch.GetTimestamp();
+            await WriteByteAsync(MeasuredTransform);
+            await WriteStringAsync(requestIdentity);
+            var writeElapsed = Stopwatch.GetElapsedTime(writeStarted);
+
+            var flushStarted = Stopwatch.GetTimestamp();
+            await _input.FlushAsync();
+            var flushElapsed = Stopwatch.GetElapsedTime(flushStarted);
+
+            var responseStarted = Stopwatch.GetTimestamp();
+            var response = await ReadByteAsync();
+            if (response == Error)
+            {
+                throw await ReadFailureAsync();
+            }
+            if (response != MeasuredResult)
+            {
+                throw new InvalidDataException($"Unexpected measured transform response: {response}.");
+            }
+            var correlatedIdentity = await ReadStringAsync();
+            if (!StringComparer.Ordinal.Equals(requestIdentity, correlatedIdentity))
+            {
+                throw new InvalidDataException("Worker response identity did not match the request.");
+            }
+            var result = await ReadStringAsync();
+            var workerDecodeNanoseconds = await ReadUInt64Async();
+            var workerQueueNanoseconds = await ReadUInt64Async();
+            var workerExecutionNanoseconds = await ReadUInt64Async();
+            var responseElapsed = Stopwatch.GetElapsedTime(responseStarted);
+            var totalElapsed = Stopwatch.GetElapsedTime(totalStarted);
+
+            return new IsolatedWorkerMeasuredTransform(
+                result,
+                new IsolatedWorkerTransformTiming(
+                    gateElapsed.TotalMicroseconds,
+                    writeElapsed.TotalMicroseconds,
+                    flushElapsed.TotalMicroseconds,
+                    responseElapsed.TotalMicroseconds,
+                    workerDecodeNanoseconds / 1_000.0,
+                    workerQueueNanoseconds / 1_000.0,
+                    workerExecutionNanoseconds / 1_000.0,
+                    totalElapsed.TotalMicroseconds));
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task<IReadOnlyList<IsolatedWorkerBatchOutcome>> TransformBatchAsync(
+        IReadOnlyList<string> requestIdentities)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(requestIdentities.Count, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(
+            requestIdentities.Count,
+            MaximumBatchMembers);
+        await _gate.WaitAsync();
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            var frame = BuildUncontrolledBatchFrame(TransformBatch, requestIdentities);
+            return await SendBatchFrameLockedAsync(frame, requestIdentities);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task<IReadOnlyList<IsolatedWorkerBatchOutcome>> TransformControlledBatchAsync(
+        IReadOnlyList<IsolatedWorkerBatchRequest> requests)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(requests.Count, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(requests.Count, MaximumBatchMembers);
+        await _gate.WaitAsync();
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            var frame = BuildControlledBatchFrame(ControlledTransformBatch, requests);
+            return await SendBatchFrameLockedAsync(
+                frame,
+                requests.Select(static request => request.RequestIdentity).ToArray());
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task<IReadOnlyList<IsolatedBatchLossObservation>> ReachBatchLossBarrierAsync(
+        IReadOnlyList<string> requestIdentities,
+        int parkAtIndex)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(requestIdentities.Count, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(
+            requestIdentities.Count,
+            MaximumBatchMembers);
+        ArgumentOutOfRangeException.ThrowIfNegative(parkAtIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(
+            parkAtIndex,
+            requestIdentities.Count);
+
+        await _gate.WaitAsync();
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            var encodedLength = checked(1 + sizeof(int) + sizeof(int));
+            foreach (var identity in requestIdentities)
+            {
+                encodedLength = checked(
+                    encodedLength + sizeof(int) + Encoding.UTF8.GetByteCount(identity));
+            }
+            if (encodedLength > MaximumFrameBytes)
+            {
+                throw new InvalidDataException(
+                    $"Batch loss-probe frame exceeds {MaximumFrameBytes} bytes.");
+            }
+
+            var frame = new byte[encodedLength];
+            frame[0] = BatchLossProbe;
+            BinaryPrimitives.WriteInt32LittleEndian(
+                frame.AsSpan(1, sizeof(int)),
+                requestIdentities.Count);
+            var offset = 1 + sizeof(int);
+            foreach (var identity in requestIdentities)
+            {
+                var byteCount = Encoding.UTF8.GetByteCount(identity);
+                BinaryPrimitives.WriteInt32LittleEndian(
+                    frame.AsSpan(offset, sizeof(int)),
+                    byteCount);
+                offset += sizeof(int);
+                offset += Encoding.UTF8.GetBytes(identity, frame.AsSpan(offset, byteCount));
+            }
+            BinaryPrimitives.WriteInt32LittleEndian(
+                frame.AsSpan(offset, sizeof(int)),
+                parkAtIndex);
+
+            await _input.WriteAsync(frame);
+            await _input.FlushAsync();
+            var response = await ReadByteAsync();
+            if (response == Error)
+            {
+                throw await ReadFailureAsync();
+            }
+            if (response != BatchAcknowledged)
+            {
+                throw new InvalidDataException(
+                    $"Unexpected batch loss-probe acknowledgement: {response}.");
+            }
+            var acknowledgedCount = await ReadUInt32Async();
+            if (acknowledgedCount != (uint)requestIdentities.Count)
+            {
+                throw new InvalidDataException(
+                    "Worker acknowledged a different batch member count.");
+            }
+
+            var observations = new List<IsolatedBatchLossObservation>();
+            while (true)
+            {
+                var phase = await ReadByteAsync();
+                if (phase != BatchMemberStarted && phase != BatchMemberFinished)
+                {
+                    throw new InvalidDataException(
+                        $"Unexpected batch loss-probe observation: {phase}.");
+                }
+                var index = checked((int)await ReadUInt32Async());
+                if (index < 0 || index >= requestIdentities.Count)
+                {
+                    throw new InvalidDataException(
+                        $"Batch loss-probe member index {index} is outside the request.");
+                }
+                var identity = await ReadStringAsync();
+                RequireBatchIdentity(requestIdentities[index], identity);
+                var observation = new IsolatedBatchLossObservation(
+                    index,
+                    identity,
+                    phase == BatchMemberStarted ? "started" : "finished");
+                observations.Add(observation);
+                if (phase == BatchMemberStarted && index == parkAtIndex)
+                {
+                    return observations;
+                }
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task<IsolatedBatchTransferLossProbe> ReachBatchTransferLossBarrierAsync(
+        IReadOnlyList<string> requestIdentities,
+        int truncateAtIndex)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(requestIdentities.Count, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(
+            requestIdentities.Count,
+            MaximumBatchMembers);
+        ArgumentOutOfRangeException.ThrowIfNegative(truncateAtIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(
+            truncateAtIndex,
+            requestIdentities.Count);
+
+        await _gate.WaitAsync();
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            var encodedLength = checked(1 + sizeof(int) + sizeof(int));
+            foreach (var identity in requestIdentities)
+            {
+                encodedLength = checked(
+                    encodedLength + sizeof(int) + Encoding.UTF8.GetByteCount(identity));
+            }
+            if (encodedLength > MaximumFrameBytes)
+            {
+                throw new InvalidDataException(
+                    $"Batch transfer-loss probe exceeds {MaximumFrameBytes} bytes.");
+            }
+
+            var frame = new byte[encodedLength];
+            frame[0] = BatchTransferLossProbe;
+            BinaryPrimitives.WriteInt32LittleEndian(
+                frame.AsSpan(1, sizeof(int)),
+                requestIdentities.Count);
+            var offset = 1 + sizeof(int);
+            foreach (var identity in requestIdentities)
+            {
+                var byteCount = Encoding.UTF8.GetByteCount(identity);
+                BinaryPrimitives.WriteInt32LittleEndian(
+                    frame.AsSpan(offset, sizeof(int)),
+                    byteCount);
+                offset += sizeof(int);
+                offset += Encoding.UTF8.GetBytes(identity, frame.AsSpan(offset, byteCount));
+            }
+            BinaryPrimitives.WriteInt32LittleEndian(
+                frame.AsSpan(offset, sizeof(int)),
+                truncateAtIndex);
+
+            await _input.WriteAsync(frame);
+            await _input.FlushAsync();
+            if (await ReadByteAsync() != BatchAcknowledged)
+            {
+                throw new InvalidDataException(
+                    "Worker did not acknowledge the batch transfer-loss probe.");
+            }
+            if (await ReadUInt32Async() != (uint)requestIdentities.Count)
+            {
+                throw new InvalidDataException(
+                    "Worker acknowledged a different transfer-loss member count.");
+            }
+
+            var complete = new List<IsolatedWorkerBatchOutcome>(truncateAtIndex);
+            for (var expectedIndex = 0; expectedIndex <= truncateAtIndex; expectedIndex++)
+            {
+                if (await ReadByteAsync() != BatchIncrementalOutcome)
+                {
+                    throw new InvalidDataException(
+                        "Worker did not emit the expected incremental probe outcome.");
+                }
+                var actualIndex = checked((int)await ReadUInt32Async());
+                if (actualIndex != expectedIndex || await ReadByteAsync() != Result)
+                {
+                    throw new InvalidDataException(
+                        "Worker transfer-loss outcome position or kind changed.");
+                }
+                var identity = await ReadStringAsync();
+                RequireBatchIdentity(requestIdentities[expectedIndex], identity);
+                if (expectedIndex < truncateAtIndex)
+                {
+                    complete.Add(new IsolatedWorkerBatchOutcome(
+                        identity,
+                        await ReadStringAsync(),
+                        null));
+                    continue;
+                }
+
+                var declaredResultBytes = checked((int)await ReadUInt32Async());
+                if (declaredResultBytes < 2 || declaredResultBytes > MaximumFrameBytes)
+                {
+                    throw new InvalidDataException(
+                        $"Invalid transfer-loss result length: {declaredResultBytes}.");
+                }
+                var observedResultBytes = declaredResultBytes / 2;
+                var partial = new byte[observedResultBytes];
+                await _output.ReadExactlyAsync(partial);
+                return new IsolatedBatchTransferLossProbe(
+                    complete,
+                    truncateAtIndex,
+                    identity,
+                    declaredResultBytes,
+                    observedResultBytes);
+            }
+            throw new InvalidDataException("Transfer-loss probe did not reach its barrier.");
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task<int> SendTruncatedBatchCommandForExperimentAsync()
+    {
+        await _gate.WaitAsync();
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            var frame = new byte[
+                1 + sizeof(int) + sizeof(int) + 5 + sizeof(int) + 3];
+            frame[0] = TransformBatch;
+            BinaryPrimitives.WriteInt32LittleEndian(
+                frame.AsSpan(1, sizeof(int)),
+                2);
+            var offset = 1 + sizeof(int);
+            BinaryPrimitives.WriteInt32LittleEndian(
+                frame.AsSpan(offset, sizeof(int)),
+                5);
+            offset += sizeof(int);
+            "first"u8.CopyTo(frame.AsSpan(offset, 5));
+            offset += 5;
+            BinaryPrimitives.WriteInt32LittleEndian(
+                frame.AsSpan(offset, sizeof(int)),
+                10);
+            offset += sizeof(int);
+            "bad"u8.CopyTo(frame.AsSpan(offset, 3));
+
+            await _input.WriteAsync(frame);
+            await _input.FlushAsync();
+            _input.Dispose();
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            await _process.WaitForExitAsync(timeout.Token);
+            return _process.ExitCode;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task DispatchBatchWithoutObservationForExperimentAsync(
+        IReadOnlyList<string> requestIdentities)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(requestIdentities.Count, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(
+            requestIdentities.Count,
+            MaximumBatchMembers);
+        await _gate.WaitAsync();
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            var encodedLength = checked(1 + sizeof(int));
+            foreach (var identity in requestIdentities)
+            {
+                encodedLength = checked(
+                    encodedLength + sizeof(int) + Encoding.UTF8.GetByteCount(identity));
+            }
+            if (encodedLength > MaximumFrameBytes)
+            {
+                throw new InvalidDataException(
+                    $"Batch frame exceeds {MaximumFrameBytes} bytes.");
+            }
+            var frame = new byte[encodedLength];
+            frame[0] = TransformBatch;
+            BinaryPrimitives.WriteInt32LittleEndian(
+                frame.AsSpan(1, sizeof(int)),
+                requestIdentities.Count);
+            var offset = 1 + sizeof(int);
+            foreach (var identity in requestIdentities)
+            {
+                var byteCount = Encoding.UTF8.GetByteCount(identity);
+                BinaryPrimitives.WriteInt32LittleEndian(
+                    frame.AsSpan(offset, sizeof(int)),
+                    byteCount);
+                offset += sizeof(int);
+                offset += Encoding.UTF8.GetBytes(identity, frame.AsSpan(offset, byteCount));
+            }
+            await _input.WriteAsync(frame);
+            await _input.FlushAsync();
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task<IReadOnlyList<IsolatedWorkerBatchOutcome>> TransformActiveCancellationBatchAsync(
+        IReadOnlyList<string> requestIdentities,
+        int cancelAtIndex) => await TransformCancellationBatchAsync(
+            ActiveCancellationBatch,
+            requestIdentities,
+            cancelAtIndex,
+            TimeSpan.Zero);
+
+    public async Task<IReadOnlyList<IsolatedWorkerBatchOutcome>> TransformNaturalCancellationBatchAsync(
+        IReadOnlyList<string> requestIdentities,
+        int cancelAtIndex,
+        TimeSpan signalDelay) => await TransformCancellationBatchAsync(
+            NaturalCancellationBatch,
+            requestIdentities,
+            cancelAtIndex,
+            signalDelay);
+
+    private async Task<IReadOnlyList<IsolatedWorkerBatchOutcome>> TransformCancellationBatchAsync(
+        byte operation,
+        IReadOnlyList<string> requestIdentities,
+        int cancelAtIndex,
+        TimeSpan signalDelay)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(requestIdentities.Count, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(requestIdentities.Count, MaximumBatchMembers);
+        ArgumentOutOfRangeException.ThrowIfNegative(cancelAtIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(cancelAtIndex, requestIdentities.Count);
+        await _gate.WaitAsync();
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            var encodedLength = checked(1 + sizeof(int) + sizeof(int));
+            foreach (var identity in requestIdentities)
+            {
+                encodedLength = checked(encodedLength + sizeof(int) + Encoding.UTF8.GetByteCount(identity));
+            }
+            if (encodedLength > MaximumFrameBytes)
+            {
+                throw new InvalidDataException($"Active cancellation batch exceeds {MaximumFrameBytes} bytes.");
+            }
+            var frame = new byte[encodedLength];
+            frame[0] = operation;
+            BinaryPrimitives.WriteInt32LittleEndian(frame.AsSpan(1, sizeof(int)), requestIdentities.Count);
+            var offset = 1 + sizeof(int);
+            foreach (var identity in requestIdentities)
+            {
+                var byteCount = Encoding.UTF8.GetByteCount(identity);
+                BinaryPrimitives.WriteInt32LittleEndian(frame.AsSpan(offset, sizeof(int)), byteCount);
+                offset += sizeof(int);
+                offset += Encoding.UTF8.GetBytes(identity, frame.AsSpan(offset, byteCount));
+            }
+            BinaryPrimitives.WriteInt32LittleEndian(frame.AsSpan(offset, sizeof(int)), cancelAtIndex);
+            await _input.WriteAsync(frame);
+            await _input.FlushAsync();
+            if (await ReadByteAsync() != BatchMemberStarted ||
+                checked((int)await ReadUInt32Async()) != cancelAtIndex)
+            {
+                throw new InvalidDataException("Active batch member start observation changed.");
+            }
+            var activeIdentity = await ReadStringAsync();
+            RequireBatchIdentity(requestIdentities[cancelAtIndex], activeIdentity);
+            if (signalDelay > TimeSpan.Zero)
+            {
+                await Task.Delay(signalDelay);
+            }
+            await _controlWriter.WriteCancellationAsync(Cancel, activeIdentity);
+            return await ReadBatchResponseAsync(requestIdentities);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    private async Task<IReadOnlyList<IsolatedWorkerBatchOutcome>> SendBatchFrameLockedAsync(
+        byte[] frame,
+        IReadOnlyList<string> requestIdentities)
+    {
+        await _input.WriteAsync(frame);
+        await _input.FlushAsync();
+        return await ReadBatchResponseAsync(requestIdentities);
+    }
+
+    private async Task<IReadOnlyList<IsolatedWorkerBatchOutcome>> ReadBatchResponseAsync(
+        IReadOnlyList<string> requestIdentities)
+    {
+        var response = await ReadByteAsync();
+        if (response == Error)
+        {
+            throw await ReadFailureAsync();
+        }
+        if (response != BatchResult)
+        {
+            throw new InvalidDataException($"Unexpected batch response: {response}.");
+        }
+        var count = await ReadUInt32Async();
+        if (count != (uint)requestIdentities.Count)
+        {
+            throw new InvalidDataException(
+                $"Worker returned {count} batch outcomes for {requestIdentities.Count} requests.");
+        }
+        var outcomes = new IsolatedWorkerBatchOutcome[requestIdentities.Count];
+        for (var index = 0; index < outcomes.Length; index++)
+        {
+            var outcomeKind = await ReadByteAsync();
+            if (outcomeKind == Result)
+            {
+                var identity = await ReadStringAsync();
+                RequireBatchIdentity(requestIdentities[index], identity);
+                outcomes[index] = new IsolatedWorkerBatchOutcome(
+                    identity,
+                    await ReadStringAsync(),
+                    null);
+            }
+            else if (outcomeKind == Error)
+            {
+                var failure = await ReadFailureAsync();
+                RequireBatchIdentity(requestIdentities[index], failure.RequestId);
+                outcomes[index] = new IsolatedWorkerBatchOutcome(
+                    failure.RequestId!,
+                    null,
+                    failure);
+            }
+            else
+            {
+                throw new InvalidDataException($"Unexpected batch member response: {outcomeKind}.");
+            }
+        }
+        return outcomes;
+    }
+
+    private static void RequireBatchIdentity(string expected, string? actual)
+    {
+        if (!StringComparer.Ordinal.Equals(expected, actual))
+        {
+            throw new InvalidDataException("Worker batch response identity did not match its request position.");
         }
     }
 
@@ -486,6 +1034,20 @@ public sealed class FastXsltWorkerClient : IDisposable
         return value[0];
     }
 
+    private async Task<ulong> ReadUInt64Async()
+    {
+        var value = new byte[sizeof(ulong)];
+        await _output.ReadExactlyAsync(value);
+        return BinaryPrimitives.ReadUInt64LittleEndian(value);
+    }
+
+    private async Task<uint> ReadUInt32Async()
+    {
+        var value = new byte[sizeof(uint)];
+        await _output.ReadExactlyAsync(value);
+        return BinaryPrimitives.ReadUInt32LittleEndian(value);
+    }
+
     private async Task<string> ReadStringAsync()
     {
         var lengthBytes = new byte[4];
@@ -502,6 +1064,53 @@ public sealed class FastXsltWorkerClient : IDisposable
 
     private static string? NullIfEmpty(string value) => value.Length == 0 ? null : value;
 }
+
+public sealed record IsolatedWorkerMeasuredTransform(
+    string Result,
+    IsolatedWorkerTransformTiming Timing);
+
+public sealed record IsolatedWorkerTransformTiming(
+    double GateMicroseconds,
+    double RequestWriteMicroseconds,
+    double RequestFlushMicroseconds,
+    double ResponseWaitAndReadMicroseconds,
+    double WorkerDecodeMicroseconds,
+    double WorkerQueueMicroseconds,
+    double WorkerExecutionMicroseconds,
+    double InstrumentedTotalMicroseconds)
+{
+    public double UnattributedRoundTripMicroseconds => Math.Max(
+        0,
+        InstrumentedTotalMicroseconds
+            - GateMicroseconds
+            - RequestWriteMicroseconds
+            - RequestFlushMicroseconds
+            - WorkerDecodeMicroseconds
+            - WorkerQueueMicroseconds
+            - WorkerExecutionMicroseconds);
+}
+
+public sealed record IsolatedWorkerBatchOutcome(
+    string RequestIdentity,
+    string? Result,
+    FastXsltWorkerException? Failure);
+
+public sealed record IsolatedWorkerBatchRequest(
+    string RequestIdentity,
+    bool Cancelled = false,
+    ulong? MaximumXsltInstructions = null);
+
+public sealed record IsolatedBatchLossObservation(
+    int MemberIndex,
+    string RequestIdentity,
+    string Phase);
+
+public sealed record IsolatedBatchTransferLossProbe(
+    IReadOnlyList<IsolatedWorkerBatchOutcome> CompleteOutcomes,
+    int PartialMemberIndex,
+    string PartialRequestIdentity,
+    int DeclaredResultBytes,
+    int ObservedResultBytes);
 
 internal sealed class SerializedWorkerControlWriter(Stream output, int maximumFrameBytes)
 {

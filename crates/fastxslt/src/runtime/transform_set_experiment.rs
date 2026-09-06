@@ -287,24 +287,56 @@ fn execute_request(
     multiple_match_policy: MultipleMatchPolicy,
     request: &TransformRequest,
 ) -> Result<ResultEntry, ExecutionFailure> {
+    let mut control = request_control(request, policy);
+    let source = request_source_identity(&request.entry)
+        .map(|resource| prepare_request_source(snapshot, resource, &request.identity, &mut control))
+        .transpose()?;
+    execute_prepared_request(
+        snapshot,
+        stylesheet,
+        policy,
+        multiple_match_policy,
+        request,
+        source.as_ref(),
+        &mut control,
+    )
+}
+
+pub(super) fn request_control(
+    request: &TransformRequest,
+    policy: &ExecutionPolicy,
+) -> InvocationControl {
     let mut control = InvocationControl::new(request.cancellation.clone(), policy.work_limits);
     if let Some((domain, accepted_charges_before_signal)) = request.cancellation_fault {
         control = control.cancelling_on_charge(domain, accepted_charges_before_signal);
     }
+    control
+}
+
+pub(super) fn execute_prepared_request(
+    snapshot: &ResourceSnapshot,
+    stylesheet: &StylesheetProgram,
+    policy: &ExecutionPolicy,
+    multiple_match_policy: MultipleMatchPolicy,
+    request: &TransformRequest,
+    source: Option<&Document>,
+    control: &mut InvocationControl,
+) -> Result<ResultEntry, ExecutionFailure> {
     let semantic = execute_request_semantics(
         snapshot,
         stylesheet,
         policy,
         multiple_match_policy,
         request,
-        &mut control,
+        source,
+        control,
     )?;
     let serialized = serialize_xml(
         &semantic,
         &stylesheet.output,
         &request.identity,
         policy.serialized_byte_limit,
-        &mut control,
+        control,
     )?;
     Ok(ResultEntry {
         result_id: request.result_identity.clone(),
@@ -319,14 +351,15 @@ fn execute_request_semantics(
     policy: &ExecutionPolicy,
     multiple_match_policy: MultipleMatchPolicy,
     request: &TransformRequest,
+    source: Option<&Document>,
     control: &mut InvocationControl,
 ) -> Result<SemanticResult, ExecutionFailure> {
     match &request.entry {
         InvocationEntry::PrincipalSource { resource } => {
-            let source = prepare_request_source(snapshot, resource, &request.identity, control)?;
+            let source = prepared_source(source, resource, &request.identity)?;
             super::execute_program_with_parameters_and_resources(
                 stylesheet,
-                &source,
+                source,
                 &request.parameters,
                 multiple_match_policy,
                 &request.identity,
@@ -336,11 +369,11 @@ fn execute_request_semantics(
             )
         }
         InvocationEntry::InitialMode { resource, name } => {
-            let source = prepare_request_source(snapshot, resource, &request.identity, control)?;
+            let source = prepared_source(source, resource, &request.identity)?;
             execute_initial_mode(
                 super::InitialModeInvocation {
                     program: stylesheet,
-                    source: &source,
+                    source,
                     initial_node: source.document_node(),
                     name,
                     parameters: &request.parameters,
@@ -355,7 +388,7 @@ fn execute_request_semantics(
             name,
             element,
         } => {
-            let source = prepare_request_source(snapshot, resource, &request.identity, control)?;
+            let source = prepared_source(source, resource, &request.identity)?;
             let node = source
                 .children(source.document_node())
                 .iter()
@@ -372,7 +405,7 @@ fn execute_request_semantics(
             execute_initial_mode(
                 super::InitialModeInvocation {
                     program: stylesheet,
-                    source: &source,
+                    source,
                     initial_node: node,
                     name,
                     parameters: &request.parameters,
@@ -391,11 +424,11 @@ fn execute_request_semantics(
             control,
         ),
         InvocationEntry::InitialTemplateWithSource { resource, name } => {
-            let source = prepare_request_source(snapshot, resource, &request.identity, control)?;
+            let source = prepared_source(source, resource, &request.identity)?;
             super::execute_initial_template_with_source(
                 stylesheet,
                 name,
-                &source,
+                source,
                 &request.parameters,
                 multiple_match_policy,
                 &request.identity,
@@ -403,6 +436,31 @@ fn execute_request_semantics(
             )
         }
     }
+}
+
+pub(super) fn request_source_identity(entry: &InvocationEntry) -> Option<&str> {
+    match entry {
+        InvocationEntry::PrincipalSource { resource }
+        | InvocationEntry::InitialMode { resource, .. }
+        | InvocationEntry::InitialModeElement { resource, .. }
+        | InvocationEntry::InitialTemplateWithSource { resource, .. } => Some(resource),
+        InvocationEntry::InitialTemplate { .. } => None,
+    }
+}
+
+fn prepared_source<'a>(
+    source: Option<&'a Document>,
+    resource: &str,
+    request_id: &str,
+) -> Result<&'a Document, ExecutionFailure> {
+    source.ok_or_else(|| {
+        failure(
+            "FXRT0006",
+            FailureCategory::Invalid,
+            Some(request_id),
+            format!("prepared execution packet is missing source: {resource}"),
+        )
+    })
 }
 
 fn prepare_request_source(

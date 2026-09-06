@@ -27,6 +27,15 @@ mod atomic_template_executor;
 mod byte_encoding;
 #[path = "dynamic_document.rs"]
 mod dynamic_document;
+#[cfg(test)]
+#[path = "preparation_pipeline_controller_tests.rs"]
+mod preparation_pipeline_controller_tests;
+#[cfg(test)]
+#[path = "preparation_pipeline_experiment.rs"]
+mod preparation_pipeline_experiment;
+#[cfg(test)]
+#[path = "preparation_pipeline_topology_tests.rs"]
+mod preparation_pipeline_topology_tests;
 #[path = "resource_compiler.rs"]
 mod resource_compiler;
 #[path = "result_tree.rs"]

@@ -11,6 +11,10 @@ param(
     [switch]$TextHeavyBenchmark,
     [switch]$ResultHeavyBenchmark,
     [switch]$NativeBoundaryBreakdown,
+    [switch]$IsolatedBoundaryBreakdown,
+    [switch]$IsolatedBatchBenchmark,
+    [switch]$IsolatedBatchWorkerSweep,
+    [switch]$IsolatedBatchResultPressure,
     [switch]$OperationalExperiments,
     [switch]$NativeRegistryPressure,
     [switch]$RegistrySummaryOnly,
@@ -18,6 +22,8 @@ param(
     [switch]$NativeRegistryReplacementSoak,
     [int]$TieredRequests = 250,
     [int]$TieredConcurrency = 4,
+    [int]$BatchSweepMembers = 1024,
+    [int]$BatchResultMembers = 256,
     [int]$TextHeavyRequests = 100,
     [int]$ResultHeavyRequests = 50,
     [int]$RegistryItems = 500,
@@ -39,6 +45,14 @@ param(
 $ErrorActionPreference = 'Stop'
 if ($MeasurementRuns -lt 1) {
     throw 'MeasurementRuns must be at least 1.'
+}
+function Get-Median([double[]]$Values) {
+    $ordered = @($Values | Sort-Object)
+    if ($ordered.Count % 2 -eq 1) {
+        return $ordered[[int][Math]::Floor($ordered.Count / 2)]
+    }
+    $upper = [int]($ordered.Count / 2)
+    return ($ordered[$upper - 1] + $ordered[$upper]) / 2
 }
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $repositoryRoot 'workbenches/FastXSLT.AspNet.Workbench/FastXSLT.AspNet.Workbench.csproj'
@@ -132,6 +146,194 @@ try {
             }
         }
         if ($OperationalExperiments) {
+            $batchControls = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/isolated-batch-controls"
+            if ($batchControls.outcomes.Count -ne 4 -or
+                $batchControls.outcomes[0].requestIdentity -cne 'batch-control-before' -or
+                $batchControls.outcomes[0].result -cne $expected -or
+                $batchControls.outcomes[1].requestIdentity -cne 'batch-control-cancelled' -or
+                $batchControls.outcomes[1].failureCode -cne 'FXCT0001' -or
+                $batchControls.outcomes[1].failureCategory -cne 'cancelled' -or
+                $batchControls.outcomes[2].requestIdentity -cne 'batch-control-limited' -or
+                $batchControls.outcomes[2].failureCode -cne 'FXCT0002' -or
+                $batchControls.outcomes[2].failureCategory -cne 'limit' -or
+                $batchControls.outcomes[3].requestIdentity -cne 'batch-control-after' -or
+                $batchControls.outcomes[3].result -cne $expected -or
+                $batchControls.incrementalOutcomes.Count -ne 4 -or
+                $batchControls.incrementalOutcomes[0].requestIdentity -cne 'batch-incremental-before' -or
+                $batchControls.incrementalOutcomes[0].result -cne $expected -or
+                $batchControls.incrementalOutcomes[1].requestIdentity -cne 'batch-incremental-cancelled' -or
+                $batchControls.incrementalOutcomes[1].failureCode -cne 'FXCT0001' -or
+                $batchControls.incrementalOutcomes[1].failureCategory -cne 'cancelled' -or
+                $batchControls.incrementalOutcomes[2].requestIdentity -cne 'batch-incremental-limited' -or
+                $batchControls.incrementalOutcomes[2].failureCode -cne 'FXCT0002' -or
+                $batchControls.incrementalOutcomes[2].failureCategory -cne 'limit' -or
+                $batchControls.incrementalOutcomes[3].requestIdentity -cne 'batch-incremental-after' -or
+                $batchControls.incrementalOutcomes[3].result -cne $expected -or
+                $batchControls.incrementalFirstOutcomeMicroseconds -le 0 -or
+                $batchControls.incrementalFinalOutcomeMicroseconds -lt $batchControls.incrementalFirstOutcomeMicroseconds -or
+                $batchControls.recovery -cne $expected -or
+                -not $batchControls.memberControlsAreIndependent -or
+                -not $batchControls.incrementalMemberControlsAreIndependent -or
+                $batchControls.activeMidMemberCancellationIncluded) {
+                throw "Isolated batch controls changed member independence: $($batchControls | ConvertTo-Json -Depth 5)"
+            }
+            $incrementalLimit = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/isolated-incremental-batch-limit"
+            if ($incrementalLimit.code -cne 'FXWB1004' -or
+                $incrementalLimit.category -cne 'limit' -or
+                $incrementalLimit.completeOutcomeCount -ne 6 -or
+                $incrementalLimit.ambiguousMemberIndex -ne 6 -or
+                $incrementalLimit.ambiguousRequestIdentity -cne 'incremental-limit-6' -or
+                $incrementalLimit.unstartedMemberCount -ne 1 -or
+                $incrementalLimit.unstartedRequestIdentities.Count -ne 1 -or
+                $incrementalLimit.unstartedRequestIdentities[0] -cne 'incremental-limit-7' -or
+                -not $incrementalLimit.completePrefixIsExact -or
+                -not $incrementalLimit.recoveryIsExact -or
+                $incrementalLimit.aggregateFailureCode -cne 'FXWB1004' -or
+                $incrementalLimit.aggregateFailureCategory -cne 'limit' -or
+                -not $incrementalLimit.aggregateRecoveryIsExact -or
+                -not $incrementalLimit.aggregateRetentionRejectedBeforeSuffix -or
+                $incrementalLimit.memberAttemptsRetried -or
+                -not $incrementalLimit.oneSequentialExecutionLane) {
+                throw "Incremental batch cumulative-limit classification changed: $($incrementalLimit | ConvertTo-Json -Depth 6)"
+            }
+            $incrementalBackpressure = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/isolated-incremental-batch-backpressure"
+            if ($incrementalBackpressure.memberCount -ne 4 -or
+                -not $incrementalBackpressure.exact -or
+                $incrementalBackpressure.firstOutcomeMilliseconds -le 0 -or
+                ($incrementalBackpressure.finalOutcomeMilliseconds - $incrementalBackpressure.firstOutcomeMilliseconds) -lt 60 -or
+                $incrementalBackpressure.imposedReadDelayMilliseconds -ne 30 -or
+                $incrementalBackpressure.minimumCumulativeDelayMilliseconds -ne 90 -or
+                $incrementalBackpressure.peakWorkingSetBytes -lt $incrementalBackpressure.observedWorkingSetBeforeBytes -or
+                -not $incrementalBackpressure.recoveryIsExact -or
+                -not $incrementalBackpressure.oneSequentialExecutionLane -or
+                -not $incrementalBackpressure.completedOutcomeVectorExistsOnlyInHost) {
+                throw "Incremental batch slow-consumer backpressure changed: $($incrementalBackpressure | ConvertTo-Json -Depth 6)"
+            }
+            $incrementalConsumer = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/isolated-incremental-batch-consumer"
+            if ($incrementalConsumer.memberCount -ne 4 -or
+                $incrementalConsumer.unsupportedProtocolCode -cne 'FXWB1005' -or
+                $incrementalConsumer.unsupportedProtocolCategory -cne 'invalid' -or
+                -not $incrementalConsumer.unsupportedProtocolRecoveryIsExact -or
+                $incrementalConsumer.callbackCount -ne 4 -or
+                -not $incrementalConsumer.callbackResultsAreExact -or
+                $incrementalConsumer.streamedCompleteOutcomeCount -ne 4 -or
+                $incrementalConsumer.retainedOutcomeCount -ne 0 -or
+                $incrementalConsumer.encodedRequestBytes -ne $incrementalConsumer.expectedRequestBytes -or
+                $incrementalConsumer.encodedResponseBytes -ne $incrementalConsumer.expectedResponseBytes -or
+                $incrementalConsumer.peakAdapterRetainedOutcomeCount -ne 1 -or
+                $incrementalConsumer.peakAdapterRetainedOutcomeWireBytes -ne $incrementalConsumer.expectedPeakAdapterRetainedOutcomeWireBytes -or
+                -not $incrementalConsumer.retainingResultsAreExact -or
+                $incrementalConsumer.retainingOutcomeCount -ne 4 -or
+                $incrementalConsumer.retainingPeakAdapterRetainedOutcomeCount -ne 4 -or
+                $incrementalConsumer.retainingPeakAdapterRetainedOutcomeWireBytes -ne $incrementalConsumer.expectedRetainingOutcomeWireBytes -or
+                $incrementalConsumer.firstOutcomeMilliseconds -le 0 -or
+                $incrementalConsumer.finalOutcomeMilliseconds -lt $incrementalConsumer.firstOutcomeMilliseconds -or
+                -not $incrementalConsumer.recoveryIsExact -or
+                $incrementalConsumer.abandonedCallbackCount -ne 2 -or
+                -not $incrementalConsumer.abandonedWorkerRejectedReuse -or
+                $incrementalConsumer.lossCallbackCount -ne 1 -or
+                -not $incrementalConsumer.acknowledged -or
+                $incrementalConsumer.lossCompleteOutcomeCount -ne 1 -or
+                $incrementalConsumer.remainingAmbiguousCount -ne 3 -or
+                $incrementalConsumer.transportLossRetainedOutcomeCount -ne 0 -or
+                $incrementalConsumer.lossEncodedRequestBytes -ne $incrementalConsumer.expectedRequestBytes -or
+                $incrementalConsumer.lossEncodedCompleteResponseBytes -le 0 -or
+                $incrementalConsumer.lossPeakAdapterRetainedOutcomeWireBytes -ne $incrementalConsumer.expectedPeakAdapterRetainedOutcomeWireBytes -or
+                -not $incrementalConsumer.replacementIsExact -or
+                $incrementalConsumer.memberAttemptsRetried -or
+                -not $incrementalConsumer.callbackShapeIsPrivateExperiment) {
+                throw "Incremental batch consumer boundary changed: $($incrementalConsumer | ConvertTo-Json -Depth 6)"
+            }
+            $batchLoss = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/isolated-batch-loss"
+            if ($batchLoss.trials.Count -ne 3 -or
+                $batchLoss.recovery -cne $expected -or
+                -not $batchLoss.aggregateResponseOracle -or
+                $batchLoss.memberResultsTransferredBeforeLoss -ne 0 -or
+                $batchLoss.killedMemberAttemptsRetried -or
+                -not $batchLoss.finishedButUntransferredIsAmbiguous -or
+                -not $batchLoss.laterMembersAreUnstarted) {
+                throw "Isolated batch loss summary changed: $($batchLoss | ConvertTo-Json -Depth 8)"
+            }
+            foreach ($trial in $batchLoss.trials) {
+                if ($trial.observations.Count -ne (($trial.parkAtIndex * 2) + 1) -or
+                    $trial.members.Count -ne 5) {
+                    throw "Isolated batch loss observation prefix changed: $($trial | ConvertTo-Json -Depth 8)"
+                }
+                foreach ($member in $trial.members) {
+                    $expectedDisposition = if ($member.memberIndex -le $trial.parkAtIndex) {
+                        'operationally-ambiguous'
+                    }
+                    else {
+                        'unstarted'
+                    }
+                    if ($member.disposition -cne $expectedDisposition -or
+                        $member.correlatedOutcomeTransferred) {
+                        throw "Isolated batch loss classification changed: $($trial | ConvertTo-Json -Depth 8)"
+                    }
+                }
+            }
+            if ($batchLoss.transferLoss.truncateAtIndex -ne 2 -or
+                $batchLoss.transferLoss.completeOutcomeCount -ne 2 -or
+                $batchLoss.transferLoss.partialRequestIdentity -cne 'batch-transfer-loss-2' -or
+                $batchLoss.transferLoss.observedResultBytes -le 0 -or
+                $batchLoss.transferLoss.observedResultBytes -ge $batchLoss.transferLoss.declaredResultBytes -or
+                $batchLoss.transferLoss.members.Count -ne 5) {
+                throw "Isolated batch transfer-loss boundary changed: $($batchLoss.transferLoss | ConvertTo-Json -Depth 8)"
+            }
+            foreach ($member in $batchLoss.transferLoss.members) {
+                $expectedDisposition = if ($member.memberIndex -lt 2) {
+                    'complete'
+                }
+                elseif ($member.memberIndex -eq 2) {
+                    'operationally-ambiguous'
+                }
+                else {
+                    'unstarted'
+                }
+                $expectedTransferred = $member.memberIndex -lt 2
+                if ($member.disposition -cne $expectedDisposition -or
+                    $member.correlatedOutcomeTransferred -ne $expectedTransferred) {
+                    throw "Isolated batch transfer-loss classification changed: $($batchLoss.transferLoss | ConvertTo-Json -Depth 8)"
+                }
+            }
+            if ($batchLoss.malformedCommand.exitCode -eq 0 -or
+                $batchLoss.malformedCommand.fullCommandDecoded -or
+                $batchLoss.malformedCommand.memberAttemptsAdmitted -ne 0 -or
+                $batchLoss.malformedCommand.disposition -cne 'unstarted' -or
+                $batchLoss.malformedCommand.memberAttemptsRetried) {
+                throw "Malformed batch command classification changed: $($batchLoss.malformedCommand | ConvertTo-Json -Depth 5)"
+            }
+            if ($batchLoss.unacknowledgedDispatch.memberCount -ne 5 -or
+                $batchLoss.unacknowledgedDispatch.acknowledgementObserved -or
+                $batchLoss.unacknowledgedDispatch.correlatedOutcomesObserved -ne 0 -or
+                $batchLoss.unacknowledgedDispatch.disposition -cne 'operationally-ambiguous' -or
+                $batchLoss.unacknowledgedDispatch.memberAttemptsRetried) {
+                throw "Unacknowledged batch dispatch classification changed: $($batchLoss.unacknowledgedDispatch | ConvertTo-Json -Depth 5)"
+            }
+            if ($batchLoss.activeCancellation.cancelAtIndex -ne 2 -or
+                $batchLoss.activeCancellation.outcomes.Count -ne 5 -or
+                $batchLoss.activeCancellation.outcomes[0].result -cne $expected -or
+                $batchLoss.activeCancellation.outcomes[1].result -cne $expected -or
+                $batchLoss.activeCancellation.outcomes[2].failureCode -cne 'FXCT0001' -or
+                $batchLoss.activeCancellation.outcomes[2].failureCategory -cne 'cancelled' -or
+                $batchLoss.activeCancellation.outcomes[3].result -cne $expected -or
+                $batchLoss.activeCancellation.outcomes[4].result -cne $expected -or
+                $batchLoss.activeCancellation.recovery -cne $expected -or
+                -not $batchLoss.activeCancellation.oneSequentialExecutionLane -or
+                -not $batchLoss.activeCancellation.laterSiblingsExecuted) {
+                throw "Active batch cancellation changed: $($batchLoss.activeCancellation | ConvertTo-Json -Depth 8)"
+            }
+            $batchCancellationRaces = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/isolated-batch-cancellation-races"
+            if ($batchCancellationRaces.trials -ne 25 -or
+                ($batchCancellationRaces.cancellations + $batchCancellationRaces.completions) -ne 25 -or
+                $batchCancellationRaces.invalidTargetOutcomes -ne 0 -or
+                $batchCancellationRaces.siblingFailures -ne 0 -or
+                $batchCancellationRaces.recovery -cne '<?xml version="1.0" encoding="UTF-8"?><out>20000.00</out>' -or
+                -not $batchCancellationRaces.completionWinsIfCommittedBeforeSignal -or
+                $batchCancellationRaces.firstChargeBarrierUsed -or
+                -not $batchCancellationRaces.oneSequentialExecutionLane) {
+                throw "Natural batch cancellation races changed: $($batchCancellationRaces | ConvertTo-Json -Depth 6)"
+            }
             $cancellation = Invoke-RestMethod -Method Post -Uri "$baseAddress/experiment/cooperative-cancellation"
             if ($cancellation.cancellation.failureCode -ne 'FXCT0001' -or
                 $cancellation.cancellation.failureCategory -ne 'cancelled' -or
@@ -336,6 +538,53 @@ try {
                 -not $fileReplacement.originalFilesRenamedAndRemovedWhileGenerationWasLive -or
                 -not $fileReplacement.sourceBytesChanged) {
                 throw "Host file replacement violated snapshot isolation: $($fileReplacement | ConvertTo-Json -Depth 5)"
+            }
+            [pscustomobject]@{
+                Experiment = 'BatchNaturalCancellationRaces'
+                Trials = $batchCancellationRaces.trials
+                Cancellations = $batchCancellationRaces.cancellations
+                Completions = $batchCancellationRaces.completions
+                InvalidTargetOutcomes = $batchCancellationRaces.invalidTargetOutcomes
+                SiblingFailures = $batchCancellationRaces.siblingFailures
+                WorkerReused = $batchCancellationRaces.recovery -ceq '<?xml version="1.0" encoding="UTF-8"?><out>20000.00</out>'
+            }
+            [pscustomobject]@{
+                Experiment = 'IncrementalBatchCumulativeLimit'
+                FailureCode = $incrementalLimit.code
+                CompletePrefix = $incrementalLimit.completeOutcomeCount
+                AmbiguousIndex = $incrementalLimit.ambiguousMemberIndex
+                UnstartedSuffix = $incrementalLimit.unstartedMemberCount
+                WorkerReused = $incrementalLimit.recoveryIsExact
+                AggregateFailureCode = $incrementalLimit.aggregateFailureCode
+                AggregateWorkerReused = $incrementalLimit.aggregateRecoveryIsExact
+            }
+            [pscustomobject]@{
+                Experiment = 'IncrementalBatchBackpressure'
+                Members = $incrementalBackpressure.memberCount
+                FirstOutcomeMilliseconds = $incrementalBackpressure.firstOutcomeMilliseconds
+                FinalOutcomeMilliseconds = $incrementalBackpressure.finalOutcomeMilliseconds
+                WorkingSetBeforeBytes = $incrementalBackpressure.observedWorkingSetBeforeBytes
+                PeakWorkingSetBytes = $incrementalBackpressure.peakWorkingSetBytes
+                WorkingSetAfterBytes = $incrementalBackpressure.observedWorkingSetAfterBytes
+                WorkerReused = $incrementalBackpressure.recoveryIsExact
+            }
+            [pscustomobject]@{
+                Experiment = 'IncrementalBatchConsumerBoundary'
+                Members = $incrementalConsumer.memberCount
+                DeliveredCallbacks = $incrementalConsumer.callbackCount
+                RetainedOutcomes = $incrementalConsumer.retainedOutcomeCount
+                RequestWireBytes = $incrementalConsumer.encodedRequestBytes
+                ResponseWireBytes = $incrementalConsumer.encodedResponseBytes
+                PeakRetainedOutcomeWireBytes = $incrementalConsumer.peakAdapterRetainedOutcomeWireBytes
+                CollectingPeakOutcomeCount = $incrementalConsumer.retainingPeakAdapterRetainedOutcomeCount
+                CollectingPeakOutcomeWireBytes = $incrementalConsumer.retainingPeakAdapterRetainedOutcomeWireBytes
+                FirstOutcomeMilliseconds = $incrementalConsumer.firstOutcomeMilliseconds
+                FinalOutcomeMilliseconds = $incrementalConsumer.finalOutcomeMilliseconds
+                AbandonedPrefix = $incrementalConsumer.abandonedCallbackCount
+                AbandonedWorkerRetired = $incrementalConsumer.abandonedWorkerRejectedReuse
+                LossObservedPrefix = $incrementalConsumer.lossCompleteOutcomeCount
+                LossAmbiguousRemainder = $incrementalConsumer.remainingAmbiguousCount
+                ReplacementRecovered = $incrementalConsumer.replacementIsExact
             }
             [pscustomobject]@{
                 Experiment = 'CooperativeCancellation'
@@ -643,6 +892,135 @@ try {
                     @{Name='DecodeMicroseconds'; Expression={$_.instrumentedDirectMeans.resultDecodingMicroseconds}}, `
                     @{Name='ReleaseMicroseconds'; Expression={$_.instrumentedDirectMeans.outcomeReleaseMicroseconds}}, `
                     @{Name='InstrumentedTotalMicroseconds'; Expression={$_.instrumentedDirectMeans.instrumentedTotalMicroseconds}}
+            }
+        }
+        if ($IsolatedBoundaryBreakdown) {
+            for ($boundaryRun = 1; $boundaryRun -le $MeasurementRuns; $boundaryRun++) {
+                $boundary = Invoke-RestMethod -Method Post -Uri "$baseAddress/benchmark/isolated-boundary-breakdown?requests=$TieredRequests"
+                $boundary.measurements | Select-Object `
+                    @{Name='Run'; Expression={$boundaryRun}}, tier, requests, `
+                    @{Name='OrdinaryPerSecond'; Expression={$_.ordinary.transformsPerSecond}}, `
+                    @{Name='OrdinaryMeanMicroseconds'; Expression={$_.ordinary.meanMicroseconds}}, `
+                    @{Name='RequestWriteMicroseconds'; Expression={$_.instrumentedMeans.requestWriteMicroseconds}}, `
+                    @{Name='RequestFlushMicroseconds'; Expression={$_.instrumentedMeans.requestFlushMicroseconds}}, `
+                    @{Name='WorkerDecodeMicroseconds'; Expression={$_.instrumentedMeans.workerDecodeMicroseconds}}, `
+                    @{Name='WorkerQueueMicroseconds'; Expression={$_.instrumentedMeans.workerQueueMicroseconds}}, `
+                    @{Name='WorkerExecutionMicroseconds'; Expression={$_.instrumentedMeans.workerExecutionMicroseconds}}, `
+                    @{Name='UnattributedRoundTripMicroseconds'; Expression={$_.instrumentedMeans.unattributedRoundTripMicroseconds}}, `
+                    @{Name='InstrumentedTotalMicroseconds'; Expression={$_.instrumentedMeans.instrumentedTotalMicroseconds}}
+            }
+        }
+        if ($IsolatedBatchBenchmark) {
+            for ($batchRun = 1; $batchRun -le $MeasurementRuns; $batchRun++) {
+                $orderOffset = $batchRun - 1
+                $batch = Invoke-RestMethod -Method Post -Uri "$baseAddress/benchmark/isolated-batch?requests=$TieredRequests&orderOffset=$orderOffset"
+                $batch.measurements | Select-Object `
+                    @{Name='Run'; Expression={$batchRun}}, tier, mode, batchSize, requests, transactions, `
+                    transformsPerSecond, meanMicrosecondsPerMember, managedAllocatedBytesPerMember, `
+                    transactionP50Microseconds, transactionP95Microseconds, transactionP99Microseconds
+            }
+        }
+        if ($IsolatedBatchWorkerSweep) {
+            $sweepMeasurements = [System.Collections.Generic.List[object]]::new()
+            for ($sweepRun = 1; $sweepRun -le $MeasurementRuns; $sweepRun++) {
+                $orderOffset = $sweepRun - 1
+                $sweep = Invoke-RestMethod -Method Post -Uri "$baseAddress/benchmark/isolated-batch-worker-sweep?members=$BatchSweepMembers&orderOffset=$orderOffset"
+                foreach ($measurement in $sweep.measurements) {
+                    $measurement | Add-Member -NotePropertyName Run -NotePropertyValue $sweepRun
+                    $sweepMeasurements.Add($measurement)
+                }
+            }
+            if ($TieredSummaryOnly) {
+                'Tier|Workers|Batch|Runs|MedianTps|MinTps|MaxTps|MedianCpuMs|MedianBusyCores|MedianWorkingSetBytes|MedianManagedBytesPerMember|MaxResponseFrameBytes|AmbiguousPerWorkerLoss|AggregateAmbiguous'
+                $sweepMeasurements | Group-Object tier, workers, batchSize |
+                    Sort-Object `
+                        @{ Expression = { [int]($_.Group[0].tier -replace '[^0-9]', '') } }, `
+                        @{ Expression = { [int]$_.Group[0].workers } }, `
+                        @{ Expression = { [int]$_.Group[0].batchSize } } |
+                    ForEach-Object {
+                    $first = $_.Group[0]
+                    $throughput = @($_.Group.transformsPerSecond)
+                    $minimumThroughput = ($throughput | Measure-Object -Minimum).Minimum
+                    $maximumThroughput = ($throughput | Measure-Object -Maximum).Maximum
+                    @(
+                        $first.tier
+                        $first.workers
+                        $first.batchSize
+                        $_.Count
+                        ('{0:F0}' -f (Get-Median $throughput))
+                        ('{0:F0}' -f $minimumThroughput)
+                        ('{0:F0}' -f $maximumThroughput)
+                        ('{0:F3}' -f (Get-Median @($_.Group.aggregateWorkerCpuMilliseconds)))
+                        ('{0:F3}' -f (Get-Median @($_.Group.effectiveBusyCores)))
+                        ('{0:F0}' -f (Get-Median @($_.Group.aggregateWorkingSetAfterBytes)))
+                        ('{0:F1}' -f (Get-Median @($_.Group.managedAllocatedBytesPerMember)))
+                        $first.maximumResponseFrameBytes
+                        $first.maximumAmbiguousMembersPerWorkerLoss
+                        $first.maximumAggregateAmbiguousMembers
+                    ) -join '|'
+                }
+            }
+            else {
+                $sweepMeasurements | Select-Object Run, tier, workers, batchSize, members, transactions, `
+                    transformsPerSecond, aggregateWorkerCpuMilliseconds, effectiveBusyCores, `
+                    aggregateWorkingSetBeforeBytes, aggregateWorkingSetAfterBytes, `
+                    managedAllocatedBytesPerMember, totalRequestWireBytes, totalResponseWireBytes, `
+                    maximumRequestFrameBytes, maximumResponseFrameBytes, maximumOutstandingMembers, `
+                    maximumAmbiguousMembersPerWorkerLoss, maximumAggregateAmbiguousMembers
+            }
+        }
+        if ($IsolatedBatchResultPressure) {
+            $resultPressureMeasurements = [System.Collections.Generic.List[object]]::new()
+            for ($pressureRun = 1; $pressureRun -le $MeasurementRuns; $pressureRun++) {
+                $orderOffset = $pressureRun - 1
+                $pressure = Invoke-RestMethod -Method Post -Uri "$baseAddress/benchmark/isolated-batch-result-pressure?members=$BatchResultMembers&orderOffset=$orderOffset"
+                foreach ($measurement in $pressure.measurements) {
+                    $measurement | Add-Member -NotePropertyName Run -NotePropertyValue $pressureRun
+                    $resultPressureMeasurements.Add($measurement)
+                }
+            }
+            if ($TieredSummaryOnly) {
+                'Tier|ResultBytes|Workers|Batch|Delivery|Runs|MedianTps|MinTps|MaxTps|MedianFirstP50Ms|MedianFirstP95Ms|MedianFinalP50Ms|MedianFinalP95Ms|MedianFinalP99Ms|MedianWorkingSetBytes|MedianManagedBytesPerMember|MaxResponseFrameBytes|AmbiguousPerWorkerLoss|AggregateAmbiguous'
+                $resultPressureMeasurements | Group-Object tier, workers, batchSize, delivery |
+                    Sort-Object `
+                        @{ Expression = { [int]($_.Group[0].tier -replace '[^0-9]', '') } }, `
+                        @{ Expression = { [int]$_.Group[0].workers } }, `
+                        @{ Expression = { [int]$_.Group[0].batchSize } }, `
+                        @{ Expression = { $_.Group[0].delivery } } |
+                    ForEach-Object {
+                    $first = $_.Group[0]
+                    $throughput = @($_.Group.transformsPerSecond)
+                    @(
+                        $first.tier
+                        $first.resultBytes
+                        $first.workers
+                        $first.batchSize
+                        $first.delivery
+                        $_.Count
+                        ('{0:F0}' -f (Get-Median $throughput))
+                        ('{0:F0}' -f (($throughput | Measure-Object -Minimum).Minimum))
+                        ('{0:F0}' -f (($throughput | Measure-Object -Maximum).Maximum))
+                        ('{0:F3}' -f (Get-Median @($_.Group.firstOutcomeP50Milliseconds)))
+                        ('{0:F3}' -f (Get-Median @($_.Group.firstOutcomeP95Milliseconds)))
+                        ('{0:F3}' -f (Get-Median @($_.Group.finalOutcomeP50Milliseconds)))
+                        ('{0:F3}' -f (Get-Median @($_.Group.finalOutcomeP95Milliseconds)))
+                        ('{0:F3}' -f (Get-Median @($_.Group.finalOutcomeP99Milliseconds)))
+                        ('{0:F0}' -f (Get-Median @($_.Group.aggregateWorkingSetAfterBytes)))
+                        ('{0:F1}' -f (Get-Median @($_.Group.managedAllocatedBytesPerMember)))
+                        $first.maximumResponseFrameBytes
+                        $first.maximumAmbiguousMembersPerWorkerLoss
+                        $first.maximumAggregateAmbiguousMembers
+                    ) -join '|'
+                }
+            }
+            else {
+                $resultPressureMeasurements | Select-Object Run, tier, resultBytes, workers, batchSize, delivery, `
+                    members, transactions, transformsPerSecond, firstOutcomeP50Milliseconds, `
+                    firstOutcomeP95Milliseconds, firstOutcomeP99Milliseconds, `
+                    finalOutcomeP50Milliseconds, finalOutcomeP95Milliseconds, finalOutcomeP99Milliseconds, `
+                    aggregateWorkingSetBeforeBytes, aggregateWorkingSetAfterBytes, `
+                    managedAllocatedBytesPerMember, maximumResponseFrameBytes, `
+                    maximumAmbiguousMembersPerWorkerLoss, maximumAggregateAmbiguousMembers
             }
         }
     }

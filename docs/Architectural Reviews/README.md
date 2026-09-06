@@ -113,3 +113,13 @@ and add the record to this index. Never reuse a retired number.
   -- Under Review; XSLT 1.0 is now a formal intermediate roadmap checkpoint on
   the shared modern compiler/runtime, while exact compatibility semantics and
   the eventual advertised profile remain under evidence-led review.
+- [AR-0020: Bounded Pre-Execution Preparation Pipeline](AR-0020-bounded-pre-execution-preparation-pipeline.md)
+  -- Rejected; combined/local workers remain the prototype baseline. Staging
+  and adaptive topology stay out of runtime and public surfaces unless a named
+  representative workload later satisfies the explicit reopening bar.
+- [AR-0021: Bounded Isolated Transport Batching](AR-0021-bounded-isolated-transport-batching.md)
+  -- Accepted through ADR-0019; bounded incremental input-order transport
+  amortizes the isolated boundary while preserving independent semantics,
+  conservative loss truth, and private wire and language-binding details.
+  Incremental input-order delivery leads privately; protocol and public host
+  stabilization await remaining evidence and a later ADR.

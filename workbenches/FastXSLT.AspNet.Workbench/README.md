@@ -30,8 +30,18 @@ offers:
 - `POST /benchmark/tiers?requests=250&concurrency=4`
 - `POST /benchmark/text-heavy?requests=100&concurrency=4`
 - `POST /benchmark/result-heavy?requests=50&concurrency=4`
+- `POST /benchmark/isolated-batch-result-pressure?members=256&orderOffset=0`
 - `POST /benchmark/native-boundary-breakdown?requests=250`
+- `POST /benchmark/isolated-boundary-breakdown?requests=250`
+- `POST /benchmark/isolated-batch?requests=1000&orderOffset=0`
+- `POST /benchmark/isolated-batch-worker-sweep?members=1024`
 - `POST /experiment/worker-recovery`
+- `POST /experiment/isolated-batch-controls`
+- `POST /experiment/isolated-batch-loss`
+- `POST /experiment/isolated-batch-cancellation-races`
+- `POST /experiment/isolated-incremental-batch-limit`
+- `POST /experiment/isolated-incremental-batch-backpressure`
+- `POST /experiment/isolated-incremental-batch-consumer`
 - `POST /experiment/cooperative-cancellation`
 - `POST /experiment/active-cancellation`
 - `POST /experiment/natural-cancellation-races`
@@ -78,6 +88,33 @@ then times request encoding, the combined transform/export call, outcome
 metadata calls, result copying/decoding, and release. Per-phase probes include
 their own `Stopwatch` overhead and cannot split Rust execution from registry
 publication; they are localization evidence, not additive production latency.
+
+AR-0021 adds two private isolated-worker diagnostics. The boundary breakdown
+reports host-side request write/flush and response time alongside worker-local
+decode, queue, and execution durations without subtracting timestamps across
+processes. The batch comparison retains one sequential worker lane and compares
+the ordinary command with bounded aggregate-response batches of 1, 8, 32, and
+128 members. Repeated script runs rotate lane order. Run them with:
+
+```powershell
+./scripts/verify-aspnet-workbench.ps1 `
+  -IsolatedBoundaryBreakdown `
+  -TieredRequests 250 `
+  -MeasurementRuns 3
+
+./scripts/verify-aspnet-workbench.ps1 `
+  -IsolatedBatchBenchmark `
+  -TieredRequests 1000 `
+  -MeasurementRuns 3
+```
+
+ADR-0019 accepts the bounded incremental input-order behavioral contract. The
+workbench now exercises a private length-delimited version-one command and
+version-echoing acknowledgement, including exact unsupported-version rejection
+and same-worker recovery. Its opcodes, field widths, concrete frame layout, and
+callback types remain workbench-only implementation details. No public batch
+API, default size, third-party worker protocol, or intra-worker concurrency is
+defined here.
 
 The pre-dispatch cooperative-cancellation probe carries a cancellation state
 that was already signalled by the host into a normal engine invocation. The
@@ -205,6 +242,25 @@ Run those checks with:
 
 ```powershell
 ./scripts/verify-aspnet-workbench.ps1 -OperationalExperiments
+```
+
+The isolated batch worker/resource sweep is available separately:
+
+```powershell
+./scripts/verify-aspnet-workbench.ps1 `
+  -IsolatedBatchWorkerSweep `
+  -BatchSweepMembers 1024
+```
+
+The result-pressure companion uses the existing 100/1,000/5,000-element
+fixtures. It reduces candidate batch sizes as exact response frames approach
+the private 1 MiB ceiling:
+
+```powershell
+./scripts/verify-aspnet-workbench.ps1 `
+  -IsolatedBatchResultPressure `
+  -BatchResultMembers 256 `
+  -TieredSummaryOnly
 ```
 
 Deadlines, crash-loop policy, production pool lifecycle, public managed error

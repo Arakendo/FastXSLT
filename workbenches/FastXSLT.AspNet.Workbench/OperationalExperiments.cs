@@ -231,6 +231,267 @@ public static class OperationalExperiments
         };
     }
 
+    public static async Task<object> ExerciseBatchLossClassificationAsync(
+        string workerPath,
+        byte[] source,
+        byte[] stylesheet)
+    {
+        const int memberCount = 5;
+        const string expected = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>36.02</out>";
+        var trials = new List<BatchLossTrial>();
+        foreach (var parkAtIndex in new[] { 0, 2, 4 })
+        {
+            var requestIdentities = Enumerable.Range(0, memberCount)
+                .Select(index => $"batch-loss-{parkAtIndex}-{index}")
+                .ToArray();
+            using var client = await FastXsltWorkerClient.StartAsync(
+                workerPath,
+                "urn:fastxslt:batch-loss:source",
+                source,
+                "urn:fastxslt:batch-loss:stylesheet",
+                stylesheet);
+            var processId = client.ProcessId;
+            var observations = await client.ReachBatchLossBarrierAsync(
+                requestIdentities,
+                parkAtIndex);
+            var expectedObservationCount = checked(parkAtIndex * 2 + 1);
+            if (observations.Count != expectedObservationCount)
+            {
+                throw new InvalidOperationException(
+                    "Batch loss probe did not report the expected sequential prefix.");
+            }
+
+            client.TerminateForExperiment();
+            var members = requestIdentities.Select((identity, index) =>
+            {
+                var last = observations.LastOrDefault(value => value.MemberIndex == index);
+                return new BatchLossMemberClassification(
+                    index,
+                    identity,
+                    last?.Phase ?? "none",
+                    last is null ? "unstarted" : "operationally-ambiguous",
+                    CorrelatedOutcomeTransferred: false);
+            }).ToArray();
+            trials.Add(new BatchLossTrial(
+                parkAtIndex,
+                processId,
+                observations,
+                members));
+        }
+
+        const int truncateAtIndex = 2;
+        var transferRequestIdentities = Enumerable.Range(0, memberCount)
+            .Select(index => $"batch-transfer-loss-{index}")
+            .ToArray();
+        BatchTransferLossTrial transferLoss;
+        using (var client = await FastXsltWorkerClient.StartAsync(
+            workerPath,
+            "urn:fastxslt:batch-loss:source",
+            source,
+            "urn:fastxslt:batch-loss:stylesheet",
+            stylesheet))
+        {
+            var processId = client.ProcessId;
+            var probe = await client.ReachBatchTransferLossBarrierAsync(
+                transferRequestIdentities,
+                truncateAtIndex);
+            if (probe.CompleteOutcomes.Count != truncateAtIndex ||
+                probe.CompleteOutcomes.Any(outcome => outcome.Failure is not null) ||
+                probe.CompleteOutcomes.Any(outcome => outcome.Result != expected) ||
+                probe.ObservedResultBytes <= 0 ||
+                probe.ObservedResultBytes >= probe.DeclaredResultBytes)
+            {
+                throw new InvalidOperationException(
+                    "Batch transfer-loss probe did not expose the expected complete prefix and partial member.");
+            }
+            client.TerminateForExperiment();
+            var members = transferRequestIdentities.Select((identity, index) =>
+                new BatchLossMemberClassification(
+                    index,
+                    identity,
+                    index < truncateAtIndex
+                        ? "correlated-outcome-transferred"
+                        : index == truncateAtIndex ? "partial-result-frame" : "none",
+                    index < truncateAtIndex
+                        ? "complete"
+                        : index == truncateAtIndex ? "operationally-ambiguous" : "unstarted",
+                    CorrelatedOutcomeTransferred: index < truncateAtIndex)).ToArray();
+            transferLoss = new BatchTransferLossTrial(
+                truncateAtIndex,
+                processId,
+                probe.CompleteOutcomes.Count,
+                probe.PartialRequestIdentity,
+                probe.DeclaredResultBytes,
+                probe.ObservedResultBytes,
+                members);
+        }
+
+        int malformedProcessId;
+        int malformedExitCode;
+        using (var malformed = await FastXsltWorkerClient.StartAsync(
+            workerPath,
+            "urn:fastxslt:batch-loss:source",
+            source,
+            "urn:fastxslt:batch-loss:stylesheet",
+            stylesheet))
+        {
+            malformedProcessId = malformed.ProcessId;
+            malformedExitCode = await malformed.SendTruncatedBatchCommandForExperimentAsync();
+        }
+
+        var unacknowledgedIdentities = Enumerable.Range(0, memberCount)
+            .Select(index => $"batch-unacknowledged-{index}")
+            .ToArray();
+        int unacknowledgedProcessId;
+        using (var unacknowledged = await FastXsltWorkerClient.StartAsync(
+            workerPath,
+            "urn:fastxslt:batch-loss:source",
+            source,
+            "urn:fastxslt:batch-loss:stylesheet",
+            stylesheet))
+        {
+            unacknowledgedProcessId = unacknowledged.ProcessId;
+            await unacknowledged.DispatchBatchWithoutObservationForExperimentAsync(
+                unacknowledgedIdentities);
+            unacknowledged.TerminateForExperiment();
+        }
+
+        var activeCancellationIdentities = Enumerable.Range(0, memberCount)
+            .Select(index => $"batch-active-cancellation-{index}")
+            .ToArray();
+        IReadOnlyList<IsolatedWorkerBatchOutcome> activeCancellationOutcomes;
+        string activeCancellationRecovery;
+        using (var activeCancellation = await FastXsltWorkerClient.StartAsync(
+            workerPath,
+            "urn:fastxslt:batch-loss:source",
+            source,
+            "urn:fastxslt:batch-loss:stylesheet",
+            stylesheet))
+        {
+            activeCancellationOutcomes = await activeCancellation.TransformActiveCancellationBatchAsync(
+                activeCancellationIdentities,
+                cancelAtIndex: 2);
+            activeCancellationRecovery = await activeCancellation.TransformAsync(
+                "batch-active-cancellation-recovery");
+        }
+
+        using var replacement = await FastXsltWorkerClient.StartAsync(
+            workerPath,
+            "urn:fastxslt:batch-loss:source",
+            source,
+            "urn:fastxslt:batch-loss:stylesheet",
+            stylesheet);
+        var recovery = await replacement.TransformAsync("batch-loss-recovery");
+        return new
+        {
+            trials,
+            transferLoss,
+            malformedCommand = new
+            {
+                processId = malformedProcessId,
+                exitCode = malformedExitCode,
+                fullCommandDecoded = false,
+                memberAttemptsAdmitted = 0,
+                disposition = "unstarted",
+                memberAttemptsRetried = false
+            },
+            unacknowledgedDispatch = new
+            {
+                processId = unacknowledgedProcessId,
+                memberCount,
+                acknowledgementObserved = false,
+                correlatedOutcomesObserved = 0,
+                disposition = "operationally-ambiguous",
+                memberAttemptsRetried = false
+            },
+            activeCancellation = new
+            {
+                cancelAtIndex = 2,
+                outcomes = activeCancellationOutcomes.Select(outcome => new
+                {
+                    outcome.RequestIdentity,
+                    outcome.Result,
+                    failureCode = outcome.Failure?.Code,
+                    failureCategory = outcome.Failure?.Category
+                }),
+                recovery = activeCancellationRecovery,
+                oneSequentialExecutionLane = true,
+                laterSiblingsExecuted = true
+            },
+            recovery,
+            aggregateResponseOracle = true,
+            memberResultsTransferredBeforeLoss = 0,
+            killedMemberAttemptsRetried = false,
+            finishedButUntransferredIsAmbiguous = true,
+            laterMembersAreUnstarted = true
+        };
+    }
+
+    public static async Task<object> MeasureBatchNaturalCancellationRacesAsync(
+        string workerPath,
+        byte[] stylesheet)
+    {
+        const int trials = 25;
+        const string expected = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>20000.00</out>";
+        var source = BuildCancellationSource(20_000);
+        using var client = await FastXsltWorkerClient.StartAsync(
+            workerPath,
+            "urn:fastxslt:batch-natural-cancellation:source",
+            source,
+            "urn:fastxslt:batch-natural-cancellation:stylesheet",
+            stylesheet);
+        var cancellations = 0;
+        var completions = 0;
+        var invalidTargetOutcomes = 0;
+        var siblingFailures = 0;
+        for (var trial = 0; trial < trials; trial++)
+        {
+            var identities = new[]
+            {
+                $"batch-natural-{trial}-before",
+                $"batch-natural-{trial}-target",
+                $"batch-natural-{trial}-after"
+            };
+            var delay = trial < 10
+                ? TimeSpan.Zero
+                : trial < 20 ? TimeSpan.FromMilliseconds(1) : TimeSpan.FromMilliseconds(5);
+            var outcomes = await client.TransformNaturalCancellationBatchAsync(
+                identities,
+                cancelAtIndex: 1,
+                delay);
+            if (outcomes[0].Result != expected || outcomes[2].Result != expected)
+            {
+                siblingFailures++;
+            }
+            var target = outcomes[1];
+            if (target.Result == expected)
+            {
+                completions++;
+            }
+            else if (target.Failure is { Code: "FXCT0001", Category: "cancelled" })
+            {
+                cancellations++;
+            }
+            else
+            {
+                invalidTargetOutcomes++;
+            }
+        }
+        var recovery = await client.TransformAsync("batch-natural-cancellation-recovery");
+        return new
+        {
+            trials,
+            cancellations,
+            completions,
+            invalidTargetOutcomes,
+            siblingFailures,
+            recovery,
+            completionWinsIfCommittedBeforeSignal = true,
+            firstChargeBarrierUsed = false,
+            oneSequentialExecutionLane = true
+        };
+    }
+
     public static async Task<object> ExerciseNativeBoundaryAsync(
         byte[] source,
         byte[] stylesheet)
@@ -385,6 +646,28 @@ public static class OperationalExperiments
             useAfterDisposeRejected
         };
     }
+
+    private sealed record BatchLossTrial(
+        int ParkAtIndex,
+        int ProcessId,
+        IReadOnlyList<IsolatedBatchLossObservation> Observations,
+        IReadOnlyList<BatchLossMemberClassification> Members);
+
+    private sealed record BatchLossMemberClassification(
+        int MemberIndex,
+        string RequestIdentity,
+        string LastObservedPhase,
+        string Disposition,
+        bool CorrelatedOutcomeTransferred);
+
+    private sealed record BatchTransferLossTrial(
+        int TruncateAtIndex,
+        int ProcessId,
+        int CompleteOutcomeCount,
+        string PartialRequestIdentity,
+        int DeclaredResultBytes,
+        int ObservedResultBytes,
+        IReadOnlyList<BatchLossMemberClassification> Members);
 
     public static async Task<object> ExerciseNativeGenerationReplacementAsync(
         byte[] stylesheet)

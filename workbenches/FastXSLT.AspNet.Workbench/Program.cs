@@ -240,6 +240,68 @@ app.MapPost("/benchmark/native-boundary-breakdown", async (int? requests) =>
         tieredBenchmarkGate.Release();
     }
 });
+app.MapPost("/benchmark/isolated-boundary-breakdown", async (int? requests) =>
+{
+    await tieredBenchmarkGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await IsolatedBoundaryBreakdown.RunAsync(
+            workerPath,
+            stylesheet,
+            Math.Clamp(requests ?? 250, 1, 10_000)));
+    }
+    finally
+    {
+        tieredBenchmarkGate.Release();
+    }
+});
+app.MapPost("/benchmark/isolated-batch", async (int? requests, int? orderOffset) =>
+{
+    await tieredBenchmarkGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await IsolatedBatchComparison.RunAsync(
+            workerPath,
+            stylesheet,
+            Math.Clamp(requests ?? 250, 1, 10_000),
+            orderOffset ?? 0));
+    }
+    finally
+    {
+        tieredBenchmarkGate.Release();
+    }
+});
+app.MapPost("/benchmark/isolated-batch-worker-sweep", async (int? members, int? orderOffset) =>
+{
+    await tieredBenchmarkGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await IsolatedBatchWorkerSweep.RunAsync(
+            workerPath,
+            stylesheet,
+            Math.Clamp(members ?? 1024, 128, 65_536),
+            orderOffset ?? 0));
+    }
+    finally
+    {
+        tieredBenchmarkGate.Release();
+    }
+});
+app.MapPost("/benchmark/isolated-batch-result-pressure", async (int? members, int? orderOffset) =>
+{
+    await tieredBenchmarkGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await IsolatedBatchResultPressureSweep.RunAsync(
+            workerPath,
+            Math.Clamp(members ?? 256, 128, 8_192),
+            orderOffset ?? 0));
+    }
+    finally
+    {
+        tieredBenchmarkGate.Release();
+    }
+});
 app.MapPost("/experiment/worker-recovery", async () =>
 {
     await operationalExperimentGate.WaitAsync();
@@ -248,6 +310,125 @@ app.MapPost("/experiment/worker-recovery", async () =>
         return Results.Ok(await OperationalExperiments.ExerciseWorkerRecoveryAsync(
             workerPath,
             source,
+            stylesheet));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
+app.MapPost("/experiment/isolated-batch-controls", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        var outcomes = await worker.TransformControlledBatchAsync(
+        [
+            new("batch-control-before"),
+            new("batch-control-cancelled", Cancelled: true),
+            new("batch-control-limited", MaximumXsltInstructions: 0),
+            new("batch-control-after")
+        ]);
+        var incremental = await worker.TransformControlledIncrementalBatchAsync(
+        [
+            new("batch-incremental-before"),
+            new("batch-incremental-cancelled", Cancelled: true),
+            new("batch-incremental-limited", MaximumXsltInstructions: 0),
+            new("batch-incremental-after")
+        ]);
+        var recovery = await worker.TransformAsync("batch-control-recovery");
+        return Results.Ok(new
+        {
+            outcomes = outcomes.Select(outcome => new
+            {
+                outcome.RequestIdentity,
+                outcome.Result,
+                failureCode = outcome.Failure?.Code,
+                failureCategory = outcome.Failure?.Category,
+                failureDetail = outcome.Failure?.Detail
+            }),
+            incrementalOutcomes = incremental.Outcomes.Select(outcome => new
+            {
+                outcome.RequestIdentity,
+                outcome.Result,
+                failureCode = outcome.Failure?.Code,
+                failureCategory = outcome.Failure?.Category,
+                failureDetail = outcome.Failure?.Detail
+            }),
+            incrementalFirstOutcomeMicroseconds = incremental.FirstOutcomeElapsed.TotalMicroseconds,
+            incrementalFinalOutcomeMicroseconds = incremental.FinalOutcomeElapsed.TotalMicroseconds,
+            recovery,
+            memberControlsAreIndependent = true,
+            incrementalMemberControlsAreIndependent = true,
+            activeMidMemberCancellationIncluded = false
+        });
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
+app.MapPost("/experiment/isolated-incremental-batch-limit", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await IncrementalBatchOperationalExperiment
+            .ExerciseCumulativeLimitAsync(workerPath));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
+app.MapPost("/experiment/isolated-incremental-batch-backpressure", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await IncrementalBatchOperationalExperiment
+            .ExerciseSlowConsumerAsync(workerPath));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
+app.MapPost("/experiment/isolated-incremental-batch-consumer", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await IncrementalBatchOperationalExperiment
+            .ExerciseConsumerBoundaryAsync(workerPath));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
+app.MapPost("/experiment/isolated-batch-loss", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await OperationalExperiments.ExerciseBatchLossClassificationAsync(
+            workerPath,
+            source,
+            stylesheet));
+    }
+    finally
+    {
+        operationalExperimentGate.Release();
+    }
+});
+app.MapPost("/experiment/isolated-batch-cancellation-races", async () =>
+{
+    await operationalExperimentGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await OperationalExperiments.MeasureBatchNaturalCancellationRacesAsync(
+            workerPath,
             stylesheet));
     }
     finally

@@ -71,37 +71,9 @@ impl PreparedInputBuilder {
                 identity: identity.to_owned(),
             });
         }
-        let bytes =
-            self.snapshot
-                .get(identity)
-                .ok_or_else(|| PreparationFailure::MissingResource {
-                    identity: identity.to_owned(),
-                })?;
-        let parsed = parse_document_controlled(identity, bytes, self.parse_limits, control)
-            .map_err(|failure| match failure.control_failure() {
-                Some(failure) => PreparationFailure::Control(*failure),
-                None => PreparationFailure::InvalidXml {
-                    identity: identity.to_owned(),
-                    location: SourceLocation {
-                        resource: identity.to_owned(),
-                        span: failure
-                            .source_span()
-                            .expect("non-control XML failures must own a source span"),
-                    },
-                    detail: format!("{failure:?}"),
-                },
-            })?;
-        let parsed_phase_capacity_bytes = parsed.owned_capacity_bytes();
-        let document =
-            Document::from_parsed_controlled(parsed, control).map_err(|failure| match failure {
-                BuildFailure::Control(failure) => PreparationFailure::Control(failure),
-                _ => PreparationFailure::InvalidXdm {
-                    identity: identity.to_owned(),
-                    detail: format!("{failure:?}"),
-                },
-            })?;
-        self.documents
-            .insert(identity.to_owned(), Arc::new(document));
+        let (document, parsed_phase_capacity_bytes) =
+            prepare_document(&self.snapshot, self.parse_limits, identity, control)?;
+        self.documents.insert(identity.to_owned(), document);
         self.parsed_phase_capacity_bytes
             .insert(identity.to_owned(), parsed_phase_capacity_bytes);
         Ok(())
@@ -116,6 +88,45 @@ impl PreparedInputBuilder {
             parsed_phase_capacity_bytes: Arc::new(self.parsed_phase_capacity_bytes),
         }
     }
+}
+
+pub(super) fn prepare_document(
+    snapshot: &ResourceSnapshot,
+    parse_limits: ParseLimits,
+    identity: &str,
+    control: &mut InvocationControl,
+) -> Result<(Arc<Document>, usize), PreparationFailure> {
+    let bytes = snapshot
+        .get(identity)
+        .ok_or_else(|| PreparationFailure::MissingResource {
+            identity: identity.to_owned(),
+        })?;
+    let parsed =
+        parse_document_controlled(identity, bytes, parse_limits, control).map_err(|failure| {
+            match failure.control_failure() {
+                Some(failure) => PreparationFailure::Control(*failure),
+                None => PreparationFailure::InvalidXml {
+                    identity: identity.to_owned(),
+                    location: SourceLocation {
+                        resource: identity.to_owned(),
+                        span: failure
+                            .source_span()
+                            .expect("non-control XML failures must own a source span"),
+                    },
+                    detail: format!("{failure:?}"),
+                },
+            }
+        })?;
+    let parsed_phase_capacity_bytes = parsed.owned_capacity_bytes();
+    let document =
+        Document::from_parsed_controlled(parsed, control).map_err(|failure| match failure {
+            BuildFailure::Control(failure) => PreparationFailure::Control(failure),
+            _ => PreparationFailure::InvalidXdm {
+                identity: identity.to_owned(),
+                detail: format!("{failure:?}"),
+            },
+        })?;
+    Ok((Arc::new(document), parsed_phase_capacity_bytes))
 }
 
 #[derive(Clone, Debug)]

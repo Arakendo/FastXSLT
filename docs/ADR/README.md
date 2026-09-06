@@ -84,3 +84,7 @@ but supersede a materially changed decision instead of rewriting its history.
   -- Accepted; let static result elements retain immutable stylesheet-derived
   namespace slices while preserving a complete-copy oracle and independent
   result lifetime.
+- [ADR-0019: Bounded Incremental Isolated Transform-Set Transport](ADR-0019-bounded-incremental-isolated-transform-set-transport.md)
+  -- Accepted; amortize isolated boundaries with bounded incremental input-
+  order correlation and delivery while preserving independent member semantics,
+  conservative loss truth, and private wire and binding representations.
