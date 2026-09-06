@@ -9,7 +9,7 @@
 | Trigger | A complete local legacy sweep found 366 initial definite unchanged passes and dominant gaps that largely overlap the XSLT 3.0 roadmap |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007, ADR-0012, ADR-0013, ADR-0014 |
 | Related reviews | AR-0001, AR-0004, AR-0008, AR-0011, AR-0014 |
-| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md`; `docs/Evidence/oasis-xslt10-variable-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md` |
+| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md`; `docs/Evidence/oasis-xslt10-variable-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-exact-rational-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-mixed-literal-path-arithmetic-2026-09-05.md` |
 
 ## Architectural question
 
@@ -347,6 +347,14 @@ public version-mode contract.
 - [x] Replace the exact binary form with an owned recursive path-only operator
   tree, reaching 798 through two repeated-division matches while exposing one
   exact-decimal runtime boundary without credit.
+- [x] Retain exact-rational intermediate values through that shared operator
+  tree and recognize an operator keyword after a closed operand, reaching 800
+  through the exposed decimal multiplication and parenthesized-division cases
+  without a runtime version branch.
+- [x] Add exact literal leaves and unary grouped negation to the shared tree,
+  reaching 808 through eight mixed path/literal cases while leaving two newly
+  exposed execution boundaries uncredited and preserving the existing
+  compile-time XSLT 1.0 non-finite rule.
 - [ ] Split the dominant XPath and unsupported-instruction frontiers into
   actionable semantic families and compare them with the XSLT30/QT3 roadmap.
 - [ ] Resolve or explicitly classify the 50 known executing comparison
@@ -571,6 +579,16 @@ maintained redistributable legacy suite becomes available.
   tree and raised expected-result matches from 796 to 798 through two
   doubt-annotated repeated-division cases. One additional case now reaches the
   explicit non-integer lexical boundary and remains uncredited.
+- 2026-09-05 -- Exact-rational path operands/intermediates and token-correct
+  recognition of `div` after a closed parenthesized operand raised
+  expected-result matches from 798 to 800 through two doubt-annotated cases.
+  The same typed runtime preserves modern cardinality and explicit
+  non-terminating, modulo, zero-divisor, and overflow boundaries.
+- 2026-09-05 -- Exact literal leaves, unary grouped negation, and
+  token-correct grouped/numeric subtraction raised expected-result matches
+  from 800 to 808 through eight doubt-annotated cases. Two additional cases
+  reach later execution boundaries and remain uncredited; compiler dispatch
+  preserves the existing XSLT 1.0 `0 div 0` rule and runtime stays shared.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

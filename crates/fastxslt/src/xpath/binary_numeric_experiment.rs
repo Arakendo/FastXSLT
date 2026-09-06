@@ -1,4 +1,4 @@
-//! Private checked-integer arithmetic over two typed location paths.
+//! Private exact-rational arithmetic over typed location paths.
 
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
@@ -33,6 +33,8 @@ pub(crate) enum BinaryNumericNode {
         path: LocationPath,
         negate: bool,
     },
+    Literal(ExactRational),
+    Negate(Box<Self>),
     Operation {
         left: Box<Self>,
         operator: BinaryNumericOperator,
@@ -52,6 +54,8 @@ impl BinaryNumericNode {
     fn known_owned_capacity_bytes(&self) -> usize {
         match self {
             Self::Path { path, .. } => path.known_owned_capacity_bytes(),
+            Self::Literal(_) => 0,
+            Self::Negate(operand) => operand.known_owned_capacity_bytes(),
             Self::Operation { left, right, .. } => {
                 left.known_owned_capacity_bytes() + right.known_owned_capacity_bytes()
             }
@@ -71,7 +75,8 @@ pub(crate) enum BinaryNumericEvaluationFailure {
 }
 
 pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperator, &str)> {
-    let expression = expression.trim();
+    let expression = strip_balanced_parentheses(expression.trim());
+    let bytes = expression.as_bytes();
     let mut depth = 0usize;
     let mut additive_candidate = None;
     let mut multiplicative_candidate = None;
@@ -90,6 +95,10 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
                     && !(expression[..index].ends_with(char::is_whitespace)
                         && (expression[index + 1..].starts_with(char::is_whitespace)
                             || expression[index + 1..].starts_with('-')))
+                    && !(bytes[..index].last().is_some_and(u8::is_ascii_digit)
+                        && bytes[index + 1..].first().is_some_and(u8::is_ascii_digit))
+                    && !(expression[..index].ends_with([')', ']'])
+                        && expression[index + 1..].starts_with(['(', '[']))
                 {
                     continue;
                 }
@@ -111,14 +120,14 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
             }
             'd' if depth == 0
                 && expression[index..].starts_with("div")
-                && expression[..index].ends_with(char::is_whitespace)
+                && operator_keyword_left_boundary(&expression[..index])
                 && expression[index + 3..].starts_with(char::is_whitespace) =>
             {
                 multiplicative_candidate = Some((index, BinaryNumericOperator::Divide, 3));
             }
             'm' if depth == 0
                 && expression[index..].starts_with("mod")
-                && expression[..index].ends_with(char::is_whitespace)
+                && operator_keyword_left_boundary(&expression[..index])
                 && expression[index + 3..].starts_with(char::is_whitespace) =>
             {
                 multiplicative_candidate = Some((index, BinaryNumericOperator::Modulo, 3));
@@ -134,6 +143,10 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
     let left = strip_balanced_parentheses(expression[..index].trim());
     let right = strip_balanced_parentheses(expression[right_index..].trim());
     (!left.is_empty() && !right.is_empty()).then_some((left, operator, right))
+}
+
+fn operator_keyword_left_boundary(left: &str) -> bool {
+    left.ends_with(char::is_whitespace) || left.ends_with([')', ']'])
 }
 
 pub(crate) fn signed_path(expression: &str) -> Option<(&str, bool)> {
@@ -158,7 +171,7 @@ pub(crate) fn evaluate(
         expression.selection,
         control,
     )?;
-    Ok(value.to_string())
+    value.format_decimal()
 }
 
 fn evaluate_node(
@@ -167,10 +180,14 @@ fn evaluate_node(
     context: NodeId,
     selection: NumericOperandSelection,
     control: &mut InvocationControl,
-) -> Result<i128, BinaryNumericEvaluationFailure> {
+) -> Result<ExactRational, BinaryNumericEvaluationFailure> {
     match node {
         BinaryNumericNode::Path { path, negate } => {
             operand_value(document, context, path, *negate, selection, control)
+        }
+        BinaryNumericNode::Literal(value) => Ok(*value),
+        BinaryNumericNode::Negate(operand) => {
+            evaluate_node(operand, document, context, selection, control)?.checked_negate()
         }
         BinaryNumericNode::Operation {
             left,
@@ -188,36 +205,27 @@ fn evaluate_node(
 }
 
 fn apply_operator(
-    left: i128,
+    left: ExactRational,
     operator: BinaryNumericOperator,
-    right: i128,
-) -> Result<i128, BinaryNumericEvaluationFailure> {
+    right: ExactRational,
+) -> Result<ExactRational, BinaryNumericEvaluationFailure> {
     match operator {
-        BinaryNumericOperator::Add => left
-            .checked_add(right)
-            .ok_or(BinaryNumericEvaluationFailure::Overflow),
-        BinaryNumericOperator::Subtract => left
-            .checked_sub(right)
-            .ok_or(BinaryNumericEvaluationFailure::Overflow),
-        BinaryNumericOperator::Multiply => left
-            .checked_mul(right)
-            .ok_or(BinaryNumericEvaluationFailure::Overflow),
-        BinaryNumericOperator::Divide | BinaryNumericOperator::Modulo if right == 0 => {
+        BinaryNumericOperator::Add => left.checked_add(right),
+        BinaryNumericOperator::Subtract => left.checked_subtract(right),
+        BinaryNumericOperator::Multiply => left.checked_multiply(right),
+        BinaryNumericOperator::Divide | BinaryNumericOperator::Modulo if right.numerator == 0 => {
             Err(BinaryNumericEvaluationFailure::ZeroDivisor)
         }
-        BinaryNumericOperator::Divide => {
-            let remainder = left
-                .checked_rem(right)
-                .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
-            if remainder != 0 {
+        BinaryNumericOperator::Divide => left.checked_divide(right),
+        BinaryNumericOperator::Modulo => {
+            if left.denominator != 1 || right.denominator != 1 {
                 return Err(BinaryNumericEvaluationFailure::NonIntegral);
             }
-            left.checked_div(right)
+            left.numerator
+                .checked_rem(right.numerator)
+                .map(ExactRational::integer)
                 .ok_or(BinaryNumericEvaluationFailure::Overflow)
         }
-        BinaryNumericOperator::Modulo => left
-            .checked_rem(right)
-            .ok_or(BinaryNumericEvaluationFailure::Overflow),
     }
 }
 
@@ -228,7 +236,7 @@ fn operand_value(
     negate: bool,
     selection: NumericOperandSelection,
     control: &mut InvocationControl,
-) -> Result<i128, BinaryNumericEvaluationFailure> {
+) -> Result<ExactRational, BinaryNumericEvaluationFailure> {
     let selected = evaluate_location_path_controlled(document, context, path, control)
         .map_err(BinaryNumericEvaluationFailure::Control)?;
     if selection == NumericOperandSelection::ZeroOrOne && selected.len() > 1 {
@@ -244,17 +252,192 @@ fn operand_value(
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(BinaryNumericEvaluationFailure::Control)?;
-    let value = lexical
-        .trim()
-        .parse::<i128>()
-        .map_err(|_| BinaryNumericEvaluationFailure::UnsupportedLexical)?;
+    let value = ExactRational::parse_decimal(&lexical)
+        .ok_or(BinaryNumericEvaluationFailure::UnsupportedLexical)?;
     if negate {
-        value
-            .checked_neg()
-            .ok_or(BinaryNumericEvaluationFailure::Overflow)
+        value.checked_negate()
     } else {
         Ok(value)
     }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct ExactRational {
+    numerator: i128,
+    denominator: i128,
+}
+
+impl ExactRational {
+    const fn integer(value: i128) -> Self {
+        Self {
+            numerator: value,
+            denominator: 1,
+        }
+    }
+
+    pub(crate) fn parse_decimal(value: &str) -> Option<Self> {
+        let value = value.trim();
+        let (negative, unsigned) = value.strip_prefix('-').map_or_else(
+            || {
+                value
+                    .strip_prefix('+')
+                    .map_or((false, value), |rest| (false, rest))
+            },
+            |rest| (true, rest),
+        );
+        let (whole, fractional) = unsigned.split_once('.').unwrap_or((unsigned, ""));
+        if (whole.is_empty() && fractional.is_empty())
+            || !whole.bytes().all(|byte| byte.is_ascii_digit())
+            || !fractional.bytes().all(|byte| byte.is_ascii_digit())
+        {
+            return None;
+        }
+        let numerator =
+            whole
+                .bytes()
+                .chain(fractional.bytes())
+                .try_fold(0_i128, |value, digit| {
+                    value
+                        .checked_mul(10)?
+                        .checked_add(i128::from(digit.checked_sub(b'0')?))
+                })?;
+        let numerator = if negative {
+            numerator.checked_neg()?
+        } else {
+            numerator
+        };
+        let scale = u32::try_from(fractional.len()).ok()?;
+        Self::normalized(numerator, 10_i128.checked_pow(scale)?)
+    }
+
+    fn normalized(numerator: i128, denominator: i128) -> Option<Self> {
+        if denominator == 0 {
+            return None;
+        }
+        let (numerator, denominator) = if denominator < 0 {
+            (numerator.checked_neg()?, denominator.checked_neg()?)
+        } else {
+            (numerator, denominator)
+        };
+        let denominator = u128::try_from(denominator).ok()?;
+        let divisor = greatest_common_divisor(numerator.unsigned_abs(), denominator);
+        let divisor = i128::try_from(divisor).ok()?;
+        let numerator = numerator.checked_div(divisor)?;
+        let denominator = i128::try_from(denominator).ok()?.checked_div(divisor)?;
+        Some(Self {
+            numerator,
+            denominator,
+        })
+    }
+
+    fn checked_add(self, right: Self) -> Result<Self, BinaryNumericEvaluationFailure> {
+        let numerator = self
+            .numerator
+            .checked_mul(right.denominator)
+            .and_then(|left| {
+                right
+                    .numerator
+                    .checked_mul(self.denominator)
+                    .and_then(|right| left.checked_add(right))
+            })
+            .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
+        let denominator = self
+            .denominator
+            .checked_mul(right.denominator)
+            .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
+        Self::normalized(numerator, denominator).ok_or(BinaryNumericEvaluationFailure::Overflow)
+    }
+
+    fn checked_subtract(self, right: Self) -> Result<Self, BinaryNumericEvaluationFailure> {
+        self.checked_add(right.checked_negate()?)
+    }
+
+    fn checked_multiply(self, right: Self) -> Result<Self, BinaryNumericEvaluationFailure> {
+        let numerator = self
+            .numerator
+            .checked_mul(right.numerator)
+            .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
+        let denominator = self
+            .denominator
+            .checked_mul(right.denominator)
+            .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
+        Self::normalized(numerator, denominator).ok_or(BinaryNumericEvaluationFailure::Overflow)
+    }
+
+    fn checked_divide(self, right: Self) -> Result<Self, BinaryNumericEvaluationFailure> {
+        let numerator = self
+            .numerator
+            .checked_mul(right.denominator)
+            .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
+        let denominator = self
+            .denominator
+            .checked_mul(right.numerator)
+            .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
+        Self::normalized(numerator, denominator).ok_or(BinaryNumericEvaluationFailure::Overflow)
+    }
+
+    fn checked_negate(self) -> Result<Self, BinaryNumericEvaluationFailure> {
+        Ok(Self {
+            numerator: self
+                .numerator
+                .checked_neg()
+                .ok_or(BinaryNumericEvaluationFailure::Overflow)?,
+            denominator: self.denominator,
+        })
+    }
+
+    fn format_decimal(self) -> Result<String, BinaryNumericEvaluationFailure> {
+        if self.denominator == 1 {
+            return Ok(self.numerator.to_string());
+        }
+        let mut denominator = self.denominator;
+        let mut scale = 0_u32;
+        while denominator % 2 == 0 {
+            denominator /= 2;
+            scale += 1;
+        }
+        while denominator % 5 == 0 {
+            denominator /= 5;
+            scale += 1;
+        }
+        if denominator != 1 {
+            return Err(BinaryNumericEvaluationFailure::NonIntegral);
+        }
+        let power = 10_i128
+            .checked_pow(scale)
+            .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
+        let units = self
+            .numerator
+            .checked_mul(power / self.denominator)
+            .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
+        let negative = units.is_negative();
+        let magnitude = units
+            .checked_abs()
+            .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
+        let mut digits = magnitude.to_string();
+        let scale = usize::try_from(scale).map_err(|_| BinaryNumericEvaluationFailure::Overflow)?;
+        if digits.len() <= scale {
+            digits.insert_str(0, &"0".repeat(scale + 1 - digits.len()));
+        }
+        let split = digits.len() - scale;
+        let (whole, fractional) = digits.split_at(split);
+        let fractional = fractional.trim_end_matches('0');
+        let mut formatted = format!("{}{whole}", if negative { "-" } else { "" });
+        if !fractional.is_empty() {
+            formatted.push('.');
+            formatted.push_str(fractional);
+        }
+        Ok(formatted)
+    }
+}
+
+fn greatest_common_divisor(mut left: u128, mut right: u128) -> u128 {
+    while right != 0 {
+        let remainder = left % right;
+        left = right;
+        right = remainder;
+    }
+    left.max(1)
 }
 
 fn strip_balanced_parentheses(mut expression: &str) -> &str {
@@ -290,8 +473,8 @@ fn strip_balanced_parentheses(mut expression: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::{
-        BinaryNumericEvaluationFailure, BinaryNumericOperator, apply_operator, signed_path,
-        split_paths,
+        BinaryNumericEvaluationFailure, BinaryNumericOperator, ExactRational, apply_operator,
+        signed_path, split_paths,
     };
 
     #[test]
@@ -317,6 +500,10 @@ mod tests {
             Some(("div", BinaryNumericOperator::Modulo, "mod"))
         );
         assert_eq!(
+            split_paths("(n1*n2)div n3"),
+            Some(("n1*n2", BinaryNumericOperator::Divide, "n3"))
+        );
+        assert_eq!(
             split_paths("-n-2 --n-1"),
             Some(("-n-2", BinaryNumericOperator::Subtract, "-n-1"))
         );
@@ -327,6 +514,14 @@ mod tests {
         assert_eq!(
             split_paths("n1*n2+n3*n4"),
             Some(("n1*n2", BinaryNumericOperator::Add, "n3*n4"))
+        );
+        assert_eq!(
+            split_paths("4-6"),
+            Some(("4", BinaryNumericOperator::Subtract, "6"))
+        );
+        assert_eq!(
+            split_paths("(n1+n2)-(n3+n4)"),
+            Some(("n1+n2", BinaryNumericOperator::Subtract, "n3+n4"))
         );
         for expression in ["n1", "(n1)", "n1/ *", "/*/"] {
             assert_eq!(split_paths(expression), None, "{expression}");
@@ -341,20 +536,46 @@ mod tests {
     }
 
     #[test]
-    fn exact_division_refuses_fractional_and_zero_results() {
-        assert_eq!(apply_operator(8, BinaryNumericOperator::Divide, 4), Ok(2));
+    fn exact_division_retains_fractional_values_and_refuses_zero() {
+        let integer = ExactRational::integer;
         assert_eq!(
-            apply_operator(7, BinaryNumericOperator::Divide, 4),
-            Err(BinaryNumericEvaluationFailure::NonIntegral)
+            apply_operator(integer(8), BinaryNumericOperator::Divide, integer(4)),
+            Ok(integer(2))
         );
         assert_eq!(
-            apply_operator(7, BinaryNumericOperator::Divide, 0),
+            apply_operator(integer(7), BinaryNumericOperator::Divide, integer(4))
+                .and_then(ExactRational::format_decimal),
+            Ok("1.75".to_owned())
+        );
+        assert_eq!(
+            apply_operator(integer(7), BinaryNumericOperator::Divide, integer(0)),
             Err(BinaryNumericEvaluationFailure::ZeroDivisor)
         );
-        assert_eq!(apply_operator(7, BinaryNumericOperator::Modulo, 4), Ok(3));
         assert_eq!(
-            apply_operator(7, BinaryNumericOperator::Modulo, 0),
+            apply_operator(integer(7), BinaryNumericOperator::Modulo, integer(4)),
+            Ok(integer(3))
+        );
+        assert_eq!(
+            apply_operator(integer(7), BinaryNumericOperator::Modulo, integer(0)),
             Err(BinaryNumericEvaluationFailure::ZeroDivisor)
         );
+    }
+
+    #[test]
+    fn parses_and_formats_exact_decimal_lexicals() {
+        for (lexical, formatted) in [
+            (".125", "0.125"),
+            (".5", "0.5"),
+            (".2", "0.2"),
+            ("-01.2500", "-1.25"),
+        ] {
+            assert_eq!(
+                ExactRational::parse_decimal(lexical).and_then(|value| value.format_decimal().ok()),
+                Some(formatted.to_owned())
+            );
+        }
+        for lexical in ["", ".", "-+1", "+-1", "1.2.3", "NaN"] {
+            assert_eq!(ExactRational::parse_decimal(lexical), None, "{lexical}");
+        }
     }
 }

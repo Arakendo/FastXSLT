@@ -114,9 +114,6 @@ pub(super) fn compile_value_expression(
     {
         return Ok(ValueExpression::LiteralString(literal));
     }
-    if let Some(value) = compile_binary_numeric_path(expression, location, static_context) {
-        return Ok(value);
-    }
     if let Some(literal) =
         crate::xpath::constant_numeric_experiment::fold_number_conversion(expression)
     {
@@ -167,6 +164,9 @@ pub(super) fn compile_value_expression(
                 ValueExpression::LiteralString(value.to_owned())
             }
         });
+    }
+    if let Some(value) = compile_binary_numeric_path(expression, location, static_context) {
+        return Ok(value);
     }
     if let Some(value) =
         crate::xpath::constant_numeric_experiment::fold_boolean_number_equality(expression)
@@ -397,10 +397,20 @@ fn compile_binary_numeric_node(
             right: Box::new(compile_binary_numeric_node(right, location)?),
         });
     }
-    let (path, negate) = crate::xpath::binary_numeric_experiment::signed_path(expression)?;
+    let (operand, negate) = crate::xpath::binary_numeric_experiment::signed_path(expression)?;
+    if negate {
+        return Some(BinaryNumericNode::Negate(Box::new(
+            compile_binary_numeric_node(operand, location)?,
+        )));
+    }
+    if let Some(value) =
+        crate::xpath::binary_numeric_experiment::ExactRational::parse_decimal(operand)
+    {
+        return Some(BinaryNumericNode::Literal(value));
+    }
     Some(BinaryNumericNode::Path {
-        path: parse_location_path(path, location.clone()).ok()?,
-        negate,
+        path: parse_location_path(operand, location.clone()).ok()?,
+        negate: false,
     })
 }
 
@@ -1145,4 +1155,34 @@ fn compile_root_expression(
     };
     path.map(ValueExpression::RootPath)
         .map_err(map_path_failure)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::compile_binary_numeric_node;
+    use crate::xdm::owned_tree_experiment::SourceLocation;
+
+    #[test]
+    fn compiles_mixed_path_literal_arithmetic_tree() {
+        let location = SourceLocation {
+            resource: "urn:fastxslt:test".to_owned(),
+            span: 0..1,
+        };
+        for expression in [
+            "n3+5",
+            "(n3+5)*(3)",
+            "(n2)+2",
+            "((n2)+2)*(n1 - 6)",
+            "(n4 - n2)",
+            "-(4-6)",
+            "((n3+5)*(3)+(((n2)+2)*(n1 - 6)))-(n4 - n2)",
+            "((((((n3+5)*(3)+(((n2)+2)*(n1 - 6)))-(n4 - n2))+(-(4-6)))))",
+        ] {
+            assert!(
+                compile_binary_numeric_node(expression, &location).is_some(),
+                "failed to compile {expression}; split={:?}",
+                crate::xpath::binary_numeric_experiment::split_paths(expression)
+            );
+        }
+    }
 }

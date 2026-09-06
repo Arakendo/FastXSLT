@@ -293,14 +293,14 @@ fn append_binary_numeric(
                 FailureCategory::Unsupported,
                 Some(inputs.request_id),
                 expression.location.clone(),
-                "empty binary numeric operands are outside the admitted exact-integer slice",
+                "empty binary numeric operands are outside the admitted exact-rational slice",
             ),
             BinaryNumericEvaluationFailure::UnsupportedLexical => failure_at(
                 "FXRT1022",
                 FailureCategory::Unsupported,
                 Some(inputs.request_id),
                 expression.location.clone(),
-                "binary numeric operands are outside the admitted exact-integer lexical slice",
+                "binary numeric operands are outside the admitted exact-decimal lexical slice",
             ),
             BinaryNumericEvaluationFailure::ZeroDivisor => failure_at(
                 "FXRT1022",
@@ -314,14 +314,14 @@ fn append_binary_numeric(
                 FailureCategory::Unsupported,
                 Some(inputs.request_id),
                 expression.location.clone(),
-                "a non-integral source-dependent quotient is outside the admitted numeric slice",
+                "a non-terminating decimal result or fractional modulo is outside the admitted exact-rational slice",
             ),
             BinaryNumericEvaluationFailure::Overflow => failure_at(
                 "FOAR0002",
                 FailureCategory::Invalid,
                 Some(inputs.request_id),
                 expression.location.clone(),
-                "binary numeric operation exceeds the checked integer domain",
+                "binary numeric operation exceeds the checked exact-rational domain",
             ),
         },
     )?;
