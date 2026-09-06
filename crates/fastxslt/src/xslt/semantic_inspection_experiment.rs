@@ -28,6 +28,7 @@ enum SemanticFeature {
     ProcessingInstruction,
     Comment,
     ValueOf,
+    Number,
     LocalVariable,
     SequenceNodes,
     SequenceItems,
@@ -263,6 +264,7 @@ fn observe_instructions(
             Instruction::CommentNode { .. } => (SemanticFeature::Comment, None),
             Instruction::Attribute { .. } => (SemanticFeature::ComputedAttribute, None),
             Instruction::ValueOf { .. } => (SemanticFeature::ValueOf, None),
+            Instruction::Number { .. } => (SemanticFeature::Number, None),
             Instruction::Variable { .. }
             | Instruction::ContextPositionVariable { .. }
             | Instruction::SourceNodeVariable { .. }

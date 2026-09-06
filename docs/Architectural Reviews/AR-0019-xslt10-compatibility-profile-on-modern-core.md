@@ -164,6 +164,9 @@ public version-mode contract.
   `xsl:for-each` and `xsl:apply-templates`, raising the strict lower bound from
   808 to 857 while leaving 22 newly exposed mismatches and six later execution
   failures visibly uncredited.
+- [x] Implement default single-level and bounded literal/focus-value
+  `xsl:number` through shared XDM/focus/result paths, raising the strict lower
+  bound from 857 to 863 while leaving one newly exposed mismatch uncredited.
 - [x] Prove at least one legacy-discovered defect can be repaired through the
   shared modern runtime.
 - [x] Add a formal XSLT 1.0 compatibility checkpoint and subsequent modern

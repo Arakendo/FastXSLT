@@ -59,8 +59,8 @@ use crate::xpath::string_length_experiment::{
 };
 use crate::xslt::golden_semantics_experiment::{
     ChooseBranch, ComputedAttribute, ElementConstructorOrigin, Instruction, LiteralAttributeValue,
-    SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect, StringComparison,
-    TemplateArgument, ValueExpression,
+    NumberValue, SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect,
+    StringComparison, TemplateArgument, ValueExpression,
 };
 
 #[path = "instruction_compiler/computed_attribute_compiler.rs"]
@@ -135,66 +135,12 @@ pub(super) fn compile_sequence_excluding(
             NodeKind::Element => {
                 let name = document.name(child).expect("element nodes have names");
                 if name.namespace.as_deref() == Some(XSLT_NAMESPACE) {
-                    if name.local == "text" {
-                        instructions.push(compile_text(document, child)?);
-                    } else if name.local == "element" {
-                        instructions.push(compile_static_computed_element(document, child)?);
-                    } else if name.local == "comment" {
-                        instructions.push(compile_comment(document, child)?);
-                    } else if name.local == "attribute" {
-                        instructions.push(compile_attribute(document, child)?);
-                    } else if name.local == "processing-instruction" {
-                        instructions.push(compile_processing_instruction(document, child)?);
-                    } else if name.local == "value-of" {
-                        instructions.push(compile_value_of(document, child)?);
-                    } else if name.local == "variable" {
-                        let variable = compile_variable(document, child)?;
-                        let name = local_variable_name(&variable);
-                        if local_variables.contains(name) {
-                            return Err(invalid(
-                                "FXST0017",
-                                format!("duplicate local variable binding: ${name}"),
-                                document.location(child),
-                            ));
-                        }
-                        local_variables.push(name.clone());
-                        instructions.push(variable);
-                    } else if name.local == "sequence" {
-                        instructions.push(compile_sequence_nodes(document, child)?);
-                    } else if name.local == "apply-templates" {
-                        instructions.push(compile_apply_templates(document, child)?);
-                    } else if name.local == "next-match" {
-                        ensure_only_attributes(document, child, &[], "xsl:next-match")?;
-                        instructions.push(Instruction::NextMatch {
-                            arguments: compile_with_params(
-                                document,
-                                child,
-                                "xsl:next-match",
-                                true,
-                            )?,
-                            location: document.location(child).clone(),
-                        });
-                    } else if name.local == "apply-imports" {
-                        instructions.push(compile_apply_imports(document, child)?);
-                    } else if name.local == "for-each" {
-                        instructions.push(compile_for_each(document, child)?);
-                    } else if name.local == "if" {
-                        instructions.push(compile_if(document, child)?);
-                    } else if name.local == "choose" {
-                        instructions.push(compile_choose(document, child)?);
-                    } else if name.local == "call-template" {
-                        instructions.push(compile_call_template(document, child)?);
-                    } else if name.local == "copy" {
-                        instructions.push(compile_copy(document, child)?);
-                    } else if name.local == "copy-of" {
-                        instructions.push(compile_copy_of(document, child)?);
-                    } else {
-                        return Err(unsupported(
-                            "FXST1006",
-                            format!("unsupported XSLT instruction: xsl:{}", name.local),
-                            document.location(child),
-                        ));
-                    }
+                    instructions.push(compile_xslt_instruction(
+                        document,
+                        child,
+                        &name.local,
+                        &mut local_variables,
+                    )?);
                 } else {
                     instructions.push(compile_literal_element(document, child)?);
                 }
@@ -211,6 +157,60 @@ pub(super) fn compile_sequence_excluding(
     Ok(instructions)
 }
 
+fn compile_xslt_instruction(
+    document: &Document,
+    element: NodeId,
+    local_name: &str,
+    local_variables: &mut Vec<String>,
+) -> Result<Instruction, CompileFailure> {
+    let instruction = match local_name {
+        "text" => compile_text(document, element)?,
+        "element" => compile_static_computed_element(document, element)?,
+        "comment" => compile_comment(document, element)?,
+        "attribute" => compile_attribute(document, element)?,
+        "processing-instruction" => compile_processing_instruction(document, element)?,
+        "value-of" => compile_value_of(document, element)?,
+        "number" => compile_number(document, element)?,
+        "variable" => {
+            let variable = compile_variable(document, element)?;
+            let name = local_variable_name(&variable);
+            if local_variables.contains(name) {
+                return Err(invalid(
+                    "FXST0017",
+                    format!("duplicate local variable binding: ${name}"),
+                    document.location(element),
+                ));
+            }
+            local_variables.push(name.clone());
+            variable
+        }
+        "sequence" => compile_sequence_nodes(document, element)?,
+        "apply-templates" => compile_apply_templates(document, element)?,
+        "next-match" => {
+            ensure_only_attributes(document, element, &[], "xsl:next-match")?;
+            Instruction::NextMatch {
+                arguments: compile_with_params(document, element, "xsl:next-match", true)?,
+                location: document.location(element).clone(),
+            }
+        }
+        "apply-imports" => compile_apply_imports(document, element)?,
+        "for-each" => compile_for_each(document, element)?,
+        "if" => compile_if(document, element)?,
+        "choose" => compile_choose(document, element)?,
+        "call-template" => compile_call_template(document, element)?,
+        "copy" => compile_copy(document, element)?,
+        "copy-of" => compile_copy_of(document, element)?,
+        _ => {
+            return Err(unsupported(
+                "FXST1006",
+                format!("unsupported XSLT instruction: xsl:{local_name}"),
+                document.location(element),
+            ));
+        }
+    };
+    Ok(instruction)
+}
+
 fn compile_literal_text_node(
     document: &Document,
     node: NodeId,
@@ -221,6 +221,49 @@ fn compile_literal_text_node(
         value: value.to_owned(),
         location: document.location(node).clone(),
     })
+}
+
+fn compile_number(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
+    ensure_only_attributes(document, element, &["level", "value"], "xsl:number")?;
+    ensure_no_meaningful_children(document, element, "xsl:number")?;
+    if optional_attribute(document, element, None, "level")
+        .is_some_and(|level| level.trim() != "single")
+    {
+        return Err(unsupported(
+            "FXST1048",
+            "the admitted xsl:number slice supports only the default level='single'",
+            document.location(element),
+        ));
+    }
+    let value = optional_attribute(document, element, None, "value")
+        .map(|value| compile_number_value(value, document.location(element)))
+        .transpose()?;
+    Ok(Instruction::Number {
+        value,
+        location: document.location(element).clone(),
+    })
+}
+
+fn compile_number_value(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<NumberValue, CompileFailure> {
+    let expression = expression.trim();
+    if expression == "position()" {
+        return Ok(NumberValue::ContextPosition);
+    }
+    let lexical = xpath_string_literal(expression).unwrap_or(expression);
+    if lexical.parse::<f64>().is_ok() {
+        return Ok(NumberValue::Literal(lexical.to_owned()));
+    }
+    if xpath_string_literal(expression).is_some() {
+        return Ok(NumberValue::Literal(lexical.to_owned()));
+    }
+    Err(unsupported(
+        "FXXP1022",
+        format!("unsupported xsl:number value expression: {expression}"),
+        location,
+    ))
 }
 
 fn text_run_contains_non_whitespace(

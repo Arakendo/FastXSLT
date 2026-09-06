@@ -255,6 +255,9 @@ fn instruction_owned(value: &Instruction) -> usize {
             separator,
             location,
         } => value_expression_owned(select) + separator.capacity() + location_owned(location),
+        Instruction::Number { value, location } => {
+            number_value_owned(value.as_ref()) + location_owned(location)
+        }
         Instruction::Variable {
             name,
             select,
@@ -333,6 +336,13 @@ fn instruction_owned(value: &Instruction) -> usize {
             location,
         } => copy_owned(attributes, body, location),
     }
+}
+
+fn number_value_owned(value: Option<&super::NumberValue>) -> usize {
+    value.map_or(0, |value| match value {
+        super::NumberValue::Literal(value) => value.capacity(),
+        super::NumberValue::ContextPosition => 0,
+    })
 }
 
 fn apply_templates_instruction_owned(instruction: &Instruction) -> usize {

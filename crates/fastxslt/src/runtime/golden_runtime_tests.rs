@@ -896,6 +896,35 @@ fn xslt10_sort_orders_for_each_and_apply_templates_with_stable_multiple_keys() {
 }
 
 #[test]
+fn xslt10_default_single_number_counts_matching_preceding_siblings() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-number:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-number:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:template match="/"><out><xsl:for-each select="doc/item"><n><xsl:number level="single"/></n><p><xsl:number value="position()"/></p></xsl:for-each><values><xsl:number value="1999.499999"/>|<xsl:number value="1999.5"/>|<xsl:number value="'bad'"/>|<xsl:number value="0.42"/></values></out></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc><item/><other/><item/><item/></doc>".to_vec())
+        .expect("admit numbering source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit numbering stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile xsl:number");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("xslt10-number", "result", SOURCE))
+        .expect("admit numbering request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute xsl:number");
+    assert_eq!(
+        results.by_request["xslt10-number"].serialized,
+        "<out><n>1</n><p>1</p><n>2</n><p>2</p><n>3</n><p>3</p><values>1999|2000|NaN|0.42</values></out>"
+    );
+}
+
+#[test]
 fn typed_string_globals_retain_atomic_identity_for_effective_boolean_value() {
     const SOURCE: &str = "urn:fastxslt:typed-global-ebv:source";
     const STYLESHEET: &str = "urn:fastxslt:typed-global-ebv:stylesheet";

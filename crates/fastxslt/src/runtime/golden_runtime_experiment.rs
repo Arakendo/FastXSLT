@@ -15,7 +15,7 @@ use crate::xpath::for_distinct_values_experiment::{
 };
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, BooleanExpression, ComputedAttribute, Instruction, NodeTest,
+    ApplySelection, BooleanExpression, ComputedAttribute, Instruction, NodeTest, NumberValue,
     OnMultipleMatchPolicy, OnNoMatchPolicy, SequenceItemExpression, SortDataType, SortKey,
     SortOrder, SortSelect, SourceWhitespacePolicy, StringComparison, StylesheetProgram,
     TemplateArgument,
@@ -744,6 +744,17 @@ fn execute_instruction(
         } => {
             execute_value_of(inputs, select, separator, execution, scope, result, control)?;
         }
+        Instruction::Number { value, .. } => {
+            let value = if let Some(value) = value {
+                control
+                    .charge(WorkDomain::XPathOperation, 1)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                evaluate_number_value(value, execution)
+            } else {
+                execute_default_single_number(inputs, execution.node, control)?.to_string()
+            };
+            append_text(result, &value, inputs.request_id, control)?;
+        }
         Instruction::SequenceNodes { select, .. } => {
             result.extend(execute_sequence_nodes(
                 inputs,
@@ -800,6 +811,67 @@ fn execute_instruction(
         )?),
     }
     Ok(())
+}
+
+fn evaluate_number_value(value: &NumberValue, execution: SequenceContext<'_>) -> String {
+    let value = match value {
+        NumberValue::Literal(value) => value.parse::<f64>().unwrap_or(f64::NAN),
+        NumberValue::ContextPosition => execution
+            .focus_position
+            .to_string()
+            .parse::<f64>()
+            .expect("a decimal usize representation is an XPath number"),
+    };
+    if value.is_nan() {
+        return "NaN".to_owned();
+    }
+    if value == f64::INFINITY {
+        return "Infinity".to_owned();
+    }
+    if value == f64::NEG_INFINITY {
+        return "-Infinity".to_owned();
+    }
+    if value < 0.5 {
+        return if value == 0.0 {
+            "0".to_owned()
+        } else {
+            value.to_string()
+        };
+    }
+    (value + 0.5).floor().to_string()
+}
+
+fn execute_default_single_number(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<usize, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let Some(parent) = source.parent(context) else {
+        return Ok(1);
+    };
+    let siblings = if source.kind(context) == NodeKind::Attribute {
+        source.attributes(parent)
+    } else {
+        source.children(parent)
+    };
+    let mut number = 1usize;
+    for sibling in siblings.iter().copied() {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        if sibling == context {
+            break;
+        }
+        if nodes_share_default_number_pattern(source, sibling, context) {
+            number = number.saturating_add(1);
+        }
+    }
+    Ok(number)
+}
+
+fn nodes_share_default_number_pattern(source: &Document, left: NodeId, right: NodeId) -> bool {
+    source.kind(left) == source.kind(right) && source.name(left) == source.name(right)
 }
 
 fn execute_attribute_instruction(

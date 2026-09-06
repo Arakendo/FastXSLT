@@ -310,6 +310,7 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Exact-Rational Path Arithmetic](oasis-xslt10-exact-rational-path-arithmetic-2026-09-05.md)
 - [OASIS XSLT 1.0 Mixed Literal/Path Arithmetic](oasis-xslt10-mixed-literal-path-arithmetic-2026-09-05.md)
 - [OASIS XSLT 1.0 Sort Tranche](oasis-xslt10-sort-tranche-2026-09-06.md)
+- [OASIS XSLT 1.0 Number Tranche](oasis-xslt10-number-tranche-2026-09-06.md)
 - [AR-0016 Source Access Inventory and Safe Reference](ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md)
 - [AR-0016 Visibility-View Prototype](ar-0016-visibility-view-prototype-2026-08-30.md)
 - [Peer Review: AR-0016 Decision Readiness](peer-ar-0016-decision-readiness-monday-2026-08-30.md)

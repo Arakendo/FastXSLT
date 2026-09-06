@@ -247,7 +247,9 @@ stable `xsl:sort` slice for source-node `xsl:for-each` and
 `xsl:apply-templates` then reaches 857 expected-result matches. It supports
 location-path, literal, and focus keys, multiple keys, text/number data, and
 ascending/descending order while leaving locale/case-order, AVTs, and
-non-source sequences explicit.
+non-source sequences explicit. Default single-level and bounded literal/focus
+`xsl:number` then reach 863 while leaving richer count/from, levels, formatting,
+and general expressions explicit.
 Two other arithmetic cases
 advance to later execution boundaries and remain uncredited; no new comparison
 mismatch appears. Compiler dispatch preserves the earlier XSLT 1.0 `0 div 0`
@@ -257,7 +259,7 @@ It retains
 19 comparator gaps and 35
 supplemental-data cases as explicitly not admitted, and gives every other case
 a structured initialization, execution, or infrastructure observation. This
-is a strict 31.25% lower bound over the suite's 2,742 standard-operation cases,
+is a strict 31.47% lower bound over the suite's 2,742 standard-operation cases,
 not an XSLT 1.0 conformance claim. The initial sweep also found and drove a shared
 source-node-variable path repair, so AR-0019 now studies whether legacy
 compatibility can progress on the modern compiler/runtime rather than through a
@@ -1849,7 +1851,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 857 expected-result matches after shared construction/copy/path/context-function/focus/node-identity/literal-comparison/static-string-function/constant and exact-rational mixed path-numeric, lexical-recognition, compile-time compatibility, and first `xsl:sort` tranches plus descendant-pattern, include-order, comment-text, and leading-descendant repairs. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 863 expected-result matches after shared construction/copy/path/context-function/focus/node-identity/literal-comparison/static-string-function/constant and exact-rational mixed path-numeric, lexical-recognition, compile-time compatibility, first `xsl:sort`, and first `xsl:number` tranches plus descendant-pattern, include-order, comment-text, and leading-descendant repairs. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -3608,6 +3610,9 @@ host lifecycle.
   `xsl:sort` keys on
   source-node `xsl:for-each` and `xsl:apply-templates`; retain all 22 newly
   exposed mismatches and six later execution failures as visible obligations.
+- [x] Raise it to 863 through default single-level and bounded literal/focus
+  `xsl:number`; retain the one newly exposed comparison mismatch and keep
+  count/from, other levels, formatting, and general expressions explicit.
 - [ ] Give each standard and expected-error case one reproducible final
   disposition under a versioned local overlay/report, applying duplicate-safe
   identity and doubts/discretionary metadata.

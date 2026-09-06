@@ -71,6 +71,7 @@ fn validate_named_calls(
                 }
             }
             Instruction::Text { .. }
+            | Instruction::Number { .. }
             | Instruction::ProcessingInstructionNode { .. }
             | Instruction::CommentNode { .. }
             | Instruction::Attribute { .. }

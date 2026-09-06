@@ -395,6 +395,10 @@ pub(crate) enum Instruction {
         separator: String,
         location: SourceLocation,
     },
+    Number {
+        value: Option<NumberValue>,
+        location: SourceLocation,
+    },
     Variable {
         name: String,
         select: Box<CastExpression>,
@@ -505,6 +509,12 @@ pub(crate) enum Instruction {
         body: Vec<Instruction>,
         location: SourceLocation,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum NumberValue {
+    Literal(String),
+    ContextPosition,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
