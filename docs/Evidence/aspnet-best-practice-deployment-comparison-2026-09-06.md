@@ -4,7 +4,7 @@
 | ----------------- | ----------------------------------------------------------------------------------------- |
 | Date              | 2026-09-06                                                                                |
 | Runtime           | .NET 10 preview workbench                                                                 |
-| Workload          | Exact `for-004` fixture family at 5, 50, and 500 items                                    |
+| Workload          | Exact `for-004` fixture family at 5, 50, and 500 items; later 8-item occupancy diagnostic |
 | Samples           | Three fresh processes, three seeded rounds per process                                    |
 | Concurrency       | Separate four-worker and eight-worker runs                                                |
 | Members           | 100,000 / 20,000 / 4,000 at 5 / 50 / 500 items                                            |
@@ -56,6 +56,36 @@ rotated.
 Bold values identify only the highest measured isolated throughput within that
 tier and worker envelope. They are not selected defaults.
 
+### Eight-item x eight-worker diagnostic
+
+An additional fresh-process sweep compared 5 and 8 source items at the same
+100,000-member count and eight-worker ceiling. This tests whether the tiny
+five-item source hides useful host concurrency; it does not change the number
+of independent transform requests.
+
+| Engine/mode                 | 5 items, x8 | 8 items, x8 | Change |
+| --------------------------- | ----------: | ----------: | -----: |
+| FastXSLT isolated batch 1   |   100,717/s |   100,277/s |  -0.4% |
+| FastXSLT isolated batch 8   |   296,562/s |   340,064/s | +14.7% |
+| FastXSLT isolated batch 32  |   362,993/s |   377,789/s |  +4.1% |
+| FastXSLT isolated batch 128 |   370,129/s |   424,478/s | +14.7% |
+| FastXSLT native             | 1,209,450/s | 1,203,177/s |  -0.5% |
+| Microsoft linear XSLT 1.0   |   907,501/s |   909,489/s |  +0.2% |
+| SaxonCS `TextWriter`        |   436,648/s |   469,238/s |  +7.5% |
+
+Every isolated observation reached eight simultaneous worker transactions.
+The in-process lanes reported high-water values of seven or eight across their
+short rounds, for both 5 and 8 items. The stricter sampler gate now requires
+every observation to reach the requested concurrency rather than accepting a
+group merely because one observation reached it.
+
+The 8-item source therefore raised the best observed isolated median in this
+repeat by about 14.7%, but it did not raise the native ceiling and did not make
+in-process occupancy uniformly eight. This is evidence of a small-workload
+batch/transport sensitivity, not evidence that source item count determines
+thread utilization. The distributions remain too short and variable for a
+publication claim.
+
 ## Interpretation
 
 Batching materially improves isolated throughput. Against batch one, the best
@@ -86,12 +116,15 @@ latency, bytes, and ambiguity radius.
 
 ## Publication limitations
 
-All requested four-way and eight-way lanes reached their real active-operation
-high-water, and semantic validation passed. The three-process distributions
-still contained CV failures, and some fixed-member lanes completed below the
-250 ms exact-family duration gate. More importantly, this first deployment
-family performs correctness warm-up but does not yet implement the sustained
-per-lane convergence protocol used by the exact-call publication sampler.
+The original four-way and eight-way lanes reached their requested real active-
+operation high-water at least once, and semantic validation passed. The later
+8-item diagnostic showed that some short in-process observations peaked at
+seven rather than eight; the sampler now treats that as a failed occupancy
+gate. The three-process distributions still contained CV failures, and some
+fixed-member lanes completed below the 250 ms exact-family duration gate. More
+importantly, this first deployment family performs correctness warm-up but does
+not yet implement the sustained per-lane convergence protocol used by the
+exact-call publication sampler.
 
 `PublicationEligible` is therefore hard-coded false. The results justify
 continuing the benchmark family, not publishing a trophy chart. The next tranche

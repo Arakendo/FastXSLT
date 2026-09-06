@@ -10,6 +10,10 @@ param(
     [switch]$TieredSummaryOnly,
     [switch]$TieredOnly,
     [switch]$BestPracticeDeploymentBenchmark,
+    [switch]$WaveOccupancyBenchmark,
+    [switch]$FiniteDispatchBenchmark,
+    [switch]$FiniteDispatchMixed,
+    [switch]$FiniteDispatchSummaryOnly,
     [switch]$TextHeavyBenchmark,
     [switch]$ResultHeavyBenchmark,
     [switch]$NativeBoundaryBreakdown,
@@ -27,6 +31,14 @@ param(
     [int]$TieredOrderSeedBase = 17000,
     [ValidateRange(128, 20000)]
     [int]$BestPracticeMembers = 4000,
+    [ValidateRange(0, 50000)]
+    [int]$BestPracticeQueuedJobs = 0,
+    [ValidateRange(100, 20000)]
+    [int]$WaveOccupancyWaves = 2000,
+    [ValidateRange(1, 9)]
+    [int]$WaveOccupancyRounds = 5,
+    [ValidateRange(1, 9)]
+    [int]$FiniteDispatchRounds = 3,
     [int]$BatchSweepMembers = 1024,
     [int]$BatchResultMembers = 256,
     [int]$TextHeavyRequests = 100,
@@ -909,12 +921,12 @@ try {
         if ($BestPracticeDeploymentBenchmark) {
             for ($bestPracticeRun = 1; $bestPracticeRun -le $MeasurementRuns; $bestPracticeRun++) {
                 $orderSeed = $TieredOrderSeedBase + $bestPracticeRun
-                $bestPractice = Invoke-RestMethod -Method Post -Uri "$baseAddress/benchmark/best-practice-deployment?members=$BestPracticeMembers&concurrency=$TieredConcurrency&orderSeed=$orderSeed"
+                $bestPractice = Invoke-RestMethod -Method Post -Uri "$baseAddress/benchmark/best-practice-deployment?members=$BestPracticeMembers&concurrency=$TieredConcurrency&orderSeed=$orderSeed&queuedJobs=$BestPracticeQueuedJobs"
                 if ($TieredSummaryOnly) {
                     $bestPractice.measurements | Select-Object `
                         @{Name='Run'; Expression={$bestPracticeRun}}, `
                         @{Name='OrderSeed'; Expression={$bestPractice.orderSeed}}, `
-                        measurementPosition, engine, mode, tier, members, concurrency, `
+                        measurementPosition, engine, mode, tier, items, queuedJobs, concurrency, `
                         batchSize, transactions, elapsedMilliseconds, transformsPerSecond, `
                         firstResultP50Microseconds, firstResultP95Microseconds, `
                         finalResultP50Microseconds, finalResultP95Microseconds, `
@@ -926,6 +938,47 @@ try {
                 else {
                     $bestPractice | ConvertTo-Json -Depth 6
                 }
+            }
+        }
+        if ($WaveOccupancyBenchmark) {
+            $waveOccupancy = Invoke-RestMethod -Method Post -Uri "$baseAddress/benchmark/wave-occupancy?waves=$WaveOccupancyWaves&rounds=$WaveOccupancyRounds"
+            $waveOccupancy.measurements | Select-Object `
+                engine, round, waveSize, waves, members, achievedConcurrencyHighWater, `
+                elapsedMilliseconds, transformsPerSecond, waveP50Microseconds, `
+                waveP95Microseconds, waveP99Microseconds
+        }
+        if ($FiniteDispatchBenchmark) {
+            $mixed = $FiniteDispatchMixed.IsPresent.ToString().ToLowerInvariant()
+            $finiteDispatch = Invoke-RestMethod -Method Post -Uri "$baseAddress/benchmark/finite-dispatch?rounds=$FiniteDispatchRounds&mixed=$mixed"
+            if ($FiniteDispatchSummaryOnly) {
+                'Workload|Topology|Claim|Runs|MedianTps|MinTps|MaxTps|MedianBusyFraction|MedianTailUs|MedianClaimUs'
+                $finiteDispatch.measurements |
+                    Group-Object workload, topology, claimSize |
+                    Sort-Object Name |
+                    ForEach-Object {
+                        $sample = $_.Group[0]
+                        $throughput = @($_.Group.transformsPerSecond)
+                        @(
+                            $sample.workload
+                            $sample.topology
+                            $sample.claimSize
+                            $_.Count
+                            ('{0:F0}' -f (Get-Median $throughput))
+                            ('{0:F0}' -f (($throughput | Measure-Object -Minimum).Minimum))
+                            ('{0:F0}' -f (($throughput | Measure-Object -Maximum).Maximum))
+                            ('{0:F3}' -f (Get-Median @($_.Group.workerBusyFraction)))
+                            ('{0:F1}' -f (Get-Median @($_.Group.tailDrainMicroseconds)))
+                            ('{0:F1}' -f (Get-Median @($_.Group.aggregateClaimMicroseconds)))
+                        ) -join '|'
+                    }
+            }
+            else {
+                $finiteDispatch.measurements | Select-Object `
+                    round, workload, topology, claimSize, jobs, workers, participatingWorkers, `
+                    activeHighWater, queueAcquisitions, minimumJobsPerWorker, `
+                    maximumJobsPerWorker, elapsedMilliseconds, transformsPerSecond, `
+                    fillMicroseconds, tailDrainMicroseconds, workerBusyFraction, `
+                    aggregateClaimMicroseconds, joinAfterLastCompletionMicroseconds
             }
         }
         if ($TextHeavyBenchmark) {

@@ -115,7 +115,7 @@ $summary = $observations |
     }
 
 $allConcurrencyReached = @($summary | Where-Object {
-    $_.AchievedConcurrency -notcontains $Concurrency
+    ($_.AchievedConcurrency | Measure-Object -Minimum).Minimum -lt $Concurrency
 }).Count -eq 0
 $allDurationsMet = @($summary | Where-Object {
     $_.MinimumElapsedMilliseconds -lt 250

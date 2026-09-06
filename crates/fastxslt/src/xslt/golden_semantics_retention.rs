@@ -9,8 +9,9 @@ use super::{
     ForDistinctValuesExpression, FormatNumberExpression, GlobalBinding, GlobalBindingDefault,
     Instruction, IntegerForExpression, LiteralAttribute, LiteralAttributeValue, MatchPattern,
     MatchedTemplate, NamedTemplate, NamespaceBinding, OutputSettings, SequenceItemExpression,
-    SourceLocation, StylesheetProgram, Template, TemplateArgument, TemplateArgumentValue,
-    TemplateParameter, TemplateParameterDefault, ValueExpression, VariableFilteredElementPath,
+    SortKey, SortSelect, SourceLocation, StylesheetProgram, Template, TemplateArgument,
+    TemplateArgumentValue, TemplateParameter, TemplateParameterDefault, ValueExpression,
+    VariableFilteredElementPath,
 };
 
 impl StylesheetProgram {
@@ -290,12 +291,9 @@ fn instruction_owned(value: &Instruction) -> usize {
         Instruction::SequenceItems { select, location } => {
             vec_owned(select, sequence_item_owned) + location_owned(location)
         }
-        Instruction::ApplyTemplates {
-            select,
-            mode,
-            arguments,
-            location,
-        } => apply_templates_owned(select.as_ref(), mode.as_ref(), arguments, location),
+        instruction @ Instruction::ApplyTemplates { .. } => {
+            apply_templates_instruction_owned(instruction)
+        }
         Instruction::ForEachTemporaryRoot { .. }
         | Instruction::ForEachStaticIntegerRange { .. }
         | Instruction::ForEachNodes { .. } => for_each_owned(value),
@@ -335,6 +333,21 @@ fn instruction_owned(value: &Instruction) -> usize {
             location,
         } => copy_owned(attributes, body, location),
     }
+}
+
+fn apply_templates_instruction_owned(instruction: &Instruction) -> usize {
+    let Instruction::ApplyTemplates {
+        select,
+        sorts,
+        mode,
+        arguments,
+        location,
+    } = instruction
+    else {
+        unreachable!("apply-templates accounting receives only apply-templates instructions")
+    };
+    apply_templates_owned(select.as_ref(), mode.as_ref(), arguments, location)
+        + vec_owned(sorts, sort_key_owned)
 }
 
 fn copy_of_owned(instruction: &Instruction) -> usize {
@@ -399,15 +412,26 @@ fn for_each_owned(value: &Instruction) -> usize {
         }
         Instruction::ForEachNodes {
             select,
+            sorts,
             body,
             location,
         } => {
             apply_selection_owned(select)
+                + vec_owned(sorts, sort_key_owned)
                 + vec_owned(body, instruction_owned)
                 + location_owned(location)
         }
         _ => unreachable!("for-each accounting receives only for-each instructions"),
     }
+}
+
+fn sort_key_owned(sort: &SortKey) -> usize {
+    let select = match &sort.select {
+        SortSelect::LocationPath(path) => path.known_owned_capacity_bytes(),
+        SortSelect::Literal(value) => value.capacity(),
+        SortSelect::ContextPosition | SortSelect::ContextSize => 0,
+    };
+    select + location_owned(&sort.location)
 }
 
 fn apply_templates_owned(

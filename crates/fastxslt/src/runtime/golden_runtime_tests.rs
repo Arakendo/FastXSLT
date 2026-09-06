@@ -859,6 +859,43 @@ fn local_position_variable_uses_each_selected_source_node_focus() {
 }
 
 #[test]
+fn xslt10_sort_orders_for_each_and_apply_templates_with_stable_multiple_keys() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-sort:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-sort:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:template match="/"><out>
+          <numbers><xsl:for-each select="doc/item"><xsl:sort select="@rank" data-type="number"/><xsl:value-of select="@name"/></xsl:for-each></numbers>
+          <names><xsl:apply-templates select="doc/item" mode="named"><xsl:sort select="@group"/><xsl:sort select="@name" order="descending"/></xsl:apply-templates></names>
+          <positions><xsl:for-each select="doc/item"><xsl:sort select="position()" data-type="number" order="descending"/><xsl:value-of select="@name"/></xsl:for-each></positions>
+        </out></xsl:template>
+        <xsl:template match="item" mode="named"><xsl:value-of select="@name"/></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc><item rank="10" group="b" name="one"/><item rank="2" group="a" name="two"/><item rank="2" group="a" name="three"/><item rank="3" group="a" name="XML"/></doc>"#.to_vec(),
+        )
+        .expect("admit sorting source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit sorting stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile xsl:sort");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("xslt10-sort", "result", SOURCE))
+        .expect("admit sorting request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute xsl:sort");
+    assert_eq!(
+        results.by_request["xslt10-sort"].serialized,
+        "<out><numbers>twothreeXMLone</numbers><names>XMLtwothreeone</names><positions>XMLthreetwoone</positions></out>"
+    );
+}
+
+#[test]
 fn typed_string_globals_retain_atomic_identity_for_effective_boolean_value() {
     const SOURCE: &str = "urn:fastxslt:typed-global-ebv:source";
     const STYLESHEET: &str = "urn:fastxslt:typed-global-ebv:stylesheet";

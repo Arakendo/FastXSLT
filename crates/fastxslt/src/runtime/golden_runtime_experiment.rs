@@ -16,8 +16,9 @@ use crate::xpath::for_distinct_values_experiment::{
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, BooleanExpression, ComputedAttribute, Instruction, NodeTest,
-    OnMultipleMatchPolicy, OnNoMatchPolicy, SequenceItemExpression, SourceWhitespacePolicy,
-    StringComparison, StylesheetProgram, TemplateArgument,
+    OnMultipleMatchPolicy, OnNoMatchPolicy, SequenceItemExpression, SortDataType, SortKey,
+    SortOrder, SortSelect, SourceWhitespacePolicy, StringComparison, StylesheetProgram,
+    TemplateArgument,
 };
 
 #[path = "atomic_template_executor.rs"]
@@ -767,17 +768,10 @@ fn execute_instruction(
         | Instruction::TemporaryTreeVariable { .. } => {
             execute_binding(inputs, instruction, execution, scope, control)?;
         }
-        Instruction::ApplyTemplates {
-            select,
-            mode,
-            arguments,
-            ..
-        } => {
+        Instruction::ApplyTemplates { .. } => {
             result.extend(execute_apply_instruction(
                 inputs,
-                select.as_ref(),
-                mode.as_deref(),
-                arguments,
+                instruction,
                 execution,
                 scope,
                 control,
@@ -1090,9 +1084,12 @@ fn execute_for_each_instruction<'a>(
         } => execute_for_each_static_integer_range(
             inputs, *start, *end, body, execution, variables, control,
         ),
-        Instruction::ForEachNodes { select, body, .. } => {
-            execute_for_each_nodes(inputs, select, body, execution, variables, control)
-        }
+        Instruction::ForEachNodes {
+            select,
+            sorts,
+            body,
+            ..
+        } => execute_for_each_nodes(inputs, select, sorts, body, execution, variables, control),
         _ => unreachable!("for-each dispatch receives only for-each instructions"),
     }
 }
@@ -1148,6 +1145,7 @@ fn execute_for_each_static_integer_range<'a>(
 fn execute_for_each_nodes<'a>(
     inputs: &SequenceInputs<'a>,
     select: &ApplySelection,
+    sorts: &[SortKey],
     body: &[Instruction],
     execution: SequenceContext<'a>,
     variables: &RuntimeVariables,
@@ -1162,6 +1160,7 @@ fn execute_for_each_nodes<'a>(
     } else {
         select_apply_nodes(inputs, Some(select), context, &variables.atomics, control)?
     };
+    let selected = sort_selected_nodes(inputs, selected, sorts, control)?;
     let focus_size = selected.len();
     let mut result = Vec::new();
     for (index, node) in selected.into_iter().enumerate() {
@@ -1181,6 +1180,86 @@ fn execute_for_each_nodes<'a>(
         )?);
     }
     Ok(result)
+}
+
+#[derive(Debug)]
+enum EvaluatedSortKey {
+    Text(String),
+    Number(Option<f64>),
+}
+
+fn sort_selected_nodes(
+    inputs: &SequenceInputs<'_>,
+    selected: Vec<NodeId>,
+    sorts: &[SortKey],
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    if sorts.is_empty() || selected.len() < 2 {
+        return Ok(selected);
+    }
+    let source = inputs
+        .source
+        .expect("source-node sorting requires a source document");
+    let mut keyed = Vec::with_capacity(selected.len());
+    let focus_size = selected.len();
+    for (offset, node) in selected.into_iter().enumerate() {
+        let mut values = Vec::with_capacity(sorts.len());
+        for sort in sorts {
+            let value = match &sort.select {
+                SortSelect::LocationPath(path) => {
+                    let nodes = evaluate_location_path_controlled(source, node, path, control)
+                        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                    nodes
+                        .first()
+                        .map_or_else(String::new, |selected| source.string_value(*selected))
+                }
+                SortSelect::Literal(value) => value.clone(),
+                SortSelect::ContextPosition => (offset + 1).to_string(),
+                SortSelect::ContextSize => focus_size.to_string(),
+            };
+            values.push(match sort.data_type {
+                SortDataType::Text => EvaluatedSortKey::Text(value),
+                SortDataType::Number => EvaluatedSortKey::Number(value.trim().parse().ok()),
+            });
+        }
+        keyed.push((node, values));
+    }
+    let comparison_charge = keyed
+        .len()
+        .saturating_mul(keyed.len().ilog2() as usize + 1)
+        .saturating_mul(sorts.len());
+    control
+        .charge(WorkDomain::XPathOperation, comparison_charge)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    keyed.sort_by(|left, right| {
+        for (index, sort) in sorts.iter().enumerate() {
+            let ordering = compare_sort_keys(&left.1[index], &right.1[index]);
+            let ordering = match sort.order {
+                SortOrder::Ascending => ordering,
+                SortOrder::Descending => ordering.reverse(),
+            };
+            if !ordering.is_eq() {
+                return ordering;
+            }
+        }
+        std::cmp::Ordering::Equal
+    });
+    Ok(keyed.into_iter().map(|(node, _)| node).collect())
+}
+
+fn compare_sort_keys(left: &EvaluatedSortKey, right: &EvaluatedSortKey) -> std::cmp::Ordering {
+    match (left, right) {
+        (EvaluatedSortKey::Text(left), EvaluatedSortKey::Text(right)) => {
+            left.to_ascii_lowercase().cmp(&right.to_ascii_lowercase())
+        }
+        (EvaluatedSortKey::Number(left), EvaluatedSortKey::Number(right)) => match (left, right) {
+            (Some(left), Some(right)) => left.total_cmp(right),
+            (None, None) => std::cmp::Ordering::Equal,
+            (None, Some(_)) => std::cmp::Ordering::Less,
+            (Some(_), None) => std::cmp::Ordering::Greater,
+        },
+        _ => unreachable!("a compiled sort key has one stable data type"),
+    }
 }
 
 fn execute_continuation_instruction(
@@ -1509,24 +1588,36 @@ fn execution_context_string_value(
 
 fn execute_apply_instruction(
     inputs: &SequenceInputs<'_>,
-    select: Option<&ApplySelection>,
-    mode: Option<&str>,
-    arguments: &[TemplateArgument],
+    instruction: &Instruction,
     execution: SequenceContext<'_>,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let Instruction::ApplyTemplates {
+        select,
+        sorts,
+        mode,
+        arguments,
+        ..
+    } = instruction
+    else {
+        unreachable!("apply instruction dispatch receives only xsl:apply-templates")
+    };
     let requested_mode = match mode {
-        Some("#current") => execution.current_mode,
-        Some("#default") => None,
-        mode => mode,
+        Some(mode) if mode == "#current" => execution.current_mode,
+        Some(mode) if mode == "#default" => None,
+        Some(mode) => Some(mode.as_str()),
+        None => None,
     };
     let parameters =
         evaluate_template_arguments(arguments, variables, inputs, execution.node, control)?;
     execute_apply_templates(
         inputs,
-        select,
-        requested_mode,
+        ApplyExecutionPlan {
+            select: select.as_ref(),
+            sorts,
+            mode: requested_mode,
+        },
         execution,
         &parameters,
         variables,
@@ -1534,22 +1625,36 @@ fn execute_apply_instruction(
     )
 }
 
+#[derive(Clone, Copy)]
+struct ApplyExecutionPlan<'a> {
+    select: Option<&'a ApplySelection>,
+    sorts: &'a [SortKey],
+    mode: Option<&'a str>,
+}
+
 fn execute_apply_templates(
     inputs: &SequenceInputs<'_>,
-    select: Option<&ApplySelection>,
-    mode: Option<&str>,
+    plan: ApplyExecutionPlan<'_>,
     execution: SequenceContext<'_>,
     parameters: &BTreeMap<String, InvocationParameter>,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    if let Some(result) = execute_special_apply_selection(
-        inputs, select, mode, execution, parameters, variables, control,
-    )? {
+    let ApplyExecutionPlan {
+        select,
+        sorts,
+        mode,
+    } = plan;
+    if sorts.is_empty()
+        && let Some(result) = execute_special_apply_selection(
+            inputs, select, mode, execution, parameters, variables, control,
+        )?
+    {
         return Ok(result);
     }
     let (_, context) = required_source_context(inputs, execution.node)?;
     let selected = select_apply_nodes(inputs, select, context, &variables.atomics, control)?;
+    let selected = sort_selected_nodes(inputs, selected, sorts, control)?;
     let mut result = Vec::new();
     let focus_size = selected.len();
     for (offset, node) in selected.into_iter().enumerate() {

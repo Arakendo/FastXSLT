@@ -334,6 +334,34 @@ pub(crate) enum ElementConstructorOrigin {
     ComputedStatic,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SortDataType {
+    Text,
+    Number,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SortOrder {
+    Ascending,
+    Descending,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SortKey {
+    pub(crate) select: SortSelect,
+    pub(crate) data_type: SortDataType,
+    pub(crate) order: SortOrder,
+    pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum SortSelect {
+    LocationPath(LocationPath),
+    Literal(String),
+    ContextPosition,
+    ContextSize,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Instruction {
     LiteralElement {
@@ -402,6 +430,7 @@ pub(crate) enum Instruction {
     },
     ApplyTemplates {
         select: Option<ApplySelection>,
+        sorts: Vec<SortKey>,
         mode: Option<String>,
         arguments: Vec<TemplateArgument>,
         location: SourceLocation,
@@ -419,6 +448,7 @@ pub(crate) enum Instruction {
     },
     ForEachNodes {
         select: ApplySelection,
+        sorts: Vec<SortKey>,
         body: Vec<Instruction>,
         location: SourceLocation,
     },

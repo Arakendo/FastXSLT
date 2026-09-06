@@ -310,7 +310,9 @@ otherwise eligible candidate. A failed gate does not discard its observations.
 The separate best-practice deployment family compares incremental non-retaining
 isolated batches 1/8/32/128 against the evidenced native, Saxon, and Microsoft
 deployment lanes under one total concurrency ceiling and equal logical member
-counts per tier:
+counts per tier. Its 8-item diagnostic retains the 5-item tier's member count
+so an x8 run can distinguish source-work sensitivity from request-level
+parallelism:
 
 ```powershell
 ./scripts/measure-best-practice-deployment.ps1 -Samples 3 -LocalSaxonCs
@@ -322,10 +324,62 @@ This sampler is deliberately exploratory and always reports
 publication controls are implemented. Batch sizes are private experiment
 candidates, not host settings or defaults.
 
+The focused wave-occupancy probe keeps the W3C five-item transform fixed and
+compares synchronized waves of five versus eight independent requests against
+eight persistent isolated workers and eight dedicated native handles/threads:
+
+```powershell
+./scripts/verify-aspnet-workbench.ps1 `
+  -TieredOnly `
+  -WaveOccupancyBenchmark `
+  -WaveOccupancyWaves 2000 `
+  -WaveOccupancyRounds 5
+```
+
+This measures pool-fill behavior and whole-wave latency. Its mandatory barriers
+make it intentionally unlike a continuously supplied deployment benchmark, and
+it does not treat source items as schedulable requests.
+
+The AR-0022 finite-dispatch probe removes the per-wave barrier and compares a
+balanced static assignment with completion-driven terminal-refill claims of
+one, two, four, or eight across 8 to 50,000 actual transform jobs:
+
+```powershell
+./scripts/verify-aspnet-workbench.ps1 `
+  -TieredOnly `
+  -FiniteDispatchBenchmark `
+  -FiniteDispatchRounds 3
+```
+
+This first tranche is native-only so transport batching cannot be mistaken for
+queue-claim behavior. Claim size is a private experiment variable, not a host
+setting.
+
+Add `-FiniteDispatchMixed` to replace the uniform matrix with two 4,096-job
+sets containing the same 5-, 50-, and 500-item population: one interleaves the
+sizes and one clusters them. Result size remains deliberately small, so this
+tests duration/order imbalance rather than claiming mixed-result coverage. Add
+`-FiniteDispatchSummaryOnly` to emit per-process medians and ranges rather than
+every round.
+
 The tiered benchmark includes both a bounded pool of isolated workers and a
 bounded pool of independent native engine handles. Each owns its own compiled
 stylesheet and prepared source. The native pool deliberately does not imply
 same-handle concurrency, which is outside the version-zero ABI contract.
+
+The job-queue deployment runner makes queued independent transforms an explicit
+axis instead of varying request count by source tier for timing balance. Its
+default matrix holds 500 and 5,000 queued jobs constant across 5/50/500 items
+per transform and tests total concurrency 1/4/8:
+
+```powershell
+./scripts/measure-job-queue-deployment.ps1 -LocalSaxonCs
+```
+
+This keeps four separate quantities visible: source items per transform,
+queued jobs, worker concurrency, and isolated transport batch members. The
+5,000-job row is the field-workload anchor; generated documents remain a
+scaling diagnostic rather than a representative consumer distribution.
 
 The focused text-heavy benchmark uses 4 KiB, 64 KiB, and 512 KiB XML-safe
 literal results to isolate serializer and result-transfer pressure through the

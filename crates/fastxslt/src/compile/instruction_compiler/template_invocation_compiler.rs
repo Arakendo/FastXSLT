@@ -36,6 +36,7 @@ pub(super) fn compile_apply_templates(
         "xsl:apply-templates",
     )?;
     let location = document.location(element).clone();
+    let (sorts, sort_nodes) = super::compile_sort_keys(document, element)?;
     let select = optional_attribute(document, element, None, "select")
         .map(|expression| parse_apply_selection(document, element, expression, location.clone()))
         .transpose()?;
@@ -46,8 +47,15 @@ pub(super) fn compile_apply_templates(
     };
     Ok(Instruction::ApplyTemplates {
         select,
+        sorts,
         mode,
-        arguments: compile_with_params(document, element, "xsl:apply-templates", false)?,
+        arguments: compile_with_params_excluding(
+            document,
+            element,
+            "xsl:apply-templates",
+            false,
+            &sort_nodes,
+        )?,
         location,
     })
 }
@@ -68,8 +76,21 @@ pub(super) fn compile_with_params(
     parent_label: &str,
     allow_fallback: bool,
 ) -> Result<Vec<TemplateArgument>, CompileFailure> {
+    compile_with_params_excluding(document, parent, parent_label, allow_fallback, &[])
+}
+
+fn compile_with_params_excluding(
+    document: &Document,
+    parent: NodeId,
+    parent_label: &str,
+    allow_fallback: bool,
+    excluded: &[NodeId],
+) -> Result<Vec<TemplateArgument>, CompileFailure> {
     let mut arguments = Vec::new();
     for child in meaningful_children(document, parent) {
+        if excluded.contains(&child) {
+            continue;
+        }
         if allow_fallback && is_xslt_element(document, child, "fallback") {
             ensure_only_attributes(document, child, &[], "xsl:fallback")?;
             continue;

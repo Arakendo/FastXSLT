@@ -242,7 +242,13 @@ neighbor to definite expected-result matches, reaching 800 while reducing
 visible execution failures to 201. All four latest cases retain their suite
 doubts metadata.
 Exact literal leaves and unary grouped negation then extend the same typed tree
-through eight further expected-result matches, reaching 808. Two other cases
+through eight further expected-result matches, reaching 808. A first shared
+stable `xsl:sort` slice for source-node `xsl:for-each` and
+`xsl:apply-templates` then reaches 857 expected-result matches. It supports
+location-path, literal, and focus keys, multiple keys, text/number data, and
+ascending/descending order while leaving locale/case-order, AVTs, and
+non-source sequences explicit.
+Two other arithmetic cases
 advance to later execution boundaries and remain uncredited; no new comparison
 mismatch appears. Compiler dispatch preserves the earlier XSLT 1.0 `0 div 0`
 rule ahead of the general plan. All eight promoted identities retain suite
@@ -251,7 +257,7 @@ It retains
 19 comparator gaps and 35
 supplemental-data cases as explicitly not admitted, and gives every other case
 a structured initialization, execution, or infrastructure observation. This
-is a strict 29.47% lower bound over the suite's 2,742 standard-operation cases,
+is a strict 31.25% lower bound over the suite's 2,742 standard-operation cases,
 not an XSLT 1.0 conformance claim. The initial sweep also found and drove a shared
 source-node-variable path repair, so AR-0019 now studies whether legacy
 compatibility can progress on the modern compiler/runtime rather than through a
@@ -1843,7 +1849,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 808 expected-result matches after shared construction/copy/path/context-function/focus/node-identity/literal-comparison/static-string-function/constant and exact-rational mixed path-numeric, lexical-recognition, and compile-time compatibility tranches plus descendant-pattern, include-order, comment-text, and leading-descendant repairs. The newest thirty-five matches retain suite doubts metadata. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 857 expected-result matches after shared construction/copy/path/context-function/focus/node-identity/literal-comparison/static-string-function/constant and exact-rational mixed path-numeric, lexical-recognition, compile-time compatibility, and first `xsl:sort` tranches plus descendant-pattern, include-order, comment-text, and leading-descendant repairs. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -3323,6 +3329,14 @@ failed, and harness-error cases without an unqualified conformance claim.
     Microsoft's linear XSLT 1.0 challenger. Report throughput, first/final
     observation latency, wire/retention scope, and ambiguity radius without
     selecting a public batch size.
+  - [x] Add queued independent transforms as an explicit axis rather than
+    inferring queue length from source-item tiers. A three-process 500-versus-
+    5,000-job matrix across concurrency 1/4/8 found no queue-length throughput
+    collapse in the warm prepared workload; most longer cells improved through
+    fixed-cost amortization. Preserve the representative application's parse,
+    prepare, resource, result, and publication costs as separate future phase
+    attribution rather than generalizing from generated `for-004` work.
+    [Evidence](../Evidence/aspnet-explicit-job-queue-axis-2026-09-06.md)
   - [ ] Add sustained per-lane convergence and seven-process distribution gates
     to the best-practice deployment family before treating it as publication-
     eligible evidence.
@@ -3590,6 +3604,10 @@ host lifecycle.
   token-correct grouped/numeric subtraction in the same typed plan; keep two
   newly exposed later failures uncredited, preserve the compile-time XSLT 1.0
   non-finite rule, and retain all eight passes' doubts metadata.
+- [x] Raise it to 857 through stable location-path, literal, and focus
+  `xsl:sort` keys on
+  source-node `xsl:for-each` and `xsl:apply-templates`; retain all 22 newly
+  exposed mismatches and six later execution failures as visible obligations.
 - [ ] Give each standard and expected-error case one reproducible final
   disposition under a versioned local overlay/report, applying duplicate-safe
   identity and doubts/discretionary metadata.
@@ -3845,7 +3863,21 @@ select a host API, batch size, completion-order delivery, or multi-lane worker.
   5/50/500-item warm tiers with randomized or time-balanced lane order. A
   first three-run rotated comparison found 5.22x/3.69x/2.01x batch-128 median
   gains; later fault and resource-pressure gates preserve the candidate without
-  selecting a default.
+  selecting a default. A later equal-member 5-versus-8-item x8 diagnostic found
+  every isolated observation used all eight worker transactions, while short
+  in-process observations still peaked at seven or eight for both source sizes.
+  The best isolated 8-item median was 14.7% above its 5-item peer, but native
+  throughput was effectively unchanged; source item count is therefore not a
+  concurrency proxy. The exploratory sampler now requires every observation,
+  not merely one member of a summary group, to reach requested occupancy.
+  A separate synchronized-wave probe then held the five-item transform fixed.
+  Its paired native/isolated repeat proves five-request waves occupy five
+  workers and eight-request waves occupy all eight. Native throughput rises
+  25.4% from 132,987/s to 166,717/s, but remains about 8.2 times below the
+  continuously supplied 1.36-million/s lane because every tiny wave pays start
+  and completion barriers. Isolated uplift changed from 11.4% in its first
+  tranche to 1.6% in the paired repeat. This confirms pool fill while rejecting
+  synchronized waves as an engine-ceiling or deployment-throughput proxy.
 - [x] Preserve per-member identity, diagnostics, cancellation, budgets,
   sibling-result invisibility, and batch-of-one parity; keep one sequential
   execution lane per worker for the first experiment. Rust and ASP.NET controls
@@ -3927,6 +3959,55 @@ select a host API, batch size, completion-order delivery, or multi-lane worker.
   contract. ADR-0019 selects incremental input-order transport and conservative
   failure collection; concrete public host API types and multi-lane workers
   remain open.
+
+### Finite transform-set rolling refill and worker claims
+
+[AR-0022](../Architectural%20Reviews/AR-0022-finite-transform-set-rolling-refill-and-worker-claims.md)
+is concluded as **No Change**. It corrected the initiating terminology: 500
+source items are semantic work inside one transform, not 500 queued jobs, and
+their lower transforms-per-second result does not establish a scheduling
+barrier.
+
+Continuously supplied throughput remains the capacity reference. Synchronized
+waves remain a negative scheduling control and occupancy probe. The first
+native uniform-work tranche is complete: across three fresh processes,
+completion-driven claim one reached about 1.285 million transforms per second
+for 500 actual jobs, approximately 95% of the earlier 1.36-million/s continuous
+reference. Claims 2/4/8 reduced queue acquisitions but supplied no consistent
+throughput win, enlarged final tail drain, and hoarded small sets. No public
+claim size, internal default, worker prefetch, low-watermark protocol, or
+production dispatcher change is selected. Completion-driven claim one remains
+the private reference; ADR-0019 transport batching remains the separate
+accepted mechanism for isolated-boundary amortization.
+[Evidence](../Evidence/ar-0022-native-finite-dispatch-reference-2026-09-06.md)
+
+The native mixed-duration tranche is also complete. Across equal 5/50/500-item
+populations, completion-driven refill removed severe clustered static
+imbalance. Claim two led the interleaved cross-process median by about 8.2%, but
+the direction reversed in one fresh process and its tail was larger. Claims one
+through eight were effectively tied on clustered throughput while tail radius
+grew with claim size. Mixed duration therefore does not earn a larger private
+claim; claim one remains the reference.
+[Mixed-duration evidence](../Evidence/ar-0022-native-mixed-duration-dispatch-2026-09-06.md)
+
+- [x] Instrument native completion-driven claim-one dispatch across finite
+  8/32/128/500/4,096/50,000 sets, recording fill, busy fraction, participation,
+  job distribution, total drain, and final tail drain.
+- [x] Measure aggregate transform-call busy time and per-worker job/final-
+  completion distribution. Add exact idle-with-global-ready intervals only if
+  later attribution cannot be resolved from the present counters.
+- [x] Compare current static assignment, claim one, and terminal-refill claims
+  2/4/8 without a global wave barrier and without changing source semantics.
+- [ ] Reopening only: repeat on mixed-result-size and fault/cancellation cases;
+  retain exact request identity, loss truth, bounds, and generation drain. The
+  native mixed-duration/order tranche is complete. This work is dormant unless
+  new evidence first nominates a larger claim.
+- [x] Keep queue claim count distinct from ADR-0019 transport members and reopen
+  accepted transaction accounting before admitting more than one transaction
+  per isolated worker.
+- [x] Close with no change because claim one already keeps workers busy and
+  larger
+  claims merely exchange queue work for tail, memory, or ambiguity pressure.
 
 ### Execution-loss provenance and host quarantine
 

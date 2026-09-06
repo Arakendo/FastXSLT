@@ -207,7 +207,8 @@ app.MapPost("/benchmark/tiers", async (int? requests, int? concurrency, int? ord
 app.MapPost("/benchmark/best-practice-deployment", async (
     int? members,
     int? concurrency,
-    int? orderSeed) =>
+    int? orderSeed,
+    int? queuedJobs) =>
 {
     await tieredBenchmarkGate.WaitAsync();
     try
@@ -218,7 +219,40 @@ app.MapPost("/benchmark/best-practice-deployment", async (
             dotNetLinearStylesheet,
             Math.Clamp(members ?? 4_000, 128, 20_000),
             Math.Clamp(concurrency ?? 4, 1, 8),
-            orderSeed));
+            orderSeed,
+            queuedJobs is > 0 ? Math.Clamp(queuedJobs.Value, 1, 50_000) : null));
+    }
+    finally
+    {
+        tieredBenchmarkGate.Release();
+    }
+});
+app.MapPost("/benchmark/wave-occupancy", async (int? waves, int? rounds) =>
+{
+    await tieredBenchmarkGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await WaveOccupancyExperiment.RunAsync(
+            workerPath,
+            source,
+            stylesheet,
+            Math.Clamp(waves ?? 2_000, 100, 20_000),
+            Math.Clamp(rounds ?? 5, 1, 9)));
+    }
+    finally
+    {
+        tieredBenchmarkGate.Release();
+    }
+});
+app.MapPost("/benchmark/finite-dispatch", (int? rounds, bool? mixed) =>
+{
+    tieredBenchmarkGate.Wait();
+    try
+    {
+        var effectiveRounds = Math.Clamp(rounds ?? 3, 1, 9);
+        return Results.Ok(mixed == true
+            ? FiniteDispatchExperiment.RunMixed(stylesheet, effectiveRounds)
+            : FiniteDispatchExperiment.Run(source, stylesheet, effectiveRounds));
     }
     finally
     {

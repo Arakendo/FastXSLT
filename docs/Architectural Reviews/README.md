@@ -123,3 +123,8 @@ and add the record to this index. Never reuse a retired number.
   conservative loss truth, and private wire and language-binding details.
   Incremental input-order delivery leads privately; protocol and public host
   stabilization await remaining evidence and a later ADR.
+- [AR-0022: Finite Transform-Set Rolling Refill and Worker Claims](AR-0022-finite-transform-set-rolling-refill-and-worker-claims.md)
+  -- No Change; the initiating concern conflated source items per transform
+  with queued jobs. Finite uniform and mixed-duration queues confirm
+  completion-driven claim one as the private reference; larger claims add tail
+  and ownership radius without a repeatable throughput benefit.

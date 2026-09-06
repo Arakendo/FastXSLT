@@ -7,6 +7,10 @@ public static class BestPracticeDeploymentComparison
     private static readonly (string Name, int Items, int Multiplier)[] Tiers =
     [
         ("items-5", 5, 25),
+        // Diagnostic peer for items-5: retain the same member count while
+        // increasing per-transform work enough to test an extremely small
+        // transform against the same host concurrency envelope.
+        ("items-8", 8, 25),
         ("items-50", 50, 5),
         ("items-500", 500, 1)
     ];
@@ -19,16 +23,20 @@ public static class BestPracticeDeploymentComparison
         byte[] dotNetLinearStylesheet,
         int baseMembers,
         int maximumConcurrency,
-        int? orderSeed)
+        int? orderSeed,
+        int? fixedQueuedJobs = null)
     {
         baseMembers = Math.Clamp(baseMembers, 128, 20_000);
         maximumConcurrency = Math.Clamp(maximumConcurrency, 1, 8);
+        fixedQueuedJobs = fixedQueuedJobs is null
+            ? null
+            : Math.Clamp(fixedQueuedJobs.Value, 1, 50_000);
         var effectiveOrderSeed = orderSeed ?? Environment.TickCount;
         var measurements = new List<BestPracticeDeploymentMeasurement>();
 
         foreach (var tier in Tiers)
         {
-            var members = checked(baseMembers * tier.Multiplier);
+            var members = fixedQueuedJobs ?? checked(baseMembers * tier.Multiplier);
             var source = BuildSource(tier.Items);
             var expected = $"<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>{tier.Items}.00</out>";
             var workers = new List<FastXsltWorkerClient>(maximumConcurrency);
@@ -136,7 +144,8 @@ public static class BestPracticeDeploymentComparison
             effectiveOrderSeed,
             Environment.ProcessorCount,
             measurements,
-            "Deployment-family comparison, not the exact-call family. Isolated batching is incremental and non-retaining. Batch size is a private policy sweep, not a default or host setting. Microsoft remains fixture-equivalent XSLT 1.0. Allocation and working-set observations are not comparable total-memory measurements across engines.");
+            fixedQueuedJobs,
+            "Deployment-family comparison, not the exact-call family. When fixedQueuedJobs is present, it is the explicit independent transform-job queue length for every source-item tier. Isolated batching is incremental and non-retaining. Batch size is a private policy sweep, not a default or host setting. Microsoft remains fixture-equivalent XSLT 1.0. Allocation and working-set observations are not comparable total-memory measurements across engines.");
     }
 
     private static async Task<BestPracticeDeploymentMeasurement>
@@ -525,6 +534,7 @@ public sealed record BestPracticeDeploymentReport(
     int OrderSeed,
     int LogicalProcessors,
     IReadOnlyList<BestPracticeDeploymentMeasurement> Measurements,
+    int? FixedQueuedJobs,
     string InterpretationConstraint);
 
 public sealed record BestPracticeDeploymentMeasurement(
@@ -555,4 +565,7 @@ public sealed record BestPracticeDeploymentMeasurement(
     int MaximumAmbiguousMembersPerWorkerLoss,
     int MaximumAggregateAmbiguousMembers,
     int AchievedConcurrencyHighWater,
-    int MeasurementPosition);
+    int MeasurementPosition)
+{
+    public int QueuedJobs => Members;
+}

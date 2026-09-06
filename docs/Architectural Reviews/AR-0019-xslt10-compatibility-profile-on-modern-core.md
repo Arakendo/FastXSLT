@@ -4,12 +4,12 @@
 | --- | --- |
 | Status | Under Review |
 | Opened | 2026-09-04 |
-| Last reviewed | 2026-09-04 |
+| Last reviewed | 2026-09-06 |
 | Scope | Named XSLT 1.0 compatibility, backwards-compatible behavior, and shared modern execution |
 | Trigger | A complete local legacy sweep found 366 initial definite unchanged passes and dominant gaps that largely overlap the XSLT 3.0 roadmap |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007, ADR-0012, ADR-0013, ADR-0014 |
 | Related reviews | AR-0001, AR-0004, AR-0008, AR-0011, AR-0014 |
-| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md`; `docs/Evidence/oasis-xslt10-variable-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-exact-rational-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-mixed-literal-path-arithmetic-2026-09-05.md` |
+| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md`; `docs/Evidence/oasis-xslt10-variable-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-exact-rational-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-mixed-literal-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-sort-tranche-2026-09-06.md` |
 
 ## Architectural question
 
@@ -160,6 +160,10 @@ public version-mode contract.
 - [x] Build a hash-verified local runner that conserves all 3,173 catalog cases.
 - [x] Establish a strict lower-bound pass count without crediting arbitrary
   expected failures.
+- [x] Implement a first shared `xsl:sort` slice for source-node
+  `xsl:for-each` and `xsl:apply-templates`, raising the strict lower bound from
+  808 to 857 while leaving 22 newly exposed mismatches and six later execution
+  failures visibly uncredited.
 - [x] Prove at least one legacy-discovered defect can be repaired through the
   shared modern runtime.
 - [x] Add a formal XSLT 1.0 compatibility checkpoint and subsequent modern

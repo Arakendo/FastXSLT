@@ -59,7 +59,8 @@ use crate::xpath::string_length_experiment::{
 };
 use crate::xslt::golden_semantics_experiment::{
     ChooseBranch, ComputedAttribute, ElementConstructorOrigin, Instruction, LiteralAttributeValue,
-    SequenceItemExpression, StringComparison, TemplateArgument, ValueExpression,
+    SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect, StringComparison,
+    TemplateArgument, ValueExpression,
 };
 
 #[path = "instruction_compiler/computed_attribute_compiler.rs"]
@@ -579,11 +580,19 @@ fn static_copy_of_text(expression: &str) -> Option<String> {
 
 fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
     let select = required_attribute(document, element, None, "select")?;
+    let (sorts, sort_nodes) = compile_sort_keys(document, element)?;
     if let Some(variable) = select
         .trim()
         .strip_prefix('$')
         .filter(|name| is_ascii_ncname(name))
     {
+        if !sorts.is_empty() {
+            return Err(unsupported(
+                "FXST1044",
+                "xsl:sort over temporary-tree variables is outside the admitted sorting slice",
+                document.location(element),
+            ));
+        }
         ensure_only_attributes(
             document,
             element,
@@ -592,11 +601,18 @@ fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction,
         )?;
         return Ok(Instruction::ForEachTemporaryRoot {
             variable: variable.to_owned(),
-            body: compile_sequence(document, element)?,
+            body: compile_sequence_excluding(document, element, &sort_nodes)?,
             location: document.location(element).clone(),
         });
     }
     if let Some((start, end)) = parse_static_integer_range(select) {
+        if !sorts.is_empty() {
+            return Err(unsupported(
+                "FXST1044",
+                "xsl:sort over atomic integer ranges is outside the admitted sorting slice",
+                document.location(element),
+            ));
+        }
         for child in meaningful_children(document, element) {
             if is_xslt_element(document, child, "apply-templates") {
                 let apply_select = optional_attribute(document, child, None, "select");
@@ -615,7 +631,7 @@ fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction,
             &["select", "default-mode"],
             "xsl:for-each",
         )?;
-        let body = compile_sequence(document, element)?;
+        let body = compile_sequence_excluding(document, element, &sort_nodes)?;
         if !is_context_independent_static_range_body(&body) {
             return Err(unsupported(
                 "FXST1007",
@@ -644,9 +660,83 @@ fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction,
             select,
             location.clone(),
         )?,
-        body: compile_sequence(document, element)?,
+        sorts,
+        body: compile_sequence_excluding(document, element, &sort_nodes)?,
         location,
     })
+}
+
+pub(super) fn compile_sort_keys(
+    document: &Document,
+    parent: NodeId,
+) -> Result<(Vec<SortKey>, Vec<NodeId>), CompileFailure> {
+    let children = meaningful_children(document, parent);
+    let mut sorts = Vec::new();
+    let mut sort_nodes = Vec::new();
+    let mut saw_body = false;
+    for child in children {
+        if !is_xslt_element(document, child, "sort") {
+            saw_body = true;
+            continue;
+        }
+        if saw_body {
+            return Err(invalid(
+                "XTSE0010",
+                "xsl:sort must precede every other sequence-constructor child",
+                document.location(child),
+            ));
+        }
+        ensure_only_attributes(
+            document,
+            child,
+            &["select", "data-type", "order"],
+            "xsl:sort",
+        )?;
+        ensure_no_meaningful_children(document, child, "xsl:sort")?;
+        let location = document.location(child).clone();
+        let select = optional_attribute(document, child, None, "select").unwrap_or(".");
+        let select = if let Some(value) = xpath_string_literal(select.trim()) {
+            SortSelect::Literal(value.to_owned())
+        } else if select.trim() == "position()" {
+            SortSelect::ContextPosition
+        } else if select.trim() == "last()" {
+            SortSelect::ContextSize
+        } else {
+            SortSelect::LocationPath(
+                parse_location_path(select, location.clone()).map_err(map_path_failure)?,
+            )
+        };
+        let data_type = match optional_attribute(document, child, None, "data-type") {
+            None | Some("text") => SortDataType::Text,
+            Some("number") => SortDataType::Number,
+            Some(value) => {
+                return Err(unsupported(
+                    "FXST1044",
+                    format!("unsupported xsl:sort data-type: {value}"),
+                    &location,
+                ));
+            }
+        };
+        let order = match optional_attribute(document, child, None, "order") {
+            None | Some("ascending") => SortOrder::Ascending,
+            Some("descending") => SortOrder::Descending,
+            Some(value) => {
+                return Err(invalid(
+                    "XTDE0030",
+                    format!("invalid xsl:sort order: {value}"),
+                    &location,
+                ));
+            }
+        };
+        sorts.push(SortKey {
+            select,
+            data_type,
+            order,
+            location,
+        });
+        sort_nodes.push(child);
+    }
+    Ok((sorts, sort_nodes))
 }
 
 fn parse_static_integer_range(expression: &str) -> Option<(i64, i64)> {
