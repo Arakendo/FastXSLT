@@ -28,6 +28,7 @@ offers:
 - `POST /transform/dotnet-xslt1`
 - `POST /measure/dotnet-xslt1?requests=1000`
 - `POST /benchmark/tiers?requests=250&concurrency=4`
+- `POST /benchmark/best-practice-deployment?members=4000&concurrency=4&orderSeed=51001`
 - `POST /benchmark/text-heavy?requests=100&concurrency=4`
 - `POST /benchmark/result-heavy?requests=50&concurrency=4`
 - `POST /benchmark/isolated-batch-result-pressure?members=256&orderOffset=0`
@@ -271,11 +272,55 @@ The opt-in tiered benchmark generates deterministic 5-, 50-, and 500-item
 sources. It measures sequential and bounded-concurrent warm execution with
 per-invocation p50/p95/p99 latency, aggregate throughput, approximate managed
 allocation, process CPU, working-set observations, source size, and result size.
+Competitive lanes use measured warm-up windows, seeded lane rotation, dedicated
+synchronous measurement for synchronous APIs, and report achieved active-call
+high-water. The exact-call family derives a bounded request count from each
+lane's stabilized sequential rate, targeting about 500 ms of measured work and
+never fewer calls than the requested tier baseline. `-TieredOrderSeedBase`
+makes lane order reproducible. Multiple
+`-MeasurementRuns` rotate within one host process; independent script
+invocations are required for fresh-process distributions.
 Run it with:
 
 ```powershell
 ./scripts/verify-aspnet-workbench.ps1 -TieredBenchmark -LocalSaxonCs
 ```
+
+Publication-oriented sampling uses a fresh process per observation and returns
+distribution, warm-up, occupancy, and eligibility records:
+
+```powershell
+./scripts/measure-competitive-fairness.ps1 -Samples 7 -LocalSaxonCs `
+  -SelectedSaxonDestination TextWriter
+```
+
+Each fresh process runs three seeded rounds by default and contributes the
+median round result as one independent sample. `-WithinProcessRounds` accepts an
+odd value from one through five; additional rounds never inflate the fresh-
+process sample count.
+
+The sampler reports a dataset as publication-eligible only when the minimum
+sample count is met, all requested concurrency levels are observed, every
+selected engine/tier warm-up converges, every selected measurement lasts at
+least 250 ms, the selected fresh-process distributions remain within the
+declared variability limit, and a requested local Saxon run names an available
+destination. Diagnostic oracle lanes remain visible without vetoing an
+otherwise eligible candidate. A failed gate does not discard its observations.
+
+The separate best-practice deployment family compares incremental non-retaining
+isolated batches 1/8/32/128 against the evidenced native, Saxon, and Microsoft
+deployment lanes under one total concurrency ceiling and equal logical member
+counts per tier:
+
+```powershell
+./scripts/measure-best-practice-deployment.ps1 -Samples 3 -LocalSaxonCs
+./scripts/measure-best-practice-deployment.ps1 -Samples 3 -Concurrency 8 -LocalSaxonCs
+```
+
+This sampler is deliberately exploratory and always reports
+`PublicationEligible = false` until sustained warm-up and the remaining
+publication controls are implemented. Batch sizes are private experiment
+candidates, not host settings or defaults.
 
 The tiered benchmark includes both a bounded pool of isolated workers and a
 bounded pool of independent native engine handles. Each owns its own compiled
@@ -284,8 +329,10 @@ same-handle concurrency, which is outside the version-zero ABI contract.
 
 The focused text-heavy benchmark uses 4 KiB, 64 KiB, and 512 KiB XML-safe
 literal results to isolate serializer and result-transfer pressure through the
-same native and isolated pools. It excludes the Microsoft and local Saxon lanes
-because it is an implementation A/B fixture rather than an engine comparison.
+same native and isolated pools. When the gitignored local Saxon overlay is
+enabled, it also A/B tests byte-stream and `TextWriter` result materialization.
+It excludes Microsoft because this is an implementation A/B fixture rather than
+an XSLT 1.0 algorithm comparison.
 Run it with:
 
 ```powershell

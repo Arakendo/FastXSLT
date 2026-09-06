@@ -8,6 +8,8 @@ param(
     [switch]$LocalSaxonCs,
     [switch]$TieredBenchmark,
     [switch]$TieredSummaryOnly,
+    [switch]$TieredOnly,
+    [switch]$BestPracticeDeploymentBenchmark,
     [switch]$TextHeavyBenchmark,
     [switch]$ResultHeavyBenchmark,
     [switch]$NativeBoundaryBreakdown,
@@ -22,6 +24,9 @@ param(
     [switch]$NativeRegistryReplacementSoak,
     [int]$TieredRequests = 250,
     [int]$TieredConcurrency = 4,
+    [int]$TieredOrderSeedBase = 17000,
+    [ValidateRange(128, 20000)]
+    [int]$BestPracticeMembers = 4000,
     [int]$BatchSweepMembers = 1024,
     [int]$BatchResultMembers = 256,
     [int]$TextHeavyRequests = 100,
@@ -117,6 +122,26 @@ try {
         }
         if ($LocalSaxonCs -and -not $health.saxonCsAvailable) {
             throw 'The local SaxonCS overlay was requested but was not available.'
+        }
+        if ($LocalSaxonCs -and
+            (-not $health.saxonDestinationParity.utf8BenchmarkEligible -or
+             -not $health.saxonDestinationParity.failure.bothFailed)) {
+            throw 'The Saxon TextWriter destination did not preserve the UTF-8 benchmark/failure oracle.'
+        }
+        if ($LocalSaxonCs) {
+            [pscustomobject]@{
+                Kind = 'SaxonDestinationParity'
+                Utf8Equivalent = $health.saxonDestinationParity.utf8.equivalent
+                AsciiEquivalent = $health.saxonDestinationParity.ascii.equivalent
+                BothFailurePathsFailed = $health.saxonDestinationParity.failure.bothFailed
+                Utf8BenchmarkEligible = $health.saxonDestinationParity.utf8BenchmarkEligible
+                GeneralSerializationEligible =
+                    $health.saxonDestinationParity.generalSerializationEligible
+                Utf8Stream = $health.saxonDestinationParity.utf8.stream
+                Utf8TextWriter = $health.saxonDestinationParity.utf8.textWriter
+                AsciiStream = $health.saxonDestinationParity.ascii.stream
+                AsciiTextWriter = $health.saxonDestinationParity.ascii.textWriter
+            }
         }
 
         $result = Invoke-WebRequest -Method Post -Uri "$baseAddress/transform/smoke-001"
@@ -822,43 +847,85 @@ try {
                 $replacementSoak | ConvertTo-Json -Depth 8
             }
         }
-        for ($run = 1; $run -le $MeasurementRuns; $run++) {
-            $fastXslt = Invoke-RestMethod -Method Post -Uri "$baseAddress/measure?requests=$MeasurementRequests"
-            $nativeFastXslt = Invoke-RestMethod -Method Post -Uri "$baseAddress/measure/inprocess?requests=$MeasurementRequests"
-            $dotNetXslt1 = Invoke-RestMethod -Method Post -Uri "$baseAddress/measure/dotnet-xslt1?requests=$MeasurementRequests"
-            $saxonCs = if ($health.saxonCsAvailable) {
-                Invoke-RestMethod -Method Post -Uri "$baseAddress/measure/saxoncs?requests=$MeasurementRequests"
-            }
-            else {
-                $null
-            }
-            [pscustomobject]@{
-                Run = $run
-                Mode = $health.mode
-                MaximumInFlight = $health.maximumInFlight
-                Requests = $fastXslt.requests
-                FastXsltElapsedMilliseconds = $fastXslt.elapsedMilliseconds
-                FastXsltTransformsPerSecond = $fastXslt.transformsPerSecond
-                NativeFastXsltElapsedMilliseconds = $nativeFastXslt.elapsedMilliseconds
-                NativeFastXsltTransformsPerSecond = $nativeFastXslt.transformsPerSecond
-                IsolatedToNativeRatio = $nativeFastXslt.transformsPerSecond / $fastXslt.transformsPerSecond
-                DotNetXslt1ElapsedMilliseconds = $dotNetXslt1.elapsedMilliseconds
-                DotNetXslt1TransformsPerSecond = $dotNetXslt1.transformsPerSecond
-                DotNetToFastXsltRatio = $dotNetXslt1.transformsPerSecond / $fastXslt.transformsPerSecond
-                SaxonCsElapsedMilliseconds = if ($saxonCs) { $saxonCs.elapsedMilliseconds } else { $null }
-                SaxonCsTransformsPerSecond = if ($saxonCs) { $saxonCs.transformsPerSecond } else { $null }
-                SaxonCsToFastXsltRatio = if ($saxonCs) { $saxonCs.transformsPerSecond / $fastXslt.transformsPerSecond } else { $null }
-                ExactStylesheetExecutedByDotNet = $health.dotNetXslt1ExactStylesheetExecuted
-                ExactStylesheetDotNetDiagnostic = $health.dotNetXslt1ExactStylesheetDiagnostic
+        if (-not $TieredOnly) {
+            for ($run = 1; $run -le $MeasurementRuns; $run++) {
+                $fastXslt = Invoke-RestMethod -Method Post -Uri "$baseAddress/measure?requests=$MeasurementRequests"
+                $nativeFastXslt = Invoke-RestMethod -Method Post -Uri "$baseAddress/measure/inprocess?requests=$MeasurementRequests"
+                $dotNetXslt1 = Invoke-RestMethod -Method Post -Uri "$baseAddress/measure/dotnet-xslt1?requests=$MeasurementRequests"
+                $saxonCs = if ($health.saxonCsAvailable) {
+                    Invoke-RestMethod -Method Post -Uri "$baseAddress/measure/saxoncs?requests=$MeasurementRequests"
+                }
+                else {
+                    $null
+                }
+                [pscustomobject]@{
+                    Run = $run
+                    Mode = $health.mode
+                    MaximumInFlight = $health.maximumInFlight
+                    Requests = $fastXslt.requests
+                    FastXsltElapsedMilliseconds = $fastXslt.elapsedMilliseconds
+                    FastXsltTransformsPerSecond = $fastXslt.transformsPerSecond
+                    NativeFastXsltElapsedMilliseconds = $nativeFastXslt.elapsedMilliseconds
+                    NativeFastXsltTransformsPerSecond = $nativeFastXslt.transformsPerSecond
+                    IsolatedToNativeRatio = $nativeFastXslt.transformsPerSecond / $fastXslt.transformsPerSecond
+                    DotNetXslt1ElapsedMilliseconds = $dotNetXslt1.elapsedMilliseconds
+                    DotNetXslt1TransformsPerSecond = $dotNetXslt1.transformsPerSecond
+                    DotNetToFastXsltRatio = $dotNetXslt1.transformsPerSecond / $fastXslt.transformsPerSecond
+                    SaxonCsElapsedMilliseconds = if ($saxonCs) { $saxonCs.elapsedMilliseconds } else { $null }
+                    SaxonCsTransformsPerSecond = if ($saxonCs) { $saxonCs.transformsPerSecond } else { $null }
+                    SaxonCsToFastXsltRatio = if ($saxonCs) { $saxonCs.transformsPerSecond / $fastXslt.transformsPerSecond } else { $null }
+                    ExactStylesheetExecutedByDotNet = $health.dotNetXslt1ExactStylesheetExecuted
+                    ExactStylesheetDotNetDiagnostic = $health.dotNetXslt1ExactStylesheetDiagnostic
+                }
             }
         }
         if ($TieredBenchmark) {
-            $tiered = Invoke-RestMethod -Method Post -Uri "$baseAddress/benchmark/tiers?requests=$TieredRequests&concurrency=$TieredConcurrency"
-            if ($TieredSummaryOnly) {
-                $tiered.measurements | Select-Object engine, tier, requests, concurrency, transformsPerSecond, p50Microseconds, p95Microseconds, p99Microseconds, processorMilliseconds, normalizedProcessorPercent, managedAllocatedBytes, workerWorkingSetAfter
+            for ($tieredRun = 1; $tieredRun -le $MeasurementRuns; $tieredRun++) {
+                $orderSeed = $TieredOrderSeedBase + $tieredRun
+                $tiered = Invoke-RestMethod -Method Post -Uri "$baseAddress/benchmark/tiers?requests=$TieredRequests&concurrency=$TieredConcurrency&orderSeed=$orderSeed"
+                if ($TieredSummaryOnly) {
+                    $tiered.warmups | Select-Object `
+                        @{Name='Run'; Expression={$tieredRun}}, `
+                        @{Name='OrderSeed'; Expression={$tiered.orderSeed}}, `
+                        engine, tier, totalCalls, windows, stabilized, `
+                        finalRelativeMedianDrift, finalRelativeMedianAbsoluteDeviation, `
+                        windowThroughputsPerSecond
+                    $tiered.measurements | Select-Object `
+                        @{Name='Run'; Expression={$tieredRun}}, `
+                        @{Name='OrderSeed'; Expression={$tiered.orderSeed}}, `
+                        measurementPosition, engine, tier, requests, concurrency, `
+                        achievedConcurrencyHighWater, `
+                        threadPoolThreadsBefore, threadPoolThreadsAfter, measurementProtocol, `
+                        elapsedMilliseconds, transformsPerSecond, `
+                        p50Microseconds, p95Microseconds, p99Microseconds, `
+                        processorMilliseconds, normalizedProcessorPercent, managedAllocatedBytes, `
+                        workerWorkingSetAfter
+                }
+                else {
+                    $tiered | ConvertTo-Json -Depth 6
+                }
             }
-            else {
-                $tiered | ConvertTo-Json -Depth 6
+        }
+        if ($BestPracticeDeploymentBenchmark) {
+            for ($bestPracticeRun = 1; $bestPracticeRun -le $MeasurementRuns; $bestPracticeRun++) {
+                $orderSeed = $TieredOrderSeedBase + $bestPracticeRun
+                $bestPractice = Invoke-RestMethod -Method Post -Uri "$baseAddress/benchmark/best-practice-deployment?members=$BestPracticeMembers&concurrency=$TieredConcurrency&orderSeed=$orderSeed"
+                if ($TieredSummaryOnly) {
+                    $bestPractice.measurements | Select-Object `
+                        @{Name='Run'; Expression={$bestPracticeRun}}, `
+                        @{Name='OrderSeed'; Expression={$bestPractice.orderSeed}}, `
+                        measurementPosition, engine, mode, tier, members, concurrency, `
+                        batchSize, transactions, elapsedMilliseconds, transformsPerSecond, `
+                        firstResultP50Microseconds, firstResultP95Microseconds, `
+                        finalResultP50Microseconds, finalResultP95Microseconds, `
+                        processorMilliseconds, managedAllocatedBytesPerMember, `
+                        workerWorkingSetAfterBytes, requestWireBytes, responseWireBytes, `
+                        maximumAmbiguousMembersPerWorkerLoss, `
+                        maximumAggregateAmbiguousMembers, achievedConcurrencyHighWater
+                }
+                else {
+                    $bestPractice | ConvertTo-Json -Depth 6
+                }
             }
         }
         if ($TextHeavyBenchmark) {

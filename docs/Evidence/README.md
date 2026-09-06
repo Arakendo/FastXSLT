@@ -171,6 +171,8 @@ pressure architecture but does not silently create a public guarantee.
 - [ASP.NET .NET 10 Tiered Target Comparison](aspnet-net10-tiered-target-comparison-2026-09-03.md)
 - [ASP.NET Post-Performance-Audit Tiered Rerun](aspnet-post-performance-audit-tiered-rerun-2026-09-05.md)
 - [ASP.NET FastXSLT, SaxonCS, and Microsoft Tiered Rerun](aspnet-fastxslt-saxon-microsoft-rerun-2026-09-05.md)
+- [Competitive Benchmark Fairness Remediation Tranche](competitive-benchmark-fairness-remediation-tranche-2026-09-05.md)
+- [ASP.NET Best-Practice Deployment Comparison](aspnet-best-practice-deployment-comparison-2026-09-06.md)
 - [Peer Review: Bounded Pre-Execution Preparation Stage](peer-preparation-stage-review-monday-2026-09-05.md)
 - [Peer Review: Isolated Transport Batching](peer-isolated-transport-batching-review-monday-2026-09-05.md)
 - [AR-0021 Isolated Boundary Attribution and Batch Prototype](ar-0021-isolated-boundary-attribution-and-batch-prototype-2026-09-05.md)

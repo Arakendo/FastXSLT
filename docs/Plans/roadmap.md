@@ -3300,6 +3300,32 @@ failed, and harness-error cases without an unqualified conformance claim.
   - [x] Establish a small ASP.NET comparison against Microsoft's built-in XSLT
     1.0 processor and a locally acquired, non-distributed SaxonCS-HE 13.0.0
     adapter, preserving exact-stylesheet versus equivalent-workload distinctions.
+  - [x] Audit competitive benchmark fairness and replace the misleading
+    Microsoft shrinking-tail headline lane with a lower-allocation linear
+    sibling-walk challenger while retaining the former as an algorithmic oracle.
+  - [x] Remove artificial completed-task adapters and asymmetric output
+    normalization from competitive timing, and report achieved concurrency,
+    measurement protocol, lane position, order seed, and non-comparable memory
+    scopes explicitly.
+  - [x] Complete competitive fairness-audit remediation with seven seeded fresh
+    processes, sustained time-based warm-up, distribution/confidence reporting,
+    fail-closed publication eligibility, Saxon destination parity, and a
+    selected UTF-8 `TextWriter` exact-call lane backed by the stream oracle.
+  - [x] Resolve the selected-lane post-warm-up distribution variance with
+    time-balanced exact-call measurements, a 250 ms minimum-duration gate, and
+    per-process medians over three seeded rounds. Seven fresh processes with the
+    selected local Saxon `TextWriter` lane passed sample-count, warm-up,
+    duration, achieved-concurrency, distribution, and destination-selection
+    gates. Preserve the declared-family qualifications in any published chart.
+  - [x] Establish a separate exploratory best-practice deployment family with
+    equal logical work, four/eight total workers, incremental non-retaining
+    FastXSLT batches, native handle pooling, selected Saxon `TextWriter`, and
+    Microsoft's linear XSLT 1.0 challenger. Report throughput, first/final
+    observation latency, wire/retention scope, and ambiguity radius without
+    selecting a public batch size.
+  - [ ] Add sustained per-lane convergence and seven-process distribution gates
+    to the best-practice deployment family before treating it as publication-
+    eligible evidence.
 - [ ] Run an ASP.NET consumer workbench through the selected host boundary,
   reusing compiled stylesheets across requests with explicit cancellation and
   resource policy.

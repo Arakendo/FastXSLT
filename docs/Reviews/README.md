@@ -11,3 +11,5 @@ are recorded separately under `docs/Evidence` and sequenced in the roadmap.
   — open review of subsequent implementation and evidence growth
 - [Performance Optimization Review -- 2026-09-04](performance-optimization-review-2026-09-04.md)
   — ranked engine optimization candidates after native-boundary localization
+- [Competitive Benchmark Fairness Audit -- 2026-09-05](competitive-benchmark-fairness-audit-2026-09-05.md)
+  — hostile review of SaxonCS, Microsoft, and isolated-batch comparison fairness

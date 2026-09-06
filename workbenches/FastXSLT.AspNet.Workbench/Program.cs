@@ -35,6 +35,10 @@ var dotNetStylesheetPath = Path.Combine(
     repositoryRoot, "workbenches", "FastXSLT.AspNet.Workbench", "fixtures",
     "for-004-equivalent-xslt1.xsl");
 var dotNetStylesheet = await File.ReadAllBytesAsync(dotNetStylesheetPath);
+var dotNetLinearStylesheetPath = Path.Combine(
+    repositoryRoot, "workbenches", "FastXSLT.AspNet.Workbench", "fixtures",
+    "for-004-equivalent-xslt1-linear.xsl");
+var dotNetLinearStylesheet = await File.ReadAllBytesAsync(dotNetLinearStylesheetPath);
 
 var source = await File.ReadAllBytesAsync(sourcePath);
 var stylesheet = await File.ReadAllBytesAsync(stylesheetPath);
@@ -60,6 +64,7 @@ var dotNetXslt1 = DotNetXslt1Baseline.Create(
     dotNetStylesheet);
 #if SAXONCS_LOCAL
 var saxonCs = SaxonCsBaseline.Create(source, stylesheet);
+var saxonDestinationParity = SaxonCsBaseline.ProbeDestinations();
 #endif
 var exactStylesheetProbe = DotNetXslt1Baseline.ProbeExactStylesheet(source, stylesheet);
 builder.Services.AddSingleton(worker);
@@ -82,7 +87,8 @@ app.MapGet("/health", () => Results.Ok(new
     dotNetXslt1ExactStylesheetExecuted = exactStylesheetProbe.Executed,
     dotNetXslt1ExactStylesheetDiagnostic = exactStylesheetProbe.Detail,
 #if SAXONCS_LOCAL
-    saxonCsAvailable = true
+    saxonCsAvailable = true,
+    saxonDestinationParity
 #else
     saxonCsAvailable = false
 #endif
@@ -179,7 +185,7 @@ app.MapPost("/measure/dotnet-xslt1", (int? requests, DotNetXslt1Baseline baselin
         maximumInFlight = 1
     });
 });
-app.MapPost("/benchmark/tiers", async (int? requests, int? concurrency) =>
+app.MapPost("/benchmark/tiers", async (int? requests, int? concurrency, int? orderSeed) =>
 {
     await tieredBenchmarkGate.WaitAsync();
     try
@@ -188,8 +194,31 @@ app.MapPost("/benchmark/tiers", async (int? requests, int? concurrency) =>
             workerPath,
             stylesheet,
             dotNetStylesheet,
+            dotNetLinearStylesheet,
             Math.Clamp(requests ?? 250, 1, 10_000),
-            Math.Clamp(concurrency ?? 4, 1, 8)));
+            Math.Clamp(concurrency ?? 4, 1, 8),
+            orderSeed));
+    }
+    finally
+    {
+        tieredBenchmarkGate.Release();
+    }
+});
+app.MapPost("/benchmark/best-practice-deployment", async (
+    int? members,
+    int? concurrency,
+    int? orderSeed) =>
+{
+    await tieredBenchmarkGate.WaitAsync();
+    try
+    {
+        return Results.Ok(await BestPracticeDeploymentComparison.RunAsync(
+            workerPath,
+            stylesheet,
+            dotNetLinearStylesheet,
+            Math.Clamp(members ?? 4_000, 128, 20_000),
+            Math.Clamp(concurrency ?? 4, 1, 8),
+            orderSeed));
     }
     finally
     {
