@@ -64,7 +64,7 @@ fn parse_integer_condition(
     {
         let path = parse_location_path(path.trim(), location.clone()).map_err(map_path_failure)?;
         return Ok(ConditionalIntegerCondition::Contains {
-            path,
+            path: Box::new(path),
             needle: needle.to_owned(),
         });
     }

@@ -441,6 +441,34 @@ public version-mode contract.
 - [x] Lower explicit `position() = N` path predicates to the existing typed
   positional operation, raising the lower bound from 1,108 to 1,118 without
   admitting general predicate comparisons.
+- [x] Recognize an unprefixed NCName predicate as the existing named child-axis
+  test, raising the lower bound from 1,118 to 1,120 while leaving newly exposed
+  later boundaries visible and uncredited.
+- [x] Preserve direct reverse-axis versus parenthesized filter predicate order
+  for one bounded reverse-axis step, raising the lower bound from 1,120 to 1,123
+  without admitting general filter expressions.
+- [x] Reuse explicit QName resolution for simple ordinary value paths, raising
+  the lower bound from 1,123 to 1,125 without admitting namespace wildcards,
+  qualified functions, or a second path evaluator.
+- [x] Route simple explicit QName `xsl:for-each` and `xsl:apply-templates`
+  selections through that same namespace-aware path owner, raising the lower
+  bound from 1,125 to 1,127 without a second apply-selection evaluator.
+- [x] Route simple explicit QName `xsl:sort` keys through that same private
+  typed path owner, raising the lower bound from 1,127 to 1,130 while retaining
+  one newly exposed result mismatch visibly and uncredited.
+- [x] Recognize the namespace name fixed for the reserved `xml` prefix in
+  instruction expression resolution, raising the lower bound from 1,130 to
+  1,131 without requiring a redundant namespace declaration.
+- [x] Compose literal `lang()` path predicates and bounded top-level `and`
+  conjunctions through the shared charged context-language operation, raising
+  the lower bound from 1,131 to 1,136 while preserving the next
+  qualified-predicate boundary visibly.
+- [x] Preserve the original step focus for bounded node-test and
+  `position() = N` conjunctions, raising the lower bound from 1,136 to 1,140
+  without rewriting them as semantically different chained predicates.
+- [x] Compose a typed missing-attribute predicate with the symmetric
+  `last()=position()` spelling, raising the lower bound from 1,140 to 1,142
+  without admitting general negation.
 - [ ] Measure pass growth, regression risk, retained state, and hot-path cost as
   shared families land.
 - [ ] Obtain consumer evidence before selecting the exact advertised profile or
@@ -457,6 +485,41 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-07 -- A typed missing-attribute predicate and the symmetric
+  `last()=position()` spelling raise the strict lower bound to 1,142 across two
+  unchanged position cases; broader negation remains unsupported.
+- 2026-09-07 -- Bounded node-test and `position() = N` conjunctions now retain
+  the original named-candidate focus. Four unchanged position cases raise the
+  strict lower bound to 1,140 without changing mismatch or execution-failure
+  counts.
+- 2026-09-07 -- Literal `lang()` path predicates now reuse the existing
+  context-language evaluator and compose with already-supported atoms through
+  a bounded top-level `and`. Five unchanged cases raise the strict lower bound
+  to 1,136; `expression06` advances to a distinct qualified-attribute predicate
+  boundary and remains uncredited.
+- 2026-09-07 -- Instruction expression namespace resolution now recognizes the
+  reserved `xml` prefix implicitly. Unchanged `attribset20` raises the strict
+  lower bound to 1,131 without changing mismatch or execution-failure counts.
+- 2026-09-07 -- Qualified `xsl:sort` child/attribute keys now reuse the shared
+  namespace-aware path owner. Three unchanged exact cases raise the strict
+  lower bound to 1,130; one newly executing whitespace/result mismatch remains
+  visible and uncredited.
+- 2026-09-07 -- The shared apply-selection compiler now resolves simple
+  explicit QName paths for both `xsl:for-each` and `xsl:apply-templates`. Two
+  unchanged exact cases raise the strict lower bound to 1,127 while mismatch
+  and execution-failure counts remain unchanged.
+- 2026-09-07 -- Ordinary value selection now reuses the existing qualified
+  child/attribute path owner for simple explicit QName paths. Two exact cases
+  raise the strict lower bound to 1,125 without changing mismatch or execution
+  failure counts.
+- 2026-09-07 -- A bounded parenthesized reverse-axis filter now normalizes its
+  candidate sequence before applying predicates, while direct reverse-axis
+  predicates retain proximity order. Three exact cases raise the strict lower
+  bound to 1,123.
+- 2026-09-07 -- An unprefixed NCName path predicate now reuses the existing
+  bounded named-child test. Two unchanged exact cases raise the strict lower
+  bound to 1,120; cases reaching later unsupported or invalid boundaries remain
+  uncredited.
 - 2026-09-07 -- Explicit `position() = N` path predicates now lower to the
   existing typed positional selection. Ten unchanged exact cases raise the
   strict lower bound to 1,118 while non-equality and dynamic comparisons remain

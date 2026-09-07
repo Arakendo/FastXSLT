@@ -321,6 +321,13 @@ pub(super) fn compile_value_expression(
         && let Some(comparison) = parse_xslt10_variable_atomic_comparison(expression)
     {
         comparison
+    } else if expression.contains('[')
+        && let Ok(path) = parse_location_path(expression, location.clone())
+    {
+        match static_context.compatibility {
+            ValueCompatibilityMode::Modern => ValueExpression::LocationPath(path),
+            ValueCompatibilityMode::Xslt10 => ValueExpression::Xslt10FirstNodeLocationPath(path),
+        }
     } else if recognizes_source_free_scalar(expression) {
         compile_source_free_scalar_value(expression, location)?
     } else if expression.contains(" castable as ") {
@@ -398,7 +405,7 @@ pub(super) fn compile_value_expression(
     {
         ValueExpression::NodeNamespaceUriPath(path?)
     } else if matches!(expression.trim(), "string()" | "string(.)") {
-        compile_location_path_or_missing_context(".", location, static_context)?
+        compile_location_path_or_missing_context(document, element, ".", location, static_context)?
     } else if expression.trim() == "upper-case(.)" {
         ValueExpression::UpperCaseContextString
     } else if let Some((literal, variable)) = parse_literal_variable_concat(expression) {
@@ -417,7 +424,13 @@ pub(super) fn compile_value_expression(
             ValueExpression::Variable(variable.to_owned())
         }
     } else {
-        compile_location_path_or_missing_context(expression, location, static_context)?
+        compile_location_path_or_missing_context(
+            document,
+            element,
+            expression,
+            location,
+            static_context,
+        )?
     })
 }
 
@@ -805,11 +818,26 @@ fn compile_binary_numeric_node(
 }
 
 fn compile_location_path_or_missing_context(
+    document: &Document,
+    element: NodeId,
     expression: &str,
     location: &SourceLocation,
     static_context: ValueStaticContext,
 ) -> Result<ValueExpression, CompileFailure> {
-    match parse_location_path(expression, location.clone()) {
+    let path = parse_location_path(expression, location.clone()).or_else(|failure| {
+        let is_simple_qualified_path = expression.contains(':')
+            && !expression.contains('*')
+            && !expression.contains("::")
+            && !expression.contains(['(', ')', '[', ']']);
+        if matches!(failure, PathFailure::Unsupported { .. }) && is_simple_qualified_path {
+            parse_qualified_child_path(expression, location.clone(), |prefix| {
+                namespace_for_prefix(document, element, prefix).map(str::to_owned)
+            })
+        } else {
+            Err(failure)
+        }
+    });
+    match path {
         Ok(path) => Ok(match static_context.compatibility {
             ValueCompatibilityMode::Modern => ValueExpression::LocationPath(path),
             ValueCompatibilityMode::Xslt10 => ValueExpression::Xslt10FirstNodeLocationPath(path),

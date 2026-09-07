@@ -754,9 +754,17 @@ pub(super) fn compile_sort_keys(
         {
             SortSelect::NumberPath(path)
         } else {
-            SortSelect::LocationPath(
-                parse_location_path(select, location.clone()).map_err(map_path_failure)?,
-            )
+            let path = match parse_location_path(select, location.clone()) {
+                Ok(path) => path,
+                Err(PathFailure::Unsupported { .. }) if select.contains(':') => {
+                    parse_qualified_child_path(select, location.clone(), |prefix| {
+                        namespace_for_prefix(document, child, prefix).map(str::to_owned)
+                    })
+                    .map_err(map_path_failure)?
+                }
+                Err(failure) => return Err(map_path_failure(failure)),
+            };
+            SortSelect::LocationPath(path)
         };
         let data_type = match optional_attribute(document, child, None, "data-type") {
             None | Some("text") => SortDataType::Text,
@@ -1314,6 +1322,9 @@ fn namespace_for_prefix<'a>(
     element: NodeId,
     prefix: &str,
 ) -> Option<&'a str> {
+    if prefix == "xml" {
+        return Some("http://www.w3.org/XML/1998/namespace");
+    }
     let requested_prefix = (!prefix.is_empty()).then_some(prefix);
     let mut current = Some(element);
     while let Some(node) = current {

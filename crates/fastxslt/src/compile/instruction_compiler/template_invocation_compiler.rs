@@ -1,7 +1,7 @@
 //! Compiles template invocation, arguments, selection, and mode controls.
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
-use crate::xpath::path_experiment::parse_location_path;
+use crate::xpath::path_experiment::{parse_location_path, parse_qualified_child_path};
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, Instruction, NodeTest, TemplateArgument, TemplateArgumentValue,
 };
@@ -191,7 +191,7 @@ pub(super) fn parse_apply_selection(
                         &location,
                     ));
                 }
-                parse_location_path(alternative, location.clone()).map_err(map_path_failure)
+                parse_selection_path(document, element, alternative, location.clone())
             })
             .collect::<Result<Vec<_>, CompileFailure>>()?;
         return Ok(ApplySelection::PathUnion(alternatives));
@@ -269,9 +269,27 @@ pub(super) fn parse_apply_selection(
             &location,
         ));
     }
-    parse_location_path(expression, location)
-        .map(ApplySelection::LocationPath)
-        .map_err(map_path_failure)
+    parse_selection_path(document, element, expression, location).map(ApplySelection::LocationPath)
+}
+
+fn parse_selection_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: SourceLocation,
+) -> Result<crate::xpath::path_experiment::LocationPath, CompileFailure> {
+    match parse_location_path(expression, location.clone()) {
+        Ok(path) => Ok(path),
+        Err(crate::xpath::path_experiment::PathFailure::Unsupported { .. })
+            if expression.contains(':') =>
+        {
+            parse_qualified_child_path(expression, location, |prefix| {
+                namespace_for_prefix(document, element, prefix).map(str::to_owned)
+            })
+            .map_err(map_path_failure)
+        }
+        Err(failure) => Err(map_path_failure(failure)),
+    }
 }
 
 fn parse_temporary_path(
@@ -377,6 +395,9 @@ fn namespace_for_prefix<'a>(
     element: NodeId,
     prefix: &str,
 ) -> Option<&'a str> {
+    if prefix == "xml" {
+        return Some("http://www.w3.org/XML/1998/namespace");
+    }
     let mut current = Some(element);
     while let Some(node) = current {
         if let Some(binding) = document

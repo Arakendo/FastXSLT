@@ -938,6 +938,39 @@ fn xslt10_sort_orders_for_each_and_apply_templates_with_stable_multiple_keys() {
 }
 
 #[test]
+fn xslt10_sort_resolves_a_qualified_attribute_key() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-qualified-sort:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-qualified-sort:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc xmlns:p="urn:rank"><item p:rank="2">B</item><item p:rank="1">A</item></doc>"#
+                .to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:rank"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:for-each select="doc/item"><xsl:sort select="@p:rank" data-type="number"/><xsl:value-of select="."/></xsl:for-each></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile qualified sort key");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("qualified-sort", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute qualified sort key");
+
+    assert_eq!(
+        results.by_request["qualified-sort"].serialized,
+        "<out xmlns:p=\"urn:rank\">AB</out>"
+    );
+}
+
+#[test]
 fn xslt10_default_single_number_counts_matching_preceding_siblings() {
     const SOURCE: &str = "urn:fastxslt:xslt10-number:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-number:stylesheet";
@@ -1746,6 +1779,72 @@ fn node_name_path_returns_retained_element_and_attribute_lexical_names() {
     assert_eq!(
         results.by_request["name-path"].serialized,
         "<out xmlns:p=\"urn:example\">p:item|p:code|</out>"
+    );
+}
+
+#[test]
+fn value_of_resolves_simple_qualified_element_and_attribute_paths() {
+    const SOURCE: &str = "urn:fastxslt:qualified-value:source";
+    const STYLESHEET: &str = "urn:fastxslt:qualified-value:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc xmlns:p="urn:example" xml:lang="en"><p:item p:code="selected">value</p:item></doc>"#
+                .to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:example"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:value-of select="doc/p:item"/>|<xsl:value-of select="doc/p:item/@p:code"/>|<xsl:value-of select="doc/@xml:lang"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile qualified value paths");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("qualified-value", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute qualified value paths");
+
+    assert_eq!(
+        results.by_request["qualified-value"].serialized,
+        "<out xmlns:p=\"urn:example\">value|selected|en</out>"
+    );
+}
+
+#[test]
+fn for_each_and_apply_templates_resolve_simple_qualified_paths() {
+    const SOURCE: &str = "urn:fastxslt:qualified-selection:source";
+    const STYLESHEET: &str = "urn:fastxslt:qualified-selection:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc xmlns:p="urn:example"><p:item>A</p:item><p:item>B</p:item></doc>"#.to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:example"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:for-each select="doc/p:item"><each><xsl:value-of select="."/></each></xsl:for-each><xsl:apply-templates select="doc/p:item"/></out></xsl:template><xsl:template match="p:item"><applied><xsl:value-of select="."/></applied></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile qualified node selections");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("qualified-selection", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute qualified selections");
+
+    assert_eq!(
+        results.by_request["qualified-selection"].serialized,
+        "<out xmlns:p=\"urn:example\"><each>A</each><each>B</each><applied>A</applied><applied>B</applied></out>"
     );
 }
 
@@ -2731,13 +2830,13 @@ fn xpath_lang_uses_the_nearest_inherited_xml_language() {
     resources
         .admit(
             SOURCE,
-            br#"<doc xml:lang="EN-us"><p/><q xml:lang="fr"/></doc>"#.to_vec(),
+            br#"<doc xml:lang="EN-us"><p id="1">P</p><q id="2" xml:lang="fr">Q</q></doc>"#.to_vec(),
         )
         .expect("admit source");
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:apply-templates select="doc/*"/></xsl:template><xsl:template match="p"><xsl:if test="lang('en')">yes:</xsl:if><xsl:value-of select="lang('en')"/>|</xsl:template><xsl:template match="q"><xsl:if test="lang('en')">wrong:</xsl:if><xsl:value-of select="lang('en')"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="doc/*[@id='1' and lang('en')]"/>|<xsl:apply-templates select="doc/*"/></xsl:template><xsl:template match="p"><xsl:if test="lang('en')">yes:</xsl:if><xsl:value-of select="lang('en')"/>|</xsl:template><xsl:template match="q"><xsl:if test="lang('en')">wrong:</xsl:if><xsl:value-of select="lang('en')"/></xsl:template></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit stylesheet");
     let snapshot = resources.seal();
@@ -2748,7 +2847,7 @@ fn xpath_lang_uses_the_nearest_inherited_xml_language() {
         .expect("admit request");
 
     let results = execute_transform_set(builder.seal()).expect("execute lang function");
-    assert_eq!(results.by_request["lang"].serialized, "yes:true|false");
+    assert_eq!(results.by_request["lang"].serialized, "P|yes:true|false");
 }
 
 #[test]

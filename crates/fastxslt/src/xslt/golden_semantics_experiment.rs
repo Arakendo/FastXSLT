@@ -742,7 +742,10 @@ pub(crate) struct ConditionalIntegerExpression {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ConditionalIntegerCondition {
     Constant(bool),
-    Contains { path: LocationPath, needle: String },
+    Contains {
+        path: Box<LocationPath>,
+        needle: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

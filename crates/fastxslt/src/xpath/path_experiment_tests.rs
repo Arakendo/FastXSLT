@@ -1094,9 +1094,149 @@ fn filters_the_final_child_step_by_an_explicit_named_child_axis() {
             axis: PredicateAxis::Child,
             name: "child2".to_owned(),
             value: None,
+            position: None,
+            conjunct: None,
         })
     );
     assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 5);
+}
+
+#[test]
+fn abbreviated_named_child_predicate_reuses_child_axis_semantics() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root><item><near-south/></item><item><north/></item></root>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let path = parse_location_path("self::*[near-south]", location())
+        .expect("abbreviated named child predicate should parse");
+
+    let first_item = document.children(root)[0];
+    let second_item = document.children(root)[1];
+    assert_eq!(
+        evaluate_location_path(&document, first_item, &path),
+        vec![first_item]
+    );
+    assert!(evaluate_location_path(&document, second_item, &path).is_empty());
+    assert_eq!(
+        path.final_predicate.as_ref().map(|value| value.axis),
+        Some(PredicateAxis::Child)
+    );
+}
+
+#[test]
+fn language_predicate_reuses_context_language_semantics() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        br#"<doc xml:lang="en-US"><para id="1">A</para><para id="2" xml:lang="fr">B</para></doc>"#,
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let path = parse_location_path("para[@id='1' and lang('EN')]", location())
+        .expect("conjoined attribute and language predicate should parse");
+    let mut control = InvocationControl::unbounded();
+
+    let selected = evaluate_location_path_controlled(&document, doc, &path, &mut control)
+        .expect("unbounded evaluation should succeed");
+
+    assert_eq!(selected.len(), 1);
+    assert_eq!(document.string_value(selected[0]), "A");
+    assert_eq!(
+        path.final_predicate,
+        Some(AxisPredicate {
+            axis: PredicateAxis::Attribute,
+            name: "id".to_owned(),
+            value: Some("1".to_owned()),
+            position: None,
+            conjunct: Some(Box::new(AxisPredicate {
+                axis: PredicateAxis::ContextLanguage,
+                name: "EN".to_owned(),
+                value: None,
+                position: None,
+                conjunct: None,
+            })),
+        })
+    );
+}
+
+#[test]
+fn conjoined_position_uses_the_unfiltered_candidate_focus() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        br#"<doc><item test="yes">one</item><item>two</item><item test="yes">three</item><item>four</item><item test="yes">five</item></doc>"#,
+        ParseLimits {
+            max_events: 24,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let third = parse_location_path("*[@test and position()=3]", location())
+        .expect("conjoined attribute and position predicate should parse");
+    let second = parse_location_path("*[@test and position()=2]", location())
+        .expect("nonmatching candidate position should parse");
+
+    let selected = evaluate_location_path(&document, doc, &third);
+
+    assert_eq!(selected.len(), 1);
+    assert_eq!(document.string_value(selected[0]), "three");
+    assert!(evaluate_location_path(&document, doc, &second).is_empty());
+    assert_eq!(
+        third.final_predicate,
+        Some(AxisPredicate {
+            axis: PredicateAxis::Attribute,
+            name: "test".to_owned(),
+            value: None,
+            position: Some(PositionPredicate::Select(3)),
+            conjunct: None,
+        })
+    );
+}
+
+#[test]
+fn missing_attribute_predicate_composes_with_a_chained_position() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        br#"<doc><item test="yes">one</item><item>two</item><item test="yes">three</item><item>four</item></doc>"#,
+        ParseLimits {
+            max_events: 20,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let path = parse_location_path("*[not(@test)][last()=position()]", location())
+        .expect("missing-attribute predicate and symmetric last position should parse");
+
+    let selected = evaluate_location_path(&document, doc, &path);
+
+    assert_eq!(selected.len(), 1);
+    assert_eq!(document.string_value(selected[0]), "four");
+    assert!(matches!(
+        path.step_axis_predicates.as_slice(),
+        [Some(AxisPredicate {
+            axis: PredicateAxis::MissingAttribute,
+            name,
+            ..
+        })] if name == "test"
+    ));
+    assert_eq!(
+        path.step_position_predicates,
+        vec![Some(PositionPredicate::Last)]
+    );
 }
 
 #[test]
@@ -1128,6 +1268,8 @@ fn searches_descendants_and_filters_by_a_named_ancestor() {
             axis: PredicateAxis::Ancestor,
             name: "element2".to_owned(),
             value: None,
+            position: None,
+            conjunct: None,
         })
     );
     assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 19);
@@ -1162,6 +1304,8 @@ fn ancestor_or_self_predicate_checks_the_candidate_before_its_parent() {
             axis: PredicateAxis::AncestorOrSelf,
             name: "element2".to_owned(),
             value: None,
+            position: None,
+            conjunct: None,
         })
     );
 }
@@ -1197,6 +1341,8 @@ fn attribute_predicate_inspects_attributes_without_making_them_children() {
             axis: PredicateAxis::Attribute,
             name: "attr1".to_owned(),
             value: None,
+            position: None,
+            conjunct: None,
         })
     );
 }
@@ -1233,6 +1379,8 @@ fn abbreviated_attribute_existence_predicate_uses_the_same_typed_path() {
             axis: PredicateAxis::Attribute,
             name: "selected".to_owned(),
             value: None,
+            position: None,
+            conjunct: None,
         })
     );
 }
@@ -1269,6 +1417,8 @@ fn literal_attribute_value_predicate_filters_the_final_step() {
             axis: PredicateAxis::Attribute,
             name: "selected".to_owned(),
             value: Some("yes".to_owned()),
+            position: None,
+            conjunct: None,
         })
     );
 }
@@ -1307,6 +1457,8 @@ fn descendant_or_self_predicate_checks_self_then_document_order_descendants() {
             axis: PredicateAxis::DescendantOrSelf,
             name: "child2".to_owned(),
             value: None,
+            position: None,
+            conjunct: None,
         })
     );
 }
@@ -1340,6 +1492,8 @@ fn parent_predicate_checks_only_the_immediate_parent() {
             axis: PredicateAxis::Parent,
             name: "element1".to_owned(),
             value: None,
+            position: None,
+            conjunct: None,
         })
     );
 }
@@ -1441,6 +1595,13 @@ fn chained_axis_then_position_predicates_preserve_lexical_filter_order() {
         parse_location_path("ancestor-or-self::*[1][@att1]/@att1", location()),
         Err(PathFailure::Unsupported { .. })
     ));
+
+    let filtered_path = parse_location_path("(ancestor-or-self::*)[@att1][1]/@att1", location())
+        .expect("parenthesized reverse-axis filter should parse");
+    let filtered = evaluate_location_path(&document, leaf, &filtered_path);
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(document.string_value(filtered[0]), "outer");
+    assert!(filtered_path.first_step_predicates_use_document_order);
 }
 
 #[test]
