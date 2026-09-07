@@ -2296,17 +2296,15 @@ fn evaluate_boolean(
 ) -> Result<bool, ExecutionFailure> {
     match expression {
         BooleanExpression::Constant(value) => Ok(*value),
-        BooleanExpression::NodeExists(path) => {
-            let (source, context) = required_source_context(inputs, context)?;
-            evaluate_location_path_controlled(source, context, path, control)
-                .map(|nodes| !nodes.is_empty())
-                .map_err(|failure| control_failure(failure, inputs.request_id))
-        }
+        BooleanExpression::NodeExists(path) => node_exists(inputs, path, context, control),
         BooleanExpression::NodeStringEquals { path, value } => {
             evaluate_node_string_equals(inputs, path, value, context, control)
         }
         BooleanExpression::NodeIntegerLessThan { path, value } => {
             evaluate_node_integer_less_than(inputs, path, *value, context, control)
+        }
+        BooleanExpression::CountPathEquals { path, expected } => {
+            count_path_eq(inputs, path, *expected, context, control)
         }
         BooleanExpression::UnqualifiedNodeNameEquals {
             path,
@@ -2392,6 +2390,18 @@ fn evaluate_boolean(
                 .map(|value| value != 0)
         }
     }
+}
+
+fn node_exists(
+    inputs: &SequenceInputs<'_>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    evaluate_location_path_controlled(source, context, path, control)
+        .map(|nodes| !nodes.is_empty())
+        .map_err(|failure| control_failure(failure, inputs.request_id))
 }
 
 fn evaluate_context_position_not_equal_size(
@@ -2495,6 +2505,23 @@ fn evaluate_node_integer_less_than(
         }
     }
     Ok(false)
+}
+
+fn count_path_eq(
+    inputs: &SequenceInputs<'_>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    expected: usize,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let count = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?
+        .len();
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(count == expected)
 }
 
 fn evaluate_node_string_equals(

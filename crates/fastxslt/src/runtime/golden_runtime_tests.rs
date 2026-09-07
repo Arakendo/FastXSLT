@@ -2238,6 +2238,37 @@ fn focus_boolean_comparisons_use_the_current_sequence_focus() {
 }
 
 #[test]
+fn count_path_equality_drives_instruction_conditions() {
+    const SOURCE: &str = "urn:fastxslt:count-condition:source";
+    const STYLESHEET: &str = "urn:fastxslt:count-condition:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item>A</item><item><child>B</child></item></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc/item"/></out></xsl:template><xsl:template match="item"><xsl:choose><xsl:when test="count(./*)=0"><leaf/></xsl:when><xsl:otherwise><branch/></xsl:otherwise></xsl:choose></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile count condition");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("count-condition", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute count condition");
+    assert_eq!(
+        results.by_request["count-condition"].serialized,
+        "<out><leaf></leaf><branch></branch></out>"
+    );
+}
+
+#[test]
 fn apply_templates_path_union_normalizes_identity_and_document_order() {
     const SOURCE: &str = "urn:fastxslt:apply-union:source";
     const STYLESHEET: &str = "urn:fastxslt:apply-union:stylesheet";

@@ -99,6 +99,11 @@ pub(super) fn compile(
             location: location.clone(),
         });
     }
+    if let Some((path, expected)) = parse_count_path_equality(parsed) {
+        return parse_location_path(path, location.clone())
+            .map(|path| BooleanExpression::CountPathEquals { path, expected })
+            .map_err(map_path_failure);
+    }
     parse_scalar(parsed, expression, location, comparison)
 }
 
@@ -276,6 +281,20 @@ fn parse_context_string_length_equality(expression: &str) -> Option<usize> {
     (left.trim() == "string-length(.)")
         .then(|| right.trim().parse().ok())
         .flatten()
+}
+
+fn parse_count_path_equality(expression: &str) -> Option<(&str, usize)> {
+    let (left, right) = expression.split_once('=')?;
+    if left.contains(['=', '!']) || right.contains('=') {
+        return None;
+    }
+    parse_count_path_operand(left.trim(), right.trim())
+        .or_else(|| parse_count_path_operand(right.trim(), left.trim()))
+}
+
+fn parse_count_path_operand<'a>(count: &'a str, integer: &str) -> Option<(&'a str, usize)> {
+    let path = count.strip_prefix("count(")?.strip_suffix(')')?.trim();
+    (!path.is_empty()).then_some((path, integer.parse().ok()?))
 }
 
 fn parse_path_boolean_expression(

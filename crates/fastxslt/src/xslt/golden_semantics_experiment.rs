@@ -834,6 +834,10 @@ pub(crate) enum BooleanExpression {
         path: LocationPath,
         value: i64,
     },
+    CountPathEquals {
+        path: LocationPath,
+        expected: usize,
+    },
     UnqualifiedNodeNameEquals {
         path: LocationPath,
         local: String,

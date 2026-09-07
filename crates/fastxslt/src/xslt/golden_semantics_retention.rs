@@ -756,7 +756,8 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         } => left.capacity() + right.capacity(),
         BooleanExpression::ConditionalInteger(expression) => conditional_integer_owned(expression),
         BooleanExpression::NodeExists(path)
-        | BooleanExpression::NodeIntegerLessThan { path, .. } => path.known_owned_capacity_bytes(),
+        | BooleanExpression::NodeIntegerLessThan { path, .. }
+        | BooleanExpression::CountPathEquals { path, .. } => path.known_owned_capacity_bytes(),
         BooleanExpression::NodeStringEquals { path, value } => {
             path.known_owned_capacity_bytes() + value.capacity()
         }
