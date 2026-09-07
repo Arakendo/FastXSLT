@@ -324,8 +324,11 @@ expanded-name identity removes all seven `FXRT1008` observations and raises the
 measurement to 1,101 exact results. Reusing charged lexical-name, controlled
 context string-length, controlled `count(path)`, and compile-selected XSLT 1.0
 `number(path)` operations as bounded typed `xsl:sort` keys adds four more exact
-results. The current measurement is 1,105 exact results, 79 mismatches, and 161
-execution failures.
+results. Preserving bounded attribute-filter-then-position predicate order on a
+single typed path step adds three more exact results. Explicit `position() = N`
+predicates then reuse the same typed positional operation and add ten more exact
+results. The current measurement is 1,118
+exact results, 79 mismatches, and 161 execution failures.
 General
 predicates, `id()`/`key()` patterns, dynamic formatting AVTs, non-Latin
 alphabets, and `letter-value` remain explicit.
@@ -338,7 +341,7 @@ It retains
 21 comparator gaps and 35
 supplemental-data cases as explicitly not admitted, and gives every other case
 a structured initialization, execution, or infrastructure observation. This
-is a strict 40.30% lower bound over the suite's 2,742 standard-operation cases,
+is a strict 40.77% lower bound over the suite's 2,742 standard-operation cases,
 not an XSLT 1.0 conformance claim. The initial sweep also found and drove a shared
 source-node-variable path repair, so AR-0019 now studies whether legacy
 compatibility can progress on the modern compiler/runtime rather than through a
@@ -350,6 +353,8 @@ second engine.
 [Source-attribute copy evidence](../Evidence/oasis-xslt10-source-attribute-copy-2026-09-07.md)
 [Lexical node-name prefix evidence](../Evidence/oasis-xslt10-lexical-node-name-prefix-2026-09-07.md)
 [Sort context-name evidence](../Evidence/oasis-xslt10-sort-context-name-2026-09-07.md)
+[Ordered path-predicate evidence](../Evidence/oasis-xslt10-ordered-path-predicate-chain-2026-09-07.md)
+[Explicit position-equality evidence](../Evidence/oasis-xslt10-explicit-position-equality-2026-09-07.md)
 [Evidence](../Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md)
 [Static computed-element evidence](../Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md)
 [Location-path copy-of evidence](../Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md)
@@ -1957,7 +1962,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 1,105 expected-result matches after shared construction/copy/path/context-function/focus/node-identity/literal-comparison/static-string-function/constant and exact-rational mixed path-numeric, lexical-recognition and source-prefix retention, compile-time compatibility, first-node node-set conversion, variable effective-boolean-value, node-set/boolean/string/number comparison and conversion, local source-node sequence iteration and template application, bounded attribute predicates, sequence-focus boolean comparison, apply-selection path unions, path string functions, substring, translate, path/static/variable-operand `concat()`, `sum(path)`, source-derived temporary values, typed atomic/focus template arguments, empty global/local string semantics, and excluded-parameter text-run boundaries, typed `xsl:sort` path/context/name/string-length/count/number keys, XSLT 1.0 numeric-sort conversion, bounded `xsl:number` counting/value/format/pattern/all-level/union/node-kind/predicate/path/grouping/boundary composition, default-decimal `format-number()`, and source-comment/source-attribute copying plus descendant-pattern, include-order, comment-text, and leading-descendant repairs. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 1,118 expected-result matches after shared construction/copy/path/context-function/focus/node-identity/literal-comparison/static-string-function/constant and exact-rational mixed path-numeric, lexical-recognition and source-prefix retention, compile-time compatibility, first-node node-set conversion, variable effective-boolean-value, node-set/boolean/string/number comparison and conversion, local source-node sequence iteration and template application, bounded attribute, ordered attribute-then-position, and explicit position-equality path predicates, sequence-focus boolean comparison, apply-selection path unions, path string functions, substring, translate, path/static/variable-operand `concat()`, `sum(path)`, source-derived temporary values, typed atomic/focus template arguments, empty global/local string semantics, and excluded-parameter text-run boundaries, typed `xsl:sort` path/context/name/string-length/count/number keys, XSLT 1.0 numeric-sort conversion, bounded `xsl:number` counting/value/format/pattern/all-level/union/node-kind/predicate/path/grouping/boundary composition, default-decimal `format-number()`, and source-comment/source-attribute copying plus descendant-pattern, include-order, comment-text, and leading-descendant repairs. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -3810,6 +3815,12 @@ host lifecycle.
   context string lengths and path counts, plus compile-selected XSLT 1.0 path
   number conversion as bounded, work-charged `xsl:sort` keys without admitting
   general dynamic sort keys.
+- [x] Raise it to 1,108 by retaining predicate order for the bounded
+  attribute-filter-then-position form on typed location-path steps, while
+  leaving reverse-order and general predicate chains unsupported.
+- [x] Raise it to 1,118 by lowering explicit `position() = N` predicates to the
+  same typed positional operation as `[N]`, while leaving non-equality and
+  dynamic predicate comparisons unsupported.
 - [ ] Give each standard and expected-error case one reproducible final
   disposition under a versioned local overlay/report, applying duplicate-safe
   identity and doubts/discretionary metadata.

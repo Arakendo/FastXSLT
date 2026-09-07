@@ -435,6 +435,12 @@ public version-mode contract.
   then add controlled context string-length, `count(path)`, and compile-selected
   XSLT 1.0 `number(path)` keys, raising the lower bound from 1,101 to 1,105
   without admitting general dynamic sort expressions.
+- [x] Preserve ordered path-predicate semantics for the bounded
+  attribute-filter-then-position form, raising the lower bound from 1,105 to
+  1,108 without admitting reverse-order or general predicate chains.
+- [x] Lower explicit `position() = N` path predicates to the existing typed
+  positional operation, raising the lower bound from 1,108 to 1,118 without
+  admitting general predicate comparisons.
 - [ ] Measure pass growth, regression risk, retained state, and hot-path cost as
   shared families land.
 - [ ] Obtain consumer evidence before selecting the exact advertised profile or
@@ -451,6 +457,14 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-07 -- Explicit `position() = N` path predicates now lower to the
+  existing typed positional selection. Ten unchanged exact cases raise the
+  strict lower bound to 1,118 while non-equality and dynamic comparisons remain
+  unsupported.
+- 2026-09-07 -- Typed path steps now retain and evaluate one bounded attribute
+  predicate before one bounded positional predicate. Three unchanged exact
+  cases raise the strict lower bound to 1,108; reverse predicate order and the
+  related parenthesized filter-expression case remain explicitly unsupported.
 - 2026-09-07 -- The existing sort owner now admits charged typed context-name,
   context-string-length, `count(path)`, and XSLT 1.0 `number(path)` keys. Four
   exact cases raise the strict lower bound to 1,105 without changing mismatch or

@@ -12,6 +12,7 @@ pub(crate) struct LocationPath {
     origin: PathOrigin,
     final_predicate: Option<AxisPredicate>,
     final_context_predicate: Option<FinalContextPredicate>,
+    step_axis_predicates: Vec<Option<AxisPredicate>>,
     step_position_predicates: Vec<Option<PositionPredicate>>,
     pub(crate) location: SourceLocation,
 }
@@ -34,6 +35,15 @@ impl LocationPath {
             })
             + self.step_position_predicates.capacity()
                 * std::mem::size_of::<Option<PositionPredicate>>()
+            + self.step_axis_predicates.capacity() * std::mem::size_of::<Option<AxisPredicate>>()
+            + self
+                .step_axis_predicates
+                .iter()
+                .flatten()
+                .map(|predicate| {
+                    predicate.name.capacity() + predicate.value.as_ref().map_or(0, String::capacity)
+                })
+                .sum::<usize>()
             + self.location.resource.capacity()
     }
 }
@@ -458,6 +468,12 @@ enum PositionPredicate {
     Never,
 }
 
+struct ParsedPathSteps {
+    steps: Vec<String>,
+    position_predicates: Vec<Option<PositionPredicate>>,
+    axis_predicates: Vec<Option<AxisPredicate>>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum PathFailure {
     Invalid {
@@ -497,10 +513,11 @@ pub(crate) fn parse_location_path(
     let parsed_steps = if final_predicate.is_none() {
         parse_position_steps(expression)
     } else {
-        Some((
-            expression.split('/').map(str::to_owned).collect(),
-            vec![None; expression.split('/').count()],
-        ))
+        Some(ParsedPathSteps {
+            steps: expression.split('/').map(str::to_owned).collect(),
+            position_predicates: vec![None; expression.split('/').count()],
+            axis_predicates: vec![None; expression.split('/').count()],
+        })
     };
     if expression.ends_with('/') {
         return Err(invalid_syntax(
@@ -529,7 +546,11 @@ pub(crate) fn parse_location_path(
         });
     }
 
-    let (mut steps, step_position_predicates) = parsed_steps.expect("checked above");
+    let ParsedPathSteps {
+        mut steps,
+        position_predicates: step_position_predicates,
+        axis_predicates: step_axis_predicates,
+    } = parsed_steps.expect("checked above");
     for step in &mut steps {
         normalize_axis_separator_whitespace(step);
     }
@@ -558,6 +579,7 @@ pub(crate) fn parse_location_path(
         origin,
         final_predicate,
         final_context_predicate,
+        step_axis_predicates,
         step_position_predicates,
         location,
     })
@@ -653,6 +675,7 @@ pub(crate) fn parse_qualified_child_path(
         origin: PathOrigin::Relative,
         final_predicate: None,
         final_context_predicate: None,
+        step_axis_predicates: vec![None; step_count],
         step_position_predicates: vec![None; step_count],
         location,
     })
@@ -829,6 +852,7 @@ fn origin_only_path(origin: PathOrigin, location: SourceLocation) -> LocationPat
         origin,
         final_predicate: None,
         final_context_predicate: None,
+        step_axis_predicates: Vec::new(),
         step_position_predicates: Vec::new(),
         location,
     }
@@ -889,6 +913,16 @@ fn parse_final_axis_predicate(expression: &str) -> (&str, Option<AxisPredicate>)
     let Some(predicate) = predicate.strip_suffix(']') else {
         return (expression, None);
     };
+    let Some(predicate) = parse_axis_predicate(predicate) else {
+        return (expression, None);
+    };
+    if path.is_empty() || path.contains('[') {
+        return (expression, None);
+    }
+    (path, Some(predicate))
+}
+
+fn parse_axis_predicate(predicate: &str) -> Option<AxisPredicate> {
     let (predicate, value) = parse_attribute_value_predicate(predicate)
         .map_or((predicate, None), |(name, value)| (name, Some(value)));
     let (axis, name) = if value.is_some() {
@@ -909,19 +943,16 @@ fn parse_final_axis_predicate(expression: &str) -> (&str, Option<AxisPredicate>)
     } else if let Some(name) = predicate.strip_prefix("parent::") {
         (PredicateAxis::Parent, name)
     } else {
-        return (expression, None);
+        return None;
     };
-    if path.is_empty() || path.contains('[') || !is_ascii_ncname(name) {
-        return (expression, None);
+    if !is_ascii_ncname(name) {
+        return None;
     }
-    (
-        path,
-        Some(AxisPredicate {
-            axis,
-            name: name.to_owned(),
-            value,
-        }),
-    )
+    Some(AxisPredicate {
+        axis,
+        name: name.to_owned(),
+        value,
+    })
 }
 
 fn parse_attribute_value_predicate(predicate: &str) -> Option<(&str, String)> {
@@ -946,10 +977,11 @@ fn parse_attribute_value_predicate(predicate: &str) -> Option<(&str, String)> {
     None
 }
 
-fn parse_position_steps(expression: &str) -> Option<(Vec<String>, Vec<Option<PositionPredicate>>)> {
+fn parse_position_steps(expression: &str) -> Option<ParsedPathSteps> {
     let raw_steps = split_path_steps(expression)?;
     let mut steps = Vec::with_capacity(raw_steps.len());
-    let mut predicates = Vec::with_capacity(raw_steps.len());
+    let mut position_predicates = Vec::with_capacity(raw_steps.len());
+    let mut axis_predicates = Vec::with_capacity(raw_steps.len());
     for (index, raw_step) in raw_steps.iter().copied().enumerate() {
         if raw_step.is_empty() {
             let is_isolated_internal_separator = index > 0
@@ -960,31 +992,75 @@ fn parse_position_steps(expression: &str) -> Option<(Vec<String>, Vec<Option<Pos
                 return None;
             }
             steps.push("descendant-or-self::node()".to_owned());
-            predicates.push(None);
+            position_predicates.push(None);
+            axis_predicates.push(None);
             continue;
         }
-        let (name, predicate) = if let Some((name, predicate)) = raw_step.split_once('[') {
-            let predicate = predicate.strip_suffix(']')?;
-            if name.is_empty() || predicate.contains(['[', ']']) {
-                return None;
+        let (name, predicate_texts) = split_step_predicates(raw_step)?;
+        let (axis_predicate, position_predicate) = match predicate_texts.as_slice() {
+            [] => (None, None),
+            [predicate] => {
+                if let Some(position) = parse_position_predicate(predicate) {
+                    (None, Some(position))
+                } else {
+                    (Some(parse_axis_predicate(predicate)?), None)
+                }
             }
-            let predicate = if predicate.trim() == "last()" {
-                PositionPredicate::Last
-            } else {
-                let value = constant_integer_experiment::evaluate(predicate).ok()?;
-                usize::try_from(value)
-                    .ok()
-                    .filter(|position| *position > 0)
-                    .map_or(PositionPredicate::Never, PositionPredicate::Select)
-            };
-            (name, Some(predicate))
-        } else {
-            (raw_step, None)
+            [axis, position] => (
+                Some(parse_axis_predicate(axis)?),
+                Some(parse_position_predicate(position)?),
+            ),
+            _ => return None,
         };
         steps.push(name.to_owned());
-        predicates.push(predicate);
+        position_predicates.push(position_predicate);
+        axis_predicates.push(axis_predicate);
     }
-    Some((steps, predicates))
+    Some(ParsedPathSteps {
+        steps,
+        position_predicates,
+        axis_predicates,
+    })
+}
+
+fn split_step_predicates(step: &str) -> Option<(&str, Vec<&str>)> {
+    let Some(first_open) = step.find('[') else {
+        return Some((step, Vec::new()));
+    };
+    let name = &step[..first_open];
+    if name.is_empty() {
+        return None;
+    }
+    let mut predicates = Vec::new();
+    let mut remaining = &step[first_open..];
+    while let Some(body) = remaining.strip_prefix('[') {
+        let close = body.find(']')?;
+        let predicate = &body[..close];
+        if predicate.is_empty() || predicate.contains(['[', ']']) {
+            return None;
+        }
+        predicates.push(predicate);
+        remaining = &body[close + 1..];
+    }
+    remaining.is_empty().then_some((name, predicates))
+}
+
+fn parse_position_predicate(predicate: &str) -> Option<PositionPredicate> {
+    let predicate = predicate.trim();
+    if predicate == "last()" {
+        return Some(PositionPredicate::Last);
+    }
+    let numeric_expression = predicate
+        .strip_prefix("position()")
+        .and_then(|remainder| remainder.trim_start().strip_prefix('='))
+        .map_or(predicate, str::trim);
+    let value = constant_integer_experiment::evaluate(numeric_expression).ok()?;
+    Some(
+        usize::try_from(value)
+            .ok()
+            .filter(|position| *position > 0)
+            .map_or(PositionPredicate::Never, PositionPredicate::Select),
+    )
 }
 
 fn split_path_steps(expression: &str) -> Option<Vec<&str>> {
@@ -1080,8 +1156,19 @@ pub(crate) fn evaluate_location_path_controlled(
                     named_candidates.push(child);
                 }
             }
-            let matching_count = named_candidates.len();
-            for (offset, child) in named_candidates.into_iter().enumerate() {
+            let mut predicate_candidates = Vec::with_capacity(named_candidates.len());
+            for child in named_candidates {
+                let matches = if let Some(predicate) = &path.step_axis_predicates[step_index] {
+                    evaluate_axis_predicate(document, child, predicate, control)?
+                } else {
+                    true
+                };
+                if matches {
+                    predicate_candidates.push(child);
+                }
+            }
+            let matching_count = predicate_candidates.len();
+            for (offset, child) in predicate_candidates.into_iter().enumerate() {
                 let position_matches = match path.step_position_predicates[step_index] {
                     Some(PositionPredicate::Select(position)) => position == offset + 1,
                     Some(PositionPredicate::Last) => offset + 1 == matching_count,

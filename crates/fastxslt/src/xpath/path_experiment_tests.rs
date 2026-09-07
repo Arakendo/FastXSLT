@@ -1410,6 +1410,65 @@ fn applies_positions_to_individual_steps_and_last_to_the_matched_sequence() {
 }
 
 #[test]
+fn chained_axis_then_position_predicates_preserve_lexical_filter_order() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<docs><doc att1='outer'><doc att1='inner'><leaf/></doc></doc></docs>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 6,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let docs = document.children(document.document_node())[0];
+    let outer = document.children(docs)[0];
+    let inner = document.children(outer)[0];
+    let leaf = document.children(inner)[0];
+    let path = parse_location_path("ancestor-or-self::*[@att1][1]/@att1", location())
+        .expect("axis predicate followed by position should parse");
+
+    let selected = evaluate_location_path(&document, leaf, &path);
+
+    assert_eq!(selected.len(), 1);
+    assert_eq!(document.string_value(selected[0]), "inner");
+    assert!(path.step_axis_predicates[0].is_some());
+    assert_eq!(
+        path.step_position_predicates[0],
+        Some(PositionPredicate::Select(1))
+    );
+    assert!(matches!(
+        parse_location_path("ancestor-or-self::*[1][@att1]/@att1", location()),
+        Err(PathFailure::Unsupported { .. })
+    ));
+}
+
+#[test]
+fn chained_axis_then_explicit_position_equality_reuses_the_typed_focus() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><item/><item test='yes'><num>1</num></item><item test='yes'><num>2</num></item></doc>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let path = parse_location_path("*[@test][position() = 2]/num", location())
+        .expect("bounded explicit position equality should compile");
+    let selected = evaluate_location_path(&document, root, &path);
+
+    assert_eq!(selected.len(), 1);
+    assert_eq!(document.string_value(selected[0]), "2");
+    assert!(matches!(
+        parse_location_path("*[@test][position() > 1]/num", location()),
+        Err(PathFailure::Unsupported { .. })
+    ));
+}
+
+#[test]
 fn following_sibling_axis_filters_then_applies_position() {
     let parsed = parse_document(
         "memory:source.xml",
