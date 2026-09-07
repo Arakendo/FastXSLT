@@ -653,6 +653,7 @@ pub(crate) enum ValueExpression {
     Xslt10SumPath(LocationPath),
     Xslt10PathSubstring(Box<Xslt10PathSubstring>),
     Xslt10PathTranslate(Box<Xslt10PathTranslate>),
+    Xslt10Concat(Box<Xslt10ConcatExpression>),
     Xslt10VariableBooleanComparison {
         variable: String,
         value: bool,
@@ -707,6 +708,18 @@ pub(crate) struct Xslt10PathTranslate {
     pub(crate) path: LocationPath,
     pub(crate) search: String,
     pub(crate) replacement: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10ConcatExpression {
+    pub(crate) parts: Vec<Xslt10ConcatPart>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Xslt10ConcatPart {
+    Literal(String),
+    Variable(String),
+    Path(LocationPath),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -852,6 +865,9 @@ pub(crate) struct TemplateArgument {
 pub(crate) enum TemplateArgumentValue {
     Text(String),
     Integer(i64),
+    Boolean(bool),
+    ContextPosition,
+    ContextSize,
     Variable(String),
     SourcePath(LocationPath),
 }

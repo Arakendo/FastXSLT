@@ -720,9 +720,12 @@ fn compile_global_default(
                 false,
             );
         }
-        Ok(GlobalBindingDefault::TemporaryText(
-            document.string_value(element),
-        ))
+        let value = document.string_value(element);
+        if document.children(element).is_empty() {
+            Ok(GlobalBindingDefault::Text(value))
+        } else {
+            Ok(GlobalBindingDefault::TemporaryText(value))
+        }
     }
 }
 

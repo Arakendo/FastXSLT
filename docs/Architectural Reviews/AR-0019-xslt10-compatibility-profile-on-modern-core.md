@@ -9,7 +9,7 @@
 | Trigger | A complete local legacy sweep found 366 initial definite unchanged passes and dominant gaps that largely overlap the XSLT 3.0 roadmap |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007, ADR-0012, ADR-0013, ADR-0014 |
 | Related reviews | AR-0001, AR-0004, AR-0008, AR-0011, AR-0014 |
-| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md`; `docs/Evidence/oasis-xslt10-variable-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-exact-rational-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-mixed-literal-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-sort-tranche-2026-09-06.md` |
+| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md`; `docs/Evidence/oasis-xslt10-variable-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-exact-rational-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-mixed-literal-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-sort-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-path-concat-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-literal-template-argument-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-empty-global-string-semantics-2026-09-06.md` |
 
 ## Architectural question
 
@@ -665,6 +665,29 @@ maintained redistributable legacy suite becomes available.
   controlled path evaluator and shared Unicode/codepoint translation helper,
   raising expected-result matches from 1,033 to 1,041 through eight exact
   cases without adding a mismatch or execution failure.
+- 2026-09-06 -- A bounded compatibility-only `concat()` plan combined static
+  string/integer operands, variables, and namespace-aware location paths
+  through the shared XSLT 1.0 variable conversion, first-node string-value, and
+  result-text owners, raising expected-result matches from 1,041 to 1,044
+  through three exact cases. A fourth case now reaches the existing
+  HTML-serialization boundary and remains uncredited; variable support is
+  focused-oracle groundwork with no additional corpus credit, and no comparison
+  mismatch was added.
+- 2026-09-06 -- Quoted `xsl:with-param/@select` values now reuse the existing
+  owned atomic template-argument path, raising expected-result matches from
+  1,044 to 1,047 through three exact cases. The third case exposed and drove a
+  shared text-run repair: excluded leading parameters remain sequence
+  boundaries during whitespace classification. No mismatch or execution
+  failure was added. The same bounded compiler/runtime owner now also carries
+  boolean literals and the template-call focus expressions `position()` and
+  `last()`; focused tests establish those semantics, but this measurement
+  assigns them no additional corpus credit.
+- 2026-09-06 -- A childless untyped global variable or parameter now retains
+  the standard empty-string value rather than an empty temporary document.
+  Three unchanged cases move to exact results, including two repaired boolean
+  mismatches and one formerly unbound AVT parameter, raising the measured
+  expected-result count from 1,047 to 1,050 while reducing comparison
+  mismatches from 77 to 75 and execution failures from 174 to 173.
 - 2026-09-06 -- The accumulated compatibility runtime crossed ADR-0004's
   2,000-line review threshold. XSLT 1.0 conversions and bounded path functions
   moved into a private 266-line typed module, reducing the parent value

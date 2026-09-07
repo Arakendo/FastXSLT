@@ -1632,8 +1632,15 @@ fn execute_apply_instruction(
         Some(mode) => Some(mode.as_str()),
         None => None,
     };
-    let parameters =
-        evaluate_template_arguments(arguments, variables, inputs, execution.node, control)?;
+    let parameters = evaluate_template_arguments(
+        arguments,
+        variables,
+        inputs,
+        execution.node,
+        execution.focus_position,
+        execution.focus_size,
+        control,
+    )?;
     execute_apply_templates(
         inputs,
         ApplyExecutionPlan {
@@ -1838,8 +1845,15 @@ fn execute_next_match(
             "xsl:next-match requires a current matched template rule",
         )
     })?;
-    let parameters =
-        evaluate_template_arguments(arguments, variables, inputs, execution.node, control)?;
+    let parameters = evaluate_template_arguments(
+        arguments,
+        variables,
+        inputs,
+        execution.node,
+        execution.focus_position,
+        execution.focus_size,
+        control,
+    )?;
     if let Some(focus) = execution.temporary_focus {
         return temporary_tree_executor::apply_temporary_next(
             inputs,
@@ -1905,8 +1919,15 @@ fn execute_apply_imports(
             "xsl:apply-imports requires a current matched template rule",
         )
     })?;
-    let parameters =
-        evaluate_template_arguments(arguments, variables, inputs, execution.node, control)?;
+    let parameters = evaluate_template_arguments(
+        arguments,
+        variables,
+        inputs,
+        execution.node,
+        execution.focus_position,
+        execution.focus_size,
+        control,
+    )?;
     if let Some(value) = execution.atomic_focus {
         return atomic_template_executor::apply_imports(
             inputs,
@@ -2814,8 +2835,15 @@ fn execute_named_call(
     if inputs.complete_atomic_frame_clones {
         control.observe_global_atomic_frame_clone(inputs.globals.atomics.len());
     }
-    let supplied =
-        evaluate_template_arguments(arguments, variables, inputs, execution.node, control)?;
+    let supplied = evaluate_template_arguments(
+        arguments,
+        variables,
+        inputs,
+        execution.node,
+        execution.focus_position,
+        execution.focus_size,
+        control,
+    )?;
     let frame = bind_template_parameters(
         &target.template,
         &supplied,

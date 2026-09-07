@@ -288,9 +288,21 @@ atomics, node sets, and temporary trees then adds six exact results, reaching
 `substring-before()`, and `substring-after()` then add 19 exact results,
 reaching 1,021. Bounded XPath 1.0 `sum(path)` then adds five exact results,
 reaching 1,026, and path-based `substring()` adds seven more, reaching 1,033.
-Path-based `translate()` then adds eight exact results, reaching 1,041. None
-of these tranches changes the mismatch or
-execution-failure counts. General
+Path-based `translate()` then adds eight exact results, reaching 1,041. A
+bounded path/static/variable-operand `concat()` plan adds three exact results,
+reaching 1,044, while a fourth case advances to the existing HTML-serialization
+boundary and remains uncredited. None of the earlier path-function tranches
+changes the mismatch or execution-failure counts, and `concat()` adds no
+comparison mismatch. Quoted atomic `xsl:with-param` values then add two exact
+include/import results and expose a shared text-run boundary defect. Keeping
+excluded leading parameters as whitespace-classification boundaries repairs
+the third case, reaching 1,047 with no net mismatch increase. The same typed
+template-argument path now carries boolean literals and `position()`/`last()`
+against the template-call focus as focused-test groundwork without additional
+corpus credit. Correctly retaining a childless untyped global binding as the
+standard empty string then repairs two boolean mismatches and one AVT execution
+failure, reaching 1,050 expected-result matches, 75 mismatches, and 173
+execution failures. General
 predicates, `id()`/`key()` patterns, dynamic formatting AVTs, non-Latin
 alphabets, and `letter-value` remain explicit.
 Two other arithmetic cases
@@ -302,7 +314,7 @@ It retains
 19 comparator gaps and 35
 supplemental-data cases as explicitly not admitted, and gives every other case
 a structured initialization, execution, or infrastructure observation. This
-is a strict 37.96% lower bound over the suite's 2,742 standard-operation cases,
+is a strict 38.29% lower bound over the suite's 2,742 standard-operation cases,
 not an XSLT 1.0 conformance claim. The initial sweep also found and drove a shared
 source-node-variable path repair, so AR-0019 now studies whether legacy
 compatibility can progress on the modern compiler/runtime rather than through a
@@ -1914,7 +1926,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 1,041 expected-result matches after shared construction/copy/path/context-function/focus/node-identity/literal-comparison/static-string-function/constant and exact-rational mixed path-numeric, lexical-recognition, compile-time compatibility, first-node node-set conversion, variable effective-boolean-value, node-set/boolean/string/number comparison and conversion, bounded path string functions, substring, translate, `sum(path)`, and source-derived temporary values, first `xsl:sort`, XSLT 1.0 numeric-sort conversion, bounded `xsl:number` counting/value/format/pattern/all-level/union/node-kind/predicate/path/grouping/boundary composition, default-decimal `format-number()`, and source-comment/source-attribute copying plus descendant-pattern, include-order, comment-text, and leading-descendant repairs. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 1,050 expected-result matches after shared construction/copy/path/context-function/focus/node-identity/literal-comparison/static-string-function/constant and exact-rational mixed path-numeric, lexical-recognition, compile-time compatibility, first-node node-set conversion, variable effective-boolean-value, node-set/boolean/string/number comparison and conversion, bounded path string functions, substring, translate, path/static/variable-operand `concat()`, `sum(path)`, source-derived temporary values, typed atomic/focus template arguments, empty-global string semantics, and excluded-parameter text-run boundaries, first `xsl:sort`, XSLT 1.0 numeric-sort conversion, bounded `xsl:number` counting/value/format/pattern/all-level/union/node-kind/predicate/path/grouping/boundary composition, default-decimal `format-number()`, and source-comment/source-attribute copying plus descendant-pattern, include-order, comment-text, and leading-descendant repairs. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -3732,6 +3744,18 @@ host lifecycle.
 - [x] Raise it to 1,041 through compatibility-isolated path-based
   `translate()` using the shared controlled path and Unicode translation
   semantics without adding a mismatch or execution failure.
+- [x] Raise it to 1,044 through a bounded compatibility-isolated `concat()`
+  plan over static strings, integer literals, variables, and namespace-aware
+  paths; keep the newly exposed HTML-serialization boundary visible and
+  uncredited, and do not claim additional corpus credit for variable support.
+- [x] Raise it to 1,047 by routing quoted `xsl:with-param/@select` values
+  through the existing atomic template-argument owner and preserving excluded
+  leading parameters as stylesheet text-run boundaries; retain boolean and
+  template-call `position()`/`last()` support as focused-test groundwork
+  without claiming additional corpus credit.
+- [x] Raise it to 1,050 by preserving a childless untyped global binding as the
+  XSLT 1.0 empty string, repairing two boolean mismatches and one AVT execution
+  failure without special-casing either consumer.
 - [ ] Give each standard and expected-error case one reproducible final
   disposition under a versioned local overlay/report, applying duplicate-safe
   identity and doubts/discretionary metadata.

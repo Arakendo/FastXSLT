@@ -1386,7 +1386,7 @@ fn typed_string_globals_retain_atomic_identity_for_effective_boolean_value() {
 }
 
 #[test]
-fn xslt10_value_of_boolean_variable_uses_temporary_tree_effective_boolean_value() {
+fn xslt10_empty_global_is_a_string_while_constructed_content_is_a_temporary_tree() {
     const SOURCE: &str = "urn:fastxslt:xslt10-variable-ebv:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-variable-ebv:stylesheet";
     let stylesheet = br#"<xsl:stylesheet version="1.0"
@@ -1414,7 +1414,7 @@ fn xslt10_value_of_boolean_variable_uses_temporary_tree_effective_boolean_value(
     let results = execute_transform_set(builder.seal()).expect("execute variable EBV");
     assert_eq!(
         results.by_request["xslt10-variable-ebv"].serialized,
-        "<out>truetruetrue</out>"
+        "<out>falsetruetrue</out>"
     );
 }
 
@@ -1550,13 +1550,14 @@ fn xslt10_binary_string_functions_convert_first_path_node() {
     let stylesheet = br#"<xsl:stylesheet version="1.0"
         xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
         <xsl:output method="text"/>
-        <xsl:template match="doc"><xsl:value-of select="starts-with(value, 'alpha')"/>|<xsl:value-of select="contains(value, '/beta')"/>|<xsl:value-of select="substring-before(value, '/')"/>|<xsl:value-of select="substring-after(value, '/')"/>|<xsl:value-of select="contains(missing, '')"/>|<xsl:value-of select="substring(value, 2, 4)"/>|<xsl:value-of select="substring(value, 2.5, 3.6)"/>|<xsl:value-of select="substring(missing, 1)"/>|<xsl:value-of select="translate(value, 'a/', 'A-')"/>|<xsl:value-of select="translate(value, 'ab', 'X')"/></xsl:template>
+        <xsl:variable name="suffix" select="'!'"/>
+        <xsl:template match="doc"><xsl:value-of select="starts-with(value, 'alpha')"/>|<xsl:value-of select="contains(value, '/beta')"/>|<xsl:value-of select="substring-before(value, '/')"/>|<xsl:value-of select="substring-after(value, '/')"/>|<xsl:value-of select="contains(missing, '')"/>|<xsl:value-of select="substring(value, 2, 4)"/>|<xsl:value-of select="substring(value, 2.5, 3.6)"/>|<xsl:value-of select="substring(missing, 1)"/>|<xsl:value-of select="translate(value, 'a/', 'A-')"/>|<xsl:value-of select="translate(value, 'ab', 'X')"/>|<xsl:value-of select="concat(first, '-', second, 34, missing, $suffix)"/></xsl:template>
     </xsl:stylesheet>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
     resources
         .admit(
             SOURCE,
-            b"<doc><value>alpha/beta</value><value>ignored</value></doc>".to_vec(),
+            b"<doc><value>alpha/beta</value><value>ignored</value><first>A</first><second>B</second></doc>".to_vec(),
         )
         .expect("admit path string-function source");
     resources
@@ -1572,7 +1573,7 @@ fn xslt10_binary_string_functions_convert_first_path_node() {
     let results = execute_transform_set(builder.seal()).expect("execute path string functions");
     assert_eq!(
         results.by_request["xslt10-path-string-functions"].serialized,
-        "true|true|alpha|beta|true|lpha|pha/||AlphA-betA|XlphX/etX"
+        "true|true|alpha|beta|true|lpha|pha/||AlphA-betA|XlphX/etX|A-B34!"
     );
 }
 
@@ -2853,7 +2854,7 @@ fn named_template_recursion_stops_at_the_private_depth_limit() {
 }
 
 #[test]
-fn named_template_parameters_apply_defaults_and_integer_select_arguments() {
+fn named_template_parameters_apply_defaults_and_atomic_select_arguments() {
     const SOURCE: &str = "urn:fastxslt:named-template-parameters:source";
     const STYLESHEET: &str = "urn:fastxslt:named-template-parameters:stylesheet";
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
@@ -2863,7 +2864,10 @@ fn named_template_parameters_apply_defaults_and_integer_select_arguments() {
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:call-template name="emit"/><xsl:call-template name="emit"><xsl:with-param name="value" select="7"/></xsl:call-template></out></xsl:template><xsl:template name="emit"><xsl:param name="value" select="5"/><xsl:value-of select="$value"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:call-template name="emit"/><xsl:call-template name="emit"><xsl:with-param name="value" select="7"/></xsl:call-template><xsl:call-template name="emit"><xsl:with-param name="value" select="'literal'"/></xsl:call-template><xsl:call-template name="emit"><xsl:with-param name="value" select="true()"/></xsl:call-template><xsl:call-template name="emit"><xsl:with-param name="value" select="position()"/></xsl:call-template><xsl:call-template name="emit"><xsl:with-param name="value" select="last()"/></xsl:call-template></out></xsl:template><xsl:template name="emit">
+                <xsl:param name="value" select="5"/>
+                <xsl:value-of select="$value"/>
+            </xsl:template></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit parameter stylesheet");
     let snapshot = resources.seal();
@@ -2875,7 +2879,10 @@ fn named_template_parameters_apply_defaults_and_integer_select_arguments() {
 
     let results = execute_transform_set(builder.seal()).expect("execute parameter calls");
 
-    assert_eq!(results.by_request["parameters"].serialized, "<out>57</out>");
+    assert_eq!(
+        results.by_request["parameters"].serialized,
+        "<out>57literaltrue11</out>"
+    );
 }
 
 #[test]

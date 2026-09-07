@@ -11,7 +11,7 @@ use super::{
     MatchedTemplate, NamedTemplate, NamespaceBinding, OutputSettings, SequenceItemExpression,
     SortKey, SortSelect, SourceLocation, StylesheetProgram, Template, TemplateArgument,
     TemplateArgumentValue, TemplateParameter, TemplateParameterDefault, ValueExpression,
-    VariableFilteredElementPath,
+    VariableFilteredElementPath, Xslt10ConcatPart,
 };
 
 impl StylesheetProgram {
@@ -624,6 +624,15 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
                 + expression.search.capacity()
                 + expression.replacement.capacity()
         }
+        ValueExpression::Xslt10Concat(expression) => {
+            size_of_val(expression.as_ref())
+                + vec_owned(&expression.parts, |part| match part {
+                    Xslt10ConcatPart::Literal(value) | Xslt10ConcatPart::Variable(value) => {
+                        value.capacity()
+                    }
+                    Xslt10ConcatPart::Path(path) => path.known_owned_capacity_bytes(),
+                })
+        }
         ValueExpression::LiteralVariableConcat { literal, variable } => {
             literal.capacity() + variable.capacity()
         }
@@ -807,7 +816,10 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
             TemplateArgumentValue::Text(text) | TemplateArgumentValue::Variable(text) => {
                 text.capacity()
             }
-            TemplateArgumentValue::Integer(_) => 0,
+            TemplateArgumentValue::Integer(_)
+            | TemplateArgumentValue::Boolean(_)
+            | TemplateArgumentValue::ContextPosition
+            | TemplateArgumentValue::ContextSize => 0,
             TemplateArgumentValue::SourcePath(path) => path.known_owned_capacity_bytes(),
         }
         + location_owned(&value.location)

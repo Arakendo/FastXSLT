@@ -280,6 +280,11 @@ pub(super) fn execute_value_of(
                 inputs, context, expression, result, control,
             )?;
         }
+        ValueExpression::Xslt10Concat(expression) => {
+            xslt10_compatibility::append_concat(
+                inputs, context, expression, variables, result, control,
+            )?;
+        }
         ValueExpression::Xslt10VariableBooleanComparison {
             variable,
             value,

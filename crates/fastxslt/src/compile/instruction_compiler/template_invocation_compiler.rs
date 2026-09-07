@@ -11,7 +11,7 @@ use super::{
     CompileFailure, effective_default_mode, effective_xpath_default_namespace,
     ensure_no_meaningful_children, ensure_only_attributes, invalid, is_ascii_ncname,
     is_xslt_element, map_path_failure, meaningful_children, normalize_named_template_name,
-    optional_attribute, required_attribute, unsupported,
+    optional_attribute, required_attribute, unsupported, xpath_string_literal,
 };
 
 pub(super) fn compile_apply_imports(
@@ -144,6 +144,22 @@ fn compile_selected_argument_value(
     }
     if let Ok(value) = select.parse::<i64>() {
         return Ok(TemplateArgumentValue::Integer(value));
+    }
+    if let Some(value) = xpath_string_literal(select) {
+        return Ok(TemplateArgumentValue::Text(value.to_owned()));
+    }
+    if let Some(value) = match select.trim() {
+        "true()" => Some(true),
+        "false()" => Some(false),
+        _ => None,
+    } {
+        return Ok(TemplateArgumentValue::Boolean(value));
+    }
+    if select.trim() == "position()" {
+        return Ok(TemplateArgumentValue::ContextPosition);
+    }
+    if select.trim() == "last()" {
+        return Ok(TemplateArgumentValue::ContextSize);
     }
     parse_location_path(select, document.location(element).clone())
         .map(TemplateArgumentValue::SourcePath)

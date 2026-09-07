@@ -5,8 +5,8 @@ use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xpath::path_experiment::{LocationPath, evaluate_location_path_controlled};
 use crate::xslt::golden_semantics_experiment::{
-    Xslt10PathStringFunction, Xslt10PathStringFunctionKind, Xslt10PathSubstring,
-    Xslt10PathTranslate,
+    Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10PathStringFunction,
+    Xslt10PathStringFunctionKind, Xslt10PathSubstring, Xslt10PathTranslate,
 };
 
 use super::super::{
@@ -263,4 +263,33 @@ pub(super) fn append_path_translate(
         &expression.replacement,
     );
     append_text(result, &value, inputs.request_id, control)
+}
+
+pub(super) fn append_concat(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expression: &Xslt10ConcatExpression,
+    variables: &RuntimeVariables,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    for part in &expression.parts {
+        match part {
+            Xslt10ConcatPart::Literal(value) => {
+                append_text(result, value, inputs.request_id, control)?;
+            }
+            Xslt10ConcatPart::Variable(name) => {
+                let value = variable_string_value(inputs, name, variables, control)?;
+                append_text(result, &value, inputs.request_id, control)?;
+            }
+            Xslt10ConcatPart::Path(path) => {
+                let value = first_path_string(inputs, context, path, control)?;
+                append_text(result, &value, inputs.request_id, control)?;
+            }
+        }
+    }
+    Ok(())
 }

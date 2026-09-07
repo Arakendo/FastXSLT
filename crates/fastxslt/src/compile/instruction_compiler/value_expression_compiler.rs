@@ -21,8 +21,8 @@ use super::{
     recognizes_source_free_scalar, recognizes_string_length, unsupported, xpath_string_literal,
 };
 use crate::xslt::golden_semantics_experiment::{
-    Xslt10PathStringFunction, Xslt10PathStringFunctionKind, Xslt10PathSubstring,
-    Xslt10PathTranslate,
+    Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10PathStringFunction,
+    Xslt10PathStringFunctionKind, Xslt10PathSubstring, Xslt10PathTranslate,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -227,6 +227,11 @@ pub(super) fn compile_value_expression(
             compile_xslt10_path_translate(document, element, expression, location)?
     {
         return Ok(ValueExpression::Xslt10PathTranslate(Box::new(translate)));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(concat) = compile_xslt10_concat(document, element, expression, location)?
+    {
+        return Ok(ValueExpression::Xslt10Concat(Box::new(concat)));
     }
     if let Some(path) = compile_number_path(document, element, expression, location)? {
         return Ok(ValueExpression::NumberPath(path));
@@ -611,6 +616,61 @@ fn compile_xslt10_path_translate(
         search: search.to_owned(),
         replacement: replacement.to_owned(),
     }))
+}
+
+fn compile_xslt10_concat(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<Xslt10ConcatExpression>, CompileFailure> {
+    const MAX_ARGUMENTS: usize = 64;
+    let Some(arguments) = expression
+        .trim()
+        .strip_prefix("concat(")
+        .and_then(|value| value.strip_suffix(')'))
+    else {
+        return Ok(None);
+    };
+    let Some(arguments) =
+        crate::xpath::static_string_experiment::split_arguments(arguments, MAX_ARGUMENTS)
+    else {
+        return Ok(None);
+    };
+    if arguments.len() < 2 {
+        return Ok(None);
+    }
+    let mut parts = Vec::with_capacity(arguments.len());
+    for argument in arguments {
+        if let Some(value) = xpath_string_literal(argument) {
+            parts.push(Xslt10ConcatPart::Literal(value.to_owned()));
+            continue;
+        }
+        if argument.parse::<i64>().is_ok() {
+            parts.push(Xslt10ConcatPart::Literal(argument.to_owned()));
+            continue;
+        }
+        if let Some(variable) = argument
+            .strip_prefix('$')
+            .filter(|name| is_ascii_ncname(name))
+        {
+            parts.push(Xslt10ConcatPart::Variable(variable.to_owned()));
+            continue;
+        }
+        let mut path = parse_location_path(argument, location.clone()).map_err(map_path_failure)?;
+        if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+            for step in &mut path.steps {
+                if let PathStep::ChildNamed(local) = step {
+                    *step = PathStep::ChildExpandedName(ExpandedName {
+                        namespace: Some(namespace.to_owned()),
+                        local: local.clone(),
+                    });
+                }
+            }
+        }
+        parts.push(Xslt10ConcatPart::Path(path));
+    }
+    Ok(Some(Xslt10ConcatExpression { parts }))
 }
 
 fn parse_xslt10_variable_boolean_comparison(expression: &str) -> Option<(&str, bool, bool)> {

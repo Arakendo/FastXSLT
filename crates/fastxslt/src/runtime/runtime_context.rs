@@ -109,6 +109,8 @@ pub(super) fn evaluate_template_arguments(
     variables: &RuntimeVariables,
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
+    focus_position: usize,
+    focus_size: usize,
     control: &mut InvocationControl,
 ) -> Result<BTreeMap<String, InvocationParameter>, ExecutionFailure> {
     arguments
@@ -122,6 +124,24 @@ pub(super) fn evaluate_template_arguments(
                     InvocationParameterValue::Atomic(AtomicValue::from_validated_lexical(
                         BuiltinAtomicType::Integer,
                         value.to_string(),
+                    ))
+                }
+                TemplateArgumentValue::Boolean(value) => {
+                    InvocationParameterValue::Atomic(AtomicValue::from_validated_lexical(
+                        BuiltinAtomicType::Boolean,
+                        value.to_string(),
+                    ))
+                }
+                TemplateArgumentValue::ContextPosition => {
+                    InvocationParameterValue::Atomic(AtomicValue::from_validated_lexical(
+                        BuiltinAtomicType::Integer,
+                        focus_position.to_string(),
+                    ))
+                }
+                TemplateArgumentValue::ContextSize => {
+                    InvocationParameterValue::Atomic(AtomicValue::from_validated_lexical(
+                        BuiltinAtomicType::Integer,
+                        focus_size.to_string(),
                     ))
                 }
                 TemplateArgumentValue::Variable(name) => {

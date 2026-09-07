@@ -116,13 +116,11 @@ pub(super) fn compile_sequence_excluding(
     let mut instructions = Vec::new();
     let mut local_variables = Vec::new();
     let preserve_whitespace = effective_xml_space_preserved(document, parent)?;
-    let children = document
-        .children(parent)
-        .iter()
-        .copied()
-        .filter(|child| !excluded.contains(child))
-        .collect::<Vec<_>>();
+    let children = document.children(parent).to_vec();
     for (index, child) in children.iter().copied().enumerate() {
+        if excluded.contains(&child) {
+            continue;
+        }
         match document.kind(child) {
             NodeKind::Text => {
                 if let Some(instruction) = compile_literal_text_node(
