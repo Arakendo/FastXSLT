@@ -372,7 +372,7 @@ impl Rational {
     }
 
     fn modulo(self, right: Self) -> Result<Self, ConstantNumericFailure> {
-        if self.denominator != 1 || right.denominator != 1 || right.numerator <= 0 {
+        if self.denominator != 1 || right.denominator != 1 || right.numerator == 0 {
             return Err(ConstantNumericFailure::Unsupported);
         }
         Ok(Self::integer(self.numerator % right.numerator))
@@ -605,6 +605,9 @@ mod tests {
             Ok(Ordering::Greater)
         );
         assert_eq!(compare("9 mod 3", "0"), Ok(Ordering::Equal));
+        assert_eq!(compare("5 mod -2", "1"), Ok(Ordering::Equal));
+        assert_eq!(compare("-5 mod 2", "-1"), Ok(Ordering::Equal));
+        assert_eq!(compare("-5 mod -2", "-1"), Ok(Ordering::Equal));
     }
 
     #[test]

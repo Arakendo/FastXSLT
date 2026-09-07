@@ -115,6 +115,17 @@ pub(crate) fn parse_literal_comparison(expression: &str) -> Option<BooleanExpres
         let Some((left, right)) = split_top_level(expression, lexical) else {
             continue;
         };
+        if let Ok(ordering) = super::constant_numeric_experiment::compare(left, right) {
+            let value = match operator {
+                BooleanComparison::Equal => ordering.is_eq(),
+                BooleanComparison::NotEqual => !ordering.is_eq(),
+                BooleanComparison::LessThan => ordering.is_lt(),
+                BooleanComparison::LessThanOrEqual => !ordering.is_gt(),
+                BooleanComparison::GreaterThan => ordering.is_gt(),
+                BooleanComparison::GreaterThanOrEqual => !ordering.is_lt(),
+            };
+            return Some(BooleanExpression::Constant(value));
+        }
         if let (Some(left), Some(right)) = (
             parse_xpath_number_literal(left),
             parse_xpath_number_literal(right),
@@ -334,6 +345,9 @@ fn parse_inner(expression: &str) -> Result<BooleanExpression, BooleanParseFailur
             Box::new(parse_inner(left)?),
             Box::new(parse_inner(right)?),
         ));
+    }
+    if let Some(comparison) = parse_literal_comparison(expression) {
+        return Ok(comparison);
     }
     for (lexical, operator) in [
         (" <= ", BooleanComparison::LessThanOrEqual),
@@ -721,6 +735,9 @@ mod tests {
             ("1.9999999 < 2", true),
             ("2.0000001 < 2.0", false),
             (".5 >= 0.50", true),
+            ("5 mod -2 = 1", true),
+            ("-5 mod 2 = -1", true),
+            ("-5 mod -2 = -1", true),
         ] {
             assert_eq!(
                 parse_literal_comparison(source),
@@ -730,6 +747,16 @@ mod tests {
         }
         assert_eq!(parse_literal_comparison("item = 1"), None);
         assert_eq!(parse_literal_comparison("1 + 1"), None);
+    }
+
+    #[test]
+    fn evaluates_exact_signed_modulo_comparison_conjunction() {
+        let expression =
+            parse("(5 mod 2 = 1) and (5 mod -2 = 1) and (-5 mod 2 = -1) and (-5 mod -2 = -1)")
+                .expect("signed modulo conjunction should parse");
+        let mut control = InvocationControl::unbounded();
+
+        assert_eq!(evaluate(&expression, &mut control), Ok(true));
     }
 
     #[test]

@@ -9,8 +9,8 @@ use super::{
     XSLT_NAMESPACE, boolean_expression_compiler, classify_atomic_path_operand,
     classify_missing_context, conditional_expression_compiler, effective_xpath_default_namespace,
     invalid, is_ascii_ncname, map_path_failure, namespace_for_prefix, optional_attribute,
-    parse_case_conversion, parse_castable, parse_decimal_sum_for, parse_deep_equal,
-    parse_default_collation, parse_document_boolean, parse_duration_component,
+    parse_case_conversion, parse_castable, parse_context_focus_equality, parse_decimal_sum_for,
+    parse_deep_equal, parse_default_collation, parse_document_boolean, parse_duration_component,
     parse_encode_for_uri, parse_escape_html_uri, parse_focus_sum_for, parse_format_number,
     parse_generated_document_root, parse_generated_temporary_root, parse_integer_for,
     parse_iri_to_uri, parse_literal_comparison, parse_location_path, parse_qualified_child_path,
@@ -276,6 +276,13 @@ pub(super) fn compile_value_expression(
     }
     if expression.trim() == "last()" {
         return Ok(ValueExpression::ContextSize(location.clone()));
+    }
+    if let Some((left, right)) = parse_context_focus_equality(expression) {
+        return Ok(ValueExpression::ContextFocusEquals {
+            left,
+            right,
+            location: location.clone(),
+        });
     }
     if let Some(language) = crate::xpath::language_experiment::parse_literal(expression) {
         return Ok(ValueExpression::ContextLanguageMatches(language));

@@ -59,9 +59,9 @@ use crate::xpath::string_length_experiment::{
     StringLengthParseFailure, parse as parse_string_length, recognizes as recognizes_string_length,
 };
 use crate::xslt::golden_semantics_experiment::{
-    ChooseBranch, ComputedAttribute, ElementConstructorOrigin, Instruction, LiteralAttributeValue,
-    SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect, StringComparison,
-    TemplateArgument, ValueExpression,
+    ChooseBranch, ComputedAttribute, ElementConstructorOrigin, FocusEqualityOperand, Instruction,
+    LiteralAttributeValue, SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect,
+    StringComparison, TemplateArgument, ValueExpression,
 };
 
 #[path = "instruction_compiler/computed_attribute_compiler.rs"]
@@ -85,6 +85,28 @@ mod source_copy_compiler;
 use source_copy_compiler::compile_copy;
 #[path = "instruction_compiler/template_invocation_compiler.rs"]
 mod template_invocation_compiler;
+
+fn parse_context_focus_equality(
+    expression: &str,
+) -> Option<(FocusEqualityOperand, FocusEqualityOperand)> {
+    let (left, right) = expression.trim().split_once('=')?;
+    if left.contains(['=', '!']) || right.contains('=') {
+        return None;
+    }
+    let left = parse_context_focus_operand(left.trim())?;
+    let right = parse_context_focus_operand(right.trim())?;
+    (!matches!(left, FocusEqualityOperand::Static(_))
+        || !matches!(right, FocusEqualityOperand::Static(_)))
+    .then_some((left, right))
+}
+
+fn parse_context_focus_operand(operand: &str) -> Option<FocusEqualityOperand> {
+    match operand {
+        "position()" => Some(FocusEqualityOperand::Position),
+        "last()" => Some(FocusEqualityOperand::Size),
+        _ => operand.parse().ok().map(FocusEqualityOperand::Static),
+    }
+}
 
 pub(super) fn parse_mode(
     document: &Document,

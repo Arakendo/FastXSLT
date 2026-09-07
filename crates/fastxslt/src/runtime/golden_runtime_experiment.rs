@@ -15,9 +15,9 @@ use crate::xpath::for_distinct_values_experiment::{
 };
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, BooleanExpression, ComputedAttribute, Instruction, NodeTest,
-    OnMultipleMatchPolicy, OnNoMatchPolicy, SequenceItemExpression, SortDataType, SortKey,
-    SortOrder, SortSelect, SourceWhitespacePolicy, StringComparison, StylesheetProgram,
+    ApplySelection, BooleanExpression, ComputedAttribute, FocusEqualityOperand, Instruction,
+    NodeTest, OnMultipleMatchPolicy, OnNoMatchPolicy, SequenceItemExpression, SortDataType,
+    SortKey, SortOrder, SortSelect, SourceWhitespacePolicy, StringComparison, StylesheetProgram,
     TemplateArgument,
 };
 
@@ -2329,6 +2329,11 @@ fn evaluate_boolean(
         BooleanExpression::ContextPositionNotEqualSize(location) => {
             evaluate_context_position_not_equal_size(inputs, focus, location, control)
         }
+        BooleanExpression::ContextFocusEquals {
+            left,
+            right,
+            location,
+        } => evaluate_context_focus_equality(inputs, focus, *left, *right, location, control),
         BooleanExpression::ContextLanguageMatches(language) => {
             evaluate_context_language_matches(inputs, context, language, control)
         }
@@ -2408,6 +2413,34 @@ fn evaluate_context_position_not_equal_size(
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
     Ok(focus.position != focus.size)
+}
+
+fn evaluate_context_focus_equality(
+    inputs: &SequenceInputs<'_>,
+    focus: Option<SequenceFocus>,
+    left: FocusEqualityOperand,
+    right: FocusEqualityOperand,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let focus = focus.ok_or_else(|| {
+        failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            "position() and last() require a dynamic focus",
+        )
+    })?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let value = |operand| match operand {
+        FocusEqualityOperand::Position => focus.position,
+        FocusEqualityOperand::Size => focus.size,
+        FocusEqualityOperand::Static(value) => value,
+    };
+    Ok(value(left) == value(right))
 }
 
 fn evaluate_node_identity_equal(

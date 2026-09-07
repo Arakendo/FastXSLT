@@ -10,8 +10,8 @@ use crate::xslt::golden_semantics_experiment::{
 
 use super::{
     conditional_expression_compiler, invalid, is_ascii_ncname, map_path_failure,
-    parse_generated_document_root, parse_generated_temporary_root, unsupported,
-    xpath_string_literal,
+    parse_context_focus_equality, parse_generated_document_root, parse_generated_temporary_root,
+    unsupported, xpath_string_literal,
 };
 
 pub(super) fn compile(
@@ -91,6 +91,13 @@ pub(super) fn compile(
         return Ok(BooleanExpression::ContextPositionNotEqualSize(
             location.clone(),
         ));
+    }
+    if let Some((left, right)) = parse_context_focus_equality(parsed) {
+        return Ok(BooleanExpression::ContextFocusEquals {
+            left,
+            right,
+            location: location.clone(),
+        });
     }
     parse_scalar(parsed, expression, location, comparison)
 }

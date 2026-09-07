@@ -18,6 +18,8 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Language Path Predicate](oasis-xslt10-language-path-predicate-2026-09-07.md)
 - [OASIS XSLT 1.0 Conjoined Position Predicate](oasis-xslt10-conjoined-position-predicate-2026-09-07.md)
 - [OASIS XSLT 1.0 Missing-Attribute and Last-Position Predicates](oasis-xslt10-missing-attribute-last-position-2026-09-07.md)
+- [OASIS XSLT 1.0 Signed-Modulo Boolean Conjunction](oasis-xslt10-signed-modulo-boolean-conjunction-2026-09-07.md)
+- [OASIS XSLT 1.0 Focus Equality Across Values and Conditions](oasis-xslt10-focus-value-equality-2026-09-07.md)
 - [OASIS XSLT 1.0 Sort Context-Name Key](oasis-xslt10-sort-context-name-2026-09-07.md)
 - [OASIS XSLT 1.0 Lexical Node-Name Prefix Retention](oasis-xslt10-lexical-node-name-prefix-2026-09-07.md)
 - [OASIS XSLT 1.0 Source-Attribute `xsl:copy`](oasis-xslt10-source-attribute-copy-2026-09-07.md)

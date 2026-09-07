@@ -9,7 +9,7 @@
 | Trigger | A complete local legacy sweep found 366 initial definite unchanged passes and dominant gaps that largely overlap the XSLT 3.0 roadmap |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007, ADR-0012, ADR-0013, ADR-0014 |
 | Related reviews | AR-0001, AR-0004, AR-0008, AR-0011, AR-0014 |
-| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md`; `docs/Evidence/oasis-xslt10-variable-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-exact-rational-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-mixed-literal-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-sort-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-path-concat-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-literal-template-argument-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-empty-global-string-semantics-2026-09-06.md`; `docs/Evidence/oasis-xslt10-local-variable-sequence-semantics-2026-09-07.md`; `docs/Evidence/oasis-xslt10-attribute-predicate-and-variable-apply-tranche-2026-09-07.md`; `docs/Evidence/oasis-xslt10-sequence-focus-boolean-comparison-2026-09-07.md`; `docs/Evidence/oasis-xslt10-apply-templates-path-union-2026-09-07.md` |
+| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md`; `docs/Evidence/oasis-xslt10-variable-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-exact-rational-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-mixed-literal-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-sort-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-path-concat-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-literal-template-argument-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-empty-global-string-semantics-2026-09-06.md`; `docs/Evidence/oasis-xslt10-local-variable-sequence-semantics-2026-09-07.md`; `docs/Evidence/oasis-xslt10-attribute-predicate-and-variable-apply-tranche-2026-09-07.md`; `docs/Evidence/oasis-xslt10-sequence-focus-boolean-comparison-2026-09-07.md`; `docs/Evidence/oasis-xslt10-apply-templates-path-union-2026-09-07.md`; `docs/Evidence/oasis-xslt10-signed-modulo-boolean-conjunction-2026-09-07.md`; `docs/Evidence/oasis-xslt10-focus-value-equality-2026-09-07.md` |
 
 ## Architectural question
 
@@ -469,6 +469,13 @@ public version-mode contract.
 - [x] Compose a typed missing-attribute predicate with the symmetric
   `last()=position()` spelling, raising the lower bound from 1,140 to 1,142
   without admitting general negation.
+- [x] Reuse checked exact arithmetic for signed-modulo comparisons inside the
+  existing source-free boolean tree, raising the lower bound from 1,142 to
+  1,143 without adding a compatibility-only evaluator.
+- [x] Compare `position()` or `last()` with a static nonnegative integer or
+  each other in ordinary value expressions and instruction conditions through
+  the existing sequence focus, raising the lower bound from 1,143 to 1,150
+  while preserving located focusless `XPDY0002`.
 - [ ] Measure pass growth, regression risk, retained state, and hot-path cost as
   shared families land.
 - [ ] Obtain consumer evidence before selecting the exact advertised profile or
@@ -485,6 +492,14 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-07 -- Typed focus equality reuses the existing sequence focus across
+  value expressions and instruction conditions. Seven unchanged cases raise
+  the strict lower bound to 1,150 without changing mismatch or execution-
+  failure counts; two additional position cases advance to distinct later
+  boundaries and remain uncredited.
+- 2026-09-07 -- Exact signed-modulo comparisons now compose through the
+  existing source-free boolean tree. Unchanged `math83` raises the strict lower
+  bound to 1,143 without changing mismatch or execution-failure counts.
 - 2026-09-07 -- A typed missing-attribute predicate and the symmetric
   `last()=position()` spelling raise the strict lower bound to 1,142 across two
   unchanged position cases; broader negation remains unsupported.

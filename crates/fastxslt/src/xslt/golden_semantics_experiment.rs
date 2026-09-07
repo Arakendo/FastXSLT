@@ -600,6 +600,13 @@ pub(crate) enum NumberLevel {
     Any,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum FocusEqualityOperand {
+    Position,
+    Size,
+    Static(usize),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ValueExpression {
     LiteralString(String),
@@ -638,6 +645,11 @@ pub(crate) enum ValueExpression {
     ContextNodeStringLength(SourceLocation),
     ContextPosition(SourceLocation),
     ContextSize(SourceLocation),
+    ContextFocusEquals {
+        left: FocusEqualityOperand,
+        right: FocusEqualityOperand,
+        location: SourceLocation,
+    },
     ContextRequiredOnly(SourceLocation),
     UpperCaseContextString,
     CaseConversion(Box<CaseConversionExpression>),
@@ -830,6 +842,11 @@ pub(crate) enum BooleanExpression {
     ContextStringEquals(String),
     ContextStringLengthEquals(usize),
     ContextPositionNotEqualSize(SourceLocation),
+    ContextFocusEquals {
+        left: FocusEqualityOperand,
+        right: FocusEqualityOperand,
+        location: SourceLocation,
+    },
     ContextLanguageMatches(String),
     Or {
         left: Box<BooleanExpression>,

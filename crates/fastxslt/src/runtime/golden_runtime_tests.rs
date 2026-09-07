@@ -2179,7 +2179,35 @@ fn value_of_position_and_last_use_the_current_sequence_focus() {
 }
 
 #[test]
-fn position_not_equal_last_uses_the_current_sequence_focus() {
+fn value_of_focus_equality_uses_apply_and_for_each_focus() {
+    const SOURCE: &str = "urn:fastxslt:value-focus-equality:source";
+    const STYLESHEET: &str = "urn:fastxslt:value-focus-equality:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc><item/><item/><item/></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc/item"/><xsl:for-each select="doc/item"><size><xsl:value-of select="3 = last()"/></size></xsl:for-each></out></xsl:template><xsl:template match="item"><at><xsl:value-of select="position() = 2"/>/<xsl:value-of select="last() = 3"/></at></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile focus equalities");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("value-focus-equality", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute focus equalities");
+    assert_eq!(
+        results.by_request["value-focus-equality"].serialized,
+        "<out><at>false/true</at><at>true/true</at><at>false/true</at><size>true</size><size>true</size><size>true</size></out>"
+    );
+}
+
+#[test]
+fn focus_boolean_comparisons_use_the_current_sequence_focus() {
     const SOURCE: &str = "urn:fastxslt:boolean-focus:source";
     const STYLESHEET: &str = "urn:fastxslt:boolean-focus:stylesheet";
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
@@ -2192,7 +2220,7 @@ fn position_not_equal_last_uses_the_current_sequence_focus() {
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:for-each select="doc/item"><xsl:value-of select="."/><xsl:if test="position()!=last()">,</xsl:if></xsl:for-each></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:for-each select="doc/item"><xsl:if test="position()=1">[</xsl:if><xsl:value-of select="."/><xsl:if test="position()!=last()">,</xsl:if><xsl:if test="position()=last()">]</xsl:if></xsl:for-each></out></xsl:template></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit stylesheet");
     let snapshot = resources.seal();
@@ -2205,7 +2233,7 @@ fn position_not_equal_last_uses_the_current_sequence_focus() {
     let results = execute_transform_set(builder.seal()).expect("execute focus comparison");
     assert_eq!(
         results.by_request["boolean-focus"].serialized,
-        "<out>A,B,C</out>"
+        "<out>[A,B,C]</out>"
     );
 }
 
@@ -4472,7 +4500,7 @@ fn initial_template_position_comparison_requires_a_dynamic_focus() {
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template name="start"><xsl:if test="position()!=last()">wrong</xsl:if></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template name="start"><xsl:value-of select="position() = 1"/></xsl:template></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit stylesheet");
     let snapshot = resources.seal();

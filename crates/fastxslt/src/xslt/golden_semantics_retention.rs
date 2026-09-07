@@ -624,7 +624,8 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::ContextNodeStringLength(location)
         | ValueExpression::ContextPosition(location)
         | ValueExpression::ContextSize(location)
-        | ValueExpression::ContextRequiredOnly(location) => location.resource.capacity(),
+        | ValueExpression::ContextRequiredOnly(location)
+        | ValueExpression::ContextFocusEquals { location, .. } => location.resource.capacity(),
         ValueExpression::CaseConversion(expression) => {
             size_of_val(expression.as_ref()) + expression.known_owned_capacity_bytes()
         }
@@ -766,7 +767,8 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         } => path.known_owned_capacity_bytes() + local.capacity(),
         BooleanExpression::ContextStringEquals(value)
         | BooleanExpression::ContextLanguageMatches(value) => value.capacity(),
-        BooleanExpression::ContextPositionNotEqualSize(location) => location_owned(location),
+        BooleanExpression::ContextPositionNotEqualSize(location)
+        | BooleanExpression::ContextFocusEquals { location, .. } => location_owned(location),
         BooleanExpression::Or { left, right } => {
             boolean_expression_owned(left) + boolean_expression_owned(right)
         }

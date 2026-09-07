@@ -59,7 +59,8 @@ use crate::xpath::string_length_experiment::{
 };
 use crate::xslt::golden_semantics_experiment::{
     ConditionalIntegerBranch, ConditionalIntegerCondition, ConditionalIntegerExpression,
-    ConditionalPathBranch, ConditionalPathExpression, IntegerComparisonOperator, ValueExpression,
+    ConditionalPathBranch, ConditionalPathExpression, FocusEqualityOperand,
+    IntegerComparisonOperator, ValueExpression,
 };
 
 #[path = "value_evaluator/xslt10_compatibility.rs"]
@@ -180,6 +181,13 @@ pub(super) fn execute_value_of(
         }
         ValueExpression::ContextSize(location) => {
             append_context_focus_value(inputs, focus, false, location, result, control)?;
+        }
+        ValueExpression::ContextFocusEquals {
+            left,
+            right,
+            location,
+        } => {
+            append_context_focus_equality(inputs, focus, *left, *right, location, result, control)?;
         }
         ValueExpression::ContextRequiredOnly(location) => {
             if context.is_none() {
@@ -1627,6 +1635,43 @@ fn append_context_focus_value(
         focus.size
     };
     append_text(result, &value.to_string(), inputs.request_id, control)
+}
+
+fn append_context_focus_equality(
+    inputs: &SequenceInputs<'_>,
+    focus: Option<SequenceFocus>,
+    left: FocusEqualityOperand,
+    right: FocusEqualityOperand,
+    location: &SourceLocation,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let focus = focus.ok_or_else(|| {
+        failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            "position() and last() require a dynamic focus",
+        )
+    })?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    append_boolean(
+        inputs,
+        focus_equality_operand(focus, left) == focus_equality_operand(focus, right),
+        result,
+        control,
+    )
+}
+
+fn focus_equality_operand(focus: SequenceFocus, operand: FocusEqualityOperand) -> usize {
+    match operand {
+        FocusEqualityOperand::Position => focus.position,
+        FocusEqualityOperand::Size => focus.size,
+        FocusEqualityOperand::Static(value) => value,
+    }
 }
 
 fn execute_deep_equal(
