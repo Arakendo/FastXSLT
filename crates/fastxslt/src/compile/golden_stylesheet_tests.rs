@@ -96,7 +96,7 @@ fn compiles_the_golden_stylesheet_into_owned_semantics() {
             Instruction::ValueOf { select, .. },
             Instruction::Text { value: last, .. }
         ] if first == "Hello, "
-            && matches!(select, ValueExpression::LocationPath(path)
+            && matches!(select, ValueExpression::Xslt10FirstNodeLocationPath(path)
                 if path.steps == ["greeting", "name"])
             && last == "!"
     ));

@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
+use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xslt::golden_semantics_experiment::{
     ComputedAttribute, LiteralAttribute, LiteralAttributeValue,
@@ -46,6 +47,7 @@ struct AttributeContext<'a> {
     focus_size: usize,
     context_name: Option<&'a ExpandedName>,
     context_value: Option<&'a str>,
+    source_focus: Option<(&'a Document, NodeId)>,
     request_id: &'a str,
 }
 
@@ -55,6 +57,7 @@ pub(super) struct LiteralAttributeFocus<'a> {
     pub(super) size: usize,
     pub(super) name: Option<&'a ExpandedName>,
     pub(super) value: Option<&'a str>,
+    pub(super) source: Option<(&'a Document, NodeId)>,
 }
 
 pub(super) fn materialize_literal_attributes(
@@ -70,6 +73,7 @@ pub(super) fn materialize_literal_attributes(
         focus_size: focus.size,
         context_name: focus.name,
         context_value: focus.value,
+        source_focus: focus.source,
         request_id,
     };
     attributes
@@ -101,6 +105,7 @@ pub(super) fn materialize_computed_attributes(
         focus_size: context_size,
         context_name: None,
         context_value,
+        source_focus: None,
         request_id,
     };
     attributes
@@ -144,6 +149,31 @@ fn materialize_attribute(
             })?
             .lexical()
             .to_owned(),
+        LiteralAttributeValue::SourceAttribute(name) => {
+            let Some((source, node)) = context.source_focus else {
+                return Err(failure_at(
+                    "XPDY0002",
+                    FailureCategory::Invalid,
+                    Some(context.request_id),
+                    location.clone(),
+                    "the source-copy attribute expression requires a source-node context",
+                ));
+            };
+            let mut value = String::new();
+            for &attribute in source.attributes(node) {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, context.request_id))?;
+                if source.name(attribute) == Some(name) {
+                    source
+                        .value(attribute)
+                        .unwrap_or_default()
+                        .clone_into(&mut value);
+                    break;
+                }
+            }
+            value
+        }
         LiteralAttributeValue::ContextPosition => context.focus_position.to_string(),
         LiteralAttributeValue::ContextSize => context.focus_size.to_string(),
         LiteralAttributeValue::ContextLocalName => context

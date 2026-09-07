@@ -136,6 +136,9 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
             }
             GlobalBindingDefault::TemporaryText(value)
             | GlobalBindingDefault::TemporaryComment(value) => value.capacity(),
+            GlobalBindingDefault::Xslt10TemporarySourceString(path) => {
+                path.known_owned_capacity_bytes()
+            }
             GlobalBindingDefault::TemporaryAttribute { name, value } => {
                 name_owned(name) + value.capacity()
             }
@@ -255,9 +258,7 @@ fn instruction_owned(value: &Instruction) -> usize {
             separator,
             location,
         } => value_expression_owned(select) + separator.capacity() + location_owned(location),
-        Instruction::Number { value, location } => {
-            number_value_owned(value.as_ref()) + location_owned(location)
-        }
+        instruction @ Instruction::Number { .. } => number_instruction_owned(instruction),
         Instruction::Variable {
             name,
             select,
@@ -341,8 +342,55 @@ fn instruction_owned(value: &Instruction) -> usize {
 fn number_value_owned(value: Option<&super::NumberValue>) -> usize {
     value.map_or(0, |value| match value {
         super::NumberValue::Literal(value) => value.capacity(),
-        super::NumberValue::ContextPosition => 0,
+        super::NumberValue::ContextPosition | super::NumberValue::ContextItem => 0,
     })
+}
+
+fn number_instruction_owned(instruction: &Instruction) -> usize {
+    let Instruction::Number {
+        value,
+        level: _,
+        count,
+        from,
+        format,
+        location,
+    } = instruction
+    else {
+        unreachable!("number accounting receives only number instructions")
+    };
+    number_value_owned(value.as_ref())
+        + count.as_ref().map_or(0, number_pattern_owned)
+        + from.as_ref().map_or(0, number_pattern_owned)
+        + format.prefix.capacity()
+        + vec_owned(&format.tokens, |_| 0)
+        + vec_owned(&format.separators, String::capacity)
+        + format.suffix.capacity()
+        + location_owned(location)
+}
+
+fn number_pattern_owned(pattern: &super::NumberPattern) -> usize {
+    match pattern {
+        super::NumberPattern::Element(name) => name_owned(name),
+        super::NumberPattern::ElementWithAttributeValue {
+            element,
+            attribute,
+            value,
+        } => name_owned(element) + name_owned(attribute) + value.capacity(),
+        super::NumberPattern::ElementAtSiblingPosition { element, .. } => name_owned(element),
+        super::NumberPattern::ChildOf { parent, child } => {
+            size_of::<super::NumberPattern>()
+                + number_pattern_owned(parent)
+                + size_of::<super::NumberPattern>()
+                + number_pattern_owned(child)
+        }
+        super::NumberPattern::Alternatives(alternatives) => {
+            vec_owned(alternatives, number_pattern_owned)
+        }
+        super::NumberPattern::Document
+        | super::NumberPattern::AnyNode
+        | super::NumberPattern::AnyElement
+        | super::NumberPattern::AnyAttribute => 0,
+    }
 }
 
 fn apply_templates_instruction_owned(instruction: &Instruction) -> usize {
@@ -522,6 +570,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
     match value {
         ValueExpression::LiteralString(value) => value.capacity(),
         ValueExpression::LocationPath(path)
+        | ValueExpression::Xslt10FirstNodeLocationPath(path)
         | ValueExpression::CountLocationPath(path)
         | ValueExpression::RootPath(path)
         | ValueExpression::NodeNamePath(path)
@@ -533,6 +582,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::GeneratedRootIdentity(path)
         | ValueExpression::EmptyLocationPath(path)
         | ValueExpression::NumberPath(path)
+        | ValueExpression::Xslt10SumPath(path)
         | ValueExpression::IntegralFunctionPath { path, .. } => path.known_owned_capacity_bytes(),
         ValueExpression::BinaryNumeric(expression) => {
             size_of_val(expression.as_ref()) + expression.known_owned_capacity_bytes()
@@ -550,7 +600,30 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::CaseConversion(expression) => {
             size_of_val(expression.as_ref()) + expression.known_owned_capacity_bytes()
         }
-        ValueExpression::Variable(name) | ValueExpression::RootVariable(name) => name.capacity(),
+        ValueExpression::Variable(name)
+        | ValueExpression::RootVariable(name)
+        | ValueExpression::VariableEffectiveBooleanValue(name)
+        | ValueExpression::Xslt10VariableString(name)
+        | ValueExpression::Xslt10VariableNumber(name) => name.capacity(),
+        ValueExpression::Xslt10VariableBooleanComparison { variable, .. }
+        | ValueExpression::Xslt10VariableNumberComparison { variable, .. } => variable.capacity(),
+        ValueExpression::Xslt10VariableStringComparison {
+            variable, value, ..
+        } => variable.capacity() + value.capacity(),
+        ValueExpression::Xslt10PathStringFunction(expression) => {
+            size_of_val(expression.as_ref())
+                + expression.path.known_owned_capacity_bytes()
+                + expression.operand.capacity()
+        }
+        ValueExpression::Xslt10PathSubstring(expression) => {
+            size_of_val(expression.as_ref()) + expression.path.known_owned_capacity_bytes()
+        }
+        ValueExpression::Xslt10PathTranslate(expression) => {
+            size_of_val(expression.as_ref())
+                + expression.path.known_owned_capacity_bytes()
+                + expression.search.capacity()
+                + expression.replacement.capacity()
+        }
         ValueExpression::LiteralVariableConcat { literal, variable } => {
             literal.capacity() + variable.capacity()
         }
@@ -757,6 +830,7 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
         LiteralAttributeValue::Text(text) | LiteralAttributeValue::Variable(text) => {
             text.capacity()
         }
+        LiteralAttributeValue::SourceAttribute(name) => name_owned(name),
         LiteralAttributeValue::ContextPosition
         | LiteralAttributeValue::ContextSize
         | LiteralAttributeValue::ContextLocalName

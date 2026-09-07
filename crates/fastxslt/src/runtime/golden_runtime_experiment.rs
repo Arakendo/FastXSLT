@@ -15,7 +15,7 @@ use crate::xpath::for_distinct_values_experiment::{
 };
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, BooleanExpression, ComputedAttribute, Instruction, NodeTest, NumberValue,
+    ApplySelection, BooleanExpression, ComputedAttribute, Instruction, NodeTest,
     OnMultipleMatchPolicy, OnNoMatchPolicy, SequenceItemExpression, SortDataType, SortKey,
     SortOrder, SortSelect, SourceWhitespacePolicy, StringComparison, StylesheetProgram,
     TemplateArgument,
@@ -28,6 +28,8 @@ mod atomic_template_executor;
 mod byte_encoding;
 #[path = "dynamic_document.rs"]
 mod dynamic_document;
+#[path = "number_executor.rs"]
+mod number_executor;
 #[cfg(test)]
 #[path = "preparation_pipeline_controller_tests.rs"]
 mod preparation_pipeline_controller_tests;
@@ -60,6 +62,7 @@ mod value_evaluator;
 #[path = "variable_filtered_path.rs"]
 mod variable_filtered_path;
 
+use number_executor::execute as execute_number_instruction;
 #[cfg(test)]
 pub(super) use resource_compiler::compile_resource;
 pub(super) use resource_compiler::compile_resource_with_denied;
@@ -744,16 +747,8 @@ fn execute_instruction(
         } => {
             execute_value_of(inputs, select, separator, execution, scope, result, control)?;
         }
-        Instruction::Number { value, .. } => {
-            let value = if let Some(value) = value {
-                control
-                    .charge(WorkDomain::XPathOperation, 1)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
-                evaluate_number_value(value, execution)
-            } else {
-                execute_default_single_number(inputs, execution.node, control)?.to_string()
-            };
-            append_text(result, &value, inputs.request_id, control)?;
+        Instruction::Number { .. } => {
+            execute_number_instruction(inputs, instruction, execution, result, control)?;
         }
         Instruction::SequenceNodes { select, .. } => {
             result.extend(execute_sequence_nodes(
@@ -811,67 +806,6 @@ fn execute_instruction(
         )?),
     }
     Ok(())
-}
-
-fn evaluate_number_value(value: &NumberValue, execution: SequenceContext<'_>) -> String {
-    let value = match value {
-        NumberValue::Literal(value) => value.parse::<f64>().unwrap_or(f64::NAN),
-        NumberValue::ContextPosition => execution
-            .focus_position
-            .to_string()
-            .parse::<f64>()
-            .expect("a decimal usize representation is an XPath number"),
-    };
-    if value.is_nan() {
-        return "NaN".to_owned();
-    }
-    if value == f64::INFINITY {
-        return "Infinity".to_owned();
-    }
-    if value == f64::NEG_INFINITY {
-        return "-Infinity".to_owned();
-    }
-    if value < 0.5 {
-        return if value == 0.0 {
-            "0".to_owned()
-        } else {
-            value.to_string()
-        };
-    }
-    (value + 0.5).floor().to_string()
-}
-
-fn execute_default_single_number(
-    inputs: &SequenceInputs<'_>,
-    context: Option<NodeId>,
-    control: &mut InvocationControl,
-) -> Result<usize, ExecutionFailure> {
-    let (source, context) = required_source_context(inputs, context)?;
-    let Some(parent) = source.parent(context) else {
-        return Ok(1);
-    };
-    let siblings = if source.kind(context) == NodeKind::Attribute {
-        source.attributes(parent)
-    } else {
-        source.children(parent)
-    };
-    let mut number = 1usize;
-    for sibling in siblings.iter().copied() {
-        control
-            .charge(WorkDomain::XPathNodeVisit, 1)
-            .map_err(|failure| control_failure(failure, inputs.request_id))?;
-        if sibling == context {
-            break;
-        }
-        if nodes_share_default_number_pattern(source, sibling, context) {
-            number = number.saturating_add(1);
-        }
-    }
-    Ok(number)
-}
-
-fn nodes_share_default_number_pattern(source: &Document, left: NodeId, right: NodeId) -> bool {
-    source.kind(left) == source.kind(right) && source.name(left) == source.name(right)
 }
 
 fn execute_attribute_instruction(
@@ -1291,7 +1225,15 @@ fn sort_selected_nodes(
             };
             values.push(match sort.data_type {
                 SortDataType::Text => EvaluatedSortKey::Text(value),
-                SortDataType::Number => EvaluatedSortKey::Number(value.trim().parse().ok()),
+                SortDataType::Number => {
+                    EvaluatedSortKey::Number(if sort.xslt10_numeric_conversion {
+                        crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(
+                            &value,
+                        )
+                    } else {
+                        value.trim().parse().ok()
+                    })
+                }
             });
         }
         keyed.push((node, values));
@@ -1325,7 +1267,9 @@ fn compare_sort_keys(left: &EvaluatedSortKey, right: &EvaluatedSortKey) -> std::
             left.to_ascii_lowercase().cmp(&right.to_ascii_lowercase())
         }
         (EvaluatedSortKey::Number(left), EvaluatedSortKey::Number(right)) => match (left, right) {
-            (Some(left), Some(right)) => left.total_cmp(right),
+            (Some(left), Some(right)) => left
+                .partial_cmp(right)
+                .expect("evaluated numeric sort keys exclude NaN"),
             (None, None) => std::cmp::Ordering::Equal,
             (None, Some(_)) => std::cmp::Ordering::Less,
             (Some(_), None) => std::cmp::Ordering::Greater,
@@ -1465,6 +1409,7 @@ fn execute_source_element_copy(
                         size: execution.focus_size,
                         name: source.name(node),
                         value: context_string.as_deref(),
+                        source: Some((source, node)),
                     },
                     inputs.request_id,
                     control,
@@ -1491,7 +1436,12 @@ fn execute_source_element_copy(
             inputs.request_id,
             control,
         )?]),
-        NodeKind::Attribute | NodeKind::Comment => Err(failure(
+        NodeKind::Comment => Ok(vec![construct_comment(
+            source.value(node).unwrap_or_default(),
+            inputs.request_id,
+            control,
+        )?]),
+        NodeKind::Attribute => Err(failure(
             "FXRT1007",
             FailureCategory::Unsupported,
             Some(inputs.request_id),
@@ -1533,6 +1483,7 @@ fn execute_literal_element(
             size: execution.focus_size,
             name: execution_context_name(inputs, execution),
             value: context_string.as_deref(),
+            source: None,
         },
         inputs.request_id,
         control,
@@ -2372,6 +2323,11 @@ fn evaluate_variable_effective_boolean_value(
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
     if let Some(value) = variables.atomics.get(variable) {
+        return atomic_effective_boolean_value(value, inputs.request_id);
+    }
+    if variables.allows_global_fallback(variable)
+        && let Some(value) = inputs.globals.atomics.get(variable)
+    {
         return atomic_effective_boolean_value(value, inputs.request_id);
     }
     if let Some(nodes) = variables.source_nodes.get(variable) {

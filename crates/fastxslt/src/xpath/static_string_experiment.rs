@@ -108,8 +108,14 @@ pub(crate) fn fold_translate_literals(expression: &str) -> Option<String> {
         return None;
     };
     let value = quoted_literal(value)?;
-    let search = quoted_literal(search)?.chars().collect::<Vec<_>>();
-    let replacement = quoted_literal(replacement)?.chars().collect::<Vec<_>>();
+    let search = quoted_literal(search)?;
+    let replacement = quoted_literal(replacement)?;
+    Some(evaluate_translate(value, search, replacement))
+}
+
+pub(crate) fn evaluate_translate(value: &str, search: &str, replacement: &str) -> String {
+    let search = search.chars().collect::<Vec<_>>();
+    let replacement = replacement.chars().collect::<Vec<_>>();
     let mut translated = String::with_capacity(value.len());
     for character in value.chars() {
         let Some(index) = search.iter().position(|candidate| *candidate == character) else {
@@ -120,7 +126,7 @@ pub(crate) fn fold_translate_literals(expression: &str) -> Option<String> {
             translated.push(*replacement);
         }
     }
-    Some(translated)
+    translated
 }
 
 pub(crate) fn fold_substring_literals(expression: &str) -> Option<String> {
@@ -139,25 +145,29 @@ pub(crate) fn fold_substring_literals(expression: &str) -> Option<String> {
         return None;
     }
     let value = quoted_literal(value)?;
-    let start = xpath_round(parse_finite_number(start)?);
-    let end = match remainder.first() {
-        Some(length) => Some(start + xpath_round(parse_finite_number(length)?)),
+    let start = parse_finite_number(start)?;
+    let length = match remainder.first() {
+        Some(length) => Some(parse_finite_number(length)?),
         None => None,
     };
-    let mut position = 1.0;
-    Some(
-        value
-            .chars()
-            .filter(|_| {
-                let selected = position >= start && end.is_none_or(|end| position < end);
-                position += 1.0;
-                selected
-            })
-            .collect(),
-    )
+    Some(evaluate_substring(value, start, length))
 }
 
-fn parse_finite_number(source: &str) -> Option<f64> {
+pub(crate) fn evaluate_substring(value: &str, start: f64, length: Option<f64>) -> String {
+    let start = xpath_round(start);
+    let end = length.map(|length| start + xpath_round(length));
+    let mut position = 1.0;
+    value
+        .chars()
+        .filter(|_| {
+            let selected = position >= start && end.is_none_or(|end| position < end);
+            position += 1.0;
+            selected
+        })
+        .collect()
+}
+
+pub(crate) fn parse_finite_number(source: &str) -> Option<f64> {
     source
         .trim()
         .parse::<f64>()
@@ -169,7 +179,7 @@ fn xpath_round(value: f64) -> f64 {
     (value + 0.5).floor()
 }
 
-fn split_arguments(source: &str, max_arguments: usize) -> Option<Vec<&str>> {
+pub(crate) fn split_arguments(source: &str, max_arguments: usize) -> Option<Vec<&str>> {
     let mut arguments = Vec::new();
     let mut start = 0usize;
     let mut depth = 0usize;

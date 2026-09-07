@@ -566,12 +566,13 @@ fn is_bounded_manual_script(node: &ResultNode) -> bool {
         return false;
     };
     name.namespace.is_none()
-        && name.local == "script"
+        && name.local.eq_ignore_ascii_case("script")
         && namespaces.is_empty()
-        && matches!(attributes.as_slice(), [attribute]
-            if attribute.name.namespace.is_none()
-                && attribute.name.local == "type"
-                && attribute.value == "text/javascript")
+        && (attributes.is_empty()
+            || matches!(attributes.as_slice(), [attribute]
+                if attribute.name.namespace.is_none()
+                    && attribute.name.local.eq_ignore_ascii_case("type")
+                    && attribute.value.eq_ignore_ascii_case("text/javascript")))
         && matches!(children.as_slice(), [ResultNode::Text(_)])
 }
 
@@ -677,7 +678,7 @@ fn plain_html_children<'a>(node: &'a ResultNode, local: &str) -> Option<&'a [Res
         return None;
     };
     (name.namespace.is_none()
-        && name.local == local
+        && name.local.eq_ignore_ascii_case(local)
         && namespaces.is_empty()
         && attributes.is_empty())
     .then_some(children)
@@ -1613,29 +1614,17 @@ fn serialize_content_type_if_needed(
 
 fn is_html_void_element(name: &crate::xml::quick_xml_experiment::ExpandedName) -> bool {
     name.namespace.is_none()
-        && matches!(
-            name.local.as_str(),
-            "area"
-                | "base"
-                | "br"
-                | "col"
-                | "command"
-                | "embed"
-                | "hr"
-                | "img"
-                | "input"
-                | "keygen"
-                | "link"
-                | "meta"
-                | "param"
-                | "source"
-                | "track"
-                | "wbr"
-        )
+        && [
+            "area", "base", "br", "col", "command", "embed", "hr", "img", "input", "keygen",
+            "link", "meta", "param", "source", "track", "wbr",
+        ]
+        .iter()
+        .any(|local| name.local.eq_ignore_ascii_case(local))
 }
 
 fn is_html_raw_text_element(name: &crate::xml::quick_xml_experiment::ExpandedName) -> bool {
-    name.namespace.is_none() && matches!(name.local.as_str(), "script" | "style")
+    name.namespace.is_none()
+        && (name.local.eq_ignore_ascii_case("script") || name.local.eq_ignore_ascii_case("style"))
 }
 
 fn is_xhtml5_default_namespace(namespace: Option<&str>) -> bool {

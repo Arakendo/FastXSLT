@@ -269,7 +269,7 @@ fn parse_string_literal(source: &str) -> Option<&str> {
     None
 }
 
-fn parse_xpath_number_literal(source: &str) -> Option<f64> {
+pub(crate) fn parse_xpath_number_literal(source: &str) -> Option<f64> {
     let source = source.trim();
     let unsigned = source.strip_prefix('-').unwrap_or(source);
     if unsigned.is_empty() || unsigned.starts_with('+') {

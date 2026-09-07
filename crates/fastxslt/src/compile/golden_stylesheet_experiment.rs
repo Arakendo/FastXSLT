@@ -934,6 +934,11 @@ fn compile_parentless_temporary_node(
         }
         return Ok(Some(GlobalBindingDefault::EmptySequence));
     }
+    if let Some(value) =
+        compile_xslt10_temporary_value(document, element, *constructor, declared_type)?
+    {
+        return Ok(Some(value));
+    }
     if is_xslt_element(document, *constructor, "attribute") {
         if declared_type != Some("attribute()") {
             return Err(unsupported(
@@ -998,6 +1003,35 @@ fn compile_parentless_temporary_node(
         _ => unreachable!("the selected static constructor has one known instruction shape"),
     };
     Ok(Some(default))
+}
+
+fn compile_xslt10_temporary_value(
+    document: &Document,
+    binding: NodeId,
+    constructor: NodeId,
+    declared_type: Option<&str>,
+) -> Result<Option<GlobalBindingDefault>, CompileFailure> {
+    let is_xslt10_value = is_xslt_element(document, constructor, "value-of")
+        && document.parent(binding).is_some_and(|stylesheet| {
+            optional_attribute(document, stylesheet, None, "version") == Some("1.0")
+        });
+    if !is_xslt10_value {
+        return Ok(None);
+    }
+    if declared_type.is_some() {
+        return Err(unsupported(
+            "FXST1016",
+            "the XSLT 1.0 temporary value-of slice does not admit a declared sequence type",
+            document.location(binding),
+        ));
+    }
+    ensure_only_attributes(document, constructor, &["select"], "xsl:value-of")?;
+    ensure_no_meaningful_children(document, constructor, "xsl:value-of")?;
+    let select = required_attribute(document, constructor, None, "select")?;
+    Ok(Some(GlobalBindingDefault::Xslt10TemporarySourceString(
+        parse_location_path(select, document.location(constructor).clone())
+            .map_err(map_path_failure)?,
+    )))
 }
 
 fn compile_constructed_elements(

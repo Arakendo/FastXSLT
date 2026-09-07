@@ -7,8 +7,9 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 use super::{
-    CompileFailure, compile_sequence_excluding, ensure_only_attributes, invalid, is_ascii_ncname,
-    is_xslt_element, meaningful_children, required_attribute, unsupported,
+    CompileFailure, compile_sequence_excluding, ensure_no_meaningful_children,
+    ensure_only_attributes, invalid, is_ascii_ncname, is_xslt_element, meaningful_children,
+    required_attribute, unsupported,
 };
 
 pub(super) fn compile_copy(
@@ -54,12 +55,47 @@ fn compile_static_attribute(
             document.location(element),
         ));
     }
+    let children = meaningful_children(document, element);
+    let value = match children.as_slice() {
+        [value_of] if is_xslt_element(document, *value_of, "value-of") => {
+            ensure_only_attributes(document, *value_of, &["select"], "xsl:value-of")?;
+            ensure_no_meaningful_children(document, *value_of, "xsl:value-of")?;
+            let select = required_attribute(document, *value_of, None, "select")?;
+            let Some(local) = select
+                .strip_prefix('@')
+                .filter(|local| is_ascii_ncname(local))
+            else {
+                return Err(unsupported(
+                    "FXXP1012",
+                    format!("unsupported source-copy attribute value expression: {select}"),
+                    document.location(*value_of),
+                ));
+            };
+            LiteralAttributeValue::SourceAttribute(ExpandedName {
+                namespace: None,
+                local: local.to_owned(),
+            })
+        }
+        _ if children.iter().all(|child| {
+            document.kind(*child) == crate::xdm::owned_tree_experiment::NodeKind::Text
+        }) =>
+        {
+            LiteralAttributeValue::Text(document.string_value(element))
+        }
+        _ => {
+            return Err(unsupported(
+                "FXST1031",
+                "the private source-copy attribute slice requires text or one unqualified source-attribute value",
+                document.location(element),
+            ));
+        }
+    };
     Ok(LiteralAttribute {
         name: ExpandedName {
             namespace: None,
             local: name.to_owned(),
         },
-        value: LiteralAttributeValue::Text(document.string_value(element)),
+        value,
         location: document.location(element).clone(),
     })
 }

@@ -713,6 +713,7 @@ pub(super) fn execute_temporary_copy(
                         size: execution.focus_size,
                         name: Some(name),
                         value: context_string.as_deref(),
+                        source: None,
                     },
                     inputs.request_id,
                     control,

@@ -352,7 +352,10 @@ impl ExactRational {
         self.checked_add(right.checked_negate()?)
     }
 
-    fn checked_multiply(self, right: Self) -> Result<Self, BinaryNumericEvaluationFailure> {
+    pub(crate) fn checked_multiply(
+        self,
+        right: Self,
+    ) -> Result<Self, BinaryNumericEvaluationFailure> {
         let numerator = self
             .numerator
             .checked_mul(right.numerator)
@@ -364,7 +367,10 @@ impl ExactRational {
         Self::normalized(numerator, denominator).ok_or(BinaryNumericEvaluationFailure::Overflow)
     }
 
-    fn checked_divide(self, right: Self) -> Result<Self, BinaryNumericEvaluationFailure> {
+    pub(crate) fn checked_divide(
+        self,
+        right: Self,
+    ) -> Result<Self, BinaryNumericEvaluationFailure> {
         let numerator = self
             .numerator
             .checked_mul(right.denominator)
@@ -386,7 +392,7 @@ impl ExactRational {
         })
     }
 
-    fn format_decimal(self) -> Result<String, BinaryNumericEvaluationFailure> {
+    pub(crate) fn format_decimal(self) -> Result<String, BinaryNumericEvaluationFailure> {
         if self.denominator == 1 {
             return Ok(self.numerator.to_string());
         }

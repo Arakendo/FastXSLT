@@ -167,6 +167,46 @@ public version-mode contract.
 - [x] Implement default single-level and bounded literal/focus-value
   `xsl:number` through shared XDM/focus/result paths, raising the strict lower
   bound from 857 to 863 while leaving one newly exposed mismatch uncredited.
+- [x] Add bounded single-token decimal `xsl:number` formatting and charged
+  context-item numeric conversion, raising the strict lower bound from 863 to
+  871 while leaving two upstream doubt-annotated expectations uncredited.
+- [x] Add charged single-level exact-name, any-element, and document `count` /
+  `from` patterns, raising the strict lower bound from 871 to 880 with all nine
+  newly initialized cases passing.
+- [x] Add charged `level="any"` document-order accumulation and `from` reset,
+  raising the strict lower bound from 880 to 887 while two newly exposed cases
+  remain at the existing HTML-serialization boundary.
+- [x] Add charged `level="multiple"` ancestor-lineage numbering with repeated
+  decimal-token formatting, raising the strict lower bound from 887 to 893
+  while one newly exposed later failure remains uncredited.
+- [x] Add static unions of admitted `xsl:number` `count`/`from` atoms, raising
+  the strict lower bound from 893 to 906 expected-result matches while the one
+  newly visible mismatch remains explicitly uncredited with its upstream doubts
+  metadata.
+- [x] Add typed `node()`/`@*` number-pattern atoms and charged exact
+  attribute-value predicates, raising the strict lower bound from 906 to 912
+  with all six newly initialized cases matching exactly.
+- [x] Add charged exact/modulo sibling-position predicates and one parent/child
+  number-pattern relationship, raising the strict lower bound from 912 to 915
+  with all three newly initialized cases matching exactly.
+- [x] Compile Latin alphabetic/Roman and multi-token number-format plans plus
+  static decimal grouping, raising the strict lower bound from 915 to 947 while
+  one newly exposed later execution failure remains uncredited.
+- [x] Compile XSLT 1.0 node-set string conversion as a distinct first-node
+  location-path operation and preserve source comments through `xsl:copy`,
+  raising the strict lower bound from 947 to 962 without weakening modern
+  cardinality behavior.
+- [x] Expand the typed `format-number()` evaluator through bounded source-free
+  operands and static default-decimal pictures, raising the strict lower bound
+  from 962 to 983 while preserving exercised invalid-picture errors.
+- [x] Correct single-level `xsl:number` `from` boundary composition and isolate
+  XPath 1.0 numeric-sort conversion, raising the exact lower bound from 983 to
+  986; retain the source-copy serialization-only mismatch without credit.
+- [x] Reuse variable EBV across conditions and value construction, isolate
+  XPath 1.0 node-set/boolean comparison at compilation, and materialize a
+  bounded source-derived temporary value, raising the exact lower bound from
+  986 to 996 while retaining disputed temporary-tree expectations as visible
+  mismatches.
 - [x] Prove at least one legacy-discovered defect can be repaired through the
   shared modern runtime.
 - [x] Add a formal XSLT 1.0 compatibility checkpoint and subsequent modern
@@ -596,6 +636,40 @@ maintained redistributable legacy suite becomes available.
   from 800 to 808 through eight doubt-annotated cases. Two additional cases
   reach later execution boundaries and remain uncredited; compiler dispatch
   preserves the existing XSLT 1.0 `0 div 0` rule and runtime stays shared.
+- 2026-09-06 -- Shared variable EBV, a compile-selected XPath 1.0
+  node-set/boolean/string/number comparison plan, and bounded source-derived
+  temporary values raised expected-result matches from 986 to 996. Two doubt-annotated
+  temporary-tree boolean expectations remain visible and uncredited rather
+  than changing the standards-correct conversion to fit archival output.
+- 2026-09-06 -- Compile-selected XPath 1.0 variable `string()` and `number()`
+  conversion reused the shared atomic, source-node, and temporary-tree owners
+  and raised expected-result matches from 996 to 1,002. Initialization and
+  execution each gained six cases without adding a mismatch or execution
+  failure; modern typed behavior remains unchanged.
+- 2026-09-06 -- Namespace-aware path-plus-literal plans for `contains()`,
+  `starts-with()`, `substring-before()`, and `substring-after()` reused the
+  shared controlled path/string-value runtime and raised expected-result
+  matches from 1,002 to 1,021. All 19 newly executed cases agree exactly; no
+  mismatch or execution-failure count changed, and modern cardinality remains
+  untouched.
+- 2026-09-06 -- A compatibility-only `sum(path)` plan reused namespace-aware
+  controlled navigation and per-node string-value conversion, raising
+  expected-result matches from 1,021 to 1,026 through five exact cases. Empty
+  node sets, invalid numerics, and work accounting remain explicit; no
+  mismatch or execution-failure count changed.
+- 2026-09-06 -- A compatibility-only path-based `substring()` plan reused the
+  controlled path evaluator and the existing Unicode/codepoint XPath-rounding
+  helper, raising expected-result matches from 1,026 to 1,033 through seven
+  exact cases without adding a mismatch or execution failure.
+- 2026-09-06 -- A compatibility-only path-based `translate()` plan reused the
+  controlled path evaluator and shared Unicode/codepoint translation helper,
+  raising expected-result matches from 1,033 to 1,041 through eight exact
+  cases without adding a mismatch or execution failure.
+- 2026-09-06 -- The accumulated compatibility runtime crossed ADR-0004's
+  2,000-line review threshold. XSLT 1.0 conversions and bounded path functions
+  moved into a private 266-line typed module, reducing the parent value
+  evaluator from 2,017 to 1,764 lines without moving compiler, XDM, result,
+  host-policy, or public-API ownership.
 - 2026-09-04 -- The exploratory report identified the then-current two
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated

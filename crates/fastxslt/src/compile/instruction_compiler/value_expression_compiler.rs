@@ -20,6 +20,10 @@ use super::{
     recognizes_escape_html_uri, recognizes_iri_to_uri, recognizes_sequence_cardinality,
     recognizes_source_free_scalar, recognizes_string_length, unsupported, xpath_string_literal,
 };
+use crate::xslt::golden_semantics_experiment::{
+    Xslt10PathStringFunction, Xslt10PathStringFunctionKind, Xslt10PathSubstring,
+    Xslt10PathTranslate,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum ValueCompatibilityMode {
@@ -189,6 +193,41 @@ pub(super) fn compile_value_expression(
     if let Some(value) = compile_integral_function_path(document, element, expression, location)? {
         return Ok(value);
     }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(variable) = parse_xslt10_variable_conversion(expression, "string")
+    {
+        return Ok(ValueExpression::Xslt10VariableString(variable.to_owned()));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(variable) = parse_xslt10_variable_conversion(expression, "number")
+    {
+        return Ok(ValueExpression::Xslt10VariableNumber(variable.to_owned()));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(function) =
+            compile_xslt10_path_string_function(document, element, expression, location)?
+    {
+        return Ok(ValueExpression::Xslt10PathStringFunction(Box::new(
+            function,
+        )));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(path) = compile_xslt10_sum_path(document, element, expression, location)?
+    {
+        return Ok(ValueExpression::Xslt10SumPath(path));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(substring) =
+            compile_xslt10_path_substring(document, element, expression, location)?
+    {
+        return Ok(ValueExpression::Xslt10PathSubstring(Box::new(substring)));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(translate) =
+            compile_xslt10_path_translate(document, element, expression, location)?
+    {
+        return Ok(ValueExpression::Xslt10PathTranslate(Box::new(translate)));
+    }
     if let Some(path) = compile_number_path(document, element, expression, location)? {
         return Ok(ValueExpression::NumberPath(path));
     }
@@ -263,6 +302,20 @@ pub(super) fn compile_value_expression(
         compile_sequence_cardinality_value(expression, location)?
     } else if recognizes_document_boolean(expression) {
         compile_document_boolean_value(expression, location)?
+    } else if let Some(variable) = parse_variable_boolean_call(expression) {
+        ValueExpression::VariableEffectiveBooleanValue(variable.to_owned())
+    } else if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some((variable, value, equal)) = parse_xslt10_variable_boolean_comparison(expression)
+    {
+        ValueExpression::Xslt10VariableBooleanComparison {
+            variable: variable.to_owned(),
+            value,
+            equal,
+        }
+    } else if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(comparison) = parse_xslt10_variable_atomic_comparison(expression)
+    {
+        comparison
     } else if recognizes_source_free_scalar(expression) {
         compile_source_free_scalar_value(expression, location)?
     } else if expression.contains(" castable as ") {
@@ -340,7 +393,7 @@ pub(super) fn compile_value_expression(
     {
         ValueExpression::NodeNamespaceUriPath(path?)
     } else if matches!(expression.trim(), "string()" | "string(.)") {
-        compile_location_path_or_missing_context(".", location)?
+        compile_location_path_or_missing_context(".", location, static_context)?
     } else if expression.trim() == "upper-case(.)" {
         ValueExpression::UpperCaseContextString
     } else if let Some((literal, variable)) = parse_literal_variable_concat(expression) {
@@ -355,8 +408,281 @@ pub(super) fn compile_value_expression(
         }
         ValueExpression::Variable(variable.to_owned())
     } else {
-        compile_location_path_or_missing_context(expression, location)?
+        compile_location_path_or_missing_context(expression, location, static_context)?
     })
+}
+
+fn parse_variable_boolean_call(expression: &str) -> Option<&str> {
+    let variable = expression
+        .trim()
+        .strip_prefix("boolean(")?
+        .strip_suffix(')')?
+        .trim()
+        .strip_prefix('$')?;
+    is_ascii_ncname(variable).then_some(variable)
+}
+
+fn parse_xslt10_variable_conversion<'a>(expression: &'a str, function: &str) -> Option<&'a str> {
+    let variable = expression
+        .trim()
+        .strip_prefix(function)?
+        .trim_start_matches([' ', '\t', '\r', '\n'])
+        .strip_prefix('(')?
+        .strip_suffix(')')?
+        .trim()
+        .strip_prefix('$')?;
+    is_ascii_ncname(variable).then_some(variable)
+}
+
+fn compile_xslt10_path_string_function(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<Xslt10PathStringFunction>, CompileFailure> {
+    let expression = expression.trim();
+    let Some((kind, arguments)) = [
+        (Xslt10PathStringFunctionKind::Contains, "contains("),
+        (Xslt10PathStringFunctionKind::StartsWith, "starts-with("),
+        (
+            Xslt10PathStringFunctionKind::SubstringBefore,
+            "substring-before(",
+        ),
+        (
+            Xslt10PathStringFunctionKind::SubstringAfter,
+            "substring-after(",
+        ),
+    ]
+    .into_iter()
+    .find_map(|(kind, prefix)| {
+        expression
+            .strip_prefix(prefix)
+            .and_then(|value| value.strip_suffix(')'))
+            .map(|arguments| (kind, arguments))
+    }) else {
+        return Ok(None);
+    };
+    let Some((path, operand)) = arguments.split_once(',') else {
+        return Ok(None);
+    };
+    let Some(operand) = xpath_string_literal(operand.trim()) else {
+        return Ok(None);
+    };
+    let mut path = parse_location_path(path.trim(), location.clone()).map_err(map_path_failure)?;
+    if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+        for step in &mut path.steps {
+            if let PathStep::ChildNamed(local) = step {
+                *step = PathStep::ChildExpandedName(ExpandedName {
+                    namespace: Some(namespace.to_owned()),
+                    local: local.clone(),
+                });
+            }
+        }
+    }
+    Ok(Some(Xslt10PathStringFunction {
+        kind,
+        path,
+        operand: operand.to_owned(),
+    }))
+}
+
+fn compile_xslt10_sum_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<LocationPath>, CompileFailure> {
+    let Some(argument) = expression
+        .trim()
+        .strip_prefix("sum(")
+        .and_then(|value| value.strip_suffix(')'))
+        .map(str::trim)
+        .filter(|argument| !argument.is_empty() && !argument.starts_with('$'))
+    else {
+        return Ok(None);
+    };
+    let mut path = parse_location_path(argument, location.clone()).map_err(map_path_failure)?;
+    if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+        for step in &mut path.steps {
+            if let PathStep::ChildNamed(local) = step {
+                *step = PathStep::ChildExpandedName(ExpandedName {
+                    namespace: Some(namespace.to_owned()),
+                    local: local.clone(),
+                });
+            }
+        }
+    }
+    Ok(Some(path))
+}
+
+fn compile_xslt10_path_substring(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<Xslt10PathSubstring>, CompileFailure> {
+    let Some(arguments) = expression
+        .trim()
+        .strip_prefix("substring(")
+        .and_then(|value| value.strip_suffix(')'))
+    else {
+        return Ok(None);
+    };
+    let Some(arguments) = crate::xpath::static_string_experiment::split_arguments(arguments, 3)
+    else {
+        return Ok(None);
+    };
+    let [path, start, remainder @ ..] = arguments.as_slice() else {
+        return Ok(None);
+    };
+    if remainder.len() > 1 {
+        return Ok(None);
+    }
+    let Some(start) = crate::xpath::static_string_experiment::parse_finite_number(start) else {
+        return Ok(None);
+    };
+    let length = match remainder.first() {
+        Some(length) => {
+            let Some(length) = crate::xpath::static_string_experiment::parse_finite_number(length)
+            else {
+                return Ok(None);
+            };
+            Some(length.to_bits())
+        }
+        None => None,
+    };
+    let mut path = parse_location_path(path, location.clone()).map_err(map_path_failure)?;
+    if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+        for step in &mut path.steps {
+            if let PathStep::ChildNamed(local) = step {
+                *step = PathStep::ChildExpandedName(ExpandedName {
+                    namespace: Some(namespace.to_owned()),
+                    local: local.clone(),
+                });
+            }
+        }
+    }
+    Ok(Some(Xslt10PathSubstring {
+        path,
+        start_bits: start.to_bits(),
+        length_bits: length,
+    }))
+}
+
+fn compile_xslt10_path_translate(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<Xslt10PathTranslate>, CompileFailure> {
+    let Some(arguments) = expression
+        .trim()
+        .strip_prefix("translate(")
+        .and_then(|value| value.strip_suffix(')'))
+    else {
+        return Ok(None);
+    };
+    let Some(arguments) = crate::xpath::static_string_experiment::split_arguments(arguments, 3)
+    else {
+        return Ok(None);
+    };
+    let [path, search, replacement] = arguments.as_slice() else {
+        return Ok(None);
+    };
+    let (Some(search), Some(replacement)) = (
+        xpath_string_literal(search),
+        xpath_string_literal(replacement),
+    ) else {
+        return Ok(None);
+    };
+    let mut path = parse_location_path(path, location.clone()).map_err(map_path_failure)?;
+    if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+        for step in &mut path.steps {
+            if let PathStep::ChildNamed(local) = step {
+                *step = PathStep::ChildExpandedName(ExpandedName {
+                    namespace: Some(namespace.to_owned()),
+                    local: local.clone(),
+                });
+            }
+        }
+    }
+    Ok(Some(Xslt10PathTranslate {
+        path,
+        search: search.to_owned(),
+        replacement: replacement.to_owned(),
+    }))
+}
+
+fn parse_xslt10_variable_boolean_comparison(expression: &str) -> Option<(&str, bool, bool)> {
+    let mut expression = expression.trim();
+    let mut invert = false;
+    if let Some(inner) = expression
+        .strip_prefix("not(")
+        .and_then(|value| value.strip_suffix(')'))
+    {
+        expression = inner.trim();
+        invert = true;
+    }
+    let (left, right, mut equal) = if let Some((left, right)) = expression.split_once("!=") {
+        (left.trim(), right.trim(), false)
+    } else {
+        let (left, right) = expression.split_once('=')?;
+        (left.trim(), right.trim(), true)
+    };
+    equal ^= invert;
+    let parse_boolean = |candidate: &str| match candidate {
+        "true()" => Some(true),
+        "false()" => Some(false),
+        _ => None,
+    };
+    parse_boolean_comparison_variable(left)
+        .zip(parse_boolean(right))
+        .or_else(|| parse_boolean_comparison_variable(right).zip(parse_boolean(left)))
+        .map(|(variable, value)| (variable, value, equal))
+}
+
+fn parse_boolean_comparison_variable(candidate: &str) -> Option<&str> {
+    candidate
+        .strip_prefix('$')
+        .filter(|variable| is_ascii_ncname(variable))
+}
+
+fn parse_xslt10_variable_atomic_comparison(expression: &str) -> Option<ValueExpression> {
+    let mut expression = expression.trim();
+    let mut negate = false;
+    if let Some(inner) = expression
+        .strip_prefix("not(")
+        .and_then(|value| value.strip_suffix(')'))
+    {
+        expression = inner.trim();
+        negate = true;
+    }
+    let (left, right, equal) = if let Some((left, right)) = expression.split_once("!=") {
+        (left.trim(), right.trim(), false)
+    } else {
+        let (left, right) = expression.split_once('=')?;
+        (left.trim(), right.trim(), true)
+    };
+    let (variable, atomic) = parse_boolean_comparison_variable(left)
+        .map(|variable| (variable, right))
+        .or_else(|| parse_boolean_comparison_variable(right).map(|variable| (variable, left)))?;
+    if let Some(value) = xpath_string_literal(atomic) {
+        return Some(ValueExpression::Xslt10VariableStringComparison {
+            variable: variable.to_owned(),
+            value: value.to_owned(),
+            equal,
+            negate,
+        });
+    }
+    atomic
+        .parse::<i32>()
+        .ok()
+        .map(|value| ValueExpression::Xslt10VariableNumberComparison {
+            variable: variable.to_owned(),
+            value,
+            equal,
+            negate,
+        })
 }
 
 fn compile_binary_numeric_path(
@@ -417,9 +743,13 @@ fn compile_binary_numeric_node(
 fn compile_location_path_or_missing_context(
     expression: &str,
     location: &SourceLocation,
+    static_context: ValueStaticContext,
 ) -> Result<ValueExpression, CompileFailure> {
     match parse_location_path(expression, location.clone()) {
-        Ok(path) => Ok(ValueExpression::LocationPath(path)),
+        Ok(path) => Ok(match static_context.compatibility {
+            ValueCompatibilityMode::Modern => ValueExpression::LocationPath(path),
+            ValueCompatibilityMode::Xslt10 => ValueExpression::Xslt10FirstNodeLocationPath(path),
+        }),
         Err(failure @ PathFailure::Unsupported { .. }) => {
             if let Some(requirement) = classify_missing_context(expression, location.clone()) {
                 Ok(ValueExpression::ContextRequiredOnly(requirement.location))

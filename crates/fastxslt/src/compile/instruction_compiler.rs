@@ -59,8 +59,8 @@ use crate::xpath::string_length_experiment::{
 };
 use crate::xslt::golden_semantics_experiment::{
     ChooseBranch, ComputedAttribute, ElementConstructorOrigin, Instruction, LiteralAttributeValue,
-    NumberValue, SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect,
-    StringComparison, TemplateArgument, ValueExpression,
+    SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect, StringComparison,
+    TemplateArgument, ValueExpression,
 };
 
 #[path = "instruction_compiler/computed_attribute_compiler.rs"]
@@ -76,6 +76,9 @@ use value_expression_compiler::{compile_value_expression, generated_root_argumen
 #[path = "instruction_compiler/literal_attribute_compiler.rs"]
 mod literal_attribute_compiler;
 pub(super) use literal_attribute_compiler::compile_literal_result_attributes;
+#[path = "instruction_compiler/number_compiler.rs"]
+mod number_compiler;
+use number_compiler::compile as compile_number;
 #[path = "instruction_compiler/source_copy_compiler.rs"]
 mod source_copy_compiler;
 use source_copy_compiler::compile_copy;
@@ -221,49 +224,6 @@ fn compile_literal_text_node(
         value: value.to_owned(),
         location: document.location(node).clone(),
     })
-}
-
-fn compile_number(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
-    ensure_only_attributes(document, element, &["level", "value"], "xsl:number")?;
-    ensure_no_meaningful_children(document, element, "xsl:number")?;
-    if optional_attribute(document, element, None, "level")
-        .is_some_and(|level| level.trim() != "single")
-    {
-        return Err(unsupported(
-            "FXST1048",
-            "the admitted xsl:number slice supports only the default level='single'",
-            document.location(element),
-        ));
-    }
-    let value = optional_attribute(document, element, None, "value")
-        .map(|value| compile_number_value(value, document.location(element)))
-        .transpose()?;
-    Ok(Instruction::Number {
-        value,
-        location: document.location(element).clone(),
-    })
-}
-
-fn compile_number_value(
-    expression: &str,
-    location: &SourceLocation,
-) -> Result<NumberValue, CompileFailure> {
-    let expression = expression.trim();
-    if expression == "position()" {
-        return Ok(NumberValue::ContextPosition);
-    }
-    let lexical = xpath_string_literal(expression).unwrap_or(expression);
-    if lexical.parse::<f64>().is_ok() {
-        return Ok(NumberValue::Literal(lexical.to_owned()));
-    }
-    if xpath_string_literal(expression).is_some() {
-        return Ok(NumberValue::Literal(lexical.to_owned()));
-    }
-    Err(unsupported(
-        "FXXP1022",
-        format!("unsupported xsl:number value expression: {expression}"),
-        location,
-    ))
 }
 
 fn text_run_contains_non_whitespace(
@@ -713,6 +673,7 @@ pub(super) fn compile_sort_keys(
     document: &Document,
     parent: NodeId,
 ) -> Result<(Vec<SortKey>, Vec<NodeId>), CompileFailure> {
+    let xslt10_numeric_conversion = uses_xslt10_compatibility(document, parent);
     let children = meaningful_children(document, parent);
     let mut sorts = Vec::new();
     let mut sort_nodes = Vec::new();
@@ -774,12 +735,27 @@ pub(super) fn compile_sort_keys(
         sorts.push(SortKey {
             select,
             data_type,
+            xslt10_numeric_conversion,
             order,
             location,
         });
         sort_nodes.push(child);
     }
     Ok((sorts, sort_nodes))
+}
+
+fn uses_xslt10_compatibility(document: &Document, element: NodeId) -> bool {
+    let mut current = Some(element);
+    while let Some(node) = current {
+        if document.name(node).is_some_and(|name| {
+            name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+                && matches!(name.local.as_str(), "stylesheet" | "transform")
+        }) {
+            return optional_attribute(document, node, None, "version") == Some("1.0");
+        }
+        current = document.parent(node);
+    }
+    false
 }
 
 fn parse_static_integer_range(expression: &str) -> Option<(i64, i64)> {

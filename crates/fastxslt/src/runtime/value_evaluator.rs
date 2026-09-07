@@ -62,6 +62,9 @@ use crate::xslt::golden_semantics_experiment::{
     ConditionalPathBranch, ConditionalPathExpression, IntegerComparisonOperator, ValueExpression,
 };
 
+#[path = "value_evaluator/xslt10_compatibility.rs"]
+mod xslt10_compatibility;
+
 use super::{
     ExecutionFailure, FailureCategory, ResultNode, RuntimeVariables, SequenceContext,
     SequenceFocus, SequenceInputs, append_text, control_failure, failure, failure_at,
@@ -89,6 +92,9 @@ pub(super) fn execute_value_of(
         }
         ValueExpression::LocationPath(path) => {
             append_location_path_string(inputs, path, context, result, control)?;
+        }
+        ValueExpression::Xslt10FirstNodeLocationPath(path) => {
+            append_xslt10_first_node_location_path_string(inputs, path, context, result, control)?;
         }
         ValueExpression::CountLocationPath(path) => {
             append_location_path_count(inputs, path, context, result, control)?;
@@ -238,6 +244,73 @@ pub(super) fn execute_value_of(
         }
         ValueExpression::EmptyLocationPath(path) => {
             append_empty_location_path(inputs, path, context, result, control)?;
+        }
+        ValueExpression::VariableEffectiveBooleanValue(variable) => {
+            let value = super::evaluate_variable_effective_boolean_value(
+                inputs, variable, variables, control,
+            )?;
+            append_boolean(inputs, value, result, control)?;
+        }
+        ValueExpression::Xslt10VariableString(variable) => {
+            let value =
+                xslt10_compatibility::variable_string_value(inputs, variable, variables, control)?;
+            append_text(result, &value, inputs.request_id, control)?;
+        }
+        ValueExpression::Xslt10VariableNumber(variable) => {
+            let value =
+                xslt10_compatibility::variable_string_value(inputs, variable, variables, control)?;
+            let value = xslt10_compatibility::number_lexical(&value);
+            append_text(result, &value, inputs.request_id, control)?;
+        }
+        ValueExpression::Xslt10PathStringFunction(expression) => {
+            xslt10_compatibility::append_path_string_function(
+                inputs, context, expression, result, control,
+            )?;
+        }
+        ValueExpression::Xslt10SumPath(path) => {
+            xslt10_compatibility::append_sum_path(inputs, context, path, result, control)?;
+        }
+        ValueExpression::Xslt10PathSubstring(expression) => {
+            xslt10_compatibility::append_path_substring(
+                inputs, context, expression, result, control,
+            )?;
+        }
+        ValueExpression::Xslt10PathTranslate(expression) => {
+            xslt10_compatibility::append_path_translate(
+                inputs, context, expression, result, control,
+            )?;
+        }
+        ValueExpression::Xslt10VariableBooleanComparison {
+            variable,
+            value,
+            equal,
+        } => {
+            let actual = super::evaluate_variable_effective_boolean_value(
+                inputs, variable, variables, control,
+            )?;
+            append_boolean(inputs, (actual == *value) == *equal, result, control)?;
+        }
+        ValueExpression::Xslt10VariableStringComparison {
+            variable,
+            value,
+            equal,
+            negate,
+        } => {
+            let matches = xslt10_compatibility::variable_string_comparison(
+                inputs, variable, value, *equal, variables, control,
+            )?;
+            append_boolean(inputs, matches != *negate, result, control)?;
+        }
+        ValueExpression::Xslt10VariableNumberComparison {
+            variable,
+            value,
+            equal,
+            negate,
+        } => {
+            let matches = xslt10_compatibility::variable_number_comparison(
+                inputs, variable, *value, *equal, variables, control,
+            )?;
+            append_boolean(inputs, matches != *negate, result, control)?;
         }
         ValueExpression::SourceFreeScalar(expression) => {
             append_source_free_scalar(inputs, expression, result, control)?;
@@ -956,6 +1029,22 @@ fn append_location_path_string(
             "the private value-of slice does not define multi-node conversion",
         ));
     }
+    if let Some(node) = selected.first() {
+        append_source_string_value(inputs, *node, result, control)?;
+    }
+    Ok(())
+}
+
+fn append_xslt10_first_node_location_path_string(
+    inputs: &SequenceInputs<'_>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    context: Option<NodeId>,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let selected = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
     if let Some(node) = selected.first() {
         append_source_string_value(inputs, *node, result, control)?;
     }

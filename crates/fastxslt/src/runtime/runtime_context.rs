@@ -361,18 +361,7 @@ fn materialize_global_default(
             materialize_source_node_identity(globals, binding, path, source, request_id, control)?;
         }
         GlobalBindingDefault::Variable(name) => {
-            if let Some(value) = globals.atomics.get(name).cloned() {
-                Arc::make_mut(&mut globals.atomics).insert(binding.name.clone(), value);
-            } else if let Some(nodes) = globals.nodes.get(name).cloned() {
-                globals.nodes.insert(binding.name.clone(), nodes);
-            } else {
-                return Err(failure(
-                    "FXRT0002",
-                    FailureCategory::Invalid,
-                    Some(request_id),
-                    format!("unbound global dependency: ${name}"),
-                ));
-            }
+            materialize_global_alias(globals, binding, name, request_id)?;
         }
         GlobalBindingDefault::TemporaryTree(elements) => {
             let tree = materialize_temporary_tree(elements, request_id, control)?;
@@ -384,6 +373,11 @@ fn materialize_global_default(
                 request_id,
                 control,
             )?;
+            globals.temporary_trees.insert(binding.name.clone(), tree);
+        }
+        GlobalBindingDefault::Xslt10TemporarySourceString(path) => {
+            let tree =
+                materialize_xslt10_temporary_source_string(path, source, request_id, control)?;
             globals.temporary_trees.insert(binding.name.clone(), tree);
         }
         GlobalBindingDefault::TemporaryAttribute { name, value } => {
@@ -418,6 +412,55 @@ fn materialize_global_default(
         }
     }
     Ok(())
+}
+
+fn materialize_global_alias(
+    globals: &mut RuntimeGlobals,
+    binding: &GlobalBinding,
+    dependency: &str,
+    request_id: &str,
+) -> Result<(), ExecutionFailure> {
+    if let Some(value) = globals.atomics.get(dependency).cloned() {
+        Arc::make_mut(&mut globals.atomics).insert(binding.name.clone(), value);
+        return Ok(());
+    }
+    if let Some(nodes) = globals.nodes.get(dependency).cloned() {
+        globals.nodes.insert(binding.name.clone(), nodes);
+        return Ok(());
+    }
+    Err(failure(
+        "FXRT0002",
+        FailureCategory::Invalid,
+        Some(request_id),
+        format!("unbound global dependency: ${dependency}"),
+    ))
+}
+
+fn materialize_xslt10_temporary_source_string(
+    path: &crate::xpath::path_experiment::LocationPath,
+    source: Option<&Document>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<TemporaryTree, ExecutionFailure> {
+    let source = source.ok_or_else(|| {
+        failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "an XSLT 1.0 source-dependent temporary tree requires a principal source",
+        )
+    })?;
+    let selected = evaluate_location_path_controlled(source, source.document_node(), path, control)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    let value = selected.first().map_or_else(
+        || Ok(String::new()),
+        |node| {
+            source
+                .string_value_controlled(*node, control)
+                .map_err(|failure| control_failure(failure, request_id))
+        },
+    )?;
+    materialize_parentless_temporary_node(TemporaryNodeKind::Text(value), request_id, control)
 }
 
 fn materialize_double_division(

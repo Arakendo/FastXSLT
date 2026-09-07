@@ -128,6 +128,7 @@ pub(crate) enum GlobalBindingDefault {
     Variable(String),
     TemporaryTree(Vec<ConstructedElement>),
     TemporaryText(String),
+    Xslt10TemporarySourceString(LocationPath),
     TemporaryAttribute {
         name: ExpandedName,
         value: String,
@@ -350,6 +351,7 @@ pub(crate) enum SortOrder {
 pub(crate) struct SortKey {
     pub(crate) select: SortSelect,
     pub(crate) data_type: SortDataType,
+    pub(crate) xslt10_numeric_conversion: bool,
     pub(crate) order: SortOrder,
     pub(crate) location: SourceLocation,
 }
@@ -397,6 +399,10 @@ pub(crate) enum Instruction {
     },
     Number {
         value: Option<NumberValue>,
+        level: NumberLevel,
+        count: Option<NumberPattern>,
+        from: Option<NumberPattern>,
+        format: NumberFormat,
         location: SourceLocation,
     },
     Variable {
@@ -515,12 +521,80 @@ pub(crate) enum Instruction {
 pub(crate) enum NumberValue {
     Literal(String),
     ContextPosition,
+    ContextItem,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct NumberFormat {
+    pub(crate) prefix: String,
+    pub(crate) tokens: Vec<NumberFormatToken>,
+    pub(crate) separators: Vec<String>,
+    pub(crate) grouping: Option<NumberGrouping>,
+    pub(crate) suffix: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct NumberGrouping {
+    pub(crate) separator: char,
+    pub(crate) size: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct NumberFormatToken {
+    pub(crate) minimum_width: usize,
+    pub(crate) style: NumberTokenStyle,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum NumberTokenStyle {
+    Decimal,
+    AlphabeticUpper,
+    AlphabeticLower,
+    RomanUpper,
+    RomanLower,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum NumberPattern {
+    Document,
+    AnyNode,
+    AnyElement,
+    AnyAttribute,
+    Element(ExpandedName),
+    ElementWithAttributeValue {
+        element: ExpandedName,
+        attribute: ExpandedName,
+        value: String,
+    },
+    ElementAtSiblingPosition {
+        element: ExpandedName,
+        predicate: NumberPositionPredicate,
+    },
+    ChildOf {
+        parent: Box<NumberPattern>,
+        child: Box<NumberPattern>,
+    },
+    Alternatives(Vec<NumberPattern>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum NumberPositionPredicate {
+    Exact(usize),
+    Modulo { divisor: usize, remainder: usize },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum NumberLevel {
+    Single,
+    Multiple,
+    Any,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ValueExpression {
     LiteralString(String),
     LocationPath(LocationPath),
+    Xslt10FirstNodeLocationPath(LocationPath),
     CountLocationPath(LocationPath),
     RootPath(LocationPath),
     RootVariable(String),
@@ -572,6 +646,30 @@ pub(crate) enum ValueExpression {
     DurationComponent(Box<DurationComponentExpression>),
     SequenceCardinality(Box<SequenceCardinalityExpression>),
     EmptyLocationPath(LocationPath),
+    VariableEffectiveBooleanValue(String),
+    Xslt10VariableString(String),
+    Xslt10VariableNumber(String),
+    Xslt10PathStringFunction(Box<Xslt10PathStringFunction>),
+    Xslt10SumPath(LocationPath),
+    Xslt10PathSubstring(Box<Xslt10PathSubstring>),
+    Xslt10PathTranslate(Box<Xslt10PathTranslate>),
+    Xslt10VariableBooleanComparison {
+        variable: String,
+        value: bool,
+        equal: bool,
+    },
+    Xslt10VariableStringComparison {
+        variable: String,
+        value: String,
+        equal: bool,
+        negate: bool,
+    },
+    Xslt10VariableNumberComparison {
+        variable: String,
+        value: i32,
+        equal: bool,
+        negate: bool,
+    },
     SourceFreeScalar(Box<ScalarExpression>),
     DocumentBoolean(Box<DocumentBooleanExpression>),
     EncodeForUri(Box<EncodeForUriExpression>),
@@ -580,6 +678,35 @@ pub(crate) enum ValueExpression {
     StringLength(Box<StringLengthExpression>),
     ConditionalInteger(Box<ConditionalIntegerExpression>),
     ConditionalPath(Box<ConditionalPathExpression>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Xslt10PathStringFunctionKind {
+    Contains,
+    StartsWith,
+    SubstringBefore,
+    SubstringAfter,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10PathStringFunction {
+    pub(crate) kind: Xslt10PathStringFunctionKind,
+    pub(crate) path: LocationPath,
+    pub(crate) operand: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10PathSubstring {
+    pub(crate) path: LocationPath,
+    pub(crate) start_bits: u64,
+    pub(crate) length_bits: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10PathTranslate {
+    pub(crate) path: LocationPath,
+    pub(crate) search: String,
+    pub(crate) replacement: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -747,6 +874,7 @@ pub(crate) struct ComputedAttribute {
 pub(crate) enum LiteralAttributeValue {
     Text(String),
     Variable(String),
+    SourceAttribute(ExpandedName),
     ContextPosition,
     ContextSize,
     ContextLocalName,

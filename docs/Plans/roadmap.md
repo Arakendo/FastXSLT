@@ -248,8 +248,51 @@ stable `xsl:sort` slice for source-node `xsl:for-each` and
 location-path, literal, and focus keys, multiple keys, text/number data, and
 ascending/descending order while leaving locale/case-order, AVTs, and
 non-source sequences explicit. Default single-level and bounded literal/focus
-`xsl:number` then reach 863 while leaving richer count/from, levels, formatting,
-and general expressions explicit.
+`xsl:number` then reach 863. Bounded single-token decimal formatting and charged
+context-item numeric conversion subsequently reach 871. Static single-level
+exact-name, any-element, and document `count`/`from` patterns then reach 880
+with all nine newly initialized cases passing. Charged `level="any"`
+document-order accumulation and `from` reset then reach 887, with two additional
+cases stopping at the existing HTML-serialization boundary. Pattern predicates,
+alphabetic/Roman/multi-token formatting, and general expressions remain
+explicit. Charged `level="multiple"` ancestor-lineage
+numbering with repeated decimal-token formatting then reaches 893 while one
+newly exposed later failure remains uncredited. Two newly executing context-value expectations carry
+upstream doubts saying their omitted `NaN` text is incorrect and remain
+uncredited. Static unions of the already admitted `count`/`from` pattern atoms
+then raise the strict lower bound to 906; all 14 newly initialized cases
+execute, 13 match exactly, and the remaining mismatch carries upstream doubts.
+Typed `node()`/`@*` atoms and charged exact attribute-value predicates then
+raise the bound to 912, with all six newly initialized cases matching exactly.
+Bounded positional predicates and one parent/child relationship reach 915 with
+all three newly initialized cases matching. Latin alphabetic/Roman tokens,
+compiled multi-token/separator plans, and static decimal grouping then reach
+947. An explicit XSLT 1.0 first-node location-path value operation then removes
+the complete 14-case `FXRT1001` frontier, and source-comment `xsl:copy` adds
+three further exact results, raising the strict lower bound to 962.
+Case-insensitive legacy HTML raw-text/void recognition also advances one case
+to a visible comparator limitation without claiming it as a pass. Bounded
+source-free `format-number()` evaluation over the default decimal format then
+adds 21 exact results, reaching 983 while preserving both exercised invalid-
+picture errors. Correct single-level `from` boundary composition and XSLT 1.0
+numeric-sort conversion then add three exact results, reaching 986. A bounded
+source-copy attribute expression also repairs one substantive mismatch while
+its remaining discretionary indentation/empty-element spelling stays visible
+and uncredited. Shared variable effective-boolean-value conversion, an
+XSLT 1.0-only node-set/boolean/string/number comparison plan, and a bounded
+source-derived temporary-tree value then add ten exact results, reaching 996. Two
+doubt-annotated temporary-tree boolean disagreements remain visible and
+uncredited. XSLT 1.0-only variable `string()` and `number()` conversion over
+atomics, node sets, and temporary trees then adds six exact results, reaching
+1,002. Bounded path-plus-literal `contains()`, `starts-with()`,
+`substring-before()`, and `substring-after()` then add 19 exact results,
+reaching 1,021. Bounded XPath 1.0 `sum(path)` then adds five exact results,
+reaching 1,026, and path-based `substring()` adds seven more, reaching 1,033.
+Path-based `translate()` then adds eight exact results, reaching 1,041. None
+of these tranches changes the mismatch or
+execution-failure counts. General
+predicates, `id()`/`key()` patterns, dynamic formatting AVTs, non-Latin
+alphabets, and `letter-value` remain explicit.
 Two other arithmetic cases
 advance to later execution boundaries and remain uncredited; no new comparison
 mismatch appears. Compiler dispatch preserves the earlier XSLT 1.0 `0 div 0`
@@ -259,7 +302,7 @@ It retains
 19 comparator gaps and 35
 supplemental-data cases as explicitly not admitted, and gives every other case
 a structured initialization, execution, or infrastructure observation. This
-is a strict 31.47% lower bound over the suite's 2,742 standard-operation cases,
+is a strict 37.96% lower bound over the suite's 2,742 standard-operation cases,
 not an XSLT 1.0 conformance claim. The initial sweep also found and drove a shared
 source-node-variable path repair, so AR-0019 now studies whether legacy
 compatibility can progress on the modern compiler/runtime rather than through a
@@ -307,6 +350,26 @@ second engine.
 [Integral-function path evidence](../Evidence/oasis-xslt10-integral-function-path-tranche-2026-09-04.md)
 [String-function evidence](../Evidence/oasis-xslt10-string-function-tranche-2026-09-04.md)
 [Mismatch metadata evidence](../Evidence/oasis-xslt10-mismatch-metadata-refinement-2026-09-04.md)
+[Initial `xsl:number` evidence](../Evidence/oasis-xslt10-number-tranche-2026-09-06.md)
+[Number format and context-value evidence](../Evidence/oasis-xslt10-number-format-and-context-value-tranche-2026-09-06.md)
+[Single-number pattern evidence](../Evidence/oasis-xslt10-single-number-pattern-tranche-2026-09-06.md)
+[Level-any number evidence](../Evidence/oasis-xslt10-level-any-number-tranche-2026-09-06.md)
+[Level-multiple number evidence](../Evidence/oasis-xslt10-level-multiple-number-tranche-2026-09-06.md)
+[Number compiler/runtime decomposition evidence](../Evidence/xslt-number-compiler-runtime-decomposition-2026-09-06.md)
+[Number-pattern union evidence](../Evidence/oasis-xslt10-number-pattern-union-tranche-2026-09-06.md)
+[Number node-kind and attribute-predicate evidence](../Evidence/oasis-xslt10-number-node-kind-and-attribute-predicate-tranche-2026-09-06.md)
+[Number positional and parent/child-pattern evidence](../Evidence/oasis-xslt10-number-positional-and-parent-child-pattern-tranche-2026-09-06.md)
+[Number format-sequence and grouping evidence](../Evidence/oasis-xslt10-number-format-sequence-and-grouping-tranche-2026-09-06.md)
+[First-node value and copy-comment evidence](../Evidence/oasis-xslt10-first-node-value-and-copy-comment-tranche-2026-09-06.md)
+[Default decimal format-number evidence](../Evidence/oasis-xslt10-default-decimal-format-number-tranche-2026-09-06.md)
+[Number boundary, source-copy, and numeric-sort evidence](../Evidence/oasis-xslt10-number-boundary-source-copy-and-numeric-sort-2026-09-06.md)
+[Variable boolean and temporary-value evidence](../Evidence/oasis-xslt10-variable-boolean-and-temporary-value-tranche-2026-09-06.md)
+[Variable string and number conversion evidence](../Evidence/oasis-xslt10-variable-string-and-number-conversion-tranche-2026-09-06.md)
+[Path string-function evidence](../Evidence/oasis-xslt10-path-string-function-tranche-2026-09-06.md)
+[Sum path evidence](../Evidence/oasis-xslt10-sum-path-tranche-2026-09-06.md)
+[Path substring evidence](../Evidence/oasis-xslt10-path-substring-tranche-2026-09-06.md)
+[Path translate evidence](../Evidence/oasis-xslt10-path-translate-tranche-2026-09-06.md)
+[XSLT 1.0 value-runtime decomposition evidence](../Evidence/xslt10-value-runtime-decomposition-2026-09-06.md)
 [Review](../Architectural%20Reviews/AR-0019-xslt10-compatibility-profile-on-modern-core.md)
 
 The remaining 42 selected `AxisStep` cases now also reach production: two
@@ -1851,7 +1914,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 863 expected-result matches after shared construction/copy/path/context-function/focus/node-identity/literal-comparison/static-string-function/constant and exact-rational mixed path-numeric, lexical-recognition, compile-time compatibility, first `xsl:sort`, and first `xsl:number` tranches plus descendant-pattern, include-order, comment-text, and leading-descendant repairs. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally; the initial 366 definite unchanged XML passes have grown to 1,041 expected-result matches after shared construction/copy/path/context-function/focus/node-identity/literal-comparison/static-string-function/constant and exact-rational mixed path-numeric, lexical-recognition, compile-time compatibility, first-node node-set conversion, variable effective-boolean-value, node-set/boolean/string/number comparison and conversion, bounded path string functions, substring, translate, `sum(path)`, and source-derived temporary values, first `xsl:sort`, XSLT 1.0 numeric-sort conversion, bounded `xsl:number` counting/value/format/pattern/all-level/union/node-kind/predicate/path/grouping/boundary composition, default-decimal `format-number()`, and source-comment/source-attribute copying plus descendant-pattern, include-order, comment-text, and leading-descendant repairs. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -3613,6 +3676,62 @@ host lifecycle.
 - [x] Raise it to 863 through default single-level and bounded literal/focus
   `xsl:number`; retain the one newly exposed comparison mismatch and keep
   count/from, other levels, formatting, and general expressions explicit.
+- [x] Raise it to 871 through bounded single-token decimal formatting and
+  charged context-item numeric conversion; retain the two newly exposed
+  upstream doubt-annotated `NaN` expectation mismatches and keep count/from,
+  other levels, alphabetic/Roman/multi-token formatting, and general
+  expressions explicit.
+- [x] Raise it to 880 through charged single-level exact-name, any-element, and
+  document `count`/`from` patterns; all nine newly initialized cases pass while
+  unions, predicates, other levels, and broader pattern syntax remain explicit.
+- [x] Raise it to 887 through charged `level="any"` document-order accumulation
+  and `from` reset; keep two later HTML-serialization failures uncredited and
+  retain `level="multiple"` as an explicit boundary.
+- [x] Raise it to 893 through charged `level="multiple"` ancestor-lineage
+  numbering and repeated decimal-token formatting; retain one newly exposed
+  later failure and keep richer patterns and formatting explicit.
+- [x] Extract the cohesive `xsl:number` compiler and executor into private
+  one-way modules; conserve all 893 expected-result matches and the complete
+  measured disposition counts.
+- [x] Raise it to 906 through static unions of admitted `xsl:number`
+  `count`/`from` atoms; retain the one newly exposed upstream doubt-annotated
+  mismatch and keep predicate-bearing patterns explicit.
+- [x] Raise it to 912 through typed `node()`/`@*` number-pattern atoms and
+  charged exact attribute-value predicates; all six newly initialized cases
+  pass while positional/general predicates remain explicit.
+- [x] Raise it to 915 through charged exact/modulo sibling-position predicates
+  and one parent/child number-pattern relationship; all three newly initialized
+  cases pass while `id()`/`key()` and general predicates remain explicit.
+- [x] Raise it to 947 through compiled Latin alphabetic/Roman and multi-token
+  format plans plus static decimal grouping; retain one newly exposed later
+  execution failure and keep dynamic/non-Latin/`letter-value` behavior explicit.
+- [x] Raise it to 962 through an explicitly compiled XSLT 1.0 first-node
+  location-path value operation and source-comment `xsl:copy`; keep the two
+  later mismatches and one legacy-HTML comparator gap visible and uncredited.
+- [x] Raise it to 983 through bounded source-free `format-number()` evaluation
+  using the default decimal format; preserve the exercised invalid-picture
+  errors and keep named formats and dynamic operands explicit.
+- [x] Raise it to 986 through correct single-level `from` boundary composition
+  and compatibility-isolated numeric-sort conversion; repair the bounded
+  source-copy attribute case without crediting discretionary serialization.
+- [x] Raise it to 996 through shared variable EBV, compatibility-isolated
+  node-set/boolean/string/number comparison, and bounded source-derived temporary values;
+  retain two doubt-annotated temporary-tree boolean mismatches without credit.
+- [x] Raise it to 1,002 through compatibility-isolated variable `string()` and
+  `number()` conversion over the shared atomic, source-node, and temporary-tree
+  owners without adding a mismatch or execution failure.
+- [x] Raise it to 1,021 through compatibility-isolated path-plus-literal
+  `contains()`, `starts-with()`, `substring-before()`, and
+  `substring-after()` without adding a mismatch or execution failure.
+- [x] Raise it to 1,026 through compatibility-isolated `sum(path)` over the
+  shared controlled path and string-value owners without adding a mismatch or
+  execution failure.
+- [x] Raise it to 1,033 through compatibility-isolated path-based
+  `substring()` using the shared controlled path and Unicode/codepoint
+  substring semantics without adding a mismatch or execution failure.
+- [x] Raise it to 1,041 through compatibility-isolated path-based
+  `translate()` using the shared controlled path and Unicode translation
+  semantics without adding a mismatch or execution failure.
 - [ ] Give each standard and expected-error case one reproducible final
   disposition under a versioned local overlay/report, applying duplicate-safe
   identity and doubts/discretionary metadata.
