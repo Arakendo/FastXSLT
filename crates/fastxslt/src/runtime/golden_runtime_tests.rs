@@ -169,6 +169,43 @@ fn source_node_global_paths_execute_in_for_each_without_temporary_tree_dispatch(
 }
 
 #[test]
+fn source_node_local_variables_execute_directly_in_for_each() {
+    const SOURCE: &str = "urn:fastxslt:local-node-variable:source";
+    const STYLESHEET: &str = "urn:fastxslt:local-node-variable:stylesheet";
+    let stylesheet =
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+      <xsl:output method="xml" omit-xml-declaration="yes"/>
+      <xsl:template match="/">
+        <xsl:variable name="which" select="root/group/item"/>
+        <out><first><xsl:value-of select="$which"/></first><all><xsl:for-each select="$which"><xsl:value-of select="."/></xsl:for-each></all><applied><xsl:apply-templates select="$which" mode="local"/></applied></out>
+      </xsl:template>
+      <xsl:template match="item" mode="local"><xsl:value-of select="."/></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<root><group><item>A</item><item>B</item></group></root>".to_vec(),
+        )
+        .expect("admit local node-variable source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit local node-variable stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile local node variable");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("local-node-variable", "result", SOURCE))
+        .expect("admit local node-variable request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute local node variable");
+    assert_eq!(
+        results.by_request["local-node-variable"].serialized,
+        "<out><first>A</first><all>AB</all><applied>AB</applied></out>"
+    );
+}
+
+#[test]
 fn generate_id_uses_stable_distinct_source_node_identity() {
     const SOURCE: &str = "urn:fastxslt:generate-id:source";
     const STYLESHEET: &str = "urn:fastxslt:generate-id:stylesheet";
@@ -868,6 +905,11 @@ fn xslt10_sort_orders_for_each_and_apply_templates_with_stable_multiple_keys() {
           <numbers><xsl:for-each select="doc/item"><xsl:sort select="@rank" data-type="number"/><xsl:value-of select="@name"/></xsl:for-each></numbers>
           <names><xsl:apply-templates select="doc/item" mode="named"><xsl:sort select="@group"/><xsl:sort select="@name" order="descending"/></xsl:apply-templates></names>
           <positions><xsl:for-each select="doc/item"><xsl:sort select="position()" data-type="number" order="descending"/><xsl:value-of select="@name"/></xsl:for-each></positions>
+          <node-names><xsl:for-each select="doc/names/*"><xsl:sort select="name(.)"/><xsl:value-of select="name()"/><xsl:text>|</xsl:text></xsl:for-each></node-names>
+          <attribute-names><xsl:for-each select="doc/names/@*"><xsl:sort select="name(.)"/><xsl:value-of select="name()"/><xsl:text>|</xsl:text></xsl:for-each></attribute-names>
+          <lengths><xsl:for-each select="doc/lengths/*"><xsl:sort select="string-length(.)" data-type="number"/><xsl:value-of select="name()"/><xsl:text>|</xsl:text></xsl:for-each></lengths>
+          <counts><xsl:for-each select="doc/counts/*"><xsl:sort select="count(*)" data-type="number"/><xsl:value-of select="name()"/><xsl:text>|</xsl:text></xsl:for-each></counts>
+          <number-conversion><xsl:for-each select="doc/number-conversion/n"><xsl:sort select="number(@x)"/><xsl:value-of select="@x"/><xsl:text>|</xsl:text></xsl:for-each></number-conversion>
         </out></xsl:template>
         <xsl:template match="item" mode="named"><xsl:value-of select="@name"/></xsl:template>
     </xsl:stylesheet>"#;
@@ -875,7 +917,7 @@ fn xslt10_sort_orders_for_each_and_apply_templates_with_stable_multiple_keys() {
     resources
         .admit(
             SOURCE,
-            br#"<doc><item rank="10" group="b" name="one"/><item rank="2" group="a" name="two"/><item rank="2" group="a" name="three"/><item rank="3" group="a" name="XML"/></doc>"#.to_vec(),
+            br#"<doc xmlns:p="urn:p"><item rank="10" group="b" name="one"/><item rank="2" group="a" name="two"/><item rank="2" group="a" name="three"/><item rank="3" group="a" name="XML"/><names p:c="3" b="2" a="1"><p:c/><b/><a/></names><lengths><ccc>123</ccc><b>1</b><aa>12</aa></lengths><counts><c3><i/><i/><i/></c3><c1><i/></c1><c2><i/><i/></c2></counts><number-conversion><n x="3"/><n x="2"/><n x="a"/><n x="1"/></number-conversion></doc>"#.to_vec(),
         )
         .expect("admit sorting source");
     resources
@@ -891,7 +933,7 @@ fn xslt10_sort_orders_for_each_and_apply_templates_with_stable_multiple_keys() {
     let results = execute_transform_set(builder.seal()).expect("execute xsl:sort");
     assert_eq!(
         results.by_request["xslt10-sort"].serialized,
-        "<out><numbers>twothreeXMLone</numbers><names>XMLtwothreeone</names><positions>XMLthreetwoone</positions></out>"
+        "<out><numbers>twothreeXMLone</numbers><names>XMLtwothreeone</names><positions>XMLthreetwoone</positions><node-names>a|b|p:c|</node-names><attribute-names>a|b|p:c|</attribute-names><lengths>b|aa|ccc|</lengths><counts>c1|c2|c3|</counts><number-conversion>1|2|3|a|</number-conversion></out>"
     );
 }
 
@@ -1386,7 +1428,7 @@ fn typed_string_globals_retain_atomic_identity_for_effective_boolean_value() {
 }
 
 #[test]
-fn xslt10_empty_global_is_a_string_while_constructed_content_is_a_temporary_tree() {
+fn xslt10_empty_bindings_are_strings_while_constructed_content_is_a_temporary_tree() {
     const SOURCE: &str = "urn:fastxslt:xslt10-variable-ebv:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-variable-ebv:stylesheet";
     let stylesheet = br#"<xsl:stylesheet version="1.0"
@@ -1395,7 +1437,7 @@ fn xslt10_empty_global_is_a_string_while_constructed_content_is_a_temporary_tree
         <xsl:variable name="empty"></xsl:variable>
         <xsl:variable name="present">value</xsl:variable>
         <xsl:variable name="source-value"><xsl:value-of select="/doc/value"/></xsl:variable>
-        <xsl:template match="/"><out><xsl:value-of select="boolean($empty)"/><xsl:value-of select="boolean($present)"/><xsl:value-of select="boolean($source-value)"/></out></xsl:template>
+        <xsl:template match="/"><xsl:variable name="local-empty"/><out><xsl:value-of select="boolean($local-empty)"/><xsl:value-of select="boolean($empty)"/><xsl:value-of select="boolean($present)"/><xsl:value-of select="boolean($source-value)"/></out></xsl:template>
     </xsl:stylesheet>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
     resources
@@ -1414,7 +1456,7 @@ fn xslt10_empty_global_is_a_string_while_constructed_content_is_a_temporary_tree
     let results = execute_transform_set(builder.seal()).expect("execute variable EBV");
     assert_eq!(
         results.by_request["xslt10-variable-ebv"].serialized,
-        "<out>falsetruetrue</out>"
+        "<out>falsefalsetruetrue</out>"
     );
 }
 
@@ -1645,7 +1687,7 @@ fn qualified_temporary_path_dispatches_a_matching_union_alternative() {
 }
 
 #[test]
-fn context_node_name_refuses_to_fabricate_a_namespaced_lexical_qname() {
+fn context_node_name_uses_the_retained_source_lexical_prefix() {
     const SOURCE: &str = "urn:fastxslt:name-context:source";
     const STYLESHEET: &str = "urn:fastxslt:name-context:stylesheet";
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
@@ -1668,24 +1710,28 @@ fn context_node_name_refuses_to_fabricate_a_namespaced_lexical_qname() {
         .add(request("namespaced-name", "result", SOURCE))
         .expect("admit request");
 
-    let failure = execute_transform_set(builder.seal())
-        .expect_err("prefix-free expanded-name storage cannot preserve fn:name lexical identity");
-    assert_eq!(failure.code, "FXRT1008");
-    assert_eq!(failure.category, FailureCategory::Unsupported);
+    let results = execute_transform_set(builder.seal()).expect("execute lexical node name");
+    assert_eq!(
+        results.by_request["namespaced-name"].serialized,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out xmlns:p=\"urn:example\">p:item</out>"
+    );
 }
 
 #[test]
-fn node_name_path_returns_lexical_names_for_zero_or_one_unnamespaced_node() {
+fn node_name_path_returns_retained_element_and_attribute_lexical_names() {
     const SOURCE: &str = "urn:fastxslt:name-path:source";
     const STYLESHEET: &str = "urn:fastxslt:name-path:stylesheet";
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
     resources
-        .admit(SOURCE, b"<doc><item code=\"x\"/></doc>".to_vec())
+        .admit(
+            SOURCE,
+            br#"<doc xmlns:p="urn:example"><p:item p:code="x"/></doc>"#.to_vec(),
+        )
         .expect("admit source");
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:value-of select="name(doc/item)"/>|<xsl:value-of select="name(doc/item/@code)"/>|<xsl:value-of select="name(doc/missing)"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:example"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:value-of select="name(doc/p:item)"/>|<xsl:value-of select="name(doc/p:item/@p:code)"/>|<xsl:value-of select="name(doc/missing)"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit stylesheet");
     let snapshot = resources.seal();
@@ -1699,7 +1745,7 @@ fn node_name_path_returns_lexical_names_for_zero_or_one_unnamespaced_node() {
 
     assert_eq!(
         results.by_request["name-path"].serialized,
-        "<out>item|code|</out>"
+        "<out xmlns:p=\"urn:example\">p:item|p:code|</out>"
     );
 }
 
@@ -2030,6 +2076,93 @@ fn value_of_position_and_last_use_the_current_sequence_focus() {
     assert_eq!(
         results.by_request["value-focus"].serialized,
         "<out><at>1/3</at><at>2/3</at><at>3/3</at></out>"
+    );
+}
+
+#[test]
+fn position_not_equal_last_uses_the_current_sequence_focus() {
+    const SOURCE: &str = "urn:fastxslt:boolean-focus:source";
+    const STYLESHEET: &str = "urn:fastxslt:boolean-focus:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item>A</item><item>B</item><item>C</item></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:for-each select="doc/item"><xsl:value-of select="."/><xsl:if test="position()!=last()">,</xsl:if></xsl:for-each></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile focus comparison");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("boolean-focus", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute focus comparison");
+    assert_eq!(
+        results.by_request["boolean-focus"].serialized,
+        "<out>A,B,C</out>"
+    );
+}
+
+#[test]
+fn apply_templates_path_union_normalizes_identity_and_document_order() {
+    const SOURCE: &str = "urn:fastxslt:apply-union:source";
+    const STYLESHEET: &str = "urn:fastxslt:apply-union:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br#"<doc a="A" b="B"/>"#.to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc"/></out></xsl:template><xsl:template match="doc"><xsl:apply-templates select="@b | @a | @b"/></xsl:template><xsl:template match="@*"><xsl:value-of select="."/><xsl:if test="position()!=last()">,</xsl:if></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile apply union");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("apply-union", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute apply union");
+    assert_eq!(
+        results.by_request["apply-union"].serialized,
+        "<out>A,B</out>"
+    );
+}
+
+#[test]
+fn source_attribute_copy_uses_the_existing_pending_attribute_owner() {
+    const SOURCE: &str = "urn:fastxslt:source-attribute-copy:source";
+    const STYLESHEET: &str = "urn:fastxslt:source-attribute-copy:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br#"<doc a="A" b="B"/>"#.to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc/@b | doc/@a"/></out></xsl:template><xsl:template match="@*"><xsl:copy/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile source attribute copy");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("source-attribute-copy", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute source attribute copy");
+    assert_eq!(
+        results.by_request["source-attribute-copy"].serialized,
+        "<out a=\"A\" b=\"B\"></out>"
     );
 }
 
@@ -4224,6 +4357,43 @@ fn initial_template_position_requires_a_dynamic_focus() {
 
     let failure = execute_transform_set(builder.seal())
         .expect_err("position without a dynamic focus must fail");
+    assert_eq!(failure.code, "XPDY0002");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+    assert!(failure.location.is_some());
+}
+
+#[test]
+fn initial_template_position_comparison_requires_a_dynamic_focus() {
+    const SOURCE: &str = "urn:fastxslt:focusless-comparison:source";
+    const STYLESHEET: &str = "urn:fastxslt:focusless-comparison:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<unused/>".to_vec())
+        .expect("admit unused source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template name="start"><xsl:if test="position()!=last()">wrong</xsl:if></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile focus comparison");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(TransformRequest {
+            identity: "focusless-comparison".to_owned(),
+            result_identity: "result".to_owned(),
+            entry: InvocationEntry::InitialTemplate {
+                name: "start".to_owned(),
+            },
+            parameters: BTreeMap::new(),
+            cancellation: CancellationToken::new(),
+            cancellation_fault: None,
+        })
+        .expect("admit focusless initial template");
+
+    let failure = execute_transform_set(builder.seal())
+        .expect_err("position comparison without a dynamic focus must fail");
     assert_eq!(failure.code, "XPDY0002");
     assert_eq!(failure.category, FailureCategory::Invalid);
     assert!(failure.location.is_some());

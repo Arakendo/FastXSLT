@@ -1235,15 +1235,7 @@ fn append_context_node_name(
     let Some(name) = source.name(context) else {
         return Ok(());
     };
-    if name.namespace.is_some() {
-        return Err(failure(
-            "FXRT1008",
-            FailureCategory::Unsupported,
-            Some(inputs.request_id),
-            "name(.) for namespaced nodes is outside the prefix-preserving private slice",
-        ));
-    }
-    append_text(result, &name.local, inputs.request_id, control)
+    append_source_lexical_name(inputs, source, context, name, result, control)
 }
 
 fn append_node_name_path(
@@ -1274,15 +1266,25 @@ fn append_node_name_path(
     let Some(name) = source.name(node) else {
         return Ok(());
     };
-    if name.namespace.is_some() {
-        return Err(failure(
-            "FXRT1008",
-            FailureCategory::Unsupported,
-            Some(inputs.request_id),
-            "fn:name for a namespaced node is outside the prefix-preserving private slice",
-        ));
-    }
-    append_text(result, &name.local, inputs.request_id, control)
+    append_source_lexical_name(inputs, source, node, name, result, control)
+}
+
+fn append_source_lexical_name(
+    inputs: &SequenceInputs<'_>,
+    source: &crate::xdm::owned_tree_experiment::Document,
+    node: NodeId,
+    name: &crate::xml::quick_xml_experiment::ExpandedName,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let Some(prefix) = source.prefix(node) else {
+        return append_text(result, &name.local, inputs.request_id, control);
+    };
+    let mut lexical = String::with_capacity(prefix.len() + 1 + name.local.len());
+    lexical.push_str(prefix);
+    lexical.push(':');
+    lexical.push_str(&name.local);
+    append_text(result, &lexical, inputs.request_id, control)
 }
 
 fn append_context_node_local_name(

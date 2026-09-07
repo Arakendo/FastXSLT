@@ -302,12 +302,13 @@ pub(crate) enum ApplySelection {
         end: i64,
     },
     LocationPath(LocationPath),
+    PathUnion(Vec<LocationPath>),
     ChildElement(ExpandedName),
     DescendantElement(ExpandedName),
     ChildNodes(NodeTest),
     Attribute(ExpandedName),
     GlobalTemporaryChildren(String),
-    TemporaryRoot(String),
+    VariableSequence(String),
     TemporaryPath {
         variable: String,
         steps: Vec<ExpandedName>,
@@ -362,6 +363,10 @@ pub(crate) enum SortSelect {
     Literal(String),
     ContextPosition,
     ContextSize,
+    ContextNodeName,
+    ContextStringLength,
+    CountPath(LocationPath),
+    NumberPath(LocationPath),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -410,6 +415,11 @@ pub(crate) enum Instruction {
         select: Box<CastExpression>,
         location: SourceLocation,
     },
+    StaticAtomicVariable {
+        name: String,
+        value: AtomicValue,
+        location: SourceLocation,
+    },
     ContextPositionVariable {
         name: String,
         location: SourceLocation,
@@ -445,7 +455,7 @@ pub(crate) enum Instruction {
         arguments: Vec<TemplateArgument>,
         location: SourceLocation,
     },
-    ForEachTemporaryRoot {
+    ForEachVariable {
         variable: String,
         body: Vec<Instruction>,
         location: SourceLocation,
@@ -816,6 +826,7 @@ pub(crate) enum BooleanExpression {
     },
     ContextStringEquals(String),
     ContextStringLengthEquals(usize),
+    ContextPositionNotEqualSize(SourceLocation),
     ContextLanguageMatches(String),
     Or {
         left: Box<BooleanExpression>,

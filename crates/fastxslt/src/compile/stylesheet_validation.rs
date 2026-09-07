@@ -24,7 +24,7 @@ fn validate_named_calls(
     for instruction in instructions {
         match instruction {
             Instruction::LiteralElement { body, .. }
-            | Instruction::ForEachTemporaryRoot { body, .. }
+            | Instruction::ForEachVariable { body, .. }
             | Instruction::ForEachStaticIntegerRange { body, .. }
             | Instruction::ForEachNodes { body, .. }
             | Instruction::If { body, .. } => {
@@ -77,6 +77,7 @@ fn validate_named_calls(
             | Instruction::Attribute { .. }
             | Instruction::ValueOf { .. }
             | Instruction::Variable { .. }
+            | Instruction::StaticAtomicVariable { .. }
             | Instruction::ContextPositionVariable { .. }
             | Instruction::SourceNodeVariable { .. }
             | Instruction::IntegerRangeVariable { .. }

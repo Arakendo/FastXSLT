@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use super::{
-    ExistencePredicate, FinalContextPredicate, PathFailure, PathOrigin, PositionPredicate,
+    AxisPredicate, FinalContextPredicate, PathFailure, PathOrigin, PositionPredicate,
     PredicateAxis, evaluate_location_path, evaluate_location_path_controlled, parse_location_path,
     parse_qualified_child_path,
 };
@@ -1090,9 +1090,10 @@ fn filters_the_final_child_step_by_an_explicit_named_child_axis() {
     assert_eq!(selected.len(), 1);
     assert_eq!(
         path.final_predicate,
-        Some(ExistencePredicate {
+        Some(AxisPredicate {
             axis: PredicateAxis::Child,
             name: "child2".to_owned(),
+            value: None,
         })
     );
     assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 5);
@@ -1123,9 +1124,10 @@ fn searches_descendants_and_filters_by_a_named_ancestor() {
     assert_eq!(document.string_value(selected[0]), "right");
     assert_eq!(
         path.final_predicate,
-        Some(ExistencePredicate {
+        Some(AxisPredicate {
             axis: PredicateAxis::Ancestor,
             name: "element2".to_owned(),
+            value: None,
         })
     );
     assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 19);
@@ -1156,9 +1158,10 @@ fn ancestor_or_self_predicate_checks_the_candidate_before_its_parent() {
     assert_eq!(document.string_value(ancestor_selected[0]), "right");
     assert_eq!(
         self_path.final_predicate,
-        Some(ExistencePredicate {
+        Some(AxisPredicate {
             axis: PredicateAxis::AncestorOrSelf,
             name: "element2".to_owned(),
+            value: None,
         })
     );
 }
@@ -1190,9 +1193,82 @@ fn attribute_predicate_inspects_attributes_without_making_them_children() {
     assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 10);
     assert_eq!(
         path.final_predicate,
-        Some(ExistencePredicate {
+        Some(AxisPredicate {
             axis: PredicateAxis::Attribute,
             name: "attr1".to_owned(),
+            value: None,
+        })
+    );
+}
+
+#[test]
+fn abbreviated_attribute_existence_predicate_uses_the_same_typed_path() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><item/><item selected=\"yes\">right</item></doc>",
+        ParseLimits {
+            max_events: 24,
+            max_depth: 8,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let path = parse_location_path("*[@selected]", location())
+        .expect("abbreviated attribute predicate should parse");
+
+    let selected = evaluate_location_path_controlled(
+        &document,
+        doc,
+        &path,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("unbounded evaluation should succeed");
+
+    assert_eq!(selected.len(), 1);
+    assert_eq!(document.string_value(selected[0]), "right");
+    assert_eq!(
+        path.final_predicate,
+        Some(AxisPredicate {
+            axis: PredicateAxis::Attribute,
+            name: "selected".to_owned(),
+            value: None,
+        })
+    );
+}
+
+#[test]
+fn literal_attribute_value_predicate_filters_the_final_step() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><item selected=\"no\">wrong</item><item selected=\"yes\">right</item></doc>",
+        ParseLimits {
+            max_events: 24,
+            max_depth: 8,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let path = parse_location_path("*[@selected='yes']", location())
+        .expect("literal attribute-value predicate should parse");
+
+    let selected = evaluate_location_path_controlled(
+        &document,
+        doc,
+        &path,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("unbounded evaluation should succeed");
+
+    assert_eq!(selected.len(), 1);
+    assert_eq!(document.string_value(selected[0]), "right");
+    assert_eq!(
+        path.final_predicate,
+        Some(AxisPredicate {
+            axis: PredicateAxis::Attribute,
+            name: "selected".to_owned(),
+            value: Some("yes".to_owned()),
         })
     );
 }
@@ -1227,9 +1303,10 @@ fn descendant_or_self_predicate_checks_self_then_document_order_descendants() {
     assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 7);
     assert_eq!(
         descendant_path.final_predicate,
-        Some(ExistencePredicate {
+        Some(AxisPredicate {
             axis: PredicateAxis::DescendantOrSelf,
             name: "child2".to_owned(),
+            value: None,
         })
     );
 }
@@ -1259,9 +1336,10 @@ fn parent_predicate_checks_only_the_immediate_parent() {
     assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 17);
     assert_eq!(
         path.final_predicate,
-        Some(ExistencePredicate {
+        Some(AxisPredicate {
             axis: PredicateAxis::Parent,
             name: "element1".to_owned(),
+            value: None,
         })
     );
 }

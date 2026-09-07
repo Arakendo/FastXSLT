@@ -1,5 +1,6 @@
 //! Private compilation of XSLT sequence constructors and instructions.
 
+use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::case_conversion_experiment::{
@@ -257,6 +258,7 @@ fn text_run_contains_non_whitespace(
 
 fn local_variable_name(variable: &Instruction) -> &String {
     let (Instruction::Variable { name, .. }
+    | Instruction::StaticAtomicVariable { name, .. }
     | Instruction::ContextPositionVariable { name, .. }
     | Instruction::SourceNodeVariable { name, .. }
     | Instruction::IntegerRangeVariable { name, .. }
@@ -490,9 +492,9 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
             location: document.location(element).clone(),
         });
     }
-    if select.contains('|') {
-        let alternatives = select
-            .split('|')
+    if let Some(alternatives) = split_top_level_union(select) {
+        let alternatives = alternatives
+            .into_iter()
             .map(str::trim)
             .map(|alternative| {
                 if alternative.is_empty() {
@@ -526,6 +528,42 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
                 location: document.location(element).clone(),
             }
         }),
+    }
+}
+
+pub(super) fn split_top_level_union(expression: &str) -> Option<Vec<&str>> {
+    let bytes = expression.as_bytes();
+    let mut alternatives = Vec::new();
+    let mut quote = None;
+    let mut parentheses = 0_usize;
+    let mut brackets = 0_usize;
+    let mut start = 0_usize;
+
+    for (index, byte) in bytes.iter().copied().enumerate() {
+        if let Some(expected) = quote {
+            if byte == expected {
+                quote = None;
+            }
+            continue;
+        }
+        match byte {
+            b'\'' | b'"' => quote = Some(byte),
+            b'(' => parentheses += 1,
+            b')' => parentheses = parentheses.saturating_sub(1),
+            b'[' => brackets += 1,
+            b']' => brackets = brackets.saturating_sub(1),
+            b'|' if parentheses == 0 && brackets == 0 => {
+                alternatives.push(&expression[start..index]);
+                start = index + 1;
+            }
+            _ => {}
+        }
+    }
+    if alternatives.is_empty() {
+        None
+    } else {
+        alternatives.push(&expression[start..]);
+        Some(alternatives)
     }
 }
 
@@ -590,7 +628,7 @@ fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction,
         if !sorts.is_empty() {
             return Err(unsupported(
                 "FXST1044",
-                "xsl:sort over temporary-tree variables is outside the admitted sorting slice",
+                "xsl:sort over variable selections is outside the admitted sorting slice",
                 document.location(element),
             ));
         }
@@ -600,7 +638,7 @@ fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction,
             &["select", "default-mode"],
             "xsl:for-each",
         )?;
-        return Ok(Instruction::ForEachTemporaryRoot {
+        return Ok(Instruction::ForEachVariable {
             variable: variable.to_owned(),
             body: compile_sequence_excluding(document, element, &sort_nodes)?,
             location: document.location(element).clone(),
@@ -703,6 +741,18 @@ pub(super) fn compile_sort_keys(
             SortSelect::ContextPosition
         } else if select.trim() == "last()" {
             SortSelect::ContextSize
+        } else if matches!(select.trim(), "name()" | "name(.)") {
+            SortSelect::ContextNodeName
+        } else if matches!(select.trim(), "string-length()" | "string-length(.)") {
+            SortSelect::ContextStringLength
+        } else if let Some(path) =
+            compile_sort_function_path(document, child, select, "count", &location)?
+        {
+            SortSelect::CountPath(path)
+        } else if let Some(path) =
+            compile_sort_function_path(document, child, select, "number", &location)?
+        {
+            SortSelect::NumberPath(path)
         } else {
             SortSelect::LocationPath(
                 parse_location_path(select, location.clone()).map_err(map_path_failure)?,
@@ -740,6 +790,39 @@ pub(super) fn compile_sort_keys(
         sort_nodes.push(child);
     }
     Ok((sorts, sort_nodes))
+}
+
+fn compile_sort_function_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    function: &str,
+    location: &SourceLocation,
+) -> Result<Option<LocationPath>, CompileFailure> {
+    let expression = expression.trim();
+    let Some(argument) = expression
+        .strip_prefix(function)
+        .and_then(|value| value.strip_prefix('('))
+        .and_then(|value| value.strip_suffix(')'))
+        .map(str::trim)
+    else {
+        return Ok(None);
+    };
+    if argument.is_empty() {
+        return Ok(None);
+    }
+    let mut path = parse_location_path(argument, location.clone()).map_err(map_path_failure)?;
+    if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+        for step in &mut path.steps {
+            if let PathStep::ChildNamed(local) = step {
+                *step = PathStep::ChildExpandedName(ExpandedName {
+                    namespace: Some(namespace.to_owned()),
+                    local: local.clone(),
+                });
+            }
+        }
+    }
+    Ok(Some(path))
 }
 
 fn uses_xslt10_compatibility(document: &Document, element: NodeId) -> bool {
@@ -1039,6 +1122,15 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
         ));
     }
     let Some(expression) = optional_attribute(document, element, None, "select") else {
+        if optional_attribute(document, element, None, "as").is_none()
+            && document.children(element).is_empty()
+        {
+            return Ok(Instruction::StaticAtomicVariable {
+                name: name.to_owned(),
+                value: AtomicValue::string(String::new()),
+                location,
+            });
+        }
         if optional_attribute(document, element, None, "as").is_none()
             && meaningful_children(document, element)
                 .iter()

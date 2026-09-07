@@ -1395,3 +1395,19 @@ fn separates_invalid_deep_equal_arity_and_collation_semantics() {
         }]
     ));
 }
+
+#[test]
+fn top_level_union_splitter_ignores_nested_and_quoted_separators() {
+    use super::instruction_compiler::split_top_level_union;
+
+    assert_eq!(
+        split_top_level_union("a|b | c"),
+        Some(vec!["a", "b ", " c"])
+    );
+    assert_eq!(split_top_level_union("(a|b)/c"), None);
+    assert_eq!(split_top_level_union("a[b='x|y']"), None);
+    assert_eq!(
+        split_top_level_union("(a|b)/c | d[e='x|y']"),
+        Some(vec!["(a|b)/c ", " d[e='x|y']"])
+    );
+}

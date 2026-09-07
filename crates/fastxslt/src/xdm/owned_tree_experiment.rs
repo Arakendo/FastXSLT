@@ -197,7 +197,7 @@ impl Document {
                             attributes: Vec::new(),
                             namespaces: Vec::new(),
                             name: Some(attribute.name),
-                            prefix: None,
+                            prefix: attribute.prefix,
                             value: Some(attribute.value),
                             location: SourceLocation {
                                 resource: parsed.resource.clone(),
@@ -834,7 +834,7 @@ mod tests {
     fn element_prefixes_remain_distinct_from_expanded_name_identity() {
         let parsed = parse_document(
             "memory:prefixes.xml",
-            b"<root xmlns:one='urn:same' xmlns:two='urn:same'><one:item/><two:item/></root>",
+            b"<root xmlns:one='urn:same' xmlns:two='urn:same'><one:item one:code='a'/><two:item two:code='b'/></root>",
             LIMITS,
         )
         .expect("prefix fixture should parse");
@@ -845,6 +845,14 @@ mod tests {
         assert_eq!(document.name(children[0]), document.name(children[1]));
         assert_eq!(document.prefix(children[0]), Some("one"));
         assert_eq!(document.prefix(children[1]), Some("two"));
+        let first_attribute = document.attributes(children[0])[0];
+        let second_attribute = document.attributes(children[1])[0];
+        assert_eq!(
+            document.name(first_attribute),
+            document.name(second_attribute)
+        );
+        assert_eq!(document.prefix(first_attribute), Some("one"));
+        assert_eq!(document.prefix(second_attribute), Some("two"));
     }
 
     #[test]

@@ -87,6 +87,11 @@ pub(super) fn compile(
             right: parse_location_path(right, location.clone()).map_err(map_path_failure)?,
         });
     }
+    if is_context_position_not_equal_size(parsed) {
+        return Ok(BooleanExpression::ContextPositionNotEqualSize(
+            location.clone(),
+        ));
+    }
     parse_scalar(parsed, expression, location, comparison)
 }
 
@@ -236,6 +241,16 @@ fn parse_scalar(
     } else {
         ordering.is_eq()
     }))
+}
+
+fn is_context_position_not_equal_size(expression: &str) -> bool {
+    let Some((left, right)) = expression.split_once("!=") else {
+        return false;
+    };
+    matches!(
+        (left.trim(), right.trim()),
+        ("position()", "last()") | ("last()", "position()")
+    )
 }
 
 fn parse_context_string_equality(expression: &str) -> Option<&str> {

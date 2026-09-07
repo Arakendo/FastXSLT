@@ -4,12 +4,12 @@
 | --- | --- |
 | Status | Under Review |
 | Opened | 2026-09-04 |
-| Last reviewed | 2026-09-06 |
+| Last reviewed | 2026-09-07 |
 | Scope | Named XSLT 1.0 compatibility, backwards-compatible behavior, and shared modern execution |
 | Trigger | A complete local legacy sweep found 366 initial definite unchanged passes and dominant gaps that largely overlap the XSLT 3.0 roadmap |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007, ADR-0012, ADR-0013, ADR-0014 |
 | Related reviews | AR-0001, AR-0004, AR-0008, AR-0011, AR-0014 |
-| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md`; `docs/Evidence/oasis-xslt10-variable-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-exact-rational-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-mixed-literal-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-sort-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-path-concat-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-literal-template-argument-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-empty-global-string-semantics-2026-09-06.md` |
+| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md`; `docs/Evidence/oasis-xslt10-variable-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-exact-rational-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-mixed-literal-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-sort-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-path-concat-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-literal-template-argument-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-empty-global-string-semantics-2026-09-06.md`; `docs/Evidence/oasis-xslt10-local-variable-sequence-semantics-2026-09-07.md`; `docs/Evidence/oasis-xslt10-attribute-predicate-and-variable-apply-tranche-2026-09-07.md`; `docs/Evidence/oasis-xslt10-sequence-focus-boolean-comparison-2026-09-07.md`; `docs/Evidence/oasis-xslt10-apply-templates-path-union-2026-09-07.md` |
 
 ## Architectural question
 
@@ -411,6 +411,30 @@ public version-mode contract.
     mismatches carry substantive doubts metadata; none is reclassified yet.
 - [x] Prototype at least one genuine version-dependent behavior through
   compile-time static context without a second runtime.
+- [x] Preserve empty local bindings as strings, iterate source-node-valued local
+  variables through the shared runtime frame, and select XSLT 1.0 first-node
+  variable conversion at compile time, raising the lower bound from 1,050 to
+  1,061 while retaining one newly exposed whitespace mismatch uncredited.
+- [x] Lower abbreviated attribute presence and literal-equality predicates to
+  the shared charged attribute-axis operation, then apply source-node variables
+  without temporary-tree conversion, raising the lower bound from 1,061 to
+  1,067 while retaining one newly exposed serialization mismatch uncredited.
+- [x] Route instruction-local `position() != last()` through the existing
+  dynamic sequence focus with located focusless failure and work accounting,
+  raising the lower bound from 1,067 to 1,070 through three exact cases.
+- [x] Reuse charged path-union normalization for `xsl:apply-templates`, raising
+  the lower bound from 1,070 to 1,093 while retaining eight later execution
+  failures and two later comparison mismatches visibly and uncredited.
+- [x] Route source-attribute `xsl:copy` through the existing pending-attribute
+  owner, raising the lower bound from 1,093 to 1,094 and exposing seven genuine
+  `XTDE0410` placement errors instead of an unsupported-node-kind boundary.
+- [x] Retain source element and attribute lexical prefixes separately from
+  expanded-name identity and use them for `name()`, eliminating all seven
+  `FXRT1008` observations and raising the lower bound from 1,094 to 1,101.
+- [x] Reuse that lexical context-name operation as a typed `xsl:sort` key,
+  then add controlled context string-length, `count(path)`, and compile-selected
+  XSLT 1.0 `number(path)` keys, raising the lower bound from 1,101 to 1,105
+  without admitting general dynamic sort expressions.
 - [ ] Measure pass growth, regression risk, retained state, and hot-path cost as
   shared families land.
 - [ ] Obtain consumer evidence before selecting the exact advertised profile or
@@ -427,6 +451,34 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-07 -- The existing sort owner now admits charged typed context-name,
+  context-string-length, `count(path)`, and XSLT 1.0 `number(path)` keys. Four
+  exact cases raise the strict lower bound to 1,105 without changing mismatch or
+  execution-failure counts.
+- 2026-09-07 -- Prepared XDM now retains source attribute lexical prefixes and
+  both context/path `name()` operations use retained element or attribute
+  spelling without reconstructing namespace prefixes. Seven exact cases remove
+  the `FXRT1008` frontier and raise the strict lower bound to 1,101.
+- 2026-09-07 -- Source-attribute `xsl:copy` now reuses pending-attribute
+  construction and its existing duplicate/late-attribute owner. One exact case
+  raises the strict lower bound to 1,094; seven other cases reach explicit
+  `XTDE0410` placement errors and remain uncredited.
+- 2026-09-07 -- Top-level apply-selection unions now reuse the controlled path
+  evaluator, source identity normalization, document order, duplicate removal,
+  and sequence focus. Twenty-three exact cases raise the strict lower bound to
+  1,093; eight later failures and two mismatches remain uncredited.
+- 2026-09-07 -- Instruction-local `position() != last()` now consumes the
+  existing sequence focus, charges the comparison, and retains located
+  `XPDY0002` behavior without a general comparison parser. Three exact cases
+  raise the strict lower bound to 1,070.
+- 2026-09-07 -- Abbreviated attribute presence, static string equality, and
+  direct source-node-variable template application add six exact results and
+  reduce the dominant generic path frontier from 155 to 137 observations; the
+  strict lower bound reaches 1,067.
+- 2026-09-07 -- Childless local bindings now retain empty-string identity and
+  variable-only `xsl:for-each` resolves source-node or temporary-tree value
+  kinds through the shared runtime. Twelve cases advance past execution, eleven
+  match exactly, and the strict lower bound reaches 1,061.
 - 2026-09-04 -- Opened as Incubating after the first complete local OASIS sweep
   established 366 definite unchanged XML passes and repaired one shared-runtime
   defect.

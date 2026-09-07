@@ -1,17 +1,17 @@
 use std::{mem::size_of, sync::Arc};
 
 use super::{
-    ApplySelection, BooleanExpression, CastExpression, CastableExpression, CharacterMapDefinition,
-    ChildPresenceTest, ChooseBranch, ComputedAttribute, ConditionalIntegerBranch,
-    ConditionalIntegerCondition, ConditionalIntegerExpression, ConditionalPathBranch,
-    ConditionalPathExpression, ConstructedAttribute, ConstructedElement, ConstructedNode,
-    DecimalSumForExpression, DeepEqualBooleanExpression, ExpandedName, FocusSumForExpression,
-    ForDistinctValuesExpression, FormatNumberExpression, GlobalBinding, GlobalBindingDefault,
-    Instruction, IntegerForExpression, LiteralAttribute, LiteralAttributeValue, MatchPattern,
-    MatchedTemplate, NamedTemplate, NamespaceBinding, OutputSettings, SequenceItemExpression,
-    SortKey, SortSelect, SourceLocation, StylesheetProgram, Template, TemplateArgument,
-    TemplateArgumentValue, TemplateParameter, TemplateParameterDefault, ValueExpression,
-    VariableFilteredElementPath, Xslt10ConcatPart,
+    ApplySelection, AtomicValue, BooleanExpression, CastExpression, CastableExpression,
+    CharacterMapDefinition, ChildPresenceTest, ChooseBranch, ComputedAttribute,
+    ConditionalIntegerBranch, ConditionalIntegerCondition, ConditionalIntegerExpression,
+    ConditionalPathBranch, ConditionalPathExpression, ConstructedAttribute, ConstructedElement,
+    ConstructedNode, DecimalSumForExpression, DeepEqualBooleanExpression, ExpandedName,
+    FocusSumForExpression, ForDistinctValuesExpression, FormatNumberExpression, GlobalBinding,
+    GlobalBindingDefault, Instruction, IntegerForExpression, LiteralAttribute,
+    LiteralAttributeValue, MatchPattern, MatchedTemplate, NamedTemplate, NamespaceBinding,
+    OutputSettings, SequenceItemExpression, SortKey, SortSelect, SourceLocation, StylesheetProgram,
+    Template, TemplateArgument, TemplateArgumentValue, TemplateParameter, TemplateParameterDefault,
+    ValueExpression, VariableFilteredElementPath, Xslt10ConcatPart,
 };
 
 impl StylesheetProgram {
@@ -224,11 +224,15 @@ fn variable_filtered_path_owned(value: &VariableFilteredElementPath) -> usize {
 fn apply_selection_owned(value: &ApplySelection) -> usize {
     match value {
         ApplySelection::LocationPath(path) => path.known_owned_capacity_bytes(),
+        ApplySelection::PathUnion(alternatives) => vec_owned(
+            alternatives,
+            crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
+        ),
         ApplySelection::ChildElement(name)
         | ApplySelection::DescendantElement(name)
         | ApplySelection::Attribute(name) => name_owned(name),
         ApplySelection::AtomicIntegerRange { .. } | ApplySelection::ChildNodes(_) => 0,
-        ApplySelection::GlobalTemporaryChildren(name) | ApplySelection::TemporaryRoot(name) => {
+        ApplySelection::GlobalTemporaryChildren(name) | ApplySelection::VariableSequence(name) => {
             name.capacity()
         }
         ApplySelection::TemporaryPath { variable, steps } => {
@@ -263,12 +267,12 @@ fn instruction_owned(value: &Instruction) -> usize {
             name,
             select,
             location,
-        } => {
-            name.capacity()
-                + size_of::<CastExpression>()
-                + select.known_owned_capacity_bytes()
-                + location_owned(location)
-        }
+        } => local_atomic_variable_owned(name, select, location),
+        Instruction::StaticAtomicVariable {
+            name,
+            value,
+            location,
+        } => static_atomic_variable_owned(name, value, location),
         Instruction::ContextPositionVariable { name, location }
         | Instruction::IntegerRangeVariable { name, location, .. } => {
             name.capacity() + location_owned(location)
@@ -298,7 +302,7 @@ fn instruction_owned(value: &Instruction) -> usize {
         instruction @ Instruction::ApplyTemplates { .. } => {
             apply_templates_instruction_owned(instruction)
         }
-        Instruction::ForEachTemporaryRoot { .. }
+        Instruction::ForEachVariable { .. }
         | Instruction::ForEachStaticIntegerRange { .. }
         | Instruction::ForEachNodes { .. } => for_each_owned(value),
         Instruction::NextMatch {
@@ -337,6 +341,25 @@ fn instruction_owned(value: &Instruction) -> usize {
             location,
         } => copy_owned(attributes, body, location),
     }
+}
+
+fn static_atomic_variable_owned(
+    name: &String,
+    value: &AtomicValue,
+    location: &SourceLocation,
+) -> usize {
+    name.capacity() + value.known_owned_capacity_bytes() + location_owned(location)
+}
+
+fn local_atomic_variable_owned(
+    name: &String,
+    select: &CastExpression,
+    location: &SourceLocation,
+) -> usize {
+    name.capacity()
+        + size_of::<CastExpression>()
+        + select.known_owned_capacity_bytes()
+        + location_owned(location)
 }
 
 fn number_value_owned(value: Option<&super::NumberValue>) -> usize {
@@ -460,7 +483,7 @@ fn literal_element_instruction_owned(value: &Instruction) -> usize {
 
 fn for_each_owned(value: &Instruction) -> usize {
     match value {
-        Instruction::ForEachTemporaryRoot {
+        Instruction::ForEachVariable {
             variable,
             body,
             location,
@@ -485,9 +508,14 @@ fn for_each_owned(value: &Instruction) -> usize {
 
 fn sort_key_owned(sort: &SortKey) -> usize {
     let select = match &sort.select {
-        SortSelect::LocationPath(path) => path.known_owned_capacity_bytes(),
+        SortSelect::LocationPath(path)
+        | SortSelect::CountPath(path)
+        | SortSelect::NumberPath(path) => path.known_owned_capacity_bytes(),
         SortSelect::Literal(value) => value.capacity(),
-        SortSelect::ContextPosition | SortSelect::ContextSize => 0,
+        SortSelect::ContextPosition
+        | SortSelect::ContextSize
+        | SortSelect::ContextNodeName
+        | SortSelect::ContextStringLength => 0,
     };
     select + location_owned(&sort.location)
 }
@@ -738,6 +766,7 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         } => path.known_owned_capacity_bytes() + local.capacity(),
         BooleanExpression::ContextStringEquals(value)
         | BooleanExpression::ContextLanguageMatches(value) => value.capacity(),
+        BooleanExpression::ContextPositionNotEqualSize(location) => location_owned(location),
         BooleanExpression::Or { left, right } => {
             boolean_expression_owned(left) + boolean_expression_owned(right)
         }

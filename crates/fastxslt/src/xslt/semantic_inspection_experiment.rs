@@ -266,6 +266,7 @@ fn observe_instructions(
             Instruction::ValueOf { .. } => (SemanticFeature::ValueOf, None),
             Instruction::Number { .. } => (SemanticFeature::Number, None),
             Instruction::Variable { .. }
+            | Instruction::StaticAtomicVariable { .. }
             | Instruction::ContextPositionVariable { .. }
             | Instruction::SourceNodeVariable { .. }
             | Instruction::IntegerRangeVariable { .. }
@@ -273,7 +274,7 @@ fn observe_instructions(
             Instruction::SequenceNodes { .. } => (SemanticFeature::SequenceNodes, None),
             Instruction::SequenceItems { .. } => (SemanticFeature::SequenceItems, None),
             Instruction::ApplyTemplates { .. } => (SemanticFeature::ApplyTemplates, None),
-            Instruction::ForEachTemporaryRoot { body, .. }
+            Instruction::ForEachVariable { body, .. }
             | Instruction::ForEachStaticIntegerRange { body, .. }
             | Instruction::ForEachNodes { body, .. } => {
                 (SemanticFeature::ForEach, Some(body.as_slice()))

@@ -7,7 +7,7 @@ use std::{
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::resources::ResourceSnapshot;
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
-use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
+use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, StringValueVisitFailure};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits};
 use crate::xpath::castable_experiment::{CastEvaluationFailure, CastExpression, evaluate_cast};
 use crate::xpath::for_distinct_values_experiment::{
@@ -768,6 +768,7 @@ fn execute_instruction(
             )?);
         }
         Instruction::Variable { .. }
+        | Instruction::StaticAtomicVariable { .. }
         | Instruction::ContextPositionVariable { .. }
         | Instruction::SourceNodeVariable { .. }
         | Instruction::IntegerRangeVariable { .. }
@@ -783,7 +784,7 @@ fn execute_instruction(
                 control,
             )?);
         }
-        Instruction::ForEachTemporaryRoot { .. }
+        Instruction::ForEachVariable { .. }
         | Instruction::ForEachStaticIntegerRange { .. }
         | Instruction::ForEachNodes { .. }
         | Instruction::NextMatch { .. }
@@ -837,7 +838,7 @@ fn execute_result_instruction<'a>(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     match instruction {
-        Instruction::ForEachTemporaryRoot { .. }
+        Instruction::ForEachVariable { .. }
         | Instruction::ForEachStaticIntegerRange { .. }
         | Instruction::ForEachNodes { .. } => {
             execute_for_each_instruction(inputs, instruction, execution, scope, control)
@@ -886,6 +887,22 @@ fn execute_copy_of_path_union(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
+    let selected = evaluate_source_path_union(inputs, source, context, alternatives, control)?;
+
+    let mut copied = Vec::new();
+    for node in selected {
+        copied.extend(copy_source_node(source, inputs.request_id, node, control)?);
+    }
+    Ok(copied)
+}
+
+fn evaluate_source_path_union(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    context: NodeId,
+    alternatives: &[crate::xpath::path_experiment::LocationPath],
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
@@ -898,12 +915,7 @@ fn execute_copy_of_path_union(
     }
     selected.sort_unstable_by_key(|node| source.document_order(*node));
     selected.dedup();
-
-    let mut copied = Vec::new();
-    for node in selected {
-        copied.extend(copy_source_node(source, inputs.request_id, node, control)?);
-    }
-    Ok(copied)
+    Ok(selected)
 }
 
 fn execute_copy_of_variable(
@@ -1043,7 +1055,7 @@ fn execute_copy_of_child_elements(
     Ok(copied)
 }
 
-fn execute_for_each_temporary_root<'a>(
+fn execute_for_each_variable<'a>(
     inputs: &SequenceInputs<'a>,
     variable: &str,
     body: &[Instruction],
@@ -1051,27 +1063,46 @@ fn execute_for_each_temporary_root<'a>(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    let tree = variables
-        .temporary_tree(inputs.globals, variable)
-        .ok_or_else(|| {
-            failure(
-                "FXRT0002",
-                FailureCategory::Invalid,
-                Some(inputs.request_id),
-                format!("unbound temporary tree: ${variable}"),
-            )
-        })?;
-    execute_sequence(
-        inputs,
-        body,
-        SequenceContext {
-            node: None,
-            temporary_focus: Some(TemporaryFocus::Document(tree)),
-            ..execution
-        },
-        variables,
-        control,
-    )
+    if let Some(tree) = variables.temporary_tree(inputs.globals, variable) {
+        return execute_sequence(
+            inputs,
+            body,
+            SequenceContext {
+                node: None,
+                temporary_focus: Some(TemporaryFocus::Document(tree)),
+                ..execution
+            },
+            variables,
+            control,
+        );
+    }
+    if let Some(nodes) = variables.source_nodes(inputs.globals, variable) {
+        let focus_size = nodes.len();
+        let mut result = Vec::new();
+        for (index, node) in nodes.iter().copied().enumerate() {
+            result.extend(execute_sequence(
+                inputs,
+                body,
+                SequenceContext {
+                    node: Some(node),
+                    temporary_focus: None,
+                    atomic_focus: None,
+                    focus_position: index + 1,
+                    focus_size,
+                    ..execution
+                },
+                variables,
+                control,
+            )?);
+        }
+        return Ok(result);
+    }
+    Err(failure(
+        "FXRT0002",
+        FailureCategory::Invalid,
+        Some(inputs.request_id),
+        format!("unbound or unsupported sequence variable: ${variable}"),
+    ))
 }
 
 fn execute_for_each_instruction<'a>(
@@ -1082,8 +1113,8 @@ fn execute_for_each_instruction<'a>(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     match instruction {
-        Instruction::ForEachTemporaryRoot { variable, body, .. } => {
-            execute_for_each_temporary_root(inputs, variable, body, execution, variables, control)
+        Instruction::ForEachVariable { variable, body, .. } => {
+            execute_for_each_variable(inputs, variable, body, execution, variables, control)
         }
         Instruction::ForEachStaticIntegerRange {
             start, end, body, ..
@@ -1222,6 +1253,42 @@ fn sort_selected_nodes(
                 SortSelect::Literal(value) => value.clone(),
                 SortSelect::ContextPosition => (offset + 1).to_string(),
                 SortSelect::ContextSize => focus_size.to_string(),
+                SortSelect::ContextNodeName => {
+                    control
+                        .charge(WorkDomain::XPathNodeVisit, 1)
+                        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                    source.name(node).map_or_else(String::new, |name| {
+                        source.prefix(node).map_or_else(
+                            || name.local.clone(),
+                            |prefix| format!("{prefix}:{}", name.local),
+                        )
+                    })
+                }
+                SortSelect::ContextStringLength => evaluate_sort_context_string_length(
+                    source,
+                    node,
+                    inputs.request_id,
+                    &sort.location,
+                    control,
+                )?
+                .to_string(),
+                SortSelect::CountPath(path) => {
+                    let count = evaluate_location_path_controlled(source, node, path, control)
+                        .map_err(|failure| control_failure(failure, inputs.request_id))?
+                        .len();
+                    control
+                        .charge(WorkDomain::XPathOperation, 1)
+                        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                    count.to_string()
+                }
+                SortSelect::NumberPath(path) => evaluate_sort_number_path(
+                    source,
+                    node,
+                    path,
+                    sort.xslt10_numeric_conversion,
+                    inputs.request_id,
+                    control,
+                )?,
             };
             values.push(match sort.data_type {
                 SortDataType::Text => EvaluatedSortKey::Text(value),
@@ -1259,6 +1326,93 @@ fn sort_selected_nodes(
         std::cmp::Ordering::Equal
     });
     Ok(keyed.into_iter().map(|(node, _)| node).collect())
+}
+
+fn evaluate_sort_number_path(
+    source: &Document,
+    context: NodeId,
+    path: &crate::xpath::path_experiment::LocationPath,
+    xslt10_compatibility: bool,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let selected = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    if !xslt10_compatibility && selected.len() > 1 {
+        return Err(failure_at(
+            "XPTY0004",
+            FailureCategory::Invalid,
+            Some(request_id),
+            path.location.clone(),
+            "fn:number requires a zero-or-one item argument",
+        ));
+    }
+    let Some(node) = selected.first().copied() else {
+        return Ok("NaN".to_owned());
+    };
+    let lexical = source
+        .string_value_controlled(node, control)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    crate::xpath::constant_numeric_experiment::evaluate_number_lexical(&lexical).map_err(
+        |numeric_failure| match numeric_failure {
+            crate::xpath::constant_numeric_experiment::ConstantNumericFailure::Invalid => {
+                failure_at(
+                    "FORG0001",
+                    FailureCategory::Invalid,
+                    Some(request_id),
+                    path.location.clone(),
+                    format!("value is not a valid finite numeric lexical: {lexical}"),
+                )
+            }
+            crate::xpath::constant_numeric_experiment::ConstantNumericFailure::Unsupported => {
+                failure_at(
+                    "FXXP1020",
+                    FailureCategory::Unsupported,
+                    Some(request_id),
+                    path.location.clone(),
+                    format!(
+                        "numeric lexical is outside the admitted finite-decimal slice: {lexical}"
+                    ),
+                )
+            }
+        },
+    )
+}
+
+fn evaluate_sort_context_string_length(
+    source: &Document,
+    node: NodeId,
+    request_id: &str,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    control: &mut InvocationControl,
+) -> Result<usize, ExecutionFailure> {
+    let mut length = 0_usize;
+    source
+        .visit_string_value_controlled(node, control, &mut |part, control| {
+            for _ in part.chars() {
+                control
+                    .charge(WorkDomain::XPathOperation, 1)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                length = length.checked_add(1).ok_or_else(|| {
+                    failure_at(
+                        "FOAR0002",
+                        FailureCategory::Invalid,
+                        Some(request_id),
+                        location.clone(),
+                        "sort-key string length exceeds the supported integer range",
+                    )
+                })?;
+            }
+            Ok(())
+        })
+        .map_err(|failure| match failure {
+            StringValueVisitFailure::Control(failure) => control_failure(failure, request_id),
+            StringValueVisitFailure::Sink(failure) => failure,
+        })?;
+    Ok(length)
 }
 
 fn compare_sort_keys(left: &EvaluatedSortKey, right: &EvaluatedSortKey) -> std::cmp::Ordering {
@@ -1307,6 +1461,12 @@ fn execute_binding(
         Instruction::Variable { name, select, .. } => {
             let value = execute_variable_binding(inputs, name, select, execution.node, control)?;
             scope.bind_atomic(name.clone(), value);
+        }
+        Instruction::StaticAtomicVariable { name, value, .. } => {
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            scope.bind_atomic(name.clone(), value.clone());
         }
         Instruction::ContextPositionVariable { name, .. } => {
             control
@@ -1441,12 +1601,18 @@ fn execute_source_element_copy(
             inputs.request_id,
             control,
         )?]),
-        NodeKind::Attribute => Err(failure(
-            "FXRT1007",
-            FailureCategory::Unsupported,
-            Some(inputs.request_id),
-            "the selected source node kind is outside the private xsl:copy slice",
-        )),
+        NodeKind::Attribute => {
+            control
+                .charge(WorkDomain::ResultNode, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            Ok(vec![ResultNode::PendingAttribute(ResultAttribute {
+                name: source
+                    .name(node)
+                    .expect("source attribute has a name")
+                    .clone(),
+                value: source.string_value(node),
+            })])
+        }
     }
 }
 
@@ -1701,6 +1867,41 @@ fn execute_apply_templates(
     Ok(result)
 }
 
+fn apply_variable_sequence(
+    inputs: &SequenceInputs<'_>,
+    name: &str,
+    mode: Option<&str>,
+    parameters: &BTreeMap<String, InvocationParameter>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
+        let mut result = Vec::new();
+        let focus_size = nodes.len();
+        for (offset, node) in nodes.iter().copied().enumerate() {
+            result.extend(apply_template_at(
+                inputs,
+                node,
+                mode,
+                parameters,
+                offset + 1,
+                focus_size,
+                control,
+            )?);
+        }
+        return Ok(result);
+    }
+    if let Some(tree) = variables.temporary_tree(inputs.globals, name) {
+        return apply_temporary_roots(inputs, tree, mode, parameters, control);
+    }
+    Err(failure(
+        "FXRT0002",
+        FailureCategory::Invalid,
+        Some(inputs.request_id),
+        format!("unbound or unsupported sequence variable: ${name}"),
+    ))
+}
+
 fn execute_special_apply_selection(
     inputs: &SequenceInputs<'_>,
     select: Option<&ApplySelection>,
@@ -1716,18 +1917,9 @@ fn execute_special_apply_selection(
         )
         .map(Some);
     }
-    if let Some(ApplySelection::TemporaryRoot(name)) = select {
-        let tree = variables
-            .temporary_tree(inputs.globals, name)
-            .ok_or_else(|| {
-                failure(
-                    "FXRT0002",
-                    FailureCategory::Invalid,
-                    Some(inputs.request_id),
-                    format!("unbound temporary tree: ${name}"),
-                )
-            })?;
-        return apply_temporary_roots(inputs, tree, mode, parameters, control).map(Some);
+    if let Some(ApplySelection::VariableSequence(name)) = select {
+        return apply_variable_sequence(inputs, name, mode, parameters, variables, control)
+            .map(Some);
     }
     if let Some(ApplySelection::TemporaryPath { variable, steps }) = select {
         if let Some(selected) =
@@ -2057,7 +2249,14 @@ fn execute_if(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    if evaluate_boolean(inputs, test, execution.node, variables, control)? {
+    if evaluate_boolean(
+        inputs,
+        test,
+        execution.node,
+        execution.sequence_focus(),
+        variables,
+        control,
+    )? {
         execute_sequence(inputs, body, execution, variables, control)
     } else {
         Ok(Vec::new())
@@ -2073,7 +2272,14 @@ fn execute_choose(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     for branch in branches {
-        if evaluate_boolean(inputs, &branch.test, execution.node, variables, control)? {
+        if evaluate_boolean(
+            inputs,
+            &branch.test,
+            execution.node,
+            execution.sequence_focus(),
+            variables,
+            control,
+        )? {
             return execute_sequence(inputs, &branch.body, execution, variables, control);
         }
     }
@@ -2084,6 +2290,7 @@ fn evaluate_boolean(
     inputs: &SequenceInputs<'_>,
     expression: &BooleanExpression,
     context: Option<NodeId>,
+    focus: Option<SequenceFocus>,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
@@ -2119,18 +2326,22 @@ fn evaluate_boolean(
         BooleanExpression::ContextStringLengthEquals(expected) => {
             evaluate_context_string_length(inputs, context, *expected, control)
         }
+        BooleanExpression::ContextPositionNotEqualSize(location) => {
+            evaluate_context_position_not_equal_size(inputs, focus, location, control)
+        }
         BooleanExpression::ContextLanguageMatches(language) => {
             evaluate_context_language_matches(inputs, context, language, control)
         }
         BooleanExpression::Or { left, right } => {
-            if evaluate_boolean(inputs, left, context, variables, control)? {
+            if evaluate_boolean(inputs, left, context, focus, variables, control)? {
                 Ok(true)
             } else {
-                evaluate_boolean(inputs, right, context, variables, control)
+                evaluate_boolean(inputs, right, context, focus, variables, control)
             }
         }
         BooleanExpression::Not(expression) => {
-            evaluate_boolean(inputs, expression, context, variables, control).map(|value| !value)
+            evaluate_boolean(inputs, expression, context, focus, variables, control)
+                .map(|value| !value)
         }
         BooleanExpression::NodeIdentityEqual { left, right } => {
             evaluate_node_identity_equal(inputs, left, right, context, control)
@@ -2176,6 +2387,27 @@ fn evaluate_boolean(
                 .map(|value| value != 0)
         }
     }
+}
+
+fn evaluate_context_position_not_equal_size(
+    inputs: &SequenceInputs<'_>,
+    focus: Option<SequenceFocus>,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let focus = focus.ok_or_else(|| {
+        failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            "position() and last() require a dynamic focus",
+        )
+    })?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(focus.position != focus.size)
 }
 
 fn evaluate_node_identity_equal(
@@ -2716,6 +2948,9 @@ fn select_apply_nodes(
             evaluate_location_path_controlled(source, context, path, control)
                 .map_err(|failure| control_failure(failure, inputs.request_id))
         }
+        ApplySelection::PathUnion(alternatives) => {
+            evaluate_source_path_union(inputs, source, context, alternatives, control)
+        }
         ApplySelection::ChildElement(name) => {
             let mut selected = Vec::new();
             for child in source.children(context).iter().copied() {
@@ -2780,7 +3015,7 @@ fn select_apply_nodes(
             control,
         ),
         ApplySelection::GlobalTemporaryChildren(_)
-        | ApplySelection::TemporaryRoot(_)
+        | ApplySelection::VariableSequence(_)
         | ApplySelection::TemporaryPath { .. }
         | ApplySelection::AtomicIntegerRange { .. } => {
             unreachable!("temporary-tree selection is dispatched before source selection")

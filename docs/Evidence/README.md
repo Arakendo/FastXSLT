@@ -7,6 +7,9 @@ Each record should identify the date, exact inputs or revisions, environment,
 method, results, limitations, and the decision or plan it informs. Evidence can
 pressure architecture but does not silently create a public guarantee.
 
+- [OASIS XSLT 1.0 Sort Context-Name Key](oasis-xslt10-sort-context-name-2026-09-07.md)
+- [OASIS XSLT 1.0 Lexical Node-Name Prefix Retention](oasis-xslt10-lexical-node-name-prefix-2026-09-07.md)
+- [OASIS XSLT 1.0 Source-Attribute `xsl:copy`](oasis-xslt10-source-attribute-copy-2026-09-07.md)
 - [AR-0021 Versioned Incremental Protocol Admission](ar-0021-versioned-incremental-protocol-2026-09-05.md)
 - [Adversarial Review: First Correctness Tranche](adversarial-review-first-correctness-tranche-2026-08-30.md)
 - [Peer Project Review: Tokimu and Weaver XSLT](peer-project-review-2026-08-25.md)
@@ -332,6 +335,10 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Path Concat Tranche](oasis-xslt10-path-concat-tranche-2026-09-06.md)
 - [OASIS XSLT 1.0 Atomic and Focus Template-Argument Tranche](oasis-xslt10-literal-template-argument-tranche-2026-09-06.md)
 - [OASIS XSLT 1.0 Empty Global String Semantics](oasis-xslt10-empty-global-string-semantics-2026-09-06.md)
+- [OASIS XSLT 1.0 Local Variable and Sequence Semantics](oasis-xslt10-local-variable-sequence-semantics-2026-09-07.md)
+- [OASIS XSLT 1.0 Attribute Predicate and Variable Apply Tranche](oasis-xslt10-attribute-predicate-and-variable-apply-tranche-2026-09-07.md)
+- [OASIS XSLT 1.0 Sequence-Focus Boolean Comparison](oasis-xslt10-sequence-focus-boolean-comparison-2026-09-07.md)
+- [OASIS XSLT 1.0 Apply-Templates Path Union](oasis-xslt10-apply-templates-path-union-2026-09-07.md)
 - [XSLT 1.0 Value Runtime Decomposition](xslt10-value-runtime-decomposition-2026-09-06.md)
 - [AR-0016 Source Access Inventory and Safe Reference](ar-0016-source-access-inventory-and-safe-reference-2026-08-30.md)
 - [AR-0016 Visibility-View Prototype](ar-0016-visibility-view-prototype-2026-08-30.md)

@@ -10,7 +10,7 @@ use crate::xpath::constant_integer_experiment;
 pub(crate) struct LocationPath {
     pub(crate) steps: Vec<PathStep>,
     origin: PathOrigin,
-    final_predicate: Option<ExistencePredicate>,
+    final_predicate: Option<AxisPredicate>,
     final_context_predicate: Option<FinalContextPredicate>,
     step_position_predicates: Vec<Option<PositionPredicate>>,
     pub(crate) location: SourceLocation,
@@ -29,10 +29,9 @@ impl LocationPath {
                 .iter()
                 .map(PathStep::known_owned_capacity_bytes)
                 .sum::<usize>()
-            + self
-                .final_predicate
-                .as_ref()
-                .map_or(0, |predicate| predicate.name.capacity())
+            + self.final_predicate.as_ref().map_or(0, |predicate| {
+                predicate.name.capacity() + predicate.value.as_ref().map_or(0, String::capacity)
+            })
             + self.step_position_predicates.capacity()
                 * std::mem::size_of::<Option<PositionPredicate>>()
             + self.location.resource.capacity()
@@ -446,9 +445,10 @@ enum PredicateAxis {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct ExistencePredicate {
+struct AxisPredicate {
     axis: PredicateAxis,
     name: String,
+    value: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -882,16 +882,23 @@ fn lower_validated_steps(
     Ok(steps)
 }
 
-fn parse_final_axis_predicate(expression: &str) -> (&str, Option<ExistencePredicate>) {
+fn parse_final_axis_predicate(expression: &str) -> (&str, Option<AxisPredicate>) {
     let Some((path, predicate)) = expression.split_once('[') else {
         return (expression, None);
     };
     let Some(predicate) = predicate.strip_suffix(']') else {
         return (expression, None);
     };
-    let (axis, name) = if let Some(name) = predicate.strip_prefix("child::") {
+    let (predicate, value) = parse_attribute_value_predicate(predicate)
+        .map_or((predicate, None), |(name, value)| (name, Some(value)));
+    let (axis, name) = if value.is_some() {
+        (PredicateAxis::Attribute, predicate)
+    } else if let Some(name) = predicate.strip_prefix("child::") {
         (PredicateAxis::Child, name)
-    } else if let Some(name) = predicate.strip_prefix("attribute::") {
+    } else if let Some(name) = predicate
+        .strip_prefix("attribute::")
+        .or_else(|| predicate.strip_prefix('@'))
+    {
         (PredicateAxis::Attribute, name)
     } else if let Some(name) = predicate.strip_prefix("ancestor::") {
         (PredicateAxis::Ancestor, name)
@@ -909,11 +916,34 @@ fn parse_final_axis_predicate(expression: &str) -> (&str, Option<ExistencePredic
     }
     (
         path,
-        Some(ExistencePredicate {
+        Some(AxisPredicate {
             axis,
             name: name.to_owned(),
+            value,
         }),
     )
+}
+
+fn parse_attribute_value_predicate(predicate: &str) -> Option<(&str, String)> {
+    let (name, value) = predicate.split_once('=')?;
+    let name = name.trim();
+    let name = name
+        .strip_prefix("attribute::")
+        .or_else(|| name.strip_prefix('@'))?;
+    if !is_ascii_ncname(name) {
+        return None;
+    }
+    let value = value.trim();
+    for delimiter in ['\'', '"'] {
+        if let Some(value) = value
+            .strip_prefix(delimiter)
+            .and_then(|value| value.strip_suffix(delimiter))
+            .filter(|value| !value.contains(delimiter))
+        {
+            return Some((name, value.to_owned()));
+        }
+    }
+    None
 }
 
 fn parse_position_steps(expression: &str) -> Option<(Vec<String>, Vec<Option<PositionPredicate>>)> {
@@ -1058,29 +1088,10 @@ pub(crate) fn evaluate_location_path_controlled(
                     Some(PositionPredicate::Never) => false,
                     None => true,
                 };
-                let existence_matches = if step_index + 1 == path.steps.len()
+                let axis_predicate_matches = if step_index + 1 == path.steps.len()
                     && let Some(predicate) = &path.final_predicate
                 {
-                    match predicate.axis {
-                        PredicateAxis::Child => {
-                            has_named_child(document, child, &predicate.name, control)?
-                        }
-                        PredicateAxis::Attribute => {
-                            has_named_attribute(document, child, &predicate.name, control)?
-                        }
-                        PredicateAxis::Ancestor => {
-                            has_named_ancestor(document, child, &predicate.name, false, control)?
-                        }
-                        PredicateAxis::AncestorOrSelf => {
-                            has_named_ancestor(document, child, &predicate.name, true, control)?
-                        }
-                        PredicateAxis::DescendantOrSelf => {
-                            has_named_descendant_or_self(document, child, &predicate.name, control)?
-                        }
-                        PredicateAxis::Parent => {
-                            has_named_parent(document, child, &predicate.name, control)?
-                        }
-                    }
+                    evaluate_axis_predicate(document, child, predicate, control)?
                 } else {
                     true
                 };
@@ -1096,7 +1107,7 @@ pub(crate) fn evaluate_location_path_controlled(
                     }
                     _ => true,
                 };
-                if position_matches && existence_matches && context_predicate_matches {
+                if position_matches && axis_predicate_matches && context_predicate_matches {
                     next.push(child);
                 }
             }
@@ -1106,6 +1117,34 @@ pub(crate) fn evaluate_location_path_controlled(
         current = next;
     }
     Ok(current)
+}
+
+fn evaluate_axis_predicate(
+    document: &Document,
+    node: NodeId,
+    predicate: &AxisPredicate,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    match predicate.axis {
+        PredicateAxis::Child => has_named_child(document, node, &predicate.name, control),
+        PredicateAxis::Attribute => has_named_attribute(
+            document,
+            node,
+            &predicate.name,
+            predicate.value.as_deref(),
+            control,
+        ),
+        PredicateAxis::Ancestor => {
+            has_named_ancestor(document, node, &predicate.name, false, control)
+        }
+        PredicateAxis::AncestorOrSelf => {
+            has_named_ancestor(document, node, &predicate.name, true, control)
+        }
+        PredicateAxis::DescendantOrSelf => {
+            has_named_descendant_or_self(document, node, &predicate.name, control)
+        }
+        PredicateAxis::Parent => has_named_parent(document, node, &predicate.name, control),
+    }
 }
 
 fn step_candidates(
@@ -1361,6 +1400,7 @@ fn has_named_attribute(
     document: &Document,
     node: NodeId,
     required: &str,
+    required_value: Option<&str>,
     control: &mut InvocationControl,
 ) -> Result<bool, ControlFailure> {
     for attribute in document.attributes(node).iter().copied() {
@@ -1369,6 +1409,7 @@ fn has_named_attribute(
             && document
                 .name(attribute)
                 .is_some_and(|name| name.namespace.is_none() && name.local == required)
+            && required_value.is_none_or(|required| document.value(attribute) == Some(required))
         {
             return Ok(true);
         }

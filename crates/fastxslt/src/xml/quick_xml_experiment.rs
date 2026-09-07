@@ -23,6 +23,7 @@ pub(crate) struct ExpandedName {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct XmlAttribute {
     pub(crate) name: ExpandedName,
+    pub(crate) prefix: Option<String>,
     pub(crate) value: String,
     pub(crate) span: Range<usize>,
 }
@@ -85,7 +86,9 @@ impl ExpandedName {
 
 impl XmlAttribute {
     fn owned_capacity_bytes(&self) -> usize {
-        self.name.owned_capacity_bytes() + self.value.capacity()
+        self.name.owned_capacity_bytes()
+            + self.prefix.as_ref().map_or(0, String::capacity)
+            + self.value.capacity()
     }
 }
 
@@ -467,6 +470,7 @@ fn resolve_attributes(
         }
         let (namespace, local) = reader.resolver().resolve_attribute(attribute.key);
         let name = expanded_name(namespace, local.as_ref(), offset)?;
+        let prefix = lexical_prefix(attribute.key.as_ref(), offset)?;
         if !expanded_names.insert(name.clone()) {
             return Err(ParseFailure::Malformed {
                 offset,
@@ -475,6 +479,7 @@ fn resolve_attributes(
         }
         names.push(XmlAttribute {
             name,
+            prefix,
             value,
             span: offset..usize::try_from(reader.buffer_position()).unwrap_or(usize::MAX),
         });

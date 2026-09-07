@@ -411,7 +411,11 @@ pub(super) fn compile_value_expression(
                 location,
             ));
         }
-        ValueExpression::Variable(variable.to_owned())
+        if static_context.compatibility == ValueCompatibilityMode::Xslt10 {
+            ValueExpression::Xslt10VariableString(variable.to_owned())
+        } else {
+            ValueExpression::Variable(variable.to_owned())
+        }
     } else {
         compile_location_path_or_missing_context(expression, location, static_context)?
     })

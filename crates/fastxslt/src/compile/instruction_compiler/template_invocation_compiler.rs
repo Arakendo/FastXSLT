@@ -11,7 +11,8 @@ use super::{
     CompileFailure, effective_default_mode, effective_xpath_default_namespace,
     ensure_no_meaningful_children, ensure_only_attributes, invalid, is_ascii_ncname,
     is_xslt_element, map_path_failure, meaningful_children, normalize_named_template_name,
-    optional_attribute, required_attribute, unsupported, xpath_string_literal,
+    optional_attribute, required_attribute, split_top_level_union, unsupported,
+    xpath_string_literal,
 };
 
 pub(super) fn compile_apply_imports(
@@ -178,6 +179,23 @@ pub(super) fn parse_apply_selection(
     expression: &str,
     location: SourceLocation,
 ) -> Result<ApplySelection, CompileFailure> {
+    if let Some(alternatives) = split_top_level_union(expression) {
+        let alternatives = alternatives
+            .into_iter()
+            .map(str::trim)
+            .map(|alternative| {
+                if alternative.is_empty() {
+                    return Err(invalid(
+                        "XPST0003",
+                        "xsl:apply-templates path union contains an empty alternative",
+                        &location,
+                    ));
+                }
+                parse_location_path(alternative, location.clone()).map_err(map_path_failure)
+            })
+            .collect::<Result<Vec<_>, CompileFailure>>()?;
+        return Ok(ApplySelection::PathUnion(alternatives));
+    }
     if let Some((start, end)) = expression.split_once(" to ").and_then(|(start, end)| {
         Some((
             start.trim().parse::<i64>().ok()?,
@@ -196,7 +214,7 @@ pub(super) fn parse_apply_selection(
         .strip_prefix('$')
         .filter(|name| is_ascii_ncname(name))
     {
-        return Ok(ApplySelection::TemporaryRoot(variable.to_owned()));
+        return Ok(ApplySelection::VariableSequence(variable.to_owned()));
     }
     if let Some(variable) = expression
         .strip_prefix('$')
