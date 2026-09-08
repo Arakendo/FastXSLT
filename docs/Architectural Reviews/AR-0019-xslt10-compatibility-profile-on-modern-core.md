@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Principal/module/simplified stylesheet versions now require a
+  positive decimal lexical, and an explicit mode on a named-only template is
+  invalid. Three unchanged Microsoft expected-error cases move from unexpected
+  success to observed initialization failure, reducing that unresolved class
+  from 12 to 9 without changing the 1,202 exact matches. Unknown positive
+  versions retain the existing forwards-compatible boundary.
 - 2026-09-08 -- Static `xsl:element` construction now rejects the reserved
   XMLNS namespace URI as invalid `XTDE0835`. Two unchanged Microsoft expected-
   error cases move from unexpected success to observed initialization failure,

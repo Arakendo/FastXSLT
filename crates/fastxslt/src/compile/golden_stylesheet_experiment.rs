@@ -98,6 +98,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
 ) -> Result<StylesheetProgram, CompileFailure> {
     require_stylesheet_root(document, root)?;
     let declared_version = required_attribute(document, root, None, "version")?.to_owned();
+    validate_declared_version(document, root, &declared_version)?;
     let default_initial_mode = optional_attribute(document, root, None, "default-mode")
         .map(str::trim)
         .map(|mode| match mode {
@@ -510,6 +511,40 @@ pub(super) fn require_stylesheet_root(
     }
 }
 
+pub(super) fn validate_declared_version(
+    document: &Document,
+    root: NodeId,
+    value: &str,
+) -> Result<(), CompileFailure> {
+    let value = value.trim().strip_prefix('+').unwrap_or(value.trim());
+    let mut point_seen = false;
+    let mut digit_seen = false;
+    let mut nonzero_seen = false;
+    for character in value.chars() {
+        if character == '.' && !point_seen {
+            point_seen = true;
+        } else if character.is_ascii_digit() {
+            digit_seen = true;
+            nonzero_seen |= character != '0';
+        } else {
+            return Err(invalid(
+                "XTSE0110",
+                "stylesheet version must be a positive decimal",
+                document.location(root),
+            ));
+        }
+    }
+    if digit_seen && nonzero_seen {
+        Ok(())
+    } else {
+        Err(invalid(
+            "XTSE0110",
+            "stylesheet version must be a positive decimal",
+            document.location(root),
+        ))
+    }
+}
+
 fn compile_top_level_template(
     document: &Document,
     element: NodeId,
@@ -519,6 +554,15 @@ fn compile_top_level_template(
     named_templates: &mut Vec<NamedTemplate>,
 ) -> Result<(), CompileFailure> {
     if let Some(name) = optional_attribute(document, element, None, "name") {
+        if optional_attribute(document, element, None, "match").is_none()
+            && optional_attribute(document, element, None, "mode").is_some()
+        {
+            return Err(invalid(
+                "XTSE0500",
+                "xsl:template mode is permitted only when match is present",
+                document.location(element),
+            ));
+        }
         let name = normalize_named_template_name(document, element, name)?;
         if named_templates.iter().any(|template| template.name == name) {
             return Err(invalid(

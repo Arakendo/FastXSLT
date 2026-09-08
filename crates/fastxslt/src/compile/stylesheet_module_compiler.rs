@@ -682,6 +682,7 @@ fn compile_simplified_stylesheet_at(
         ));
     }
     let declared_version = required_attribute(document, root, Some(XSLT_NAMESPACE), "version")?;
+    super::validate_declared_version(document, root, declared_version)?;
     for attribute in document.attributes(root) {
         let name = document
             .name(*attribute)
