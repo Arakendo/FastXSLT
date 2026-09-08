@@ -534,6 +534,11 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- The bounded legacy HTML serializer now admits exactly one
+  unnamespaced HTML root with one `href`-bearing anchor and text-only content.
+  The newly executable Lotus mixed-path AVT case raises the strict lower bound
+  from 1,204 to 1,205 and reduces `FXSR1001` execution failures by one without
+  changing any other disposition. General HTML result shapes remain explicit.
 - 2026-09-08 -- Literal result attributes now retain one typed source location
   path between static text fragments and evaluate it through the shared
   controlled path owner with XSLT 1.0 first-node string conversion. Two

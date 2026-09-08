@@ -4566,6 +4566,64 @@ fn legacy_html_serialization_recognizes_uppercase_script_and_void_elements() {
 }
 
 #[test]
+fn legacy_html_serialization_admits_one_bare_uri_link() {
+    let result = SemanticResult {
+        children: vec![ResultNode::Element {
+            name: crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: None,
+                local: "HTML".to_owned(),
+            },
+            namespaces: Vec::new().into(),
+            attributes: Vec::new(),
+            children: vec![ResultNode::Element {
+                name: crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: None,
+                    local: "a".to_owned(),
+                },
+                namespaces: Vec::new().into(),
+                attributes: vec![ResultAttribute {
+                    name: crate::xml::quick_xml_experiment::ExpandedName {
+                        namespace: None,
+                        local: "href".to_owned(),
+                    },
+                    value: "/cgi-bin/app?p_parm1=Out1".to_owned(),
+                }],
+                children: Vec::new(),
+            }],
+        }],
+    };
+    let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
+        method: Some("html".to_owned()),
+        version: None,
+        html_version: None,
+        encoding: None,
+        media_type: None,
+        doctype_system: None,
+        doctype_public: None,
+        include_content_type: None,
+        escape_uri_attributes: None,
+        byte_order_mark: None,
+        normalization_form: None,
+        character_map: Vec::new(),
+        undeclare_prefixes: None,
+        standalone: None,
+        suppress_indentation_elements: Vec::new(),
+        cdata_section_elements: Vec::new(),
+        omit_xml_declaration: false,
+        indent: None,
+    };
+
+    let mut control = InvocationControl::unbounded();
+    let actual = serialize_xml(&result, &settings, "bare-html-link", 4_096, &mut control)
+        .expect("serialize bounded bare link document");
+
+    assert_eq!(
+        actual,
+        "<HTML><a href=\"/cgi-bin/app?p_parm1=Out1\"></a></HTML>"
+    );
+}
+
+#[test]
 fn xsl_copy_preserves_a_source_comment_as_the_current_node() {
     const SOURCE: &str = "urn:fastxslt:copy-comment:source";
     const STYLESHEET: &str = "urn:fastxslt:copy-comment:stylesheet";

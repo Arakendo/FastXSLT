@@ -321,6 +321,11 @@ fn validate_bounded_html_result(
     {
         return Ok(());
     }
+    if settings.escape_uri_attributes.unwrap_or(true)
+        && is_bounded_html_bare_link_document(&result.children)
+    {
+        return Ok(());
+    }
     let significant: Vec<_> = result
         .children
         .iter()
@@ -500,6 +505,24 @@ fn is_bounded_html_uri_document(nodes: &[ResultNode]) -> bool {
             matches!(node, ResultNode::Text(_))
                 || links.iter().any(|link| std::ptr::eq(*link, node))
         })
+}
+
+fn is_bounded_html_bare_link_document(nodes: &[ResultNode]) -> bool {
+    let significant: Vec<_> = nodes
+        .iter()
+        .filter(|node| !is_whitespace_text(node))
+        .collect();
+    let [html] = significant.as_slice() else {
+        return false;
+    };
+    let Some(html_children) = plain_html_children(html, "html") else {
+        return false;
+    };
+    let links: Vec<_> = html_children
+        .iter()
+        .filter(|node| !is_whitespace_text(node))
+        .collect();
+    matches!(links.as_slice(), [link] if is_bounded_html_uri_link(link))
 }
 
 fn is_bounded_html_uri_link(node: &ResultNode) -> bool {
