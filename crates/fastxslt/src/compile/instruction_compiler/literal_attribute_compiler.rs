@@ -81,6 +81,17 @@ fn parse_literal_attribute_value(
                     suffix: suffix.to_owned(),
                 });
             }
+            if let Some((name, offset)) = parse_attribute_integer_offset(expression) {
+                return Ok(LiteralAttributeValue::Xslt10TextAndAttributeIntegerOffset {
+                    prefix: prefix.to_owned(),
+                    name: ExpandedName {
+                        namespace: None,
+                        local: name.to_owned(),
+                    },
+                    offset,
+                    suffix: suffix.to_owned(),
+                });
+            }
         }
         return Err(unsupported(
             "FXST1031",
@@ -89,6 +100,22 @@ fn parse_literal_attribute_value(
         ));
     }
     Ok(LiteralAttributeValue::Text(lexical.to_owned()))
+}
+
+fn parse_attribute_integer_offset(expression: &str) -> Option<(&str, i64)> {
+    let mut tokens = expression.split_whitespace();
+    let attribute = tokens.next()?.strip_prefix('@')?;
+    let operator = tokens.next()?;
+    let operand = tokens.next()?.parse::<i64>().ok()?;
+    if tokens.next().is_some() || !is_ascii_ncname(attribute) {
+        return None;
+    }
+    let offset = match operator {
+        "+" => operand,
+        "-" => operand.checked_neg()?,
+        _ => return None,
+    };
+    Some((attribute, offset))
 }
 
 fn single_dynamic_expression(lexical: &str) -> Option<(&str, &str, &str)> {
@@ -152,6 +179,24 @@ mod tests {
         };
         assert_eq!(prefix, "/cgi-bin/app?p_parm1=");
         assert_eq!(suffix, "");
+    }
+
+    #[test]
+    fn compiles_one_source_attribute_integer_offset_inside_literal_text() {
+        let compiled = parse_literal_attribute_value("before{@indice - 1}after", &location())
+            .expect("one bounded source-attribute offset AVT should compile");
+        assert_eq!(
+            compiled,
+            LiteralAttributeValue::Xslt10TextAndAttributeIntegerOffset {
+                prefix: "before".to_owned(),
+                name: crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: None,
+                    local: "indice".to_owned(),
+                },
+                offset: -1,
+                suffix: "after".to_owned(),
+            }
+        );
     }
 
     #[test]

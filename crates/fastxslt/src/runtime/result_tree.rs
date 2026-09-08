@@ -202,6 +202,14 @@ fn materialize_attribute(
             path,
             suffix,
         } => materialize_source_path_avt(prefix, path, suffix, location, context, control)?,
+        LiteralAttributeValue::Xslt10TextAndAttributeIntegerOffset {
+            prefix,
+            name,
+            offset,
+            suffix,
+        } => materialize_source_attribute_integer_offset_avt(
+            prefix, name, *offset, suffix, location, context, control,
+        )?,
         LiteralAttributeValue::SourceAttribute(name) => {
             let Some((source, node)) = context.source_focus else {
                 return Err(failure_at(
@@ -310,6 +318,67 @@ fn materialize_source_path_avt(
     let mut result = String::with_capacity(prefix.len() + selected_value.len() + suffix.len());
     result.push_str(prefix);
     result.push_str(&selected_value);
+    result.push_str(suffix);
+    Ok(result)
+}
+
+fn materialize_source_attribute_integer_offset_avt(
+    prefix: &str,
+    name: &ExpandedName,
+    offset: i64,
+    suffix: &str,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let Some((source, node)) = context.source_focus else {
+        return Err(failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(context.request_id),
+            location.clone(),
+            "the source-attribute arithmetic AVT requires a source-node context",
+        ));
+    };
+    let mut lexical = None;
+    for attribute in source.attributes(node) {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, context.request_id))?;
+        if source.name(*attribute) == Some(name) {
+            lexical = Some(source.value(*attribute).unwrap_or_default());
+            break;
+        }
+    }
+    let lexical = lexical.ok_or_else(|| {
+        failure_at(
+            "XPTY0004",
+            FailureCategory::Invalid,
+            Some(context.request_id),
+            location.clone(),
+            format!(
+                "source attribute is absent for numeric AVT: @{}",
+                name.local
+            ),
+        )
+    })?;
+    let adjusted = lexical
+        .trim()
+        .parse::<i64>()
+        .ok()
+        .and_then(|value| value.checked_add(offset))
+        .ok_or_else(|| {
+            failure_at(
+                "FORG0001",
+                FailureCategory::Invalid,
+                Some(context.request_id),
+                location.clone(),
+                format!("source attribute is not an admitted integer: {lexical}"),
+            )
+        })?;
+    let mut result = String::with_capacity(prefix.len() + 20 + suffix.len());
+    result.push_str(prefix);
+    result.push_str(&adjusted.to_string());
     result.push_str(suffix);
     Ok(result)
 }

@@ -1002,6 +1002,12 @@ pub(crate) enum LiteralAttributeValue {
         path: LocationPath,
         suffix: String,
     },
+    Xslt10TextAndAttributeIntegerOffset {
+        prefix: String,
+        name: ExpandedName,
+        offset: i64,
+        suffix: String,
+    },
     SourceAttribute(ExpandedName),
     ContextPosition,
     ContextSize,

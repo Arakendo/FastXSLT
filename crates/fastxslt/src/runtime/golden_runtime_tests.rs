@@ -3397,6 +3397,34 @@ fn xslt10_literal_attribute_composes_text_with_first_source_path_node() {
 }
 
 #[test]
+fn xslt10_literal_attribute_composes_text_with_source_attribute_integer_offset() {
+    const SOURCE: &str = "urn:fastxslt:attribute-offset-avt:source";
+    const STYLESHEET: &str = "urn:fastxslt:attribute-offset-avt:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br#"<response indice="1"/>"#.to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="response"><out y="before{@indice - 1}after"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile attribute-offset AVT");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("attribute-offset-avt", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute attribute-offset AVT");
+    assert_eq!(
+        results.by_request["attribute-offset-avt"].serialized,
+        "<out y=\"before0after\"></out>"
+    );
+}
+
+#[test]
 fn parent_name_value_uses_the_typed_singleton_parent_path() {
     const SOURCE: &str = "urn:fastxslt:parent-name-value:source";
     const STYLESHEET: &str = "urn:fastxslt:parent-name-value:stylesheet";
