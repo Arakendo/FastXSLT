@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Predicate-bearing `xsl:apply-templates` paths can now navigate
+  from each node in an invocation-owned source-node variable, preserve
+  per-root predicate focus, and normalize the combined result by document
+  order and identity. The unchanged `Lotus/select_select80#1` case raises the
+  lower bound from 1,198 to 1,199; mismatches remain 79 and execution failures
+  remain 163. Temporary-tree predicates and cross-document ordering remain
+  unadmitted.
 - 2026-09-08 -- An exact `current()` template argument now retains caller
   source-node identity in the invocation-local typed frame; XSLT 1.0
   `normalize-space($variable)` and computed-attribute `count($variable)` reuse

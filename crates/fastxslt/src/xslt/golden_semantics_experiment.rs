@@ -308,6 +308,10 @@ pub(crate) enum ApplySelection {
         variable: String,
         alternatives: Vec<LocationPath>,
     },
+    SourceVariablePath {
+        variable: String,
+        path: LocationPath,
+    },
     ChildElement(ExpandedName),
     DescendantElement(ExpandedName),
     ChildNodes(NodeTest),

@@ -940,6 +940,43 @@ fn current_source_node_arguments_compose_with_computed_attributes() {
 }
 
 #[test]
+fn source_variable_paths_apply_predicate_focus_per_root() {
+    const SOURCE: &str = "urn:fastxslt:source-variable-predicate:source";
+    const STYLESHEET: &str = "urn:fastxslt:source-variable-predicate:stylesheet";
+    let stylesheet =
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+      <xsl:output method="xml" omit-xml-declaration="yes"/>
+      <xsl:variable name="all" select="//OL[@real='yes']"/>
+      <xsl:template match="/"><out><xsl:apply-templates select="$all/LI[@flag][last()]"/></out></xsl:template>
+      <xsl:template match="LI[@flag]"><xsl:value-of select="."/></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><OL real=\"yes\"><LI flag=\"yes\">A</LI><LI flag=\"yes\">B</LI></OL><OL real=\"yes\"><LI flag=\"yes\">C</LI><LI>D</LI></OL></doc>".to_vec(),
+        )
+        .expect("admit source-variable predicate source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit source-variable predicate stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile source-variable predicate path");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("source-variable-predicate", "result", SOURCE))
+        .expect("admit source-variable predicate request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute source-variable predicate path");
+    assert_eq!(
+        results.by_request["source-variable-predicate"].serialized,
+        "<out>BC</out>"
+    );
+}
+
+#[test]
 fn generate_id_uses_stable_distinct_source_node_identity() {
     const SOURCE: &str = "urn:fastxslt:generate-id:source";
     const STYLESHEET: &str = "urn:fastxslt:generate-id:stylesheet";

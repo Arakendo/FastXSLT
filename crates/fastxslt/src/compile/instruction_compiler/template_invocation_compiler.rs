@@ -277,6 +277,10 @@ pub(super) fn parse_apply_selection(
     if let Some(path) = parse_variable_filtered_path(expression) {
         return Ok(ApplySelection::VariableFilteredElementPath(path));
     }
+    if let Some(path) = parse_source_variable_path(document, element, expression, location.clone())
+    {
+        return path;
+    }
     if let Some(path) = parse_temporary_path(document, element, expression) {
         return path;
     }
@@ -340,6 +344,26 @@ pub(super) fn parse_apply_selection(
         ));
     }
     parse_selection_path(document, element, expression, location).map(ApplySelection::LocationPath)
+}
+
+fn parse_source_variable_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: SourceLocation,
+) -> Option<Result<ApplySelection, CompileFailure>> {
+    let (variable, path) = expression.strip_prefix('$')?.split_once('/')?;
+    if !is_ascii_ncname(variable) || !path.contains('[') {
+        return None;
+    }
+    Some(
+        parse_selection_path(document, element, path, location).map(|path| {
+            ApplySelection::SourceVariablePath {
+                variable: variable.to_owned(),
+                path,
+            }
+        }),
+    )
 }
 
 fn parse_selection_path(

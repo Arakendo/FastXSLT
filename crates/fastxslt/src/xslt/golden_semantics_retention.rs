@@ -239,6 +239,9 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
                     crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
                 )
         }
+        ApplySelection::SourceVariablePath { variable, path } => {
+            variable.capacity() + path.known_owned_capacity_bytes()
+        }
         ApplySelection::ChildElement(name)
         | ApplySelection::DescendantElement(name)
         | ApplySelection::Attribute(name) => name_owned(name),

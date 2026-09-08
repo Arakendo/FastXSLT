@@ -3196,6 +3196,9 @@ fn select_apply_nodes(
             variables,
             control,
         ),
+        ApplySelection::SourceVariablePath { variable, path } => {
+            evaluate_source_variable_path(inputs, source, variable, path, variables, control)
+        }
         ApplySelection::ChildElement(name) => {
             let mut selected = Vec::new();
             for child in source.children(context).iter().copied() {
@@ -3266,6 +3269,36 @@ fn select_apply_nodes(
             unreachable!("temporary-tree selection is dispatched before source selection")
         }
     }
+}
+
+fn evaluate_source_variable_path(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    variable: &str,
+    path: &crate::xpath::path_experiment::LocationPath,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let roots = variables
+        .source_nodes(inputs.globals, variable)
+        .ok_or_else(|| {
+            failure(
+                "XPTY0004",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("relative path requires a source-node sequence: ${variable}"),
+            )
+        })?;
+    let mut selected = Vec::new();
+    for root in roots {
+        selected.extend(
+            evaluate_location_path_controlled(source, *root, path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?,
+        );
+    }
+    selected.sort_unstable_by_key(|node| source.document_order(*node));
+    selected.dedup();
+    Ok(selected)
 }
 
 fn evaluate_variable_path_union(
