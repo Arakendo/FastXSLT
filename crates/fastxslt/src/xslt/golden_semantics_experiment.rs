@@ -460,6 +460,11 @@ pub(crate) enum Instruction {
         elements: Vec<ConstructedElement>,
         location: SourceLocation,
     },
+    Xslt10TextTreeVariable {
+        name: String,
+        value: String,
+        location: SourceLocation,
+    },
     SequenceNodes {
         select: Box<ForDistinctValuesExpression>,
         location: SourceLocation,
@@ -708,6 +713,7 @@ pub(crate) enum ValueExpression {
     Xslt10VariablePositionPath {
         path: LocationPath,
         variable: String,
+        explicit_position_comparison: bool,
     },
     Xslt10VariablePath {
         variable: String,
@@ -1025,6 +1031,11 @@ pub(crate) enum LiteralAttributeValue {
         literal: String,
         variable: String,
         suffix: String,
+    },
+    Xslt10VariableAndPath {
+        variable: String,
+        separator: String,
+        path: LocationPath,
     },
     SourceAttribute(ExpandedName),
     ContextPosition,

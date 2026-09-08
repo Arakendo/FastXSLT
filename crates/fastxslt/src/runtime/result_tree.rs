@@ -238,7 +238,14 @@ fn materialize_attribute(
             variable,
             suffix,
         } => materialize_literal_variable_concat_avt(
-            prefix, literal, variable, suffix, location, context,
+            prefix, literal, variable, suffix, location, context, control,
+        )?,
+        LiteralAttributeValue::Xslt10VariableAndPath {
+            variable,
+            separator,
+            path,
+        } => materialize_variable_and_path_avt(
+            variable, separator, path, location, context, control,
         )?,
         LiteralAttributeValue::SourceAttribute(name) => {
             materialize_source_attribute(name, location, context, control)?
@@ -248,18 +255,7 @@ fn materialize_attribute(
         LiteralAttributeValue::ContextLocalName => context
             .context_name
             .map_or_else(String::new, |name| name.local.clone()),
-        LiteralAttributeValue::ContextStringValue => context
-            .context_value
-            .ok_or_else(|| {
-                failure_at(
-                    "XPDY0002",
-                    FailureCategory::Invalid,
-                    Some(context.request_id),
-                    location.clone(),
-                    "the context item is absent for the attribute value template",
-                )
-            })?
-            .to_owned(),
+        LiteralAttributeValue::ContextStringValue => context_string_attribute(location, context)?,
         LiteralAttributeValue::ContextIntegerIncrement(increment) => {
             materialize_context_integer_increment(*increment, location, context)?
         }
@@ -267,6 +263,21 @@ fn materialize_attribute(
     Ok(ResultAttribute {
         name: name.clone(),
         value,
+    })
+}
+
+fn context_string_attribute(
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+) -> Result<String, ExecutionFailure> {
+    context.context_value.map(str::to_owned).ok_or_else(|| {
+        failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(context.request_id),
+            location.clone(),
+            "the context item is absent for the attribute value template",
+        )
     })
 }
 
@@ -299,28 +310,56 @@ fn materialize_literal_variable_concat_avt(
     suffix: &str,
     location: &crate::xdm::owned_tree_experiment::SourceLocation,
     context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
-    let variable_value = context
-        .variables
-        .atomics
-        .get(variable)
-        .ok_or_else(|| {
-            failure_at(
-                "FXRT0002",
-                FailureCategory::Invalid,
-                Some(context.request_id),
-                location.clone(),
-                format!("unbound variable in result attribute concat: ${variable}"),
-            )
-        })?
-        .lexical();
+    let variable_value = attribute_variable_string(variable, location, context, control)?;
     let mut result =
         String::with_capacity(prefix.len() + literal.len() + variable_value.len() + suffix.len());
     result.push_str(prefix);
     result.push_str(literal);
-    result.push_str(variable_value);
+    result.push_str(&variable_value);
     result.push_str(suffix);
     Ok(result)
+}
+
+fn materialize_variable_and_path_avt(
+    variable: &str,
+    separator: &str,
+    path: &LocationPath,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let variable = attribute_variable_string(variable, location, context, control)?;
+    let mut prefix = String::with_capacity(variable.len() + separator.len());
+    prefix.push_str(&variable);
+    prefix.push_str(separator);
+    materialize_source_path_avt(&prefix, path, "", location, context, control)
+}
+
+fn attribute_variable_string(
+    variable: &str,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    if let Some(value) = context.variables.atomics.get(variable) {
+        return Ok(value.lexical().to_owned());
+    }
+    if let Some(tree) = context.variables.temporary_trees.get(variable) {
+        return super::runtime_context::temporary_tree_string_value(
+            tree,
+            context.request_id,
+            control,
+        );
+    }
+    Err(failure_at(
+        "FXRT0002",
+        FailureCategory::Invalid,
+        Some(context.request_id),
+        location.clone(),
+        format!("unbound variable in result attribute expression: ${variable}"),
+    ))
 }
 
 fn materialize_context_integer_increment(

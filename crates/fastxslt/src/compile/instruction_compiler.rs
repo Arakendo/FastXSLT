@@ -300,7 +300,8 @@ fn local_variable_name(variable: &Instruction) -> &String {
     | Instruction::SourceNodeVariable { name, .. }
     | Instruction::SourceNodeUnionVariable { name, .. }
     | Instruction::IntegerRangeVariable { name, .. }
-    | Instruction::TemporaryTreeVariable { name, .. }) = variable
+    | Instruction::TemporaryTreeVariable { name, .. }
+    | Instruction::Xslt10TextTreeVariable { name, .. }) = variable
     else {
         unreachable!("compile_variable returns a variable instruction")
     };
@@ -1254,6 +1255,11 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
                 location,
             });
         }
+        if let Some(variable) =
+            compile_xslt10_text_tree_variable(document, element, name, &location)
+        {
+            return Ok(variable);
+        }
         if optional_attribute(document, element, None, "as").is_none()
             && meaningful_children(document, element)
                 .iter()
@@ -1325,6 +1331,28 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
         name: name.to_owned(),
         select: Box::new(select),
         location,
+    })
+}
+
+fn compile_xslt10_text_tree_variable(
+    document: &Document,
+    element: NodeId,
+    name: &str,
+    location: &SourceLocation,
+) -> Option<Instruction> {
+    if optional_attribute(document, element, None, "as").is_some()
+        || !uses_xslt10_compatibility(document, element)
+    {
+        return None;
+    }
+    let children = meaningful_children(document, element);
+    let [child] = children.as_slice() else {
+        return None;
+    };
+    (document.kind(*child) == NodeKind::Text).then(|| Instruction::Xslt10TextTreeVariable {
+        name: name.to_owned(),
+        value: document.value(*child).unwrap_or_default().to_owned(),
+        location: location.clone(),
     })
 }
 

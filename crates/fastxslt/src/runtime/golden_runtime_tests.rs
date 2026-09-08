@@ -2541,7 +2541,7 @@ fn xslt10_numeric_variables_select_path_positions() {
         <xsl:variable name="first" select="1"/>
         <xsl:variable name="third" select="3"/>
         <xsl:variable name="fraction" select="'2.5'"/>
-        <xsl:template match="doc"><xsl:value-of select="a[position() = $first]"/>|<xsl:value-of select="a[$third]"/>|<xsl:value-of select="a[$third = position()]"/>|<xsl:value-of select="a[$fraction]"/></xsl:template>
+        <xsl:template match="doc"><xsl:variable name="rtf">2</xsl:variable><xsl:value-of select="a[position() = $first]"/>|<xsl:value-of select="a[$third]"/>|<xsl:value-of select="a[$third = position()]"/>|<xsl:value-of select="a[$fraction]"/>|<xsl:value-of select="a[$rtf]"/></xsl:template>
     </xsl:stylesheet>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
     resources
@@ -2560,7 +2560,7 @@ fn xslt10_numeric_variables_select_path_positions() {
     let results = execute_transform_set(builder.seal()).expect("execute variable positions");
     assert_eq!(
         results.by_request["xslt10-variable-position"].serialized,
-        "A|C|C|"
+        "A|C|C||A"
     );
 }
 
@@ -3508,6 +3508,38 @@ fn xslt10_literal_attribute_concatenates_literal_with_global_variable() {
     assert_eq!(
         results.by_request["literal-variable-concat-avt"].serialized,
         "<out style=\"border: solid red\"></out>"
+    );
+}
+
+#[test]
+fn xslt10_text_tree_variable_composes_with_source_path_avts() {
+    const SOURCE: &str = "urn:fastxslt:text-tree-variable-avt:source";
+    const STYLESHEET: &str = "urn:fastxslt:text-tree-variable-avt:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            br#"<photograph><href>headquarters.jpg</href><size width="300"/></photograph>"#
+                .to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="photograph"><xsl:variable name="image-dir">/images</xsl:variable><out src="{$image-dir}/{href}" width="{size/@width}"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile text-tree variable AVT");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("text-tree-variable-avt", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute text-tree variable AVT");
+    assert_eq!(
+        results.by_request["text-tree-variable-avt"].serialized,
+        "<out src=\"/images/headquarters.jpg\" width=\"300\"></out>"
     );
 }
 

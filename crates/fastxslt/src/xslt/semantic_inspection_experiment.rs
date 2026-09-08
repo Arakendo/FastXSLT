@@ -272,7 +272,8 @@ fn observe_instructions(
             | Instruction::SourceNodeVariable { .. }
             | Instruction::SourceNodeUnionVariable { .. }
             | Instruction::IntegerRangeVariable { .. }
-            | Instruction::TemporaryTreeVariable { .. } => (SemanticFeature::LocalVariable, None),
+            | Instruction::TemporaryTreeVariable { .. }
+            | Instruction::Xslt10TextTreeVariable { .. } => (SemanticFeature::LocalVariable, None),
             Instruction::SequenceNodes { .. } => (SemanticFeature::SequenceNodes, None),
             Instruction::SequenceItems { .. } => (SemanticFeature::SequenceItems, None),
             Instruction::ApplyTemplates { .. } => (SemanticFeature::ApplyTemplates, None),

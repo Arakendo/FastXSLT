@@ -63,15 +63,20 @@ fn parse_literal_attribute_value(
         if is_ascii_ncname(variable) {
             return Ok(LiteralAttributeValue::Variable(variable.to_owned()));
         }
-        return Err(invalid(
-            "FXST0031",
-            format!("invalid variable-only attribute value template: {lexical}"),
-            location,
-        ));
+        if !variable.contains(['{', '}']) {
+            return Err(invalid(
+                "FXST0031",
+                format!("invalid variable-only attribute value template: {lexical}"),
+                location,
+            ));
+        }
     }
     if lexical.contains(['{', '}']) {
         if let Some(text) = unescape_static_braces(lexical) {
             return Ok(LiteralAttributeValue::Text(text));
+        }
+        if let Some(value) = parse_variable_and_path(lexical, location) {
+            return Ok(value);
         }
         if let Some(value) = parse_single_dynamic_attribute_value(lexical, location) {
             return Ok(value);
@@ -83,6 +88,29 @@ fn parse_literal_attribute_value(
         ));
     }
     Ok(LiteralAttributeValue::Text(lexical.to_owned()))
+}
+
+fn parse_variable_and_path(
+    lexical: &str,
+    location: &SourceLocation,
+) -> Option<LiteralAttributeValue> {
+    let remainder = lexical.strip_prefix("{$")?;
+    let (variable, remainder) = remainder.split_once('}')?;
+    if !is_ascii_ncname(variable) {
+        return None;
+    }
+    let path_open = remainder.rfind('{')?;
+    let separator = &remainder[..path_open];
+    let path = remainder[path_open + 1..].strip_suffix('}')?;
+    if separator.contains(['{', '}']) || path.contains(['{', '}']) {
+        return None;
+    }
+    let path = parse_location_path(path.trim(), location.clone()).ok()?;
+    Some(LiteralAttributeValue::Xslt10VariableAndPath {
+        variable: variable.to_owned(),
+        separator: separator.to_owned(),
+        path,
+    })
 }
 
 fn parse_single_dynamic_attribute_value(
@@ -338,6 +366,23 @@ mod tests {
         assert_eq!(literal, "border: solid ");
         assert_eq!(variable, "color");
         assert!(suffix.is_empty());
+    }
+
+    #[test]
+    fn compiles_variable_and_path_avt_composition() {
+        let compiled = parse_literal_attribute_value("{$image-dir}/{href}", &location())
+            .expect("the bounded variable/path AVT should compile");
+        let LiteralAttributeValue::Xslt10VariableAndPath {
+            variable,
+            separator,
+            path,
+        } = compiled
+        else {
+            panic!("expected the bounded variable/path representation");
+        };
+        assert_eq!(variable, "image-dir");
+        assert_eq!(separator, "/");
+        assert_eq!(path.steps.len(), 1);
     }
 
     #[test]

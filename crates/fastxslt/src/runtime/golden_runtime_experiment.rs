@@ -774,7 +774,8 @@ fn execute_instruction(
         | Instruction::SourceNodeVariable { .. }
         | Instruction::SourceNodeUnionVariable { .. }
         | Instruction::IntegerRangeVariable { .. }
-        | Instruction::TemporaryTreeVariable { .. } => {
+        | Instruction::TemporaryTreeVariable { .. }
+        | Instruction::Xslt10TextTreeVariable { .. } => {
             execute_binding(inputs, instruction, execution, scope, control)?;
         }
         Instruction::ApplyTemplates { .. } => {
@@ -1560,8 +1561,27 @@ fn execute_binding(
             let tree = materialize_temporary_tree(elements, inputs.request_id, control)?;
             scope.bind_temporary_tree(name.clone(), tree);
         }
+        Instruction::Xslt10TextTreeVariable { name, value, .. } => {
+            bind_xslt10_text_tree(scope, name, value, inputs.request_id, control)?;
+        }
         _ => unreachable!("execute_binding receives a variable instruction"),
     }
+    Ok(())
+}
+
+fn bind_xslt10_text_tree(
+    scope: &mut RuntimeVariables,
+    name: &str,
+    value: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let tree = runtime_context::materialize_parentless_temporary_node(
+        TemporaryNodeKind::Text(value.to_owned()),
+        request_id,
+        control,
+    )?;
+    scope.bind_temporary_tree(name.to_owned(), tree);
     Ok(())
 }
 

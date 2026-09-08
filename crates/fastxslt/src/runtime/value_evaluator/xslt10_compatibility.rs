@@ -171,15 +171,28 @@ pub(super) fn number_lexical(value: &str) -> String {
 pub(super) fn append_variable_position_path(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
-    path: &LocationPath,
-    variable: &str,
+    selection: (&LocationPath, &str, bool),
     variables: &RuntimeVariables,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
+    let (path, variable, explicit_position_comparison) = selection;
     let (source, context) = required_source_context(inputs, context)?;
     let selected = evaluate_location_path_controlled(source, context, path, control)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    if !explicit_position_comparison && variables.temporary_tree(inputs.globals, variable).is_some()
+    {
+        control
+            .charge(WorkDomain::XPathOperation, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        let Some(node) = selected.first().copied() else {
+            return Ok(());
+        };
+        let value = source
+            .string_value_controlled(node, control)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        return append_text(result, &value, inputs.request_id, control);
+    }
     let position = variable_string_value(inputs, variable, variables, control)?;
     control
         .charge(WorkDomain::XPathOperation, 1)

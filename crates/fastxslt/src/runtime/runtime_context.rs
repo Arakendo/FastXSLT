@@ -813,7 +813,7 @@ pub(super) fn temporary_document_identity(
     Ok(Some(tree.identity))
 }
 
-fn materialize_parentless_temporary_node(
+pub(super) fn materialize_parentless_temporary_node(
     kind: TemporaryNodeKind,
     request_id: &str,
     control: &mut InvocationControl,

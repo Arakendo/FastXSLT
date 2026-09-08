@@ -204,10 +204,14 @@ pub(super) fn compile_value_expression(
         return Ok(ValueExpression::Xslt10VariableNumber(variable.to_owned()));
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
-        && let Some((path, variable)) =
+        && let Some((path, variable, explicit_position_comparison)) =
             compile_xslt10_variable_position_path(document, element, expression, location)?
     {
-        return Ok(ValueExpression::Xslt10VariablePositionPath { path, variable });
+        return Ok(ValueExpression::Xslt10VariablePositionPath {
+            path,
+            variable,
+            explicit_position_comparison,
+        });
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some((variable, path)) =
@@ -510,7 +514,7 @@ fn compile_xslt10_variable_position_path(
     element: NodeId,
     expression: &str,
     location: &SourceLocation,
-) -> Result<Option<(LocationPath, String)>, CompileFailure> {
+) -> Result<Option<(LocationPath, String, bool)>, CompileFailure> {
     let expression = expression.trim();
     let Some(body) = expression.strip_suffix(']') else {
         return Ok(None);
@@ -527,8 +531,9 @@ fn compile_xslt10_variable_position_path(
         return Ok(None);
     }
     let predicate = body[open + 1..].trim();
-    let variable = parse_variable_position_predicate(predicate);
-    let Some(variable) = variable else {
+    let Some((variable, explicit_position_comparison)) =
+        parse_variable_position_predicate(predicate)
+    else {
         return Ok(None);
     };
     let mut path = parse_location_path(path, location.clone()).map_err(map_path_failure)?;
@@ -542,16 +547,20 @@ fn compile_xslt10_variable_position_path(
             }
         }
     }
-    Ok(Some((path, variable.to_owned())))
+    Ok(Some((
+        path,
+        variable.to_owned(),
+        explicit_position_comparison,
+    )))
 }
 
-fn parse_variable_position_predicate(predicate: &str) -> Option<&str> {
+fn parse_variable_position_predicate(predicate: &str) -> Option<(&str, bool)> {
     let predicate = predicate.trim();
     if let Some(variable) = predicate
         .strip_prefix('$')
         .filter(|name| is_ascii_ncname(name))
     {
-        return Some(variable);
+        return Some((variable, false));
     }
     let (left, right) = predicate.split_once('=')?;
     let variable = if left.trim() == "position()" {
@@ -561,7 +570,7 @@ fn parse_variable_position_predicate(predicate: &str) -> Option<&str> {
     } else {
         return None;
     };
-    is_ascii_ncname(variable).then_some(variable)
+    is_ascii_ncname(variable).then_some((variable, true))
 }
 
 fn compile_xslt10_variable_path(

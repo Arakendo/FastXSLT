@@ -395,9 +395,18 @@ pub(super) fn execute_value_of(
             let value = xslt10_compatibility::number_lexical(&value);
             append_text(result, &value, inputs.request_id, control)?;
         }
-        ValueExpression::Xslt10VariablePositionPath { path, variable } => {
+        ValueExpression::Xslt10VariablePositionPath {
+            path,
+            variable,
+            explicit_position_comparison,
+        } => {
             xslt10_compatibility::append_variable_position_path(
-                inputs, context, path, variable, variables, result, control,
+                inputs,
+                context,
+                (path, variable, *explicit_position_comparison),
+                variables,
+                result,
+                control,
             )?;
         }
         ValueExpression::Xslt10VariablePath { variable, path } => {

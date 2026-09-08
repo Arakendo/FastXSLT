@@ -298,14 +298,11 @@ fn instruction_owned(value: &Instruction) -> usize {
             sources,
             location,
         } => name.capacity() + vec_owned(sources, String::capacity) + location_owned(location),
-        Instruction::TemporaryTreeVariable {
-            name,
-            elements,
-            location,
-        } => {
-            name.capacity()
-                + vec_owned(elements, constructed_element_owned)
-                + location_owned(location)
+        instruction @ Instruction::TemporaryTreeVariable { .. } => {
+            temporary_tree_variable_owned(instruction)
+        }
+        instruction @ Instruction::Xslt10TextTreeVariable { .. } => {
+            xslt10_text_tree_variable_owned(instruction)
         }
         Instruction::SequenceNodes { select, location } => {
             size_of::<ForDistinctValuesExpression>()
@@ -357,6 +354,30 @@ fn instruction_owned(value: &Instruction) -> usize {
             location,
         } => copy_owned(attributes, body, location),
     }
+}
+
+fn xslt10_text_tree_variable_owned(instruction: &Instruction) -> usize {
+    let Instruction::Xslt10TextTreeVariable {
+        name,
+        value,
+        location,
+    } = instruction
+    else {
+        unreachable!("text-tree accounting receives one text-tree binding")
+    };
+    name.capacity() + value.capacity() + location_owned(location)
+}
+
+fn temporary_tree_variable_owned(instruction: &Instruction) -> usize {
+    let Instruction::TemporaryTreeVariable {
+        name,
+        elements,
+        location,
+    } = instruction
+    else {
+        unreachable!("temporary-tree accounting receives one temporary-tree binding")
+    };
+    name.capacity() + vec_owned(elements, constructed_element_owned) + location_owned(location)
 }
 
 fn scalar_binding_owned(value: &Instruction) -> usize {
@@ -674,7 +695,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::Xslt10NormalizedSourceNodeVariable(name)
         | ValueExpression::Xslt10VariableString(name)
         | ValueExpression::Xslt10VariableNumber(name) => name.capacity(),
-        ValueExpression::Xslt10VariablePositionPath { path, variable } => {
+        ValueExpression::Xslt10VariablePositionPath { path, variable, .. } => {
             path.known_owned_capacity_bytes() + variable.capacity()
         }
         ValueExpression::Xslt10VariablePath { variable, path } => {
@@ -978,6 +999,11 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
             variable,
             suffix,
         } => prefix.capacity() + literal.capacity() + variable.capacity() + suffix.capacity(),
+        LiteralAttributeValue::Xslt10VariableAndPath {
+            variable,
+            separator,
+            path,
+        } => variable.capacity() + separator.capacity() + path.known_owned_capacity_bytes(),
         LiteralAttributeValue::SourceAttribute(name) => name_owned(name),
         LiteralAttributeValue::ContextPosition
         | LiteralAttributeValue::ContextSize

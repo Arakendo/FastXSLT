@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Text-constructed local XSLT 1.0 variables now retain explicit
+  invocation-owned temporary-tree identity, bounded variable/path AVTs can use
+  their string value, and direct fragment predicates remain distinct from
+  explicit numeric position comparisons. Eleven cases advance past
+  initialization and eight become exact results, raising the strict lower bound
+  from 1,209 to 1,217 without adding a mismatch; three later execution
+  frontiers remain visible.
 - 2026-09-08 -- Literal result attributes now admit one bounded
   `concat('literal',$variable)` expression. The unchanged Lotus `impincl24`
   case raises the strict lower bound from 1,208 to 1,209 and proves global
