@@ -1452,6 +1452,11 @@ fn compile_template_parameter_default(
     if let Some(value) = static_string_literal(select) {
         return Ok(TemplateParameterDefault::Text(value.to_owned()));
     }
+    if let Some(crate::xpath::static_string_experiment::StaticStringFunctionValue::String(value)) =
+        crate::xpath::static_string_experiment::fold_binary_literal_function(select)
+    {
+        return Ok(TemplateParameterDefault::Text(value));
+    }
     Err(unsupported(
         "FXST1032",
         format!("unsupported template parameter default: {select}"),

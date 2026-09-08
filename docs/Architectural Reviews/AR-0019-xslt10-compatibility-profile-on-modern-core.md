@@ -508,6 +508,10 @@ public version-mode contract.
   count, static local values, ignored undeclared named-call arguments, and
   existential XSLT 1.0 node-set/string comparison, raising the lower bound from
   1,173 to 1,178.
+- [x] Reuse typed atomic frames for static string locals, static-function
+  parameter defaults, and string-compatible variable comparison, raising the
+  lower bound from 1,178 to 1,183 without admitting general node-set pair
+  comparison.
 - [ ] Measure pass growth, regression risk, retained state, and hot-path cost as
   shared families land.
 - [ ] Obtain consumer evidence before selecting the exact advertised profile or
@@ -524,6 +528,10 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-07 -- Static string locals, a two-literal string-function template
+  parameter default, and string-compatible variable comparison move five
+  unchanged cases to exact output. The lower bound is 1,183 with mismatches and
+  execution failures unchanged.
 - 2026-09-07 -- Global `count(path)`, static local boolean/integer values,
   undeclared named-call argument handling, and exact node-set/string equality
   semantics move five unchanged variable cases to exact output. The lower

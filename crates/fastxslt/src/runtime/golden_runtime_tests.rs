@@ -264,6 +264,95 @@ fn static_contains_local_variable_reuses_atomic_boolean_execution() {
 }
 
 #[test]
+fn static_string_function_can_supply_a_template_parameter_default() {
+    let source = parse_document(
+        "memory:static-template-parameter.xml",
+        b"<doc/>",
+        ParseLimits {
+            max_events: 8,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:static-template-parameter.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:output omit-xml-declaration="yes"/>
+          <xsl:variable name="implicit-empty"/>
+          <xsl:template match="doc"><xsl:param name="explicit-empty" select="substring-before('a','z')"/><out><xsl:value-of select="$explicit-empty=$implicit-empty"/></out></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("static template parameter default should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "static-template-parameter-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("static template parameter default should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "static-template-parameter-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out>true</out>");
+}
+
+#[test]
+fn xslt10_variable_pair_comparison_rejects_general_node_set_pairs() {
+    let source = parse_document(
+        "memory:node-set-pair.xml",
+        b"<doc><left>x</left><right>x</right></doc>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:node-set-pair.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:variable name="left" select="/doc/left"/>
+          <xsl:variable name="right" select="/doc/right"/>
+          <xsl:template match="/"><xsl:value-of select="$left=$right"/></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("variable pair comparison should compile to an explicit runtime boundary");
+
+    let failure = execute_program(
+        &program,
+        &source,
+        "node-set-pair-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect_err("general node-set pair comparison should remain unsupported");
+
+    assert_eq!(failure.category, FailureCategory::Unsupported);
+    assert_eq!(failure.code, "FXRT1015");
+}
+
+#[test]
 fn static_integral_arithmetic_local_variable_copies_as_an_atomic_value() {
     let source = parse_document(
         "memory:static-arithmetic.xml",
@@ -308,6 +397,54 @@ fn static_integral_arithmetic_local_variable_copies_as_an_atomic_value() {
     .expect("result should serialize");
 
     assert_eq!(serialized, "<out>17</out>");
+}
+
+#[test]
+fn static_string_local_variable_shadows_an_outer_binding_lexically() {
+    let source = parse_document(
+        "memory:static-string-local.xml",
+        b"<doc><child/></doc>",
+        ParseLimits {
+            max_events: 12,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:static-string-local.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:output omit-xml-declaration="yes"/>
+          <xsl:template match="/"><xsl:variable name="value" select="'outer'"/><out><xsl:value-of select="$value"/><xsl:apply-templates/></out></xsl:template>
+          <xsl:template match="doc"><xsl:variable name="value" select="'inner'"/><xsl:value-of select="$value"/></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 48,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("static string locals should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "static-string-local-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("static string locals should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "static-string-local-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out>outerinner</out>");
 }
 
 #[test]

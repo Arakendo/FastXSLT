@@ -85,6 +85,35 @@ pub(super) fn evaluate_xslt10_variable_string_comparison(
     )
 }
 
+fn evaluate_xslt10_variable_string_variables_comparison(
+    inputs: &SequenceInputs<'_>,
+    left: &str,
+    right: &str,
+    equal: bool,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if variables.source_nodes(inputs.globals, left).is_some()
+        || variables.source_nodes(inputs.globals, right).is_some()
+    {
+        return Err(failure(
+            "FXRT1015",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "general XSLT 1.0 node-set pair comparison is outside the admitted variable comparison slice",
+        ));
+    }
+    super::evaluate_variable_string_equality(
+        inputs,
+        left,
+        right,
+        crate::xslt::golden_semantics_experiment::StringComparison::Codepoint,
+        variables,
+        control,
+    )
+    .map(|matches| matches == equal)
+}
+
 #[expect(
     clippy::too_many_lines,
     reason = "the exhaustive typed value-expression dispatch is one cohesive responsibility"
@@ -331,6 +360,12 @@ pub(super) fn execute_value_of(
                 inputs, variable, value, *equal, variables, control,
             )?;
             append_boolean(inputs, matches != *negate, result, control)?;
+        }
+        ValueExpression::Xslt10VariableStringVariablesComparison { left, right, equal } => {
+            let matches = evaluate_xslt10_variable_string_variables_comparison(
+                inputs, left, right, *equal, variables, control,
+            )?;
+            append_boolean(inputs, matches, result, control)?;
         }
         ValueExpression::Xslt10VariableNumberComparison {
             variable,

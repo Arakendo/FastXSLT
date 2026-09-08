@@ -1202,24 +1202,8 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
             location,
         });
     }
-    if let Some(value) = parse_static_contains(expression) {
-        return Ok(Instruction::StaticAtomicVariable {
-            name: name.to_owned(),
-            value: AtomicValue::from_validated_lexical(
-                BuiltinAtomicType::Boolean,
-                value.to_string(),
-            ),
-            location,
-        });
-    }
-    if let Some(value) =
-        crate::xpath::constant_numeric_experiment::fold_exact_integral_arithmetic(expression)
-    {
-        return Ok(Instruction::StaticAtomicVariable {
-            name: name.to_owned(),
-            value: AtomicValue::from_validated_lexical(BuiltinAtomicType::Integer, value),
-            location,
-        });
+    if let Some(variable) = compile_static_atomic_variable(name, expression, &location) {
+        return Ok(variable);
     }
     let node_path = match parse_location_path(expression, location.clone()) {
         Ok(path) => Some(path),
@@ -1248,6 +1232,27 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
         name: name.to_owned(),
         select: Box::new(select),
         location,
+    })
+}
+
+fn compile_static_atomic_variable(
+    name: &str,
+    expression: &str,
+    location: &SourceLocation,
+) -> Option<Instruction> {
+    let value = if let Some(value) = xpath_string_literal(expression.trim()) {
+        AtomicValue::string(value.to_owned())
+    } else if let Some(value) = parse_static_contains(expression) {
+        AtomicValue::from_validated_lexical(BuiltinAtomicType::Boolean, value.to_string())
+    } else {
+        let value =
+            crate::xpath::constant_numeric_experiment::fold_exact_integral_arithmetic(expression)?;
+        AtomicValue::from_validated_lexical(BuiltinAtomicType::Integer, value)
+    };
+    Some(Instruction::StaticAtomicVariable {
+        name: name.to_owned(),
+        value,
+        location: location.clone(),
     })
 }
 

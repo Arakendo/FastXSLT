@@ -331,6 +331,15 @@ pub(super) fn compile_value_expression(
             equal,
         }
     } else if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some((left, right, equal)) =
+            parse_xslt10_variable_string_variables_comparison(expression)
+    {
+        ValueExpression::Xslt10VariableStringVariablesComparison {
+            left: left.to_owned(),
+            right: right.to_owned(),
+            equal,
+        }
+    } else if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(comparison) = parse_xslt10_variable_atomic_comparison(expression)
     {
         comparison
@@ -794,6 +803,25 @@ fn parse_boolean_comparison_variable(candidate: &str) -> Option<&str> {
     candidate
         .strip_prefix('$')
         .filter(|variable| is_ascii_ncname(variable))
+}
+
+fn parse_xslt10_variable_string_variables_comparison(
+    expression: &str,
+) -> Option<(&str, &str, bool)> {
+    let (left, right, equal) = if let Some((left, right)) = expression.split_once("!=") {
+        (left.trim(), right.trim(), false)
+    } else {
+        let (left, right) = expression.split_once('=')?;
+        (left.trim(), right.trim(), true)
+    };
+    if left.contains(['=', '!']) || right.contains(['=', '!']) {
+        return None;
+    }
+    Some((
+        parse_boolean_comparison_variable(left)?,
+        parse_boolean_comparison_variable(right)?,
+        equal,
+    ))
 }
 
 fn parse_xslt10_variable_atomic_comparison(expression: &str) -> Option<ValueExpression> {

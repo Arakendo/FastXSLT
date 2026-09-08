@@ -702,6 +702,11 @@ pub(crate) enum ValueExpression {
         equal: bool,
         negate: bool,
     },
+    Xslt10VariableStringVariablesComparison {
+        left: String,
+        right: String,
+        equal: bool,
+    },
     Xslt10VariableNumberComparison {
         variable: String,
         value: i32,
