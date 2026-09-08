@@ -448,6 +448,53 @@ fn xslt10_binary_numeric_tree_composes_paths_and_a_global_variable() {
 }
 
 #[test]
+fn standalone_exact_numeric_literal_uses_the_checked_numeric_value_path() {
+    let source = parse_document(
+        "memory:standalone-numeric.xml",
+        b"<doc/>",
+        ParseLimits {
+            max_events: 8,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:standalone-numeric.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:output omit-xml-declaration="yes"/>
+          <xsl:template match="doc"><out><xsl:value-of select="9876543210"/></out></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 24,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("standalone exact numeric literal should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "standalone-numeric-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("standalone exact numeric literal should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "standalone-numeric-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out>9876543210</out>");
+}
+
+#[test]
 fn static_string_local_variable_shadows_an_outer_binding_lexically() {
     let source = parse_document(
         "memory:static-string-local.xml",

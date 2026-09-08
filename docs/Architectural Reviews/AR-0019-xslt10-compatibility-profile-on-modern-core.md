@@ -534,6 +534,11 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Standalone exact decimal literals now reuse the checked numeric
+  plan instead of falling through to location-path parsing. The unchanged
+  `Lotus/math_math105#1` case raises the lower bound from 1,193 to 1,194;
+  mismatches remain 79 and execution failures remain 162. Bare paths and bare
+  variables retain their existing typed owners.
 - 2026-09-08 -- Directional, operator-aware subtraction recognition now
   distinguishes omitted-whitespace arithmetic from hyphens in valid XML names.
   Four unchanged OASIS cases move directly from initialization failure to exact

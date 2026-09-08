@@ -871,12 +871,18 @@ fn compile_binary_numeric_path(
     location: &SourceLocation,
     static_context: ValueStaticContext,
 ) -> Option<ValueExpression> {
-    crate::xpath::binary_numeric_experiment::split_paths(expression)?;
     let root = compile_binary_numeric_node(
         expression,
         location,
         static_context.compatibility == ValueCompatibilityMode::Xslt10,
     )?;
+    if !matches!(
+        root,
+        crate::xpath::binary_numeric_experiment::BinaryNumericNode::Literal(_)
+            | crate::xpath::binary_numeric_experiment::BinaryNumericNode::Operation { .. }
+    ) {
+        return None;
+    }
     let selection = match static_context.compatibility {
         ValueCompatibilityMode::Xslt10 => {
             crate::xpath::binary_numeric_experiment::NumericOperandSelection::FirstInDocumentOrder
@@ -1704,7 +1710,10 @@ fn compile_root_expression(
 
 #[cfg(test)]
 mod tests {
-    use super::compile_binary_numeric_node;
+    use super::{
+        ValueCompatibilityMode, ValueExpression, ValueStaticContext, compile_binary_numeric_node,
+        compile_binary_numeric_path,
+    };
     use crate::xdm::owned_tree_experiment::SourceLocation;
 
     #[test]
@@ -1732,6 +1741,16 @@ mod tests {
 
         assert!(compile_binary_numeric_node("n2+$offset", &location, true).is_some());
         assert!(compile_binary_numeric_node("n2+$offset", &location, false).is_none());
+        assert!(matches!(
+            compile_binary_numeric_path(
+                "9876543210",
+                &location,
+                ValueStaticContext {
+                    compatibility: ValueCompatibilityMode::Xslt10,
+                }
+            ),
+            Some(ValueExpression::BinaryNumeric(_))
+        ));
         for expression in [
             "100-n6 -4-n1 -1-11",
             "100-$anum -5-15-$anum",
