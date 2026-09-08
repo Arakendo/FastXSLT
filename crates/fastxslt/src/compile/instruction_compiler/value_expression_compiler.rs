@@ -367,6 +367,17 @@ pub(super) fn compile_value_expression(
             equal,
         }
     } else if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some((left, right, equal)) =
+            boolean_expression_compiler::parse_xslt10_source_path_comparison(expression)
+        && let Ok(left) = parse_location_path(left, location.clone())
+        && let Ok(right) = parse_location_path(right, location.clone())
+    {
+        ValueExpression::Xslt10SourcePathStringComparison {
+            left,
+            right: Box::new(right),
+            equal,
+        }
+    } else if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(comparison) = parse_xslt10_variable_atomic_comparison(expression)
     {
         comparison

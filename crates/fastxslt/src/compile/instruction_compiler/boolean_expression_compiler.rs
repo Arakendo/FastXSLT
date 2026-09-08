@@ -93,6 +93,17 @@ pub(super) fn compile(
             .map(|path| BooleanExpression::CountPathEquals { path, expected })
             .map_err(map_path_failure);
     }
+    if xslt10_compatibility
+        && let Some((left, right, equal)) = parse_xslt10_source_path_comparison(parsed)
+        && let Ok(left) = parse_location_path(left, location.clone())
+        && let Ok(right) = parse_location_path(right, location.clone())
+    {
+        return Ok(BooleanExpression::Xslt10SourcePathStringComparison {
+            left,
+            right: Box::new(right),
+            equal,
+        });
+    }
     parse_scalar(
         parsed,
         expression,
@@ -100,6 +111,52 @@ pub(super) fn compile(
         comparison,
         xslt10_compatibility,
     )
+}
+
+pub(super) fn parse_xslt10_source_path_comparison(expression: &str) -> Option<(&str, &str, bool)> {
+    let bytes = expression.as_bytes();
+    let mut quote = None;
+    let mut parentheses = 0_usize;
+    let mut brackets = 0_usize;
+    let mut index = 0_usize;
+    while index < bytes.len() {
+        let byte = bytes[index];
+        if let Some(expected) = quote {
+            if byte == expected {
+                quote = None;
+            }
+            index += 1;
+            continue;
+        }
+        match byte {
+            b'\'' | b'"' => quote = Some(byte),
+            b'(' => parentheses += 1,
+            b')' => parentheses = parentheses.saturating_sub(1),
+            b'[' => brackets += 1,
+            b']' => brackets = brackets.saturating_sub(1),
+            b'=' if parentheses == 0 && brackets == 0 => {
+                return path_comparison_parts(expression, index, 1, true);
+            }
+            b'!' if parentheses == 0 && brackets == 0 && bytes.get(index + 1) == Some(&b'=') => {
+                return path_comparison_parts(expression, index, 2, false);
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+    None
+}
+
+fn path_comparison_parts(
+    expression: &str,
+    index: usize,
+    operator_len: usize,
+    equal: bool,
+) -> Option<(&str, &str, bool)> {
+    let left = expression[..index].trim();
+    let right = expression[index + operator_len..].trim();
+    (!left.is_empty() && !right.is_empty() && !left.starts_with('$') && !right.starts_with('$'))
+        .then_some((left, right, equal))
 }
 
 fn compile_identity_test(

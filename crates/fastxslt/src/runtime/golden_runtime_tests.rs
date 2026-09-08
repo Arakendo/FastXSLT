@@ -834,6 +834,53 @@ fn xslt10_node_set_string_equal_and_not_equal_are_independently_existential() {
 }
 
 #[test]
+fn xslt10_source_node_set_comparisons_are_independently_existential() {
+    let source = parse_document(
+        "memory:source-node-set-comparison.xml",
+        br#"<doc><j l="12" w="33">first</j><j l="17" w="45">second</j><j l="12" w="33">fourth</j></doc>"#,
+        ParseLimits {
+            max_events: 24,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:source-node-set-comparison.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:output omit-xml-declaration="yes"/>
+          <xsl:template match="doc"><out><xsl:if test="j[@l='12'] = j[@w='33']">if|</xsl:if><xsl:value-of select="j[@l='12'] = j[@w='33']"/>|<xsl:value-of select="j[@l='12'] = j[@w='45']"/>|<xsl:value-of select="j[@l='12'] != j[@l='17']"/></out></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 48,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("source node-set comparisons should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "source-node-set-comparison-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("source node-set comparisons should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "source-node-set-comparison-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out>if|true|false|true</out>");
+}
+
+#[test]
 fn source_node_local_variables_execute_directly_in_for_each() {
     const SOURCE: &str = "urn:fastxslt:local-node-variable:source";
     const STYLESHEET: &str = "urn:fastxslt:local-node-variable:stylesheet";

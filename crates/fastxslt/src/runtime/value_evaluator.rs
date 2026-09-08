@@ -464,6 +464,12 @@ pub(super) fn execute_value_of(
             )?;
             append_boolean(inputs, matches, result, control)?;
         }
+        ValueExpression::Xslt10SourcePathStringComparison { left, right, equal } => {
+            let matches = runtime_context::evaluate_source_path_string_comparison(
+                inputs, context, left, right, *equal, control,
+            )?;
+            append_boolean(inputs, matches, result, control)?;
+        }
         ValueExpression::Xslt10VariableNumberComparison {
             variable,
             value,

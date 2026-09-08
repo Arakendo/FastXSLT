@@ -2485,6 +2485,11 @@ fn evaluate_boolean(
         } => value_evaluator::evaluate_xslt10_variable_string_comparison(
             inputs, variable, literal, *equal, variables, control,
         ),
+        BooleanExpression::Xslt10SourcePathStringComparison { left, right, equal } => {
+            runtime_context::evaluate_source_path_string_comparison(
+                inputs, context, left, right, *equal, control,
+            )
+        }
         BooleanExpression::ConditionalInteger(expression) => {
             value_evaluator::evaluate_conditional_integer(inputs, expression, context, control)
                 .map(|value| value != 0)

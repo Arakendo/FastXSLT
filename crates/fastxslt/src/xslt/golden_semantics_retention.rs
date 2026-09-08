@@ -709,6 +709,9 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::Xslt10VariableStringVariablesComparison { left, right, .. } => {
             left.capacity() + right.capacity()
         }
+        ValueExpression::Xslt10SourcePathStringComparison { left, right, .. } => {
+            path_pair_owned(left, right) + size_of_val(right.as_ref())
+        }
         ValueExpression::Xslt10PathStringFunction(expression) => {
             size_of_val(expression.as_ref())
                 + expression.path.known_owned_capacity_bytes()
@@ -831,6 +834,9 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
             literal,
             equal: _,
         } => variable.capacity() + literal.capacity(),
+        BooleanExpression::Xslt10SourcePathStringComparison { left, right, .. } => {
+            path_pair_owned(left, right) + size_of_val(right.as_ref())
+        }
         BooleanExpression::ConditionalInteger(expression) => conditional_integer_owned(expression),
         BooleanExpression::NodeExists(path)
         | BooleanExpression::NodeIntegerLessThan { path, .. }

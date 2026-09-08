@@ -740,6 +740,11 @@ pub(crate) enum ValueExpression {
         right: String,
         equal: bool,
     },
+    Xslt10SourcePathStringComparison {
+        left: LocationPath,
+        right: Box<LocationPath>,
+        equal: bool,
+    },
     Xslt10VariableNumberComparison {
         variable: String,
         value: i32,
@@ -881,6 +886,11 @@ pub(crate) enum BooleanExpression {
     Xslt10VariableStringLiteralEquals {
         variable: String,
         literal: String,
+        equal: bool,
+    },
+    Xslt10SourcePathStringComparison {
+        left: LocationPath,
+        right: Box<LocationPath>,
         equal: bool,
     },
     ConditionalInteger(Box<ConditionalIntegerExpression>),

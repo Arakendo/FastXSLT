@@ -198,7 +198,7 @@ pub(super) fn evaluate_template_arguments(
         .collect()
 }
 
-fn evaluate_source_path_string_comparison(
+pub(super) fn evaluate_source_path_string_comparison(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
     left: &crate::xpath::path_experiment::LocationPath,

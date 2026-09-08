@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Under Review |
 | Opened | 2026-09-04 |
-| Last reviewed | 2026-09-07 |
+| Last reviewed | 2026-09-08 |
 | Scope | Named XSLT 1.0 compatibility, backwards-compatible behavior, and shared modern execution |
 | Trigger | A complete local legacy sweep found 366 initial definite unchanged passes and dominant gaps that largely overlap the XSLT 3.0 roadmap |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007, ADR-0012, ADR-0013, ADR-0014 |
@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Typed XSLT 1.0 source node-set `=` and `!=` plans now preserve
+  independently existential string-value comparison across conditionals,
+  value construction, and the existing template-argument evaluator. Lotus
+  `boolean70` through `boolean76` and `position31` raise the strict lower bound
+  from 1,217 to 1,225 without adding a mismatch or execution failure. The
+  complete sweep caught and rejected an initially over-broad recognizer before
+  this evidence was retained.
 - 2026-09-08 -- Variable-only literal attributes now convert invocation-local
   temporary text trees through the shared string-value owner and preserve
   nested lexical shadowing. Lotus `variable56` advances from execution failure
