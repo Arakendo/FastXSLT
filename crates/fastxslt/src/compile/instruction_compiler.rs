@@ -780,7 +780,23 @@ pub(super) fn compile_sort_keys(
         ensure_no_meaningful_children(document, child, "xsl:sort")?;
         let location = document.location(child).clone();
         let select = optional_attribute(document, child, None, "select").unwrap_or(".");
-        let select = if let Some(value) = xpath_string_literal(select.trim()) {
+        let select = if let Some(alternatives) = split_top_level_union(select) {
+            let alternatives = alternatives
+                .into_iter()
+                .map(str::trim)
+                .map(|alternative| {
+                    if alternative.is_empty() {
+                        return Err(invalid(
+                            "XPST0003",
+                            "xsl:sort path union contains an empty alternative",
+                            &location,
+                        ));
+                    }
+                    compile_sort_path(document, child, alternative, &location)
+                })
+                .collect::<Result<Vec<_>, CompileFailure>>()?;
+            SortSelect::PathUnion(alternatives)
+        } else if let Some(value) = xpath_string_literal(select.trim()) {
             SortSelect::Literal(value.to_owned())
         } else if select.trim() == "position()" {
             SortSelect::ContextPosition
@@ -799,17 +815,7 @@ pub(super) fn compile_sort_keys(
         {
             SortSelect::NumberPath(path)
         } else {
-            let path = match parse_location_path(select, location.clone()) {
-                Ok(path) => path,
-                Err(PathFailure::Unsupported { .. }) if select.contains(':') => {
-                    parse_qualified_child_path(select, location.clone(), |prefix| {
-                        namespace_for_prefix(document, child, prefix).map(str::to_owned)
-                    })
-                    .map_err(map_path_failure)?
-                }
-                Err(failure) => return Err(map_path_failure(failure)),
-            };
-            SortSelect::LocationPath(path)
+            SortSelect::LocationPath(compile_sort_path(document, child, select, &location)?)
         };
         let data_type = match optional_attribute(document, child, None, "data-type") {
             None | Some("text") => SortDataType::Text,
@@ -843,6 +849,24 @@ pub(super) fn compile_sort_keys(
         sort_nodes.push(child);
     }
     Ok((sorts, sort_nodes))
+}
+
+fn compile_sort_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<LocationPath, CompileFailure> {
+    match parse_location_path(expression, location.clone()) {
+        Ok(path) => Ok(path),
+        Err(PathFailure::Unsupported { .. }) if expression.contains(':') => {
+            parse_qualified_child_path(expression, location.clone(), |prefix| {
+                namespace_for_prefix(document, element, prefix).map(str::to_owned)
+            })
+            .map_err(map_path_failure)
+        }
+        Err(failure) => Err(map_path_failure(failure)),
+    }
 }
 
 fn compile_sort_function_path(

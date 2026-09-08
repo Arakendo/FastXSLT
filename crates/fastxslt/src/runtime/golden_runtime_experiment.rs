@@ -1257,6 +1257,11 @@ fn sort_selected_nodes(
                         .first()
                         .map_or_else(String::new, |selected| source.string_value(*selected))
                 }
+                SortSelect::PathUnion(alternatives) => {
+                    evaluate_source_path_union(inputs, source, node, alternatives, control)?
+                        .first()
+                        .map_or_else(String::new, |selected| source.string_value(*selected))
+                }
                 SortSelect::Literal(value) => value.clone(),
                 SortSelect::ContextPosition => (offset + 1).to_string(),
                 SortSelect::ContextSize => focus_size.to_string(),

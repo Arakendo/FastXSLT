@@ -543,6 +543,10 @@ fn sort_key_owned(sort: &SortKey) -> usize {
         SortSelect::LocationPath(path)
         | SortSelect::CountPath(path)
         | SortSelect::NumberPath(path) => path.known_owned_capacity_bytes(),
+        SortSelect::PathUnion(alternatives) => vec_owned(
+            alternatives,
+            crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
+        ),
         SortSelect::Literal(value) => value.capacity(),
         SortSelect::ContextPosition
         | SortSelect::ContextSize

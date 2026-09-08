@@ -534,6 +534,14 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Typed `xsl:sort` keys now admit bounded unions of supported
+  source location paths, normalize the node-set by document order and identity,
+  and apply XSLT 1.0 first-node string conversion. The unchanged
+  `Lotus/sort_sort26#1` case raises the lower bound from 1,201 to 1,202. Three
+  additional cases initialize and execute: one matches and two remain visible
+  comparison mismatches, raising that frontier from 79 to 81; execution
+  failures remain 163. Arbitrary union operands and temporary-tree unions remain
+  unadmitted.
 - 2026-09-08 -- Exact XSLT 1.0 `count(current())` now observes the required
   singleton outer source focus, and `[count(current())]` lowers to the existing
   numeric position-one predicate without entering the general XPath grammar.

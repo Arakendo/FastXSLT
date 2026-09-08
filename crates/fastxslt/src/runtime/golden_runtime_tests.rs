@@ -1789,6 +1789,35 @@ fn xslt10_sort_orders_for_each_and_apply_templates_with_stable_multiple_keys() {
 }
 
 #[test]
+fn xslt10_sort_uses_the_first_document_order_node_from_a_path_union() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-sort-path-union:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-sort-path-union:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc/entry"><xsl:sort select="name/last | primary/name/last"/></xsl:apply-templates></out></xsl:template><xsl:template match="entry"><xsl:value-of select="name/last"/><xsl:value-of select="primary/name/last"/><xsl:text>|</xsl:text></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            br"<doc><entry><name><last>Zulu</last></name></entry><entry><primary><name><last>Alpha</last></name></primary></entry><entry><primary><name><last>Mike</last></name></primary></entry></doc>".to_vec(),
+        )
+        .expect("admit path-union sorting source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit path-union sorting stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile path-union sort key");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("path-union-sort", "result", SOURCE))
+        .expect("admit path-union sorting request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute path-union sort");
+    assert_eq!(
+        results.by_request["path-union-sort"].serialized,
+        "<out>Alpha|Mike|Zulu|</out>"
+    );
+}
+
+#[test]
 fn xslt10_sort_resolves_a_qualified_attribute_key() {
     const SOURCE: &str = "urn:fastxslt:xslt10-qualified-sort:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-qualified-sort:stylesheet";
