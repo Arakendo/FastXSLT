@@ -534,6 +534,11 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Variable-only literal attributes now convert invocation-local
+  temporary text trees through the shared string-value owner and preserve
+  nested lexical shadowing. Lotus `variable56` advances from execution failure
+  to a visible indentation comparison frontier; the strict 1,217-pass lower
+  bound is unchanged and no pass credit is inferred.
 - 2026-09-08 -- Text-constructed local XSLT 1.0 variables now retain explicit
   invocation-owned temporary-tree identity, bounded variable/path AVTs can use
   their string value, and direct fragment predicates remain distinct from

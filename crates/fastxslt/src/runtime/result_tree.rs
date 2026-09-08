@@ -176,21 +176,9 @@ fn materialize_attribute(
         .map_err(|failure| control_failure(failure, context.request_id))?;
     let value = match value {
         LiteralAttributeValue::Text(value) => value.clone(),
-        LiteralAttributeValue::Variable(variable) => context
-            .variables
-            .atomics
-            .get(variable)
-            .ok_or_else(|| {
-                failure_at(
-                    "FXRT0002",
-                    FailureCategory::Invalid,
-                    Some(context.request_id),
-                    location.clone(),
-                    format!("unbound variable in result attribute: ${variable}"),
-                )
-            })?
-            .lexical()
-            .to_owned(),
+        LiteralAttributeValue::Variable(variable) => {
+            attribute_variable_string(variable, location, context, control)?
+        }
         LiteralAttributeValue::CountSourceNodeVariable(_) => {
             unreachable!("source-node counts are materialized by the computed-attribute owner")
         }

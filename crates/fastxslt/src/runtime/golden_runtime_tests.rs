@@ -3544,6 +3544,34 @@ fn xslt10_text_tree_variable_composes_with_source_path_avts() {
 }
 
 #[test]
+fn xslt10_text_tree_variable_avts_shadow_across_nested_scope() {
+    const SOURCE: &str = "urn:fastxslt:text-tree-variable-shadow:source";
+    const STYLESHEET: &str = "urn:fastxslt:text-tree-variable-shadow:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, br"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><xsl:variable name="bar">outer</xsl:variable><outer bar="{$bar}"><xsl:for-each select="./*"><xsl:variable name="bar">inner</xsl:variable><inner bar="{$bar}"/></xsl:for-each></outer></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile text-tree shadowing");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("text-tree-variable-shadow", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute text-tree shadowing");
+    assert_eq!(
+        results.by_request["text-tree-variable-shadow"].serialized,
+        "<outer bar=\"outer\"><inner bar=\"inner\"></inner></outer>"
+    );
+}
+
+#[test]
 fn parent_name_value_uses_the_typed_singleton_parent_path() {
     const SOURCE: &str = "urn:fastxslt:parent-name-value:source";
     const STYLESHEET: &str = "urn:fastxslt:parent-name-value:stylesheet";
