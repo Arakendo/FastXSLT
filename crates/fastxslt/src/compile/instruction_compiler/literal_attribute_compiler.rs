@@ -92,6 +92,18 @@ fn parse_literal_attribute_value(
                     suffix: suffix.to_owned(),
                 });
             }
+            if let Some((left, right)) = parse_source_attribute_concat(expression) {
+                let expanded_name = |local: &str| ExpandedName {
+                    namespace: None,
+                    local: local.to_owned(),
+                };
+                return Ok(LiteralAttributeValue::Xslt10TextAndSourceAttributeConcat {
+                    prefix: prefix.to_owned(),
+                    left: expanded_name(left),
+                    right: expanded_name(right),
+                    suffix: suffix.to_owned(),
+                });
+            }
         }
         return Err(unsupported(
             "FXST1031",
@@ -116,6 +128,18 @@ fn parse_attribute_integer_offset(expression: &str) -> Option<(&str, i64)> {
         _ => return None,
     };
     Some((attribute, offset))
+}
+
+fn parse_source_attribute_concat(expression: &str) -> Option<(&str, &str)> {
+    let arguments = expression
+        .trim()
+        .strip_prefix("concat(")?
+        .strip_suffix(')')?;
+    let (left, right) = arguments.split_once(',')?;
+    let left = left.trim().strip_prefix('@')?;
+    let right = right.trim().strip_prefix('@')?;
+    (is_ascii_ncname(left) && is_ascii_ncname(right) && !right.contains(','))
+        .then_some((left, right))
 }
 
 fn single_dynamic_expression(lexical: &str) -> Option<(&str, &str, &str)> {
@@ -197,6 +221,25 @@ mod tests {
                 suffix: "after".to_owned(),
             }
         );
+    }
+
+    #[test]
+    fn compiles_two_source_attribute_concat_inside_literal_text() {
+        let compiled = parse_literal_attribute_value("Before{concat(@a,@b)}After", &location())
+            .expect("the bounded source-attribute concat AVT should compile");
+        let LiteralAttributeValue::Xslt10TextAndSourceAttributeConcat {
+            prefix,
+            left,
+            right,
+            suffix,
+        } = compiled
+        else {
+            panic!("expected the bounded source-attribute concat representation");
+        };
+        assert_eq!(prefix, "Before");
+        assert_eq!(left.local, "a");
+        assert_eq!(right.local, "b");
+        assert_eq!(suffix, "After");
     }
 
     #[test]

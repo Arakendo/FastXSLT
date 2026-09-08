@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Literal result attributes now admit one bounded
+  `concat(@left,@right)` expression between static text fragments. The
+  unchanged Lotus `attribvaltemplate10` case raises the strict lower bound from
+  1,206 to 1,207 and removes one `FXST1031` initialization frontier without
+  changing any mismatch or execution-failure count. General AVT expressions
+  remain explicit.
 - 2026-09-08 -- Literal result attributes now compose static text with one
   checked integer offset over an unqualified source attribute. The unchanged
   Lotus `attribvaltemplate06` case raises the strict lower bound from 1,205 to

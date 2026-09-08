@@ -210,6 +210,14 @@ fn materialize_attribute(
         } => materialize_source_attribute_integer_offset_avt(
             prefix, name, *offset, suffix, location, context, control,
         )?,
+        LiteralAttributeValue::Xslt10TextAndSourceAttributeConcat {
+            prefix,
+            left,
+            right,
+            suffix,
+        } => materialize_source_attribute_concat_avt(
+            prefix, left, right, suffix, location, context, control,
+        )?,
         LiteralAttributeValue::SourceAttribute(name) => {
             let Some((source, node)) = context.source_focus else {
                 return Err(failure_at(
@@ -340,28 +348,19 @@ fn materialize_source_attribute_integer_offset_avt(
             "the source-attribute arithmetic AVT requires a source-node context",
         ));
     };
-    let mut lexical = None;
-    for attribute in source.attributes(node) {
-        control
-            .charge(WorkDomain::XPathNodeVisit, 1)
-            .map_err(|failure| control_failure(failure, context.request_id))?;
-        if source.name(*attribute) == Some(name) {
-            lexical = Some(source.value(*attribute).unwrap_or_default());
-            break;
-        }
-    }
-    let lexical = lexical.ok_or_else(|| {
-        failure_at(
-            "XPTY0004",
-            FailureCategory::Invalid,
-            Some(context.request_id),
-            location.clone(),
-            format!(
-                "source attribute is absent for numeric AVT: @{}",
-                name.local
-            ),
-        )
-    })?;
+    let lexical = source_attribute_value(source, node, name, context.request_id, control)?
+        .ok_or_else(|| {
+            failure_at(
+                "XPTY0004",
+                FailureCategory::Invalid,
+                Some(context.request_id),
+                location.clone(),
+                format!(
+                    "source attribute is absent for numeric AVT: @{}",
+                    name.local
+                ),
+            )
+        })?;
     let adjusted = lexical
         .trim()
         .parse::<i64>()
@@ -381,4 +380,52 @@ fn materialize_source_attribute_integer_offset_avt(
     result.push_str(&adjusted.to_string());
     result.push_str(suffix);
     Ok(result)
+}
+
+fn materialize_source_attribute_concat_avt(
+    prefix: &str,
+    left: &ExpandedName,
+    right: &ExpandedName,
+    suffix: &str,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let Some((source, node)) = context.source_focus else {
+        return Err(failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(context.request_id),
+            location.clone(),
+            "the source-attribute concat AVT requires a source-node context",
+        ));
+    };
+    let left = source_attribute_value(source, node, left, context.request_id, control)?
+        .unwrap_or_default();
+    let right = source_attribute_value(source, node, right, context.request_id, control)?
+        .unwrap_or_default();
+    let mut result = String::with_capacity(prefix.len() + left.len() + right.len() + suffix.len());
+    result.push_str(prefix);
+    result.push_str(left);
+    result.push_str(right);
+    result.push_str(suffix);
+    Ok(result)
+}
+
+fn source_attribute_value<'a>(
+    source: &'a Document,
+    node: NodeId,
+    name: &ExpandedName,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Option<&'a str>, ExecutionFailure> {
+    for attribute in source.attributes(node) {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if source.name(*attribute) == Some(name) {
+            return Ok(Some(source.value(*attribute).unwrap_or_default()));
+        }
+    }
+    Ok(None)
 }

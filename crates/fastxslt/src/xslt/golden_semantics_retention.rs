@@ -958,6 +958,12 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
             suffix,
             ..
         } => prefix.capacity() + name_owned(name) + suffix.capacity(),
+        LiteralAttributeValue::Xslt10TextAndSourceAttributeConcat {
+            prefix,
+            left,
+            right,
+            suffix,
+        } => prefix.capacity() + name_owned(left) + name_owned(right) + suffix.capacity(),
         LiteralAttributeValue::SourceAttribute(name) => name_owned(name),
         LiteralAttributeValue::ContextPosition
         | LiteralAttributeValue::ContextSize

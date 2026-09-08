@@ -1008,6 +1008,12 @@ pub(crate) enum LiteralAttributeValue {
         offset: i64,
         suffix: String,
     },
+    Xslt10TextAndSourceAttributeConcat {
+        prefix: String,
+        left: ExpandedName,
+        right: ExpandedName,
+        suffix: String,
+    },
     SourceAttribute(ExpandedName),
     ContextPosition,
     ContextSize,
