@@ -34,6 +34,7 @@ pub(crate) enum BinaryNumericNode {
         negate: bool,
     },
     Literal(ExactRational),
+    Variable(String),
     Negate(Box<Self>),
     Operation {
         left: Box<Self>,
@@ -54,6 +55,7 @@ impl BinaryNumericNode {
     fn known_owned_capacity_bytes(&self) -> usize {
         match self {
             Self::Path { path, .. } => path.known_owned_capacity_bytes(),
+            Self::Variable(name) => name.capacity(),
             Self::Literal(_) => 0,
             Self::Negate(operand) => operand.known_owned_capacity_bytes(),
             Self::Operation { left, right, .. } => {
@@ -64,7 +66,7 @@ impl BinaryNumericNode {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum BinaryNumericEvaluationFailure {
+pub(crate) enum BinaryNumericEvaluationFailure<VariableFailure = ()> {
     Control(ControlFailure),
     Cardinality,
     EmptyOperand,
@@ -72,6 +74,7 @@ pub(crate) enum BinaryNumericEvaluationFailure {
     ZeroDivisor,
     NonIntegral,
     Overflow,
+    Variable(VariableFailure),
 }
 
 pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperator, &str)> {
@@ -95,8 +98,11 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
                     && !(expression[..index].ends_with(char::is_whitespace)
                         && (expression[index + 1..].starts_with(char::is_whitespace)
                             || expression[index + 1..].starts_with('-')))
+                    && !is_left_spaced_binary_minus(expression, index)
                     && !(bytes[..index].last().is_some_and(u8::is_ascii_digit)
-                        && bytes[index + 1..].first().is_some_and(u8::is_ascii_digit))
+                        && bytes[index + 1..].first().is_some_and(|byte| {
+                            byte.is_ascii_alphanumeric() || matches!(byte, b'$' | b'_')
+                        }))
                     && !(expression[..index].ends_with([')', ']'])
                         && expression[index + 1..].starts_with(['(', '[']))
                 {
@@ -145,6 +151,17 @@ pub(crate) fn split_paths(expression: &str) -> Option<(&str, BinaryNumericOperat
     (!left.is_empty() && !right.is_empty()).then_some((left, operator, right))
 }
 
+fn is_left_spaced_binary_minus(expression: &str, index: usize) -> bool {
+    let left = &expression[..index];
+    if !left.ends_with(char::is_whitespace) {
+        return false;
+    }
+    left.trim_end()
+        .chars()
+        .next_back()
+        .is_some_and(|character| !matches!(character, '+' | '-' | '*' | '/' | '('))
+}
+
 fn operator_keyword_left_boundary(left: &str) -> bool {
     left.ends_with(char::is_whitespace) || left.ends_with([')', ']'])
 }
@@ -158,48 +175,105 @@ pub(crate) fn signed_path(expression: &str) -> Option<(&str, bool)> {
     (!expression.is_empty()).then_some((expression, negate))
 }
 
-pub(crate) fn evaluate(
+pub(crate) fn evaluate_with_variables<VariableFailure>(
     expression: &BinaryNumericExpression,
     document: &Document,
     context: NodeId,
     control: &mut InvocationControl,
-) -> Result<String, BinaryNumericEvaluationFailure> {
+    mut resolve_variable: impl FnMut(&str, &mut InvocationControl) -> Result<String, VariableFailure>,
+) -> Result<String, BinaryNumericEvaluationFailure<VariableFailure>> {
     let value = evaluate_node(
         &expression.root,
         document,
         context,
         expression.selection,
         control,
+        &mut resolve_variable,
     )?;
-    value.format_decimal()
+    value.format_decimal().map_err(lift_failure)
 }
 
-fn evaluate_node(
+fn lift_failure<VariableFailure>(
+    failure: BinaryNumericEvaluationFailure,
+) -> BinaryNumericEvaluationFailure<VariableFailure> {
+    match failure {
+        BinaryNumericEvaluationFailure::Control(failure) => {
+            BinaryNumericEvaluationFailure::Control(failure)
+        }
+        BinaryNumericEvaluationFailure::Cardinality => BinaryNumericEvaluationFailure::Cardinality,
+        BinaryNumericEvaluationFailure::EmptyOperand => {
+            BinaryNumericEvaluationFailure::EmptyOperand
+        }
+        BinaryNumericEvaluationFailure::UnsupportedLexical => {
+            BinaryNumericEvaluationFailure::UnsupportedLexical
+        }
+        BinaryNumericEvaluationFailure::ZeroDivisor => BinaryNumericEvaluationFailure::ZeroDivisor,
+        BinaryNumericEvaluationFailure::NonIntegral => BinaryNumericEvaluationFailure::NonIntegral,
+        BinaryNumericEvaluationFailure::Overflow => BinaryNumericEvaluationFailure::Overflow,
+        BinaryNumericEvaluationFailure::Variable(()) => {
+            unreachable!("a variable-free numeric operation cannot report variable failure")
+        }
+    }
+}
+
+fn evaluate_node<VariableFailure>(
     node: &BinaryNumericNode,
     document: &Document,
     context: NodeId,
     selection: NumericOperandSelection,
     control: &mut InvocationControl,
-) -> Result<ExactRational, BinaryNumericEvaluationFailure> {
+    resolve_variable: &mut impl FnMut(&str, &mut InvocationControl) -> Result<String, VariableFailure>,
+) -> Result<ExactRational, BinaryNumericEvaluationFailure<VariableFailure>> {
     match node {
         BinaryNumericNode::Path { path, negate } => {
             operand_value(document, context, path, *negate, selection, control)
+                .map_err(lift_failure)
         }
         BinaryNumericNode::Literal(value) => Ok(*value),
-        BinaryNumericNode::Negate(operand) => {
-            evaluate_node(operand, document, context, selection, control)?.checked_negate()
+        BinaryNumericNode::Variable(name) => {
+            let lexical = resolve_variable(name, control)
+                .map_err(BinaryNumericEvaluationFailure::Variable)?;
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(BinaryNumericEvaluationFailure::Control)?;
+            ExactRational::parse_decimal(&lexical)
+                .ok_or(BinaryNumericEvaluationFailure::UnsupportedLexical)
         }
+        BinaryNumericNode::Negate(operand) => evaluate_node(
+            operand,
+            document,
+            context,
+            selection,
+            control,
+            resolve_variable,
+        )?
+        .checked_negate()
+        .map_err(lift_failure),
         BinaryNumericNode::Operation {
             left,
             operator,
             right,
         } => {
-            let left = evaluate_node(left, document, context, selection, control)?;
-            let right = evaluate_node(right, document, context, selection, control)?;
+            let left = evaluate_node(
+                left,
+                document,
+                context,
+                selection,
+                control,
+                resolve_variable,
+            )?;
+            let right = evaluate_node(
+                right,
+                document,
+                context,
+                selection,
+                control,
+                resolve_variable,
+            )?;
             control
                 .charge(WorkDomain::XPathOperation, 1)
                 .map_err(BinaryNumericEvaluationFailure::Control)?;
-            apply_operator(left, *operator, right)
+            apply_operator(left, *operator, right).map_err(lift_failure)
         }
     }
 }
@@ -528,6 +602,18 @@ mod tests {
         assert_eq!(
             split_paths("(n1+n2)-(n3+n4)"),
             Some(("n1+n2", BinaryNumericOperator::Subtract, "n3+n4"))
+        );
+        assert_eq!(
+            split_paths("100-n6 -4-n1 -1-11"),
+            Some(("100-n6 -4-n1 -1", BinaryNumericOperator::Subtract, "11"))
+        );
+        assert_eq!(
+            split_paths("$anum*5-4*n2+n6*n1 -n3*3"),
+            Some((
+                "$anum*5-4*n2+n6*n1",
+                BinaryNumericOperator::Subtract,
+                "n3*3"
+            ))
         );
         for expression in ["n1", "(n1)", "n1/ *", "/*/"] {
             assert_eq!(split_paths(expression), None, "{expression}");

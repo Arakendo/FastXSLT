@@ -872,7 +872,11 @@ fn compile_binary_numeric_path(
     static_context: ValueStaticContext,
 ) -> Option<ValueExpression> {
     crate::xpath::binary_numeric_experiment::split_paths(expression)?;
-    let root = compile_binary_numeric_node(expression, location)?;
+    let root = compile_binary_numeric_node(
+        expression,
+        location,
+        static_context.compatibility == ValueCompatibilityMode::Xslt10,
+    )?;
     let selection = match static_context.compatibility {
         ValueCompatibilityMode::Xslt10 => {
             crate::xpath::binary_numeric_experiment::NumericOperandSelection::FirstInDocumentOrder
@@ -893,27 +897,42 @@ fn compile_binary_numeric_path(
 fn compile_binary_numeric_node(
     expression: &str,
     location: &SourceLocation,
+    allow_xslt10_variables: bool,
 ) -> Option<crate::xpath::binary_numeric_experiment::BinaryNumericNode> {
     use crate::xpath::binary_numeric_experiment::BinaryNumericNode;
     if let Some((left, operator, right)) =
         crate::xpath::binary_numeric_experiment::split_paths(expression)
     {
         return Some(BinaryNumericNode::Operation {
-            left: Box::new(compile_binary_numeric_node(left, location)?),
+            left: Box::new(compile_binary_numeric_node(
+                left,
+                location,
+                allow_xslt10_variables,
+            )?),
             operator,
-            right: Box::new(compile_binary_numeric_node(right, location)?),
+            right: Box::new(compile_binary_numeric_node(
+                right,
+                location,
+                allow_xslt10_variables,
+            )?),
         });
     }
     let (operand, negate) = crate::xpath::binary_numeric_experiment::signed_path(expression)?;
     if negate {
         return Some(BinaryNumericNode::Negate(Box::new(
-            compile_binary_numeric_node(operand, location)?,
+            compile_binary_numeric_node(operand, location, allow_xslt10_variables)?,
         )));
     }
     if let Some(value) =
         crate::xpath::binary_numeric_experiment::ExactRational::parse_decimal(operand)
     {
         return Some(BinaryNumericNode::Literal(value));
+    }
+    if allow_xslt10_variables
+        && let Some(variable) = operand.strip_prefix('$')
+        && is_ascii_ncname(variable)
+    {
+        return Some(BinaryNumericNode::Variable(variable.to_owned()));
     }
     Some(BinaryNumericNode::Path {
         path: parse_location_path(operand, location.clone()).ok()?,
@@ -1705,9 +1724,22 @@ mod tests {
             "((((((n3+5)*(3)+(((n2)+2)*(n1 - 6)))-(n4 - n2))+(-(4-6)))))",
         ] {
             assert!(
-                compile_binary_numeric_node(expression, &location).is_some(),
+                compile_binary_numeric_node(expression, &location, false).is_some(),
                 "failed to compile {expression}; split={:?}",
                 crate::xpath::binary_numeric_experiment::split_paths(expression)
+            );
+        }
+
+        assert!(compile_binary_numeric_node("n2+$offset", &location, true).is_some());
+        assert!(compile_binary_numeric_node("n2+$offset", &location, false).is_none());
+        for expression in [
+            "100-n6 -4-n1 -1-11",
+            "100-$anum -5-15-$anum",
+            "$anum*5-4*n2+n6*n1 -n3*3",
+        ] {
+            assert!(
+                compile_binary_numeric_node(expression, &location, true).is_some(),
+                "failed to compile XSLT 1.0 arithmetic: {expression}"
             );
         }
     }

@@ -4,7 +4,7 @@ use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{NodeId, SourceLocation, StringValueVisitFailure};
 use crate::xpath::binary_numeric_experiment::{
-    BinaryNumericEvaluationFailure, BinaryNumericExpression, evaluate as evaluate_binary_numeric,
+    BinaryNumericEvaluationFailure, BinaryNumericExpression, evaluate_with_variables,
 };
 use crate::xpath::case_conversion_experiment::{
     CaseConversionExpression, CaseFailure, CaseValue, evaluate_compiled as evaluate_case_conversion,
@@ -243,7 +243,7 @@ pub(super) fn execute_value_of(
             append_number_path(inputs, context, path, result, control)?;
         }
         ValueExpression::BinaryNumeric(expression) => {
-            append_binary_numeric(inputs, context, expression, result, control)?;
+            append_binary_numeric(inputs, context, expression, variables, result, control)?;
         }
         ValueExpression::ContextNodeStringLength(location) => {
             append_context_node_string_length(inputs, context, location, result, control)?;
@@ -441,11 +441,21 @@ fn append_binary_numeric(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
     expression: &BinaryNumericExpression,
+    variables: &RuntimeVariables,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
-    let value = evaluate_binary_numeric(expression, source, context, control).map_err(
+    let value = evaluate_with_variables(
+        expression,
+        source,
+        context,
+        control,
+        |name, control| {
+            xslt10_compatibility::variable_string_value(inputs, name, variables, control)
+        },
+    )
+    .map_err(
         |failure| match failure {
             BinaryNumericEvaluationFailure::Control(failure) => {
                 control_failure(failure, inputs.request_id)
@@ -492,6 +502,7 @@ fn append_binary_numeric(
                 expression.location.clone(),
                 "binary numeric operation exceeds the checked exact-rational domain",
             ),
+            BinaryNumericEvaluationFailure::Variable(failure) => failure,
         },
     )?;
     append_text(result, &value, inputs.request_id, control)

@@ -534,6 +534,18 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Directional, operator-aware subtraction recognition now
+  distinguishes omitted-whitespace arithmetic from hyphens in valid XML names.
+  Four unchanged OASIS cases move directly from initialization failure to exact
+  output, raising the lower bound from 1,189 to 1,193 while mismatches remain 79
+  and execution failures remain 162. A broader whitespace rule was rejected
+  after the full corpus exposed two regressions.
+- 2026-09-08 -- The checked exact-rational numeric tree now admits
+  unprefixed variable leaves only under XSLT 1.0 static context and resolves
+  them through the existing invocation-local value owner. Unchanged
+  `Lotus/math_math08#1`, `math_math97#1`, and `math_math100#1` move directly
+  from initialization failure to exact output. The lower bound is 1,189;
+  mismatches remain 79 and execution failures remain 162.
 - 2026-09-07 -- Charged `sum(path)` template arguments and computed-attribute
   concatenation, unqualified source-attribute AVTs, and invocation-local
   atomic aliases move unchanged `Lotus/variable_variable62#1` and

@@ -400,6 +400,54 @@ fn static_integral_arithmetic_local_variable_copies_as_an_atomic_value() {
 }
 
 #[test]
+fn xslt10_binary_numeric_tree_composes_paths_and_a_global_variable() {
+    let source = parse_document(
+        "memory:variable-arithmetic.xml",
+        b"<doc><n2>2</n2><n5>5</n5></doc>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:variable-arithmetic.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:output omit-xml-declaration="yes"/>
+          <xsl:variable name="offset" select="10"/>
+          <xsl:template match="doc"><out><xsl:value-of select="n2+3+$offset+7+n5"/></out></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("variable-bearing arithmetic should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "variable-arithmetic-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("variable-bearing arithmetic should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "variable-arithmetic-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out>27</out>");
+}
+
+#[test]
 fn static_string_local_variable_shadows_an_outer_binding_lexically() {
     let source = parse_document(
         "memory:static-string-local.xml",
