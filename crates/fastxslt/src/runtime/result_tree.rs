@@ -232,6 +232,14 @@ fn materialize_attribute(
             context,
             control,
         )?,
+        LiteralAttributeValue::Xslt10TextAndLiteralVariableConcat {
+            prefix,
+            literal,
+            variable,
+            suffix,
+        } => materialize_literal_variable_concat_avt(
+            prefix, literal, variable, suffix, location, context,
+        )?,
         LiteralAttributeValue::SourceAttribute(name) => {
             materialize_source_attribute(name, location, context, control)?
         }
@@ -282,6 +290,37 @@ fn materialize_source_attribute(
             .unwrap_or_default()
             .to_owned(),
     )
+}
+
+fn materialize_literal_variable_concat_avt(
+    prefix: &str,
+    literal: &str,
+    variable: &str,
+    suffix: &str,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+) -> Result<String, ExecutionFailure> {
+    let variable_value = context
+        .variables
+        .atomics
+        .get(variable)
+        .ok_or_else(|| {
+            failure_at(
+                "FXRT0002",
+                FailureCategory::Invalid,
+                Some(context.request_id),
+                location.clone(),
+                format!("unbound variable in result attribute concat: ${variable}"),
+            )
+        })?
+        .lexical();
+    let mut result =
+        String::with_capacity(prefix.len() + literal.len() + variable_value.len() + suffix.len());
+    result.push_str(prefix);
+    result.push_str(literal);
+    result.push_str(variable_value);
+    result.push_str(suffix);
+    Ok(result)
 }
 
 fn materialize_context_integer_increment(

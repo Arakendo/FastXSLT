@@ -3482,6 +3482,36 @@ fn xslt10_literal_attribute_compares_two_source_attributes_with_starts_with() {
 }
 
 #[test]
+fn xslt10_literal_attribute_concatenates_literal_with_global_variable() {
+    const SOURCE: &str = "urn:fastxslt:literal-variable-concat-avt:source";
+    const STYLESHEET: &str = "urn:fastxslt:literal-variable-concat-avt:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:variable name="color" select="'red'"/><xsl:template match="doc"><out style="{concat('border: solid ',$color)}"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile literal-variable concat AVT");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("literal-variable-concat-avt", "result", SOURCE))
+        .expect("admit request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute literal-variable concat AVT");
+    assert_eq!(
+        results.by_request["literal-variable-concat-avt"].serialized,
+        "<out style=\"border: solid red\"></out>"
+    );
+}
+
+#[test]
 fn parent_name_value_uses_the_typed_singleton_parent_path() {
     const SOURCE: &str = "urn:fastxslt:parent-name-value:source";
     const STYLESHEET: &str = "urn:fastxslt:parent-name-value:stylesheet";

@@ -535,6 +535,12 @@ maintained redistributable legacy suite becomes available.
 ## Review history
 
 - 2026-09-08 -- Literal result attributes now admit one bounded
+  `concat('literal',$variable)` expression. The unchanged Lotus `impincl24`
+  case raises the strict lower bound from 1,208 to 1,209 and proves global
+  atomic-variable visibility through the admitted `apply-imports` path without
+  changing any mismatch or execution-failure count. General AVT concatenation
+  remains explicit.
+- 2026-09-08 -- Literal result attributes now admit one bounded
   `starts-with(@value,@prefix)` expression between static text fragments. The
   unchanged Lotus `attribvaltemplate11` case raises the strict lower bound from
   1,207 to 1,208 and removes one `FXST1031` initialization frontier without

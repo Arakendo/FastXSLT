@@ -73,53 +73,8 @@ fn parse_literal_attribute_value(
         if let Some(text) = unescape_static_braces(lexical) {
             return Ok(LiteralAttributeValue::Text(text));
         }
-        if let Some((prefix, expression, suffix)) = single_dynamic_expression(lexical) {
-            if let Ok(path) = parse_location_path(expression.trim(), location.clone()) {
-                return Ok(LiteralAttributeValue::Xslt10TextAndPath {
-                    prefix: prefix.to_owned(),
-                    path,
-                    suffix: suffix.to_owned(),
-                });
-            }
-            if let Some((name, offset)) = parse_attribute_integer_offset(expression) {
-                return Ok(LiteralAttributeValue::Xslt10TextAndAttributeIntegerOffset {
-                    prefix: prefix.to_owned(),
-                    name: ExpandedName {
-                        namespace: None,
-                        local: name.to_owned(),
-                    },
-                    offset,
-                    suffix: suffix.to_owned(),
-                });
-            }
-            if let Some((left, right)) = parse_source_attribute_concat(expression) {
-                let expanded_name = |local: &str| ExpandedName {
-                    namespace: None,
-                    local: local.to_owned(),
-                };
-                return Ok(LiteralAttributeValue::Xslt10TextAndSourceAttributeConcat {
-                    prefix: prefix.to_owned(),
-                    left: expanded_name(left),
-                    right: expanded_name(right),
-                    suffix: suffix.to_owned(),
-                });
-            }
-            if let Some((value, prefix_attribute)) =
-                parse_two_source_attribute_function(expression, "starts-with(")
-            {
-                let expanded_name = |local: &str| ExpandedName {
-                    namespace: None,
-                    local: local.to_owned(),
-                };
-                return Ok(
-                    LiteralAttributeValue::Xslt10TextAndSourceAttributeStartsWith {
-                        prefix: prefix.to_owned(),
-                        value: expanded_name(value),
-                        prefix_attribute: expanded_name(prefix_attribute),
-                        suffix: suffix.to_owned(),
-                    },
-                );
-            }
+        if let Some(value) = parse_single_dynamic_attribute_value(lexical, location) {
+            return Ok(value);
         }
         return Err(unsupported(
             "FXST1031",
@@ -128,6 +83,63 @@ fn parse_literal_attribute_value(
         ));
     }
     Ok(LiteralAttributeValue::Text(lexical.to_owned()))
+}
+
+fn parse_single_dynamic_attribute_value(
+    lexical: &str,
+    location: &SourceLocation,
+) -> Option<LiteralAttributeValue> {
+    let (prefix, expression, suffix) = single_dynamic_expression(lexical)?;
+    if let Ok(path) = parse_location_path(expression.trim(), location.clone()) {
+        return Some(LiteralAttributeValue::Xslt10TextAndPath {
+            prefix: prefix.to_owned(),
+            path,
+            suffix: suffix.to_owned(),
+        });
+    }
+    if let Some((name, offset)) = parse_attribute_integer_offset(expression) {
+        return Some(LiteralAttributeValue::Xslt10TextAndAttributeIntegerOffset {
+            prefix: prefix.to_owned(),
+            name: expanded_unqualified_name(name),
+            offset,
+            suffix: suffix.to_owned(),
+        });
+    }
+    if let Some((left, right)) = parse_source_attribute_concat(expression) {
+        return Some(LiteralAttributeValue::Xslt10TextAndSourceAttributeConcat {
+            prefix: prefix.to_owned(),
+            left: expanded_unqualified_name(left),
+            right: expanded_unqualified_name(right),
+            suffix: suffix.to_owned(),
+        });
+    }
+    if let Some((value, prefix_attribute)) =
+        parse_two_source_attribute_function(expression, "starts-with(")
+    {
+        return Some(
+            LiteralAttributeValue::Xslt10TextAndSourceAttributeStartsWith {
+                prefix: prefix.to_owned(),
+                value: expanded_unqualified_name(value),
+                prefix_attribute: expanded_unqualified_name(prefix_attribute),
+                suffix: suffix.to_owned(),
+            },
+        );
+    }
+    parse_literal_variable_concat(expression).map(|(literal, variable)| {
+        LiteralAttributeValue::Xslt10TextAndLiteralVariableConcat {
+            prefix: prefix.to_owned(),
+            literal: literal.to_owned(),
+            variable: variable.to_owned(),
+            suffix: suffix.to_owned(),
+        }
+    })
+}
+
+fn expanded_unqualified_name(local: &str) -> ExpandedName {
+    ExpandedName {
+        namespace: None,
+        local: local.to_owned(),
+    }
 }
 
 fn parse_attribute_integer_offset(expression: &str) -> Option<(&str, i64)> {
@@ -160,6 +172,32 @@ fn parse_two_source_attribute_function<'a>(
     let right = right.trim().strip_prefix('@')?;
     (is_ascii_ncname(left) && is_ascii_ncname(right) && !right.contains(','))
         .then_some((left, right))
+}
+
+fn parse_literal_variable_concat(expression: &str) -> Option<(&str, &str)> {
+    let arguments = expression
+        .trim()
+        .strip_prefix("concat(")?
+        .strip_suffix(')')?;
+    let arguments = crate::xpath::static_string_experiment::split_arguments(arguments, 2)?;
+    let [literal, variable] = arguments.as_slice() else {
+        return None;
+    };
+    let literal = xpath_string_literal(literal)?;
+    let variable = variable.trim().strip_prefix('$')?;
+    is_ascii_ncname(variable).then_some((literal, variable))
+}
+
+fn xpath_string_literal(expression: &str) -> Option<&str> {
+    let expression = expression.trim();
+    let quote = expression.as_bytes().first().copied()?;
+    if !matches!(quote, b'\'' | b'"')
+        || expression.as_bytes().last().copied() != Some(quote)
+        || expression.len() < 2
+    {
+        return None;
+    }
+    Some(&expression[1..expression.len() - 1])
 }
 
 fn single_dynamic_expression(lexical: &str) -> Option<(&str, &str, &str)> {
@@ -280,6 +318,26 @@ mod tests {
         assert_eq!(value.local, "a");
         assert_eq!(prefix_attribute.local, "b");
         assert_eq!(suffix, "After");
+    }
+
+    #[test]
+    fn compiles_literal_and_variable_concat_inside_literal_text() {
+        let compiled =
+            parse_literal_attribute_value("{concat('border: solid ',$color)}", &location())
+                .expect("the bounded literal-variable concat AVT should compile");
+        let LiteralAttributeValue::Xslt10TextAndLiteralVariableConcat {
+            prefix,
+            literal,
+            variable,
+            suffix,
+        } = compiled
+        else {
+            panic!("expected the bounded literal-variable concat representation");
+        };
+        assert!(prefix.is_empty());
+        assert_eq!(literal, "border: solid ");
+        assert_eq!(variable, "color");
+        assert!(suffix.is_empty());
     }
 
     #[test]
