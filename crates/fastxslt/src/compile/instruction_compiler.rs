@@ -66,7 +66,7 @@ use crate::xslt::golden_semantics_experiment::{
 
 #[path = "instruction_compiler/computed_attribute_compiler.rs"]
 mod computed_attribute_compiler;
-use computed_attribute_compiler::compile_computed_attributes;
+use computed_attribute_compiler::{compile_computed_attribute, compile_computed_attributes};
 #[path = "instruction_compiler/boolean_expression_compiler.rs"]
 mod boolean_expression_compiler;
 #[path = "instruction_compiler/conditional_expression_compiler.rs"]
@@ -295,6 +295,7 @@ fn text_run_contains_non_whitespace(
 fn local_variable_name(variable: &Instruction) -> &String {
     let (Instruction::Variable { name, .. }
     | Instruction::StaticAtomicVariable { name, .. }
+    | Instruction::AtomicVariableAlias { name, .. }
     | Instruction::ContextPositionVariable { name, .. }
     | Instruction::SourceNodeVariable { name, .. }
     | Instruction::IntegerRangeVariable { name, .. }
@@ -307,6 +308,13 @@ fn local_variable_name(variable: &Instruction) -> &String {
 
 fn compile_attribute(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
     ensure_only_attributes(document, element, &["name", "select"], "xsl:attribute")?;
+    if optional_attribute(document, element, None, "select").is_none() {
+        let attribute = compile_computed_attribute(document, element)?;
+        return Ok(Instruction::Attribute {
+            attribute,
+            location: document.location(element).clone(),
+        });
+    }
     ensure_no_meaningful_children(document, element, "xsl:attribute")?;
     let name = required_attribute(document, element, None, "name")?;
     if !is_ascii_ncname(name) {
@@ -1199,6 +1207,17 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
     if expression.trim() == "position()" {
         return Ok(Instruction::ContextPositionVariable {
             name: name.to_owned(),
+            location,
+        });
+    }
+    if let Some(source) = expression
+        .trim()
+        .strip_prefix('$')
+        .filter(|source| is_ascii_ncname(source))
+    {
+        return Ok(Instruction::AtomicVariableAlias {
+            name: name.to_owned(),
+            source: source.to_owned(),
             location,
         });
     }

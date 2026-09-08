@@ -1,6 +1,7 @@
 //! Literal result-attribute compilation for the admitted private AVT slice.
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
+use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xslt::golden_semantics_experiment::{LiteralAttribute, LiteralAttributeValue};
 
 use super::{CompileFailure, XSLT_NAMESPACE, invalid, is_ascii_ncname, unsupported};
@@ -43,6 +44,16 @@ fn parse_literal_attribute_value(
     }
     if lexical == "{.}" {
         return Ok(LiteralAttributeValue::ContextStringValue);
+    }
+    if let Some(name) = lexical
+        .strip_prefix("{@")
+        .and_then(|value| value.strip_suffix('}'))
+        .filter(|name| is_ascii_ncname(name))
+    {
+        return Ok(LiteralAttributeValue::SourceAttribute(ExpandedName {
+            namespace: None,
+            local: name.to_owned(),
+        }));
     }
     if let Some(variable) = lexical
         .strip_prefix("{$")

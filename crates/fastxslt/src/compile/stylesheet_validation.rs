@@ -61,6 +61,7 @@ fn validate_named_calls(
             | Instruction::ValueOf { .. }
             | Instruction::Variable { .. }
             | Instruction::StaticAtomicVariable { .. }
+            | Instruction::AtomicVariableAlias { .. }
             | Instruction::ContextPositionVariable { .. }
             | Instruction::SourceNodeVariable { .. }
             | Instruction::IntegerRangeVariable { .. }

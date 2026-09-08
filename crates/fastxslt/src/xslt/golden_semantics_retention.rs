@@ -269,11 +269,8 @@ fn instruction_owned(value: &Instruction) -> usize {
             select,
             location,
         } => local_atomic_variable_owned(name, select, location),
-        Instruction::StaticAtomicVariable {
-            name,
-            value,
-            location,
-        } => static_atomic_variable_owned(name, value, location),
+        instruction @ (Instruction::StaticAtomicVariable { .. }
+        | Instruction::AtomicVariableAlias { .. }) => scalar_binding_owned(instruction),
         Instruction::ContextPositionVariable { name, location }
         | Instruction::IntegerRangeVariable { name, location, .. } => {
             name.capacity() + location_owned(location)
@@ -341,6 +338,22 @@ fn instruction_owned(value: &Instruction) -> usize {
             body,
             location,
         } => copy_owned(attributes, body, location),
+    }
+}
+
+fn scalar_binding_owned(value: &Instruction) -> usize {
+    match value {
+        Instruction::StaticAtomicVariable {
+            name,
+            value,
+            location,
+        } => static_atomic_variable_owned(name, value, location),
+        Instruction::AtomicVariableAlias {
+            name,
+            source,
+            location,
+        } => name.capacity() + source.capacity() + location_owned(location),
+        _ => unreachable!("scalar binding accounting receives one scalar binding"),
     }
 }
 
@@ -666,7 +679,9 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
                     Xslt10ConcatPart::Literal(value) | Xslt10ConcatPart::Variable(value) => {
                         value.capacity()
                     }
-                    Xslt10ConcatPart::Path(path) => path.known_owned_capacity_bytes(),
+                    Xslt10ConcatPart::Path(path) | Xslt10ConcatPart::SumPath(path) => {
+                        path.known_owned_capacity_bytes()
+                    }
                 })
         }
         ValueExpression::LiteralVariableConcat { literal, variable } => {
@@ -865,7 +880,11 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
             | TemplateArgumentValue::Boolean(_)
             | TemplateArgumentValue::ContextPosition
             | TemplateArgumentValue::ContextSize => 0,
-            TemplateArgumentValue::SourcePath(path) => path.known_owned_capacity_bytes(),
+            TemplateArgumentValue::SourcePath(path)
+            | TemplateArgumentValue::Xslt10SumPath(path) => path.known_owned_capacity_bytes(),
+            TemplateArgumentValue::SourcePathStringComparison { left, right, .. } => {
+                path_pair_owned(left, right) + size_of_val(right.as_ref())
+            }
         }
         + location_owned(&value.location)
 }
@@ -886,6 +905,17 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
     match value {
         LiteralAttributeValue::Text(text) | LiteralAttributeValue::Variable(text) => {
             text.capacity()
+        }
+        LiteralAttributeValue::Xslt10Concat(expression) => {
+            size_of_val(expression.as_ref())
+                + vec_owned(&expression.parts, |part| match part {
+                    Xslt10ConcatPart::Literal(value) | Xslt10ConcatPart::Variable(value) => {
+                        value.capacity()
+                    }
+                    Xslt10ConcatPart::Path(path) | Xslt10ConcatPart::SumPath(path) => {
+                        path.known_owned_capacity_bytes()
+                    }
+                })
         }
         LiteralAttributeValue::SourceAttribute(name) => name_owned(name),
         LiteralAttributeValue::ContextPosition

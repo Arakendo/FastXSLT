@@ -242,6 +242,16 @@ pub(super) fn append_sum_path(
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
+    let value = sum_path_lexical(inputs, context, path, control)?;
+    append_text(result, &value, inputs.request_id, control)
+}
+
+pub(super) fn sum_path_lexical(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    path: &LocationPath,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
     let selected = evaluate_location_path_controlled(source, context, path, control)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
@@ -256,11 +266,11 @@ pub(super) fn append_sum_path(
         let Some(value) =
             crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&value)
         else {
-            return append_text(result, "NaN", inputs.request_id, control);
+            return Ok("NaN".to_owned());
         };
         sum += value;
     }
-    append_text(result, &f64_lexical(sum), inputs.request_id, control)
+    Ok(f64_lexical(sum))
 }
 
 pub(super) fn append_path_substring(
@@ -323,6 +333,10 @@ pub(super) fn append_concat(
             }
             Xslt10ConcatPart::Path(path) => {
                 let value = first_path_string(inputs, context, path, control)?;
+                append_text(result, &value, inputs.request_id, control)?;
+            }
+            Xslt10ConcatPart::SumPath(path) => {
+                let value = sum_path_lexical(inputs, context, path, control)?;
                 append_text(result, &value, inputs.request_id, control)?;
             }
         }

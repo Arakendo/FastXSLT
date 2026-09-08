@@ -4,9 +4,11 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xslt::golden_semantics_experiment::{ComputedAttribute, LiteralAttributeValue};
 
+use super::value_expression_compiler::compile_xslt10_concat;
 use super::{
     CompileFailure, ensure_no_meaningful_children, ensure_only_attributes, invalid,
     is_ascii_ncname, is_xslt_element, meaningful_children, required_attribute, unsupported,
+    uses_xslt10_compatibility, xpath_string_literal,
 };
 
 pub(super) fn compile_computed_attributes(
@@ -34,7 +36,7 @@ pub(super) fn compile_computed_attributes(
     Ok((attributes, attribute_nodes))
 }
 
-fn compile_computed_attribute(
+pub(super) fn compile_computed_attribute(
     document: &Document,
     element: NodeId,
 ) -> Result<ComputedAttribute, CompileFailure> {
@@ -70,15 +72,23 @@ fn compile_computed_attribute(
         .filter(|name| is_ascii_ncname(name))
     {
         LiteralAttributeValue::Variable(variable.to_owned())
+    } else if uses_xslt10_compatibility(document, *value_of)
+        && let Some(expression) =
+            compile_xslt10_concat(document, *value_of, select, document.location(*value_of))?
+    {
+        LiteralAttributeValue::Xslt10Concat(Box::new(expression))
     } else {
-        let Some(escaped) = crate::xpath::escape_html_uri_experiment::fold_literal(select) else {
+        let value = xpath_string_literal(select)
+            .map(str::to_owned)
+            .or_else(|| crate::xpath::escape_html_uri_experiment::fold_literal(select));
+        let Some(value) = value else {
             return Err(unsupported(
                 "FXXP1012",
                 format!("unsupported computed-attribute value expression: {select}"),
                 document.location(*value_of),
             ));
         };
-        LiteralAttributeValue::Text(escaped)
+        LiteralAttributeValue::Text(value)
     };
     Ok(ComputedAttribute {
         name: ExpandedName {

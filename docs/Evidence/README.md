@@ -32,6 +32,8 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Variable Position Path](oasis-xslt10-variable-position-path-2026-09-07.md)
 - [OASIS XSLT 1.0 Global Count and Static Variable Tranche](oasis-xslt10-global-count-and-static-variable-tranche-2026-09-07.md)
 - [OASIS XSLT 1.0 Static String Local and Parameter-Default Tranche](oasis-xslt10-static-string-local-and-parameter-default-tranche-2026-09-07.md)
+- [OASIS XSLT 1.0 Path-Equality Template Argument](oasis-xslt10-path-equality-template-argument-2026-09-07.md)
+- [OASIS XSLT 1.0 Sum Composition and Atomic Alias](oasis-xslt10-sum-composition-and-atomic-alias-2026-09-07.md)
 - [OASIS XSLT 1.0 Sort Context-Name Key](oasis-xslt10-sort-context-name-2026-09-07.md)
 - [OASIS XSLT 1.0 Lexical Node-Name Prefix Retention](oasis-xslt10-lexical-node-name-prefix-2026-09-07.md)
 - [OASIS XSLT 1.0 Source-Attribute `xsl:copy`](oasis-xslt10-source-attribute-copy-2026-09-07.md)

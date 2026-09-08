@@ -19,6 +19,7 @@ use crate::xslt::golden_semantics_experiment::{
 
 use super::dynamic_document::DynamicDocument;
 use super::template_selector::DocumentRootedMatchCache;
+use super::value_evaluator::evaluate_xslt10_sum_path;
 use super::{
     ExecutionFailure, FailureCategory, MultipleMatchPolicy, control_failure, failure, failure_at,
 };
@@ -165,6 +166,22 @@ pub(super) fn evaluate_template_arguments(
                         .map_err(|failure| control_failure(failure, inputs.request_id))?;
                     InvocationParameterValue::SourceNodes(nodes)
                 }
+                TemplateArgumentValue::Xslt10SumPath(path) => {
+                    let value = evaluate_xslt10_sum_path(inputs, context, path, control)?;
+                    InvocationParameterValue::Atomic(AtomicValue::from_validated_lexical(
+                        BuiltinAtomicType::Double,
+                        value,
+                    ))
+                }
+                TemplateArgumentValue::SourcePathStringComparison { left, right, equal } => {
+                    let value = evaluate_source_path_string_comparison(
+                        inputs, context, left, right, *equal, control,
+                    )?;
+                    InvocationParameterValue::Atomic(AtomicValue::from_validated_lexical(
+                        BuiltinAtomicType::Boolean,
+                        value.to_string(),
+                    ))
+                }
             };
             Ok((
                 argument.name.clone(),
@@ -175,6 +192,38 @@ pub(super) fn evaluate_template_arguments(
             ))
         })
         .collect()
+}
+
+fn evaluate_source_path_string_comparison(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    left: &crate::xpath::path_experiment::LocationPath,
+    right: &crate::xpath::path_experiment::LocationPath,
+    equal: bool,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let left = evaluate_location_path_controlled(source, context, left, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let right = evaluate_location_path_controlled(source, context, right, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    for left in left {
+        let left = source
+            .string_value_controlled(left, control)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        for right in &right {
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let right = source
+                .string_value_controlled(*right, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            if (left == right) == equal {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
 }
 
 impl RuntimeVariables {

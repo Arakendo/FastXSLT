@@ -448,6 +448,53 @@ fn static_string_local_variable_shadows_an_outer_binding_lexically() {
 }
 
 #[test]
+fn local_atomic_variable_alias_preserves_the_bound_type_and_value() {
+    let source = parse_document(
+        "memory:atomic-alias.xml",
+        b"<doc/>",
+        ParseLimits {
+            max_events: 8,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:atomic-alias.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:output omit-xml-declaration="yes"/>
+          <xsl:template match="doc"><xsl:variable name="first" select="'value'"/><xsl:variable name="second" select="$first"/><out><xsl:value-of select="$second"/></out></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("local atomic aliases should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "atomic-alias-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("local atomic aliases should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "atomic-alias-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out>value</out>");
+}
+
+#[test]
 fn xslt10_named_call_ignores_undeclared_arguments_and_retains_global_fallback() {
     let source = parse_document(
         "memory:ignored-argument.xml",
@@ -494,6 +541,105 @@ fn xslt10_named_call_ignores_undeclared_arguments_and_retains_global_fallback() 
     .expect("result should serialize");
 
     assert_eq!(serialized, "<out>global</out>");
+}
+
+#[test]
+fn template_arguments_preserve_existential_source_path_equality() {
+    let source = parse_document(
+        "memory:path-equality-argument.xml",
+        b"<doc><a>x</a><b>x</b><b>y</b></doc>",
+        ParseLimits {
+            max_events: 20,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:path-equality-argument.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:output omit-xml-declaration="yes"/>
+          <xsl:template match="doc"><out><xsl:apply-templates select="a"><xsl:with-param name="eq" select="a=b"/><xsl:with-param name="ne" select="a!=b"/></xsl:apply-templates></out></xsl:template>
+          <xsl:template match="a"><xsl:param name="eq" select="0"/><xsl:param name="ne" select="0"/><xsl:if test="$eq">equal|</xsl:if><xsl:if test="$ne">not-equal</xsl:if></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 64,
+            max_depth: 10,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("source-path equality arguments should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "path-equality-argument-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("source-path equality arguments should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "path-equality-argument-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out>equal|not-equal</out>");
+}
+
+#[test]
+fn xslt10_sum_paths_compose_through_template_arguments_and_computed_attributes() {
+    let source = parse_document(
+        "memory:sum-argument.xml",
+        br#"<doc><group rank="2"><a>2</a><a>3</a></group></doc>"#,
+        ParseLimits {
+            max_events: 20,
+            max_depth: 5,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:sum-argument.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:output omit-xml-declaration="yes"/>
+          <xsl:template match="doc"><out><xsl:apply-templates select="group"><xsl:sort select="@rank" data-type="number"/><xsl:with-param name="total" select="sum(group/a)"/></xsl:apply-templates></out></xsl:template>
+          <xsl:template match="group"><xsl:param name="total" select="0"/><item rank="{@rank}"><xsl:attribute name="portion"><xsl:value-of select="concat(sum(a),'/', $total)"/></xsl:attribute></item></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 64,
+            max_depth: 10,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("sum-path arguments and computed attributes should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "sum-argument-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("sum-path arguments and computed attributes should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "sum-argument-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(
+        serialized,
+        r#"<out><item rank="2" portion="5/5"></item></out>"#
+    );
 }
 
 #[test]

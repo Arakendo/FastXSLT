@@ -769,6 +769,7 @@ fn execute_instruction(
         }
         Instruction::Variable { .. }
         | Instruction::StaticAtomicVariable { .. }
+        | Instruction::AtomicVariableAlias { .. }
         | Instruction::ContextPositionVariable { .. }
         | Instruction::SourceNodeVariable { .. }
         | Instruction::IntegerRangeVariable { .. }
@@ -817,11 +818,16 @@ fn execute_attribute_instruction(
     control: &mut InvocationControl,
 ) -> Result<ResultNode, ExecutionFailure> {
     let mut materialized = materialize_computed_attributes(
+        inputs,
         std::slice::from_ref(attribute),
         scope,
-        execution.focus_position,
-        execution.focus_size,
-        execution_context_value(inputs, execution),
+        LiteralAttributeFocus {
+            position: execution.focus_position,
+            size: execution.focus_size,
+            name: execution_context_name(inputs, execution),
+            value: execution_context_value(inputs, execution),
+            source: execution_source_focus(inputs, execution),
+        },
         inputs.request_id,
         control,
     )?;
@@ -1468,6 +1474,25 @@ fn execute_binding(
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
             scope.bind_atomic(name.clone(), value.clone());
         }
+        Instruction::AtomicVariableAlias {
+            name,
+            source,
+            location,
+        } => {
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let value = scope.atomics.get(source).cloned().ok_or_else(|| {
+                failure_at(
+                    "FXRT0002",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    location.clone(),
+                    format!("unbound or non-atomic local variable alias: ${source}"),
+                )
+            })?;
+            scope.bind_atomic(name.clone(), value);
+        }
         Instruction::ContextPositionVariable { name, .. } => {
             control
                 .charge(WorkDomain::XPathOperation, 1)
@@ -1649,17 +1674,22 @@ fn execute_literal_element(
             size: execution.focus_size,
             name: execution_context_name(inputs, execution),
             value: context_string.as_deref(),
-            source: None,
+            source: execution_source_focus(inputs, execution),
         },
         inputs.request_id,
         control,
     )?;
     attributes.extend(materialize_computed_attributes(
+        inputs,
         computed_attributes,
         variables,
-        execution.focus_position,
-        execution.focus_size,
-        None,
+        LiteralAttributeFocus {
+            position: execution.focus_position,
+            size: execution.focus_size,
+            name: execution_context_name(inputs, execution),
+            value: None,
+            source: execution_source_focus(inputs, execution),
+        },
         inputs.request_id,
         control,
     )?);
@@ -1704,6 +1734,16 @@ fn execute_literal_element(
         attributes,
         children,
     })
+}
+
+fn execution_source_focus<'a>(
+    inputs: &'a SequenceInputs<'a>,
+    execution: SequenceContext<'a>,
+) -> Option<(&'a Document, NodeId)> {
+    if execution.temporary_focus.is_some() || execution.atomic_focus.is_some() {
+        return None;
+    }
+    inputs.source.zip(execution.node)
 }
 
 fn execution_context_name<'a>(

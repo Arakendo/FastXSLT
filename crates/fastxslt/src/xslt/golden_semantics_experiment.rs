@@ -421,6 +421,11 @@ pub(crate) enum Instruction {
         value: AtomicValue,
         location: SourceLocation,
     },
+    AtomicVariableAlias {
+        name: String,
+        source: String,
+        location: SourceLocation,
+    },
     ContextPositionVariable {
         name: String,
         location: SourceLocation,
@@ -762,6 +767,7 @@ pub(crate) enum Xslt10ConcatPart {
     Literal(String),
     Variable(String),
     Path(LocationPath),
+    SumPath(LocationPath),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -940,6 +946,12 @@ pub(crate) enum TemplateArgumentValue {
     ContextSize,
     Variable(String),
     SourcePath(LocationPath),
+    Xslt10SumPath(LocationPath),
+    SourcePathStringComparison {
+        left: LocationPath,
+        right: Box<LocationPath>,
+        equal: bool,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -960,6 +972,7 @@ pub(crate) struct ComputedAttribute {
 pub(crate) enum LiteralAttributeValue {
     Text(String),
     Variable(String),
+    Xslt10Concat(Box<Xslt10ConcatExpression>),
     SourceAttribute(ExpandedName),
     ContextPosition,
     ContextSize,

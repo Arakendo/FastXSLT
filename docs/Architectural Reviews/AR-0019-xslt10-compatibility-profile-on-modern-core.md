@@ -512,6 +512,12 @@ public version-mode contract.
   parameter defaults, and string-compatible variable comparison, raising the
   lower bound from 1,178 to 1,183 without admitting general node-set pair
   comparison.
+- [x] Preserve existential source-path equality in typed template arguments
+  and reuse the computed-attribute compiler for nested `xsl:attribute`, raising
+  the lower bound from 1,183 to 1,184.
+- [x] Compose charged `sum(path)` through template arguments and computed
+  attributes, admit unqualified source-attribute AVTs, and preserve
+  invocation-local atomic aliases, raising the lower bound from 1,184 to 1,186.
 - [ ] Measure pass growth, regression risk, retained state, and hot-path cost as
   shared families land.
 - [ ] Obtain consumer evidence before selecting the exact advertised profile or
@@ -528,6 +534,16 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-07 -- Charged `sum(path)` template arguments and computed-attribute
+  concatenation, unqualified source-attribute AVTs, and invocation-local
+  atomic aliases move unchanged `Lotus/variable_variable62#1` and
+  `Lotus/variable_variable44#1` to exact output. The lower bound is 1,186;
+  mismatches remain 79, while one additional initialized case reaches a later
+  visible runtime failure and leaves execution failures at 162.
+- 2026-09-07 -- Existential source-path equality as a typed template argument
+  and nested computed-attribute compilation move unchanged
+  `Lotus/variable_variable60#1` to exact output. The lower bound is 1,184 with
+  mismatches and execution failures unchanged.
 - 2026-09-07 -- Static string locals, a two-literal string-function template
   parameter default, and string-compatible variable comparison move five
   unchanged cases to exact output. The lower bound is 1,183 with mismatches and

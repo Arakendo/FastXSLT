@@ -85,6 +85,36 @@ pub(super) fn evaluate_xslt10_variable_string_comparison(
     )
 }
 
+pub(super) fn evaluate_xslt10_sum_path(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    xslt10_compatibility::sum_path_lexical(inputs, context, path, control)
+}
+
+pub(super) fn evaluate_xslt10_concat(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expression: &crate::xslt::golden_semantics_experiment::Xslt10ConcatExpression,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let mut nodes = Vec::new();
+    xslt10_compatibility::append_concat(
+        inputs, context, expression, variables, &mut nodes, control,
+    )?;
+    let mut value = String::new();
+    for node in nodes {
+        let ResultNode::Text(text) = node else {
+            unreachable!("the typed XSLT 1.0 concat evaluator emits only text")
+        };
+        value.push_str(&text);
+    }
+    Ok(value)
+}
+
 fn evaluate_xslt10_variable_string_variables_comparison(
     inputs: &SequenceInputs<'_>,
     left: &str,

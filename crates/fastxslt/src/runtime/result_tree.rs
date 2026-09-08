@@ -9,7 +9,8 @@ use crate::xslt::golden_semantics_experiment::{
     ComputedAttribute, LiteralAttribute, LiteralAttributeValue,
 };
 
-use super::runtime_context::RuntimeVariables;
+use super::runtime_context::{RuntimeVariables, SequenceInputs};
+use super::value_evaluator::evaluate_xslt10_concat;
 use super::{ExecutionFailure, FailureCategory, control_failure, failure_at};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -91,35 +92,49 @@ pub(super) fn materialize_literal_attributes(
 }
 
 pub(super) fn materialize_computed_attributes(
+    inputs: &SequenceInputs<'_>,
     attributes: &[ComputedAttribute],
     variables: &RuntimeVariables,
-    context_position: usize,
-    context_size: usize,
-    context_value: Option<&str>,
+    focus: LiteralAttributeFocus<'_>,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultAttribute>, ExecutionFailure> {
     let context = AttributeContext {
         variables,
-        focus_position: context_position,
-        focus_size: context_size,
-        context_name: None,
-        context_value,
-        source_focus: None,
+        focus_position: focus.position,
+        focus_size: focus.size,
+        context_name: focus.name,
+        context_value: focus.value,
+        source_focus: focus.source,
         request_id,
     };
-    attributes
-        .iter()
-        .map(|attribute| {
-            materialize_attribute(
+    let mut materialized = Vec::with_capacity(attributes.len());
+    for attribute in attributes {
+        if let LiteralAttributeValue::Xslt10Concat(expression) = &attribute.value {
+            control
+                .charge(WorkDomain::ResultNode, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            materialized.push(ResultAttribute {
+                name: attribute.name.clone(),
+                value: evaluate_xslt10_concat(
+                    inputs,
+                    focus.source.map(|(_, node)| node),
+                    expression,
+                    variables,
+                    control,
+                )?,
+            });
+        } else {
+            materialized.push(materialize_attribute(
                 &attribute.name,
                 &attribute.value,
                 &attribute.location,
                 &context,
                 control,
-            )
-        })
-        .collect()
+            )?);
+        }
+    }
+    Ok(materialized)
 }
 
 fn materialize_attribute(
@@ -149,6 +164,9 @@ fn materialize_attribute(
             })?
             .lexical()
             .to_owned(),
+        LiteralAttributeValue::Xslt10Concat(_) => {
+            unreachable!("dynamic computed-attribute values are materialized by their owner")
+        }
         LiteralAttributeValue::SourceAttribute(name) => {
             let Some((source, node)) = context.source_focus else {
                 return Err(failure_at(

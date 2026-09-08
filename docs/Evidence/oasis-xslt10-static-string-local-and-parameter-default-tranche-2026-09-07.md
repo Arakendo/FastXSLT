@@ -35,13 +35,17 @@ string conversion and remains outside this tranche.
 | XML comparison mismatches | 79 | 79 | 0 |
 | Execution failures | 161 | 161 | 0 |
 
-The unchanged exact cases are:
+Representative unchanged exact cases directly traced for this tranche are:
 
 - `Lotus/variable_variable19#1`
 - `Lotus/variable_variable20#1`
 - `Lotus/variable_variable36#1`
-- `Lotus/variable_variable44#1`
 - `Microsoft/Variables_VariableScopeWithinLRE#1`
+
+An earlier draft incorrectly included `Lotus/variable_variable44#1` in this
+list. A later targeted trace showed that its `$b := $a` local binding remained
+unsupported at this checkpoint; the subsequent sum-composition and atomic-alias
+tranche admits and credits that case.
 
 The strict standard-operation lower bound becomes
 `1,183 / 2,742 = 43.14%`; the conservative all-catalog ratio becomes

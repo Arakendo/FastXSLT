@@ -267,6 +267,7 @@ fn observe_instructions(
             Instruction::Number { .. } => (SemanticFeature::Number, None),
             Instruction::Variable { .. }
             | Instruction::StaticAtomicVariable { .. }
+            | Instruction::AtomicVariableAlias { .. }
             | Instruction::ContextPositionVariable { .. }
             | Instruction::SourceNodeVariable { .. }
             | Instruction::IntegerRangeVariable { .. }

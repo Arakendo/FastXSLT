@@ -589,7 +589,7 @@ fn compile_xslt10_path_string_function(
     }))
 }
 
-fn compile_xslt10_sum_path(
+pub(super) fn compile_xslt10_sum_path(
     document: &Document,
     element: NodeId,
     expression: &str,
@@ -716,7 +716,7 @@ fn compile_xslt10_path_translate(
     }))
 }
 
-fn compile_xslt10_concat(
+pub(super) fn compile_xslt10_concat(
     document: &Document,
     element: NodeId,
     expression: &str,
@@ -753,6 +753,10 @@ fn compile_xslt10_concat(
             .filter(|name| is_ascii_ncname(name))
         {
             parts.push(Xslt10ConcatPart::Variable(variable.to_owned()));
+            continue;
+        }
+        if let Some(path) = compile_xslt10_sum_path(document, element, argument, location)? {
+            parts.push(Xslt10ConcatPart::SumPath(path));
             continue;
         }
         let mut path = parse_location_path(argument, location.clone()).map_err(map_path_failure)?;

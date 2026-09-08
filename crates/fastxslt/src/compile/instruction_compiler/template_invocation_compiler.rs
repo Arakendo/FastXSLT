@@ -7,6 +7,7 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 use super::super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
+use super::value_expression_compiler::compile_xslt10_sum_path;
 use super::{
     CompileFailure, effective_default_mode, effective_xpath_default_namespace,
     ensure_no_meaningful_children, ensure_only_attributes, invalid, is_ascii_ncname,
@@ -162,6 +163,14 @@ fn compile_selected_argument_value(
     if select.trim() == "last()" {
         return Ok(TemplateArgumentValue::ContextSize);
     }
+    if let Some(path) =
+        compile_xslt10_sum_path(document, element, select, document.location(element))?
+    {
+        return Ok(TemplateArgumentValue::Xslt10SumPath(path));
+    }
+    if let Some(comparison) = compile_source_path_string_comparison(document, element, select)? {
+        return Ok(comparison);
+    }
     parse_location_path(select, document.location(element).clone())
         .map(TemplateArgumentValue::SourcePath)
         .map_err(|_| {
@@ -171,6 +180,35 @@ fn compile_selected_argument_value(
                 document.location(element),
             )
         })
+}
+
+fn compile_source_path_string_comparison(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+) -> Result<Option<TemplateArgumentValue>, CompileFailure> {
+    let (left, right, equal) = if let Some((left, right)) = expression.split_once("!=") {
+        (left.trim(), right.trim(), false)
+    } else if let Some((left, right)) = expression.split_once('=') {
+        (left.trim(), right.trim(), true)
+    } else {
+        return Ok(None);
+    };
+    if left.is_empty()
+        || right.is_empty()
+        || left.contains(['=', '!'])
+        || right.contains(['=', '!'])
+    {
+        return Ok(None);
+    }
+    let location = document.location(element).clone();
+    let left = parse_selection_path(document, element, left, location.clone())?;
+    let right = parse_selection_path(document, element, right, location)?;
+    Ok(Some(TemplateArgumentValue::SourcePathStringComparison {
+        left,
+        right: Box::new(right),
+        equal,
+    }))
 }
 
 pub(super) fn parse_apply_selection(
