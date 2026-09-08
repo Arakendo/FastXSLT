@@ -363,6 +363,9 @@ fn materialize_global_default(
         GlobalBindingDefault::DoubleDivision { .. } => {
             materialize_double_division(globals, binding, source, request_id, control)?;
         }
+        GlobalBindingDefault::CountLocationPath(path) => {
+            materialize_global_count(globals, binding, path, source, request_id, control)?;
+        }
         GlobalBindingDefault::LocationPath(path) => {
             let source = source.ok_or_else(|| {
                 failure(
@@ -431,6 +434,31 @@ fn materialize_global_default(
             globals.temporary_trees.insert(binding.name.clone(), tree);
         }
     }
+    Ok(())
+}
+
+fn materialize_global_count(
+    globals: &mut RuntimeGlobals,
+    binding: &GlobalBinding,
+    path: &crate::xpath::path_experiment::LocationPath,
+    source: Option<&Document>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let source = source.ok_or_else(|| {
+        failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "a source-dependent global count requires a principal source",
+        )
+    })?;
+    let nodes = evaluate_location_path_controlled(source, source.document_node(), path, control)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    Arc::make_mut(&mut globals.atomics).insert(
+        binding.name.clone(),
+        AtomicValue::from_validated_lexical(BuiltinAtomicType::Integer, nodes.len().to_string()),
+    );
     Ok(())
 }
 

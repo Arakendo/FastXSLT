@@ -668,6 +668,14 @@ fn compile_global_default(
             Ok(GlobalBindingDefault::Text(value.to_owned()))
         } else if let Ok(value) = select.parse::<i64>() {
             Ok(GlobalBindingDefault::Integer(value))
+        } else if let Some(value) =
+            crate::xpath::constant_numeric_experiment::fold_exact_integral_arithmetic(select)
+        {
+            Ok(GlobalBindingDefault::Atomic(
+                AtomicValue::from_validated_lexical(BuiltinAtomicType::Integer, value),
+            ))
+        } else if let Some(count) = compile_count_global(select, document.location(element))? {
+            Ok(count)
         } else if let Some(path) = select
             .strip_prefix("generate-id(")
             .and_then(|path| path.strip_suffix(')'))
@@ -727,6 +735,23 @@ fn compile_global_default(
             Ok(GlobalBindingDefault::TemporaryText(value))
         }
     }
+}
+
+fn compile_count_global(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<GlobalBindingDefault>, CompileFailure> {
+    let Some(path) = expression
+        .trim()
+        .strip_prefix("count(")
+        .and_then(|path| path.strip_suffix(')'))
+    else {
+        return Ok(None);
+    };
+    parse_location_path(path.trim(), location.clone())
+        .map(GlobalBindingDefault::CountLocationPath)
+        .map(Some)
+        .map_err(map_path_failure)
 }
 
 fn compile_typed_atomic_global(

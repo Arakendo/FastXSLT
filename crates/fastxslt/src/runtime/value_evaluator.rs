@@ -72,6 +72,19 @@ use super::{
     required_source_context, runtime_context,
 };
 
+pub(super) fn evaluate_xslt10_variable_string_comparison(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    literal: &str,
+    equal: bool,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    xslt10_compatibility::variable_string_comparison(
+        inputs, variable, literal, equal, variables, control,
+    )
+}
+
 #[expect(
     clippy::too_many_lines,
     reason = "the exhaustive typed value-expression dispatch is one cohesive responsibility"

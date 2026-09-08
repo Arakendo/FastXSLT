@@ -129,7 +129,8 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
                 numerator,
                 denominator,
             } => numerator.known_owned_capacity_bytes() + denominator.known_owned_capacity_bytes(),
-            GlobalBindingDefault::LocationPath(path)
+            GlobalBindingDefault::CountLocationPath(path)
+            | GlobalBindingDefault::LocationPath(path)
             | GlobalBindingDefault::SourceNodeIdentity(path) => path.known_owned_capacity_bytes(),
             GlobalBindingDefault::TemporaryTree(elements) => {
                 vec_owned(elements, constructed_element_owned)
@@ -757,6 +758,11 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
             right,
             comparison: _,
         } => left.capacity() + right.capacity(),
+        BooleanExpression::Xslt10VariableStringLiteralEquals {
+            variable,
+            literal,
+            equal: _,
+        } => variable.capacity() + literal.capacity(),
         BooleanExpression::ConditionalInteger(expression) => conditional_integer_owned(expression),
         BooleanExpression::NodeExists(path)
         | BooleanExpression::NodeIntegerLessThan { path, .. }

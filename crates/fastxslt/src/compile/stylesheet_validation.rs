@@ -40,12 +40,8 @@ fn validate_named_calls(
                 }
                 validate_named_calls(program, otherwise)?;
             }
-            Instruction::CallTemplate {
-                name,
-                arguments,
-                location,
-            } => {
-                let target = program
+            Instruction::CallTemplate { name, location, .. } => {
+                program
                     .named_templates
                     .iter()
                     .find(|template| template.name == *name)
@@ -56,19 +52,6 @@ fn validate_named_calls(
                             location,
                         )
                     })?;
-                if let Some(argument) = arguments
-                    .iter()
-                    .find(|argument| !target.parameters.contains(&argument.name))
-                {
-                    return Err(invalid(
-                        "FXST0015",
-                        format!(
-                            "unknown parameter {} for named template {name}",
-                            argument.name
-                        ),
-                        location,
-                    ));
-                }
             }
             Instruction::Text { .. }
             | Instruction::Number { .. }

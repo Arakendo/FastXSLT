@@ -2294,6 +2294,11 @@ fn evaluate_boolean(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
+    if let Some(identity) =
+        evaluate_identity_boolean(inputs, expression, context, variables, control)?
+    {
+        return Ok(identity);
+    }
     match expression {
         BooleanExpression::Constant(value) => Ok(*value),
         BooleanExpression::NodeExists(path) => node_exists(inputs, path, context, control),
@@ -2350,28 +2355,11 @@ fn evaluate_boolean(
             evaluate_boolean(inputs, expression, context, focus, variables, control)
                 .map(|value| !value)
         }
-        BooleanExpression::NodeIdentityEqual { left, right } => {
-            evaluate_node_identity_equal(inputs, left, right, context, control)
-        }
-        BooleanExpression::RootIdentityEqualsVariable { path, variable } => {
-            evaluate_root_identity_equals_variable(
-                inputs, path, variable, variables, context, control,
-            )
-        }
-        BooleanExpression::TemporaryRootIdentityEqual {
-            variable,
-            descendant_local,
-        } => evaluate_temporary_root_identity_equal(
-            inputs,
-            variable,
-            descendant_local,
-            variables,
-            control,
-        ),
-        BooleanExpression::DocumentRootIdentityEqual { left, right } => {
-            let left = dynamic_document::document_root_identity(inputs, left, control)?;
-            let right = dynamic_document::document_root_identity(inputs, right, control)?;
-            Ok(left == right)
+        BooleanExpression::NodeIdentityEqual { .. }
+        | BooleanExpression::RootIdentityEqualsVariable { .. }
+        | BooleanExpression::TemporaryRootIdentityEqual { .. }
+        | BooleanExpression::DocumentRootIdentityEqual { .. } => {
+            unreachable!("identity expressions return before ordinary boolean dispatch")
         }
         BooleanExpression::VariableEqualsInteger(test) => {
             evaluate_variable_integer_equality(inputs, test, variables)
@@ -2389,11 +2377,54 @@ fn evaluate_boolean(
         } => {
             evaluate_variable_string_equality(inputs, left, right, *comparison, variables, control)
         }
+        BooleanExpression::Xslt10VariableStringLiteralEquals {
+            variable,
+            literal,
+            equal,
+        } => value_evaluator::evaluate_xslt10_variable_string_comparison(
+            inputs, variable, literal, *equal, variables, control,
+        ),
         BooleanExpression::ConditionalInteger(expression) => {
             value_evaluator::evaluate_conditional_integer(inputs, expression, context, control)
                 .map(|value| value != 0)
         }
     }
+}
+
+fn evaluate_identity_boolean(
+    inputs: &SequenceInputs<'_>,
+    expression: &BooleanExpression,
+    context: Option<NodeId>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Option<bool>, ExecutionFailure> {
+    let value = match expression {
+        BooleanExpression::NodeIdentityEqual { left, right } => {
+            evaluate_node_identity_equal(inputs, left, right, context, control)?
+        }
+        BooleanExpression::RootIdentityEqualsVariable { path, variable } => {
+            evaluate_root_identity_equals_variable(
+                inputs, path, variable, variables, context, control,
+            )?
+        }
+        BooleanExpression::TemporaryRootIdentityEqual {
+            variable,
+            descendant_local,
+        } => evaluate_temporary_root_identity_equal(
+            inputs,
+            variable,
+            descendant_local,
+            variables,
+            control,
+        )?,
+        BooleanExpression::DocumentRootIdentityEqual { left, right } => {
+            let left = dynamic_document::document_root_identity(inputs, left, control)?;
+            let right = dynamic_document::document_root_identity(inputs, right, control)?;
+            left == right
+        }
+        _ => return Ok(None),
+    };
+    Ok(Some(value))
 }
 
 fn evaluate_boolean_composition(
@@ -2632,6 +2663,11 @@ fn variable_string_value(
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
     if let Some(value) = variables.atomics.get(variable) {
+        return Ok(value.lexical().to_owned());
+    }
+    if variables.allows_global_fallback(variable)
+        && let Some(value) = inputs.globals.atomics.get(variable)
+    {
         return Ok(value.lexical().to_owned());
     }
     let tree = variables

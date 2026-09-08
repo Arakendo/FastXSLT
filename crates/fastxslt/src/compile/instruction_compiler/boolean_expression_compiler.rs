@@ -18,6 +18,7 @@ pub(super) fn compile(
     expression: &str,
     location: &SourceLocation,
     comparison: StringComparison,
+    xslt10_compatibility: bool,
 ) -> Result<BooleanExpression, CompileFailure> {
     if expression.trim() == "()" {
         return Ok(BooleanExpression::Constant(false));
@@ -43,14 +44,14 @@ pub(super) fn compile(
     }
     if let Some((left, right)) = split_top_level_or(parsed) {
         return Ok(BooleanExpression::Or {
-            left: Box::new(compile(left, location, comparison)?),
-            right: Box::new(compile(right, location, comparison)?),
+            left: Box::new(compile(left, location, comparison, xslt10_compatibility)?),
+            right: Box::new(compile(right, location, comparison, xslt10_compatibility)?),
         });
     }
     if let Some((left, right)) = split_top_level_and(parsed) {
         return Ok(BooleanExpression::And {
-            left: Box::new(compile(left, location, comparison)?),
-            right: Box::new(compile(right, location, comparison)?),
+            left: Box::new(compile(left, location, comparison, xslt10_compatibility)?),
+            right: Box::new(compile(right, location, comparison, xslt10_compatibility)?),
         });
     }
     if let Some(inner) = parsed
@@ -58,40 +59,14 @@ pub(super) fn compile(
         .and_then(|inner| inner.strip_suffix(')'))
     {
         return Ok(BooleanExpression::Not(Box::new(compile(
-            inner, location, comparison,
+            inner,
+            location,
+            comparison,
+            xslt10_compatibility,
         )?)));
     }
-    if let Some((left, right)) = parse_document_root_identity_test(parsed) {
-        return Ok(BooleanExpression::DocumentRootIdentityEqual {
-            left: DocumentRootReference {
-                base: location.resource.clone(),
-                reference: left.0.to_owned(),
-                descendant_local: left.1.map(str::to_owned),
-            },
-            right: DocumentRootReference {
-                base: location.resource.clone(),
-                reference: right.0.to_owned(),
-                descendant_local: right.1.map(str::to_owned),
-            },
-        });
-    }
-    if let Some((variable, descendant_local)) = parse_temporary_root_identity_test(parsed) {
-        return Ok(BooleanExpression::TemporaryRootIdentityEqual {
-            variable: variable.to_owned(),
-            descendant_local: descendant_local.to_owned(),
-        });
-    }
-    if let Some((path, variable)) = parse_generated_root_identity_test(parsed) {
-        return Ok(BooleanExpression::RootIdentityEqualsVariable {
-            path: parse_location_path(path, location.clone()).map_err(map_path_failure)?,
-            variable: variable.to_owned(),
-        });
-    }
-    if let Some((left, right)) = generated_node_identity_test(parsed) {
-        return Ok(BooleanExpression::NodeIdentityEqual {
-            left: parse_location_path(left, location.clone()).map_err(map_path_failure)?,
-            right: parse_location_path(right, location.clone()).map_err(map_path_failure)?,
-        });
+    if let Some(identity) = compile_identity_test(parsed, location)? {
+        return Ok(identity);
     }
     if is_context_position_not_equal_size(parsed) {
         return Ok(BooleanExpression::ContextPositionNotEqualSize(
@@ -118,7 +93,52 @@ pub(super) fn compile(
             .map(|path| BooleanExpression::CountPathEquals { path, expected })
             .map_err(map_path_failure);
     }
-    parse_scalar(parsed, expression, location, comparison)
+    parse_scalar(
+        parsed,
+        expression,
+        location,
+        comparison,
+        xslt10_compatibility,
+    )
+}
+
+fn compile_identity_test(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<BooleanExpression>, CompileFailure> {
+    if let Some((left, right)) = parse_document_root_identity_test(expression) {
+        return Ok(Some(BooleanExpression::DocumentRootIdentityEqual {
+            left: DocumentRootReference {
+                base: location.resource.clone(),
+                reference: left.0.to_owned(),
+                descendant_local: left.1.map(str::to_owned),
+            },
+            right: DocumentRootReference {
+                base: location.resource.clone(),
+                reference: right.0.to_owned(),
+                descendant_local: right.1.map(str::to_owned),
+            },
+        }));
+    }
+    if let Some((variable, descendant_local)) = parse_temporary_root_identity_test(expression) {
+        return Ok(Some(BooleanExpression::TemporaryRootIdentityEqual {
+            variable: variable.to_owned(),
+            descendant_local: descendant_local.to_owned(),
+        }));
+    }
+    if let Some((path, variable)) = parse_generated_root_identity_test(expression) {
+        return Ok(Some(BooleanExpression::RootIdentityEqualsVariable {
+            path: parse_location_path(path, location.clone()).map_err(map_path_failure)?,
+            variable: variable.to_owned(),
+        }));
+    }
+    let Some((left, right)) = generated_node_identity_test(expression) else {
+        return Ok(None);
+    };
+    Ok(Some(BooleanExpression::NodeIdentityEqual {
+        left: parse_location_path(left, location.clone()).map_err(map_path_failure)?,
+        right: parse_location_path(right, location.clone()).map_err(map_path_failure)?,
+    }))
 }
 
 fn split_top_level_or(expression: &str) -> Option<(&str, &str)> {
@@ -222,6 +242,7 @@ fn parse_scalar(
     expression: &str,
     location: &SourceLocation,
     comparison: StringComparison,
+    xslt10_compatibility: bool,
 ) -> Result<BooleanExpression, CompileFailure> {
     if parsed == "()" {
         return Ok(BooleanExpression::Constant(false));
@@ -234,6 +255,9 @@ fn parse_scalar(
     }
     if let Some(expression) = parse_path_boolean_expression(parsed, location, comparison)? {
         return Ok(expression);
+    }
+    if let Some(comparison) = compile_xslt10_variable_literal(parsed, xslt10_compatibility) {
+        return Ok(comparison);
     }
     if let Some((left, right)) = parse_variable_string_equality(parsed) {
         return Ok(BooleanExpression::VariableStringEquals {
@@ -319,6 +343,44 @@ fn parse_scalar(
     } else {
         ordering.is_eq()
     }))
+}
+
+fn compile_xslt10_variable_literal(
+    expression: &str,
+    xslt10_compatibility: bool,
+) -> Option<BooleanExpression> {
+    let (variable, literal, equal) =
+        xslt10_compatibility.then(|| parse_variable_literal_equality(expression))??;
+    Some(BooleanExpression::Xslt10VariableStringLiteralEquals {
+        variable: variable.to_owned(),
+        literal: literal.to_owned(),
+        equal,
+    })
+}
+
+fn parse_variable_literal_equality(expression: &str) -> Option<(&str, &str, bool)> {
+    let (left, right, equal) = if let Some((left, right)) = expression.split_once("!=") {
+        (left, right, false)
+    } else {
+        let (left, right) = expression.split_once('=')?;
+        (left, right, true)
+    };
+    if left.contains('=') || right.contains(['=', '!']) {
+        return None;
+    }
+    parse_variable_literal_operands(left, right)
+        .or_else(|| parse_variable_literal_operands(right, left))
+        .map(|(variable, literal)| (variable, literal, equal))
+}
+
+fn parse_variable_literal_operands<'a>(
+    variable: &'a str,
+    literal: &'a str,
+) -> Option<(&'a str, &'a str)> {
+    let variable = variable.trim().strip_prefix('$')?;
+    is_ascii_ncname(variable)
+        .then(|| xpath_string_literal(literal.trim()).map(|literal| (variable, literal)))
+        .flatten()
 }
 
 fn is_context_position_not_equal_size(expression: &str) -> bool {

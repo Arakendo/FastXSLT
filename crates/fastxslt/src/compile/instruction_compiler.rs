@@ -1,6 +1,6 @@
 //! Private compilation of XSLT sequence constructors and instructions.
 
-use crate::xdm::atomic_value_experiment::AtomicValue;
+use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::case_conversion_experiment::{
@@ -1202,6 +1202,25 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
             location,
         });
     }
+    if let Some(value) = parse_static_contains(expression) {
+        return Ok(Instruction::StaticAtomicVariable {
+            name: name.to_owned(),
+            value: AtomicValue::from_validated_lexical(
+                BuiltinAtomicType::Boolean,
+                value.to_string(),
+            ),
+            location,
+        });
+    }
+    if let Some(value) =
+        crate::xpath::constant_numeric_experiment::fold_exact_integral_arithmetic(expression)
+    {
+        return Ok(Instruction::StaticAtomicVariable {
+            name: name.to_owned(),
+            value: AtomicValue::from_validated_lexical(BuiltinAtomicType::Integer, value),
+            location,
+        });
+    }
     let node_path = match parse_location_path(expression, location.clone()) {
         Ok(path) => Some(path),
         Err(PathFailure::Unsupported { .. }) if expression.contains(':') => Some(
@@ -1230,6 +1249,18 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
         select: Box::new(select),
         location,
     })
+}
+
+fn parse_static_contains(expression: &str) -> Option<bool> {
+    let arguments = expression
+        .trim()
+        .strip_prefix("contains(")?
+        .strip_suffix(')')?;
+    let arguments = crate::xpath::static_string_experiment::split_arguments(arguments, 2)?;
+    let [haystack, needle] = arguments.as_slice() else {
+        return None;
+    };
+    Some(xpath_string_literal(haystack)?.contains(xpath_string_literal(needle)?))
 }
 
 fn compile_integer_range_variable(
@@ -1444,6 +1475,7 @@ fn compile_if(document: &Document, element: NodeId) -> Result<Instruction, Compi
             expression,
             &location,
             effective_string_comparison(document, element)?,
+            uses_xslt10_compatibility(document, element),
         )?,
         body: compile_sequence(document, element)?,
         location,
@@ -1470,6 +1502,7 @@ fn compile_choose(document: &Document, element: NodeId) -> Result<Instruction, C
                     expression,
                     document.location(child),
                     effective_string_comparison(document, child)?,
+                    uses_xslt10_compatibility(document, child),
                 )?,
                 body: compile_sequence(document, child)?,
             });
