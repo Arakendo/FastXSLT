@@ -190,6 +190,20 @@ fn compiles_static_xsl_element_namespace_without_runtime_qname_work() {
 }
 
 #[test]
+fn static_xsl_element_rejects_the_reserved_xmlns_namespace() {
+    let document = parse_stylesheet(
+        "memory:reserved-computed-element-namespace.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:template match="/"><xsl:element name="out" namespace="http://www.w3.org/2000/xmlns/"/></xsl:template>
+        </xsl:stylesheet>"#,
+    );
+
+    let failure = compile_stylesheet(&document).expect_err("reserved namespace must fail");
+    assert_eq!(failure.code, "XTDE0835");
+    assert_eq!(failure.category, CompileCategory::Invalid);
+}
+
+#[test]
 fn unprefixed_static_xsl_element_name_uses_its_in_scope_default_namespace() {
     let document = parse_stylesheet(
         "memory:inherited-computed-element-namespace.xsl",

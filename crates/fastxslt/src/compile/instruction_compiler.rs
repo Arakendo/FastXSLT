@@ -423,6 +423,14 @@ fn compile_static_computed_element_name(
     lexical: &str,
     namespace_override: Option<&str>,
 ) -> Result<(ExpandedName, Vec<NamespaceBinding>), CompileFailure> {
+    const XMLNS_NAMESPACE: &str = "http://www.w3.org/2000/xmlns/";
+    if namespace_override == Some(XMLNS_NAMESPACE) {
+        return Err(invalid(
+            "XTDE0835",
+            "xsl:element cannot construct a name in the reserved xmlns namespace",
+            document.location(element),
+        ));
+    }
     if is_ascii_ncname(lexical) {
         let namespace = match namespace_override {
             Some("") => None,

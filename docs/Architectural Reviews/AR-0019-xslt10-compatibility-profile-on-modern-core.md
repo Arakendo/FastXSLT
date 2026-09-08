@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Static `xsl:element` construction now rejects the reserved
+  XMLNS namespace URI as invalid `XTDE0835`. Two unchanged Microsoft expected-
+  error cases move from unexpected success to observed initialization failure,
+  reducing that unresolved class from 14 to 12 without changing the 1,202 exact
+  result matches. Dynamic namespace AVTs and broader reserved-name validation
+  remain unadmitted.
 - 2026-09-08 -- Typed `xsl:sort` keys now admit bounded unions of supported
   source location paths, normalize the node-set by document order and identity,
   and apply XSLT 1.0 first-node string conversion. The unchanged

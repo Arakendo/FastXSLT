@@ -3975,6 +3975,10 @@ host lifecycle.
   boundary.
 - [x] Raise it to 1,202 through typed `xsl:sort` path unions with document-order
   normalization, duplicate removal, and XSLT 1.0 first-node string conversion.
+- [x] Reject the reserved XMLNS namespace URI during static `xsl:element`
+  compilation, moving two unchanged expected-error cases from unexpected
+  success to observed initialization failure and reducing that class from 14
+  to 12 without changing the exact-result denominator.
 - [ ] Give each standard and expected-error case one reproducible final
   disposition under a versioned local overlay/report, applying duplicate-safe
   identity and doubts/discretionary metadata.
