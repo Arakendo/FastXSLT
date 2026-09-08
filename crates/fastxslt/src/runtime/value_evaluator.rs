@@ -169,6 +169,12 @@ pub(super) fn execute_value_of(
         ValueExpression::Xslt10FirstNodeLocationPath(path) => {
             append_xslt10_first_node_location_path_string(inputs, path, context, result, control)?;
         }
+        ValueExpression::Xslt10CurrentPredicatePath(path) => {
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            append_xslt10_first_node_location_path_string(inputs, path, context, result, control)?;
+        }
         ValueExpression::CountLocationPath(path) => {
             append_location_path_count(inputs, path, context, result, control)?;
         }

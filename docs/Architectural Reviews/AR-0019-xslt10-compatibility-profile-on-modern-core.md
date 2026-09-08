@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- XSLT 1.0 value compilation now admits one exact standalone
+  `[current()]` path predicate, including the bounded parenthesized first-node
+  form, without widening the general XPath parser. The unchanged
+  `Lotus/select_select85#1` case raises the lower bound from 1,199 to 1,200;
+  mismatches remain 79 and execution failures remain 163. General `current()`
+  expressions and modern XPath admission remain unchanged.
 - 2026-09-08 -- Predicate-bearing `xsl:apply-templates` paths can now navigate
   from each node in an invocation-owned source-node variable, preserve
   per-root predicate focus, and normalize the combined result by document

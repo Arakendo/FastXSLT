@@ -631,6 +631,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::LiteralString(value) => value.capacity(),
         ValueExpression::LocationPath(path)
         | ValueExpression::Xslt10FirstNodeLocationPath(path)
+        | ValueExpression::Xslt10CurrentPredicatePath(path)
         | ValueExpression::CountLocationPath(path)
         | ValueExpression::RootPath(path)
         | ValueExpression::NodeNamePath(path)

@@ -366,6 +366,10 @@ pub(super) fn compile_value_expression(
         && let Some(comparison) = parse_xslt10_variable_atomic_comparison(expression)
     {
         comparison
+    } else if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(path) = compile_xslt10_current_predicate_path(expression, location)?
+    {
+        ValueExpression::Xslt10CurrentPredicatePath(path)
     } else if expression.contains('[')
         && let Ok(path) = parse_location_path(expression, location.clone())
     {
@@ -1033,6 +1037,23 @@ fn compile_location_path_or_missing_context(
         }
         Err(failure) => Err(map_path_failure(failure)),
     }
+}
+
+fn compile_xslt10_current_predicate_path(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<LocationPath>, CompileFailure> {
+    if expression.matches("[current()]").count() != 1 {
+        return Ok(None);
+    }
+    let normalized = expression.replace("[current()]", "");
+    let normalized = normalized
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(")[1]"))
+        .unwrap_or(&normalized);
+    parse_location_path(normalized, location.clone())
+        .map(Some)
+        .map_err(map_path_failure)
 }
 
 fn compile_empty_location_path(

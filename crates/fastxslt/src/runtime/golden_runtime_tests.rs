@@ -977,6 +977,59 @@ fn source_variable_paths_apply_predicate_focus_per_root() {
 }
 
 #[test]
+fn xslt10_current_predicate_retains_the_outer_source_focus() {
+    const SOURCE: &str = "urn:fastxslt:current-predicate:source";
+    const STYLESHEET: &str = "urn:fastxslt:current-predicate:stylesheet";
+    let stylesheet =
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+      <xsl:output method="xml" omit-xml-declaration="yes"/>
+      <xsl:template match="doc"><out><xsl:apply-templates select="mark"/></out></xsl:template>
+      <xsl:template match="mark"><direct><xsl:value-of select="following-sibling::ch[current()]"/></direct><filtered><xsl:value-of select="(following-sibling::ch[current()])[1]"/></filtered></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><mark/><ch>first</ch><ch>second</ch></doc>".to_vec(),
+        )
+        .expect("admit current-predicate source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit current-predicate stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile current predicate");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("current-predicate", "result", SOURCE))
+        .expect("admit current-predicate request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute current predicate");
+    assert_eq!(
+        results.by_request["current-predicate"].serialized,
+        "<out><direct>first</direct><filtered>first</filtered></out>"
+    );
+}
+
+#[test]
+fn xslt_current_predicate_does_not_enter_the_general_xpath_path_parser() {
+    let stylesheet = parse_document(
+        "urn:fastxslt:modern-current-predicate:stylesheet",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="mark"><xsl:value-of select="following-sibling::ch[current()]"/></xsl:template></xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 16,
+            max_depth: 5,
+        },
+    )
+    .expect("modern stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+
+    let failure = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect_err("XSLT 1.0 compatibility must not widen the general XPath parser");
+
+    assert_eq!(failure.code, "FXXP1001");
+}
+
+#[test]
 fn generate_id_uses_stable_distinct_source_node_identity() {
     const SOURCE: &str = "urn:fastxslt:generate-id:source";
     const STYLESHEET: &str = "urn:fastxslt:generate-id:stylesheet";
