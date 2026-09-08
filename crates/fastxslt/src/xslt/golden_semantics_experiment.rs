@@ -1014,6 +1014,12 @@ pub(crate) enum LiteralAttributeValue {
         right: ExpandedName,
         suffix: String,
     },
+    Xslt10TextAndSourceAttributeStartsWith {
+        prefix: String,
+        value: ExpandedName,
+        prefix_attribute: ExpandedName,
+        suffix: String,
+    },
     SourceAttribute(ExpandedName),
     ContextPosition,
     ContextSize,

@@ -218,30 +218,22 @@ fn materialize_attribute(
         } => materialize_source_attribute_concat_avt(
             prefix, left, right, suffix, location, context, control,
         )?,
+        LiteralAttributeValue::Xslt10TextAndSourceAttributeStartsWith {
+            prefix,
+            value,
+            prefix_attribute,
+            suffix,
+        } => materialize_source_attribute_starts_with_avt(
+            prefix,
+            value,
+            prefix_attribute,
+            suffix,
+            location,
+            context,
+            control,
+        )?,
         LiteralAttributeValue::SourceAttribute(name) => {
-            let Some((source, node)) = context.source_focus else {
-                return Err(failure_at(
-                    "XPDY0002",
-                    FailureCategory::Invalid,
-                    Some(context.request_id),
-                    location.clone(),
-                    "the source-copy attribute expression requires a source-node context",
-                ));
-            };
-            let mut value = String::new();
-            for &attribute in source.attributes(node) {
-                control
-                    .charge(WorkDomain::XPathNodeVisit, 1)
-                    .map_err(|failure| control_failure(failure, context.request_id))?;
-                if source.name(attribute) == Some(name) {
-                    source
-                        .value(attribute)
-                        .unwrap_or_default()
-                        .clone_into(&mut value);
-                    break;
-                }
-            }
-            value
+            materialize_source_attribute(name, location, context, control)?
         }
         LiteralAttributeValue::ContextPosition => context.focus_position.to_string(),
         LiteralAttributeValue::ContextSize => context.focus_size.to_string(),
@@ -268,6 +260,28 @@ fn materialize_attribute(
         name: name.clone(),
         value,
     })
+}
+
+fn materialize_source_attribute(
+    name: &ExpandedName,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let Some((source, node)) = context.source_focus else {
+        return Err(failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(context.request_id),
+            location.clone(),
+            "the source-copy attribute expression requires a source-node context",
+        ));
+    };
+    Ok(
+        source_attribute_value(source, node, name, context.request_id, control)?
+            .unwrap_or_default()
+            .to_owned(),
+    )
 }
 
 fn materialize_context_integer_increment(
@@ -408,6 +422,44 @@ fn materialize_source_attribute_concat_avt(
     result.push_str(prefix);
     result.push_str(left);
     result.push_str(right);
+    result.push_str(suffix);
+    Ok(result)
+}
+
+fn materialize_source_attribute_starts_with_avt(
+    prefix: &str,
+    value: &ExpandedName,
+    prefix_attribute: &ExpandedName,
+    suffix: &str,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let Some((source, node)) = context.source_focus else {
+        return Err(failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(context.request_id),
+            location.clone(),
+            "the source-attribute starts-with AVT requires a source-node context",
+        ));
+    };
+    let value = source_attribute_value(source, node, value, context.request_id, control)?
+        .unwrap_or_default();
+    let prefix_value =
+        source_attribute_value(source, node, prefix_attribute, context.request_id, control)?
+            .unwrap_or_default();
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, context.request_id))?;
+    let boolean = if value.starts_with(prefix_value) {
+        "true"
+    } else {
+        "false"
+    };
+    let mut result = String::with_capacity(prefix.len() + boolean.len() + suffix.len());
+    result.push_str(prefix);
+    result.push_str(boolean);
     result.push_str(suffix);
     Ok(result)
 }

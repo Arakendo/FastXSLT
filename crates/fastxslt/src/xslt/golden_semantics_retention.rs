@@ -964,6 +964,14 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
             right,
             suffix,
         } => prefix.capacity() + name_owned(left) + name_owned(right) + suffix.capacity(),
+        LiteralAttributeValue::Xslt10TextAndSourceAttributeStartsWith {
+            prefix,
+            value,
+            prefix_attribute,
+            suffix,
+        } => {
+            prefix.capacity() + name_owned(value) + name_owned(prefix_attribute) + suffix.capacity()
+        }
         LiteralAttributeValue::SourceAttribute(name) => name_owned(name),
         LiteralAttributeValue::ContextPosition
         | LiteralAttributeValue::ContextSize

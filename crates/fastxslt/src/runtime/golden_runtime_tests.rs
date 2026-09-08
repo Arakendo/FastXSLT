@@ -3453,6 +3453,35 @@ fn xslt10_literal_attribute_concatenates_two_source_attributes_inside_text() {
 }
 
 #[test]
+fn xslt10_literal_attribute_compares_two_source_attributes_with_starts_with() {
+    const SOURCE: &str = "urn:fastxslt:attribute-starts-with-avt:source";
+    const STYLESHEET: &str = "urn:fastxslt:attribute-starts-with-avt:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br#"<doc a="fools" b="foo"/>"#.to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="doc"><out z="Before{starts-with(@a,@b)}After"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile attribute starts-with AVT");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("attribute-starts-with-avt", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute attribute starts-with AVT");
+    assert_eq!(
+        results.by_request["attribute-starts-with-avt"].serialized,
+        "<out z=\"BeforetrueAfter\"></out>"
+    );
+}
+
+#[test]
 fn parent_name_value_uses_the_typed_singleton_parent_path() {
     const SOURCE: &str = "urn:fastxslt:parent-name-value:source";
     const STYLESHEET: &str = "urn:fastxslt:parent-name-value:stylesheet";

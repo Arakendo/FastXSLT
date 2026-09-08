@@ -104,6 +104,22 @@ fn parse_literal_attribute_value(
                     suffix: suffix.to_owned(),
                 });
             }
+            if let Some((value, prefix_attribute)) =
+                parse_two_source_attribute_function(expression, "starts-with(")
+            {
+                let expanded_name = |local: &str| ExpandedName {
+                    namespace: None,
+                    local: local.to_owned(),
+                };
+                return Ok(
+                    LiteralAttributeValue::Xslt10TextAndSourceAttributeStartsWith {
+                        prefix: prefix.to_owned(),
+                        value: expanded_name(value),
+                        prefix_attribute: expanded_name(prefix_attribute),
+                        suffix: suffix.to_owned(),
+                    },
+                );
+            }
         }
         return Err(unsupported(
             "FXST1031",
@@ -131,10 +147,14 @@ fn parse_attribute_integer_offset(expression: &str) -> Option<(&str, i64)> {
 }
 
 fn parse_source_attribute_concat(expression: &str) -> Option<(&str, &str)> {
-    let arguments = expression
-        .trim()
-        .strip_prefix("concat(")?
-        .strip_suffix(')')?;
+    parse_two_source_attribute_function(expression, "concat(")
+}
+
+fn parse_two_source_attribute_function<'a>(
+    expression: &'a str,
+    prefix: &str,
+) -> Option<(&'a str, &'a str)> {
+    let arguments = expression.trim().strip_prefix(prefix)?.strip_suffix(')')?;
     let (left, right) = arguments.split_once(',')?;
     let left = left.trim().strip_prefix('@')?;
     let right = right.trim().strip_prefix('@')?;
@@ -239,6 +259,26 @@ mod tests {
         assert_eq!(prefix, "Before");
         assert_eq!(left.local, "a");
         assert_eq!(right.local, "b");
+        assert_eq!(suffix, "After");
+    }
+
+    #[test]
+    fn compiles_source_attribute_starts_with_inside_literal_text() {
+        let compiled =
+            parse_literal_attribute_value("Before{starts-with(@a,@b)}After", &location())
+                .expect("the bounded source-attribute starts-with AVT should compile");
+        let LiteralAttributeValue::Xslt10TextAndSourceAttributeStartsWith {
+            prefix,
+            value,
+            prefix_attribute,
+            suffix,
+        } = compiled
+        else {
+            panic!("expected the bounded source-attribute starts-with representation");
+        };
+        assert_eq!(prefix, "Before");
+        assert_eq!(value.local, "a");
+        assert_eq!(prefix_attribute.local, "b");
         assert_eq!(suffix, "After");
     }
 
