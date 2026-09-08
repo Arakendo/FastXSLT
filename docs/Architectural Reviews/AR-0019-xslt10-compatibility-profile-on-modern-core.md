@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- `xsl:apply-templates` can now combine one distinct
+  invocation-owned source-node variable with typed location paths, normalize
+  the union by source document order and node identity, and establish focus
+  only after normalization. The unchanged `Lotus/select_select65#1` case
+  raises the lower bound from 1,195 to 1,196; mismatches remain 79 and
+  execution failures remain 162. General sequence and temporary-tree unions
+  remain unadmitted.
 - 2026-09-08 -- XSLT 1.0 value expressions can now navigate the shared typed
   relative path from an invocation-owned source-node variable, normalize the
   combined result, and apply first-node string conversion. The unchanged

@@ -3117,6 +3117,38 @@ fn apply_templates_path_union_normalizes_identity_and_document_order() {
 }
 
 #[test]
+fn apply_templates_variable_path_union_normalizes_identity_and_document_order() {
+    const SOURCE: &str = "urn:fastxslt:apply-variable-union:source";
+    const STYLESHEET: &str = "urn:fastxslt:apply-variable-union:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            br"<doc><first>A</first><second>B</second></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:variable name="chosen" select="doc/second"/><out><xsl:apply-templates select="$chosen | doc/first | $chosen"/></out></xsl:template><xsl:template match="first"><xsl:value-of select="."/><xsl:if test="position()!=last()">,</xsl:if></xsl:template><xsl:template match="second"><xsl:value-of select="."/><xsl:if test="position()!=last()">,</xsl:if></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile variable/path apply union");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("apply-variable-union", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute variable/path apply union");
+    assert_eq!(
+        results.by_request["apply-variable-union"].serialized,
+        "<out>A,B</out>"
+    );
+}
+
+#[test]
 fn source_attribute_copy_uses_the_existing_pending_attribute_owner() {
     const SOURCE: &str = "urn:fastxslt:source-attribute-copy:source";
     const STYLESHEET: &str = "urn:fastxslt:source-attribute-copy:stylesheet";

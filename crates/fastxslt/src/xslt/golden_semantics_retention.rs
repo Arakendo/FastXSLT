@@ -229,6 +229,16 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
             alternatives,
             crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
         ),
+        ApplySelection::VariablePathUnion {
+            variable,
+            alternatives,
+        } => {
+            variable.capacity()
+                + vec_owned(
+                    alternatives,
+                    crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
+                )
+        }
         ApplySelection::ChildElement(name)
         | ApplySelection::DescendantElement(name)
         | ApplySelection::Attribute(name) => name_owned(name),

@@ -1201,7 +1201,7 @@ fn execute_for_each_nodes<'a>(
     {
         selected?
     } else {
-        select_apply_nodes(inputs, Some(select), context, &variables.atomics, control)?
+        select_apply_nodes(inputs, Some(select), context, variables, control)?
     };
     let selected = sort_selected_nodes(inputs, selected, sorts, control)?;
     let focus_size = selected.len();
@@ -1889,7 +1889,7 @@ fn execute_apply_templates(
         return Ok(result);
     }
     let (_, context) = required_source_context(inputs, execution.node)?;
-    let selected = select_apply_nodes(inputs, select, context, &variables.atomics, control)?;
+    let selected = select_apply_nodes(inputs, select, context, variables, control)?;
     let selected = sort_selected_nodes(inputs, selected, sorts, control)?;
     let mut result = Vec::new();
     let focus_size = selected.len();
@@ -3133,7 +3133,7 @@ fn select_apply_nodes(
     inputs: &SequenceInputs<'_>,
     select: Option<&ApplySelection>,
     context: NodeId,
-    variables: &BTreeMap<String, AtomicValue>,
+    variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ExecutionFailure> {
     let source = inputs.source.expect("apply selection requires a source");
@@ -3148,6 +3148,18 @@ fn select_apply_nodes(
         ApplySelection::PathUnion(alternatives) => {
             evaluate_source_path_union(inputs, source, context, alternatives, control)
         }
+        ApplySelection::VariablePathUnion {
+            variable,
+            alternatives,
+        } => evaluate_variable_path_union(
+            inputs,
+            source,
+            context,
+            variable,
+            alternatives,
+            variables,
+            control,
+        ),
         ApplySelection::ChildElement(name) => {
             let mut selected = Vec::new();
             for child in source.children(context).iter().copied() {
@@ -3207,7 +3219,7 @@ fn select_apply_nodes(
             source,
             context,
             path,
-            variables,
+            &variables.atomics,
             inputs.request_id,
             control,
         ),
@@ -3218,6 +3230,37 @@ fn select_apply_nodes(
             unreachable!("temporary-tree selection is dispatched before source selection")
         }
     }
+}
+
+fn evaluate_variable_path_union(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    context: NodeId,
+    variable: &str,
+    alternatives: &[crate::xpath::path_experiment::LocationPath],
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let mut selected = variables
+        .source_nodes(inputs.globals, variable)
+        .cloned()
+        .ok_or_else(|| {
+            failure(
+                "XPTY0004",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("path union requires a source-node sequence: ${variable}"),
+            )
+        })?;
+    for alternative in alternatives {
+        selected.extend(
+            evaluate_location_path_controlled(source, context, alternative, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?,
+        );
+    }
+    selected.sort_unstable_by_key(|node| source.document_order(*node));
+    selected.dedup();
+    Ok(selected)
 }
 
 fn select_descendant_elements(

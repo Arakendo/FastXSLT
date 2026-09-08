@@ -218,21 +218,50 @@ pub(super) fn parse_apply_selection(
     location: SourceLocation,
 ) -> Result<ApplySelection, CompileFailure> {
     if let Some(alternatives) = split_top_level_union(expression) {
-        let alternatives = alternatives
-            .into_iter()
-            .map(str::trim)
-            .map(|alternative| {
-                if alternative.is_empty() {
-                    return Err(invalid(
-                        "XPST0003",
-                        "xsl:apply-templates path union contains an empty alternative",
-                        &location,
-                    ));
+        let mut variable = None;
+        let mut paths = Vec::new();
+        for alternative in alternatives.into_iter().map(str::trim) {
+            if alternative.is_empty() {
+                return Err(invalid(
+                    "XPST0003",
+                    "xsl:apply-templates path union contains an empty alternative",
+                    &location,
+                ));
+            }
+            if let Some(name) = alternative
+                .strip_prefix('$')
+                .filter(|name| is_ascii_ncname(name))
+            {
+                if let Some(existing) = variable.as_deref() {
+                    if existing != name {
+                        return Err(unsupported(
+                            "FXXP1001",
+                            "xsl:apply-templates union supports at most one distinct source-node variable",
+                            &location,
+                        ));
+                    }
+                } else {
+                    variable = Some(name.to_owned());
                 }
-                parse_selection_path(document, element, alternative, location.clone())
-            })
-            .collect::<Result<Vec<_>, CompileFailure>>()?;
-        return Ok(ApplySelection::PathUnion(alternatives));
+            } else {
+                paths.push(parse_selection_path(
+                    document,
+                    element,
+                    alternative,
+                    location.clone(),
+                )?);
+            }
+        }
+        if let Some(variable) = variable {
+            if paths.is_empty() {
+                return Ok(ApplySelection::VariableSequence(variable));
+            }
+            return Ok(ApplySelection::VariablePathUnion {
+                variable,
+                alternatives: paths,
+            });
+        }
+        return Ok(ApplySelection::PathUnion(paths));
     }
     if let Some((start, end)) = expression.split_once(" to ").and_then(|(start, end)| {
         Some((

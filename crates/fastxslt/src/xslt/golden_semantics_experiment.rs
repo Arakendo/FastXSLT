@@ -304,6 +304,10 @@ pub(crate) enum ApplySelection {
     },
     LocationPath(LocationPath),
     PathUnion(Vec<LocationPath>),
+    VariablePathUnion {
+        variable: String,
+        alternatives: Vec<LocationPath>,
+    },
     ChildElement(ExpandedName),
     DescendantElement(ExpandedName),
     ChildNodes(NodeTest),
