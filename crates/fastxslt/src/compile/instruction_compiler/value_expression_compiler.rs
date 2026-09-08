@@ -210,6 +210,12 @@ pub(super) fn compile_value_expression(
         return Ok(ValueExpression::Xslt10VariablePositionPath { path, variable });
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some((variable, path)) =
+            compile_xslt10_variable_path(document, element, expression, location)?
+    {
+        return Ok(ValueExpression::Xslt10VariablePath { variable, path });
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(function) =
             compile_xslt10_path_string_function(document, element, expression, location)?
     {
@@ -535,6 +541,36 @@ fn parse_variable_position_predicate(predicate: &str) -> Option<&str> {
         return None;
     };
     is_ascii_ncname(variable).then_some(variable)
+}
+
+fn compile_xslt10_variable_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<(String, LocationPath)>, CompileFailure> {
+    let expression = expression.trim();
+    let Some((variable, relative)) = expression
+        .strip_prefix('$')
+        .and_then(|value| value.split_once('/'))
+    else {
+        return Ok(None);
+    };
+    if !is_ascii_ncname(variable) || relative.is_empty() {
+        return Ok(None);
+    }
+    let mut path = parse_location_path(relative, location.clone()).map_err(map_path_failure)?;
+    if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+        for step in &mut path.steps {
+            if let PathStep::ChildNamed(local) = step {
+                *step = PathStep::ChildExpandedName(ExpandedName {
+                    namespace: Some(namespace.to_owned()),
+                    local: local.clone(),
+                });
+            }
+        }
+    }
+    Ok(Some((variable.to_owned(), path)))
 }
 
 fn compile_xslt10_path_string_function(

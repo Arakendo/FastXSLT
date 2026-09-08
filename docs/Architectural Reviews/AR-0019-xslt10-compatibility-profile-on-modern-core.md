@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- XSLT 1.0 value expressions can now navigate the shared typed
+  relative path from an invocation-owned source-node variable, normalize the
+  combined result, and apply first-node string conversion. The unchanged
+  `Lotus/select_select77#1` case raises the lower bound from 1,194 to 1,195;
+  mismatches remain 79 and execution failures remain 162. Atomic and temporary
+  values are not silently treated as source nodes.
 - 2026-09-08 -- Standalone exact decimal literals now reuse the checked numeric
   plan instead of falling through to location-path parsing. The unchanged
   `Lotus/math_math105#1` case raises the lower bound from 1,193 to 1,194;

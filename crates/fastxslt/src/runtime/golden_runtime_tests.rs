@@ -495,6 +495,54 @@ fn standalone_exact_numeric_literal_uses_the_checked_numeric_value_path() {
 }
 
 #[test]
+fn xslt10_value_path_navigates_from_a_source_node_parameter() {
+    let source = parse_document(
+        "memory:variable-path.xml",
+        br#"<page><hotel><location country="US"/></hotel><hotel><location country="CA"/></hotel></page>"#,
+        ParseLimits {
+            max_events: 24,
+            max_depth: 6,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:variable-path.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:output omit-xml-declaration="yes"/>
+          <xsl:template match="page"><xsl:call-template name="emit"><xsl:with-param name="hotels" select="hotel"/></xsl:call-template></xsl:template>
+          <xsl:template name="emit"><xsl:param name="hotels"/><out><xsl:value-of select="$hotels/location/@country"/></out></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 48,
+            max_depth: 10,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("source-variable path should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "variable-path-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("source-variable path should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "variable-path-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out>US</out>");
+}
+
+#[test]
 fn static_string_local_variable_shadows_an_outer_binding_lexically() {
     let source = parse_document(
         "memory:static-string-local.xml",

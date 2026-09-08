@@ -13,7 +13,7 @@ use super::super::{
     ExecutionFailure, FailureCategory, ResultNode, RuntimeVariables, SequenceInputs,
     control_failure, failure, required_source_context, runtime_context,
 };
-use super::{append_boolean, append_text};
+use super::{append_boolean, append_source_string_value, append_text};
 
 pub(super) fn variable_string_value(
     inputs: &SequenceInputs<'_>,
@@ -60,6 +60,40 @@ pub(super) fn variable_string_value(
         Some(inputs.request_id),
         format!("unbound variable: ${name}"),
     ))
+}
+
+pub(super) fn append_variable_path(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    path: &LocationPath,
+    variables: &RuntimeVariables,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let source = required_comparison_source(inputs)?;
+    let roots = variables
+        .source_nodes(inputs.globals, variable)
+        .ok_or_else(|| {
+            failure(
+                "XPTY0019",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("variable path requires a source-node sequence: ${variable}"),
+            )
+        })?;
+    let mut selected = Vec::new();
+    for root in roots {
+        selected.extend(
+            evaluate_location_path_controlled(source, *root, path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?,
+        );
+    }
+    selected.sort_unstable_by_key(|node| source.document_order(*node));
+    selected.dedup();
+    if let Some(node) = selected.first() {
+        append_source_string_value(inputs, *node, result, control)?;
+    }
+    Ok(())
 }
 
 pub(super) fn variable_string_comparison(
