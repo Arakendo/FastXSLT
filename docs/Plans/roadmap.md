@@ -3983,6 +3983,10 @@ host lifecycle.
   and simplified roots and reject `mode` on named-only templates, moving three
   unchanged expected-error cases from unexpected success to observed
   initialization failure and reducing that class from 12 to 9.
+- [x] Reject forbidden stylesheet-root `mode` and malformed or unbound
+  `extension-element-prefixes` tokens, moving two unchanged expected-error
+  cases from unexpected success to observed initialization failure and reducing
+  that class from 9 to 7 without claiming extension execution support.
 - [ ] Give each standard and expected-error case one reproducible final
   disposition under a versioned local overlay/report, applying duplicate-safe
   identity and doubts/discretionary metadata.

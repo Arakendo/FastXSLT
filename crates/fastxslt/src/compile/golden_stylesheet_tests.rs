@@ -164,6 +164,26 @@ fn rejects_non_decimal_stylesheet_versions_and_mode_on_named_only_templates() {
 }
 
 #[test]
+fn rejects_forbidden_mode_and_malformed_extension_prefixes_on_stylesheet_root() {
+    for (label, attribute, code) in [
+        ("root-mode", "mode=\"named\"", "XTSE0090"),
+        (
+            "extension-prefix",
+            "extension-element-prefixes=\"foo:bar\"",
+            "XTSE1430",
+        ),
+    ] {
+        let bytes = format!(
+            r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" {attribute}/>"#
+        );
+        let document = parse_stylesheet(&format!("memory:{label}.xsl"), bytes.as_bytes());
+        let failure = compile_stylesheet(&document).expect_err("invalid root control must fail");
+        assert_eq!(failure.code, code, "{label}");
+        assert_eq!(failure.category, CompileCategory::Invalid, "{label}");
+    }
+}
+
+#[test]
 fn static_xsl_element_keeps_dynamic_names_namespaces_and_attribute_sets_explicit() {
     for (attribute, code) in [
         ("name=\"{name()}\"", "FXST1047"),

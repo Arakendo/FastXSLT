@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Stylesheet-root validation now rejects forbidden `mode` and
+  malformed or unbound `extension-element-prefixes` tokens. Two unchanged
+  Microsoft expected-error cases move from unexpected success to observed
+  initialization failure, reducing that unresolved class from 9 to 7 without
+  changing the 1,202 exact matches. Extension execution and authority remain
+  outside this lexical validation tranche.
 - 2026-09-08 -- Principal/module/simplified stylesheet versions now require a
   positive decimal lexical, and an explicit mode on a named-only template is
   invalid. Three unchanged Microsoft expected-error cases move from unexpected

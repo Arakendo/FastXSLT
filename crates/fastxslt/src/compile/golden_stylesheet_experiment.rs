@@ -99,6 +99,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     require_stylesheet_root(document, root)?;
     let declared_version = required_attribute(document, root, None, "version")?.to_owned();
     validate_declared_version(document, root, &declared_version)?;
+    validate_stylesheet_root_controls(document, root)?;
     let default_initial_mode = optional_attribute(document, root, None, "default-mode")
         .map(str::trim)
         .map(|mode| match mode {
@@ -543,6 +544,36 @@ pub(super) fn validate_declared_version(
             document.location(root),
         ))
     }
+}
+
+fn validate_stylesheet_root_controls(
+    document: &Document,
+    root: NodeId,
+) -> Result<(), CompileFailure> {
+    if optional_attribute(document, root, None, "mode").is_some() {
+        return Err(invalid(
+            "XTSE0090",
+            "mode is not permitted on xsl:stylesheet",
+            document.location(root),
+        ));
+    }
+    let Some(prefixes) = optional_attribute(document, root, None, "extension-element-prefixes")
+    else {
+        return Ok(());
+    };
+    for prefix in prefixes.split_whitespace() {
+        if prefix == "#default" {
+            continue;
+        }
+        if !is_ascii_ncname(prefix) || namespace_for_prefix(document, root, prefix).is_none() {
+            return Err(invalid(
+                "XTSE1430",
+                format!("invalid or unbound extension-element prefix: {prefix}"),
+                document.location(root),
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn compile_top_level_template(
