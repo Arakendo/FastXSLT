@@ -2,6 +2,7 @@
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
 use crate::xml::quick_xml_experiment::ExpandedName;
+use crate::xpath::path_experiment::parse_location_path;
 use crate::xslt::golden_semantics_experiment::{LiteralAttribute, LiteralAttributeValue};
 
 use super::{CompileFailure, XSLT_NAMESPACE, invalid, is_ascii_ncname, unsupported};
@@ -72,6 +73,15 @@ fn parse_literal_attribute_value(
         if let Some(text) = unescape_static_braces(lexical) {
             return Ok(LiteralAttributeValue::Text(text));
         }
+        if let Some((prefix, expression, suffix)) = single_dynamic_expression(lexical) {
+            if let Ok(path) = parse_location_path(expression.trim(), location.clone()) {
+                return Ok(LiteralAttributeValue::Xslt10TextAndPath {
+                    prefix: prefix.to_owned(),
+                    path,
+                    suffix: suffix.to_owned(),
+                });
+            }
+        }
         return Err(unsupported(
             "FXST1031",
             format!("unsupported attribute value template: {lexical}"),
@@ -79,6 +89,19 @@ fn parse_literal_attribute_value(
         ));
     }
     Ok(LiteralAttributeValue::Text(lexical.to_owned()))
+}
+
+fn single_dynamic_expression(lexical: &str) -> Option<(&str, &str, &str)> {
+    let open = lexical.find('{')?;
+    let close = lexical[open + 1..].find('}')? + open + 1;
+    let prefix = &lexical[..open];
+    let expression = &lexical[open + 1..close];
+    let suffix = &lexical[close + 1..];
+    (!expression.trim().is_empty()
+        && !prefix.contains(['{', '}'])
+        && !expression.contains(['{', '}'])
+        && !suffix.contains(['{', '}']))
+    .then_some((prefix, expression, suffix))
 }
 
 fn unescape_static_braces(lexical: &str) -> Option<String> {
@@ -114,8 +137,21 @@ mod tests {
                 .expect("paired braces should be static text"),
             LiteralAttributeValue::Text("{font:helvetica}".to_owned())
         );
-        assert!(parse_literal_attribute_value("before{.}after", &location()).is_err());
         assert!(parse_literal_attribute_value("{{broken}", &location()).is_err());
+    }
+
+    #[test]
+    fn compiles_one_source_path_inside_literal_text() {
+        let compiled = parse_literal_attribute_value(
+            "/cgi-bin/app?p_parm1={.//doc2/doc3/a/@level}",
+            &location(),
+        )
+        .expect("one mixed source-path AVT should compile");
+        let LiteralAttributeValue::Xslt10TextAndPath { prefix, suffix, .. } = compiled else {
+            panic!("expected the bounded mixed AVT representation");
+        };
+        assert_eq!(prefix, "/cgi-bin/app?p_parm1=");
+        assert_eq!(suffix, "");
     }
 
     #[test]

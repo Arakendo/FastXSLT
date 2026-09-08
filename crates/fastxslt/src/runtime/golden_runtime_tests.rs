@@ -3365,6 +3365,38 @@ fn source_attribute_copy_uses_the_existing_pending_attribute_owner() {
 }
 
 #[test]
+fn xslt10_literal_attribute_composes_text_with_first_source_path_node() {
+    const SOURCE: &str = "urn:fastxslt:mixed-path-avt:source";
+    const STYLESHEET: &str = "urn:fastxslt:mixed-path-avt:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            br#"<docs><doc2><doc3><a level="first"/><a level="second"/></doc3></doc2></docs>"#
+                .to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out href="before:{.//doc2/doc3/a/@level}:after" empty="before:{missing/@value}:after"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile mixed path AVT");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("mixed-path-avt", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute mixed path AVT");
+    assert_eq!(
+        results.by_request["mixed-path-avt"].serialized,
+        "<out href=\"before:first:after\" empty=\"before::after\"></out>"
+    );
+}
+
+#[test]
 fn parent_name_value_uses_the_typed_singleton_parent_path() {
     const SOURCE: &str = "urn:fastxslt:parent-name-value:source";
     const STYLESHEET: &str = "urn:fastxslt:parent-name-value:stylesheet";

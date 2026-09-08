@@ -947,6 +947,11 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
                     }
                 })
         }
+        LiteralAttributeValue::Xslt10TextAndPath {
+            prefix,
+            path,
+            suffix,
+        } => prefix.capacity() + path.known_owned_capacity_bytes() + suffix.capacity(),
         LiteralAttributeValue::SourceAttribute(name) => name_owned(name),
         LiteralAttributeValue::ContextPosition
         | LiteralAttributeValue::ContextSize

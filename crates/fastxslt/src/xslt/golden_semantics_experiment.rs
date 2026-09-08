@@ -997,6 +997,11 @@ pub(crate) enum LiteralAttributeValue {
     Variable(String),
     CountSourceNodeVariable(String),
     Xslt10Concat(Box<Xslt10ConcatExpression>),
+    Xslt10TextAndPath {
+        prefix: String,
+        path: LocationPath,
+        suffix: String,
+    },
     SourceAttribute(ExpandedName),
     ContextPosition,
     ContextSize,

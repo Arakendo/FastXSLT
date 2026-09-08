@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Literal result attributes now retain one typed source location
+  path between static text fragments and evaluate it through the shared
+  controlled path owner with XSLT 1.0 first-node string conversion. Two
+  unchanged Microsoft AVT cases raise the strict lower bound from 1,202 to
+  1,204 without adding a comparison mismatch. One Lotus case reaches the
+  independent bounded HTML-serialization frontier and remains uncredited;
+  multiple expressions and the general AVT grammar remain unsupported.
 - 2026-09-08 -- Elements in a stylesheet-declared prefixed or `#default`
   extension namespace now stop at explicit unsupported `FXST1059` rather than
   becoming literal result elements. Two unchanged Microsoft expected-error

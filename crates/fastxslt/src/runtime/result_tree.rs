@@ -5,6 +5,7 @@ use std::sync::Arc;
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
+use crate::xpath::path_experiment::{LocationPath, evaluate_location_path_controlled};
 use crate::xslt::golden_semantics_experiment::{
     ComputedAttribute, LiteralAttribute, LiteralAttributeValue,
 };
@@ -196,6 +197,11 @@ fn materialize_attribute(
         LiteralAttributeValue::Xslt10Concat(_) => {
             unreachable!("dynamic computed-attribute values are materialized by their owner")
         }
+        LiteralAttributeValue::Xslt10TextAndPath {
+            prefix,
+            path,
+            suffix,
+        } => materialize_source_path_avt(prefix, path, suffix, location, context, control)?,
         LiteralAttributeValue::SourceAttribute(name) => {
             let Some((source, node)) = context.source_focus else {
                 return Err(failure_at(
@@ -239,34 +245,71 @@ fn materialize_attribute(
             })?
             .to_owned(),
         LiteralAttributeValue::ContextIntegerIncrement(increment) => {
-            let lexical = context.context_value.ok_or_else(|| {
-                failure_at(
-                    "XPTY0004",
-                    FailureCategory::Invalid,
-                    Some(context.request_id),
-                    location.clone(),
-                    "the numeric attribute expression requires an atomic context value",
-                )
-            })?;
-            lexical
-                .trim()
-                .parse::<i64>()
-                .ok()
-                .and_then(|value| value.checked_add(*increment))
-                .ok_or_else(|| {
-                    failure_at(
-                        "FORG0001",
-                        FailureCategory::Invalid,
-                        Some(context.request_id),
-                        location.clone(),
-                        format!("attribute value is not an admitted integer: {lexical}"),
-                    )
-                })?
-                .to_string()
+            materialize_context_integer_increment(*increment, location, context)?
         }
     };
     Ok(ResultAttribute {
         name: name.clone(),
         value,
     })
+}
+
+fn materialize_context_integer_increment(
+    increment: i64,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+) -> Result<String, ExecutionFailure> {
+    let lexical = context.context_value.ok_or_else(|| {
+        failure_at(
+            "XPTY0004",
+            FailureCategory::Invalid,
+            Some(context.request_id),
+            location.clone(),
+            "the numeric attribute expression requires an atomic context value",
+        )
+    })?;
+    lexical
+        .trim()
+        .parse::<i64>()
+        .ok()
+        .and_then(|value| value.checked_add(increment))
+        .ok_or_else(|| {
+            failure_at(
+                "FORG0001",
+                FailureCategory::Invalid,
+                Some(context.request_id),
+                location.clone(),
+                format!("attribute value is not an admitted integer: {lexical}"),
+            )
+        })
+        .map(|value| value.to_string())
+}
+
+fn materialize_source_path_avt(
+    prefix: &str,
+    path: &LocationPath,
+    suffix: &str,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let Some((source, node)) = context.source_focus else {
+        return Err(failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(context.request_id),
+            location.clone(),
+            "the source-path attribute expression requires a source-node context",
+        ));
+    };
+    let selected = evaluate_location_path_controlled(source, node, path, control)
+        .map_err(|failure| control_failure(failure, context.request_id))?;
+    let selected_value = selected
+        .first()
+        .map_or_else(String::new, |selected| source.string_value(*selected));
+    let mut result = String::with_capacity(prefix.len() + selected_value.len() + suffix.len());
+    result.push_str(prefix);
+    result.push_str(&selected_value);
+    result.push_str(suffix);
+    Ok(result)
 }
