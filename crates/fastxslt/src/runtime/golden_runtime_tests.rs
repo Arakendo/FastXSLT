@@ -909,6 +909,37 @@ fn source_node_union_variables_deduplicate_before_variable_count() {
 }
 
 #[test]
+fn current_source_node_arguments_compose_with_computed_attributes() {
+    const SOURCE: &str = "urn:fastxslt:current-argument:source";
+    const STYLESHEET: &str = "urn:fastxslt:current-argument:stylesheet";
+    let stylesheet =
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+      <xsl:output method="xml" omit-xml-declaration="yes"/>
+      <xsl:template match="doc"><out><xsl:apply-templates select="foo"><xsl:with-param name="node" select="current()"/></xsl:apply-templates></out></xsl:template>
+      <xsl:template match="foo"><xsl:param name="node"/><content><xsl:attribute name="from"><xsl:value-of select="@name"/></xsl:attribute><xsl:attribute name="size"><xsl:value-of select="count($node)"/></xsl:attribute><xsl:value-of select="normalize-space($node)"/></content></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc>alpha <foo name=\"x\"/> omega</doc>".to_vec())
+        .expect("admit current-node argument source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit current-node argument stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile current-node argument");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("current-node-argument", "result", SOURCE))
+        .expect("admit current-node argument request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute current-node argument");
+    assert_eq!(
+        results.by_request["current-node-argument"].serialized,
+        r#"<out><content from="x" size="1">alpha omega</content></out>"#
+    );
+}
+
+#[test]
 fn generate_id_uses_stable_distinct_source_node_identity() {
     const SOURCE: &str = "urn:fastxslt:generate-id:source";
     const STYLESHEET: &str = "urn:fastxslt:generate-id:stylesheet";

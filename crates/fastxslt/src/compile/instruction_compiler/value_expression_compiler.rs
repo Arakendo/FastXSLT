@@ -282,6 +282,17 @@ pub(super) fn compile_value_expression(
     ) {
         return Ok(ValueExpression::ContextNodeNormalizedString);
     }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(variable) = expression
+            .trim()
+            .strip_prefix("normalize-space($")
+            .and_then(|value| value.strip_suffix(')'))
+            .filter(|variable| is_ascii_ncname(variable))
+    {
+        return Ok(ValueExpression::Xslt10NormalizedSourceNodeVariable(
+            variable.to_owned(),
+        ));
+    }
     if let Some(normalized) = compile_normalize_space_path(document, element, expression, location)
     {
         return Ok(normalized);

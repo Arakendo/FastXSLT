@@ -660,6 +660,7 @@ pub(crate) enum ValueExpression {
     NodeNamespaceUriPath(LocationPath),
     ContextLanguageMatches(String),
     ContextNodeNormalizedString,
+    Xslt10NormalizedSourceNodeVariable(String),
     NormalizedStringPath(LocationPath),
     StringPath(LocationPath),
     IntegralFunctionPath {
@@ -958,6 +959,7 @@ pub(crate) enum TemplateArgumentValue {
     Boolean(bool),
     ContextPosition,
     ContextSize,
+    CurrentSourceNode,
     Variable(String),
     SourcePath(LocationPath),
     Xslt10SumPath(LocationPath),
@@ -986,6 +988,7 @@ pub(crate) struct ComputedAttribute {
 pub(crate) enum LiteralAttributeValue {
     Text(String),
     Variable(String),
+    CountSourceNodeVariable(String),
     Xslt10Concat(Box<Xslt10ConcatExpression>),
     SourceAttribute(ExpandedName),
     ContextPosition,

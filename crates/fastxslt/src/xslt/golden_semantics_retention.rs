@@ -662,6 +662,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::RootVariable(name)
         | ValueExpression::VariableEffectiveBooleanValue(name)
         | ValueExpression::CountSourceNodeVariable(name)
+        | ValueExpression::Xslt10NormalizedSourceNodeVariable(name)
         | ValueExpression::Xslt10VariableString(name)
         | ValueExpression::Xslt10VariableNumber(name) => name.capacity(),
         ValueExpression::Xslt10VariablePositionPath { path, variable } => {
@@ -898,7 +899,8 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
             TemplateArgumentValue::Integer(_)
             | TemplateArgumentValue::Boolean(_)
             | TemplateArgumentValue::ContextPosition
-            | TemplateArgumentValue::ContextSize => 0,
+            | TemplateArgumentValue::ContextSize
+            | TemplateArgumentValue::CurrentSourceNode => 0,
             TemplateArgumentValue::SourcePath(path)
             | TemplateArgumentValue::Xslt10SumPath(path) => path.known_owned_capacity_bytes(),
             TemplateArgumentValue::SourcePathStringComparison { left, right, .. } => {
@@ -922,9 +924,9 @@ fn computed_attribute_owned(value: &ComputedAttribute) -> usize {
 
 fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
     match value {
-        LiteralAttributeValue::Text(text) | LiteralAttributeValue::Variable(text) => {
-            text.capacity()
-        }
+        LiteralAttributeValue::Text(text)
+        | LiteralAttributeValue::Variable(text)
+        | LiteralAttributeValue::CountSourceNodeVariable(text) => text.capacity(),
         LiteralAttributeValue::Xslt10Concat(expression) => {
             size_of_val(expression.as_ref())
                 + vec_owned(&expression.parts, |part| match part {

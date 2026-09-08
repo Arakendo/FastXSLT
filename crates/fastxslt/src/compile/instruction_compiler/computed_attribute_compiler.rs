@@ -73,6 +73,21 @@ pub(super) fn compile_computed_attribute(
     {
         LiteralAttributeValue::Variable(variable.to_owned())
     } else if uses_xslt10_compatibility(document, *value_of)
+        && let Some(variable) = select
+            .strip_prefix("count($")
+            .and_then(|value| value.strip_suffix(')'))
+            .filter(|name| is_ascii_ncname(name))
+    {
+        LiteralAttributeValue::CountSourceNodeVariable(variable.to_owned())
+    } else if let Some(attribute) = select
+        .strip_prefix('@')
+        .filter(|name| is_ascii_ncname(name))
+    {
+        LiteralAttributeValue::SourceAttribute(ExpandedName {
+            namespace: None,
+            local: attribute.to_owned(),
+        })
+    } else if uses_xslt10_compatibility(document, *value_of)
         && let Some(expression) =
             compile_xslt10_concat(document, *value_of, select, document.location(*value_of))?
     {

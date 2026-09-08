@@ -163,6 +163,9 @@ fn compile_selected_argument_value(
     if select.trim() == "last()" {
         return Ok(TemplateArgumentValue::ContextSize);
     }
+    if select.trim() == "current()" {
+        return Ok(TemplateArgumentValue::CurrentSourceNode);
+    }
     if let Some(path) =
         compile_xslt10_sum_path(document, element, select, document.location(element))?
     {

@@ -247,6 +247,29 @@ pub(super) fn execute_value_of(
         ValueExpression::ContextNodeNormalizedString => {
             append_context_node_normalized_string(inputs, context, result, control)?;
         }
+        ValueExpression::Xslt10NormalizedSourceNodeVariable(variable) => {
+            let source = inputs.source.ok_or_else(|| {
+                failure(
+                    "XPDY0002",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    "source-node variable normalization requires a source document",
+                )
+            })?;
+            let nodes = variables
+                .source_nodes(inputs.globals, variable)
+                .ok_or_else(|| {
+                    failure(
+                        "XPTY0004",
+                        FailureCategory::Invalid,
+                        Some(inputs.request_id),
+                        format!("normalize-space requires a source-node sequence: ${variable}"),
+                    )
+                })?;
+            if let Some(node) = nodes.first().copied() {
+                append_normalized_node_string(inputs, source, node, result, control)?;
+            }
+        }
         ValueExpression::NormalizedStringPath(path) => {
             append_normalized_string_path(inputs, context, path, result, control)?;
         }

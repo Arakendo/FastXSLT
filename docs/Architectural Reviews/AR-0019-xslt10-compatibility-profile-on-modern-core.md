@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- An exact `current()` template argument now retains caller
+  source-node identity in the invocation-local typed frame; XSLT 1.0
+  `normalize-space($variable)` and computed-attribute `count($variable)` reuse
+  that sequence while source-attribute computed values use the callee focus.
+  The unchanged `Lotus/select_select79#1` case raises the lower bound from
+  1,197 to 1,198; mismatches remain 79. General `current()` placement and
+  arbitrary computed-attribute expressions remain unadmitted.
 - 2026-09-08 -- Local variables can now retain a variable-only union of
   invocation-owned source nodes through the existing copy-on-write frame;
   runtime binding normalizes document order and identity, and XSLT 1.0

@@ -110,28 +110,54 @@ pub(super) fn materialize_computed_attributes(
     };
     let mut materialized = Vec::with_capacity(attributes.len());
     for attribute in attributes {
-        if let LiteralAttributeValue::Xslt10Concat(expression) = &attribute.value {
-            control
-                .charge(WorkDomain::ResultNode, 1)
-                .map_err(|failure| control_failure(failure, request_id))?;
-            materialized.push(ResultAttribute {
-                name: attribute.name.clone(),
-                value: evaluate_xslt10_concat(
-                    inputs,
-                    focus.source.map(|(_, node)| node),
-                    expression,
-                    variables,
+        match &attribute.value {
+            LiteralAttributeValue::Xslt10Concat(expression) => {
+                control
+                    .charge(WorkDomain::ResultNode, 1)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                materialized.push(ResultAttribute {
+                    name: attribute.name.clone(),
+                    value: evaluate_xslt10_concat(
+                        inputs,
+                        focus.source.map(|(_, node)| node),
+                        expression,
+                        variables,
+                        control,
+                    )?,
+                });
+            }
+            LiteralAttributeValue::CountSourceNodeVariable(variable) => {
+                control
+                    .charge(WorkDomain::ResultNode, 1)
+                    .and_then(|()| control.charge(WorkDomain::XPathOperation, 1))
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                let nodes = variables
+                    .source_nodes(inputs.globals, variable)
+                    .ok_or_else(|| {
+                        failure_at(
+                            "XPTY0004",
+                            FailureCategory::Invalid,
+                            Some(request_id),
+                            attribute.location.clone(),
+                            format!(
+                                "computed-attribute count requires a source-node variable: ${variable}"
+                            ),
+                        )
+                    })?;
+                materialized.push(ResultAttribute {
+                    name: attribute.name.clone(),
+                    value: nodes.len().to_string(),
+                });
+            }
+            _ => {
+                materialized.push(materialize_attribute(
+                    &attribute.name,
+                    &attribute.value,
+                    &attribute.location,
+                    &context,
                     control,
-                )?,
-            });
-        } else {
-            materialized.push(materialize_attribute(
-                &attribute.name,
-                &attribute.value,
-                &attribute.location,
-                &context,
-                control,
-            )?);
+                )?);
+            }
         }
     }
     Ok(materialized)
@@ -164,6 +190,9 @@ fn materialize_attribute(
             })?
             .lexical()
             .to_owned(),
+        LiteralAttributeValue::CountSourceNodeVariable(_) => {
+            unreachable!("source-node counts are materialized by the computed-attribute owner")
+        }
         LiteralAttributeValue::Xslt10Concat(_) => {
             unreachable!("dynamic computed-attribute values are materialized by their owner")
         }

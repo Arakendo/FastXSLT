@@ -145,6 +145,10 @@ pub(super) fn evaluate_template_arguments(
                         focus_size.to_string(),
                     ))
                 }
+                TemplateArgumentValue::CurrentSourceNode => {
+                    let (_, context) = required_source_context(inputs, context)?;
+                    InvocationParameterValue::SourceNodes(vec![context])
+                }
                 TemplateArgumentValue::Variable(name) => {
                     if let Some(value) = variables.atomics.get(name) {
                         InvocationParameterValue::Atomic(value.clone())
