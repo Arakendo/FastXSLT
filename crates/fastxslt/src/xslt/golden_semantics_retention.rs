@@ -652,6 +652,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::ContextNodeLocalName
         | ValueExpression::ContextNodeNamespaceUri
         | ValueExpression::ContextNodeNormalizedString
+        | ValueExpression::Xslt10CountCurrentNode
         | ValueExpression::UpperCaseContextString => 0,
         ValueExpression::ContextLanguageMatches(language) => language.capacity(),
         ValueExpression::ContextNodeStringLength(location)

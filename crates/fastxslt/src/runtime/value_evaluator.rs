@@ -175,6 +175,13 @@ pub(super) fn execute_value_of(
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
             append_xslt10_first_node_location_path_string(inputs, path, context, result, control)?;
         }
+        ValueExpression::Xslt10CountCurrentNode => {
+            required_source_context(inputs, context)?;
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            append_text(result, "1", inputs.request_id, control)?;
+        }
         ValueExpression::CountLocationPath(path) => {
             append_location_path_count(inputs, path, context, result, control)?;
         }

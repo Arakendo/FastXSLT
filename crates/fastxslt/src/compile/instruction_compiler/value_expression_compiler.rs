@@ -1043,10 +1043,15 @@ fn compile_xslt10_current_predicate_path(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<Option<LocationPath>, CompileFailure> {
-    if expression.matches("[current()]").count() != 1 {
+    let normalized = if expression.matches("[current()]").count() == 1
+        && !expression.contains("[count(current())]")
+    {
+        expression.replace("[current()]", "")
+    } else if expression.matches("[count(current())]").count() == 1 {
+        expression.replace("[count(current())]", "[1]")
+    } else {
         return Ok(None);
-    }
-    let normalized = expression.replace("[current()]", "");
+    };
     let normalized = normalized
         .strip_prefix('(')
         .and_then(|value| value.strip_suffix(")[1]"))
@@ -1422,6 +1427,9 @@ fn compile_count_value(
     };
     if argument.trim_start().starts_with("fn:") && argument.contains('(') {
         return Ok(None);
+    }
+    if compatibility == ValueCompatibilityMode::Xslt10 && argument.trim() == "current()" {
+        return Ok(Some(ValueExpression::Xslt10CountCurrentNode));
     }
     if compatibility == ValueCompatibilityMode::Xslt10
         && let Some(variable) = argument

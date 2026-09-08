@@ -984,7 +984,7 @@ fn xslt10_current_predicate_retains_the_outer_source_focus() {
         br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
       <xsl:output method="xml" omit-xml-declaration="yes"/>
       <xsl:template match="doc"><out><xsl:apply-templates select="mark"/></out></xsl:template>
-      <xsl:template match="mark"><direct><xsl:value-of select="following-sibling::ch[current()]"/></direct><filtered><xsl:value-of select="(following-sibling::ch[current()])[1]"/></filtered></xsl:template>
+      <xsl:template match="mark"><count><xsl:value-of select="count(current())"/></count><direct><xsl:value-of select="following-sibling::ch[current()]"/></direct><filtered><xsl:value-of select="(following-sibling::ch[current()])[1]"/></filtered><numeric><xsl:value-of select="following-sibling::*[count(current())]"/></numeric></xsl:template>
     </xsl:stylesheet>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
     resources
@@ -1006,7 +1006,7 @@ fn xslt10_current_predicate_retains_the_outer_source_focus() {
     let results = execute_transform_set(builder.seal()).expect("execute current predicate");
     assert_eq!(
         results.by_request["current-predicate"].serialized,
-        "<out><direct>first</direct><filtered>first</filtered></out>"
+        "<out><count>1</count><direct>first</direct><filtered>first</filtered><numeric>first</numeric></out>"
     );
 }
 

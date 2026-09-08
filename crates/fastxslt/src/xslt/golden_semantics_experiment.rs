@@ -642,6 +642,7 @@ pub(crate) enum ValueExpression {
     LocationPath(LocationPath),
     Xslt10FirstNodeLocationPath(LocationPath),
     Xslt10CurrentPredicatePath(LocationPath),
+    Xslt10CountCurrentNode,
     CountLocationPath(LocationPath),
     CountSourceNodeVariable(String),
     RootPath(LocationPath),

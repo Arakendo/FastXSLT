@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Exact XSLT 1.0 `count(current())` now observes the required
+  singleton outer source focus, and `[count(current())]` lowers to the existing
+  numeric position-one predicate without entering the general XPath grammar.
+  The unchanged `Lotus/select_select86#1` case raises the lower bound from
+  1,200 to 1,201; mismatches remain 79 and execution failures remain 163.
+  General current-node arithmetic, comparison, and navigation remain
+  unadmitted.
 - 2026-09-08 -- XSLT 1.0 value compilation now admits one exact standalone
   `[current()]` path predicate, including the bounded parenthesized first-node
   form, without widening the general XPath parser. The unchanged
