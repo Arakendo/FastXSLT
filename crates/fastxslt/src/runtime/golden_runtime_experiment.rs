@@ -15,10 +15,10 @@ use crate::xpath::for_distinct_values_experiment::{
 };
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    ApplySelection, BooleanExpression, ComputedAttribute, FocusEqualityOperand, Instruction,
-    NodeTest, OnMultipleMatchPolicy, OnNoMatchPolicy, SequenceItemExpression, SortDataType,
-    SortKey, SortOrder, SortSelect, SourceWhitespacePolicy, StringComparison, StylesheetProgram,
-    TemplateArgument,
+    ApplySelection, BooleanExpression, ComputedAttribute, FocusComparison, FocusEqualityOperand,
+    Instruction, NodeTest, OnMultipleMatchPolicy, OnNoMatchPolicy, SequenceItemExpression,
+    SortDataType, SortKey, SortOrder, SortSelect, SourceWhitespacePolicy, StringComparison,
+    StylesheetProgram, TemplateArgument,
 };
 
 #[path = "atomic_template_executor.rs"]
@@ -2332,15 +2332,19 @@ fn evaluate_boolean(
             right,
             location,
         } => evaluate_context_focus_equality(inputs, focus, *left, *right, location, control),
+        BooleanExpression::ContextFocusCompares {
+            left,
+            operator,
+            right,
+            location,
+        } => evaluate_context_focus_comparison(
+            inputs, focus, *left, *operator, *right, location, control,
+        ),
         BooleanExpression::ContextLanguageMatches(language) => {
             evaluate_context_language_matches(inputs, context, language, control)
         }
-        BooleanExpression::Or { left, right } => {
-            if evaluate_boolean(inputs, left, context, focus, variables, control)? {
-                Ok(true)
-            } else {
-                evaluate_boolean(inputs, right, context, focus, variables, control)
-            }
+        composition @ (BooleanExpression::Or { .. } | BooleanExpression::And { .. }) => {
+            evaluate_boolean_composition(inputs, composition, context, focus, variables, control)
         }
         BooleanExpression::Not(expression) => {
             evaluate_boolean(inputs, expression, context, focus, variables, control)
@@ -2389,6 +2393,27 @@ fn evaluate_boolean(
             value_evaluator::evaluate_conditional_integer(inputs, expression, context, control)
                 .map(|value| value != 0)
         }
+    }
+}
+
+fn evaluate_boolean_composition(
+    inputs: &SequenceInputs<'_>,
+    expression: &BooleanExpression,
+    context: Option<NodeId>,
+    focus: Option<SequenceFocus>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (left, right, conjunction) = match expression {
+        BooleanExpression::And { left, right } => (left.as_ref(), right.as_ref(), true),
+        BooleanExpression::Or { left, right } => (left.as_ref(), right.as_ref(), false),
+        _ => unreachable!("boolean composition helper receives only and/or expressions"),
+    };
+    let left = evaluate_boolean(inputs, left, context, focus, variables, control)?;
+    match (conjunction, left) {
+        (true, false) => Ok(false),
+        (false, true) => Ok(true),
+        _ => evaluate_boolean(inputs, right, context, focus, variables, control),
     }
 }
 
@@ -2445,12 +2470,48 @@ fn evaluate_context_focus_equality(
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let value = |operand| match operand {
+    Ok(focus_operand_value(focus, left) == focus_operand_value(focus, right))
+}
+
+fn evaluate_context_focus_comparison(
+    inputs: &SequenceInputs<'_>,
+    focus: Option<SequenceFocus>,
+    left: FocusEqualityOperand,
+    operator: FocusComparison,
+    right: FocusEqualityOperand,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let focus = focus.ok_or_else(|| {
+        failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            "position() and last() require a dynamic focus",
+        )
+    })?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let left = focus_operand_value(focus, left);
+    let right = focus_operand_value(focus, right);
+    Ok(match operator {
+        FocusComparison::NotEqual => left != right,
+        FocusComparison::LessThan => left < right,
+        FocusComparison::LessThanOrEqual => left <= right,
+        FocusComparison::GreaterThan => left > right,
+        FocusComparison::GreaterThanOrEqual => left >= right,
+    })
+}
+
+fn focus_operand_value(focus: SequenceFocus, operand: FocusEqualityOperand) -> usize {
+    match operand {
         FocusEqualityOperand::Position => focus.position,
         FocusEqualityOperand::Size => focus.size,
+        FocusEqualityOperand::CeilingHalfSize => focus.size / 2 + focus.size % 2,
         FocusEqualityOperand::Static(value) => value,
-    };
-    Ok(value(left) == value(right))
+    }
 }
 
 fn evaluate_node_identity_equal(

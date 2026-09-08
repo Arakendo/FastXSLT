@@ -270,6 +270,11 @@ pub(super) fn execute_value_of(
             let value = xslt10_compatibility::number_lexical(&value);
             append_text(result, &value, inputs.request_id, control)?;
         }
+        ValueExpression::Xslt10VariablePositionPath { path, variable } => {
+            xslt10_compatibility::append_variable_position_path(
+                inputs, context, path, variable, variables, result, control,
+            )?;
+        }
         ValueExpression::Xslt10PathStringFunction(expression) => {
             xslt10_compatibility::append_path_string_function(
                 inputs, context, expression, result, control,
@@ -1670,6 +1675,7 @@ fn focus_equality_operand(focus: SequenceFocus, operand: FocusEqualityOperand) -
     match operand {
         FocusEqualityOperand::Position => focus.position,
         FocusEqualityOperand::Size => focus.size,
+        FocusEqualityOperand::CeilingHalfSize => focus.size / 2 + focus.size % 2,
         FocusEqualityOperand::Static(value) => value,
     }
 }

@@ -204,6 +204,12 @@ pub(super) fn compile_value_expression(
         return Ok(ValueExpression::Xslt10VariableNumber(variable.to_owned()));
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some((path, variable)) =
+            compile_xslt10_variable_position_path(document, element, expression, location)?
+    {
+        return Ok(ValueExpression::Xslt10VariablePositionPath { path, variable });
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(function) =
             compile_xslt10_path_string_function(document, element, expression, location)?
     {
@@ -460,6 +466,65 @@ fn parse_xslt10_variable_conversion<'a>(expression: &'a str, function: &str) -> 
         .strip_suffix(')')?
         .trim()
         .strip_prefix('$')?;
+    is_ascii_ncname(variable).then_some(variable)
+}
+
+fn compile_xslt10_variable_position_path(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<(LocationPath, String)>, CompileFailure> {
+    let expression = expression.trim();
+    let Some(body) = expression.strip_suffix(']') else {
+        return Ok(None);
+    };
+    let Some(open) = body.rfind('[') else {
+        return Ok(None);
+    };
+    let path = body[..open].trim();
+    // Applying the predicate after evaluating an arbitrary multi-step path is
+    // not equivalent to XPath's per-step predicate focus.  Admit only the
+    // single child-step shape until the general path plan can retain that
+    // focus boundary.
+    if path.contains('/') {
+        return Ok(None);
+    }
+    let predicate = body[open + 1..].trim();
+    let variable = parse_variable_position_predicate(predicate);
+    let Some(variable) = variable else {
+        return Ok(None);
+    };
+    let mut path = parse_location_path(path, location.clone()).map_err(map_path_failure)?;
+    if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+        for step in &mut path.steps {
+            if let PathStep::ChildNamed(local) = step {
+                *step = PathStep::ChildExpandedName(ExpandedName {
+                    namespace: Some(namespace.to_owned()),
+                    local: local.clone(),
+                });
+            }
+        }
+    }
+    Ok(Some((path, variable.to_owned())))
+}
+
+fn parse_variable_position_predicate(predicate: &str) -> Option<&str> {
+    let predicate = predicate.trim();
+    if let Some(variable) = predicate
+        .strip_prefix('$')
+        .filter(|name| is_ascii_ncname(name))
+    {
+        return Some(variable);
+    }
+    let (left, right) = predicate.split_once('=')?;
+    let variable = if left.trim() == "position()" {
+        right.trim().strip_prefix('$')?
+    } else if right.trim() == "position()" {
+        left.trim().strip_prefix('$')?
+    } else {
+        return None;
+    };
     is_ascii_ncname(variable).then_some(variable)
 }
 

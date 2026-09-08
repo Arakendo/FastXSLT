@@ -144,10 +144,18 @@ pub(super) fn compile_match_pattern(
                 document.location(element),
             ));
         }
-        path if path.contains('/') && !path.starts_with("//") => MatchPattern::Path(
-            parse_location_path(path, document.location(element).clone())
-                .map_err(map_path_failure)?,
-        ),
+        path if path.contains('/') && !path.starts_with("//") => {
+            let path = parse_location_path(path, document.location(element).clone())
+                .map_err(map_path_failure)?;
+            if path.has_non_simple_position_predicate() {
+                return Err(unsupported(
+                    "FXST1005",
+                    "non-simple position predicates in multi-step match patterns are outside the private pattern slice",
+                    document.location(element),
+                ));
+            }
+            MatchPattern::Path(path)
+        }
         _ => {
             return Err(unsupported(
                 "FXST1005",
@@ -278,9 +286,32 @@ fn parse_named_sibling_boundary(pattern: &str) -> Option<(&str, NamedSiblingBoun
     let boundary = match predicate {
         "position()=last()" => NamedSiblingBoundary::Last,
         "position()<last()" => NamedSiblingBoundary::BeforeLast,
-        _ => return None,
+        _ => parse_static_named_sibling_position(predicate)?,
     };
     Some((element, boundary))
+}
+
+fn parse_static_named_sibling_position(predicate: &str) -> Option<NamedSiblingBoundary> {
+    let relation = predicate.strip_prefix("position()")?.trim_start();
+    let (exact, operand) = if let Some(operand) = relation.strip_prefix('=') {
+        (true, operand)
+    } else if let Some(operand) = relation.strip_prefix('<') {
+        (false, operand)
+    } else {
+        return None;
+    };
+    operand
+        .trim()
+        .parse()
+        .ok()
+        .filter(|position| *position > 0)
+        .map(|position| {
+            if exact {
+                NamedSiblingBoundary::Exact(position)
+            } else {
+                NamedSiblingBoundary::Before(position)
+            }
+        })
 }
 
 fn parse_document_element_test(pattern: &str) -> Option<&str> {

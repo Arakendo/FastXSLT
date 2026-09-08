@@ -9,7 +9,7 @@
 | Trigger | A complete local legacy sweep found 366 initial definite unchanged passes and dominant gaps that largely overlap the XSLT 3.0 roadmap |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007, ADR-0012, ADR-0013, ADR-0014 |
 | Related reviews | AR-0001, AR-0004, AR-0008, AR-0011, AR-0014 |
-| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md`; `docs/Evidence/oasis-xslt10-variable-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-exact-rational-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-mixed-literal-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-sort-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-path-concat-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-literal-template-argument-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-empty-global-string-semantics-2026-09-06.md`; `docs/Evidence/oasis-xslt10-local-variable-sequence-semantics-2026-09-07.md`; `docs/Evidence/oasis-xslt10-attribute-predicate-and-variable-apply-tranche-2026-09-07.md`; `docs/Evidence/oasis-xslt10-sequence-focus-boolean-comparison-2026-09-07.md`; `docs/Evidence/oasis-xslt10-apply-templates-path-union-2026-09-07.md`; `docs/Evidence/oasis-xslt10-signed-modulo-boolean-conjunction-2026-09-07.md`; `docs/Evidence/oasis-xslt10-focus-value-equality-2026-09-07.md`; `docs/Evidence/oasis-xslt10-count-path-condition-2026-09-07.md` |
+| Related evidence | `docs/Evidence/oasis-xslt10-suite-candidate-review-2026-08-25.md`; `docs/Evidence/oasis-xslt10-initial-compatibility-measurement-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-computed-element-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-location-path-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-source-node-kind-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-static-element-namespace-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-descendant-match-pattern-repair-2026-09-04.md`; `docs/Evidence/oasis-xslt10-variable-copy-of-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-copy-of-path-union-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-named-processing-instruction-path-tranche-2026-09-04.md`; `docs/Evidence/oasis-xslt10-exact-rational-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-mixed-literal-path-arithmetic-2026-09-05.md`; `docs/Evidence/oasis-xslt10-sort-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-path-concat-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-literal-template-argument-tranche-2026-09-06.md`; `docs/Evidence/oasis-xslt10-empty-global-string-semantics-2026-09-06.md`; `docs/Evidence/oasis-xslt10-local-variable-sequence-semantics-2026-09-07.md`; `docs/Evidence/oasis-xslt10-attribute-predicate-and-variable-apply-tranche-2026-09-07.md`; `docs/Evidence/oasis-xslt10-sequence-focus-boolean-comparison-2026-09-07.md`; `docs/Evidence/oasis-xslt10-apply-templates-path-union-2026-09-07.md`; `docs/Evidence/oasis-xslt10-signed-modulo-boolean-conjunction-2026-09-07.md`; `docs/Evidence/oasis-xslt10-focus-value-equality-2026-09-07.md`; `docs/Evidence/oasis-xslt10-count-path-condition-2026-09-07.md`; `docs/Evidence/oasis-xslt10-relational-position-predicates-2026-09-07.md`; `docs/Evidence/oasis-xslt10-relative-last-and-chained-position-predicates-2026-09-07.md`; `docs/Evidence/oasis-xslt10-static-number-position-predicate-2026-09-07.md`; `docs/Evidence/oasis-xslt10-focus-relational-conjunction-2026-09-07.md`; `docs/Evidence/oasis-xslt10-position-then-name-predicate-2026-09-07.md` |
 
 ## Architectural question
 
@@ -479,6 +479,31 @@ public version-mode contract.
 - [x] Compare `count(path)` with a static nonnegative integer in instruction
   conditions through the shared controlled path evaluator, raising the lower
   bound from 1,150 to 1,153 without a compatibility-only sequence evaluator.
+- [x] Evaluate static-integer relational position predicates against each
+  path step's typed focus, raising the lower bound from 1,153 to 1,158 while
+  keeping general positional match-pattern semantics explicitly unsupported.
+- [x] Evaluate checked `last()-N` and chained positional predicates in lexical
+  order with a recomputed focus, raising the lower bound from 1,158 to 1,161
+  while keeping non-simple multi-step match patterns explicitly unsupported.
+- [x] Reuse checked source-free `number()` conversion for an exact integral
+  path position, raising the lower bound from 1,161 to 1,162 without adding a
+  compatibility-only numeric evaluator.
+- [x] Compose focus-relative relational comparisons through the instruction
+  boolean tree with short-circuit `and`, raising the lower bound from 1,162 to
+  1,163 without adding a compatibility-only boolean evaluator.
+- [x] Preserve a bounded position-then-lexical-name predicate chain, raising
+  the lower bound from 1,163 to 1,164 without reordering its focus semantics.
+- [x] Reuse typed sequence focus for the exact `ceiling(last() div 2)`
+  midpoint, raising the lower bound from 1,164 to 1,165 without a general
+  compatibility-only arithmetic evaluator.
+- [x] Match simple named elements at exact or static-before source-sibling
+  positions, raising the lower bound from 1,165 to 1,169 while preserving
+  source position across sorted application order.
+- [x] Preserve an empty level-any number list rather than formatting it as
+  numeric zero, raising the lower bound from 1,169 to 1,170.
+- [x] Apply XSLT 1.0 numeric variables to a single child-step position, raising
+  the lower bound from 1,170 to 1,173 while retaining an explicit guard for
+  multi-step predicate focus.
 - [ ] Measure pass growth, regression risk, retained state, and hot-path cost as
   shared families land.
 - [ ] Obtain consumer evidence before selecting the exact advertised profile or
@@ -495,6 +520,37 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-07 -- Numeric variables now supply positions for a bounded
+  single-child-step value path. Three unchanged cases raise the lower bound to
+  1,173; descendant and other multi-step forms remain explicitly unsupported
+  rather than approximating per-step predicate focus.
+- 2026-09-07 -- Level-any numbering now distinguishes an empty number list
+  from numeric zero while retaining format punctuation. Unchanged
+  `Microsoft/Number__84694#1` raises the lower bound to 1,170 and removes one
+  comparison mismatch.
+- 2026-09-07 -- Exact and static-before named-sibling match patterns now use
+  source-tree focus independently from application order. Four unchanged cases
+  raise the lower bound to 1,169 with no new mismatch or execution failure.
+- 2026-09-07 -- The typed focus operand now retains the exact rounded-up
+  `ceiling(last() div 2)` midpoint. Unchanged `position27` raises the lower
+  bound to 1,165 without changing mismatch or execution-failure counts.
+- 2026-09-07 -- A typed path step can now apply positional filters before one
+  trailing lexical `name()` equality. Unchanged `position82` raises the strict
+  lower bound to 1,164 without changing mismatch or execution-failure counts.
+- 2026-09-07 -- Instruction conditions now compose checked focus-relative
+  comparisons through short-circuit `and`. Unchanged `position41` raises the
+  strict lower bound to 1,163 without changing mismatch or execution-failure
+  counts.
+- 2026-09-07 -- Static integral `number()` conversion now composes with the
+  typed position-predicate owner. Unchanged `position67` raises the strict
+  lower bound to 1,162 without changing mismatch or execution-failure counts.
+- 2026-09-07 -- Three relative-last and chained-position cases raise the
+  strict lower bound to 1,161. Positional filters now recompute their focus in
+  lexical order, while the multi-step match-pattern guard expands to cover the
+  newly admitted non-simple form.
+- 2026-09-07 -- Five relational position-predicate cases raise the strict
+  lower bound to 1,158. A focused compiler guard keeps an independently exposed
+  multi-step match-pattern semantic mismatch unsupported and uncredited.
 - 2026-09-07 -- Typed count-path equality now reuses the shared controlled
   location-path evaluator in instruction conditions. Three unchanged position
   cases raise the strict lower bound to 1,153 without changing mismatch or

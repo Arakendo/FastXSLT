@@ -534,7 +534,11 @@ fn execute_any(
         total: 0,
     };
     traversal.visit(source.document_node(), control)?;
-    Ok(Some(traversal.total.to_string()))
+    Ok(Some(if traversal.total == 0 {
+        String::new()
+    } else {
+        traversal.total.to_string()
+    }))
 }
 
 struct AnyTraversal<'a> {

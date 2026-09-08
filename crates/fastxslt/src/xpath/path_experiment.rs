@@ -5,6 +5,7 @@ use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::constant_integer_experiment;
+use crate::xpath::constant_numeric_experiment;
 use crate::xpath::language_experiment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,13 +16,27 @@ pub(crate) struct LocationPath {
     final_context_predicate: Option<FinalContextPredicate>,
     first_step_predicates_use_document_order: bool,
     step_axis_predicates: Vec<Option<AxisPredicate>>,
-    step_position_predicates: Vec<Option<PositionPredicate>>,
+    step_position_predicates: Vec<Vec<StepPredicate>>,
     pub(crate) location: SourceLocation,
 }
 
 impl LocationPath {
     pub(crate) fn starts_at_document_node(&self) -> bool {
         self.origin == PathOrigin::DocumentNode
+    }
+
+    pub(crate) fn has_non_simple_position_predicate(&self) -> bool {
+        self.step_position_predicates.iter().any(|predicates| {
+            predicates.len() > 1
+                || predicates.iter().any(|predicate| {
+                    matches!(
+                        predicate,
+                        StepPredicate::Position(
+                            PositionPredicate::Compare { .. } | PositionPredicate::LastMinus(_)
+                        ) | StepPredicate::ContextName(_)
+                    )
+                })
+        })
     }
 
     #[cfg(feature = "workbench")]
@@ -36,8 +51,21 @@ impl LocationPath {
                 .final_predicate
                 .as_ref()
                 .map_or(0, AxisPredicate::known_owned_capacity_bytes)
-            + self.step_position_predicates.capacity()
-                * std::mem::size_of::<Option<PositionPredicate>>()
+            + self.step_position_predicates.capacity() * std::mem::size_of::<Vec<StepPredicate>>()
+            + self
+                .step_position_predicates
+                .iter()
+                .map(|predicates| {
+                    predicates.capacity() * std::mem::size_of::<StepPredicate>()
+                        + predicates
+                            .iter()
+                            .map(|predicate| match predicate {
+                                StepPredicate::ContextName(name) => name.len(),
+                                StepPredicate::Position(_) => 0,
+                            })
+                            .sum::<usize>()
+                })
+                .sum::<usize>()
             + self.step_axis_predicates.capacity() * std::mem::size_of::<Option<AxisPredicate>>()
             + self
                 .step_axis_predicates
@@ -480,13 +508,33 @@ impl AxisPredicate {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PositionPredicate {
     Select(usize),
+    Compare {
+        operator: PositionComparison,
+        value: i64,
+    },
     Last,
+    LastMinus(usize),
     Never,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum StepPredicate {
+    Position(PositionPredicate),
+    ContextName(Box<str>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PositionComparison {
+    NotEqual,
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
 }
 
 struct ParsedPathSteps {
     steps: Vec<String>,
-    position_predicates: Vec<Option<PositionPredicate>>,
+    position_predicates: Vec<Vec<StepPredicate>>,
     axis_predicates: Vec<Option<AxisPredicate>>,
 }
 
@@ -534,7 +582,7 @@ pub(crate) fn parse_location_path(
     } else {
         Some(ParsedPathSteps {
             steps: expression.split('/').map(str::to_owned).collect(),
-            position_predicates: vec![None; expression.split('/').count()],
+            position_predicates: vec![Vec::new(); expression.split('/').count()],
             axis_predicates: vec![None; expression.split('/').count()],
         })
     };
@@ -715,7 +763,7 @@ pub(crate) fn parse_qualified_child_path(
         final_context_predicate: None,
         first_step_predicates_use_document_order: false,
         step_axis_predicates: vec![None; step_count],
-        step_position_predicates: vec![None; step_count],
+        step_position_predicates: vec![Vec::new(); step_count],
         location,
     })
 }
@@ -1080,26 +1128,30 @@ fn parse_position_steps(expression: &str) -> Option<ParsedPathSteps> {
                 return None;
             }
             steps.push("descendant-or-self::node()".to_owned());
-            position_predicates.push(None);
+            position_predicates.push(Vec::new());
             axis_predicates.push(None);
             continue;
         }
         let (name, predicate_texts) = split_step_predicates(raw_step)?;
-        let (axis_predicate, position_predicate) = match predicate_texts.as_slice() {
-            [] => (None, None),
-            [predicate] => {
-                if let Some(position) = parse_position_predicate(predicate) {
-                    (None, Some(position))
-                } else {
-                    (Some(parse_axis_predicate(predicate)?), None)
-                }
+        let mut axis_predicate = None;
+        let mut position_predicate = Vec::new();
+        for (predicate_index, predicate) in predicate_texts.into_iter().enumerate() {
+            if let Some(position) = parse_position_predicate(predicate) {
+                position_predicate.push(StepPredicate::Position(position));
+            } else if predicate_index == 0 {
+                axis_predicate = Some(parse_axis_predicate(predicate)?);
+            } else if !position_predicate.is_empty()
+                && !position_predicate
+                    .iter()
+                    .any(|item| matches!(item, StepPredicate::ContextName(_)))
+            {
+                position_predicate.push(StepPredicate::ContextName(
+                    parse_context_name_predicate(predicate)?.into_boxed_str(),
+                ));
+            } else {
+                return None;
             }
-            [axis, position] => (
-                Some(parse_axis_predicate(axis)?),
-                Some(parse_position_predicate(position)?),
-            ),
-            _ => return None,
-        };
+        }
         steps.push(name.to_owned());
         position_predicates.push(position_predicate);
         axis_predicates.push(axis_predicate);
@@ -1109,6 +1161,21 @@ fn parse_position_steps(expression: &str) -> Option<ParsedPathSteps> {
         position_predicates,
         axis_predicates,
     })
+}
+
+fn parse_context_name_predicate(predicate: &str) -> Option<String> {
+    let value = predicate.strip_prefix("name()")?.trim_start();
+    let value = value.strip_prefix('=')?.trim();
+    for delimiter in ['\'', '"'] {
+        if let Some(value) = value
+            .strip_prefix(delimiter)
+            .and_then(|value| value.strip_suffix(delimiter))
+            .filter(|value| !value.contains(delimiter))
+        {
+            return Some(value.to_owned());
+        }
+    }
+    None
 }
 
 fn split_step_predicates(step: &str) -> Option<(&str, Vec<&str>)> {
@@ -1135,13 +1202,47 @@ fn split_step_predicates(step: &str) -> Option<(&str, Vec<&str>)> {
 
 fn parse_position_predicate(predicate: &str) -> Option<PositionPredicate> {
     let predicate = predicate.trim();
-    if matches!(predicate, "last()" | "last()=position()") {
+    if matches!(
+        predicate,
+        "last()" | "last()=position()" | "position()=last()"
+    ) {
         return Some(PositionPredicate::Last);
     }
-    let numeric_expression = predicate
-        .strip_prefix("position()")
-        .and_then(|remainder| remainder.trim_start().strip_prefix('='))
-        .map_or(predicate, str::trim);
+    if let Some(operand) = predicate.strip_prefix("last()-") {
+        let value = constant_integer_experiment::evaluate(operand.trim()).ok()?;
+        return Some(
+            usize::try_from(value)
+                .ok()
+                .map_or(PositionPredicate::Never, PositionPredicate::LastMinus),
+        );
+    }
+    if let Some(remainder) = predicate.strip_prefix("position()") {
+        let remainder = remainder.trim_start();
+        for (token, operator) in [
+            ("!=", PositionComparison::NotEqual),
+            (">=", PositionComparison::GreaterThanOrEqual),
+            ("<=", PositionComparison::LessThanOrEqual),
+            (">", PositionComparison::GreaterThan),
+            ("<", PositionComparison::LessThan),
+        ] {
+            if let Some(operand) = remainder.strip_prefix(token) {
+                let value = constant_integer_experiment::evaluate(operand.trim()).ok()?;
+                return Some(PositionPredicate::Compare { operator, value });
+            }
+        }
+        if let Some(operand) = remainder.strip_prefix('=') {
+            let value = constant_integer_experiment::evaluate(operand.trim()).ok()?;
+            return Some(
+                usize::try_from(value)
+                    .ok()
+                    .filter(|position| *position > 0)
+                    .map_or(PositionPredicate::Never, PositionPredicate::Select),
+            );
+        }
+        return None;
+    }
+    let folded_number = constant_numeric_experiment::fold_number_conversion(predicate);
+    let numeric_expression = folded_number.as_deref().unwrap_or(predicate);
     let value = constant_integer_experiment::evaluate(numeric_expression).ok()?;
     Some(
         usize::try_from(value)
@@ -1149,6 +1250,41 @@ fn parse_position_predicate(predicate: &str) -> Option<PositionPredicate> {
             .filter(|position| *position > 0)
             .map_or(PositionPredicate::Never, PositionPredicate::Select),
     )
+}
+
+fn position_predicate_matches(
+    predicate: Option<&PositionPredicate>,
+    position: usize,
+    size: usize,
+) -> bool {
+    match predicate {
+        Some(PositionPredicate::Select(selected)) => *selected == position,
+        Some(PositionPredicate::Compare { operator, value }) => {
+            compare_position(position, *operator, *value)
+        }
+        Some(PositionPredicate::Last) => position == size,
+        Some(PositionPredicate::LastMinus(offset)) => size.checked_sub(*offset) == Some(position),
+        Some(PositionPredicate::Never) => false,
+        None => true,
+    }
+}
+
+fn compare_position(position: usize, operator: PositionComparison, value: i64) -> bool {
+    let Ok(value) = usize::try_from(value) else {
+        return matches!(
+            operator,
+            PositionComparison::NotEqual
+                | PositionComparison::GreaterThan
+                | PositionComparison::GreaterThanOrEqual
+        );
+    };
+    match operator {
+        PositionComparison::NotEqual => position != value,
+        PositionComparison::LessThan => position < value,
+        PositionComparison::LessThanOrEqual => position <= value,
+        PositionComparison::GreaterThan => position > value,
+        PositionComparison::GreaterThanOrEqual => position >= value,
+    }
 }
 
 fn split_path_steps(expression: &str) -> Option<Vec<&str>> {
@@ -1255,14 +1391,13 @@ pub(crate) fn evaluate_location_path_controlled(
                     predicate_candidates.push(child);
                 }
             }
+            let predicate_candidates = apply_position_predicates(
+                document,
+                predicate_candidates,
+                &path.step_position_predicates[step_index],
+            );
             let matching_count = predicate_candidates.len();
             for (offset, child) in predicate_candidates.into_iter().enumerate() {
-                let position_matches = match path.step_position_predicates[step_index] {
-                    Some(PositionPredicate::Select(position)) => position == offset + 1,
-                    Some(PositionPredicate::Last) => offset + 1 == matching_count,
-                    Some(PositionPredicate::Never) => false,
-                    None => true,
-                };
                 let final_predicate = (step_index + 1 == path.steps.len())
                     .then_some(path.final_predicate.as_ref())
                     .flatten();
@@ -1286,7 +1421,7 @@ pub(crate) fn evaluate_location_path_controlled(
                     }
                     _ => true,
                 };
-                if position_matches && axis_predicate_matches && context_predicate_matches {
+                if axis_predicate_matches && context_predicate_matches {
                     next.push(child);
                 }
             }
@@ -1296,6 +1431,40 @@ pub(crate) fn evaluate_location_path_controlled(
         current = next;
     }
     Ok(current)
+}
+
+fn apply_position_predicates(
+    document: &Document,
+    mut candidates: Vec<NodeId>,
+    predicates: &[StepPredicate],
+) -> Vec<NodeId> {
+    for predicate in predicates {
+        if let StepPredicate::ContextName(required) = predicate {
+            let (required_prefix, required_local) = required
+                .split_once(':')
+                .map_or((None, required.as_ref()), |(prefix, local)| {
+                    (Some(prefix), local)
+                });
+            candidates.retain(|node| {
+                document.name(*node).is_some_and(|name| {
+                    name.local == required_local && document.prefix(*node) == required_prefix
+                })
+            });
+            continue;
+        }
+        let StepPredicate::Position(predicate) = predicate else {
+            unreachable!("context-name predicate returned above")
+        };
+        let size = candidates.len();
+        candidates = candidates
+            .into_iter()
+            .enumerate()
+            .filter_map(|(offset, node)| {
+                position_predicate_matches(Some(predicate), offset + 1, size).then_some(node)
+            })
+            .collect();
+    }
+    candidates
 }
 
 fn initial_path_nodes(
@@ -1372,12 +1541,8 @@ fn evaluate_axis_predicate(
     if !matches {
         return Ok(false);
     }
-    let position_matches = match predicate.position {
-        Some(PositionPredicate::Select(position)) => position == context_position,
-        Some(PositionPredicate::Last) => context_position == context_size,
-        Some(PositionPredicate::Never) => false,
-        None => true,
-    };
+    let position_matches =
+        position_predicate_matches(predicate.position.as_ref(), context_position, context_size);
     if !position_matches {
         return Ok(false);
     }

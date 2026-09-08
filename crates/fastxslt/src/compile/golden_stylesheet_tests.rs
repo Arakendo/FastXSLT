@@ -1038,6 +1038,42 @@ fn compiles_exact_descendant_wildcard_with_non_simple_priority() {
             > document_rooted_program.matched_templates[0].priority
     );
 
+    let relational_position = parse_stylesheet(
+        "memory:relational-position-pattern.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="chapter//footnote[position()!=1]"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&relational_position)
+        .expect_err("general position comparisons need match-pattern-specific semantics");
+    assert_eq!(failure.code, "FXST1005");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+
+    let last_minus_position = parse_stylesheet(
+        "memory:last-minus-position-pattern.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="chapter/footnote[last()-1]"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&last_minus_position)
+        .expect_err("last-minus position needs match-pattern-specific semantics");
+    assert_eq!(failure.code, "FXST1005");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+
+    let chained_position = parse_stylesheet(
+        "memory:chained-position-pattern.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="chapter/footnote[1][last()]"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&chained_position)
+        .expect_err("chained position needs match-pattern-specific semantics");
+    assert_eq!(failure.code, "FXST1005");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+
+    let position_then_name = parse_stylesheet(
+        "memory:position-name-pattern.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="chapter/footnote[last()][name()='footnote']"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&position_then_name)
+        .expect_err("position/name chains need match-pattern-specific semantics");
+    assert_eq!(failure.code, "FXST1005");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+
     let named_descendant = parse_stylesheet(
             "memory:named-descendant-pattern.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="//foo"><out/></xsl:template></xsl:stylesheet>"#,
@@ -1253,6 +1289,20 @@ fn classifies_xpath_outside_the_private_location_path_slice_as_unsupported() {
     assert_eq!(failure.category, CompileCategory::Unsupported);
     assert_eq!(failure.code, "FXXP1001");
     assert_eq!(failure.location.resource, "memory:path.xsl");
+}
+
+#[test]
+fn xslt10_variable_position_predicates_do_not_approximate_multi_step_focus() {
+    let stylesheet = parse_stylesheet(
+        "memory:variable-position-focus.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:variable name="third" select="3"/><xsl:template match="/"><xsl:value-of select=".//a[$third]"/></xsl:template></xsl:stylesheet>"#,
+    );
+
+    let failure = compile_stylesheet(&stylesheet)
+        .expect_err("multi-step variable position requires per-step predicate focus");
+
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+    assert_eq!(failure.code, "FXXP1001");
 }
 
 #[test]

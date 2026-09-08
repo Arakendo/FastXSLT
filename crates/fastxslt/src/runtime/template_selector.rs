@@ -406,17 +406,25 @@ fn matches_named_sibling_boundary(
     };
     let mut reached_candidate = false;
     let mut later_match = false;
+    let mut named_position = 0usize;
+    let mut candidate_position = None;
     for sibling in source.children(parent).iter().copied() {
         control
             .charge(WorkDomain::XPathNodeVisit, 1)
             .map_err(|failure| control_failure(failure, request_id))?;
+        if source.name(sibling) == Some(element) {
+            named_position += 1;
+        }
         if sibling == node {
             reached_candidate = true;
+            candidate_position = Some(named_position);
         } else if reached_candidate && source.name(sibling) == Some(element) {
             later_match = true;
         }
     }
     Ok(match boundary {
+        NamedSiblingBoundary::Exact(expected) => candidate_position == Some(expected),
+        NamedSiblingBoundary::Before(expected) => candidate_position.is_some_and(|p| p < expected),
         NamedSiblingBoundary::BeforeLast => later_match,
         NamedSiblingBoundary::Last => !later_match,
     })

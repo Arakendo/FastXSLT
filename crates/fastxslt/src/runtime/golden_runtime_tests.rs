@@ -703,6 +703,33 @@ fn positional_patterns_and_avts_share_the_apply_templates_focus() {
 }
 
 #[test]
+fn exact_positional_match_patterns_use_named_source_sibling_position() {
+    const SOURCE: &str = "urn:fastxslt:positional-match-source-order:source";
+    const STYLESHEET: &str = "urn:fastxslt:positional-match-source-order:stylesheet";
+    let source = b"<doc><a z='4'>A</a><a z='3'>B</a><a z='2'>C</a><a z='1'>D</a><b>first</b><b>second</b></doc>";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="doc"><out><xsl:apply-templates select="a"><xsl:sort select="@z" data-type="number"/></xsl:apply-templates><xsl:apply-templates select="b"/></out></xsl:template><xsl:template match="a[position()=1]"><a1><xsl:value-of select="."/></a1></xsl:template><xsl:template match="a[position()=2]"><a2><xsl:value-of select="."/></a2></xsl:template><xsl:template match="a[position()=3]"><a3><xsl:value-of select="."/></a3></xsl:template><xsl:template match="a[position()=4]"><a4><xsl:value-of select="."/></a4></xsl:template><xsl:template match="b[position()&lt;2]"><first><xsl:value-of select="."/></first></xsl:template><xsl:template match="b"/></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, source.to_vec())
+        .expect("admit positional source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit positional stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile positional patterns");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("positional-match-source-order", "result", SOURCE))
+        .expect("admit positional request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute positional request");
+    assert_eq!(
+        results.by_request["positional-match-source-order"].serialized,
+        "<out><a4>D</a4><a3>C</a3><a2>B</a2><a1>A</a1><first>first</first></out>"
+    );
+}
+
+#[test]
 fn temporary_tree_builtins_preserve_mixed_text_in_document_order() {
     const TEMP_SOURCE: &str = "urn:fastxslt:temporary-text:source";
     const TEMP_STYLESHEET: &str = "urn:fastxslt:temporary-text:stylesheet";
@@ -1224,6 +1251,39 @@ fn xslt10_any_number_counts_document_order_and_resets_at_from_boundary() {
 }
 
 #[test]
+fn xslt10_any_number_formats_an_empty_number_list_without_a_zero_token() {
+    const STYLESHEET: &str = "urn:fastxslt:any-number-empty";
+    const SOURCE: &str = "urn:fastxslt:any-number-empty-source";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc/chapter"/></out></xsl:template><xsl:template match="chapter"><xsl:number level="any" count="section" format="i."/><xsl:text>chapter</xsl:text></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(SOURCE, b"<doc><chapter/></doc>".to_vec())
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile empty any numbering");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request(
+            "any-number-empty",
+            "any-number-empty-result",
+            SOURCE,
+        ))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute empty any numbering");
+
+    assert_eq!(
+        results.by_request["any-number-empty"].serialized,
+        "<out>.chapter</out>"
+    );
+}
+
+#[test]
 fn xslt10_multiple_number_formats_matching_ancestor_lineage() {
     const STYLESHEET: &str = "urn:fastxslt:multiple-number";
     const SOURCE: &str = "urn:fastxslt:multiple-number-source";
@@ -1615,6 +1675,39 @@ fn xslt10_string_and_number_convert_variable_values() {
     assert_eq!(
         results.by_request["xslt10-variable-conversion"].serialized,
         "7.5|7.5||NaN|12.25|12.25|34|34"
+    );
+}
+
+#[test]
+fn xslt10_numeric_variables_select_path_positions() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-variable-position:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-variable-position:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0"
+        xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="text"/>
+        <xsl:variable name="first" select="1"/>
+        <xsl:variable name="third" select="3"/>
+        <xsl:variable name="fraction" select="'2.5'"/>
+        <xsl:template match="doc"><xsl:value-of select="a[position() = $first]"/>|<xsl:value-of select="a[$third]"/>|<xsl:value-of select="a[$third = position()]"/>|<xsl:value-of select="a[$fraction]"/></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><a>A</a><a>B</a><a>C</a></doc>".to_vec())
+        .expect("admit variable-position source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit variable-position stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile variable positions");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("xslt10-variable-position", "result", SOURCE))
+        .expect("admit variable-position request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute variable positions");
+    assert_eq!(
+        results.by_request["xslt10-variable-position"].serialized,
+        "A|C|C|"
     );
 }
 
@@ -2234,6 +2327,68 @@ fn focus_boolean_comparisons_use_the_current_sequence_focus() {
     assert_eq!(
         results.by_request["boolean-focus"].serialized,
         "<out>[A,B,C]</out>"
+    );
+}
+
+#[test]
+fn focus_relations_compose_with_short_circuit_and() {
+    const SOURCE: &str = "urn:fastxslt:boolean-focus-range:source";
+    const STYLESHEET: &str = "urn:fastxslt:boolean-focus-range:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item>A</item><item>B</item><item>C</item><item>D</item><item>E</item><item>F</item><item>G</item></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:for-each select="doc/item"><xsl:if test="position() &gt;= 2 and position() &lt;= 6"><xsl:value-of select="."/></xsl:if></xsl:for-each></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile focus range");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("boolean-focus-range", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute focus range");
+    assert_eq!(
+        results.by_request["boolean-focus-range"].serialized,
+        "<out>BCDEF</out>"
+    );
+}
+
+#[test]
+fn focus_equality_supports_the_ceiling_of_half_the_sequence_size() {
+    const SOURCE: &str = "urn:fastxslt:boolean-focus-middle:source";
+    const STYLESHEET: &str = "urn:fastxslt:boolean-focus-middle:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item>A</item><item>B</item><item>C</item><item>D</item><item>E</item><item>F</item><item>G</item></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:for-each select="doc/item"><xsl:if test="position() = ceiling(last() div 2)"><xsl:value-of select="."/></xsl:if></xsl:for-each></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile focus middle");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("boolean-focus-middle", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute focus middle");
+    assert_eq!(
+        results.by_request["boolean-focus-middle"].serialized,
+        "<out>D</out>"
     );
 }
 

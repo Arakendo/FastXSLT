@@ -604,7 +604,17 @@ pub(crate) enum NumberLevel {
 pub(crate) enum FocusEqualityOperand {
     Position,
     Size,
+    CeilingHalfSize,
     Static(usize),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum FocusComparison {
+    NotEqual,
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -671,6 +681,10 @@ pub(crate) enum ValueExpression {
     VariableEffectiveBooleanValue(String),
     Xslt10VariableString(String),
     Xslt10VariableNumber(String),
+    Xslt10VariablePositionPath {
+        path: LocationPath,
+        variable: String,
+    },
     Xslt10PathStringFunction(Box<Xslt10PathStringFunction>),
     Xslt10SumPath(LocationPath),
     Xslt10PathSubstring(Box<Xslt10PathSubstring>),
@@ -851,8 +865,18 @@ pub(crate) enum BooleanExpression {
         right: FocusEqualityOperand,
         location: SourceLocation,
     },
+    ContextFocusCompares {
+        left: FocusEqualityOperand,
+        operator: FocusComparison,
+        right: FocusEqualityOperand,
+        location: SourceLocation,
+    },
     ContextLanguageMatches(String),
     Or {
+        left: Box<BooleanExpression>,
+        right: Box<BooleanExpression>,
+    },
+    And {
         left: Box<BooleanExpression>,
         right: Box<BooleanExpression>,
     },
@@ -935,6 +959,8 @@ pub(crate) enum LiteralAttributeValue {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum NamedSiblingBoundary {
+    Exact(usize),
+    Before(usize),
     BeforeLast,
     Last,
 }

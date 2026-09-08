@@ -104,8 +104,22 @@ fn parse_context_focus_operand(operand: &str) -> Option<FocusEqualityOperand> {
     match operand {
         "position()" => Some(FocusEqualityOperand::Position),
         "last()" => Some(FocusEqualityOperand::Size),
+        _ if parse_ceiling_half_size(operand) => Some(FocusEqualityOperand::CeilingHalfSize),
         _ => operand.parse().ok().map(FocusEqualityOperand::Static),
     }
+}
+
+fn parse_ceiling_half_size(operand: &str) -> bool {
+    let Some(inner) = operand
+        .strip_prefix("ceiling(")
+        .and_then(|value| value.strip_suffix(')'))
+    else {
+        return false;
+    };
+    let Some((left, right)) = inner.split_once("div") else {
+        return false;
+    };
+    left.trim() == "last()" && right.trim() == "2"
 }
 
 pub(super) fn parse_mode(

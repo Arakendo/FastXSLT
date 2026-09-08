@@ -634,6 +634,9 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::VariableEffectiveBooleanValue(name)
         | ValueExpression::Xslt10VariableString(name)
         | ValueExpression::Xslt10VariableNumber(name) => name.capacity(),
+        ValueExpression::Xslt10VariablePositionPath { path, variable } => {
+            path.known_owned_capacity_bytes() + variable.capacity()
+        }
         ValueExpression::Xslt10VariableBooleanComparison { variable, .. }
         | ValueExpression::Xslt10VariableNumberComparison { variable, .. } => variable.capacity(),
         ValueExpression::Xslt10VariableStringComparison {
@@ -769,8 +772,9 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         BooleanExpression::ContextStringEquals(value)
         | BooleanExpression::ContextLanguageMatches(value) => value.capacity(),
         BooleanExpression::ContextPositionNotEqualSize(location)
-        | BooleanExpression::ContextFocusEquals { location, .. } => location_owned(location),
-        BooleanExpression::Or { left, right } => {
+        | BooleanExpression::ContextFocusEquals { location, .. }
+        | BooleanExpression::ContextFocusCompares { location, .. } => location_owned(location),
+        BooleanExpression::Or { left, right } | BooleanExpression::And { left, right } => {
             boolean_expression_owned(left) + boolean_expression_owned(right)
         }
         BooleanExpression::Not(expression) => boolean_expression_owned(expression),

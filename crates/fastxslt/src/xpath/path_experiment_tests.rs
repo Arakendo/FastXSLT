@@ -2,8 +2,8 @@ use std::ops::Range;
 
 use super::{
     AxisPredicate, FinalContextPredicate, PathFailure, PathOrigin, PositionPredicate,
-    PredicateAxis, evaluate_location_path, evaluate_location_path_controlled, parse_location_path,
-    parse_qualified_child_path,
+    PredicateAxis, StepPredicate, evaluate_location_path, evaluate_location_path_controlled,
+    parse_location_path, parse_qualified_child_path,
 };
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeKind, SourceLocation};
@@ -1235,7 +1235,7 @@ fn missing_attribute_predicate_composes_with_a_chained_position() {
     ));
     assert_eq!(
         path.step_position_predicates,
-        vec![Some(PositionPredicate::Last)]
+        vec![vec![StepPredicate::Position(PositionPredicate::Last)]]
     );
 }
 
@@ -1522,7 +1522,7 @@ fn constant_integer_arithmetic_selects_the_matching_node_position() {
     assert_eq!(document.string_value(selected[0]), "right");
     assert_eq!(
         path.step_position_predicates[0],
-        Some(PositionPredicate::Select(2))
+        [StepPredicate::Position(PositionPredicate::Select(2))]
     );
     assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 4);
 }
@@ -1555,9 +1555,9 @@ fn applies_positions_to_individual_steps_and_last_to_the_matched_sequence() {
     assert_eq!(
         path.step_position_predicates,
         [
-            None,
-            Some(PositionPredicate::Select(2)),
-            Some(PositionPredicate::Last),
+            vec![],
+            vec![StepPredicate::Position(PositionPredicate::Select(2))],
+            vec![StepPredicate::Position(PositionPredicate::Last)],
         ]
     );
     assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 7);
@@ -1589,7 +1589,7 @@ fn chained_axis_then_position_predicates_preserve_lexical_filter_order() {
     assert!(path.step_axis_predicates[0].is_some());
     assert_eq!(
         path.step_position_predicates[0],
-        Some(PositionPredicate::Select(1))
+        [StepPredicate::Position(PositionPredicate::Select(1))]
     );
     assert!(matches!(
         parse_location_path("ancestor-or-self::*[1][@att1]/@att1", location()),
@@ -1623,10 +1623,96 @@ fn chained_axis_then_explicit_position_equality_reuses_the_typed_focus() {
 
     assert_eq!(selected.len(), 1);
     assert_eq!(document.string_value(selected[0]), "2");
-    assert!(matches!(
-        parse_location_path("*[@test][position() > 1]/num", location()),
-        Err(PathFailure::Unsupported { .. })
-    ));
+}
+
+#[test]
+fn explicit_position_relations_filter_the_typed_step_focus() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><a>1</a><a>2</a><a>3</a><a>4</a></doc>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+
+    for (expression, expected) in [
+        ("a[position()>2]", "34"),
+        ("a[position()<3]", "12"),
+        ("a[position()>=2]", "234"),
+        ("a[position()<=3]", "123"),
+        ("a[position()!=2]", "134"),
+    ] {
+        let path = parse_location_path(expression, location()).expect("position relation");
+        let actual = evaluate_location_path(&document, root, &path)
+            .into_iter()
+            .map(|node| document.string_value(node))
+            .collect::<String>();
+        assert_eq!(actual, expected, "{expression}");
+    }
+}
+
+#[test]
+fn last_minus_constant_selects_relative_to_the_typed_step_focus() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><a>1</a><a>2</a><a>3</a><a>4</a></doc>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+
+    for (expression, expected) in [
+        ("a[last()-0]", "4"),
+        ("a[last()-1]", "3"),
+        ("a[last()-3]", "1"),
+        ("a[last()-4]", ""),
+        ("a[last()][last()]", "4"),
+        ("a[1][last()]", "1"),
+        ("a[last()-1][1]", "3"),
+        ("a[last()-1][last()]", "3"),
+        ("a[number('3')]", "3"),
+    ] {
+        let path = parse_location_path(expression, location()).expect("last-minus predicate");
+        let actual = evaluate_location_path(&document, root, &path)
+            .into_iter()
+            .map(|node| document.string_value(node))
+            .collect::<String>();
+        assert_eq!(actual, expected, "{expression}");
+    }
+}
+
+#[test]
+fn trailing_name_predicate_observes_the_position_filtered_focus() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><alpha><z/></alpha><alpha><z/><z/></alpha><alpha><z/><e/></alpha></doc>",
+        ParseLimits {
+            max_events: 32,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+    let path = parse_location_path("alpha/*[last()][name()='z']", location())
+        .expect("ordered position/name predicate chain");
+
+    let selected = evaluate_location_path(&document, root, &path);
+
+    assert_eq!(selected.len(), 2);
+    assert!(
+        selected
+            .iter()
+            .all(|node| { document.name(*node).is_some_and(|name| name.local == "z") })
+    );
 }
 
 #[test]

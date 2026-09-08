@@ -5,13 +5,13 @@ use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xpath::constant_numeric_experiment::{self, ConstantNumericFailure};
 use crate::xpath::path_experiment::parse_location_path;
 use crate::xslt::golden_semantics_experiment::{
-    BooleanExpression, DocumentRootReference, EqualityTest, StringComparison,
+    BooleanExpression, DocumentRootReference, EqualityTest, FocusComparison, StringComparison,
 };
 
 use super::{
     conditional_expression_compiler, invalid, is_ascii_ncname, map_path_failure,
-    parse_context_focus_equality, parse_generated_document_root, parse_generated_temporary_root,
-    unsupported, xpath_string_literal,
+    parse_context_focus_equality, parse_context_focus_operand, parse_generated_document_root,
+    parse_generated_temporary_root, unsupported, xpath_string_literal,
 };
 
 pub(super) fn compile(
@@ -43,6 +43,12 @@ pub(super) fn compile(
     }
     if let Some((left, right)) = split_top_level_or(parsed) {
         return Ok(BooleanExpression::Or {
+            left: Box::new(compile(left, location, comparison)?),
+            right: Box::new(compile(right, location, comparison)?),
+        });
+    }
+    if let Some((left, right)) = split_top_level_and(parsed) {
+        return Ok(BooleanExpression::And {
             left: Box::new(compile(left, location, comparison)?),
             right: Box::new(compile(right, location, comparison)?),
         });
@@ -99,6 +105,14 @@ pub(super) fn compile(
             location: location.clone(),
         });
     }
+    if let Some((left, operator, right)) = parse_context_focus_comparison(parsed) {
+        return Ok(BooleanExpression::ContextFocusCompares {
+            left,
+            operator,
+            right,
+            location: location.clone(),
+        });
+    }
     if let Some((path, expected)) = parse_count_path_equality(parsed) {
         return parse_location_path(path, location.clone())
             .map(|path| BooleanExpression::CountPathEquals { path, expected })
@@ -108,12 +122,23 @@ pub(super) fn compile(
 }
 
 fn split_top_level_or(expression: &str) -> Option<(&str, &str)> {
+    split_top_level_boolean_operator(expression, b"or")
+}
+
+fn split_top_level_and(expression: &str) -> Option<(&str, &str)> {
+    split_top_level_boolean_operator(expression, b"and")
+}
+
+fn split_top_level_boolean_operator<'a>(
+    expression: &'a str,
+    operator: &[u8],
+) -> Option<(&'a str, &'a str)> {
     let bytes = expression.as_bytes();
     let mut quote = None;
     let mut parentheses = 0_usize;
     let mut brackets = 0_usize;
     let mut index = 0_usize;
-    while index + 1 < bytes.len() {
+    while index + operator.len() <= bytes.len() {
         let byte = bytes[index];
         if let Some(expected) = quote {
             if byte == expected {
@@ -128,13 +153,18 @@ fn split_top_level_or(expression: &str) -> Option<(&str, &str)> {
             b')' => parentheses = parentheses.saturating_sub(1),
             b'[' => brackets += 1,
             b']' => brackets = brackets.saturating_sub(1),
-            b'o' if bytes[index + 1] == b'r' && parentheses == 0 && brackets == 0 => {
+            _ if bytes[index..].starts_with(operator) && parentheses == 0 && brackets == 0 => {
                 let left_boundary = index == 0 || !is_xpath_name_byte(bytes[index - 1]);
-                let right_boundary = index + 2 == bytes.len()
-                    || !is_xpath_name_byte(bytes.get(index + 2).copied().unwrap_or_default());
+                let right_boundary = index + operator.len() == bytes.len()
+                    || !is_xpath_name_byte(
+                        bytes
+                            .get(index + operator.len())
+                            .copied()
+                            .unwrap_or_default(),
+                    );
                 if left_boundary && right_boundary {
                     let left = expression[..index].trim();
-                    let right = expression[index + 2..].trim();
+                    let right = expression[index + operator.len()..].trim();
                     if !left.is_empty() && !right.is_empty() {
                         return Some((left, right));
                     }
@@ -143,6 +173,42 @@ fn split_top_level_or(expression: &str) -> Option<(&str, &str)> {
             _ => {}
         }
         index += 1;
+    }
+    None
+}
+
+fn parse_context_focus_comparison(
+    expression: &str,
+) -> Option<(
+    crate::xslt::golden_semantics_experiment::FocusEqualityOperand,
+    FocusComparison,
+    crate::xslt::golden_semantics_experiment::FocusEqualityOperand,
+)> {
+    for (token, operator) in [
+        ("!=", FocusComparison::NotEqual),
+        (">=", FocusComparison::GreaterThanOrEqual),
+        ("<=", FocusComparison::LessThanOrEqual),
+        (">", FocusComparison::GreaterThan),
+        ("<", FocusComparison::LessThan),
+    ] {
+        let Some((left, right)) = expression.split_once(token) else {
+            continue;
+        };
+        if left.contains(['=', '!', '<', '>']) || right.contains(['=', '!', '<', '>']) {
+            return None;
+        }
+        let left = parse_context_focus_operand(left.trim())?;
+        let right = parse_context_focus_operand(right.trim())?;
+        if matches!(
+            left,
+            crate::xslt::golden_semantics_experiment::FocusEqualityOperand::Static(_)
+        ) && matches!(
+            right,
+            crate::xslt::golden_semantics_experiment::FocusEqualityOperand::Static(_)
+        ) {
+            return None;
+        }
+        return Some((left, operator, right));
     }
     None
 }

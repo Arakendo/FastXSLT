@@ -134,6 +134,42 @@ pub(super) fn number_lexical(value: &str) -> String {
         .map_or_else(|| "NaN".to_owned(), f64_lexical)
 }
 
+pub(super) fn append_variable_position_path(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    path: &LocationPath,
+    variable: &str,
+    variables: &RuntimeVariables,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let selected = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let position = variable_string_value(inputs, variable, variables, control)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let Some(position) =
+        crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&position)
+    else {
+        return Ok(());
+    };
+    if !position.is_finite() || position < 1.0 || position.fract() != 0.0 {
+        return Ok(());
+    }
+    let Ok(position) = position.to_string().parse::<usize>() else {
+        return Ok(());
+    };
+    let Some(node) = selected.get(position.saturating_sub(1)).copied() else {
+        return Ok(());
+    };
+    let value = source
+        .string_value_controlled(node, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    append_text(result, &value, inputs.request_id, control)
+}
+
 fn f64_lexical(value: f64) -> String {
     if value == 0.0 {
         "0".to_owned()
