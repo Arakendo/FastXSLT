@@ -881,6 +881,56 @@ fn xslt10_source_node_set_comparisons_are_independently_existential() {
 }
 
 #[test]
+fn xslt10_computed_attributes_count_typed_source_paths() {
+    let source = parse_document(
+        "memory:computed-attribute-count.xml",
+        b"<doc><item><child><leaf/></child></item><item/></doc>",
+        ParseLimits {
+            max_events: 20,
+            max_depth: 6,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:computed-attribute-count.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:output omit-xml-declaration="yes"/>
+          <xsl:template match="doc"><out><xsl:for-each select="item"><n><xsl:attribute name="descendants"><xsl:value-of select="count(descendant::*)"/></xsl:attribute><xsl:attribute name="with-self"><xsl:value-of select="count(descendant-or-self::*)"/></xsl:attribute></n></xsl:for-each></out></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 48,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("computed source-path counts should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "computed-attribute-count-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("computed source-path counts should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "computed-attribute-count-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(
+        serialized,
+        r#"<out><n descendants="2" with-self="3"></n><n descendants="0" with-self="1"></n></out>"#
+    );
+}
+
+#[test]
 fn source_node_local_variables_execute_directly_in_for_each() {
     const SOURCE: &str = "urn:fastxslt:local-node-variable:source";
     const STYLESHEET: &str = "urn:fastxslt:local-node-variable:stylesheet";

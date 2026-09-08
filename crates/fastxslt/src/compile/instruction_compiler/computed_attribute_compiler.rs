@@ -2,6 +2,7 @@
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xml::quick_xml_experiment::ExpandedName;
+use crate::xpath::path_experiment::parse_location_path;
 use crate::xslt::golden_semantics_experiment::{ComputedAttribute, LiteralAttributeValue};
 
 use super::value_expression_compiler::compile_xslt10_concat;
@@ -79,6 +80,13 @@ pub(super) fn compile_computed_attribute(
             .filter(|name| is_ascii_ncname(name))
     {
         LiteralAttributeValue::CountSourceNodeVariable(variable.to_owned())
+    } else if uses_xslt10_compatibility(document, *value_of)
+        && let Some(path) = select
+            .strip_prefix("count(")
+            .and_then(|value| value.strip_suffix(')'))
+        && let Ok(path) = parse_location_path(path.trim(), document.location(*value_of).clone())
+    {
+        LiteralAttributeValue::CountSourcePath(path)
     } else if let Some(attribute) = select
         .strip_prefix('@')
         .filter(|name| is_ascii_ncname(name))

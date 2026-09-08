@@ -534,6 +534,11 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Computed `xsl:attribute` values now reuse typed, controlled
+  `count(location-path)` evaluation from source focus. The unchanged Lotus
+  `axes131` case raises the strict lower bound from 1,225 to 1,226 without
+  adding a mismatch or execution failure; its empty-element spelling is
+  handled by the existing infoset comparator rather than serializer tuning.
 - 2026-09-08 -- Typed XSLT 1.0 source node-set `=` and `!=` plans now preserve
   independently existential string-value comparison across conditionals,
   value construction, and the existing template-argument evaluator. Lotus

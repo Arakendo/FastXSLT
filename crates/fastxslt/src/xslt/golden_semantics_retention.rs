@@ -963,6 +963,7 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
         LiteralAttributeValue::Text(text)
         | LiteralAttributeValue::Variable(text)
         | LiteralAttributeValue::CountSourceNodeVariable(text) => text.capacity(),
+        LiteralAttributeValue::CountSourcePath(path) => path.known_owned_capacity_bytes(),
         LiteralAttributeValue::Xslt10Concat(expression) => {
             size_of_val(expression.as_ref())
                 + vec_owned(&expression.parts, |part| match part {

@@ -150,6 +150,27 @@ pub(super) fn materialize_computed_attributes(
                     value: nodes.len().to_string(),
                 });
             }
+            LiteralAttributeValue::CountSourcePath(path) => {
+                control
+                    .charge(WorkDomain::ResultNode, 1)
+                    .and_then(|()| control.charge(WorkDomain::XPathOperation, 1))
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                let (source, node) = focus.source.ok_or_else(|| {
+                    failure_at(
+                        "XPDY0002",
+                        FailureCategory::Invalid,
+                        Some(request_id),
+                        attribute.location.clone(),
+                        "computed-attribute count requires a source context item",
+                    )
+                })?;
+                let nodes = evaluate_location_path_controlled(source, node, path, control)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                materialized.push(ResultAttribute {
+                    name: attribute.name.clone(),
+                    value: nodes.len().to_string(),
+                });
+            }
             _ => {
                 materialized.push(materialize_attribute(
                     &attribute.name,
@@ -181,6 +202,9 @@ fn materialize_attribute(
         }
         LiteralAttributeValue::CountSourceNodeVariable(_) => {
             unreachable!("source-node counts are materialized by the computed-attribute owner")
+        }
+        LiteralAttributeValue::CountSourcePath(_) => {
+            unreachable!("source-path counts are materialized by the computed-attribute owner")
         }
         LiteralAttributeValue::Xslt10Concat(_) => {
             unreachable!("dynamic computed-attribute values are materialized by their owner")
