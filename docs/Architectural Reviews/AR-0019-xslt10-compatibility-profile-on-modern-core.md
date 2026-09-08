@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Elements in a stylesheet-declared prefixed or `#default`
+  extension namespace now stop at explicit unsupported `FXST1059` rather than
+  becoming literal result elements. Two unchanged Microsoft expected-error
+  cases leave the unexpected-success class, reducing it from 7 to 5 without
+  changing the 1,202 exact matches. Extension invocation, fallback, and host
+  authority remain unselected.
 - 2026-09-08 -- Stylesheet-root validation now rejects forbidden `mode` and
   malformed or unbound `extension-element-prefixes` tokens. Two unchanged
   Microsoft expected-error cases move from unexpected success to observed

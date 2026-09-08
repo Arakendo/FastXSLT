@@ -184,6 +184,37 @@ fn rejects_forbidden_mode_and_malformed_extension_prefixes_on_stylesheet_root() 
 }
 
 #[test]
+fn declared_extension_elements_fail_explicitly_instead_of_becoming_literal_results() {
+    for (label, stylesheet) in [
+        (
+            "prefixed",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:e="urn:extension" extension-element-prefixes="e"><xsl:template match="/"><e:invoke><xsl:fallback><out/></xsl:fallback></e:invoke></xsl:template></xsl:stylesheet>"#.as_slice(),
+        ),
+        (
+            "default",
+            br##"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns="urn:extension" extension-element-prefixes="#default"><xsl:template match="/"><invoke/></xsl:template></xsl:stylesheet>"##.as_slice(),
+        ),
+    ] {
+        let document = parse_stylesheet(&format!("memory:extension-{label}.xsl"), stylesheet);
+        let failure =
+            compile_stylesheet(&document).expect_err("extension execution is unsupported");
+        assert_eq!(failure.code, "FXST1059", "{label}");
+        assert_eq!(
+            failure.category,
+            CompileCategory::Unsupported,
+            "{label}"
+        );
+    }
+
+    let declaration_only = parse_stylesheet(
+        "memory:extension-declaration-only.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:e="urn:extension" extension-element-prefixes="e"><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    compile_stylesheet(&declaration_only)
+        .expect("an unused extension declaration does not require execution support");
+}
+
+#[test]
 fn static_xsl_element_keeps_dynamic_names_namespaces_and_attribute_sets_explicit() {
     for (attribute, code) in [
         ("name=\"{name()}\"", "FXST1047"),

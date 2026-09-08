@@ -3987,6 +3987,10 @@ host lifecycle.
   `extension-element-prefixes` tokens, moving two unchanged expected-error
   cases from unexpected success to observed initialization failure and reducing
   that class from 9 to 7 without claiming extension execution support.
+- [x] Prevent declared prefixed and `#default` extension instructions from
+  silently becoming literal result elements, moving two unchanged expected-
+  error cases from unexpected success to explicit unsupported initialization
+  and reducing that class from 7 to 5 without admitting extension execution.
 - [ ] Give each standard and expected-error case one reproducible final
   disposition under a versioned local overlay/report, applying duplicate-safe
   identity and doubts/discretionary metadata.

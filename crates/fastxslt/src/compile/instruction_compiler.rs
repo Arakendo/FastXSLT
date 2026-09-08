@@ -353,6 +353,13 @@ fn compile_literal_element(
     document: &Document,
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
+    if is_declared_extension_element(document, element) {
+        return Err(unsupported(
+            "FXST1059",
+            "extension element execution and xsl:fallback are outside the admitted slice",
+            document.location(element),
+        ));
+    }
     ensure_literal_result_control_attributes(document, element)?;
     let (computed_attributes, computed_attribute_nodes) =
         compile_computed_attributes(document, element)?;
@@ -374,6 +381,37 @@ fn compile_literal_element(
         body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
         location: document.location(element).clone(),
     })
+}
+
+fn is_declared_extension_element(document: &Document, element: NodeId) -> bool {
+    let Some(element_namespace) = document
+        .name(element)
+        .and_then(|name| name.namespace.as_deref())
+    else {
+        return false;
+    };
+    let mut current = document.parent(element);
+    while let Some(node) = current {
+        if document.name(node).is_some_and(|name| {
+            name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+                && matches!(name.local.as_str(), "stylesheet" | "transform")
+        }) {
+            return optional_attribute(document, node, None, "extension-element-prefixes")
+                .is_some_and(|prefixes| {
+                    prefixes.split_whitespace().any(|prefix| {
+                        if prefix == "#default" {
+                            document.namespace_declarations(node).iter().any(|binding| {
+                                binding.prefix.is_none() && binding.namespace == element_namespace
+                            })
+                        } else {
+                            namespace_for_prefix(document, node, prefix) == Some(element_namespace)
+                        }
+                    })
+                });
+        }
+        current = document.parent(node);
+    }
+    false
 }
 
 fn compile_static_computed_element(
