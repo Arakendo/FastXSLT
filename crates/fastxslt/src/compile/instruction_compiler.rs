@@ -298,6 +298,7 @@ fn local_variable_name(variable: &Instruction) -> &String {
     | Instruction::AtomicVariableAlias { name, .. }
     | Instruction::ContextPositionVariable { name, .. }
     | Instruction::SourceNodeVariable { name, .. }
+    | Instruction::SourceNodeUnionVariable { name, .. }
     | Instruction::IntegerRangeVariable { name, .. }
     | Instruction::TemporaryTreeVariable { name, .. }) = variable
     else {
@@ -1210,6 +1211,9 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
             location,
         });
     }
+    if let Some(variable) = compile_source_node_union_variable(name, expression, &location)? {
+        return Ok(variable);
+    }
     if let Some(source) = expression
         .trim()
         .strip_prefix('$')
@@ -1252,6 +1256,38 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
         select: Box::new(select),
         location,
     })
+}
+
+fn compile_source_node_union_variable(
+    name: &str,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<Instruction>, CompileFailure> {
+    let Some(alternatives) = split_top_level_union(expression) else {
+        return Ok(None);
+    };
+    let sources = alternatives
+        .into_iter()
+        .map(str::trim)
+        .map(|alternative| {
+            alternative
+                .strip_prefix('$')
+                .filter(|source| is_ascii_ncname(source))
+                .map(str::to_owned)
+                .ok_or_else(|| {
+                    unsupported(
+                        "FXXP1001",
+                        "local node-set union currently requires variable-only operands",
+                        location,
+                    )
+                })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Some(Instruction::SourceNodeUnionVariable {
+        name: name.to_owned(),
+        sources,
+        location: location.clone(),
+    }))
 }
 
 fn compile_static_atomic_variable(

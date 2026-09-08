@@ -772,6 +772,7 @@ fn execute_instruction(
         | Instruction::AtomicVariableAlias { .. }
         | Instruction::ContextPositionVariable { .. }
         | Instruction::SourceNodeVariable { .. }
+        | Instruction::SourceNodeUnionVariable { .. }
         | Instruction::IntegerRangeVariable { .. }
         | Instruction::TemporaryTreeVariable { .. } => {
             execute_binding(inputs, instruction, execution, scope, control)?;
@@ -1507,6 +1508,41 @@ fn execute_binding(
             let (source, context) = required_source_context(inputs, execution.node)?;
             let nodes = evaluate_location_path_controlled(source, context, select, control)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            scope.bind_source_nodes(name.clone(), nodes);
+        }
+        Instruction::SourceNodeUnionVariable { name, sources, .. } => {
+            let source = inputs.source.ok_or_else(|| {
+                failure(
+                    "XPDY0002",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    "source-node union variable requires a source document",
+                )
+            })?;
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let mut nodes = Vec::new();
+            for source_name in sources {
+                nodes.extend(
+                    scope
+                        .source_nodes(inputs.globals, source_name)
+                        .ok_or_else(|| {
+                            failure(
+                                "XPTY0004",
+                                FailureCategory::Invalid,
+                                Some(inputs.request_id),
+                                format!(
+                                    "node-set union requires a source-node sequence: ${source_name}"
+                                ),
+                            )
+                        })?
+                        .iter()
+                        .copied(),
+                );
+            }
+            nodes.sort_unstable_by_key(|node| source.document_order(*node));
+            nodes.dedup();
             scope.bind_source_nodes(name.clone(), nodes);
         }
         Instruction::IntegerRangeVariable {

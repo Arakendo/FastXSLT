@@ -64,6 +64,7 @@ fn validate_named_calls(
             | Instruction::AtomicVariableAlias { .. }
             | Instruction::ContextPositionVariable { .. }
             | Instruction::SourceNodeVariable { .. }
+            | Instruction::SourceNodeUnionVariable { .. }
             | Instruction::IntegerRangeVariable { .. }
             | Instruction::TemporaryTreeVariable { .. }
             | Instruction::SequenceNodes { .. }

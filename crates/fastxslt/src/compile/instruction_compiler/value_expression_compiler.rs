@@ -262,7 +262,13 @@ pub(super) fn compile_value_expression(
             location: failure.location,
         });
     }
-    if let Some(count) = compile_count_value(document, element, expression, location)? {
+    if let Some(count) = compile_count_value(
+        document,
+        element,
+        expression,
+        location,
+        static_context.compatibility,
+    )? {
         return Ok(count);
     }
     if let Some(conditional) =
@@ -1372,6 +1378,7 @@ fn compile_count_value(
     element: NodeId,
     expression: &str,
     location: &SourceLocation,
+    compatibility: ValueCompatibilityMode,
 ) -> Result<Option<ValueExpression>, CompileFailure> {
     let expression = expression.trim();
     let Some(argument) = ["count(", "fn:count("].iter().find_map(|prefix| {
@@ -1383,6 +1390,16 @@ fn compile_count_value(
     };
     if argument.trim_start().starts_with("fn:") && argument.contains('(') {
         return Ok(None);
+    }
+    if compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(variable) = argument
+            .trim()
+            .strip_prefix('$')
+            .filter(|variable| is_ascii_ncname(variable))
+    {
+        return Ok(Some(ValueExpression::CountSourceNodeVariable(
+            variable.to_owned(),
+        )));
     }
     let mut path =
         parse_location_path(argument.trim(), location.clone()).map_err(map_path_failure)?;

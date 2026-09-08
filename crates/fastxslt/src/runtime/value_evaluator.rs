@@ -172,6 +172,23 @@ pub(super) fn execute_value_of(
         ValueExpression::CountLocationPath(path) => {
             append_location_path_count(inputs, path, context, result, control)?;
         }
+        ValueExpression::CountSourceNodeVariable(variable) => {
+            let count = variables
+                .source_nodes(inputs.globals, variable)
+                .ok_or_else(|| {
+                    failure(
+                        "XPTY0004",
+                        FailureCategory::Invalid,
+                        Some(inputs.request_id),
+                        format!("count requires a source-node sequence: ${variable}"),
+                    )
+                })?
+                .len();
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            append_text(result, &count.to_string(), inputs.request_id, control)?;
+        }
         ValueExpression::RootPath(path) => {
             append_root_path_string(inputs, path, context, result, control)?;
         }

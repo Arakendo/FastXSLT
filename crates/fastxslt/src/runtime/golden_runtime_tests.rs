@@ -871,6 +871,44 @@ fn source_node_local_variables_execute_directly_in_for_each() {
 }
 
 #[test]
+fn source_node_union_variables_deduplicate_before_variable_count() {
+    const SOURCE: &str = "urn:fastxslt:local-node-union:source";
+    const STYLESHEET: &str = "urn:fastxslt:local-node-union:stylesheet";
+    let stylesheet =
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+      <xsl:output method="xml" omit-xml-declaration="yes"/>
+      <xsl:template match="/">
+        <xsl:variable name="left" select="root/item[1]"/>
+        <xsl:variable name="right" select="root/item[2]"/>
+        <xsl:variable name="joined" select="$right | $left | $right"/>
+        <out><xsl:value-of select="count($joined)"/><xsl:text>:</xsl:text><xsl:for-each select="$joined"><xsl:value-of select="."/></xsl:for-each></out>
+      </xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<root><item>A</item><item>B</item></root>".to_vec(),
+        )
+        .expect("admit local node-union source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit local node-union stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile local node-set union");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("local-node-union", "result", SOURCE))
+        .expect("admit local node-union request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute local node-set union");
+    assert_eq!(
+        results.by_request["local-node-union"].serialized,
+        "<out>2:AB</out>"
+    );
+}
+
+#[test]
 fn generate_id_uses_stable_distinct_source_node_identity() {
     const SOURCE: &str = "urn:fastxslt:generate-id:source";
     const STYLESHEET: &str = "urn:fastxslt:generate-id:stylesheet";

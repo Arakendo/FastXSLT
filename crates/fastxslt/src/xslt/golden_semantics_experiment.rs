@@ -439,6 +439,11 @@ pub(crate) enum Instruction {
         select: LocationPath,
         location: SourceLocation,
     },
+    SourceNodeUnionVariable {
+        name: String,
+        sources: Vec<String>,
+        location: SourceLocation,
+    },
     IntegerRangeVariable {
         name: String,
         start: i64,
@@ -633,6 +638,7 @@ pub(crate) enum ValueExpression {
     LocationPath(LocationPath),
     Xslt10FirstNodeLocationPath(LocationPath),
     CountLocationPath(LocationPath),
+    CountSourceNodeVariable(String),
     RootPath(LocationPath),
     RootVariable(String),
     GeneratedNodeIdentity(LocationPath),

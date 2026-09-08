@@ -290,6 +290,11 @@ fn instruction_owned(value: &Instruction) -> usize {
             select,
             location,
         } => name.capacity() + select.known_owned_capacity_bytes() + location_owned(location),
+        Instruction::SourceNodeUnionVariable {
+            name,
+            sources,
+            location,
+        } => name.capacity() + vec_owned(sources, String::capacity) + location_owned(location),
         Instruction::TemporaryTreeVariable {
             name,
             elements,
@@ -656,6 +661,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::Variable(name)
         | ValueExpression::RootVariable(name)
         | ValueExpression::VariableEffectiveBooleanValue(name)
+        | ValueExpression::CountSourceNodeVariable(name)
         | ValueExpression::Xslt10VariableString(name)
         | ValueExpression::Xslt10VariableNumber(name) => name.capacity(),
         ValueExpression::Xslt10VariablePositionPath { path, variable } => {

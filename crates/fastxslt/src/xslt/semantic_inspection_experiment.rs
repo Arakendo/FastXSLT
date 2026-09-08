@@ -270,6 +270,7 @@ fn observe_instructions(
             | Instruction::AtomicVariableAlias { .. }
             | Instruction::ContextPositionVariable { .. }
             | Instruction::SourceNodeVariable { .. }
+            | Instruction::SourceNodeUnionVariable { .. }
             | Instruction::IntegerRangeVariable { .. }
             | Instruction::TemporaryTreeVariable { .. } => (SemanticFeature::LocalVariable, None),
             Instruction::SequenceNodes { .. } => (SemanticFeature::SequenceNodes, None),

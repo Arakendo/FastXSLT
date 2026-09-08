@@ -534,6 +534,14 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Local variables can now retain a variable-only union of
+  invocation-owned source nodes through the existing copy-on-write frame;
+  runtime binding normalizes document order and identity, and XSLT 1.0
+  `count($variable)` observes the typed sequence. The unchanged
+  `Lotus/select_select72#1` case raises the lower bound from 1,196 to 1,197;
+  mismatches remain 79 and execution failures remain 162. Atomic,
+  temporary-tree, arbitrary-expression, and cross-document unions remain
+  unadmitted.
 - 2026-09-08 -- `xsl:apply-templates` can now combine one distinct
   invocation-owned source-node variable with typed location paths, normalize
   the union by source document order and node identity, and establish focus
