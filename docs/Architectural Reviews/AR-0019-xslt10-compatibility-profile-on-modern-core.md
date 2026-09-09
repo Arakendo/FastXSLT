@@ -534,6 +534,11 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- The private typed predicate tree now evaluates bounded
+  `starts-with(name(.), literal)` and `string-length(name(.)) = integer`
+  leaves while preserving lexical QName prefixes and charged XPath work. Two
+  unchanged cases raise the strict lower bound from 1,317 to 1,319. See
+  [context lexical-name predicate evidence](../Evidence/oasis-xslt10-context-lexical-name-predicates-2026-09-09.md).
 - 2026-09-09 -- Typed predicate paths are now reachable from instruction-local
   effective boolean value, and a context-string/literal leaf composes with
   `not`. One unchanged case raises the strict lower bound from 1,316 to 1,317.

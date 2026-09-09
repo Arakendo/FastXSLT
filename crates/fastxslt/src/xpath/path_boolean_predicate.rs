@@ -11,6 +11,8 @@ pub(super) enum PathBooleanPredicate {
     Present(String),
     Equals { name: String, value: String },
     ContextStringEquals(String),
+    ContextNameStartsWith(String),
+    ContextNameLengthEquals(usize),
     DescendantElementComparison { value: String, equal: bool },
     FollowingSiblingElementNumberEquals(i32),
     Not(Box<Self>),
@@ -23,10 +25,10 @@ impl PathBooleanPredicate {
         match self {
             Self::Present(name) => name.capacity(),
             Self::Equals { name, value } => name.capacity() + value.capacity(),
-            Self::ContextStringEquals(value) | Self::DescendantElementComparison { value, .. } => {
-                value.capacity()
-            }
-            Self::FollowingSiblingElementNumberEquals(_) => 0,
+            Self::ContextStringEquals(value)
+            | Self::ContextNameStartsWith(value)
+            | Self::DescendantElementComparison { value, .. } => value.capacity(),
+            Self::ContextNameLengthEquals(_) | Self::FollowingSiblingElementNumberEquals(_) => 0,
             Self::Not(operand) => operand.known_owned_capacity_bytes(),
             Self::And(left, right) | Self::Or(left, right) => {
                 left.known_owned_capacity_bytes() + right.known_owned_capacity_bytes()
@@ -64,6 +66,12 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
     if let Some(value) = parse_context_string_equality(predicate) {
         return Some(PathBooleanPredicate::ContextStringEquals(value));
     }
+    if let Some(prefix) = parse_context_name_starts_with(predicate) {
+        return Some(PathBooleanPredicate::ContextNameStartsWith(prefix));
+    }
+    if let Some(length) = parse_context_name_length_equality(predicate) {
+        return Some(PathBooleanPredicate::ContextNameLengthEquals(length));
+    }
     if let Some((value, equal)) = parse_descendant_element_comparison(predicate) {
         return Some(PathBooleanPredicate::DescendantElementComparison { value, equal });
     }
@@ -94,6 +102,14 @@ pub(super) fn evaluate(
         PathBooleanPredicate::ContextStringEquals(value) => {
             control.charge(WorkDomain::XPathOperation, 1)?;
             Ok(document.string_value(node) == *value)
+        }
+        PathBooleanPredicate::ContextNameStartsWith(prefix) => {
+            control.charge(WorkDomain::XPathOperation, 1)?;
+            Ok(context_lexical_name(document, node).starts_with(prefix))
+        }
+        PathBooleanPredicate::ContextNameLengthEquals(length) => {
+            control.charge(WorkDomain::XPathOperation, 1)?;
+            Ok(context_lexical_name(document, node).chars().count() == *length)
         }
         PathBooleanPredicate::DescendantElementComparison { value, equal } => {
             for descendant in descendant_nodes(document, node, control)? {
@@ -132,6 +148,36 @@ pub(super) fn evaluate(
             evaluate(document, node, right, control)
         }
     }
+}
+
+fn context_lexical_name(document: &Document, node: NodeId) -> String {
+    let Some(name) = document.name(node) else {
+        return String::new();
+    };
+    document.prefix(node).map_or_else(
+        || name.local.clone(),
+        |prefix| format!("{prefix}:{}", name.local),
+    )
+}
+
+fn parse_context_name_starts_with(predicate: &str) -> Option<String> {
+    let arguments = predicate.strip_prefix("starts-with(")?.strip_suffix(')')?;
+    let (name, prefix) = split_top_level_predicate_operator(arguments, ",")?;
+    matches!(name.trim(), "name()" | "name(.)")
+        .then(|| xpath_string_literal(prefix.trim()).map(str::to_owned))
+        .flatten()
+}
+
+fn parse_context_name_length_equality(predicate: &str) -> Option<usize> {
+    let (left, right) = split_top_level_predicate_operator(predicate, "=")?;
+    parse_context_name_length_operand(left.trim(), right.trim())
+        .or_else(|| parse_context_name_length_operand(right.trim(), left.trim()))
+}
+
+fn parse_context_name_length_operand(function: &str, integer: &str) -> Option<usize> {
+    matches!(function, "string-length(name())" | "string-length(name(.))")
+        .then(|| integer.parse().ok())
+        .flatten()
 }
 
 fn parse_context_string_equality(predicate: &str) -> Option<String> {

@@ -1693,6 +1693,39 @@ fn path_boolean_predicate_negates_context_string_equality() {
 }
 
 #[test]
+fn path_boolean_predicates_project_the_context_lexical_name() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc xmlns:p='urn:test'><foo/><bar/><p:fizz/></doc>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 3,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let starts_with = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("*[starts-with(name(.),'f')]", location())
+            .expect("name prefix predicate should parse"),
+    );
+    let length = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("*[string-length(name(.))=3]", location())
+            .expect("name length predicate should parse"),
+    );
+
+    assert_eq!(starts_with.len(), 1);
+    assert_eq!(document.name(starts_with[0]).unwrap().local, "foo");
+    assert_eq!(length.len(), 2);
+    assert_eq!(document.name(length[0]).unwrap().local, "foo");
+    assert_eq!(document.name(length[1]).unwrap().local, "bar");
+}
+
+#[test]
 fn constant_integer_arithmetic_selects_the_matching_node_position() {
     let parsed = parse_document(
         "memory:source.xml",
