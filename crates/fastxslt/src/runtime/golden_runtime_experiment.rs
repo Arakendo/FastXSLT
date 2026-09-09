@@ -2395,6 +2395,22 @@ fn execute_choose(
     execute_sequence(inputs, otherwise, execution, variables, control)
 }
 
+fn evaluate_xslt10_template_parameter_text_choice(
+    inputs: &SequenceInputs<'_>,
+    branches: &[crate::xslt::golden_semantics_experiment::Xslt10TextChoiceBranch],
+    otherwise: &str,
+    context: Option<NodeId>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    for branch in branches {
+        if evaluate_boolean(inputs, &branch.test, context, None, variables, control)? {
+            return Ok(branch.value.clone());
+        }
+    }
+    Ok(otherwise.to_owned())
+}
+
 fn evaluate_boolean(
     inputs: &SequenceInputs<'_>,
     expression: &BooleanExpression,

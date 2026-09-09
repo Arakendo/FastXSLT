@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- A compatibility-only template parameter default may now retain
+  one text-only `xsl:choose` whose branches use the shared typed path/string
+  equality evaluator. The selected value remains an invocation-owned temporary
+  text tree. Unchanged Lotus `variable13` raises the strict lower bound from
+  1,239 to 1,240 without adding a mismatch or execution failure. See
+  [text-choice parameter evidence](../Evidence/oasis-xslt10-text-choice-parameter-default-2026-09-09.md).
 - 2026-09-08 -- Typed template parameter defaults now retain source-node paths
   at the caller's exact focus and copy preceding parameter values without
   erasing atomic, source-node, or temporary-tree kind. Parameter names also

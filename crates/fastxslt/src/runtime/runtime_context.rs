@@ -22,7 +22,8 @@ use super::dynamic_document::DynamicDocument;
 use super::template_selector::DocumentRootedMatchCache;
 use super::value_evaluator::evaluate_xslt10_sum_path;
 use super::{
-    ExecutionFailure, FailureCategory, MultipleMatchPolicy, control_failure, failure, failure_at,
+    ExecutionFailure, FailureCategory, MultipleMatchPolicy, control_failure,
+    evaluate_xslt10_template_parameter_text_choice, failure, failure_at,
 };
 
 pub(super) struct SequenceInputs<'a> {
@@ -1115,6 +1116,20 @@ fn bind_template_parameter_default(
         }
         TemplateParameterDefault::Variable(variable) => {
             copy_parameter_default_variable(frame, parameter, variable, inputs)?;
+        }
+        TemplateParameterDefault::Xslt10TextChoice {
+            branches,
+            otherwise,
+        } => {
+            let value = evaluate_xslt10_template_parameter_text_choice(
+                inputs, branches, otherwise, context, frame, control,
+            )?;
+            let tree = materialize_parentless_temporary_node(
+                TemporaryNodeKind::Text(value),
+                inputs.request_id,
+                control,
+            )?;
+            frame.bind_temporary_tree(parameter.name.clone(), tree);
         }
     }
     Ok(())

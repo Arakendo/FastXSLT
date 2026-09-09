@@ -973,7 +973,7 @@ fn compile_sort_function_path(
     Ok(Some(path))
 }
 
-fn uses_xslt10_compatibility(document: &Document, element: NodeId) -> bool {
+pub(super) fn uses_xslt10_compatibility(document: &Document, element: NodeId) -> bool {
     let mut current = Some(element);
     while let Some(node) = current {
         if document.name(node).is_some_and(|name| {
@@ -1725,7 +1725,10 @@ fn compile_if(document: &Document, element: NodeId) -> Result<Instruction, Compi
     })
 }
 
-fn compile_choose(document: &Document, element: NodeId) -> Result<Instruction, CompileFailure> {
+pub(super) fn compile_choose(
+    document: &Document,
+    element: NodeId,
+) -> Result<Instruction, CompileFailure> {
     ensure_choose_attributes(document, element)?;
     let children = meaningful_children(document, element);
     validate_choose_structure(document, element, &children)?;

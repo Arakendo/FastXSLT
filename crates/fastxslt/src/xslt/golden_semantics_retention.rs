@@ -105,6 +105,14 @@ fn template_parameter_owned(value: &TemplateParameter) -> usize {
             }
             TemplateParameterDefault::Integer(_) => 0,
             TemplateParameterDefault::SourcePath(path) => path.known_owned_capacity_bytes(),
+            TemplateParameterDefault::Xslt10TextChoice {
+                branches,
+                otherwise,
+            } => {
+                vec_owned(branches, |branch| {
+                    boolean_expression_owned(&branch.test) + branch.value.capacity()
+                }) + otherwise.capacity()
+            }
         }
 }
 

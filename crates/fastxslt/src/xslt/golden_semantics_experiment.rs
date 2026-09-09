@@ -205,6 +205,16 @@ pub(crate) enum TemplateParameterDefault {
     Integer(i64),
     SourcePath(LocationPath),
     Variable(String),
+    Xslt10TextChoice {
+        branches: Vec<Xslt10TextChoiceBranch>,
+        otherwise: String,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10TextChoiceBranch {
+    pub(crate) test: BooleanExpression,
+    pub(crate) value: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

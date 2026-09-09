@@ -5,11 +5,11 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocati
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::path_experiment::{PathFailure, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
-    CharacterMapDefinition, ConstructedAttribute, ConstructedElement, ConstructedNode,
-    GlobalBinding, GlobalBindingDefault, GlobalBindingKind, Instruction, LiteralAttributeValue,
-    MatchPattern, MatchedTemplate, NamedTemplate, STANDARD_INITIAL_TEMPLATE_NAME,
-    SourceWhitespacePolicy, StylesheetProgram, Template, TemplateParameter,
-    TemplateParameterDefault, TemplatePriority,
+    BooleanExpression, CharacterMapDefinition, ConstructedAttribute, ConstructedElement,
+    ConstructedNode, GlobalBinding, GlobalBindingDefault, GlobalBindingKind, Instruction,
+    LiteralAttributeValue, MatchPattern, MatchedTemplate, NamedTemplate,
+    STANDARD_INITIAL_TEMPLATE_NAME, SourceWhitespacePolicy, StylesheetProgram, Template,
+    TemplateParameter, TemplateParameterDefault, TemplatePriority, Xslt10TextChoiceBranch,
 };
 
 #[path = "instruction_compiler.rs"]
@@ -1533,6 +1533,11 @@ fn compile_template_parameter_default(
     children: &[NodeId],
 ) -> Result<TemplateParameterDefault, CompileFailure> {
     let Some(select) = optional_attribute(document, child, None, "select") else {
+        if instruction_compiler::uses_xslt10_compatibility(document, child)
+            && let Some(default) = compile_xslt10_text_choice_default(document, children)?
+        {
+            return Ok(default);
+        }
         if children
             .iter()
             .any(|node| document.kind(*node) != NodeKind::Text)
@@ -1571,6 +1576,67 @@ fn compile_template_parameter_default(
         format!("unsupported template parameter default: {select}"),
         document.location(child),
     ))
+}
+
+fn compile_xslt10_text_choice_default(
+    document: &Document,
+    children: &[NodeId],
+) -> Result<Option<TemplateParameterDefault>, CompileFailure> {
+    let [choice] = children else {
+        return Ok(None);
+    };
+    if !is_xslt_element(document, *choice, "choose") {
+        return Ok(None);
+    }
+    let Instruction::Choose {
+        branches,
+        otherwise,
+        ..
+    } = instruction_compiler::compile_choose(document, *choice)?
+    else {
+        unreachable!("xsl:choose compilation returns a choose instruction");
+    };
+    let branches = branches
+        .into_iter()
+        .map(|branch| {
+            if !matches!(branch.test, BooleanExpression::NodeStringEquals { .. }) {
+                return Err(unsupported(
+                    "FXST1032",
+                    "the private template parameter choice requires path/string equality tests",
+                    document.location(*choice),
+                ));
+            }
+            Ok(Xslt10TextChoiceBranch {
+                test: branch.test,
+                value: xslt10_text_only_sequence(branch.body, document.location(*choice))?,
+            })
+        })
+        .collect::<Result<Vec<_>, CompileFailure>>()?;
+    let otherwise = xslt10_text_only_sequence(otherwise, document.location(*choice))?;
+    Ok(Some(TemplateParameterDefault::Xslt10TextChoice {
+        branches,
+        otherwise,
+    }))
+}
+
+fn xslt10_text_only_sequence(
+    instructions: Vec<Instruction>,
+    location: &SourceLocation,
+) -> Result<String, CompileFailure> {
+    let mut value = String::new();
+    for instruction in instructions {
+        match instruction {
+            Instruction::Text { value: text, .. } => value.push_str(&text),
+            _ => {
+                return Err(unsupported(
+                    "FXST1032",
+                    "the private template parameter choice permits literal text branches only",
+                    location,
+                ));
+            }
+        }
+    }
+    Ok(value)
 }
 
 fn parse_template_parameter_required(

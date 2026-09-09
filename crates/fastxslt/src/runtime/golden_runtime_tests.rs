@@ -4696,6 +4696,52 @@ fn xslt10_template_parameter_names_cannot_be_rebound_in_the_template_body() {
 }
 
 #[test]
+fn xslt10_text_choice_parameter_default_builds_an_invocation_owned_temporary_tree() {
+    const SOURCE: &str = "urn:fastxslt:text-choice-parameter:source";
+    const STYLESHEET: &str = "urn:fastxslt:text-choice-parameter:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc"/></out></xsl:template><xsl:template match="doc"><xsl:param name="choice"><xsl:choose><xsl:when test="item='X'">24</xsl:when><xsl:when test="item='Y'">25</xsl:when><xsl:otherwise>32</xsl:otherwise></xsl:choose></xsl:param><xsl:value-of select="$choice"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><item>Y</item></doc>".to_vec())
+        .expect("admit text-choice source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit text-choice stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile XSLT 1.0 text-only choice parameter default");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("text-choice-parameter", "result", SOURCE))
+        .expect("admit text-choice request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute XSLT 1.0 text-only choice parameter default");
+    assert_eq!(
+        results.by_request["text-choice-parameter"].serialized,
+        "<out>25</out>"
+    );
+
+    let modern = stylesheet
+        .windows(b"version=\"1.0\"".len())
+        .position(|window| window == b"version=\"1.0\"")
+        .expect("stylesheet carries an XSLT 1.0 version");
+    let mut modern_stylesheet = stylesheet.to_vec();
+    modern_stylesheet[modern + b"version=\"".len()] = b'3';
+    let mut modern_resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    modern_resources
+        .admit(SOURCE, b"<doc><item>Y</item></doc>".to_vec())
+        .expect("admit modern control source");
+    modern_resources
+        .admit(STYLESHEET, modern_stylesheet)
+        .expect("admit modern control stylesheet");
+    let failure = compile_resource(&modern_resources.seal(), STYLESHEET)
+        .expect_err("the compatibility-only constructor must not widen modern semantics");
+    assert_eq!(failure.code, "FXST1032");
+    assert_eq!(failure.category, FailureCategory::Unsupported);
+}
+
+#[test]
 fn node_template_parameter_shadows_same_named_global_atomic_in_both_frame_paths() {
     const SOURCE: &str = "urn:fastxslt:parameter-shadow:source";
     const STYLESHEET: &str = "urn:fastxslt:parameter-shadow:stylesheet";
