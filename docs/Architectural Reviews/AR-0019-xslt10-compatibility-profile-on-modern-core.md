@@ -534,6 +534,11 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- Statically decidable mixed-type equality predicates now fold
+  during XSLT 1.0 compilation and retain the ordinary typed location-path
+  execution. Three unchanged predicate cases raise the strict lower bound from
+  1,286 to 1,289 without admitting dynamic node-set comparison. See
+  [static mixed-equality predicate evidence](../Evidence/oasis-xslt10-static-mixed-equality-path-predicates-2026-09-09.md).
 - 2026-09-09 -- The shared exact-rational evaluator now retains typed path-
   union operands, and XSLT 1.0 `xsl:copy-of` can copy the resulting atomic
   value. The unchanged `math103` case raises the strict lower bound from 1,285

@@ -158,6 +158,12 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(value) =
+            compile_xslt10_static_mixed_equality_predicate_path(expression, location)
+    {
+        return value;
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(value) =
             crate::xpath::constant_numeric_experiment::fold_xslt10_non_finite_division(expression)
     {
         return Ok(match value {
@@ -1003,6 +1009,32 @@ fn compile_binary_numeric_path(
             location: location.clone(),
         },
     )))
+}
+
+fn compile_xslt10_static_mixed_equality_predicate_path(
+    expression: &str,
+    location: &SourceLocation,
+) -> Option<Result<ValueExpression, CompileFailure>> {
+    let expression = expression.trim();
+    let open = expression.rfind('[')?;
+    let path = expression[..open].trim();
+    let predicate = expression[open + 1..].strip_suffix(']')?.trim();
+    if path.is_empty() || path.contains(['[', ']']) {
+        return None;
+    }
+    let matches =
+        crate::xpath::constant_boolean_experiment::fold_xpath10_mixed_equality(predicate)?;
+    let parsed = parse_location_path(path, location.clone()).map_err(map_path_failure);
+    Some(parsed.map(|path| {
+        if matches {
+            ValueExpression::Xslt10FirstNodeLocationPath(path)
+        } else {
+            ValueExpression::Xslt10FirstNodeLocationPath(
+                parse_location_path("()", location.clone())
+                    .expect("the typed empty path is always valid"),
+            )
+        }
+    }))
 }
 
 pub(super) fn compile_xslt10_binary_numeric(

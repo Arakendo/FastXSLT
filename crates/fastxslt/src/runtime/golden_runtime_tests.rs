@@ -4010,6 +4010,35 @@ fn xpath10_ordered_literal_comparison_is_selected_at_compilation() {
 }
 
 #[test]
+fn xslt10_static_mixed_equality_predicates_filter_typed_paths() {
+    const SOURCE: &str = "urn:fastxslt:static-boolean-predicate:source";
+    const STYLESHEET: &str = "urn:fastxslt:static-boolean-predicate:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><a>first</a><a>second</a></doc>".to_vec())
+        .expect("admit source document");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="doc"><xsl:value-of select="a[true()=4]"/>|<xsl:value-of select="a[true()='present']"/>|<xsl:value-of select="a[false()=4]"/>|<xsl:value-of select="a[3.0='3.0']"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("static-boolean-predicate", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute static predicates");
+
+    assert_eq!(
+        results.by_request["static-boolean-predicate"].serialized,
+        "first|first||first"
+    );
+}
+
+#[test]
 fn binary_numeric_paths_share_execution_with_compiled_cardinality_policy() {
     const SOURCE: &str = "urn:fastxslt:binary-numeric:source";
     const LEGACY: &str = "urn:fastxslt:binary-numeric:legacy";
