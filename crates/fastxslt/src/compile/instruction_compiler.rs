@@ -659,6 +659,20 @@ pub(super) fn split_top_level_union(expression: &str) -> Option<Vec<&str>> {
     }
 }
 
+pub(super) fn parse_xslt10_normalize_space_path(
+    expression: &str,
+    location: crate::xdm::owned_tree_experiment::SourceLocation,
+) -> Option<LocationPath> {
+    let path = expression
+        .trim()
+        .strip_prefix("normalize-space(")?
+        .strip_suffix(')')?
+        .trim();
+    (!path.is_empty())
+        .then(|| parse_location_path(path, location).ok())
+        .flatten()
+}
+
 fn parse_copy_of_path(
     document: &Document,
     element: NodeId,

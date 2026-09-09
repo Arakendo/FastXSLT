@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Computed attributes and literal-result AVTs now share a typed
+  XSLT 1.0 `normalize-space(path)` plan and the controlled source normalization
+  owner already used by value construction. Unchanged Lotus `whitespace23`
+  raises the strict lower bound from 1,229 to 1,230 with no new mismatch or
+  execution failure. The computed-attribute value selector was privately
+  extracted when the source unit crossed its ADR-0004 review threshold.
 - 2026-09-08 -- The exact XSLT 1.0 computed-attribute expression
   `string-length(normalize-space(.))` now streams the controlled source string
   value, applies XML whitespace rules, and counts Unicode scalar values without

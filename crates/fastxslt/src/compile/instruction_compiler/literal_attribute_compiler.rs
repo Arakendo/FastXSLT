@@ -5,7 +5,10 @@ use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::path_experiment::parse_location_path;
 use crate::xslt::golden_semantics_experiment::{LiteralAttribute, LiteralAttributeValue};
 
-use super::{CompileFailure, XSLT_NAMESPACE, invalid, is_ascii_ncname, unsupported};
+use super::{
+    CompileFailure, XSLT_NAMESPACE, invalid, is_ascii_ncname, parse_xslt10_normalize_space_path,
+    unsupported,
+};
 
 pub(crate) fn compile_literal_result_attributes(
     document: &Document,
@@ -118,6 +121,13 @@ fn parse_single_dynamic_attribute_value(
     location: &SourceLocation,
 ) -> Option<LiteralAttributeValue> {
     let (prefix, expression, suffix) = single_dynamic_expression(lexical)?;
+    if let Some(path) = parse_xslt10_normalize_space_path(expression, location.clone()) {
+        return Some(LiteralAttributeValue::Xslt10TextAndNormalizedPath {
+            prefix: prefix.to_owned(),
+            path,
+            suffix: suffix.to_owned(),
+        });
+    }
     if let Ok(path) = parse_location_path(expression.trim(), location.clone()) {
         return Some(LiteralAttributeValue::Xslt10TextAndPath {
             prefix: prefix.to_owned(),

@@ -985,6 +985,11 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
             prefix,
             path,
             suffix,
+        }
+        | LiteralAttributeValue::Xslt10TextAndNormalizedPath {
+            prefix,
+            path,
+            suffix,
         } => prefix.capacity() + path.known_owned_capacity_bytes() + suffix.capacity(),
         LiteralAttributeValue::Xslt10TextAndAttributeIntegerOffset {
             prefix,

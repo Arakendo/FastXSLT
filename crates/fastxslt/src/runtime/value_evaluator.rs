@@ -1742,6 +1742,16 @@ fn append_normalized_node_string(
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
+    let normalized = normalized_node_string(source, node, inputs.request_id, control)?;
+    append_text(result, &normalized, inputs.request_id, control)
+}
+
+pub(super) fn normalized_node_string(
+    source: &crate::xdm::owned_tree_experiment::Document,
+    node: NodeId,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
     let mut normalized = String::new();
     let mut pending_space = false;
     source
@@ -1749,7 +1759,7 @@ fn append_normalized_node_string(
             for character in part.chars() {
                 control
                     .charge(WorkDomain::XPathOperation, 1)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                    .map_err(|failure| control_failure(failure, request_id))?;
                 if matches!(character, '\u{9}' | '\u{a}' | '\u{d}' | ' ') {
                     pending_space = !normalized.is_empty();
                 } else {
@@ -1763,12 +1773,10 @@ fn append_normalized_node_string(
             Ok(())
         })
         .map_err(|failure| match failure {
-            StringValueVisitFailure::Control(failure) => {
-                control_failure(failure, inputs.request_id)
-            }
+            StringValueVisitFailure::Control(failure) => control_failure(failure, request_id),
             StringValueVisitFailure::Sink(failure) => failure,
         })?;
-    append_text(result, &normalized, inputs.request_id, control)
+    Ok(normalized)
 }
 
 pub(super) fn normalized_node_string_length(

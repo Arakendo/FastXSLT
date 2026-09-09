@@ -1022,6 +1022,11 @@ pub(crate) enum LiteralAttributeValue {
         path: LocationPath,
         suffix: String,
     },
+    Xslt10TextAndNormalizedPath {
+        prefix: String,
+        path: LocationPath,
+        suffix: String,
+    },
     Xslt10TextAndAttributeIntegerOffset {
         prefix: String,
         name: ExpandedName,

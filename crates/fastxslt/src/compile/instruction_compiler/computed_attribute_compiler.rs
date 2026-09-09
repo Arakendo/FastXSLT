@@ -8,8 +8,9 @@ use crate::xslt::golden_semantics_experiment::{ComputedAttribute, LiteralAttribu
 use super::value_expression_compiler::compile_xslt10_concat;
 use super::{
     CompileFailure, ensure_no_meaningful_children, ensure_only_attributes, invalid,
-    is_ascii_ncname, is_xslt_element, meaningful_children, required_attribute,
-    split_top_level_union, unsupported, uses_xslt10_compatibility, xpath_string_literal,
+    is_ascii_ncname, is_xslt_element, meaningful_children, parse_xslt10_normalize_space_path,
+    required_attribute, split_top_level_union, unsupported, uses_xslt10_compatibility,
+    xpath_string_literal,
 };
 
 pub(super) fn compile_computed_attributes(
@@ -68,19 +69,35 @@ pub(super) fn compile_computed_attribute(
     ensure_only_attributes(document, *value_of, &["select"], "xsl:value-of")?;
     ensure_no_meaningful_children(document, *value_of, "xsl:value-of")?;
     let select = required_attribute(document, *value_of, None, "select")?;
+    let value = compile_computed_attribute_value(document, *value_of, select)?;
+    Ok(ComputedAttribute {
+        name: ExpandedName {
+            namespace: None,
+            local: name.to_owned(),
+        },
+        value,
+        location: document.location(element).clone(),
+    })
+}
+
+fn compile_computed_attribute_value(
+    document: &Document,
+    value_of: NodeId,
+    select: &str,
+) -> Result<LiteralAttributeValue, CompileFailure> {
     let value = if let Some(variable) = select
         .strip_prefix('$')
         .filter(|name| is_ascii_ncname(name))
     {
         LiteralAttributeValue::Variable(variable.to_owned())
-    } else if uses_xslt10_compatibility(document, *value_of)
+    } else if uses_xslt10_compatibility(document, value_of)
         && let Some(variable) = select
             .strip_prefix("count($")
             .and_then(|value| value.strip_suffix(')'))
             .filter(|name| is_ascii_ncname(name))
     {
         LiteralAttributeValue::CountSourceNodeVariable(variable.to_owned())
-    } else if uses_xslt10_compatibility(document, *value_of)
+    } else if uses_xslt10_compatibility(document, value_of)
         && let Some(path) = select
             .strip_prefix("count(")
             .and_then(|value| value.strip_suffix(')'))
@@ -88,22 +105,31 @@ pub(super) fn compile_computed_attribute(
         && let Some(alternatives) = alternatives
             .into_iter()
             .map(|alternative| {
-                parse_location_path(alternative.trim(), document.location(*value_of).clone()).ok()
+                parse_location_path(alternative.trim(), document.location(value_of).clone()).ok()
             })
             .collect::<Option<Vec<_>>>()
     {
         LiteralAttributeValue::CountSourcePathUnion(alternatives)
-    } else if uses_xslt10_compatibility(document, *value_of)
+    } else if uses_xslt10_compatibility(document, value_of)
         && let Some(path) = select
             .strip_prefix("count(")
             .and_then(|value| value.strip_suffix(')'))
-        && let Ok(path) = parse_location_path(path.trim(), document.location(*value_of).clone())
+        && let Ok(path) = parse_location_path(path.trim(), document.location(value_of).clone())
     {
         LiteralAttributeValue::CountSourcePath(path)
-    } else if uses_xslt10_compatibility(document, *value_of)
+    } else if uses_xslt10_compatibility(document, value_of)
         && select.trim() == "string-length(normalize-space(.))"
     {
         LiteralAttributeValue::ContextNormalizedStringLength
+    } else if uses_xslt10_compatibility(document, value_of)
+        && let Some(path) =
+            parse_xslt10_normalize_space_path(select, document.location(value_of).clone())
+    {
+        LiteralAttributeValue::Xslt10TextAndNormalizedPath {
+            prefix: String::new(),
+            path,
+            suffix: String::new(),
+        }
     } else if let Some(attribute) = select
         .strip_prefix('@')
         .filter(|name| is_ascii_ncname(name))
@@ -112,9 +138,9 @@ pub(super) fn compile_computed_attribute(
             namespace: None,
             local: attribute.to_owned(),
         })
-    } else if uses_xslt10_compatibility(document, *value_of)
+    } else if uses_xslt10_compatibility(document, value_of)
         && let Some(expression) =
-            compile_xslt10_concat(document, *value_of, select, document.location(*value_of))?
+            compile_xslt10_concat(document, value_of, select, document.location(value_of))?
     {
         LiteralAttributeValue::Xslt10Concat(Box::new(expression))
     } else {
@@ -125,19 +151,12 @@ pub(super) fn compile_computed_attribute(
             return Err(unsupported(
                 "FXXP1012",
                 format!("unsupported computed-attribute value expression: {select}"),
-                document.location(*value_of),
+                document.location(value_of),
             ));
         };
         LiteralAttributeValue::Text(value)
     };
-    Ok(ComputedAttribute {
-        name: ExpandedName {
-            namespace: None,
-            local: name.to_owned(),
-        },
-        value,
-        location: document.location(element).clone(),
-    })
+    Ok(value)
 }
 
 #[cfg(test)]

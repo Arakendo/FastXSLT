@@ -13,7 +13,9 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 use super::runtime_context::{RuntimeVariables, SequenceInputs};
-use super::value_evaluator::{evaluate_xslt10_concat, normalized_node_string_length};
+use super::value_evaluator::{
+    evaluate_xslt10_concat, normalized_node_string, normalized_node_string_length,
+};
 use super::{ExecutionFailure, FailureCategory, control_failure, failure_at};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -265,6 +267,13 @@ fn materialize_attribute(
             path,
             suffix,
         } => materialize_source_path_avt(prefix, path, suffix, location, context, control)?,
+        LiteralAttributeValue::Xslt10TextAndNormalizedPath {
+            prefix,
+            path,
+            suffix,
+        } => materialize_normalized_source_path_avt(
+            prefix, path, suffix, location, context, control,
+        )?,
         LiteralAttributeValue::Xslt10TextAndAttributeIntegerOffset {
             prefix,
             name,
@@ -327,6 +336,37 @@ fn materialize_attribute(
         name: name.clone(),
         value,
     })
+}
+
+fn materialize_normalized_source_path_avt(
+    prefix: &str,
+    path: &LocationPath,
+    suffix: &str,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let (source, node) = context.source_focus.ok_or_else(|| {
+        failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(context.request_id),
+            location.clone(),
+            "normalized path attribute requires a source context item",
+        )
+    })?;
+    let selected = evaluate_location_path_controlled(source, node, path, control)
+        .map_err(|failure| control_failure(failure, context.request_id))?;
+    let normalized = if let Some(node) = selected.first().copied() {
+        normalized_node_string(source, node, context.request_id, control)?
+    } else {
+        String::new()
+    };
+    let mut value = String::with_capacity(prefix.len() + normalized.len() + suffix.len());
+    value.push_str(prefix);
+    value.push_str(&normalized);
+    value.push_str(suffix);
+    Ok(value)
 }
 
 fn context_string_attribute(
