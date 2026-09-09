@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- Bounded child-count, attribute string-length, and attribute
+  inequality predicate leaves now compose with path execution and effective
+  boolean value. Bare-axis condition admission remains narrowed to the
+  evidenced `following-sibling::` form after a broader probe exposed a wrong
+  result. Two unchanged cases raise the strict lower bound from 1,319 to 1,321.
+  See [predicate cardinality and attribute-length evidence](../Evidence/oasis-xslt10-predicate-cardinality-and-attribute-length-2026-09-09.md).
 - 2026-09-09 -- The private typed predicate tree now evaluates bounded
   `starts-with(name(.), literal)` and `string-length(name(.)) = integer`
   leaves while preserving lexical QName prefixes and charged XPath work. Two

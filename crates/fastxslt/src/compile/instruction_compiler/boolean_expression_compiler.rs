@@ -538,11 +538,12 @@ fn compile_path_boolean_scalar(
     if let Some(expression) = parse_path_boolean_expression(expression, location, comparison)? {
         return Ok(Some(expression));
     }
-    Ok(expression
-        .contains('[')
-        .then(|| parse_location_path(expression, location.clone()).ok())
-        .flatten()
-        .map(BooleanExpression::NodeExists))
+    Ok(
+        (expression.contains('[') || expression.starts_with("following-sibling::"))
+            .then(|| parse_location_path(expression, location.clone()).ok())
+            .flatten()
+            .map(BooleanExpression::NodeExists),
+    )
 }
 
 fn compile_xslt10_variable_literal(

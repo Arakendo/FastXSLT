@@ -1086,11 +1086,15 @@ fn parse_final_boolean_predicate(expression: &str) -> (&str, Option<Box<PathBool
     if path.is_empty()
         || path.contains('[')
         || (!predicate.contains(" or ")
+            && !predicate.contains("not(")
             && !predicate.contains("descendant::*")
             && !predicate.contains("following-sibling::*")
             && !predicate.contains(".=")
+            && !predicate.contains("!=")
             && !predicate.contains("starts-with(name(")
-            && !predicate.contains("string-length(name("))
+            && !predicate.contains("string-length(name(")
+            && !predicate.contains("count(./")
+            && !predicate.contains("string-length(@"))
     {
         return (expression, None);
     }

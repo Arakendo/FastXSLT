@@ -10,9 +10,13 @@ use super::{
 pub(super) enum PathBooleanPredicate {
     Present(String),
     Equals { name: String, value: String },
+    NotEquals { name: String, value: String },
     ContextStringEquals(String),
     ContextNameStartsWith(String),
     ContextNameLengthEquals(usize),
+    ChildElementCountEquals { name: String, count: usize },
+    AttributeStringLengthEquals { name: String, length: usize },
+    AttributeStringLengthGreaterThan { name: String, length: usize },
     DescendantElementComparison { value: String, equal: bool },
     FollowingSiblingElementNumberEquals(i32),
     Not(Box<Self>),
@@ -23,8 +27,13 @@ pub(super) enum PathBooleanPredicate {
 impl PathBooleanPredicate {
     pub(super) fn known_owned_capacity_bytes(&self) -> usize {
         match self {
-            Self::Present(name) => name.capacity(),
-            Self::Equals { name, value } => name.capacity() + value.capacity(),
+            Self::Present(name)
+            | Self::ChildElementCountEquals { name, .. }
+            | Self::AttributeStringLengthEquals { name, .. }
+            | Self::AttributeStringLengthGreaterThan { name, .. } => name.capacity(),
+            Self::Equals { name, value } | Self::NotEquals { name, value } => {
+                name.capacity() + value.capacity()
+            }
             Self::ContextStringEquals(value)
             | Self::ContextNameStartsWith(value)
             | Self::DescendantElementComparison { value, .. } => value.capacity(),
@@ -63,6 +72,12 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
             value,
         });
     }
+    if let Some((name, value)) = parse_attribute_inequality(predicate) {
+        return Some(PathBooleanPredicate::NotEquals {
+            name: name.to_owned(),
+            value,
+        });
+    }
     if let Some(value) = parse_context_string_equality(predicate) {
         return Some(PathBooleanPredicate::ContextStringEquals(value));
     }
@@ -71,6 +86,15 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
     }
     if let Some(length) = parse_context_name_length_equality(predicate) {
         return Some(PathBooleanPredicate::ContextNameLengthEquals(length));
+    }
+    if let Some((name, count)) = parse_child_element_count_equality(predicate) {
+        return Some(PathBooleanPredicate::ChildElementCountEquals { name, count });
+    }
+    if let Some((name, length)) = parse_attribute_string_length_equality(predicate) {
+        return Some(PathBooleanPredicate::AttributeStringLengthEquals { name, length });
+    }
+    if let Some((name, length)) = parse_attribute_string_length_greater_than(predicate) {
+        return Some(PathBooleanPredicate::AttributeStringLengthGreaterThan { name, length });
     }
     if let Some((value, equal)) = parse_descendant_element_comparison(predicate) {
         return Some(PathBooleanPredicate::DescendantElementComparison { value, equal });
@@ -99,6 +123,9 @@ pub(super) fn evaluate(
         PathBooleanPredicate::Equals { name, value } => {
             has_named_attribute(document, node, name, Some(value), control)
         }
+        PathBooleanPredicate::NotEquals { name, value } => {
+            attribute_not_equal(document, node, name, value, control)
+        }
         PathBooleanPredicate::ContextStringEquals(value) => {
             control.charge(WorkDomain::XPathOperation, 1)?;
             Ok(document.string_value(node) == *value)
@@ -110,6 +137,15 @@ pub(super) fn evaluate(
         PathBooleanPredicate::ContextNameLengthEquals(length) => {
             control.charge(WorkDomain::XPathOperation, 1)?;
             Ok(context_lexical_name(document, node).chars().count() == *length)
+        }
+        PathBooleanPredicate::ChildElementCountEquals { name, count } => {
+            child_element_count_equals(document, node, name, *count, control)
+        }
+        PathBooleanPredicate::AttributeStringLengthEquals { name, length } => {
+            attribute_string_length_compare(document, node, name, *length, false, control)
+        }
+        PathBooleanPredicate::AttributeStringLengthGreaterThan { name, length } => {
+            attribute_string_length_compare(document, node, name, *length, true, control)
         }
         PathBooleanPredicate::DescendantElementComparison { value, equal } => {
             for descendant in descendant_nodes(document, node, control)? {
@@ -150,6 +186,78 @@ pub(super) fn evaluate(
     }
 }
 
+fn attribute_not_equal(
+    document: &Document,
+    node: NodeId,
+    name: &str,
+    value: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    for attribute in document.attributes(node).iter().copied() {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if unnamespaced_attribute_named(document, attribute, name)
+            && document.value(attribute) != Some(value)
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn child_element_count_equals(
+    document: &Document,
+    node: NodeId,
+    name: &str,
+    expected: usize,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    let mut actual = 0usize;
+    for child in document.children(node).iter().copied() {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if document.kind(child) == NodeKind::Element
+            && document
+                .name(child)
+                .is_some_and(|candidate| candidate.namespace.is_none() && candidate.local == name)
+        {
+            actual += 1;
+        }
+    }
+    Ok(actual == expected)
+}
+
+fn attribute_string_length_compare(
+    document: &Document,
+    node: NodeId,
+    name: &str,
+    expected: usize,
+    greater_than: bool,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    for attribute in document.attributes(node).iter().copied() {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if unnamespaced_attribute_named(document, attribute, name) {
+            control.charge(WorkDomain::XPathOperation, 1)?;
+            let actual = document
+                .value(attribute)
+                .map_or(0, |value| value.chars().count());
+            return Ok(if greater_than {
+                actual > expected
+            } else {
+                actual == expected
+            });
+        }
+    }
+    control.charge(WorkDomain::XPathOperation, 1)?;
+    Ok(!greater_than && expected == 0)
+}
+
+fn unnamespaced_attribute_named(document: &Document, attribute: NodeId, name: &str) -> bool {
+    document.kind(attribute) == NodeKind::Attribute
+        && document
+            .name(attribute)
+            .is_some_and(|candidate| candidate.namespace.is_none() && candidate.local == name)
+}
+
 fn context_lexical_name(document: &Document, node: NodeId) -> String {
     let Some(name) = document.name(node) else {
         return String::new();
@@ -180,6 +288,40 @@ fn parse_context_name_length_operand(function: &str, integer: &str) -> Option<us
         .flatten()
 }
 
+fn parse_child_element_count_equality(predicate: &str) -> Option<(String, usize)> {
+    let (left, right) = split_top_level_predicate_operator(predicate, "=")?;
+    parse_child_element_count_operand(left.trim(), right.trim())
+        .or_else(|| parse_child_element_count_operand(right.trim(), left.trim()))
+}
+
+fn parse_child_element_count_operand(function: &str, integer: &str) -> Option<(String, usize)> {
+    let path = function.strip_prefix("count(")?.strip_suffix(')')?.trim();
+    let name = path.strip_prefix("./")?;
+    let count = integer.parse().ok()?;
+    is_ascii_ncname(name).then(|| (name.to_owned(), count))
+}
+
+fn parse_attribute_string_length_equality(predicate: &str) -> Option<(String, usize)> {
+    let (left, right) = split_top_level_predicate_operator(predicate, "=")?;
+    parse_attribute_string_length_operand(left.trim(), right.trim())
+        .or_else(|| parse_attribute_string_length_operand(right.trim(), left.trim()))
+}
+
+fn parse_attribute_string_length_greater_than(predicate: &str) -> Option<(String, usize)> {
+    let (function, integer) = split_top_level_predicate_operator(predicate, ">")?;
+    parse_attribute_string_length_operand(function.trim(), integer.trim())
+}
+
+fn parse_attribute_string_length_operand(function: &str, integer: &str) -> Option<(String, usize)> {
+    let argument = function
+        .strip_prefix("string-length(")?
+        .strip_suffix(')')?
+        .trim();
+    let name = argument.strip_prefix('@')?;
+    let length = integer.parse().ok()?;
+    is_ascii_ncname(name).then(|| (name.to_owned(), length))
+}
+
 fn parse_context_string_equality(predicate: &str) -> Option<String> {
     let (left, right) = split_top_level_predicate_operator(predicate, "=")?;
     let left = left.trim();
@@ -191,6 +333,15 @@ fn parse_context_string_equality(predicate: &str) -> Option<String> {
     } else {
         None
     }
+}
+
+fn parse_attribute_inequality(predicate: &str) -> Option<(&str, String)> {
+    let (name, value) = split_top_level_predicate_operator(predicate, "!=")?;
+    let name = name.trim().strip_prefix('@')?;
+    if !is_ascii_ncname(name) {
+        return None;
+    }
+    xpath_string_literal(value.trim()).map(|value| (name, value.to_owned()))
 }
 
 fn parse_following_sibling_number_equality(predicate: &str) -> Option<i32> {

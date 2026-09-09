@@ -1726,6 +1726,52 @@ fn path_boolean_predicates_project_the_context_lexical_name() {
 }
 
 #[test]
+fn path_boolean_predicates_count_children_and_measure_attributes() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><row ex=''><td/><td/><td/></row><row ex='abc'><td/><td/></row><row><td/><td/><td/></row></doc>",
+        ParseLimits {
+            max_events: 32,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let three_children = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("row[count(./td)=3]", location())
+            .expect("child count predicate should parse"),
+    );
+    let empty_attribute = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("row[string-length(@ex)=0]", location())
+            .expect("attribute length predicate should parse"),
+    );
+    let nonempty_attribute = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("row[@ex!='']", location())
+            .expect("attribute inequality predicate should parse"),
+    );
+    let positive_attribute_length = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("row[string-length(@ex)>0]", location())
+            .expect("attribute length comparison should parse"),
+    );
+
+    assert_eq!(three_children.len(), 2);
+    assert_eq!(empty_attribute.len(), 2);
+    assert_eq!(empty_attribute, [three_children[0], three_children[1]]);
+    assert_eq!(nonempty_attribute.len(), 1);
+    assert_eq!(nonempty_attribute[0], document.children(doc)[1]);
+    assert_eq!(positive_attribute_length, nonempty_attribute);
+}
+
+#[test]
 fn constant_integer_arithmetic_selects_the_matching_node_position() {
     let parsed = parse_document(
         "memory:source.xml",
