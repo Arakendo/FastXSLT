@@ -20,7 +20,7 @@ use crate::xslt::golden_semantics_experiment::{
 
 use super::dynamic_document::DynamicDocument;
 use super::template_selector::DocumentRootedMatchCache;
-use super::value_evaluator::evaluate_xslt10_sum_path;
+use super::value_evaluator::{evaluate_binary_numeric_value, evaluate_xslt10_sum_path};
 use super::{
     ExecutionFailure, FailureCategory, MultipleMatchPolicy, control_failure,
     evaluate_xslt10_template_parameter_text_choice, failure, failure_at,
@@ -1116,6 +1116,13 @@ fn bind_template_parameter_default(
         }
         TemplateParameterDefault::Variable(variable) => {
             copy_parameter_default_variable(frame, parameter, variable, inputs)?;
+        }
+        TemplateParameterDefault::Xslt10BinaryNumeric(expression) => {
+            let value = evaluate_binary_numeric_value(inputs, context, expression, frame, control)?;
+            frame.bind_atomic(
+                parameter.name.clone(),
+                AtomicValue::from_validated_lexical(BuiltinAtomicType::Double, value),
+            );
         }
         TemplateParameterDefault::Xslt10TextChoice {
             branches,

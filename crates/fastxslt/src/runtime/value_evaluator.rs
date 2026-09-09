@@ -588,8 +588,19 @@ fn append_binary_numeric(
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
+    let value = evaluate_binary_numeric_value(inputs, context, expression, variables, control)?;
+    append_text(result, &value, inputs.request_id, control)
+}
+
+pub(super) fn evaluate_binary_numeric_value(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expression: &BinaryNumericExpression,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
-    let value = evaluate_with_variables(
+    evaluate_with_variables(
         expression,
         source,
         context,
@@ -647,8 +658,7 @@ fn append_binary_numeric(
             ),
             BinaryNumericEvaluationFailure::Variable(failure) => failure,
         },
-    )?;
-    append_text(result, &value, inputs.request_id, control)
+    )
 }
 
 fn append_empty_location_path(

@@ -73,7 +73,8 @@ mod boolean_expression_compiler;
 mod conditional_expression_compiler;
 #[path = "instruction_compiler/value_expression_compiler.rs"]
 mod value_expression_compiler;
-use value_expression_compiler::{compile_value_expression, generated_root_argument};
+pub(super) use value_expression_compiler::compile_value_expression;
+use value_expression_compiler::generated_root_argument;
 #[path = "instruction_compiler/literal_attribute_compiler.rs"]
 mod literal_attribute_compiler;
 pub(super) use literal_attribute_compiler::compile_literal_result_attributes;

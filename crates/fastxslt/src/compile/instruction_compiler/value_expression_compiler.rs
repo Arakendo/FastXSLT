@@ -67,7 +67,7 @@ impl ValueStaticContext {
     clippy::too_many_lines,
     reason = "the ordered typed expression-family dispatch is one cohesive responsibility"
 )]
-pub(super) fn compile_value_expression(
+pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression(
     document: &Document,
     element: NodeId,
     expression: &str,
@@ -1040,6 +1040,14 @@ fn compile_binary_numeric_node(
     {
         return Some(BinaryNumericNode::Variable(variable.to_owned()));
     }
+    let operand = if allow_xslt10_variables {
+        operand
+            .strip_prefix("number(")
+            .and_then(|operand| operand.strip_suffix(')'))
+            .map_or(operand, str::trim)
+    } else {
+        operand
+    };
     Some(BinaryNumericNode::Path {
         path: parse_location_path(operand, location.clone()).ok()?,
         negate: false,

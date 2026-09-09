@@ -4033,6 +4033,9 @@ host lifecycle.
   parameter default that reuses typed path/string equality and the existing
   invocation-owned temporary-tree lifecycle without admitting a general
   constructor executor.
+- [x] Reuse the typed exact-rational plan for XSLT 1.0 binary-numeric template
+  defaults and retain numeric atomic kind. Keep doubts-annotated Microsoft
+  `bvt072` as a visible source-whitespace mismatch with no pass credit.
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

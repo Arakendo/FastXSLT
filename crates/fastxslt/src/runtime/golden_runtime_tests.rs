@@ -4742,6 +4742,47 @@ fn xslt10_text_choice_parameter_default_builds_an_invocation_owned_temporary_tre
 }
 
 #[test]
+fn xslt10_binary_numeric_parameter_default_retains_a_typed_atomic_value() {
+    const SOURCE: &str = "urn:fastxslt:numeric-parameter-default:source";
+    const STYLESHEET: &str = "urn:fastxslt:numeric-parameter-default:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:apply-templates select="doc"/></xsl:template><xsl:template match="doc"><xsl:param name="value" select="number(item) + 1"/><out><xsl:value-of select="$value"/><xsl:if test="$value = 6">|typed</xsl:if></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><item>5</item></doc>".to_vec())
+        .expect("admit numeric-default source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit numeric-default stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile XSLT 1.0 binary numeric parameter default");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("numeric-parameter-default", "result", SOURCE))
+        .expect("admit numeric-default request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute XSLT 1.0 binary numeric parameter default");
+    assert_eq!(
+        results.by_request["numeric-parameter-default"].serialized,
+        "<out>6|typed</out>"
+    );
+
+    let modern_stylesheet = br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="doc"><xsl:param name="value" select="number(item) + 1"/><xsl:value-of select="$value"/></xsl:template></xsl:stylesheet>"#.to_vec();
+    let mut modern_resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    modern_resources
+        .admit(SOURCE, b"<doc><item>5</item></doc>".to_vec())
+        .expect("admit modern numeric-default source");
+    modern_resources
+        .admit(STYLESHEET, modern_stylesheet)
+        .expect("admit modern numeric-default stylesheet");
+    let failure = compile_resource(&modern_resources.seal(), STYLESHEET)
+        .expect_err("the XSLT 1.0 number conversion must not widen modern semantics");
+    assert_eq!(failure.code, "FXST1032");
+    assert_eq!(failure.category, FailureCategory::Unsupported);
+}
+
+#[test]
 fn node_template_parameter_shadows_same_named_global_atomic_in_both_frame_paths() {
     const SOURCE: &str = "urn:fastxslt:parameter-shadow:source";
     const STYLESHEET: &str = "urn:fastxslt:parameter-shadow:stylesheet";

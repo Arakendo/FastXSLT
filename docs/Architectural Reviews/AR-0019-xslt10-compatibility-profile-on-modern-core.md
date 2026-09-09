@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- Template parameter defaults can now retain the existing typed
+  XSLT 1.0 binary-numeric plan, including an explicit `number(path)` operand,
+  and bind its result as an atomic double. Microsoft `bvt072` advances through
+  execution with every numeric result correct, but its doubts-annotated
+  expected output drops preserved source whitespace; the mismatch remains
+  visible and the 1,240-pass lower bound is unchanged. See
+  [binary-numeric parameter evidence](../Evidence/oasis-xslt10-binary-numeric-parameter-default-2026-09-09.md).
 - 2026-09-09 -- A compatibility-only template parameter default may now retain
   one text-only `xsl:choose` whose branches use the shared typed path/string
   equality evaluator. The selected value remains an invocation-owned temporary

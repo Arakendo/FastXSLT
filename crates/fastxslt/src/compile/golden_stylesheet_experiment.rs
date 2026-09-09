@@ -9,7 +9,8 @@ use crate::xslt::golden_semantics_experiment::{
     ConstructedNode, GlobalBinding, GlobalBindingDefault, GlobalBindingKind, Instruction,
     LiteralAttributeValue, MatchPattern, MatchedTemplate, NamedTemplate,
     STANDARD_INITIAL_TEMPLATE_NAME, SourceWhitespacePolicy, StylesheetProgram, Template,
-    TemplateParameter, TemplateParameterDefault, TemplatePriority, Xslt10TextChoiceBranch,
+    TemplateParameter, TemplateParameterDefault, TemplatePriority, ValueExpression,
+    Xslt10TextChoiceBranch,
 };
 
 #[path = "instruction_compiler.rs"]
@@ -1567,6 +1568,17 @@ fn compile_template_parameter_default(
         .filter(|variable| is_ascii_ncname(variable))
     {
         return Ok(TemplateParameterDefault::Variable(variable.to_owned()));
+    }
+    if instruction_compiler::uses_xslt10_compatibility(document, child)
+        && let ValueExpression::BinaryNumeric(expression) =
+            instruction_compiler::compile_value_expression(
+                document,
+                child,
+                select,
+                document.location(child),
+            )?
+    {
+        return Ok(TemplateParameterDefault::Xslt10BinaryNumeric(expression));
     }
     if let Ok(path) = parse_location_path(select, document.location(child).clone()) {
         return Ok(TemplateParameterDefault::SourcePath(path));

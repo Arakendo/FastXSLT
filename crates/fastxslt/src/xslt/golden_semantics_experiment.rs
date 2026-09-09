@@ -205,6 +205,7 @@ pub(crate) enum TemplateParameterDefault {
     Integer(i64),
     SourcePath(LocationPath),
     Variable(String),
+    Xslt10BinaryNumeric(Box<crate::xpath::binary_numeric_experiment::BinaryNumericExpression>),
     Xslt10TextChoice {
         branches: Vec<Xslt10TextChoiceBranch>,
         otherwise: String,
