@@ -534,6 +534,15 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- The generic 129-case unsupported-attribute frontier is now
+  classified by instruction and expanded attribute name; its largest families
+  are `xsl:attribute/@namespace` (32), `xsl:sort/@lang` (30), and
+  `xsl:text/@disable-output-escaping` (16). The exact semantically inert
+  `disable-output-escaping="no"` form now reuses ordinary result text, advancing
+  Microsoft `78362` to its independent computed-comment frontier. `yes` and
+  invalid lexical values remain explicit unsupported/invalid outcomes, and the
+  1,244-pass lower bound is unchanged. See
+  [unsupported-attribute evidence](../Evidence/oasis-xslt10-unsupported-attribute-frontier-and-doe-no-2026-09-09.md).
 - 2026-09-09 -- Exact standalone `xsl:preserve-space elements="*"` now
   compiles to the engine's existing preserve-source-whitespace default without
   adding runtime representation or weakening ADR-0012. Six Microsoft cases

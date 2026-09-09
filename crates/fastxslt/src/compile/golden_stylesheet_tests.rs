@@ -1470,6 +1470,36 @@ fn xsl_text_preserves_explicit_whitespace_and_rejects_element_content() {
 }
 
 #[test]
+fn xsl_text_accepts_only_the_semantically_inert_disable_output_escaping_value() {
+    let no = parse_stylesheet(
+        "memory:text-doe-no.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:text disable-output-escaping="no">&lt;safe&gt;</xsl:text></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&no).expect("the default escaping request should compile");
+    let root_template = program.root_template.expect("root template");
+    let [Instruction::Text { value, .. }] = root_template.body.as_slice() else {
+        panic!("xsl:text should retain one text instruction");
+    };
+    assert_eq!(value, "<safe>");
+
+    let yes = parse_stylesheet(
+        "memory:text-doe-yes.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:text disable-output-escaping="yes">&lt;unsafe&gt;</xsl:text></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&yes).expect_err("disabled escaping remains unsupported");
+    assert_eq!(failure.code, "FXST1060");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+
+    let invalid = parse_stylesheet(
+        "memory:text-doe-invalid.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:text disable-output-escaping="maybe">text</xsl:text></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&invalid).expect_err("invalid lexical value must fail");
+    assert_eq!(failure.code, "XTSE0020");
+    assert_eq!(failure.category, CompileCategory::Invalid);
+}
+
+#[test]
 fn processing_instruction_compiles_static_target_and_literal_data() {
     let stylesheet = parse_stylesheet(
             "memory:processing-instruction.xsl",

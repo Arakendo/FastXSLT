@@ -1032,7 +1032,24 @@ pub(super) fn compile_text(
     document: &Document,
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
-    ensure_only_attributes(document, element, &[], "xsl:text")?;
+    ensure_only_attributes(document, element, &["disable-output-escaping"], "xsl:text")?;
+    match optional_attribute(document, element, None, "disable-output-escaping") {
+        None | Some("no") => {}
+        Some("yes") => {
+            return Err(unsupported(
+                "FXST1060",
+                "disable-output-escaping='yes' is outside the semantic result-tree slice",
+                document.location(element),
+            ));
+        }
+        Some(_) => {
+            return Err(invalid(
+                "XTSE0020",
+                "disable-output-escaping must be 'yes' or 'no'",
+                document.location(element),
+            ));
+        }
+    }
     let mut value = String::new();
     for child in document.children(element).iter().copied() {
         match document.kind(child) {

@@ -487,6 +487,14 @@ fn failure_frontier(failure: &WorkbenchFailure) -> String {
             return format!("{}/{}/{prefix}{subject}", failure.category, failure.code);
         }
     }
+    if failure.code == "FXST1009"
+        && let Some(subject) = detail_subject(detail, "unsupported attribute on ")
+    {
+        return format!(
+            "{}/{}/unsupported attribute on {subject}",
+            failure.category, failure.code
+        );
+    }
     if failure.code == "FXXP1001"
         && let Some(expression) = detail_subject(
             detail,
@@ -753,4 +761,21 @@ fn attribute<'a>(document: &'a Document, node: NodeId, local: &str) -> Option<&'
             .then(|| document.value(*attribute))
             .flatten()
     })
+}
+
+#[test]
+fn splits_unsupported_xslt_attributes_by_instruction_and_expanded_name() {
+    let failure = WorkbenchFailure {
+        code: "FXST1009".to_owned(),
+        category: "unsupported".to_owned(),
+        request_id: None,
+        location: None,
+        detail: "unsupported attribute on xsl:copy: {}use-attribute-sets at memory:test.xsl:1..2"
+            .to_owned(),
+    };
+
+    assert_eq!(
+        failure_frontier(&failure),
+        "unsupported/FXST1009/unsupported attribute on xsl:copy: {}use-attribute-sets"
+    );
 }

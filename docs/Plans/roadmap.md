@@ -4040,6 +4040,10 @@ host lifecycle.
   `xsl:preserve-space elements="*"` to the existing preservation default.
   Keep selective and mixed whitespace rules unsupported and retain two
   indent-serialization mismatches without credit.
+- [x] Split the generic 129-case unsupported-attribute frontier by instruction
+  and expanded attribute name, then admit only the semantically inert
+  `xsl:text disable-output-escaping="no"` form. Keep `yes` outside the semantic
+  result-tree model and retain later-frontier movement without pass credit.
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.
