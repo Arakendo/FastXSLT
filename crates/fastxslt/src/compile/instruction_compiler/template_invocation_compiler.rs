@@ -14,7 +14,7 @@ use super::{
     ensure_no_meaningful_children, ensure_only_attributes, invalid, is_ascii_ncname,
     is_xslt_element, map_path_failure, meaningful_children, normalize_named_template_name,
     optional_attribute, required_attribute, split_top_level_union, unsupported,
-    xpath_string_literal,
+    uses_xslt10_compatibility, xpath_string_literal,
 };
 
 pub(super) fn compile_apply_imports(
@@ -354,9 +354,18 @@ fn parse_source_variable_path(
     location: SourceLocation,
 ) -> Option<Result<ApplySelection, CompileFailure>> {
     let (variable, path) = expression.strip_prefix('$')?.split_once('/')?;
-    if !is_ascii_ncname(variable) || !path.contains('[') {
+    let xslt10_descendant_path =
+        uses_xslt10_compatibility(document, element) && path.starts_with('/') && path.len() > 1;
+    if !is_ascii_ncname(variable) || (!path.contains('[') && !xslt10_descendant_path) {
         return None;
     }
+    let descendant_path;
+    let path = if xslt10_descendant_path {
+        descendant_path = format!(".//{}", &path[1..]);
+        descendant_path.as_str()
+    } else {
+        path
+    };
     Some(
         parse_selection_path(document, element, path, location).map(|path| {
             ApplySelection::SourceVariablePath {

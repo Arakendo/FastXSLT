@@ -534,6 +534,11 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- XSLT 1.0 source-node variables now compose with the shared
+  typed descendant-path evaluator. The unchanged `variable50` case matches
+  exactly, raising the strict lower bound from 1,284 to 1,285; constructed
+  result-tree fragments remain non-navigable and fail explicitly. See
+  [source-variable descendant-path evidence](../Evidence/oasis-xslt10-source-variable-descendant-path-2026-09-09.md).
 - 2026-09-09 -- The shared typed path model now retains literal
   `local-name()` equality predicates over path focus. The unchanged namespace-
   bearing `copy46` case matches exactly, raising the strict lower bound from

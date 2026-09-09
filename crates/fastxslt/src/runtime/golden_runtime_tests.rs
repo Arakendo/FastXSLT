@@ -1075,6 +1075,64 @@ fn source_variable_paths_apply_predicate_focus_per_root() {
 }
 
 #[test]
+fn xslt10_source_variable_descendant_text_path_uses_each_bound_root() {
+    const SOURCE: &str = "urn:fastxslt:source-variable-descendant-text:source";
+    const STYLESHEET: &str = "urn:fastxslt:source-variable-descendant-text:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><p>a<b>b</b>c</p><p>d</p></doc>".to_vec())
+        .expect("admit source document");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:variable name="nodes" select="*/p"/><xsl:for-each select="$nodes//text()"><v><xsl:value-of select="."/></v></xsl:for-each></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("source-variable-descendant-text", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute source-variable descendant text path");
+
+    assert_eq!(
+        results.by_request["source-variable-descendant-text"].serialized,
+        "<out><v>a</v><v>b</v><v>c</v><v>d</v></out>"
+    );
+}
+
+#[test]
+fn xslt10_result_tree_fragment_cannot_use_descendant_path_navigation() {
+    const SOURCE: &str = "urn:fastxslt:result-tree-fragment-path:source";
+    const STYLESHEET: &str = "urn:fastxslt:result-tree-fragment-path:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit source document");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:variable name="tree"><a>text</a></xsl:variable><xsl:for-each select="$tree//text()"><xsl:value-of select="."/></xsl:for-each></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("result-tree-fragment-path", "result", SOURCE))
+        .expect("admit request");
+
+    let failure = execute_transform_set(builder.seal())
+        .expect_err("XSLT 1.0 result-tree fragments are not node sets");
+
+    assert_eq!(failure.code, "XPTY0004");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+}
+
+#[test]
 fn xslt10_current_predicate_retains_the_outer_source_focus() {
     const SOURCE: &str = "urn:fastxslt:current-predicate:source";
     const STYLESHEET: &str = "urn:fastxslt:current-predicate:stylesheet";
