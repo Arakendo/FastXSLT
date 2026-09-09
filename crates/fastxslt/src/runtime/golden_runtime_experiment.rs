@@ -3965,6 +3965,10 @@ mod tests;
 mod control_phase_tests;
 
 #[cfg(test)]
+#[path = "computed_attribute_namespace_tests.rs"]
+mod computed_attribute_namespace_tests;
+
+#[cfg(test)]
 #[path = "whitespace_view_measurement_tests.rs"]
 mod whitespace_view_measurement_tests;
 

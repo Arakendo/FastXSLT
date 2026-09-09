@@ -381,13 +381,15 @@ fn compile_literal_element(
         &computed_attributes,
         document.location(element),
     )?;
+    let mut namespaces = literal_result_namespaces(document, element);
+    retain_computed_attribute_namespace_bindings(&mut namespaces, &computed_attributes);
     Ok(Instruction::LiteralElement {
         origin: ElementConstructorOrigin::Literal,
         name: document
             .name(element)
             .expect("literal result element has a name")
             .clone(),
-        namespaces: literal_result_namespaces(document, element).into(),
+        namespaces: namespaces.into(),
         attributes,
         computed_attributes,
         body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
@@ -452,10 +454,11 @@ fn compile_static_computed_element(
             document.location(element),
         ));
     }
-    let (name, namespaces) =
+    let (name, mut namespaces) =
         compile_static_computed_element_name(document, element, name, namespace)?;
     let (computed_attributes, computed_attribute_nodes) =
         compile_computed_attributes(document, element)?;
+    retain_computed_attribute_namespace_bindings(&mut namespaces, &computed_attributes);
     Ok(Instruction::LiteralElement {
         origin: ElementConstructorOrigin::ComputedStatic,
         name,
@@ -465,6 +468,40 @@ fn compile_static_computed_element(
         body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
         location: document.location(element).clone(),
     })
+}
+
+fn retain_computed_attribute_namespace_bindings(
+    namespaces: &mut Vec<NamespaceBinding>,
+    attributes: &[ComputedAttribute],
+) {
+    const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
+    let mut generated_index = 0_usize;
+    for namespace in attributes
+        .iter()
+        .filter_map(|attribute| attribute.name.namespace.as_deref())
+    {
+        if namespace == XML_NAMESPACE
+            || namespaces
+                .iter()
+                .any(|binding| binding.prefix.is_some() && binding.namespace == namespace)
+        {
+            continue;
+        }
+        let prefix = loop {
+            let candidate = format!("ns{generated_index}");
+            generated_index += 1;
+            if !namespaces
+                .iter()
+                .any(|binding| binding.prefix.as_deref() == Some(&candidate))
+            {
+                break candidate;
+            }
+        };
+        namespaces.push(NamespaceBinding {
+            prefix: Some(prefix),
+            namespace: namespace.to_owned(),
+        });
+    }
 }
 
 fn compile_static_computed_element_name(

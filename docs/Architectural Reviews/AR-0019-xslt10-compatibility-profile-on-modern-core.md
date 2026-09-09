@@ -534,6 +534,14 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- Direct computed attributes now retain a static namespace URI,
+  bounded literal text, and a compile-time prefix binding in the owning
+  element's ADR-0018 namespace slice. Twenty-six unchanged cases initialize;
+  19 exact results raise the strict lower bound from 1,244 to 1,263, three
+  doubts/whitespace comparisons and four later runtime frontiers remain
+  uncredited. Namespace AVTs, prefixed names, and reserved XMLNS construction
+  remain explicit boundaries. See
+  [static attribute-namespace evidence](../Evidence/oasis-xslt10-static-computed-attribute-namespace-2026-09-09.md).
 - 2026-09-09 -- The generic 129-case unsupported-attribute frontier is now
   classified by instruction and expanded attribute name; its largest families
   are `xsl:attribute/@namespace` (32), `xsl:sort/@lang` (30), and

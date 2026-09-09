@@ -8,10 +8,12 @@ use crate::xslt::golden_semantics_experiment::{ComputedAttribute, LiteralAttribu
 use super::value_expression_compiler::compile_xslt10_concat;
 use super::{
     CompileFailure, ensure_no_meaningful_children, ensure_only_attributes, invalid,
-    is_ascii_ncname, is_xslt_element, meaningful_children, parse_xslt10_normalize_space_path,
-    required_attribute, split_top_level_union, unsupported, uses_xslt10_compatibility,
-    xpath_string_literal,
+    is_ascii_ncname, is_xslt_element, meaningful_children, optional_attribute,
+    parse_xslt10_normalize_space_path, required_attribute, split_top_level_union, unsupported,
+    uses_xslt10_compatibility, xpath_string_literal,
 };
+
+const XMLNS_NAMESPACE: &str = "http://www.w3.org/2000/xmlns/";
 
 pub(super) fn compile_computed_attributes(
     document: &Document,
@@ -42,8 +44,16 @@ pub(super) fn compile_computed_attribute(
     document: &Document,
     element: NodeId,
 ) -> Result<ComputedAttribute, CompileFailure> {
-    ensure_only_attributes(document, element, &["name"], "xsl:attribute")?;
+    ensure_only_attributes(document, element, &["name", "namespace"], "xsl:attribute")?;
     let name = required_attribute(document, element, None, "name")?;
+    let namespace = optional_attribute(document, element, None, "namespace");
+    if namespace.is_some_and(|value| value.contains(['{', '}'])) {
+        return Err(unsupported(
+            "FXST1061",
+            "the private xsl:attribute namespace slice requires a static URI",
+            document.location(element),
+        ));
+    }
     if !is_ascii_ncname(name) {
         return Err(unsupported(
             "FXST1033",
@@ -51,28 +61,43 @@ pub(super) fn compile_computed_attribute(
             document.location(element),
         ));
     }
+    if name == "xmlns" || namespace == Some(XMLNS_NAMESPACE) {
+        return Err(invalid(
+            "XTDE0855",
+            "xsl:attribute cannot construct a name in the reserved xmlns namespace",
+            document.location(element),
+        ));
+    }
     let children = meaningful_children(document, element);
-    let [value_of] = children.as_slice() else {
+    let value = if children
+        .iter()
+        .all(|child| document.kind(*child) == crate::xdm::owned_tree_experiment::NodeKind::Text)
+    {
+        LiteralAttributeValue::Text(
+            children
+                .iter()
+                .filter_map(|child| document.value(*child))
+                .collect(),
+        )
+    } else if let [value_of] = children.as_slice()
+        && is_xslt_element(document, *value_of, "value-of")
+    {
+        ensure_only_attributes(document, *value_of, &["select"], "xsl:value-of")?;
+        ensure_no_meaningful_children(document, *value_of, "xsl:value-of")?;
+        let select = required_attribute(document, *value_of, None, "select")?;
+        compile_computed_attribute_value(document, *value_of, select)?
+    } else {
         return Err(unsupported(
             "FXST1033",
-            "the private computed-attribute slice requires one xsl:value-of child",
+            "the private computed-attribute value requires literal text or one xsl:value-of child",
             document.location(element),
         ));
     };
-    if !is_xslt_element(document, *value_of, "value-of") {
-        return Err(unsupported(
-            "FXST1033",
-            "the private computed-attribute value must use xsl:value-of",
-            document.location(*value_of),
-        ));
-    }
-    ensure_only_attributes(document, *value_of, &["select"], "xsl:value-of")?;
-    ensure_no_meaningful_children(document, *value_of, "xsl:value-of")?;
-    let select = required_attribute(document, *value_of, None, "select")?;
-    let value = compile_computed_attribute_value(document, *value_of, select)?;
     Ok(ComputedAttribute {
         name: ExpandedName {
-            namespace: None,
+            namespace: namespace
+                .filter(|value| !value.is_empty())
+                .map(str::to_owned),
             local: name.to_owned(),
         },
         value,

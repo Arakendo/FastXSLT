@@ -6,8 +6,9 @@ use crate::xdm::atomic_value_experiment::BuiltinAtomicType;
 use crate::xdm::owned_tree_experiment::Document;
 use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 use crate::xslt::golden_semantics_experiment::{
-    BooleanExpression, ElementConstructorOrigin, GlobalBindingDefault, Instruction, MatchPattern,
-    STANDARD_INITIAL_TEMPLATE_NAME, TemplatePriority, ValueExpression,
+    BooleanExpression, ElementConstructorOrigin, GlobalBindingDefault, Instruction,
+    LiteralAttributeValue, MatchPattern, STANDARD_INITIAL_TEMPLATE_NAME, TemplatePriority,
+    ValueExpression,
 };
 
 use super::{CompileCategory, compile_stylesheet, merge_character_map_entries};
@@ -1497,6 +1498,46 @@ fn xsl_text_accepts_only_the_semantically_inert_disable_output_escaping_value() 
     let failure = compile_stylesheet(&invalid).expect_err("invalid lexical value must fail");
     assert_eq!(failure.code, "XTSE0020");
     assert_eq!(failure.category, CompileCategory::Invalid);
+}
+
+#[test]
+fn computed_attribute_retains_static_namespace_and_literal_text() {
+    let stylesheet = parse_stylesheet(
+        "memory:computed-attribute-namespace.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out><xsl:attribute name="answer" namespace="urn:example:answer">forty-two</xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+    );
+    let program =
+        compile_stylesheet(&stylesheet).expect("static namespaced attribute should compile");
+    let root_template = program.root_template.expect("root template");
+    let [
+        Instruction::LiteralElement {
+            computed_attributes,
+            ..
+        },
+    ] = root_template.body.as_slice()
+    else {
+        panic!("template should retain one result element");
+    };
+    let [attribute] = computed_attributes.as_slice() else {
+        panic!("result element should retain one computed attribute");
+    };
+    assert_eq!(
+        attribute.name.namespace.as_deref(),
+        Some("urn:example:answer")
+    );
+    assert_eq!(attribute.name.local, "answer");
+    assert_eq!(
+        attribute.value,
+        LiteralAttributeValue::Text("forty-two".to_owned())
+    );
+
+    let dynamic = parse_stylesheet(
+        "memory:computed-attribute-dynamic-namespace.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out><xsl:attribute name="answer" namespace="{@namespace}">value</xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&dynamic).expect_err("namespace AVTs remain unsupported");
+    assert_eq!(failure.code, "FXST1061");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
 }
 
 #[test]
