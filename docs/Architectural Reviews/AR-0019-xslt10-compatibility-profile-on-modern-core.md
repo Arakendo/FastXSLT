@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- Exact standalone `xsl:preserve-space elements="*"` now
+  compiles to the engine's existing preserve-source-whitespace default without
+  adding runtime representation or weakening ADR-0012. Six Microsoft cases
+  reach execution and four exact results raise the strict lower bound from
+  1,240 to 1,244; two independent indent-serialization mismatches remain
+  visible. Selective and mixed strip/preserve policies still fail explicitly.
+  See [preserve-all evidence](../Evidence/oasis-xslt10-preserve-all-whitespace-declaration-2026-09-09.md).
 - 2026-09-09 -- Template parameter defaults can now retain the existing typed
   XSLT 1.0 binary-numeric plan, including an explicit `number(path)` operand,
   and bind its result as an atomic double. Microsoft `bvt072` advances through

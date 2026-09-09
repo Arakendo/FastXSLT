@@ -119,6 +119,8 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     let mut output = None;
     let mut named_output_names = Vec::new();
     let mut source_whitespace = SourceWhitespacePolicy::Preserve;
+    let mut saw_strip_space = false;
+    let mut saw_preserve_space = false;
     let mut modes = CompiledModes::default();
     let mut root_template = None;
     let mut root_template_modes = Vec::new();
@@ -184,7 +186,35 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                         document.location(child),
                     ));
                 }
+                if saw_preserve_space {
+                    return Err(unsupported(
+                        "FXST1043",
+                        "composing xsl:strip-space with xsl:preserve-space is outside the private whitespace-policy slice",
+                        document.location(child),
+                    ));
+                }
+                saw_strip_space = true;
                 source_whitespace = SourceWhitespacePolicy::StripAllElementWhitespace;
+            }
+            (Some(XSLT_NAMESPACE), "preserve-space") => {
+                ensure_only_attributes(document, child, &["elements"], "xsl:preserve-space")?;
+                ensure_no_meaningful_children(document, child, "xsl:preserve-space")?;
+                let elements = required_attribute(document, child, None, "elements")?;
+                if elements != "*" {
+                    return Err(unsupported(
+                        "FXST1043",
+                        "the private whitespace-policy slice supports only xsl:preserve-space elements='*'",
+                        document.location(child),
+                    ));
+                }
+                if saw_strip_space {
+                    return Err(unsupported(
+                        "FXST1043",
+                        "composing xsl:preserve-space with xsl:strip-space is outside the private whitespace-policy slice",
+                        document.location(child),
+                    ));
+                }
+                saw_preserve_space = true;
             }
             (Some(XSLT_NAMESPACE), "variable" | "param") => {
                 let kind = if name.local == "variable" {

@@ -1416,6 +1416,38 @@ fn compiles_only_the_exact_strip_all_whitespace_reference_policy() {
 }
 
 #[test]
+fn compiles_exact_preserve_all_as_the_default_whitespace_policy() {
+    let stylesheet = parse_stylesheet(
+        "memory:preserve-all.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:preserve-space elements="*"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let program =
+        compile_stylesheet(&stylesheet).expect("exact preserve-all policy should compile");
+    assert_eq!(
+        program.source_whitespace,
+        crate::xslt::golden_semantics_experiment::SourceWhitespacePolicy::Preserve
+    );
+
+    let selective = parse_stylesheet(
+        "memory:selective-preserve.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:preserve-space elements="item"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&selective)
+        .expect_err("selective whitespace rules remain outside the private slice");
+    assert_eq!(failure.code, "FXST1043");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+
+    let composed = parse_stylesheet(
+        "memory:composed-whitespace.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:preserve-space elements="*"/><xsl:strip-space elements="*"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&composed)
+        .expect_err("mixed whitespace declarations remain outside the private slice");
+    assert_eq!(failure.code, "FXST1043");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+}
+
+#[test]
 fn xsl_text_preserves_explicit_whitespace_and_rejects_element_content() {
     let stylesheet = parse_stylesheet(
             "memory:text.xsl",
