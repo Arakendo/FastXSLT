@@ -1112,8 +1112,8 @@ fn filters_the_final_child_step_by_an_explicit_named_child_axis() {
 
     assert_eq!(selected.len(), 1);
     assert_eq!(
-        path.final_predicate,
-        Some(AxisPredicate {
+        path.final_predicate.as_deref(),
+        Some(&AxisPredicate {
             axis: PredicateAxis::Child,
             name: "child2".to_owned(),
             value: None,
@@ -1176,8 +1176,8 @@ fn language_predicate_reuses_context_language_semantics() {
     assert_eq!(selected.len(), 1);
     assert_eq!(document.string_value(selected[0]), "A");
     assert_eq!(
-        path.final_predicate,
-        Some(AxisPredicate {
+        path.final_predicate.as_deref(),
+        Some(&AxisPredicate {
             axis: PredicateAxis::Attribute,
             name: "id".to_owned(),
             value: Some("1".to_owned()),
@@ -1217,8 +1217,8 @@ fn conjoined_position_uses_the_unfiltered_candidate_focus() {
     assert_eq!(document.string_value(selected[0]), "three");
     assert!(evaluate_location_path(&document, doc, &second).is_empty());
     assert_eq!(
-        third.final_predicate,
-        Some(AxisPredicate {
+        third.final_predicate.as_deref(),
+        Some(&AxisPredicate {
             axis: PredicateAxis::Attribute,
             name: "test".to_owned(),
             value: None,
@@ -1286,8 +1286,8 @@ fn searches_descendants_and_filters_by_a_named_ancestor() {
     assert_eq!(selected.len(), 1);
     assert_eq!(document.string_value(selected[0]), "right");
     assert_eq!(
-        path.final_predicate,
-        Some(AxisPredicate {
+        path.final_predicate.as_deref(),
+        Some(&AxisPredicate {
             axis: PredicateAxis::Ancestor,
             name: "element2".to_owned(),
             value: None,
@@ -1322,8 +1322,8 @@ fn ancestor_or_self_predicate_checks_the_candidate_before_its_parent() {
     assert_eq!(self_selected.len(), 1);
     assert_eq!(document.string_value(ancestor_selected[0]), "right");
     assert_eq!(
-        self_path.final_predicate,
-        Some(AxisPredicate {
+        self_path.final_predicate.as_deref(),
+        Some(&AxisPredicate {
             axis: PredicateAxis::AncestorOrSelf,
             name: "element2".to_owned(),
             value: None,
@@ -1359,8 +1359,8 @@ fn attribute_predicate_inspects_attributes_without_making_them_children() {
     assert_eq!(document.attributes(selected[0]).len(), 1);
     assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 10);
     assert_eq!(
-        path.final_predicate,
-        Some(AxisPredicate {
+        path.final_predicate.as_deref(),
+        Some(&AxisPredicate {
             axis: PredicateAxis::Attribute,
             name: "attr1".to_owned(),
             value: None,
@@ -1397,8 +1397,8 @@ fn abbreviated_attribute_existence_predicate_uses_the_same_typed_path() {
     assert_eq!(selected.len(), 1);
     assert_eq!(document.string_value(selected[0]), "right");
     assert_eq!(
-        path.final_predicate,
-        Some(AxisPredicate {
+        path.final_predicate.as_deref(),
+        Some(&AxisPredicate {
             axis: PredicateAxis::Attribute,
             name: "selected".to_owned(),
             value: None,
@@ -1435,8 +1435,8 @@ fn literal_attribute_value_predicate_filters_the_final_step() {
     assert_eq!(selected.len(), 1);
     assert_eq!(document.string_value(selected[0]), "right");
     assert_eq!(
-        path.final_predicate,
-        Some(AxisPredicate {
+        path.final_predicate.as_deref(),
+        Some(&AxisPredicate {
             axis: PredicateAxis::Attribute,
             name: "selected".to_owned(),
             value: Some("yes".to_owned()),
@@ -1475,8 +1475,8 @@ fn descendant_or_self_predicate_checks_self_then_document_order_descendants() {
     assert_eq!(document.string_value(self_selected[0]), "self");
     assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 7);
     assert_eq!(
-        descendant_path.final_predicate,
-        Some(AxisPredicate {
+        descendant_path.final_predicate.as_deref(),
+        Some(&AxisPredicate {
             axis: PredicateAxis::DescendantOrSelf,
             name: "child2".to_owned(),
             value: None,
@@ -1510,8 +1510,8 @@ fn parent_predicate_checks_only_the_immediate_parent() {
     assert_eq!(document.string_value(selected[0]), "right");
     assert_eq!(control.consumed(WorkDomain::XPathNodeVisit), 17);
     assert_eq!(
-        path.final_predicate,
-        Some(AxisPredicate {
+        path.final_predicate.as_deref(),
+        Some(&AxisPredicate {
             axis: PredicateAxis::Parent,
             name: "element1".to_owned(),
             value: None,
@@ -1576,6 +1576,35 @@ fn attribute_wildcard_predicates_test_attribute_presence() {
     assert_eq!(document.string_value(present[0]), "present");
     assert_eq!(missing.len(), 1);
     assert_eq!(document.string_value(missing[0]), "missing");
+}
+
+#[test]
+fn attribute_boolean_predicates_preserve_and_or_precedence() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><a squish='x' squash='x'>1</a><a squish='x' squeesh='x'>2</a><a squash='x' squeesh='x'>3</a><a squish='x'>4</a><a squeesh='x'>5</a><a squash='x'>6</a></doc>",
+        ParseLimits {
+            max_events: 40,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let values = |expression: &str| {
+        evaluate_location_path(
+            &document,
+            doc,
+            &parse_location_path(expression, location()).expect("boolean predicate should parse"),
+        )
+        .into_iter()
+        .map(|node| document.string_value(node))
+        .collect::<String>()
+    };
+
+    assert_eq!(values("a[@squeesh or (@squish and @squash)]"), "1235");
+    assert_eq!(values("a[(@squeesh or @squish) and @squash]"), "13");
+    assert_eq!(values("a[@squeesh or @squish and @squash]"), "1235");
 }
 
 #[test]

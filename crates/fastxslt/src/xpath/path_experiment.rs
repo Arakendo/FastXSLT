@@ -9,11 +9,16 @@ use crate::xpath::constant_integer_experiment;
 use crate::xpath::constant_numeric_experiment;
 use crate::xpath::language_experiment;
 
+#[path = "path_attribute_predicate.rs"]
+mod attribute_boolean_predicate;
+use attribute_boolean_predicate::AttributeBooleanPredicate;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct LocationPath {
     pub(crate) steps: Vec<PathStep>,
     origin: PathOrigin,
-    final_predicate: Option<AxisPredicate>,
+    final_predicate: Option<Box<AxisPredicate>>,
+    final_attribute_predicate: Option<Box<AttributeBooleanPredicate>>,
     final_context_predicate: Option<FinalContextPredicate>,
     first_step_predicates_use_document_order: bool,
     step_axis_predicates: Vec<Option<AxisPredicate>>,
@@ -50,8 +55,12 @@ impl LocationPath {
                 .sum::<usize>()
             + self
                 .final_predicate
-                .as_ref()
+                .as_deref()
                 .map_or(0, AxisPredicate::known_owned_capacity_bytes)
+            + self
+                .final_attribute_predicate
+                .as_deref()
+                .map_or(0, AttributeBooleanPredicate::known_owned_capacity_bytes)
             + self.step_position_predicates.capacity() * std::mem::size_of::<Vec<StepPredicate>>()
             + self
                 .step_position_predicates
@@ -572,7 +581,10 @@ pub(crate) fn parse_location_path(
     let first_step_predicates_use_document_order = normalized_filter.is_some();
     let expression = normalized_filter.as_deref().unwrap_or(expression);
     let (expression, final_context_predicate) = parse_final_context_predicate(expression);
+    let (expression, final_attribute_predicate) =
+        parse_final_attribute_boolean_predicate(expression);
     let (expression, final_predicate) = parse_final_axis_predicate(expression);
+    let final_predicate = final_predicate.map(Box::new);
     let (expression, origin) = parse_path_origin(expression);
     if expression.is_empty() {
         return Err(invalid_syntax(
@@ -648,6 +660,7 @@ pub(crate) fn parse_location_path(
         steps,
         origin,
         final_predicate,
+        final_attribute_predicate,
         final_context_predicate,
         first_step_predicates_use_document_order,
         step_axis_predicates,
@@ -812,6 +825,7 @@ pub(crate) fn parse_qualified_child_path(
         steps,
         origin: PathOrigin::Relative,
         final_predicate: None,
+        final_attribute_predicate: None,
         final_context_predicate: None,
         first_step_predicates_use_document_order: false,
         step_axis_predicates: vec![None; step_count],
@@ -990,6 +1004,7 @@ fn origin_only_path(origin: PathOrigin, location: SourceLocation) -> LocationPat
         steps: Vec::new(),
         origin,
         final_predicate: None,
+        final_attribute_predicate: None,
         final_context_predicate: None,
         first_step_predicates_use_document_order: false,
         step_axis_predicates: Vec::new(),
@@ -1060,6 +1075,24 @@ fn parse_final_axis_predicate(expression: &str) -> (&str, Option<AxisPredicate>)
         return (expression, None);
     }
     (path, Some(predicate))
+}
+
+fn parse_final_attribute_boolean_predicate(
+    expression: &str,
+) -> (&str, Option<Box<AttributeBooleanPredicate>>) {
+    let Some((path, predicate)) = expression.split_once('[') else {
+        return (expression, None);
+    };
+    let Some(predicate) = predicate.strip_suffix(']') else {
+        return (expression, None);
+    };
+    if path.is_empty() || path.contains('[') || !predicate.contains(" or ") {
+        return (expression, None);
+    }
+    let Some(predicate) = attribute_boolean_predicate::parse(predicate) else {
+        return (expression, None);
+    };
+    (path, Some(Box::new(predicate)))
 }
 
 fn parse_axis_predicate(predicate: &str) -> Option<AxisPredicate> {
@@ -1158,6 +1191,13 @@ fn parse_context_local_name_predicate(predicate: &str) -> Option<String> {
 }
 
 fn split_top_level_predicate_and(predicate: &str) -> Option<(&str, &str)> {
+    split_top_level_predicate_operator(predicate, " and ")
+}
+
+fn split_top_level_predicate_operator<'a>(
+    predicate: &'a str,
+    operator: &str,
+) -> Option<(&'a str, &'a str)> {
     let bytes = predicate.as_bytes();
     let mut quote = None;
     let mut depth = 0usize;
@@ -1168,8 +1208,8 @@ fn split_top_level_predicate_and(predicate: &str) -> Option<(&str, &str)> {
             b'\'' | b'"' if quote.is_none() => quote = Some(bytes[index]),
             b'(' if quote.is_none() => depth += 1,
             b')' if quote.is_none() => depth = depth.checked_sub(1)?,
-            _ if quote.is_none() && depth == 0 && bytes[index..].starts_with(b" and ") => {
-                return Some((&predicate[..index], &predicate[index + 5..]));
+            _ if quote.is_none() && depth == 0 && predicate[index..].starts_with(operator) => {
+                return Some((&predicate[..index], &predicate[index + operator.len()..]));
             }
             _ => {}
         }
@@ -1485,30 +1525,15 @@ pub(crate) fn evaluate_location_path_controlled(
             );
             let matching_count = predicate_candidates.len();
             for (offset, child) in predicate_candidates.into_iter().enumerate() {
-                let final_predicate = (step_index + 1 == path.steps.len())
-                    .then_some(path.final_predicate.as_ref())
-                    .flatten();
-                let axis_predicate_matches = evaluate_optional_axis_predicate(
+                if final_predicates_match(
                     document,
                     child,
-                    final_predicate,
+                    path,
+                    step_index,
                     offset + 1,
                     matching_count,
                     control,
-                )?;
-                let context_predicate_matches = match path.final_context_predicate {
-                    Some(FinalContextPredicate::TextHasNonWhitespace)
-                        if step_index + 1 == path.steps.len() =>
-                    {
-                        document.value(child).is_some_and(|value| {
-                            value.chars().any(|character| {
-                                !matches!(character, '\u{9}' | '\u{A}' | '\u{D}' | ' ')
-                            })
-                        })
-                    }
-                    _ => true,
-                };
-                if axis_predicate_matches && context_predicate_matches {
+                )? {
                     next.push(child);
                 }
             }
@@ -1518,6 +1543,47 @@ pub(crate) fn evaluate_location_path_controlled(
         current = next;
     }
     Ok(current)
+}
+
+fn final_predicates_match(
+    document: &Document,
+    node: NodeId,
+    path: &LocationPath,
+    step_index: usize,
+    context_position: usize,
+    context_size: usize,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    let is_final_step = step_index + 1 == path.steps.len();
+    let final_predicate = is_final_step
+        .then_some(path.final_predicate.as_deref())
+        .flatten();
+    if !evaluate_optional_axis_predicate(
+        document,
+        node,
+        final_predicate,
+        context_position,
+        context_size,
+        control,
+    )? {
+        return Ok(false);
+    }
+    if is_final_step
+        && let Some(predicate) = path.final_attribute_predicate.as_deref()
+        && !attribute_boolean_predicate::evaluate(document, node, predicate, control)?
+    {
+        return Ok(false);
+    }
+    Ok(match path.final_context_predicate {
+        Some(FinalContextPredicate::TextHasNonWhitespace) if is_final_step => {
+            document.value(node).is_some_and(|value| {
+                value
+                    .chars()
+                    .any(|character| !matches!(character, '\u{9}' | '\u{A}' | '\u{D}' | ' '))
+            })
+        }
+        _ => true,
+    })
 }
 
 pub(crate) fn evaluate_location_path_union_controlled(

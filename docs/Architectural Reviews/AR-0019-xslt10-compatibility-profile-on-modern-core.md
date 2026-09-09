@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- A private typed attribute-predicate tree now preserves `and`/
+  `or` precedence, parentheses, short-circuiting, and charged attribute visits.
+  Eleven unchanged cases raise the strict lower bound from 1,297 to 1,308.
+  Boolean-tree ownership was extracted after the path source crossed the
+  ADR-0004 review threshold. See
+  [attribute boolean-predicate evidence](../Evidence/oasis-xslt10-attribute-boolean-predicate-tree-2026-09-09.md).
 - 2026-09-09 -- Static XSLT 1.0 mixed-type path predicates now share one typed
   path entry point across selection and value instructions. Boolean-to-number
   ordered conversion adds two exact OASIS results and raises the strict lower
