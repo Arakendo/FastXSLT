@@ -3,7 +3,7 @@ use std::ops::Range;
 use super::{
     AxisPredicate, FinalContextPredicate, PathFailure, PathOrigin, PositionPredicate,
     PredicateAxis, StepPredicate, evaluate_location_path, evaluate_location_path_controlled,
-    parse_location_path, parse_qualified_child_path,
+    parse_location_path, parse_qualified_child_path, parse_xslt10_location_path,
 };
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeKind, SourceLocation};
@@ -1519,6 +1519,63 @@ fn parent_predicate_checks_only_the_immediate_parent() {
             conjunct: None,
         })
     );
+}
+
+#[test]
+fn xslt10_boolean_following_sibling_comparison_uses_axis_existence() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><a>1</a><a>2</a><a>3</a><last/></doc>",
+        ParseLimits {
+            max_events: 24,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let path = parse_xslt10_location_path("a[false() != following-sibling::*]", location())
+        .expect("XSLT 1.0 boolean/node-set comparison should parse");
+    let mut control = InvocationControl::unbounded();
+
+    let selected = evaluate_location_path_controlled(&document, doc, &path, &mut control)
+        .expect("unbounded evaluation should succeed");
+
+    assert_eq!(selected.len(), 3);
+    assert_eq!(document.string_value(selected[0]), "1");
+    assert_eq!(document.string_value(selected[2]), "3");
+    assert!(control.consumed(WorkDomain::XPathNodeVisit) > 0);
+}
+
+#[test]
+fn attribute_wildcard_predicates_test_attribute_presence() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><a id='1'>present</a><a>missing</a></doc>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+
+    let present = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("a[@*]", location()).expect("presence predicate should parse"),
+    );
+    let missing = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("a[not(@*)]", location()).expect("absence predicate should parse"),
+    );
+
+    assert_eq!(present.len(), 1);
+    assert_eq!(document.string_value(present[0]), "present");
+    assert_eq!(missing.len(), 1);
+    assert_eq!(document.string_value(missing[0]), "missing");
 }
 
 #[test]

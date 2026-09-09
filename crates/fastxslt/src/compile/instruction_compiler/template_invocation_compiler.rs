@@ -1,7 +1,9 @@
 //! Compiles template invocation, arguments, selection, and mode controls.
 
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocation};
-use crate::xpath::path_experiment::{parse_location_path, parse_qualified_child_path};
+use crate::xpath::path_experiment::{
+    parse_location_path, parse_qualified_child_path, parse_xslt10_location_path,
+};
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, Instruction, NodeTest, TemplateArgument, TemplateArgumentValue,
     Xslt10ContentArgument, Xslt10ContentTextBinding,
@@ -382,7 +384,12 @@ fn parse_selection_path(
     expression: &str,
     location: SourceLocation,
 ) -> Result<crate::xpath::path_experiment::LocationPath, CompileFailure> {
-    match parse_location_path(expression, location.clone()) {
+    let parsed = if uses_xslt10_compatibility(document, element) {
+        parse_xslt10_location_path(expression, location.clone())
+    } else {
+        parse_location_path(expression, location.clone())
+    };
+    match parsed {
         Ok(path) => Ok(path),
         Err(crate::xpath::path_experiment::PathFailure::Unsupported { .. })
             if expression.contains(':') =>

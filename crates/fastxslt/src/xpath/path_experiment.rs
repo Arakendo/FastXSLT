@@ -481,6 +481,7 @@ enum PredicateAxis {
     Ancestor,
     AncestorOrSelf,
     DescendantOrSelf,
+    FollowingSibling,
     Parent,
     ContextLanguage,
     ContextLocalName,
@@ -652,6 +653,36 @@ pub(crate) fn parse_location_path(
         step_position_predicates,
         location,
     })
+}
+
+pub(crate) fn parse_xslt10_location_path(
+    expression: &str,
+    location: SourceLocation,
+) -> Result<LocationPath, PathFailure> {
+    let normalized = normalize_xslt10_following_sibling_boolean_predicate(expression);
+    parse_location_path(normalized.as_deref().unwrap_or(expression), location)
+}
+
+fn normalize_xslt10_following_sibling_boolean_predicate(expression: &str) -> Option<String> {
+    let expression = expression.trim();
+    let open = expression.rfind('[')?;
+    let path = expression[..open].trim();
+    let predicate = expression[open + 1..].strip_suffix(']')?;
+    if path.is_empty() || path.contains(['[', ']']) {
+        return None;
+    }
+    let compact = predicate
+        .bytes()
+        .filter(|byte| !byte.is_ascii_whitespace())
+        .collect::<Vec<_>>();
+    matches!(
+        compact.as_slice(),
+        b"true()=following-sibling::*"
+            | b"following-sibling::*=true()"
+            | b"false()!=following-sibling::*"
+            | b"following-sibling::*!=false()"
+    )
+    .then(|| format!("{path}[following-sibling::*]"))
 }
 
 fn normalize_axis_separator_whitespace(step: &mut String) {
@@ -1061,6 +1092,8 @@ fn parse_axis_predicate(predicate: &str) -> Option<AxisPredicate> {
         (PredicateAxis::AncestorOrSelf, name)
     } else if let Some(name) = predicate.strip_prefix("descendant-or-self::") {
         (PredicateAxis::DescendantOrSelf, name)
+    } else if let Some(name) = predicate.strip_prefix("following-sibling::") {
+        (PredicateAxis::FollowingSibling, name)
     } else if let Some(name) = predicate.strip_prefix("parent::") {
         (PredicateAxis::Parent, name)
     } else if is_ascii_ncname(predicate) {
@@ -1068,7 +1101,13 @@ fn parse_axis_predicate(predicate: &str) -> Option<AxisPredicate> {
     } else {
         return None;
     };
-    if !is_ascii_ncname(name) {
+    let wildcard_allowed = matches!(
+        axis,
+        PredicateAxis::Attribute
+            | PredicateAxis::MissingAttribute
+            | PredicateAxis::FollowingSibling
+    );
+    if (name != "*" || !wildcard_allowed) && !is_ascii_ncname(name) {
         return None;
     }
     Some(AxisPredicate {
@@ -1581,6 +1620,9 @@ fn evaluate_axis_predicate(
         PredicateAxis::DescendantOrSelf => {
             has_named_descendant_or_self(document, node, &predicate.name, control)
         }
+        PredicateAxis::FollowingSibling => {
+            has_named_following_sibling(document, node, &predicate.name, control)
+        }
         PredicateAxis::Parent => has_named_parent(document, node, &predicate.name, control),
         PredicateAxis::ContextLanguage => {
             language_experiment::evaluate(document, node, &predicate.name, control)
@@ -1871,9 +1913,10 @@ fn has_named_attribute(
     for attribute in document.attributes(node).iter().copied() {
         control.charge(WorkDomain::XPathNodeVisit, 1)?;
         if document.kind(attribute) == NodeKind::Attribute
-            && document
-                .name(attribute)
-                .is_some_and(|name| name.namespace.is_none() && name.local == required)
+            && (required == "*"
+                || document
+                    .name(attribute)
+                    .is_some_and(|name| name.namespace.is_none() && name.local == required))
             && required_value.is_none_or(|required| document.value(attribute) == Some(required))
         {
             return Ok(true);
@@ -1910,6 +1953,23 @@ fn has_named_parent(
     };
     control.charge(WorkDomain::XPathNodeVisit, 1)?;
     Ok(node_has_unnamespaced_name(document, parent, required))
+}
+
+fn has_named_following_sibling(
+    document: &Document,
+    node: NodeId,
+    required: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    for sibling in following_siblings(document, node) {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if document.kind(sibling) == NodeKind::Element
+            && (required == "*" || node_has_unnamespaced_name(document, sibling, required))
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn has_named_ancestor(

@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- Four XSLT 1.0 boolean/node-set predicate spellings now
+  normalize to a charged following-sibling existence predicate in the shared
+  typed path evaluator. Completing shared `@*` and `not(@*)` presence semantics
+  brings two more unchanged cases with it. Six exact results raise the strict
+  lower bound from 1,289 to 1,295 with no residual mismatch increase. See
+  [boolean node-set axis-predicate evidence](../Evidence/oasis-xslt10-boolean-node-set-axis-predicates-2026-09-09.md).
 - 2026-09-09 -- Statically decidable mixed-type equality predicates now fold
   during XSLT 1.0 compilation and retain the ordinary typed location-path
   execution. Three unchanged predicate cases raise the strict lower bound from

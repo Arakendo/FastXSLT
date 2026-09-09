@@ -4039,6 +4039,38 @@ fn xslt10_static_mixed_equality_predicates_filter_typed_paths() {
 }
 
 #[test]
+fn xslt10_boolean_node_set_predicates_use_following_sibling_existence() {
+    const SOURCE: &str = "urn:fastxslt:boolean-node-set-predicate:source";
+    const STYLESHEET: &str = "urn:fastxslt:boolean-node-set-predicate:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 16_384, 32_768));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><a>1</a><a>2</a><a>3</a><last/></doc>".to_vec(),
+        )
+        .expect("admit source document");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="doc"><xsl:value-of select="a[true()=following-sibling::*]"/>|<xsl:for-each select="a[following-sibling::*=true()]"><xsl:value-of select="."/></xsl:for-each>|<xsl:for-each select="a[false()!=following-sibling::*]"><xsl:value-of select="."/></xsl:for-each>|<xsl:for-each select="a[following-sibling::*!=false()]"><xsl:value-of select="."/></xsl:for-each></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("boolean-node-set-predicate", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute boolean predicates");
+
+    assert_eq!(
+        results.by_request["boolean-node-set-predicate"].serialized,
+        "1|123|123|123"
+    );
+}
+
+#[test]
 fn binary_numeric_paths_share_execution_with_compiled_cardinality_policy() {
     const SOURCE: &str = "urn:fastxslt:binary-numeric:source";
     const LEGACY: &str = "urn:fastxslt:binary-numeric:legacy";

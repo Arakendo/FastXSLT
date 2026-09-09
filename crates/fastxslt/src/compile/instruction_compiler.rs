@@ -53,6 +53,7 @@ use crate::xpath::iri_to_uri_expression::{
 };
 use crate::xpath::path_experiment::{
     LocationPath, PathFailure, PathStep, parse_location_path, parse_qualified_child_path,
+    parse_xslt10_location_path,
 };
 use crate::xpath::path_operand_type_experiment::classify as classify_atomic_path_operand;
 use crate::xpath::string_length_experiment::{

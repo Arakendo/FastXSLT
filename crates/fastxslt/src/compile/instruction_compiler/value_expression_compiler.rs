@@ -15,11 +15,11 @@ use super::{
     parse_generated_document_root, parse_generated_temporary_root, parse_integer_for,
     parse_iri_to_uri, parse_literal_comparison, parse_location_path, parse_qualified_child_path,
     parse_sequence_cardinality, parse_source_free_scalar, parse_string_length,
-    recognizes_case_conversion, recognizes_deep_equal, recognizes_default_collation,
-    recognizes_document_boolean, recognizes_duration_component, recognizes_encode_for_uri,
-    recognizes_escape_html_uri, recognizes_iri_to_uri, recognizes_sequence_cardinality,
-    recognizes_source_free_scalar, recognizes_string_length, split_top_level_union, unsupported,
-    xpath_string_literal,
+    parse_xslt10_location_path, recognizes_case_conversion, recognizes_deep_equal,
+    recognizes_default_collation, recognizes_document_boolean, recognizes_duration_component,
+    recognizes_encode_for_uri, recognizes_escape_html_uri, recognizes_iri_to_uri,
+    recognizes_sequence_cardinality, recognizes_source_free_scalar, recognizes_string_length,
+    split_top_level_union, unsupported, xpath_string_literal,
 };
 use crate::xpath::binary_numeric_experiment::BinaryNumericNode;
 use crate::xslt::golden_semantics_experiment::{
@@ -406,7 +406,12 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     {
         ValueExpression::Xslt10CurrentPredicatePath(path)
     } else if expression.contains('[')
-        && let Ok(path) = parse_location_path(expression, location.clone())
+        && let Ok(path) = match static_context.compatibility {
+            ValueCompatibilityMode::Modern => parse_location_path(expression, location.clone()),
+            ValueCompatibilityMode::Xslt10 => {
+                parse_xslt10_location_path(expression, location.clone())
+            }
+        }
     {
         match static_context.compatibility {
             ValueCompatibilityMode::Modern => ValueExpression::LocationPath(path),
