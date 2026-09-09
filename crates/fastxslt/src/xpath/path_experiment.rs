@@ -1087,7 +1087,8 @@ fn parse_final_boolean_predicate(expression: &str) -> (&str, Option<Box<PathBool
         || path.contains('[')
         || (!predicate.contains(" or ")
             && !predicate.contains("descendant::*")
-            && !predicate.contains("following-sibling::*"))
+            && !predicate.contains("following-sibling::*")
+            && !predicate.contains(".="))
     {
         return (expression, None);
     }

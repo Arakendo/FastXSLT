@@ -10,6 +10,7 @@ use super::{
 pub(super) enum PathBooleanPredicate {
     Present(String),
     Equals { name: String, value: String },
+    ContextStringEquals(String),
     DescendantElementComparison { value: String, equal: bool },
     FollowingSiblingElementNumberEquals(i32),
     Not(Box<Self>),
@@ -22,7 +23,9 @@ impl PathBooleanPredicate {
         match self {
             Self::Present(name) => name.capacity(),
             Self::Equals { name, value } => name.capacity() + value.capacity(),
-            Self::DescendantElementComparison { value, .. } => value.capacity(),
+            Self::ContextStringEquals(value) | Self::DescendantElementComparison { value, .. } => {
+                value.capacity()
+            }
             Self::FollowingSiblingElementNumberEquals(_) => 0,
             Self::Not(operand) => operand.known_owned_capacity_bytes(),
             Self::And(left, right) | Self::Or(left, right) => {
@@ -58,6 +61,9 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
             value,
         });
     }
+    if let Some(value) = parse_context_string_equality(predicate) {
+        return Some(PathBooleanPredicate::ContextStringEquals(value));
+    }
     if let Some((value, equal)) = parse_descendant_element_comparison(predicate) {
         return Some(PathBooleanPredicate::DescendantElementComparison { value, equal });
     }
@@ -84,6 +90,10 @@ pub(super) fn evaluate(
         }
         PathBooleanPredicate::Equals { name, value } => {
             has_named_attribute(document, node, name, Some(value), control)
+        }
+        PathBooleanPredicate::ContextStringEquals(value) => {
+            control.charge(WorkDomain::XPathOperation, 1)?;
+            Ok(document.string_value(node) == *value)
         }
         PathBooleanPredicate::DescendantElementComparison { value, equal } => {
             for descendant in descendant_nodes(document, node, control)? {
@@ -121,6 +131,19 @@ pub(super) fn evaluate(
             }
             evaluate(document, node, right, control)
         }
+    }
+}
+
+fn parse_context_string_equality(predicate: &str) -> Option<String> {
+    let (left, right) = split_top_level_predicate_operator(predicate, "=")?;
+    let left = left.trim();
+    let right = right.trim();
+    if left == "." {
+        xpath_string_literal(right).map(str::to_owned)
+    } else if right == "." {
+        xpath_string_literal(left).map(str::to_owned)
+    } else {
+        None
     }
 }
 

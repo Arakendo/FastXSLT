@@ -1669,6 +1669,30 @@ fn path_boolean_predicate_compares_following_sibling_node_set_with_integer() {
 }
 
 #[test]
+fn path_boolean_predicate_negates_context_string_equality() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><a>value</a><a></a></doc>",
+        ParseLimits {
+            max_events: 12,
+            max_depth: 3,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let selected = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("a[not(.='')]", location())
+            .expect("context string predicate should parse"),
+    );
+
+    assert_eq!(selected.len(), 1);
+    assert_eq!(document.string_value(selected[0]), "value");
+}
+
+#[test]
 fn constant_integer_arithmetic_selects_the_matching_node_position() {
     let parsed = parse_document(
         "memory:source.xml",

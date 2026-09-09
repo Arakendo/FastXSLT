@@ -437,7 +437,7 @@ fn parse_scalar(
     if let Some(length) = parse_context_string_length_equality(parsed) {
         return Ok(BooleanExpression::ContextStringLengthEquals(length));
     }
-    if let Some(expression) = parse_path_boolean_expression(parsed, location, comparison)? {
+    if let Some(expression) = compile_path_boolean_scalar(parsed, location, comparison)? {
         return Ok(expression);
     }
     if let Some(comparison) = compile_xslt10_variable_literal(parsed, xslt10_compatibility) {
@@ -528,6 +528,21 @@ fn parse_scalar(
     } else {
         ordering.is_eq()
     }))
+}
+
+fn compile_path_boolean_scalar(
+    expression: &str,
+    location: &SourceLocation,
+    comparison: StringComparison,
+) -> Result<Option<BooleanExpression>, CompileFailure> {
+    if let Some(expression) = parse_path_boolean_expression(expression, location, comparison)? {
+        return Ok(Some(expression));
+    }
+    Ok(expression
+        .contains('[')
+        .then(|| parse_location_path(expression, location.clone()).ok())
+        .flatten()
+        .map(BooleanExpression::NodeExists))
 }
 
 fn compile_xslt10_variable_literal(

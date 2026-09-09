@@ -534,6 +534,10 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- Typed predicate paths are now reachable from instruction-local
+  effective boolean value, and a context-string/literal leaf composes with
+  `not`. One unchanged case raises the strict lower bound from 1,316 to 1,317.
+  See [context-string predicate evidence](../Evidence/oasis-xslt10-context-string-predicate-condition-2026-09-09.md).
 - 2026-09-09 -- A bounded path-predicate leaf now compares the charged
   `following-sibling::*` node-set with a static integer using shared XSLT 1.0
   numeric conversion. Two operand-order cases raise the strict lower bound
