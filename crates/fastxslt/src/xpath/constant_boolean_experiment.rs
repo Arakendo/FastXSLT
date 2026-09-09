@@ -223,9 +223,10 @@ pub(crate) fn fold_xpath10_ordered_literal_comparison(expression: &str) -> Optio
         let Some((left, right)) = split_top_level(expression, lexical) else {
             continue;
         };
-        let (left, left_is_string) = xpath10_ordered_literal_operand(left)?;
-        let (right, right_is_string) = xpath10_ordered_literal_operand(right)?;
-        return (left_is_string || right_is_string).then(|| compare_numbers(left, operator, right));
+        let (left, left_requires_conversion) = xpath10_ordered_literal_operand(left)?;
+        let (right, right_requires_conversion) = xpath10_ordered_literal_operand(right)?;
+        return (left_requires_conversion || right_requires_conversion)
+            .then(|| compare_numbers(left, operator, right));
     }
     None
 }
@@ -233,6 +234,8 @@ pub(crate) fn fold_xpath10_ordered_literal_comparison(expression: &str) -> Optio
 fn xpath10_ordered_literal_operand(source: &str) -> Option<(f64, bool)> {
     if let Some(value) = parse_string_literal(source) {
         Some((parse_xpath_number_literal(value).unwrap_or(f64::NAN), true))
+    } else if let Some(value) = parse_boolean_literal(source) {
+        Some((if value { 1.0 } else { 0.0 }, true))
     } else {
         parse_xpath_number_literal(source).map(|value| (value, false))
     }
@@ -636,6 +639,14 @@ mod tests {
         }
         assert_eq!(fold_xpath10_ordered_literal_comparison("2 < 10"), None);
         assert_eq!(fold_xpath10_ordered_literal_comparison("left < '10'"), None);
+        assert_eq!(
+            fold_xpath10_ordered_literal_comparison("0 < true()"),
+            Some(true)
+        );
+        assert_eq!(
+            fold_xpath10_ordered_literal_comparison("false() >= 1"),
+            Some(false)
+        );
     }
 
     #[test]

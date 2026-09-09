@@ -4020,7 +4020,7 @@ fn xslt10_static_mixed_equality_predicates_filter_typed_paths() {
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="doc"><xsl:value-of select="a[true()=4]"/>|<xsl:value-of select="a[true()='present']"/>|<xsl:value-of select="a[false()=4]"/>|<xsl:value-of select="a[3.0='3.0']"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="doc"><xsl:value-of select="a[true()=4]"/>|<xsl:value-of select="a[true()='present']"/>|<xsl:value-of select="a[false()=4]"/>|<xsl:value-of select="a[3.0='3.0']"/>|<xsl:value-of select="a[0 &lt; true()]"/></xsl:template></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit stylesheet");
     let snapshot = resources.seal();
@@ -4034,7 +4034,7 @@ fn xslt10_static_mixed_equality_predicates_filter_typed_paths() {
 
     assert_eq!(
         results.by_request["static-boolean-predicate"].serialized,
-        "first|first||first"
+        "first|first||first|first"
     );
 }
 

@@ -534,6 +534,11 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- Static XSLT 1.0 mixed-type path predicates now share one typed
+  path entry point across selection and value instructions. Boolean-to-number
+  ordered conversion adds two exact OASIS results and raises the strict lower
+  bound from 1,295 to 1,297 without a mismatch or runtime-failure increase. See
+  [ordered literal path-predicate evidence](../Evidence/oasis-xslt10-ordered-literal-path-predicates-2026-09-09.md).
 - 2026-09-09 -- Four XSLT 1.0 boolean/node-set predicate spellings now
   normalize to a charged following-sibling existence predicate in the shared
   typed path evaluator. Completing shared `@*` and `not(@*)` presence semantics

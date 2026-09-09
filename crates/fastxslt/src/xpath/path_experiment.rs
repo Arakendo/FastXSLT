@@ -4,6 +4,7 @@ use crate::execution_control_experiment::{ControlFailure, InvocationControl, Wor
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xml::quick_xml_experiment::ExpandedName;
+use crate::xpath::constant_boolean_experiment;
 use crate::xpath::constant_integer_experiment;
 use crate::xpath::constant_numeric_experiment;
 use crate::xpath::language_experiment;
@@ -660,7 +661,26 @@ pub(crate) fn parse_xslt10_location_path(
     location: SourceLocation,
 ) -> Result<LocationPath, PathFailure> {
     let normalized = normalize_xslt10_following_sibling_boolean_predicate(expression);
-    parse_location_path(normalized.as_deref().unwrap_or(expression), location)
+    let expression = normalized.as_deref().unwrap_or(expression);
+    if let Some((path, matches)) = xslt10_static_comparison_predicate(expression) {
+        return parse_location_path(if matches { path } else { "()" }, location);
+    }
+    parse_location_path(expression, location)
+}
+
+fn xslt10_static_comparison_predicate(expression: &str) -> Option<(&str, bool)> {
+    let expression = expression.trim();
+    let open = expression.rfind('[')?;
+    let path = expression[..open].trim();
+    let predicate = expression[open + 1..].strip_suffix(']')?.trim();
+    if path.is_empty() || path.contains(['[', ']']) {
+        return None;
+    }
+    let matches =
+        constant_boolean_experiment::fold_xpath10_mixed_equality(predicate).or_else(|| {
+            constant_boolean_experiment::fold_xpath10_ordered_literal_comparison(predicate)
+        })?;
+    Some((path, matches))
 }
 
 fn normalize_xslt10_following_sibling_boolean_predicate(expression: &str) -> Option<String> {
