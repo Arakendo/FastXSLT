@@ -103,3 +103,60 @@ fn computed_attribute_reuses_number_evaluation_with_source_focus() {
 
     assert_eq!(serialized, r#"<out n="1"></out><out n="2"></out>"#);
 }
+
+#[test]
+fn computed_attribute_reuses_static_substring_folding() {
+    let stylesheet = document(
+        "memory:attribute-substring.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:attribute name="value"><xsl:value-of select="substring('abcd', 2, 2)"/></xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+    );
+    let source = document("memory:source.xml", b"<doc/>");
+    let program = compile_stylesheet(&stylesheet).expect("stylesheet should compile");
+    let result = execute_program(
+        &program,
+        &source,
+        "attribute-substring-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("stylesheet should execute");
+    let result = serialize_xml(
+        &result,
+        &program.output,
+        "attribute-substring-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("substring attribute should serialize");
+
+    assert_eq!(result, "<out value=\"bc\"></out>");
+}
+
+#[test]
+fn computed_attributes_reuse_sequence_position_and_size() {
+    let stylesheet = document(
+        "memory:attribute-focus.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:apply-templates select="doc/item"/></xsl:template><xsl:template match="item"><out><xsl:attribute name="position"><xsl:value-of select="position()"/></xsl:attribute><xsl:attribute name="size"><xsl:value-of select="last()"/></xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+    );
+    let source = document("memory:source.xml", b"<doc><item/><item/></doc>");
+    let program = compile_stylesheet(&stylesheet).expect("stylesheet should compile");
+    let result = execute_program(
+        &program,
+        &source,
+        "attribute-focus-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("stylesheet should execute");
+    let result = serialize_xml(
+        &result,
+        &program.output,
+        "attribute-focus-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("focus attributes should serialize");
+
+    assert_eq!(
+        result,
+        "<out position=\"1\" size=\"2\"></out><out position=\"2\" size=\"2\"></out>"
+    );
+}

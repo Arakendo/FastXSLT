@@ -218,6 +218,10 @@ fn compile_computed_attribute_value(
         && select.trim() == "string-length(normalize-space(.))"
     {
         LiteralAttributeValue::ContextNormalizedStringLength
+    } else if select.trim() == "position()" {
+        LiteralAttributeValue::ContextPosition
+    } else if select.trim() == "last()" {
+        LiteralAttributeValue::ContextSize
     } else if uses_xslt10_compatibility(document, value_of)
         && let Some(path) =
             parse_xslt10_normalize_space_path(select, document.location(value_of).clone())
@@ -243,6 +247,7 @@ fn compile_computed_attribute_value(
     } else {
         let value = xpath_string_literal(select)
             .map(str::to_owned)
+            .or_else(|| crate::xpath::static_string_experiment::fold_substring_literals(select))
             .or_else(|| crate::xpath::escape_html_uri_experiment::fold_literal(select));
         let Some(value) = value else {
             return Err(unsupported(

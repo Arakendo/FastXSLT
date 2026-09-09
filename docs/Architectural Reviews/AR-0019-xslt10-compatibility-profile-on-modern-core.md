@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- Computed-attribute `xsl:value-of` now reuses the existing
+  literal-only `substring()` fold and exact sequence `position()`/`last()`
+  attribute operations. Three newly initialized cases all match exactly,
+  raising the strict lower bound from 1,279 to 1,282 without a new mismatch or
+  execution failure. See
+  [static and focus-value evidence](../Evidence/oasis-xslt10-computed-attribute-static-and-focus-values-2026-09-09.md).
 - 2026-09-09 -- A computed attribute can now retain exactly one already-
   admitted `xsl:number` instruction and consume its value through the shared
   bounded number evaluator. Source focus, work accounting, cancellation,
