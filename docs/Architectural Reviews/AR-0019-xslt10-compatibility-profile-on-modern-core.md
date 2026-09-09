@@ -534,6 +534,11 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- Exact standalone `xsl:copy-of select="current()"` now lowers
+  to the existing current-item copy plan. One newly initialized case matches
+  exactly, raising the strict lower bound from 1,282 to 1,283 without admitting
+  composed `current()` semantics. See
+  [standalone current-copy evidence](../Evidence/oasis-xslt10-standalone-current-copy-2026-09-09.md).
 - 2026-09-09 -- Computed-attribute `xsl:value-of` now reuses the existing
   literal-only `substring()` fold and exact sequence `position()`/`last()`
   attribute operations. Three newly initialized cases all match exactly,

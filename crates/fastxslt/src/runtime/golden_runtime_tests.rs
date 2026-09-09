@@ -6294,6 +6294,35 @@ fn initial_template_copy_of_current_copies_a_document_nodes_children() {
 }
 
 #[test]
+fn standalone_current_function_reuses_copy_of_current_semantics() {
+    const SOURCE: &str = "urn:fastxslt:current-function-copy:source";
+    const STYLESHEET: &str = "urn:fastxslt:current-function-copy:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc><a/></doc>".to_vec())
+        .expect("admit source document");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:copy-of select="current()"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("current-function-copy", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute current-node copy");
+
+    assert_eq!(
+        results.by_request["current-function-copy"].serialized,
+        "<out><doc><a></a></doc></out>"
+    );
+}
+
+#[test]
 fn copy_of_static_atomic_values_construct_bounded_text() {
     const SOURCE: &str = "urn:fastxslt:static-string-copy:source";
     const STYLESHEET: &str = "urn:fastxslt:static-string-copy:stylesheet";

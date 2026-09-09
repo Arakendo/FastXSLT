@@ -653,7 +653,7 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
         });
     }
     match select.trim() {
-        "." => Ok(Instruction::CopyOfCurrent {
+        "." | "current()" => Ok(Instruction::CopyOfCurrent {
             location: document.location(element).clone(),
         }),
         "*" => Ok(Instruction::CopyOfChildElements {
