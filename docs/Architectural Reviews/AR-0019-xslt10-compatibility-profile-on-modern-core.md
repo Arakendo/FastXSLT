@@ -534,6 +534,11 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- A bounded path-predicate leaf now compares the charged
+  `following-sibling::*` node-set with a static integer using shared XSLT 1.0
+  numeric conversion. Two operand-order cases raise the strict lower bound
+  from 1,314 to 1,316. See
+  [following-sibling numeric-predicate evidence](../Evidence/oasis-xslt10-following-sibling-numeric-predicate-2026-09-09.md).
 - 2026-09-09 -- The private path-predicate tree now composes charged
   `descendant::*` node-set/string equality and inequality with `not`, `and`,
   and `or`. Six unchanged cases raise the strict lower bound from 1,308 to

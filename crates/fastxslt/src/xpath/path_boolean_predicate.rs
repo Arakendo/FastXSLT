@@ -1,8 +1,8 @@
 //! Typed boolean composition for bounded predicates in location paths.
 
 use super::{
-    ControlFailure, Document, InvocationControl, NodeId, NodeKind, descendant_nodes,
-    has_named_attribute, is_ascii_ncname, parse_attribute_value_predicate,
+    ControlFailure, Document, InvocationControl, NodeId, NodeKind, WorkDomain, descendant_nodes,
+    following_siblings, has_named_attribute, is_ascii_ncname, parse_attribute_value_predicate,
     split_top_level_predicate_operator,
 };
 
@@ -11,6 +11,7 @@ pub(super) enum PathBooleanPredicate {
     Present(String),
     Equals { name: String, value: String },
     DescendantElementComparison { value: String, equal: bool },
+    FollowingSiblingElementNumberEquals(i32),
     Not(Box<Self>),
     And(Box<Self>, Box<Self>),
     Or(Box<Self>, Box<Self>),
@@ -22,6 +23,7 @@ impl PathBooleanPredicate {
             Self::Present(name) => name.capacity(),
             Self::Equals { name, value } => name.capacity() + value.capacity(),
             Self::DescendantElementComparison { value, .. } => value.capacity(),
+            Self::FollowingSiblingElementNumberEquals(_) => 0,
             Self::Not(operand) => operand.known_owned_capacity_bytes(),
             Self::And(left, right) | Self::Or(left, right) => {
                 left.known_owned_capacity_bytes() + right.known_owned_capacity_bytes()
@@ -59,6 +61,11 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
     if let Some((value, equal)) = parse_descendant_element_comparison(predicate) {
         return Some(PathBooleanPredicate::DescendantElementComparison { value, equal });
     }
+    if let Some(value) = parse_following_sibling_number_equality(predicate) {
+        return Some(PathBooleanPredicate::FollowingSiblingElementNumberEquals(
+            value,
+        ));
+    }
     predicate
         .strip_prefix('@')
         .filter(|name| is_ascii_ncname(name))
@@ -88,6 +95,19 @@ pub(super) fn evaluate(
             }
             Ok(false)
         }
+        PathBooleanPredicate::FollowingSiblingElementNumberEquals(value) => {
+            for sibling in following_siblings(document, node) {
+                control.charge(WorkDomain::XPathNodeVisit, 1)?;
+                if document.kind(sibling) == NodeKind::Element
+                    && crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(
+                        &document.string_value(sibling),
+                    ) == Some(f64::from(*value))
+                {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
         PathBooleanPredicate::Not(operand) => Ok(!evaluate(document, node, operand, control)?),
         PathBooleanPredicate::And(left, right) => {
             if !evaluate(document, node, left, control)? {
@@ -101,6 +121,19 @@ pub(super) fn evaluate(
             }
             evaluate(document, node, right, control)
         }
+    }
+}
+
+fn parse_following_sibling_number_equality(predicate: &str) -> Option<i32> {
+    let (left, right) = split_top_level_predicate_operator(predicate, "=")?;
+    let left = left.trim();
+    let right = right.trim();
+    if left == "following-sibling::*" {
+        right.parse().ok()
+    } else if right == "following-sibling::*" {
+        left.parse().ok()
+    } else {
+        None
     }
 }
 

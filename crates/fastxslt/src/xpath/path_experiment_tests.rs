@@ -1640,6 +1640,35 @@ fn path_boolean_predicates_compose_descendant_equality_and_negation() {
 }
 
 #[test]
+fn path_boolean_predicate_compares_following_sibling_node_set_with_integer() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><a>1</a><a>2</a><a>3</a><a>4</a></doc>",
+        ParseLimits {
+            max_events: 20,
+            max_depth: 3,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let selected = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("a[following-sibling::*=3]", location())
+            .expect("numeric node-set predicate should parse"),
+    );
+
+    assert_eq!(
+        selected
+            .into_iter()
+            .map(|node| document.string_value(node))
+            .collect::<String>(),
+        "12"
+    );
+}
+
+#[test]
 fn constant_integer_arithmetic_selects_the_matching_node_position() {
     let parsed = parse_document(
         "memory:source.xml",
