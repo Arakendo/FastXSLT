@@ -534,6 +534,11 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- The shared typed path model now retains literal
+  `local-name()` equality predicates over path focus. The unchanged namespace-
+  bearing `copy46` case matches exactly, raising the strict lower bound from
+  1,283 to 1,284 without changing mismatch or runtime-failure counts. See
+  [local-name predicate evidence](../Evidence/oasis-xslt10-local-name-path-predicate-2026-09-09.md).
 - 2026-09-09 -- Exact standalone `xsl:copy-of select="current()"` now lowers
   to the existing current-item copy plan. One newly initialized case matches
   exactly, raising the strict lower bound from 1,282 to 1,283 without admitting

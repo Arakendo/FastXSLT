@@ -80,6 +80,29 @@ fn qualified_child_steps_reject_unbound_prefixes() {
 }
 
 #[test]
+fn local_name_predicate_selects_namespaced_and_unnamespaced_children() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        br#"<doc xmlns:p="urn:selected"><bar>one</bar><p:bar>two</p:bar><other>no</other></doc>"#,
+        ParseLimits {
+            max_events: 16,
+            max_depth: 3,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let path = parse_location_path("*[local-name()='bar']", location())
+        .expect("literal local-name predicate should parse");
+
+    let selected = evaluate_location_path(&document, doc, &path);
+
+    assert_eq!(selected.len(), 2);
+    assert_eq!(document.string_value(selected[0]), "one");
+    assert_eq!(document.string_value(selected[1]), "two");
+}
+
+#[test]
 fn reverse_axes_apply_positions_in_axis_order_then_normalize_document_order() {
     let parsed = parse_document(
         "memory:source.xml",

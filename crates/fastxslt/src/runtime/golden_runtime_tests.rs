@@ -6323,6 +6323,39 @@ fn standalone_current_function_reuses_copy_of_current_semantics() {
 }
 
 #[test]
+fn copy_of_local_name_predicate_preserves_selected_subtrees_in_document_order() {
+    const SOURCE: &str = "urn:fastxslt:copy-local-name:source";
+    const STYLESHEET: &str = "urn:fastxslt:copy-local-name:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc xmlns:p="urn:selected"><bar>one</bar><p:bar>two</p:bar><other>no</other></doc>"#
+                .to_vec(),
+        )
+        .expect("admit source document");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc"/></out></xsl:template><xsl:template match="doc"><xsl:copy-of select="*[local-name()='bar']"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("copy-local-name", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute local-name copy");
+
+    assert_eq!(
+        results.by_request["copy-local-name"].serialized,
+        r#"<out><bar xmlns:p="urn:selected">one</bar><p:bar xmlns:p="urn:selected">two</p:bar></out>"#
+    );
+}
+
+#[test]
 fn copy_of_static_atomic_values_construct_bounded_text() {
     const SOURCE: &str = "urn:fastxslt:static-string-copy:source";
     const STYLESHEET: &str = "urn:fastxslt:static-string-copy:stylesheet";

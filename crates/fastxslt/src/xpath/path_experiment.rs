@@ -483,6 +483,7 @@ enum PredicateAxis {
     DescendantOrSelf,
     Parent,
     ContextLanguage,
+    ContextLocalName,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1029,6 +1030,15 @@ fn parse_axis_predicate(predicate: &str) -> Option<AxisPredicate> {
             conjunct: None,
         });
     }
+    if let Some(local_name) = parse_context_local_name_predicate(predicate) {
+        return Some(AxisPredicate {
+            axis: PredicateAxis::ContextLocalName,
+            name: local_name,
+            value: None,
+            position: None,
+            conjunct: None,
+        });
+    }
     let (predicate, value) = parse_attribute_value_predicate(predicate)
         .map_or((predicate, None), |(name, value)| (name, Some(value)));
     let (axis, name) = if value.is_some() {
@@ -1068,6 +1078,24 @@ fn parse_axis_predicate(predicate: &str) -> Option<AxisPredicate> {
         position: None,
         conjunct: None,
     })
+}
+
+fn parse_context_local_name_predicate(predicate: &str) -> Option<String> {
+    let (function, value) = predicate.split_once('=')?;
+    if !matches!(function.trim(), "local-name()" | "local-name(.)") {
+        return None;
+    }
+    let value = value.trim();
+    for delimiter in ['\'', '"'] {
+        if let Some(value) = value
+            .strip_prefix(delimiter)
+            .and_then(|value| value.strip_suffix(delimiter))
+            .filter(|value| !value.contains(delimiter))
+        {
+            return Some(value.to_owned());
+        }
+    }
+    None
 }
 
 fn split_top_level_predicate_and(predicate: &str) -> Option<(&str, &str)> {
@@ -1556,6 +1584,12 @@ fn evaluate_axis_predicate(
         PredicateAxis::Parent => has_named_parent(document, node, &predicate.name, control),
         PredicateAxis::ContextLanguage => {
             language_experiment::evaluate(document, node, &predicate.name, control)
+        }
+        PredicateAxis::ContextLocalName => {
+            control.charge(WorkDomain::XPathOperation, 1)?;
+            Ok(document
+                .name(node)
+                .is_some_and(|name| name.local == predicate.name))
         }
     }?;
     if !matches {
