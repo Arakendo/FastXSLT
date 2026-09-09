@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Under Review |
 | Opened | 2026-09-04 |
-| Last reviewed | 2026-09-08 |
+| Last reviewed | 2026-09-09 |
 | Scope | Named XSLT 1.0 compatibility, backwards-compatible behavior, and shared modern execution |
 | Trigger | A complete local legacy sweep found 366 initial definite unchanged passes and dominant gaps that largely overlap the XSLT 3.0 roadmap |
 | Related ADRs | ADR-0002, ADR-0006, ADR-0007, ADR-0012, ADR-0013, ADR-0014 |
@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- A computed attribute can now retain exactly one already-
+  admitted `xsl:number` instruction and consume its value through the shared
+  bounded number evaluator. Source focus, work accounting, cancellation,
+  retained-capacity accounting, and semantic inspection remain explicit. Four
+  exact results raise the strict lower bound from 1,275 to 1,279; two other
+  cases reach later compilation boundaries and remain uncredited. See
+  [computed-attribute numbering evidence](../Evidence/oasis-xslt10-computed-attribute-number-2026-09-09.md).
 - 2026-09-09 -- A bounded constructor refinement admits one explicit
   `xsl:text` child as computed-attribute character content by reusing the
   ordinary text validator. Six cases move beyond `FXST1033`, including one

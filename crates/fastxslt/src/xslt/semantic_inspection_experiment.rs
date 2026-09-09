@@ -3,7 +3,8 @@
 use std::collections::BTreeMap;
 
 use super::golden_semantics_experiment::{
-    ElementConstructorOrigin, GlobalBindingKind, Instruction, OutputSettings, StylesheetProgram,
+    ComputedAttribute, ElementConstructorOrigin, GlobalBindingKind, Instruction,
+    LiteralAttributeValue, OutputSettings, StylesheetProgram,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -240,17 +241,11 @@ fn observe_instructions(
                 body,
                 ..
             } => {
-                if !computed_attributes.is_empty() {
-                    *instruction_count = instruction_count
-                        .checked_add(computed_attributes.len())
-                        .ok_or(InspectionFailure::CountOverflow)?;
-                    let occurrences = feature_counts
-                        .entry(SemanticFeature::ComputedAttribute)
-                        .or_default();
-                    *occurrences = occurrences
-                        .checked_add(computed_attributes.len())
-                        .ok_or(InspectionFailure::CountOverflow)?;
-                }
+                observe_literal_element_attributes(
+                    computed_attributes,
+                    instruction_count,
+                    feature_counts,
+                )?;
                 let feature = match origin {
                     ElementConstructorOrigin::Literal => SemanticFeature::LiteralElement,
                     ElementConstructorOrigin::ComputedStatic => SemanticFeature::ComputedElement,
@@ -262,7 +257,14 @@ fn observe_instructions(
                 (SemanticFeature::ProcessingInstruction, None)
             }
             Instruction::CommentNode { .. } => (SemanticFeature::Comment, None),
-            Instruction::Attribute { .. } => (SemanticFeature::ComputedAttribute, None),
+            Instruction::Attribute { attribute, .. } => {
+                observe_computed_attribute_values(
+                    std::slice::from_ref(attribute),
+                    instruction_count,
+                    feature_counts,
+                )?;
+                (SemanticFeature::ComputedAttribute, None)
+            }
             Instruction::ValueOf { .. } => (SemanticFeature::ValueOf, None),
             Instruction::Number { .. } => (SemanticFeature::Number, None),
             Instruction::Variable { .. }
@@ -318,6 +320,48 @@ fn observe_instructions(
             observe_instructions(otherwise, instruction_count, feature_counts)?;
         }
     }
+    Ok(())
+}
+
+fn observe_literal_element_attributes(
+    attributes: &[ComputedAttribute],
+    instruction_count: &mut usize,
+    feature_counts: &mut BTreeMap<SemanticFeature, usize>,
+) -> Result<(), InspectionFailure> {
+    if attributes.is_empty() {
+        return Ok(());
+    }
+    *instruction_count = instruction_count
+        .checked_add(attributes.len())
+        .ok_or(InspectionFailure::CountOverflow)?;
+    let occurrences = feature_counts
+        .entry(SemanticFeature::ComputedAttribute)
+        .or_default();
+    *occurrences = occurrences
+        .checked_add(attributes.len())
+        .ok_or(InspectionFailure::CountOverflow)?;
+    observe_computed_attribute_values(attributes, instruction_count, feature_counts)
+}
+
+fn observe_computed_attribute_values(
+    attributes: &[ComputedAttribute],
+    instruction_count: &mut usize,
+    feature_counts: &mut BTreeMap<SemanticFeature, usize>,
+) -> Result<(), InspectionFailure> {
+    let number_count = attributes
+        .iter()
+        .filter(|attribute| matches!(attribute.value, LiteralAttributeValue::Number(_)))
+        .count();
+    if number_count == 0 {
+        return Ok(());
+    }
+    *instruction_count = instruction_count
+        .checked_add(number_count)
+        .ok_or(InspectionFailure::CountOverflow)?;
+    let occurrences = feature_counts.entry(SemanticFeature::Number).or_default();
+    *occurrences = occurrences
+        .checked_add(number_count)
+        .ok_or(InspectionFailure::CountOverflow)?;
     Ok(())
 }
 
@@ -478,6 +522,41 @@ mod tests {
         }));
         assert!(inspection.features.contains(&FeatureObservation {
             feature: SemanticFeature::LiteralElement,
+            occurrences: 1,
+        }));
+    }
+
+    #[test]
+    fn reports_numbering_nested_inside_a_computed_attribute() {
+        let parsed = parse_document(
+            IDENTITY,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out><xsl:attribute name="n"><xsl:number value="7"/></xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+            ParseLimits {
+                max_events: 64,
+                max_depth: 16,
+            },
+        )
+        .expect("parse numbered-attribute inspection stylesheet");
+        let document = Document::from_parsed(parsed).expect("build inspection stylesheet XDM");
+        let program = compile_stylesheet(&document).expect("compile numbered attribute");
+
+        let inspection = inspect_compiled(
+            IDENTITY,
+            &program,
+            InspectionLimits {
+                max_text_bytes: 256,
+                max_feature_kinds: 4,
+            },
+        )
+        .expect("inspect numbered attribute");
+
+        assert_eq!(inspection.instruction_count, 3);
+        assert!(inspection.features.contains(&FeatureObservation {
+            feature: SemanticFeature::ComputedAttribute,
+            occurrences: 1,
+        }));
+        assert!(inspection.features.contains(&FeatureObservation {
+            feature: SemanticFeature::Number,
             occurrences: 1,
         }));
     }

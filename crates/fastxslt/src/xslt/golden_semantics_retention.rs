@@ -1006,6 +1006,9 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
         LiteralAttributeValue::Text(text)
         | LiteralAttributeValue::Variable(text)
         | LiteralAttributeValue::CountSourceNodeVariable(text) => text.capacity(),
+        LiteralAttributeValue::Number(instruction) => {
+            size_of_val(instruction.as_ref()) + number_instruction_owned(instruction)
+        }
         LiteralAttributeValue::CountSourcePath(path) => path.known_owned_capacity_bytes(),
         LiteralAttributeValue::CountSourcePathUnion(alternatives) => {
             vec_owned(alternatives, LocationPath::known_owned_capacity_bytes)

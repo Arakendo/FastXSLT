@@ -9,14 +9,14 @@ use crate::xpath::path_experiment::{
     LocationPath, evaluate_location_path_controlled, evaluate_location_path_union_controlled,
 };
 use crate::xslt::golden_semantics_experiment::{
-    ComputedAttribute, LiteralAttribute, LiteralAttributeValue,
+    ComputedAttribute, LiteralAttribute, LiteralAttributeValue, Xslt10ConcatExpression,
 };
 
 use super::runtime_context::{RuntimeVariables, SequenceInputs};
 use super::value_evaluator::{
     evaluate_xslt10_concat, normalized_node_string, normalized_node_string_length,
 };
-use super::{ExecutionFailure, FailureCategory, control_failure, failure_at};
+use super::{ExecutionFailure, FailureCategory, SequenceContext, control_failure, failure_at};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum ResultNode {
@@ -116,20 +116,20 @@ pub(super) fn materialize_computed_attributes(
     let mut materialized = Vec::with_capacity(attributes.len());
     for attribute in attributes {
         match &attribute.value {
+            LiteralAttributeValue::Number(instruction) => {
+                materialized.push(materialize_number_attribute(
+                    inputs,
+                    attribute,
+                    instruction,
+                    focus,
+                    request_id,
+                    control,
+                )?);
+            }
             LiteralAttributeValue::Xslt10Concat(expression) => {
-                control
-                    .charge(WorkDomain::ResultNode, 1)
-                    .map_err(|failure| control_failure(failure, request_id))?;
-                materialized.push(ResultAttribute {
-                    name: attribute.name.clone(),
-                    value: evaluate_xslt10_concat(
-                        inputs,
-                        focus.source.map(|(_, node)| node),
-                        expression,
-                        variables,
-                        control,
-                    )?,
-                });
+                materialized.push(materialize_concat_attribute(
+                    inputs, attribute, expression, variables, focus, request_id, control,
+                )?);
             }
             LiteralAttributeValue::CountSourceNodeVariable(variable) => {
                 control
@@ -204,6 +204,54 @@ pub(super) fn materialize_computed_attributes(
     Ok(materialized)
 }
 
+fn materialize_number_attribute(
+    inputs: &SequenceInputs<'_>,
+    attribute: &ComputedAttribute,
+    instruction: &crate::xslt::golden_semantics_experiment::Instruction,
+    focus: LiteralAttributeFocus<'_>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<ResultAttribute, ExecutionFailure> {
+    control
+        .charge(WorkDomain::ResultNode, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    let execution = SequenceContext {
+        node: focus.source.map(|(_, node)| node),
+        focus_position: focus.position,
+        focus_size: focus.size,
+        ..SequenceContext::new(None, None)
+    };
+    Ok(ResultAttribute {
+        name: attribute.name.clone(),
+        value: super::number_executor::evaluate(inputs, instruction, execution, control)?
+            .unwrap_or_default(),
+    })
+}
+
+fn materialize_concat_attribute(
+    inputs: &SequenceInputs<'_>,
+    attribute: &ComputedAttribute,
+    expression: &Xslt10ConcatExpression,
+    variables: &RuntimeVariables,
+    focus: LiteralAttributeFocus<'_>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<ResultAttribute, ExecutionFailure> {
+    control
+        .charge(WorkDomain::ResultNode, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    Ok(ResultAttribute {
+        name: attribute.name.clone(),
+        value: evaluate_xslt10_concat(
+            inputs,
+            focus.source.map(|(_, node)| node),
+            expression,
+            variables,
+            control,
+        )?,
+    })
+}
+
 fn materialize_source_path_count(
     attribute: &ComputedAttribute,
     alternatives: &[LocationPath],
@@ -244,6 +292,9 @@ fn materialize_attribute(
         .map_err(|failure| control_failure(failure, context.request_id))?;
     let value = match value {
         LiteralAttributeValue::Text(value) => value.clone(),
+        LiteralAttributeValue::Number(_) => {
+            unreachable!("number values are materialized by the computed-attribute owner")
+        }
         LiteralAttributeValue::Variable(variable) => {
             attribute_variable_string(variable, location, context, control)?
         }

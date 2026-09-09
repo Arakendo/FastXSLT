@@ -19,6 +19,18 @@ pub(super) fn execute(
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
+    if let Some(value) = evaluate(inputs, instruction, execution, control)? {
+        append_text(result, &value, inputs.request_id, control)?;
+    }
+    Ok(())
+}
+
+pub(super) fn evaluate(
+    inputs: &SequenceInputs<'_>,
+    instruction: &Instruction,
+    execution: SequenceContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<Option<String>, ExecutionFailure> {
     let Instruction::Number {
         value,
         level,
@@ -70,10 +82,7 @@ pub(super) fn execute(
             .map(|value| apply_format(&value, format)),
         }
     };
-    if let Some(value) = formatted {
-        append_text(result, &value, inputs.request_id, control)?;
-    }
-    Ok(())
+    Ok(formatted)
 }
 
 fn apply_format(value: &str, format: &NumberFormat) -> String {

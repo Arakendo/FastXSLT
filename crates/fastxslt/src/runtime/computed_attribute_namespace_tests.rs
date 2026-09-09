@@ -76,3 +76,30 @@ fn computed_attribute_accepts_explicit_text_content() {
 
     assert_eq!(serialized, r#"<out answer="forty-two &amp; safe"></out>"#);
 }
+
+#[test]
+fn computed_attribute_reuses_number_evaluation_with_source_focus() {
+    let stylesheet = document(
+        "memory:attribute-number.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:apply-templates select="doc/item"/></xsl:template><xsl:template match="item"><out><xsl:attribute name="n"><xsl:number/></xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+    );
+    let source = document("memory:source.xml", b"<doc><item/><item/></doc>");
+    let program = compile_stylesheet(&stylesheet).expect("stylesheet should compile");
+    let result = execute_program(
+        &program,
+        &source,
+        "attribute-number-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("stylesheet should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "attribute-number-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("numbered attributes should serialize");
+
+    assert_eq!(serialized, r#"<out n="1"></out><out n="2"></out>"#);
+}

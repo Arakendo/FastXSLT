@@ -1055,6 +1055,7 @@ pub(crate) struct ComputedAttribute {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum LiteralAttributeValue {
     Text(String),
+    Number(Box<Instruction>),
     Variable(String),
     CountSourceNodeVariable(String),
     CountSourcePath(LocationPath),

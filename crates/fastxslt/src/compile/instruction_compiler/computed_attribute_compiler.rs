@@ -92,10 +92,16 @@ pub(super) fn compile_computed_attribute(
         && is_xslt_element(document, *text, "text")
     {
         LiteralAttributeValue::Text(compile_text_value(document, *text)?)
+    } else if let [number] = children.as_slice()
+        && is_xslt_element(document, *number, "number")
+    {
+        LiteralAttributeValue::Number(Box::new(super::number_compiler::compile(
+            document, *number,
+        )?))
     } else {
         return Err(unsupported(
             "FXST1033",
-            "the private computed-attribute value requires literal text, one xsl:text child, or one xsl:value-of child",
+            "the private computed-attribute value requires literal text or one admitted text, value-of, or number instruction",
             document.location(element),
         ));
     };
