@@ -203,6 +203,8 @@ pub(crate) struct TemplateParameter {
 pub(crate) enum TemplateParameterDefault {
     Text(String),
     Integer(i64),
+    SourcePath(LocationPath),
+    Variable(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

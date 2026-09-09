@@ -100,8 +100,11 @@ fn template_owned(value: &Template) -> usize {
 fn template_parameter_owned(value: &TemplateParameter) -> usize {
     value.name.capacity()
         + match &value.default {
-            TemplateParameterDefault::Text(text) => text.capacity(),
+            TemplateParameterDefault::Text(text) | TemplateParameterDefault::Variable(text) => {
+                text.capacity()
+            }
             TemplateParameterDefault::Integer(_) => 0,
+            TemplateParameterDefault::SourcePath(path) => path.known_owned_capacity_bytes(),
         }
 }
 

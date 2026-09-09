@@ -316,9 +316,9 @@ fn execute_program_with_parameters_using(
         let variables = bind_template_parameters(
             root_template,
             &BTreeMap::new(),
-            &globals.atomics,
-            inputs.complete_atomic_frame_clones,
-            request_id,
+            &inputs,
+            Some(source.document_node()),
+            control,
         )?;
         execute_sequence(
             &inputs,
@@ -415,13 +415,8 @@ fn execute_initial_mode(
             .root_template
             .as_ref()
             .expect("a compiled root initial mode has a root template");
-        let variables = bind_template_parameters(
-            template,
-            parameters,
-            &globals.atomics,
-            inputs.complete_atomic_frame_clones,
-            request_id,
-        )?;
+        let variables =
+            bind_template_parameters(template, parameters, &inputs, Some(initial_node), control)?;
         execute_sequence(
             &inputs,
             &template.body,
@@ -459,13 +454,8 @@ fn apply_initial_mode_template(
         effective_multiple_match_policy(inputs, Some(mode)),
         control,
     )? {
-        let variables = bind_template_parameters(
-            &template.template,
-            parameters,
-            &inputs.globals.atomics,
-            inputs.complete_atomic_frame_clones,
-            inputs.request_id,
-        )?;
+        let variables =
+            bind_template_parameters(&template.template, parameters, inputs, Some(node), control)?;
         return execute_sequence(
             inputs,
             &template.template.body,
@@ -565,9 +555,9 @@ fn execute_initial_template_with_optional_source(
     let variables = bind_template_parameters(
         &template.template,
         &BTreeMap::new(),
-        &globals.atomics,
-        inputs.complete_atomic_frame_clones,
-        request_id,
+        &inputs,
+        source.map(Document::document_node),
+        control,
     )?;
     let children = execute_sequence(
         &inputs,
@@ -2197,9 +2187,9 @@ fn execute_next_match(
         let variables = bind_template_parameters(
             &template.template,
             &parameters,
-            &inputs.globals.atomics,
-            inputs.complete_atomic_frame_clones,
-            inputs.request_id,
+            inputs,
+            execution.node,
+            control,
         )?;
         return execute_sequence(
             inputs,
@@ -2279,9 +2269,9 @@ fn execute_apply_imports(
         let variables = bind_template_parameters(
             &template.template,
             &parameters,
-            &inputs.globals.atomics,
-            inputs.complete_atomic_frame_clones,
-            inputs.request_id,
+            inputs,
+            execution.node,
+            control,
         )?;
         return execute_sequence(
             inputs,
@@ -3538,13 +3528,8 @@ fn execute_named_call(
         execution.focus_size,
         control,
     )?;
-    let frame = bind_template_parameters(
-        &target.template,
-        &supplied,
-        &inputs.globals.atomics,
-        inputs.complete_atomic_frame_clones,
-        inputs.request_id,
-    )?;
+    let frame =
+        bind_template_parameters(&target.template, &supplied, inputs, execution.node, control)?;
     execute_sequence(
         inputs,
         &target.template.body,
@@ -3595,13 +3580,8 @@ fn apply_template_at(
         effective_multiple_match_policy(inputs, mode),
         control,
     )? {
-        let variables = bind_template_parameters(
-            &template.template,
-            parameters,
-            &inputs.globals.atomics,
-            inputs.complete_atomic_frame_clones,
-            inputs.request_id,
-        )?;
+        let variables =
+            bind_template_parameters(&template.template, parameters, inputs, Some(node), control)?;
         return execute_sequence(
             inputs,
             &template.template.body,

@@ -39,7 +39,8 @@ use template_pattern_compiler::compile_match_pattern;
 
 use instruction_compiler::{
     compile_comment, compile_literal_result_attributes, compile_processing_instruction,
-    compile_sequence_excluding, compile_text, literal_result_namespaces, parse_template_modes,
+    compile_sequence_excluding_with_bindings, compile_text, literal_result_namespaces,
+    parse_template_modes,
 };
 use mode_declaration_compiler::{
     validate_mode_declaration as validate_mode, validate_same_precedence_mode_declaration_conflicts,
@@ -1396,9 +1397,18 @@ fn compile_template(document: &Document, element: NodeId) -> Result<Template, Co
             body_started = true;
         }
     }
+    let parameter_bindings = parameters
+        .iter()
+        .map(|parameter| parameter.name.clone())
+        .collect::<Vec<_>>();
     Ok(Template {
         parameters,
-        body: compile_sequence_excluding(document, element, &parameter_nodes)?,
+        body: compile_sequence_excluding_with_bindings(
+            document,
+            element,
+            &parameter_nodes,
+            &parameter_bindings,
+        )?,
         location: document.location(element).clone(),
     })
 }
@@ -1444,6 +1454,10 @@ fn compile_named_template(
             body_started = true;
         }
     }
+    let parameter_bindings = parameters
+        .iter()
+        .map(|parameter| parameter.name.clone())
+        .collect::<Vec<_>>();
     Ok(NamedTemplate {
         name: name.to_owned(),
         parameters: parameters
@@ -1452,7 +1466,12 @@ fn compile_named_template(
             .collect(),
         template: Template {
             parameters,
-            body: compile_sequence_excluding(document, element, &parameter_nodes)?,
+            body: compile_sequence_excluding_with_bindings(
+                document,
+                element,
+                &parameter_nodes,
+                &parameter_bindings,
+            )?,
             location: document.location(element).clone(),
         },
     })
@@ -1537,6 +1556,15 @@ fn compile_template_parameter_default(
         crate::xpath::static_string_experiment::fold_binary_literal_function(select)
     {
         return Ok(TemplateParameterDefault::Text(value));
+    }
+    if let Some(variable) = select
+        .strip_prefix('$')
+        .filter(|variable| is_ascii_ncname(variable))
+    {
+        return Ok(TemplateParameterDefault::Variable(variable.to_owned()));
+    }
+    if let Ok(path) = parse_location_path(select, document.location(child).clone()) {
+        return Ok(TemplateParameterDefault::SourcePath(path));
     }
     Err(unsupported(
         "FXST1032",

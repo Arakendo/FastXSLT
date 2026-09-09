@@ -66,13 +66,8 @@ fn execute_selected_temporary_template(
     template: &MatchedTemplate,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
-    let variables = bind_template_parameters(
-        &template.template,
-        parameters,
-        &inputs.globals.atomics,
-        inputs.complete_atomic_frame_clones,
-        inputs.request_id,
-    )?;
+    let variables =
+        bind_template_parameters(&template.template, parameters, inputs, None, control)?;
     execute_sequence(
         inputs,
         &template.template.body,
@@ -152,13 +147,8 @@ pub(super) fn apply_temporary_roots(
         }
     }
     if let Some((template_index, template)) = document_template {
-        let variables = bind_template_parameters(
-            &template.template,
-            parameters,
-            &inputs.globals.atomics,
-            inputs.complete_atomic_frame_clones,
-            inputs.request_id,
-        )?;
+        let variables =
+            bind_template_parameters(&template.template, parameters, inputs, None, control)?;
         return execute_sequence(
             inputs,
             &template.template.body,
@@ -255,13 +245,8 @@ pub(super) fn apply_temporary_next(
     if let Some((next_index, template)) =
         select_next_temporary_template(inputs, focus, mode, current_index, control)?
     {
-        let variables = bind_template_parameters(
-            &template.template,
-            parameters,
-            &inputs.globals.atomics,
-            inputs.complete_atomic_frame_clones,
-            inputs.request_id,
-        )?;
+        let variables =
+            bind_template_parameters(&template.template, parameters, inputs, None, control)?;
         return execute_sequence(
             inputs,
             &template.template.body,

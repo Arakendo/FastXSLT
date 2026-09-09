@@ -150,8 +150,17 @@ pub(super) fn compile_sequence_excluding(
     parent: NodeId,
     excluded: &[NodeId],
 ) -> Result<Vec<Instruction>, CompileFailure> {
+    compile_sequence_excluding_with_bindings(document, parent, excluded, &[])
+}
+
+pub(super) fn compile_sequence_excluding_with_bindings(
+    document: &Document,
+    parent: NodeId,
+    excluded: &[NodeId],
+    initial_local_bindings: &[String],
+) -> Result<Vec<Instruction>, CompileFailure> {
     let mut instructions = Vec::new();
-    let mut local_variables = Vec::new();
+    let mut local_variables = initial_local_bindings.to_vec();
     let preserve_whitespace = effective_xml_space_preserved(document, parent)?;
     let children = document.children(parent).to_vec();
     for (index, child) in children.iter().copied().enumerate() {

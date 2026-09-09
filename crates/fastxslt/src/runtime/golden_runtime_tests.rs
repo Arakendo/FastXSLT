@@ -4642,6 +4642,60 @@ fn xslt10_for_each_text_trees_share_local_and_global_source_semantics() {
 }
 
 #[test]
+fn xslt10_template_parameter_defaults_preserve_source_nodes_and_sequential_scope() {
+    const SOURCE: &str = "urn:fastxslt:template-parameter-defaults:source";
+    const STYLESHEET: &str = "urn:fastxslt:template-parameter-defaults:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item id=\"first\"/><item id=\"second\"/></doc>".to_vec(),
+        )
+        .expect("admit template-parameter-default source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc/item"/></out></xsl:template><xsl:template match="item"><xsl:param name="selected" select="@id"/><xsl:param name="dependent" select="$selected"/><matched><xsl:value-of select="$dependent"/></matched><xsl:call-template name="named"/></xsl:template><xsl:template name="named"><xsl:param name="selected" select="@id"/><xsl:param name="dependent" select="$selected"/><named><xsl:value-of select="$dependent"/></named></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit template-parameter-default stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile source-context and dependent template parameter defaults");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("template-parameter-defaults", "result", SOURCE))
+        .expect("admit template-parameter-default request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute source-context and dependent template parameter defaults");
+    assert_eq!(
+        results.by_request["template-parameter-defaults"].serialized,
+        "<out><matched>first</matched><named>first</named><matched>second</matched><named>second</named></out>"
+    );
+}
+
+#[test]
+fn xslt10_template_parameter_names_cannot_be_rebound_in_the_template_body() {
+    const SOURCE: &str = "urn:fastxslt:template-parameter-duplicate:source";
+    const STYLESHEET: &str = "urn:fastxslt:template-parameter-duplicate:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit duplicate-parameter source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:param name="value" select="1"/><xsl:variable name="value">two</xsl:variable><xsl:value-of select="$value"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit duplicate-parameter stylesheet");
+
+    let failure = compile_resource(&resources.seal(), STYLESHEET)
+        .expect_err("a body-local variable cannot rebind a template parameter");
+    assert_eq!(failure.code, "FXST0017");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+}
+
+#[test]
 fn node_template_parameter_shadows_same_named_global_atomic_in_both_frame_paths() {
     const SOURCE: &str = "urn:fastxslt:parameter-shadow:source";
     const STYLESHEET: &str = "urn:fastxslt:parameter-shadow:stylesheet";

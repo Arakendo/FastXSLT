@@ -143,13 +143,8 @@ fn execute_selected_or_builtin(
         append_text(&mut result, &value.to_string(), inputs.request_id, control)?;
         return Ok(result);
     };
-    let variables = bind_template_parameters(
-        &template.template,
-        parameters,
-        &inputs.globals.atomics,
-        inputs.complete_atomic_frame_clones,
-        inputs.request_id,
-    )?;
+    let variables =
+        bind_template_parameters(&template.template, parameters, inputs, None, control)?;
     execute_sequence(
         inputs,
         &template.template.body,

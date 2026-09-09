@@ -1045,11 +1045,14 @@ fn materialize_temporary_node(
 pub(super) fn bind_template_parameters(
     template: &Template,
     supplied: &BTreeMap<String, InvocationParameter>,
-    base: &Arc<BTreeMap<String, AtomicValue>>,
-    complete_clone: bool,
-    request_id: &str,
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
 ) -> Result<RuntimeVariables, ExecutionFailure> {
-    let mut frame = RuntimeVariables::from_atomics(base, complete_clone);
+    let mut frame = RuntimeVariables::from_atomics(
+        &inputs.globals.atomics,
+        inputs.complete_atomic_frame_clones,
+    );
     for parameter in &template.parameters {
         if parameter.required
             && supplied
@@ -1059,7 +1062,7 @@ pub(super) fn bind_template_parameters(
             return Err(failure(
                 "XTDE0700",
                 FailureCategory::Invalid,
-                Some(request_id),
+                Some(inputs.request_id),
                 format!(
                     "required template parameter was not supplied: ${}",
                     parameter.name
@@ -1080,20 +1083,66 @@ pub(super) fn bind_template_parameters(
                 frame.bind_temporary_tree(parameter.name.clone(), tree.clone());
             }
             None => {
-                let value = match &parameter.default {
-                    TemplateParameterDefault::Text(value) => AtomicValue::string(value.clone()),
-                    TemplateParameterDefault::Integer(value) => {
-                        AtomicValue::from_validated_lexical(
-                            BuiltinAtomicType::Integer,
-                            value.to_string(),
-                        )
-                    }
-                };
-                frame.bind_atomic(parameter.name.clone(), value);
+                bind_template_parameter_default(&mut frame, parameter, inputs, context, control)?;
             }
         }
     }
     Ok(frame)
+}
+
+fn bind_template_parameter_default(
+    frame: &mut RuntimeVariables,
+    parameter: &crate::xslt::golden_semantics_experiment::TemplateParameter,
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    match &parameter.default {
+        TemplateParameterDefault::Text(value) => {
+            frame.bind_atomic(parameter.name.clone(), AtomicValue::string(value.clone()));
+        }
+        TemplateParameterDefault::Integer(value) => {
+            frame.bind_atomic(
+                parameter.name.clone(),
+                AtomicValue::from_validated_lexical(BuiltinAtomicType::Integer, value.to_string()),
+            );
+        }
+        TemplateParameterDefault::SourcePath(path) => {
+            let (source, context) = required_source_context(inputs, context)?;
+            let nodes = evaluate_location_path_controlled(source, context, path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            frame.bind_source_nodes(parameter.name.clone(), nodes);
+        }
+        TemplateParameterDefault::Variable(variable) => {
+            copy_parameter_default_variable(frame, parameter, variable, inputs)?;
+        }
+    }
+    Ok(())
+}
+
+fn copy_parameter_default_variable(
+    frame: &mut RuntimeVariables,
+    parameter: &crate::xslt::golden_semantics_experiment::TemplateParameter,
+    variable: &str,
+    inputs: &SequenceInputs<'_>,
+) -> Result<(), ExecutionFailure> {
+    if let Some(value) = frame.atomics.get(variable).cloned() {
+        frame.bind_atomic(parameter.name.clone(), value);
+    } else if let Some(values) = frame.atomic_sequences.get(variable).cloned() {
+        frame.bind_atomic_sequence(parameter.name.clone(), values);
+    } else if let Some(nodes) = frame.source_nodes(inputs.globals, variable).cloned() {
+        frame.bind_source_nodes(parameter.name.clone(), nodes);
+    } else if let Some(tree) = frame.temporary_tree(inputs.globals, variable).cloned() {
+        frame.bind_temporary_tree(parameter.name.clone(), tree);
+    } else {
+        return Err(failure(
+            "FXRT0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            format!("unbound template parameter default variable: ${variable}"),
+        ));
+    }
+    Ok(())
 }
 
 pub(super) fn required_source_context<'a>(

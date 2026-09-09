@@ -534,6 +534,14 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Typed template parameter defaults now retain source-node paths
+  at the caller's exact focus and copy preceding parameter values without
+  erasing atomic, source-node, or temporary-tree kind. Parameter names also
+  participate in duplicate local-binding validation. Four unchanged XML
+  expectations raise the strict lower bound from 1,235 to 1,239; one
+  expected-error case advances to its correct runtime forward-reference
+  failure without adding a standard-case regression. See
+  [template parameter default evidence](../Evidence/oasis-xslt10-template-parameter-defaults-2026-09-08.md).
 - 2026-09-08 -- Local variables and global defaults now share a bounded XSLT
   1.0 temporary-tree materializer for exactly
   `for-each(location-path) -> value-of(.)`. Controlled navigation and node
