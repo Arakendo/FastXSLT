@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- Static prefixed computed-attribute QNames now resolve once at
+  compilation, with an optional nonempty static namespace override and strict
+  `xml`/`xmlns`, malformed, empty, and unbound-prefix failures. Eleven cases
+  reach execution and nine exact results raise the strict lower bound from
+  1,263 to 1,272; one line-ending mismatch and one comparator boundary remain
+  uncredited. Runtime QName parsing and lexical-prefix identity were not added.
+  See [prefixed attribute evidence](../Evidence/oasis-xslt10-static-prefixed-computed-attribute-2026-09-09.md).
 - 2026-09-09 -- Direct computed attributes now retain a static namespace URI,
   bounded literal text, and a compile-time prefix binding in the owning
   element's ADR-0018 namespace slice. Twenty-six unchanged cases initialize;

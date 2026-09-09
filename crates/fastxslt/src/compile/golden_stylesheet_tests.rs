@@ -1531,6 +1531,27 @@ fn computed_attribute_retains_static_namespace_and_literal_text() {
         LiteralAttributeValue::Text("forty-two".to_owned())
     );
 
+    let prefixed = parse_stylesheet(
+        "memory:computed-attribute-prefixed-name.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:original"><xsl:template match="/"><out><xsl:attribute name="p:answer" namespace="urn:override">value</xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&prefixed).expect("prefixed static QName should compile");
+    let root_template = program.root_template.expect("root template");
+    let [
+        Instruction::LiteralElement {
+            computed_attributes,
+            ..
+        },
+    ] = root_template.body.as_slice()
+    else {
+        panic!("template should retain one result element");
+    };
+    assert_eq!(
+        computed_attributes[0].name.namespace.as_deref(),
+        Some("urn:override")
+    );
+    assert_eq!(computed_attributes[0].name.local, "answer");
+
     let dynamic = parse_stylesheet(
         "memory:computed-attribute-dynamic-namespace.xsl",
         br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out><xsl:attribute name="answer" namespace="{@namespace}">value</xsl:attribute></out></xsl:template></xsl:stylesheet>"#,

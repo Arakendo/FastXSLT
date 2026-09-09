@@ -8,11 +8,12 @@ use crate::xslt::golden_semantics_experiment::{ComputedAttribute, LiteralAttribu
 use super::value_expression_compiler::compile_xslt10_concat;
 use super::{
     CompileFailure, ensure_no_meaningful_children, ensure_only_attributes, invalid,
-    is_ascii_ncname, is_xslt_element, meaningful_children, optional_attribute,
-    parse_xslt10_normalize_space_path, required_attribute, split_top_level_union, unsupported,
-    uses_xslt10_compatibility, xpath_string_literal,
+    is_ascii_ncname, is_xslt_element, meaningful_children, namespace_for_prefix,
+    optional_attribute, parse_xslt10_normalize_space_path, required_attribute,
+    split_top_level_union, unsupported, uses_xslt10_compatibility, xpath_string_literal,
 };
 
+const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
 const XMLNS_NAMESPACE: &str = "http://www.w3.org/2000/xmlns/";
 
 pub(super) fn compile_computed_attributes(
@@ -54,14 +55,15 @@ pub(super) fn compile_computed_attribute(
             document.location(element),
         ));
     }
-    if !is_ascii_ncname(name) {
+    if name.contains(['{', '}']) {
         return Err(unsupported(
-            "FXST1033",
-            format!("the private computed-attribute slice requires an unprefixed NCName: {name}"),
+            "FXST1062",
+            "the private computed-attribute name slice requires a static QName",
             document.location(element),
         ));
     }
-    if name == "xmlns" || namespace == Some(XMLNS_NAMESPACE) {
+    let name = compile_static_attribute_name(document, element, name, namespace)?;
+    if name.local == "xmlns" || name.namespace.as_deref() == Some(XMLNS_NAMESPACE) {
         return Err(invalid(
             "XTDE0855",
             "xsl:attribute cannot construct a name in the reserved xmlns namespace",
@@ -94,14 +96,74 @@ pub(super) fn compile_computed_attribute(
         ));
     };
     Ok(ComputedAttribute {
-        name: ExpandedName {
-            namespace: namespace
-                .filter(|value| !value.is_empty())
-                .map(str::to_owned),
-            local: name.to_owned(),
-        },
+        name,
         value,
         location: document.location(element).clone(),
+    })
+}
+
+fn compile_static_attribute_name(
+    document: &Document,
+    element: NodeId,
+    lexical: &str,
+    namespace_override: Option<&str>,
+) -> Result<ExpandedName, CompileFailure> {
+    if is_ascii_ncname(lexical) {
+        return Ok(ExpandedName {
+            namespace: namespace_override
+                .filter(|value| !value.is_empty())
+                .map(str::to_owned),
+            local: lexical.to_owned(),
+        });
+    }
+    let Some((prefix, local)) = lexical.split_once(':') else {
+        return Err(invalid(
+            "XTDE0850",
+            format!("xsl:attribute name is not a QName: {lexical}"),
+            document.location(element),
+        ));
+    };
+    if !is_ascii_ncname(prefix) || !is_ascii_ncname(local) || local.contains(':') {
+        return Err(invalid(
+            "XTDE0850",
+            format!("xsl:attribute name is not a QName: {lexical}"),
+            document.location(element),
+        ));
+    }
+    if prefix == "xmlns" {
+        return Err(invalid(
+            "XTDE0855",
+            "xsl:attribute cannot construct an xmlns-prefixed name",
+            document.location(element),
+        ));
+    }
+    let namespace = match namespace_override {
+        Some("") => {
+            return Err(invalid(
+                "XTDE0860",
+                "a prefixed xsl:attribute name cannot use an empty namespace",
+                document.location(element),
+            ));
+        }
+        Some(namespace) => namespace,
+        None => namespace_for_prefix(document, element, prefix).ok_or_else(|| {
+            invalid(
+                "XTDE0860",
+                format!("xsl:attribute name uses an unbound prefix: {prefix}"),
+                document.location(element),
+            )
+        })?,
+    };
+    if (prefix == "xml") != (namespace == XML_NAMESPACE) {
+        return Err(invalid(
+            "XTDE0860",
+            "the xml prefix and namespace must be used together",
+            document.location(element),
+        ));
+    }
+    Ok(ExpandedName {
+        namespace: Some(namespace.to_owned()),
+        local: local.to_owned(),
     })
 }
 
