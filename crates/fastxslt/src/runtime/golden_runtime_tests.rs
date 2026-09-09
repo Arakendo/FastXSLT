@@ -6414,6 +6414,35 @@ fn copy_of_local_name_predicate_preserves_selected_subtrees_in_document_order() 
 }
 
 #[test]
+fn xslt10_copy_of_unary_numeric_union_uses_first_node_in_document_order() {
+    const SOURCE: &str = "urn:fastxslt:copy-numeric-union:source";
+    const STYLESHEET: &str = "urn:fastxslt:copy-numeric-union:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><n1>3</n1><n2>7</n2></doc>".to_vec())
+        .expect("admit source document");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="doc"><out><xsl:copy-of select="-(n2|n1)"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("copy-numeric-union", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute numeric union copy");
+
+    assert_eq!(
+        results.by_request["copy-numeric-union"].serialized,
+        "<out>-3</out>"
+    );
+}
+
+#[test]
 fn copy_of_static_atomic_values_construct_bounded_text() {
     const SOURCE: &str = "urn:fastxslt:static-string-copy:source";
     const STYLESHEET: &str = "urn:fastxslt:static-string-copy:stylesheet";

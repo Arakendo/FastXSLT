@@ -549,6 +549,10 @@ pub(crate) enum Instruction {
         variable: String,
         location: SourceLocation,
     },
+    CopyOfAtomicValue {
+        select: Box<crate::xpath::binary_numeric_experiment::BinaryNumericExpression>,
+        location: SourceLocation,
+    },
     If {
         test: BooleanExpression,
         body: Vec<Instruction>,

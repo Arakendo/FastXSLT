@@ -21,6 +21,7 @@ use super::{
     recognizes_source_free_scalar, recognizes_string_length, split_top_level_union, unsupported,
     xpath_string_literal,
 };
+use crate::xpath::binary_numeric_experiment::BinaryNumericNode;
 use crate::xslt::golden_semantics_experiment::{
     Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10PathStringFunction,
     Xslt10PathStringFunctionKind, Xslt10PathSubstring, Xslt10PathTranslate,
@@ -976,11 +977,15 @@ fn compile_binary_numeric_path(
         location,
         static_context.compatibility == ValueCompatibilityMode::Xslt10,
     )?;
-    if !matches!(
+    let admitted_root = matches!(
         root,
-        crate::xpath::binary_numeric_experiment::BinaryNumericNode::Literal(_)
-            | crate::xpath::binary_numeric_experiment::BinaryNumericNode::Operation { .. }
-    ) {
+        BinaryNumericNode::Literal(_) | BinaryNumericNode::Operation { .. }
+    ) || matches!(
+        &root,
+        BinaryNumericNode::Negate(operand)
+            if matches!(operand.as_ref(), BinaryNumericNode::PathUnion(_))
+    );
+    if !admitted_root {
         return None;
     }
     let selection = match static_context.compatibility {
@@ -998,6 +1003,22 @@ fn compile_binary_numeric_path(
             location: location.clone(),
         },
     )))
+}
+
+pub(super) fn compile_xslt10_binary_numeric(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Option<crate::xpath::binary_numeric_experiment::BinaryNumericExpression> {
+    let static_context = ValueStaticContext::for_element(document, element);
+    if static_context.compatibility != ValueCompatibilityMode::Xslt10 {
+        return None;
+    }
+    match compile_binary_numeric_path(expression, location, static_context)? {
+        ValueExpression::BinaryNumeric(expression) => Some(*expression),
+        _ => None,
+    }
 }
 
 fn compile_binary_numeric_node(
@@ -1033,6 +1054,14 @@ fn compile_binary_numeric_node(
         crate::xpath::binary_numeric_experiment::ExactRational::parse_decimal(operand)
     {
         return Some(BinaryNumericNode::Literal(value));
+    }
+    if let Some(alternatives) = split_top_level_union(operand) {
+        let alternatives = alternatives
+            .into_iter()
+            .map(str::trim)
+            .map(|alternative| parse_location_path(alternative, location.clone()).ok())
+            .collect::<Option<Vec<_>>>()?;
+        return Some(BinaryNumericNode::PathUnion(alternatives));
     }
     if allow_xslt10_variables
         && let Some(variable) = operand.strip_prefix('$')

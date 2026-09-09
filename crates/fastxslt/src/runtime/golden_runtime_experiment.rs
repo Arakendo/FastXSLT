@@ -794,6 +794,7 @@ fn execute_instruction(
         | Instruction::CopyOfLocationPath { .. }
         | Instruction::CopyOfPathUnion { .. }
         | Instruction::CopyOfVariable { .. }
+        | Instruction::CopyOfAtomicValue { .. }
         | Instruction::Copy { .. } => result.extend(execute_result_instruction(
             inputs,
             instruction,
@@ -875,6 +876,18 @@ fn execute_result_instruction<'a>(
         }
         Instruction::CopyOfVariable { variable, location } => {
             execute_copy_of_variable(inputs, variable, location, scope, control)
+        }
+        Instruction::CopyOfAtomicValue { select, .. } => {
+            let value = value_evaluator::evaluate_binary_numeric_value(
+                inputs,
+                execution.node,
+                select,
+                scope,
+                control,
+            )?;
+            let mut result = Vec::new();
+            append_text(&mut result, &value, inputs.request_id, control)?;
+            Ok(result)
         }
         Instruction::Copy { .. } => execute_copy(inputs, instruction, execution, scope, control),
         _ => unreachable!("result dispatch receives only result-producing instructions"),

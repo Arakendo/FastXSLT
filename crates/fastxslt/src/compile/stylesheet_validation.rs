@@ -81,6 +81,7 @@ fn validate_named_calls(
             | Instruction::CopyOfPathUnion { .. }
             | Instruction::CopyOfStaticAtomicText { .. }
             | Instruction::CopyOfVariable { .. }
+            | Instruction::CopyOfAtomicValue { .. }
             | Instruction::Copy { .. } => {}
         }
     }

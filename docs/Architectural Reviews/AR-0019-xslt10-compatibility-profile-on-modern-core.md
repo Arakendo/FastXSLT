@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- The shared exact-rational evaluator now retains typed path-
+  union operands, and XSLT 1.0 `xsl:copy-of` can copy the resulting atomic
+  value. The unchanged `math103` case raises the strict lower bound from 1,285
+  to 1,286. A broader unary-root experiment was rejected after exposing legacy
+  double-formatting differences. See
+  [unary numeric path-union evidence](../Evidence/oasis-xslt10-unary-numeric-path-union-copy-2026-09-09.md).
 - 2026-09-09 -- XSLT 1.0 source-node variables now compose with the shared
   typed descendant-path evaluator. The unchanged `variable50` case matches
   exactly, raising the strict lower bound from 1,284 to 1,285; constructed

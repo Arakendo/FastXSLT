@@ -299,7 +299,8 @@ fn observe_instructions(
             | Instruction::CopyOfLocationPath { .. }
             | Instruction::CopyOfPathUnion { .. }
             | Instruction::CopyOfStaticAtomicText { .. }
-            | Instruction::CopyOfVariable { .. } => (SemanticFeature::CopyOf, None),
+            | Instruction::CopyOfVariable { .. }
+            | Instruction::CopyOfAtomicValue { .. } => (SemanticFeature::CopyOf, None),
         };
         let occurrences = feature_counts.entry(feature).or_default();
         *occurrences = occurrences

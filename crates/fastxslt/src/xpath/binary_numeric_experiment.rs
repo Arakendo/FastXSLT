@@ -3,7 +3,9 @@
 use crate::execution_control_experiment::{ControlFailure, InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
 
-use super::path_experiment::{LocationPath, evaluate_location_path_controlled};
+use super::path_experiment::{
+    LocationPath, evaluate_location_path_controlled, evaluate_location_path_union_controlled,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum BinaryNumericOperator {
@@ -33,6 +35,7 @@ pub(crate) enum BinaryNumericNode {
         path: LocationPath,
         negate: bool,
     },
+    PathUnion(Vec<LocationPath>),
     Literal(ExactRational),
     Variable(String),
     Negate(Box<Self>),
@@ -55,6 +58,13 @@ impl BinaryNumericNode {
     fn known_owned_capacity_bytes(&self) -> usize {
         match self {
             Self::Path { path, .. } => path.known_owned_capacity_bytes(),
+            Self::PathUnion(alternatives) => {
+                alternatives.capacity() * std::mem::size_of::<LocationPath>()
+                    + alternatives
+                        .iter()
+                        .map(LocationPath::known_owned_capacity_bytes)
+                        .sum::<usize>()
+            }
             Self::Variable(name) => name.capacity(),
             Self::Literal(_) => 0,
             Self::Negate(operand) => operand.known_owned_capacity_bytes(),
@@ -229,6 +239,13 @@ fn evaluate_node<VariableFailure>(
             operand_value(document, context, path, *negate, selection, control)
                 .map_err(lift_failure)
         }
+        BinaryNumericNode::PathUnion(alternatives) => {
+            let selected =
+                evaluate_location_path_union_controlled(document, context, alternatives, control)
+                    .map_err(BinaryNumericEvaluationFailure::Control)?;
+            selected_operand_value(document, &selected, false, selection, control)
+                .map_err(lift_failure)
+        }
         BinaryNumericNode::Literal(value) => Ok(*value),
         BinaryNumericNode::Variable(name) => {
             let lexical = resolve_variable(name, control)
@@ -313,6 +330,16 @@ fn operand_value(
 ) -> Result<ExactRational, BinaryNumericEvaluationFailure> {
     let selected = evaluate_location_path_controlled(document, context, path, control)
         .map_err(BinaryNumericEvaluationFailure::Control)?;
+    selected_operand_value(document, &selected, negate, selection, control)
+}
+
+fn selected_operand_value(
+    document: &Document,
+    selected: &[NodeId],
+    negate: bool,
+    selection: NumericOperandSelection,
+    control: &mut InvocationControl,
+) -> Result<ExactRational, BinaryNumericEvaluationFailure> {
     if selection == NumericOperandSelection::ZeroOrOne && selected.len() > 1 {
         return Err(BinaryNumericEvaluationFailure::Cardinality);
     }

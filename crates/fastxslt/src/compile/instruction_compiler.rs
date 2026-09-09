@@ -632,6 +632,17 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
             location: document.location(element).clone(),
         });
     }
+    if let Some(select) = value_expression_compiler::compile_xslt10_binary_numeric(
+        document,
+        element,
+        select.trim(),
+        document.location(element),
+    ) {
+        return Ok(Instruction::CopyOfAtomicValue {
+            select: Box::new(select),
+            location: document.location(element).clone(),
+        });
+    }
     if let Some(alternatives) = split_top_level_union(select) {
         let alternatives = alternatives
             .into_iter()
