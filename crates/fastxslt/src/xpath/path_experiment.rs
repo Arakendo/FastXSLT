@@ -9,16 +9,16 @@ use crate::xpath::constant_integer_experiment;
 use crate::xpath::constant_numeric_experiment;
 use crate::xpath::language_experiment;
 
-#[path = "path_attribute_predicate.rs"]
-mod attribute_boolean_predicate;
-use attribute_boolean_predicate::AttributeBooleanPredicate;
+#[path = "path_boolean_predicate.rs"]
+mod path_boolean_predicate;
+use path_boolean_predicate::PathBooleanPredicate;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct LocationPath {
     pub(crate) steps: Vec<PathStep>,
     origin: PathOrigin,
     final_predicate: Option<Box<AxisPredicate>>,
-    final_attribute_predicate: Option<Box<AttributeBooleanPredicate>>,
+    final_boolean_predicate: Option<Box<PathBooleanPredicate>>,
     final_context_predicate: Option<FinalContextPredicate>,
     first_step_predicates_use_document_order: bool,
     step_axis_predicates: Vec<Option<AxisPredicate>>,
@@ -58,9 +58,9 @@ impl LocationPath {
                 .as_deref()
                 .map_or(0, AxisPredicate::known_owned_capacity_bytes)
             + self
-                .final_attribute_predicate
+                .final_boolean_predicate
                 .as_deref()
-                .map_or(0, AttributeBooleanPredicate::known_owned_capacity_bytes)
+                .map_or(0, PathBooleanPredicate::known_owned_capacity_bytes)
             + self.step_position_predicates.capacity() * std::mem::size_of::<Vec<StepPredicate>>()
             + self
                 .step_position_predicates
@@ -581,8 +581,7 @@ pub(crate) fn parse_location_path(
     let first_step_predicates_use_document_order = normalized_filter.is_some();
     let expression = normalized_filter.as_deref().unwrap_or(expression);
     let (expression, final_context_predicate) = parse_final_context_predicate(expression);
-    let (expression, final_attribute_predicate) =
-        parse_final_attribute_boolean_predicate(expression);
+    let (expression, final_boolean_predicate) = parse_final_boolean_predicate(expression);
     let (expression, final_predicate) = parse_final_axis_predicate(expression);
     let final_predicate = final_predicate.map(Box::new);
     let (expression, origin) = parse_path_origin(expression);
@@ -660,7 +659,7 @@ pub(crate) fn parse_location_path(
         steps,
         origin,
         final_predicate,
-        final_attribute_predicate,
+        final_boolean_predicate,
         final_context_predicate,
         first_step_predicates_use_document_order,
         step_axis_predicates,
@@ -825,7 +824,7 @@ pub(crate) fn parse_qualified_child_path(
         steps,
         origin: PathOrigin::Relative,
         final_predicate: None,
-        final_attribute_predicate: None,
+        final_boolean_predicate: None,
         final_context_predicate: None,
         first_step_predicates_use_document_order: false,
         step_axis_predicates: vec![None; step_count],
@@ -1004,7 +1003,7 @@ fn origin_only_path(origin: PathOrigin, location: SourceLocation) -> LocationPat
         steps: Vec::new(),
         origin,
         final_predicate: None,
-        final_attribute_predicate: None,
+        final_boolean_predicate: None,
         final_context_predicate: None,
         first_step_predicates_use_document_order: false,
         step_axis_predicates: Vec::new(),
@@ -1077,19 +1076,20 @@ fn parse_final_axis_predicate(expression: &str) -> (&str, Option<AxisPredicate>)
     (path, Some(predicate))
 }
 
-fn parse_final_attribute_boolean_predicate(
-    expression: &str,
-) -> (&str, Option<Box<AttributeBooleanPredicate>>) {
+fn parse_final_boolean_predicate(expression: &str) -> (&str, Option<Box<PathBooleanPredicate>>) {
     let Some((path, predicate)) = expression.split_once('[') else {
         return (expression, None);
     };
     let Some(predicate) = predicate.strip_suffix(']') else {
         return (expression, None);
     };
-    if path.is_empty() || path.contains('[') || !predicate.contains(" or ") {
+    if path.is_empty()
+        || path.contains('[')
+        || (!predicate.contains(" or ") && !predicate.contains("descendant::*"))
+    {
         return (expression, None);
     }
-    let Some(predicate) = attribute_boolean_predicate::parse(predicate) else {
+    let Some(predicate) = path_boolean_predicate::parse(predicate) else {
         return (expression, None);
     };
     (path, Some(Box::new(predicate)))
@@ -1569,8 +1569,8 @@ fn final_predicates_match(
         return Ok(false);
     }
     if is_final_step
-        && let Some(predicate) = path.final_attribute_predicate.as_deref()
-        && !attribute_boolean_predicate::evaluate(document, node, predicate, control)?
+        && let Some(predicate) = path.final_boolean_predicate.as_deref()
+        && !path_boolean_predicate::evaluate(document, node, predicate, control)?
     {
         return Ok(false);
     }

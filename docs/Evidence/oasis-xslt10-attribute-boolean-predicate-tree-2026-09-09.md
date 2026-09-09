@@ -45,8 +45,10 @@ compatibility measurements, not an XSLT 1.0 conformance claim.
 
 The first implementation pushed `path_experiment.rs` to 2,083 lines. Before
 commit, boolean-tree representation, parsing, retained-capacity accounting,
-and evaluation moved into the private 110-line `path_attribute_predicate.rs`
-module. The parent returned to 1,996 lines. The extracted module consumes only
+and evaluation moved into a private predicate module, initially the 110-line
+`path_attribute_predicate.rs`. The parent returned to 1,996 lines. The module
+was subsequently renamed `path_boolean_predicate.rs` when the same tree gained
+bounded descendant node-set/string leaves. The extracted module consumes only
 path-owned parsing and charged attribute-scan helpers; it owns no XSLT compiler,
 runtime frame, host policy, resource authority, or alternate evaluator.
 

@@ -534,6 +534,11 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- The private path-predicate tree now composes charged
+  `descendant::*` node-set/string equality and inequality with `not`, `and`,
+  and `or`. Six unchanged cases raise the strict lower bound from 1,308 to
+  1,314 without treating XSLT 1.0 existential `!=` as negated equality. See
+  [descendant node-set predicate evidence](../Evidence/oasis-xslt10-descendant-node-set-predicate-comparison-2026-09-09.md).
 - 2026-09-09 -- A private typed attribute-predicate tree now preserves `and`/
   `or` precedence, parentheses, short-circuiting, and charged attribute visits.
   Eleven unchanged cases raise the strict lower bound from 1,297 to 1,308.

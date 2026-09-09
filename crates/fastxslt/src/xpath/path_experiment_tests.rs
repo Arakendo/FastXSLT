@@ -1608,6 +1608,38 @@ fn attribute_boolean_predicates_preserve_and_or_precedence() {
 }
 
 #[test]
+fn path_boolean_predicates_compose_descendant_equality_and_negation() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><a squish='heavy'>1</a><a>2<child>target</child></a><a>3</a><a>target</a><a>4<child>missed</child></a></doc>",
+        ParseLimits {
+            max_events: 30,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let values = |expression: &str| {
+        evaluate_location_path(
+            &document,
+            doc,
+            &parse_location_path(expression, location()).expect("boolean predicate should parse"),
+        )
+        .into_iter()
+        .map(|node| document.string_value(node))
+        .collect::<String>()
+    };
+
+    assert_eq!(values("a[descendant::*='target']"), "2target");
+    assert_eq!(values("a[descendant::*!='target']"), "4missed");
+    assert_eq!(
+        values("a[not(('target'=descendant::*) or @squish)]"),
+        "3target4missed"
+    );
+}
+
+#[test]
 fn constant_integer_arithmetic_selects_the_matching_node_position() {
     let parsed = parse_document(
         "memory:source.xml",
