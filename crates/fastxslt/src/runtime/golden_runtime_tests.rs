@@ -4582,6 +4582,36 @@ fn xslt10_content_built_numeric_parameters_reuse_typed_value_evaluation() {
 }
 
 #[test]
+fn xslt10_content_built_parameter_variables_have_constructor_local_scope() {
+    const SOURCE: &str = "urn:fastxslt:content-parameter-scope:source";
+    const STYLESHEET: &str = "urn:fastxslt:content-parameter-scope:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit content-parameter-scope source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:variable name="test">Outer</xsl:variable><xsl:template match="/"><xsl:call-template name="emit"><xsl:with-param name="value"><xsl:variable name="test">Test</xsl:variable><xsl:value-of select="$test"/></xsl:with-param></xsl:call-template><xsl:value-of select="$test"/></xsl:template><xsl:template name="emit"><xsl:param name="value"/><foo><xsl:copy-of select="$value"/></foo></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit content-parameter-scope stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile content parameter with a local text-tree variable");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("content-parameter-scope", "result", SOURCE))
+        .expect("admit content-parameter-scope request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute content parameter with a local text-tree variable");
+    assert_eq!(
+        results.by_request["content-parameter-scope"].serialized,
+        "<foo>Test</foo>Outer"
+    );
+}
+
+#[test]
 fn node_template_parameter_shadows_same_named_global_atomic_in_both_frame_paths() {
     const SOURCE: &str = "urn:fastxslt:parameter-shadow:source";
     const STYLESHEET: &str = "urn:fastxslt:parameter-shadow:stylesheet";

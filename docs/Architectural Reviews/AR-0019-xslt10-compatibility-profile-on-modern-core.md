@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- A bounded content-parameter constructor now permits text-only
+  XSLT 1.0 local variables before one typed `xsl:value-of`. The bindings live
+  only in a cloned invocation-local frame, remain charged temporary text trees,
+  and are included in compiled retained-capacity accounting. Unchanged Lotus
+  `variable14` raises the strict lower bound from 1,232 to 1,233 without adding
+  a mismatch or execution failure.
 - 2026-09-08 -- Integer equality now retains whether its typed plan belongs to
   XSLT 1.0 compatibility. That path converts temporary-tree parameters through
   the shared numeric owner while the modern atomic route remains unchanged.

@@ -15,6 +15,7 @@ use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
     ConstructedElement, ConstructedNode, GlobalBinding, GlobalBindingDefault, StylesheetProgram,
     Template, TemplateArgument, TemplateArgumentValue, TemplateParameterDefault,
+    Xslt10ContentArgument,
 };
 
 use super::dynamic_document::DynamicDocument;
@@ -178,21 +179,16 @@ pub(super) fn evaluate_template_arguments(
                         value,
                     ))
                 }
-                TemplateArgumentValue::Xslt10Value(expression) => {
-                    let value = super::value_evaluator::evaluate_as_temporary_text(
+                TemplateArgumentValue::Xslt10Content(argument_plan) => {
+                    evaluate_xslt10_content_argument(
+                        argument_plan,
+                        variables,
                         inputs,
-                        expression,
                         context,
                         focus_position,
                         focus_size,
-                        variables,
                         control,
-                    )?;
-                    InvocationParameterValue::TemporaryTree(materialize_parentless_temporary_node(
-                        TemporaryNodeKind::Text(value),
-                        inputs.request_id,
-                        control,
-                    )?)
+                    )?
                 }
                 TemplateArgumentValue::SourcePathStringComparison { left, right, equal } => {
                     let value = evaluate_source_path_string_comparison(
@@ -213,6 +209,42 @@ pub(super) fn evaluate_template_arguments(
             ))
         })
         .collect()
+}
+
+fn evaluate_xslt10_content_argument(
+    argument_plan: &Xslt10ContentArgument,
+    variables: &RuntimeVariables,
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    focus_position: usize,
+    focus_size: usize,
+    control: &mut InvocationControl,
+) -> Result<InvocationParameterValue, ExecutionFailure> {
+    let mut content_variables = variables.clone();
+    for binding in &argument_plan.bindings {
+        let tree = materialize_parentless_temporary_node(
+            TemporaryNodeKind::Text(binding.value.clone()),
+            inputs.request_id,
+            control,
+        )?;
+        content_variables.bind_temporary_tree(binding.name.clone(), tree);
+    }
+    let value = super::value_evaluator::evaluate_as_temporary_text(
+        inputs,
+        &argument_plan.value,
+        context,
+        focus_position,
+        focus_size,
+        &content_variables,
+        control,
+    )?;
+    Ok(InvocationParameterValue::TemporaryTree(
+        materialize_parentless_temporary_node(
+            TemporaryNodeKind::Text(value),
+            inputs.request_id,
+            control,
+        )?,
+    ))
 }
 
 pub(super) fn evaluate_source_path_string_comparison(

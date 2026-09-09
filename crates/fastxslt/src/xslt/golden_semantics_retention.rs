@@ -945,8 +945,13 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
             | TemplateArgumentValue::CurrentSourceNode => 0,
             TemplateArgumentValue::SourcePath(path)
             | TemplateArgumentValue::Xslt10SumPath(path) => path.known_owned_capacity_bytes(),
-            TemplateArgumentValue::Xslt10Value(expression) => {
-                size_of_val(expression.as_ref()) + value_expression_owned(expression)
+            TemplateArgumentValue::Xslt10Content(content) => {
+                size_of_val(content.as_ref())
+                    + vec_owned(&content.bindings, |binding| {
+                        binding.name.capacity() + binding.value.capacity()
+                    })
+                    + size_of_val(content.value.as_ref())
+                    + value_expression_owned(&content.value)
             }
             TemplateArgumentValue::SourcePathStringComparison { left, right, .. } => {
                 path_pair_owned(left, right) + size_of_val(right.as_ref())

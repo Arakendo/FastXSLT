@@ -989,6 +989,18 @@ pub(crate) struct TemplateArgument {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10ContentArgument {
+    pub(crate) bindings: Vec<Xslt10ContentTextBinding>,
+    pub(crate) value: Box<ValueExpression>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10ContentTextBinding {
+    pub(crate) name: String,
+    pub(crate) value: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum TemplateArgumentValue {
     Text(String),
     Integer(i64),
@@ -999,7 +1011,7 @@ pub(crate) enum TemplateArgumentValue {
     Variable(String),
     SourcePath(LocationPath),
     Xslt10SumPath(LocationPath),
-    Xslt10Value(Box<ValueExpression>),
+    Xslt10Content(Box<Xslt10ContentArgument>),
     SourcePathStringComparison {
         left: LocationPath,
         right: Box<LocationPath>,

@@ -4,6 +4,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, SourceLocati
 use crate::xpath::path_experiment::{parse_location_path, parse_qualified_child_path};
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, Instruction, NodeTest, TemplateArgument, TemplateArgumentValue,
+    Xslt10ContentArgument, Xslt10ContentTextBinding,
 };
 
 use super::super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
@@ -586,6 +587,8 @@ fn compile_content_argument_value(
     document: &Document,
     element: NodeId,
 ) -> Result<TemplateArgumentValue, CompileFailure> {
+    const MAX_CONTENT_BINDINGS: usize = 64;
+
     let children = meaningful_children(document, element);
     if children
         .iter()
@@ -593,15 +596,50 @@ fn compile_content_argument_value(
     {
         return Ok(TemplateArgumentValue::Text(document.string_value(element)));
     }
-    if let [value_of] = children.as_slice()
+    if let Some((value_of, binding_nodes)) = children.split_last()
         && is_xslt_element(document, *value_of, "value-of")
+        && binding_nodes.len() <= MAX_CONTENT_BINDINGS
     {
+        let mut bindings = Vec::with_capacity(binding_nodes.len());
+        for binding_node in binding_nodes {
+            if !is_xslt_element(document, *binding_node, "variable") {
+                return Err(unsupported(
+                    "FXST1033",
+                    "the private XSLT 1.0 call-template argument constructor permits only text-tree variable bindings before its final xsl:value-of",
+                    document.location(*binding_node),
+                ));
+            }
+            let binding = super::compile_variable(document, *binding_node)?;
+            let Instruction::Xslt10TextTreeVariable { name, value, .. } = binding else {
+                return Err(unsupported(
+                    "FXST1033",
+                    "the private XSLT 1.0 call-template argument constructor permits only text-only local variable bindings",
+                    document.location(*binding_node),
+                ));
+            };
+            if bindings
+                .iter()
+                .any(|binding: &Xslt10ContentTextBinding| binding.name == name)
+            {
+                return Err(invalid(
+                    "FXST0017",
+                    format!("duplicate local variable binding: ${name}"),
+                    document.location(*binding_node),
+                ));
+            }
+            bindings.push(Xslt10ContentTextBinding { name, value });
+        }
         ensure_only_attributes(document, *value_of, &["select"], "xsl:value-of")?;
         ensure_no_meaningful_children(document, *value_of, "xsl:value-of")?;
         let select = required_attribute(document, *value_of, None, "select")?;
-        let expression =
+        let value =
             compile_value_expression(document, *value_of, select, document.location(*value_of))?;
-        return Ok(TemplateArgumentValue::Xslt10Value(Box::new(expression)));
+        return Ok(TemplateArgumentValue::Xslt10Content(Box::new(
+            Xslt10ContentArgument {
+                bindings,
+                value: Box::new(value),
+            },
+        )));
     }
     Err(unsupported(
         "FXST1033",
