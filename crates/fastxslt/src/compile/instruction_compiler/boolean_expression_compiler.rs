@@ -478,6 +478,7 @@ fn parse_scalar(
             return Ok(BooleanExpression::VariableEqualsInteger(EqualityTest {
                 variable: variable.to_owned(),
                 integer,
+                xslt10_compatibility,
             }));
         }
     }

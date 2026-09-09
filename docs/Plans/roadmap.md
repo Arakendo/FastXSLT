@@ -4018,6 +4018,9 @@ host lifecycle.
 - [x] Raise it to 1,232 by reusing ordinary typed `xsl:value-of` evaluation for
   content-built parameters and composing temporary-tree numeric variables with
   exact-rational arithmetic and relational recursion conditions.
+- [x] Preserve compatibility mode in integer-equality plans so temporary-tree
+  numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
+  Microsoft whitespace outcomes visible rather than counting them as passes.
 - [x] Reject the reserved XMLNS namespace URI during static `xsl:element`
   compilation, moving two unchanged expected-error cases from unexpected
   success to observed initialization failure and reducing that class from 14

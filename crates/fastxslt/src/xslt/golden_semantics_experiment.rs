@@ -867,6 +867,7 @@ pub(crate) enum SequenceItemExpression {
 pub(crate) struct EqualityTest {
     pub(crate) variable: String,
     pub(crate) integer: i64,
+    pub(crate) xslt10_compatibility: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

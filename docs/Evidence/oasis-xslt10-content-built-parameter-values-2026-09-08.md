@@ -31,20 +31,23 @@ semantics?
 | Measurement | Before | After | Delta |
 | --- | ---: | ---: | ---: |
 | Initialized | 1,504 | 1,509 | +5 |
-| Executed successfully | 1,339 | 1,342 | +3 |
+| Executed successfully | 1,339 | 1,344 | +5 |
 | Expected-result XML matches | 1,231 | 1,232 | +1 |
-| XML comparison mismatches | 82 | 84 | +2 |
-| Execution failures | 165 | 167 | +2 |
+| XML comparison mismatches | 82 | 86 | +4 |
+| Execution failures | 165 | 165 | 0 |
 
 The unchanged Lotus `namedtemplate10` case now passes. Its source attribute is
 passed through content, recursive `start` and `stop` parameters remain temporary
 text trees, `$start + $step` uses the existing exact-rational evaluator, and
 `$start < $stop` controls recursion.
 
-The wider typed admission deliberately exposes four additional non-passes:
-Microsoft `84436` and `84038` reach whitespace-result mismatches, while `84437`
-and `84047` reach the existing unbound-local-variable execution boundary. They
-remain visible evidence rather than being approximated or excluded.
+The wider typed admission deliberately exposes four additional non-passes.
+Microsoft `84436`, `84038`, `84437`, and `84047` all execute their recursion but
+reach whitespace-result mismatches. All four carry the suite's doubts metadata;
+they remain visible evidence rather than being approximated or excluded. The
+latter two initially stopped at atomic-only `$test = 1` evaluation; retaining
+the stylesheet compatibility mode in that typed equality plan lets it reuse
+temporary-tree numeric conversion without changing the modern atomic route.
 
 The strict standard-operation lower bound becomes
 `1,232 / 2,742 = 44.93%`; the conservative all-catalog ratio becomes

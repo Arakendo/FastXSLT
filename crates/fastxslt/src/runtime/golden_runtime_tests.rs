@@ -4562,7 +4562,7 @@ fn xslt10_content_built_numeric_parameters_reuse_typed_value_evaluation() {
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc/item"/></out></xsl:template><xsl:template match="item"><xsl:call-template name="loop"><xsl:with-param name="stop"><xsl:value-of select="@repeat"/></xsl:with-param></xsl:call-template></xsl:template><xsl:template name="loop"><xsl:param name="start">1</xsl:param><xsl:param name="stop">1</xsl:param><xsl:param name="step">1</xsl:param><xsl:value-of select="."/><xsl:if test="$start &lt; $stop"><xsl:call-template name="loop"><xsl:with-param name="stop"><xsl:value-of select="$stop"/></xsl:with-param><xsl:with-param name="start"><xsl:value-of select="$start + $step"/></xsl:with-param></xsl:call-template></xsl:if></xsl:template></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc/item"/></out></xsl:template><xsl:template match="item"><xsl:call-template name="loop"><xsl:with-param name="stop"><xsl:value-of select="@repeat"/></xsl:with-param></xsl:call-template></xsl:template><xsl:template name="loop"><xsl:param name="start">1</xsl:param><xsl:param name="stop">1</xsl:param><xsl:param name="step">1</xsl:param><xsl:value-of select="."/><xsl:if test="$start = 2"><xsl:text>B</xsl:text></xsl:if><xsl:if test="$start &lt; $stop"><xsl:call-template name="loop"><xsl:with-param name="stop"><xsl:value-of select="$stop"/></xsl:with-param><xsl:with-param name="start"><xsl:value-of select="$start + $step"/></xsl:with-param></xsl:call-template></xsl:if></xsl:template></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit recursive-numeric stylesheet");
     let snapshot = resources.seal();
@@ -4577,7 +4577,7 @@ fn xslt10_content_built_numeric_parameters_reuse_typed_value_evaluation() {
         .expect("execute recursive numeric parameter stylesheet");
     assert_eq!(
         results.by_request["recursive-numeric"].serialized,
-        "<out>AAA</out>"
+        "<out>AABA</out>"
     );
 }
 

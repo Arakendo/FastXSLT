@@ -2495,7 +2495,7 @@ fn evaluate_ordinary_boolean(
             unreachable!("identity expressions return before ordinary boolean dispatch")
         }
         BooleanExpression::VariableEqualsInteger(test) => {
-            evaluate_variable_integer_equality(inputs, test, variables)
+            evaluate_variable_integer_equality(inputs, test, variables, control)
         }
         BooleanExpression::VariableEqualsEmptySequence(variable) => {
             ensure_variable_is_bound(inputs, variable, variables).map(|()| false)
@@ -2902,7 +2902,18 @@ fn evaluate_variable_integer_equality(
     inputs: &SequenceInputs<'_>,
     test: &crate::xslt::golden_semantics_experiment::EqualityTest,
     variables: &RuntimeVariables,
+    control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
+    if test.xslt10_compatibility {
+        let actual =
+            value_evaluator::xslt10_variable_number(inputs, &test.variable, variables, control)?;
+        let expected = test
+            .integer
+            .to_string()
+            .parse::<f64>()
+            .expect("i64 lexical values are valid XPath doubles");
+        return Ok(actual.partial_cmp(&expected) == Some(std::cmp::Ordering::Equal));
+    }
     let value = variables.atomics.get(&test.variable).ok_or_else(|| {
         failure(
             "FXRT0002",

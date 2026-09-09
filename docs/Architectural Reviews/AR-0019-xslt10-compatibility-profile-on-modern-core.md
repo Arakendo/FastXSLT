@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Integer equality now retains whether its typed plan belongs to
+  XSLT 1.0 compatibility. That path converts temporary-tree parameters through
+  the shared numeric owner while the modern atomic route remains unchanged.
+  Microsoft `84437` and `84047` advance from execution failures to the same
+  doubts-annotated whitespace mismatch already exposed by sibling cases; the
+  exact-pass lower bound remains 1,232.
 - 2026-09-08 -- Content-built template parameters now reuse the ordinary typed
   `xsl:value-of` plan under the caller's exact focus and remain temporary text
   trees. Variable numeric ordering and existing exact-rational arithmetic close
