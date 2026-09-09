@@ -85,6 +85,38 @@ pub(super) fn evaluate_xslt10_variable_string_comparison(
     )
 }
 
+pub(super) fn xslt10_variable_string_length(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<usize, ExecutionFailure> {
+    xslt10_compatibility::variable_string_length(inputs, variable, variables, control)
+}
+
+pub(super) fn xslt10_variable_number(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<f64, ExecutionFailure> {
+    let value = xslt10_compatibility::variable_string_value(inputs, variable, variables, control)?;
+    Ok(
+        crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&value)
+            .unwrap_or(f64::NAN),
+    )
+}
+
+pub(super) fn xslt10_concat_value(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expression: &crate::xslt::golden_semantics_experiment::Xslt10ConcatExpression,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    xslt10_compatibility::concat_value(inputs, context, expression, variables, control)
+}
+
 pub(super) fn evaluate_xslt10_sum_path(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
@@ -397,6 +429,11 @@ pub(super) fn execute_value_of(
             let value =
                 xslt10_compatibility::variable_string_value(inputs, variable, variables, control)?;
             append_text(result, &value, inputs.request_id, control)?;
+        }
+        ValueExpression::Xslt10VariableStringLength(variable) => {
+            let length =
+                xslt10_compatibility::variable_string_length(inputs, variable, variables, control)?;
+            append_text(result, &length.to_string(), inputs.request_id, control)?;
         }
         ValueExpression::Xslt10VariableNumber(variable) => {
             let value =

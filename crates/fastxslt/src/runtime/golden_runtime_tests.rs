@@ -4522,6 +4522,36 @@ fn named_template_parameters_apply_defaults_and_atomic_select_arguments() {
 }
 
 #[test]
+fn xslt10_recursive_template_counts_content_built_parameter_strings() {
+    const SOURCE: &str = "urn:fastxslt:recursive-string-parameter:source";
+    const STYLESHEET: &str = "urn:fastxslt:recursive-string-parameter:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit recursive-string source");
+    resources
+        .admit(
+            STYLESHEET,
+            r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:variable name="max" select="3"/><xsl:template match="/"><out><xsl:call-template name="loop"><xsl:with-param name="value" select="'😀'"/></xsl:call-template></out></xsl:template><xsl:template name="loop"><xsl:param name="value" select="''"/><xsl:value-of select="string-length($value)"/><xsl:text>:</xsl:text><xsl:value-of select="$value"/><xsl:text>|</xsl:text><xsl:if test="string-length($value) &lt; $max"><xsl:call-template name="loop"><xsl:with-param name="value"><xsl:value-of select="concat($value,'é')"/></xsl:with-param></xsl:call-template></xsl:if></xsl:template></xsl:stylesheet>"#.as_bytes().to_vec(),
+        )
+        .expect("admit recursive-string stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile recursive content-built parameter stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("recursive-string", "result", SOURCE))
+        .expect("admit recursive-string request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute recursive content-built parameter stylesheet");
+    assert_eq!(
+        results.by_request["recursive-string"].serialized,
+        "<out>1:😀|2:😀é|3:😀éé|</out>"
+    );
+}
+
+#[test]
 fn node_template_parameter_shadows_same_named_global_atomic_in_both_frame_paths() {
     const SOURCE: &str = "urn:fastxslt:parameter-shadow:source";
     const STYLESHEET: &str = "urn:fastxslt:parameter-shadow:stylesheet";

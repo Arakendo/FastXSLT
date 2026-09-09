@@ -45,21 +45,21 @@ pub(super) struct RuntimeGlobals {
     pub(super) temporary_trees: BTreeMap<String, TemporaryTree>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct TemporaryTree {
     pub(super) identity: u64,
     pub(super) roots: Vec<usize>,
     pub(super) nodes: Vec<TemporaryNode>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct TemporaryNode {
     pub(super) kind: TemporaryNodeKind,
     pub(super) parent: Option<usize>,
     pub(super) children: Vec<usize>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum TemporaryNodeKind {
     Element {
         name: ExpandedName,
@@ -97,6 +97,7 @@ pub(super) struct InvocationParameter {
 pub(super) enum InvocationParameterValue {
     Atomic(AtomicValue),
     SourceNodes(Vec<NodeId>),
+    TemporaryTree(TemporaryTree),
 }
 
 impl From<AtomicValue> for InvocationParameterValue {
@@ -176,6 +177,16 @@ pub(super) fn evaluate_template_arguments(
                         BuiltinAtomicType::Double,
                         value,
                     ))
+                }
+                TemplateArgumentValue::Xslt10Concat(expression) => {
+                    let value = super::value_evaluator::xslt10_concat_value(
+                        inputs, context, expression, variables, control,
+                    )?;
+                    InvocationParameterValue::TemporaryTree(materialize_parentless_temporary_node(
+                        TemporaryNodeKind::Text(value),
+                        inputs.request_id,
+                        control,
+                    )?)
                 }
                 TemplateArgumentValue::SourcePathStringComparison { left, right, equal } => {
                     let value = evaluate_source_path_string_comparison(
@@ -354,7 +365,8 @@ pub(super) fn materialize_global_defaults(
                     binding.name.clone(),
                     match &parameter.value {
                         InvocationParameterValue::Atomic(value) => value.clone(),
-                        InvocationParameterValue::SourceNodes(_) => {
+                        InvocationParameterValue::SourceNodes(_)
+                        | InvocationParameterValue::TemporaryTree(_) => {
                             return Err(failure(
                                 "XTTE0590",
                                 FailureCategory::Invalid,
@@ -974,6 +986,9 @@ pub(super) fn bind_template_parameters(
             }
             Some(InvocationParameterValue::SourceNodes(nodes)) => {
                 frame.bind_source_nodes(parameter.name.clone(), nodes.clone());
+            }
+            Some(InvocationParameterValue::TemporaryTree(tree)) => {
+                frame.bind_temporary_tree(parameter.name.clone(), tree.clone());
             }
             None => {
                 let value = match &parameter.default {

@@ -310,6 +310,13 @@ pub(super) fn compile_value_expression(
     if is_zero_argument_function(expression, "string-length") {
         return Ok(ValueExpression::ContextNodeStringLength(location.clone()));
     }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(variable) = parse_xslt10_variable_string_length(expression)
+    {
+        return Ok(ValueExpression::Xslt10VariableStringLength(
+            variable.to_owned(),
+        ));
+    }
     if expression.trim() == "position()" {
         return Ok(ValueExpression::ContextPosition(location.clone()));
     }
@@ -502,6 +509,16 @@ pub(super) fn compile_value_expression(
             static_context,
         )?
     })
+}
+
+fn parse_xslt10_variable_string_length(expression: &str) -> Option<&str> {
+    let variable = expression
+        .trim()
+        .strip_prefix("string-length(")?
+        .strip_suffix(')')?
+        .trim()
+        .strip_prefix('$')?;
+    is_ascii_ncname(variable).then_some(variable)
 }
 
 fn parse_variable_boolean_call(expression: &str) -> Option<&str> {

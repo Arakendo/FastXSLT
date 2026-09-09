@@ -710,6 +710,7 @@ pub(crate) enum ValueExpression {
     EmptyLocationPath(LocationPath),
     VariableEffectiveBooleanValue(String),
     Xslt10VariableString(String),
+    Xslt10VariableStringLength(String),
     Xslt10VariableNumber(String),
     Xslt10VariablePositionPath {
         path: LocationPath,
@@ -889,6 +890,11 @@ pub(crate) enum BooleanExpression {
         literal: String,
         equal: bool,
     },
+    Xslt10VariableStringLengthComparison {
+        string_variable: String,
+        operator: FocusComparison,
+        numeric_variable: String,
+    },
     Xslt10SourcePathStringComparison {
         left: LocationPath,
         right: Box<LocationPath>,
@@ -987,6 +993,7 @@ pub(crate) enum TemplateArgumentValue {
     Variable(String),
     SourcePath(LocationPath),
     Xslt10SumPath(LocationPath),
+    Xslt10Concat(Box<Xslt10ConcatExpression>),
     SourcePathStringComparison {
         left: LocationPath,
         right: Box<LocationPath>,

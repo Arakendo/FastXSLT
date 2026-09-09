@@ -697,6 +697,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::CountSourceNodeVariable(name)
         | ValueExpression::Xslt10NormalizedSourceNodeVariable(name)
         | ValueExpression::Xslt10VariableString(name)
+        | ValueExpression::Xslt10VariableStringLength(name)
         | ValueExpression::Xslt10VariableNumber(name) => name.capacity(),
         ValueExpression::Xslt10VariablePositionPath { path, variable, .. } => {
             path.known_owned_capacity_bytes() + variable.capacity()
@@ -730,15 +731,7 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
                 + expression.replacement.capacity()
         }
         ValueExpression::Xslt10Concat(expression) => {
-            size_of_val(expression.as_ref())
-                + vec_owned(&expression.parts, |part| match part {
-                    Xslt10ConcatPart::Literal(value) | Xslt10ConcatPart::Variable(value) => {
-                        value.capacity()
-                    }
-                    Xslt10ConcatPart::Path(path) | Xslt10ConcatPart::SumPath(path) => {
-                        path.known_owned_capacity_bytes()
-                    }
-                })
+            size_of_val(expression.as_ref()) + xslt10_concat_owned(expression)
         }
         ValueExpression::LiteralVariableConcat { literal, variable } => {
             literal.capacity() + variable.capacity()
@@ -837,6 +830,11 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
             literal,
             equal: _,
         } => variable.capacity() + literal.capacity(),
+        BooleanExpression::Xslt10VariableStringLengthComparison {
+            string_variable,
+            numeric_variable,
+            operator: _,
+        } => string_variable.capacity() + numeric_variable.capacity(),
         BooleanExpression::Xslt10SourcePathStringComparison { left, right, .. } => {
             path_pair_owned(left, right) + size_of_val(right.as_ref())
         }
@@ -942,6 +940,9 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
             | TemplateArgumentValue::CurrentSourceNode => 0,
             TemplateArgumentValue::SourcePath(path)
             | TemplateArgumentValue::Xslt10SumPath(path) => path.known_owned_capacity_bytes(),
+            TemplateArgumentValue::Xslt10Concat(expression) => {
+                size_of_val(expression.as_ref()) + xslt10_concat_owned(expression)
+            }
             TemplateArgumentValue::SourcePathStringComparison { left, right, .. } => {
                 path_pair_owned(left, right) + size_of_val(right.as_ref())
             }
@@ -971,15 +972,7 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
             vec_owned(alternatives, LocationPath::known_owned_capacity_bytes)
         }
         LiteralAttributeValue::Xslt10Concat(expression) => {
-            size_of_val(expression.as_ref())
-                + vec_owned(&expression.parts, |part| match part {
-                    Xslt10ConcatPart::Literal(value) | Xslt10ConcatPart::Variable(value) => {
-                        value.capacity()
-                    }
-                    Xslt10ConcatPart::Path(path) | Xslt10ConcatPart::SumPath(path) => {
-                        path.known_owned_capacity_bytes()
-                    }
-                })
+            size_of_val(expression.as_ref()) + xslt10_concat_owned(expression)
         }
         LiteralAttributeValue::Xslt10TextAndPath {
             prefix,
@@ -1030,4 +1023,15 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
         | LiteralAttributeValue::ContextNormalizedStringLength
         | LiteralAttributeValue::ContextIntegerIncrement(_) => 0,
     }
+}
+
+fn xslt10_concat_owned(
+    expression: &crate::xslt::golden_semantics_experiment::Xslt10ConcatExpression,
+) -> usize {
+    vec_owned(&expression.parts, |part| match part {
+        Xslt10ConcatPart::Literal(value) | Xslt10ConcatPart::Variable(value) => value.capacity(),
+        Xslt10ConcatPart::Path(path) | Xslt10ConcatPart::SumPath(path) => {
+            path.known_owned_capacity_bytes()
+        }
+    })
 }

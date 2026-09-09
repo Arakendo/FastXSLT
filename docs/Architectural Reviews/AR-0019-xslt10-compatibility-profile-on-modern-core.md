@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- XSLT 1.0 `string-length($variable)` now reuses the shared
+  compatibility string-value owner and composes with a numeric-variable stop
+  condition. A content-built `xsl:with-param` containing one admitted
+  `xsl:value-of concat(...)` remains an invocation-owned temporary text tree.
+  Unchanged Lotus `variable23` raises the strict lower bound from 1,230 to 1,231
+  with no new mismatch or execution failure.
 - 2026-09-08 -- Computed attributes and literal-result AVTs now share a typed
   XSLT 1.0 `normalize-space(path)` plan and the controlled source normalization
   owner already used by value construction. Unchanged Lotus `whitespace23`

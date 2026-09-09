@@ -2394,6 +2394,32 @@ fn evaluate_boolean(
     {
         return Ok(identity);
     }
+    if let BooleanExpression::Xslt10VariableStringLengthComparison {
+        string_variable,
+        operator,
+        numeric_variable,
+    } = expression
+    {
+        return evaluate_xslt10_variable_string_length_comparison(
+            inputs,
+            string_variable,
+            *operator,
+            numeric_variable,
+            variables,
+            control,
+        );
+    }
+    evaluate_ordinary_boolean(inputs, expression, context, focus, variables, control)
+}
+
+fn evaluate_ordinary_boolean(
+    inputs: &SequenceInputs<'_>,
+    expression: &BooleanExpression,
+    context: Option<NodeId>,
+    focus: Option<SequenceFocus>,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
     match expression {
         BooleanExpression::Constant(value) => Ok(*value),
         BooleanExpression::NodeExists(path) => node_exists(inputs, path, context, control),
@@ -2453,7 +2479,8 @@ fn evaluate_boolean(
         BooleanExpression::NodeIdentityEqual { .. }
         | BooleanExpression::RootIdentityEqualsVariable { .. }
         | BooleanExpression::TemporaryRootIdentityEqual { .. }
-        | BooleanExpression::DocumentRootIdentityEqual { .. } => {
+        | BooleanExpression::DocumentRootIdentityEqual { .. }
+        | BooleanExpression::Xslt10VariableStringLengthComparison { .. } => {
             unreachable!("identity expressions return before ordinary boolean dispatch")
         }
         BooleanExpression::VariableEqualsInteger(test) => {
@@ -2489,6 +2516,42 @@ fn evaluate_boolean(
                 .map(|value| value != 0)
         }
     }
+}
+
+fn evaluate_xslt10_variable_string_length_comparison(
+    inputs: &SequenceInputs<'_>,
+    string_variable: &str,
+    operator: FocusComparison,
+    numeric_variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let length = value_evaluator::xslt10_variable_string_length(
+        inputs,
+        string_variable,
+        variables,
+        control,
+    )?;
+    let numeric =
+        value_evaluator::xslt10_variable_number(inputs, numeric_variable, variables, control)?;
+    let length = length
+        .to_string()
+        .parse::<f64>()
+        .expect("usize lexical values are valid XPath doubles");
+    let ordering = length.partial_cmp(&numeric);
+    Ok(match operator {
+        FocusComparison::NotEqual => ordering != Some(std::cmp::Ordering::Equal),
+        FocusComparison::LessThan => ordering == Some(std::cmp::Ordering::Less),
+        FocusComparison::LessThanOrEqual => matches!(
+            ordering,
+            Some(std::cmp::Ordering::Less | std::cmp::Ordering::Equal)
+        ),
+        FocusComparison::GreaterThan => ordering == Some(std::cmp::Ordering::Greater),
+        FocusComparison::GreaterThanOrEqual => matches!(
+            ordering,
+            Some(std::cmp::Ordering::Greater | std::cmp::Ordering::Equal)
+        ),
+    })
 }
 
 fn evaluate_identity_boolean(

@@ -62,6 +62,30 @@ pub(super) fn variable_string_value(
     ))
 }
 
+pub(super) fn variable_string_length(
+    inputs: &SequenceInputs<'_>,
+    name: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<usize, ExecutionFailure> {
+    let value = variable_string_value(inputs, name, variables, control)?;
+    let mut length = 0_usize;
+    for _ in value.chars() {
+        control
+            .charge(WorkDomain::XPathOperation, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        length = length.checked_add(1).ok_or_else(|| {
+            failure(
+                "FOAR0002",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                "variable string length exceeds the supported integer range",
+            )
+        })?;
+    }
+    Ok(length)
+}
+
 pub(super) fn append_variable_path(
     inputs: &SequenceInputs<'_>,
     variable: &str,
@@ -366,27 +390,37 @@ pub(super) fn append_concat(
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
+    let value = concat_value(inputs, context, expression, variables, control)?;
+    append_text(result, &value, inputs.request_id, control)
+}
+
+pub(super) fn concat_value(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expression: &Xslt10ConcatExpression,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let mut result = String::new();
     for part in &expression.parts {
         match part {
-            Xslt10ConcatPart::Literal(value) => {
-                append_text(result, value, inputs.request_id, control)?;
-            }
+            Xslt10ConcatPart::Literal(value) => result.push_str(value),
             Xslt10ConcatPart::Variable(name) => {
                 let value = variable_string_value(inputs, name, variables, control)?;
-                append_text(result, &value, inputs.request_id, control)?;
+                result.push_str(&value);
             }
             Xslt10ConcatPart::Path(path) => {
                 let value = first_path_string(inputs, context, path, control)?;
-                append_text(result, &value, inputs.request_id, control)?;
+                result.push_str(&value);
             }
             Xslt10ConcatPart::SumPath(path) => {
                 let value = sum_path_lexical(inputs, context, path, control)?;
-                append_text(result, &value, inputs.request_id, control)?;
+                result.push_str(&value);
             }
         }
     }
-    Ok(())
+    Ok(result)
 }

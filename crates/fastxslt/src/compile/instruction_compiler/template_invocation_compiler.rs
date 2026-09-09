@@ -7,7 +7,7 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 use super::super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
-use super::value_expression_compiler::compile_xslt10_sum_path;
+use super::value_expression_compiler::{compile_xslt10_concat, compile_xslt10_sum_path};
 use super::{
     CompileFailure, effective_default_mode, effective_xpath_default_namespace,
     ensure_no_meaningful_children, ensure_only_attributes, invalid, is_ascii_ncname,
@@ -567,17 +567,7 @@ pub(super) fn compile_call_template(
             ensure_no_meaningful_children(document, child, "xsl:with-param")?;
             compile_selected_argument_value(document, child, select)?
         } else {
-            if meaningful_children(document, child)
-                .into_iter()
-                .any(|node| document.kind(node) != NodeKind::Text)
-            {
-                return Err(unsupported(
-                    "FXST1033",
-                    "the private call-template argument content slice permits only literal text",
-                    document.location(child),
-                ));
-            }
-            TemplateArgumentValue::Text(document.string_value(child))
+            compile_content_argument_value(document, child)?
         };
         arguments.push(TemplateArgument {
             name: argument_name.to_owned(),
@@ -590,4 +580,34 @@ pub(super) fn compile_call_template(
         arguments,
         location: document.location(element).clone(),
     })
+}
+
+fn compile_content_argument_value(
+    document: &Document,
+    element: NodeId,
+) -> Result<TemplateArgumentValue, CompileFailure> {
+    let children = meaningful_children(document, element);
+    if children
+        .iter()
+        .all(|node| document.kind(*node) == NodeKind::Text)
+    {
+        return Ok(TemplateArgumentValue::Text(document.string_value(element)));
+    }
+    if let [value_of] = children.as_slice()
+        && is_xslt_element(document, *value_of, "value-of")
+    {
+        ensure_only_attributes(document, *value_of, &["select"], "xsl:value-of")?;
+        ensure_no_meaningful_children(document, *value_of, "xsl:value-of")?;
+        let select = required_attribute(document, *value_of, None, "select")?;
+        if let Some(expression) =
+            compile_xslt10_concat(document, *value_of, select, document.location(*value_of))?
+        {
+            return Ok(TemplateArgumentValue::Xslt10Concat(Box::new(expression)));
+        }
+    }
+    Err(unsupported(
+        "FXST1033",
+        "the private call-template argument content slice permits literal text or one admitted XSLT 1.0 value constructor",
+        document.location(element),
+    ))
 }

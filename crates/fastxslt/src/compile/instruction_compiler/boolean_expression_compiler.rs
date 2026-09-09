@@ -93,6 +93,11 @@ pub(super) fn compile(
             .map(|path| BooleanExpression::CountPathEquals { path, expected })
             .map_err(map_path_failure);
     }
+    if let Some(comparison) =
+        compile_xslt10_variable_string_length_comparison(parsed, xslt10_compatibility)
+    {
+        return Ok(comparison);
+    }
     if xslt10_compatibility
         && let Some((left, right, equal)) = parse_xslt10_source_path_comparison(parsed)
         && let Ok(left) = parse_location_path(left, location.clone())
@@ -111,6 +116,76 @@ pub(super) fn compile(
         comparison,
         xslt10_compatibility,
     )
+}
+
+fn compile_xslt10_variable_string_length_comparison(
+    expression: &str,
+    xslt10_compatibility: bool,
+) -> Option<BooleanExpression> {
+    let (string_variable, operator, numeric_variable) = xslt10_compatibility
+        .then(|| parse_xslt10_variable_string_length_comparison(expression))??;
+    Some(BooleanExpression::Xslt10VariableStringLengthComparison {
+        string_variable: string_variable.to_owned(),
+        operator,
+        numeric_variable: numeric_variable.to_owned(),
+    })
+}
+
+fn parse_xslt10_variable_string_length_comparison(
+    expression: &str,
+) -> Option<(&str, FocusComparison, &str)> {
+    for (token, operator) in [
+        ("!=", FocusComparison::NotEqual),
+        (">=", FocusComparison::GreaterThanOrEqual),
+        ("<=", FocusComparison::LessThanOrEqual),
+        (">", FocusComparison::GreaterThan),
+        ("<", FocusComparison::LessThan),
+    ] {
+        let Some((left, right)) = expression.split_once(token) else {
+            continue;
+        };
+        if left.contains(['=', '!', '<', '>']) || right.contains(['=', '!', '<', '>']) {
+            return None;
+        }
+        if let Some(string_variable) = parse_variable_string_length_operand(left) {
+            let numeric_variable = parse_variable_operand(right)?;
+            return Some((string_variable, operator, numeric_variable));
+        }
+        if let Some(string_variable) = parse_variable_string_length_operand(right) {
+            let numeric_variable = parse_variable_operand(left)?;
+            return Some((
+                string_variable,
+                reverse_comparison(operator),
+                numeric_variable,
+            ));
+        }
+        return None;
+    }
+    None
+}
+
+fn parse_variable_string_length_operand(expression: &str) -> Option<&str> {
+    let variable = expression
+        .trim()
+        .strip_prefix("string-length(")?
+        .strip_suffix(')')?
+        .trim();
+    parse_variable_operand(variable)
+}
+
+fn parse_variable_operand(expression: &str) -> Option<&str> {
+    let variable = expression.trim().strip_prefix('$')?;
+    is_ascii_ncname(variable).then_some(variable)
+}
+
+const fn reverse_comparison(operator: FocusComparison) -> FocusComparison {
+    match operator {
+        FocusComparison::NotEqual => FocusComparison::NotEqual,
+        FocusComparison::LessThan => FocusComparison::GreaterThan,
+        FocusComparison::LessThanOrEqual => FocusComparison::GreaterThanOrEqual,
+        FocusComparison::GreaterThan => FocusComparison::LessThan,
+        FocusComparison::GreaterThanOrEqual => FocusComparison::LessThanOrEqual,
+    }
 }
 
 pub(super) fn parse_xslt10_source_path_comparison(expression: &str) -> Option<(&str, &str, bool)> {
