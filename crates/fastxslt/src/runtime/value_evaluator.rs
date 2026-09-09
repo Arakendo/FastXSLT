@@ -1771,6 +1771,63 @@ fn append_normalized_node_string(
     append_text(result, &normalized, inputs.request_id, control)
 }
 
+pub(super) fn normalized_node_string_length(
+    inputs: &SequenceInputs<'_>,
+    node: NodeId,
+    control: &mut InvocationControl,
+) -> Result<usize, ExecutionFailure> {
+    let source = inputs.source.ok_or_else(|| {
+        failure(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            "normalized string length requires a source document",
+        )
+    })?;
+    let mut length = 0_usize;
+    let mut has_content = false;
+    let mut pending_space = false;
+    source
+        .visit_string_value_controlled(node, control, &mut |part, control| {
+            for character in part.chars() {
+                control
+                    .charge(WorkDomain::XPathOperation, 1)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                if matches!(character, '\u{9}' | '\u{a}' | '\u{d}' | ' ') {
+                    pending_space = has_content;
+                    continue;
+                }
+                if pending_space {
+                    length = length
+                        .checked_add(1)
+                        .ok_or_else(|| normalized_length_overflow(inputs.request_id))?;
+                    pending_space = false;
+                }
+                length = length
+                    .checked_add(1)
+                    .ok_or_else(|| normalized_length_overflow(inputs.request_id))?;
+                has_content = true;
+            }
+            Ok(())
+        })
+        .map_err(|failure| match failure {
+            StringValueVisitFailure::Control(failure) => {
+                control_failure(failure, inputs.request_id)
+            }
+            StringValueVisitFailure::Sink(failure) => failure,
+        })?;
+    Ok(length)
+}
+
+fn normalized_length_overflow(request_id: &str) -> ExecutionFailure {
+    failure(
+        "FOAR0002",
+        FailureCategory::Invalid,
+        Some(request_id),
+        "normalized context string length exceeds the supported integer range",
+    )
+}
+
 fn append_context_node_string_length(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,

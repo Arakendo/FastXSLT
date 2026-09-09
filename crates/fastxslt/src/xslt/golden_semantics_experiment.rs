@@ -1015,6 +1015,7 @@ pub(crate) enum LiteralAttributeValue {
     CountSourceNodeVariable(String),
     CountSourcePath(LocationPath),
     CountSourcePathUnion(Vec<LocationPath>),
+    ContextNormalizedStringLength,
     Xslt10Concat(Box<Xslt10ConcatExpression>),
     Xslt10TextAndPath {
         prefix: String,

@@ -13,7 +13,7 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 use super::runtime_context::{RuntimeVariables, SequenceInputs};
-use super::value_evaluator::evaluate_xslt10_concat;
+use super::value_evaluator::{evaluate_xslt10_concat, normalized_node_string_length};
 use super::{ExecutionFailure, FailureCategory, control_failure, failure_at};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -170,6 +170,24 @@ pub(super) fn materialize_computed_attributes(
                     control,
                 )?);
             }
+            LiteralAttributeValue::ContextNormalizedStringLength => {
+                control
+                    .charge(WorkDomain::ResultNode, 1)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                let node = focus.source.map(|(_, node)| node).ok_or_else(|| {
+                    failure_at(
+                        "XPDY0002",
+                        FailureCategory::Invalid,
+                        Some(request_id),
+                        attribute.location.clone(),
+                        "normalized string length requires a source context item",
+                    )
+                })?;
+                materialized.push(ResultAttribute {
+                    name: attribute.name.clone(),
+                    value: normalized_node_string_length(inputs, node, control)?.to_string(),
+                });
+            }
             _ => {
                 materialized.push(materialize_attribute(
                     &attribute.name,
@@ -235,6 +253,9 @@ fn materialize_attribute(
         }
         LiteralAttributeValue::CountSourcePathUnion(_) => unreachable!(
             "source-path union counts are materialized by the computed-attribute owner"
+        ),
+        LiteralAttributeValue::ContextNormalizedStringLength => unreachable!(
+            "normalized context lengths are materialized by the computed-attribute owner"
         ),
         LiteralAttributeValue::Xslt10Concat(_) => {
             unreachable!("dynamic computed-attribute values are materialized by their owner")

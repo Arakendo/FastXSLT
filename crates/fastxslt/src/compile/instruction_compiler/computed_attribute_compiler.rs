@@ -100,6 +100,10 @@ pub(super) fn compile_computed_attribute(
         && let Ok(path) = parse_location_path(path.trim(), document.location(*value_of).clone())
     {
         LiteralAttributeValue::CountSourcePath(path)
+    } else if uses_xslt10_compatibility(document, *value_of)
+        && select.trim() == "string-length(normalize-space(.))"
+    {
+        LiteralAttributeValue::ContextNormalizedStringLength
     } else if let Some(attribute) = select
         .strip_prefix('@')
         .filter(|name| is_ascii_ncname(name))

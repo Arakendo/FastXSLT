@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- The exact XSLT 1.0 computed-attribute expression
+  `string-length(normalize-space(.))` now streams the controlled source string
+  value, applies XML whitespace rules, and counts Unicode scalar values without
+  an intermediate normalized string. Unchanged Lotus `string140` raises the
+  strict lower bound from 1,228 to 1,229 with no new mismatch or execution
+  failure.
 - 2026-09-08 -- Typed path unions now share one controlled document-order and
   identity-normalizing evaluator across existing consumers. XSLT 1.0 computed
   attributes can count such unions, and the exact `name((union)[last()])` value
