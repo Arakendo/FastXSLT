@@ -373,6 +373,31 @@ fn forward_and_cyclic_global_dependencies_are_explicitly_unsupported() {
 }
 
 #[test]
+fn text_sort_collation_and_dynamic_numeric_metadata_remain_explicit() {
+    let text = parse_stylesheet(
+        "memory:text-sort-collation.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:for-each select="doc/n"><xsl:sort lang="en"/></xsl:for-each></xsl:template></xsl:stylesheet>"#,
+    );
+    let dynamic_numeric = parse_stylesheet(
+        "memory:dynamic-numeric-sort-metadata.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:for-each select="doc/n"><xsl:sort data-type="number" lang="{$lang}"/></xsl:for-each></xsl:template></xsl:stylesheet>"#,
+    );
+
+    assert_eq!(
+        compile_stylesheet(&text)
+            .expect_err("text collation should remain unsupported")
+            .code,
+        "FXST1063"
+    );
+    assert_eq!(
+        compile_stylesheet(&dynamic_numeric)
+            .expect_err("dynamic ignored metadata should remain unsupported")
+            .code,
+        "FXST1064"
+    );
+}
+
+#[test]
 fn backward_global_dependencies_remain_in_the_admitted_slice() {
     let document = parse_stylesheet(
             "memory:backward-global-dependency.xsl",

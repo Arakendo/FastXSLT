@@ -7,8 +7,8 @@ use crate::xslt::golden_semantics_experiment::{ComputedAttribute, LiteralAttribu
 
 use super::value_expression_compiler::compile_xslt10_concat;
 use super::{
-    CompileFailure, ensure_no_meaningful_children, ensure_only_attributes, invalid,
-    is_ascii_ncname, is_xslt_element, meaningful_children, namespace_for_prefix,
+    CompileFailure, compile_text_value, ensure_no_meaningful_children, ensure_only_attributes,
+    invalid, is_ascii_ncname, is_xslt_element, meaningful_children, namespace_for_prefix,
     optional_attribute, parse_xslt10_normalize_space_path, required_attribute,
     split_top_level_union, unsupported, uses_xslt10_compatibility, xpath_string_literal,
 };
@@ -88,10 +88,14 @@ pub(super) fn compile_computed_attribute(
         ensure_no_meaningful_children(document, *value_of, "xsl:value-of")?;
         let select = required_attribute(document, *value_of, None, "select")?;
         compile_computed_attribute_value(document, *value_of, select)?
+    } else if let [text] = children.as_slice()
+        && is_xslt_element(document, *text, "text")
+    {
+        LiteralAttributeValue::Text(compile_text_value(document, *text)?)
     } else {
         return Err(unsupported(
             "FXST1033",
-            "the private computed-attribute value requires literal text or one xsl:value-of child",
+            "the private computed-attribute value requires literal text, one xsl:text child, or one xsl:value-of child",
             document.location(element),
         ));
     };

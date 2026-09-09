@@ -5260,6 +5260,39 @@ fn xslt10_numeric_sort_uses_xpath_number_lexicals_and_equal_zero_keys() {
 }
 
 #[test]
+fn xslt10_numeric_sort_ignores_static_language_and_case_order() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-numeric-sort-collation:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-numeric-sort-collation:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:for-each select="doc/n"><xsl:sort data-type="number" lang="fr" case-order="lower-first"/><xsl:value-of select="."/><xsl:text>|</xsl:text></xsl:for-each></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(SOURCE, b"<doc><n>10</n><n>2</n><n>1</n></doc>".to_vec())
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile numeric sort");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request(
+            "xslt10-numeric-sort-collation",
+            "numeric-sort-collation-result",
+            SOURCE,
+        ))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute numeric sort");
+
+    assert_eq!(
+        results.by_request["xslt10-numeric-sort-collation"].serialized,
+        "<out>1|2|10|</out>"
+    );
+}
+
+#[test]
 fn absent_method_selects_xhtml_for_an_xhtml_html_document_element() {
     let xhtml_name = |local: &str| crate::xml::quick_xml_experiment::ExpandedName {
         namespace: Some("http://www.w3.org/1999/xhtml".to_owned()),

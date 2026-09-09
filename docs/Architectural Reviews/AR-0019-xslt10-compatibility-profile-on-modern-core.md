@@ -534,6 +534,15 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- A bounded constructor refinement admits one explicit
+  `xsl:text` child as computed-attribute character content by reusing the
+  ordinary text validator. Six cases move beyond `FXST1033`, including one
+  that now reaches HTML serialization, but no exact-result credit is claimed.
+  Static `lang` and `case-order` metadata are now discarded only for numeric
+  sort keys, where they cannot affect numeric ordering; three unchanged cases
+  raise the strict lower bound from 1,272 to 1,275. Text collation and dynamic
+  metadata remain explicit unsupported boundaries. See
+  [attribute-text and numeric-sort evidence](../Evidence/oasis-xslt10-attribute-text-and-numeric-sort-metadata-2026-09-09.md).
 - 2026-09-09 -- Static prefixed computed-attribute QNames now resolve once at
   compilation, with an optional nonempty static namespace override and strict
   `xml`/`xmlns`, malformed, empty, and unbound-prefix failures. Eleven cases

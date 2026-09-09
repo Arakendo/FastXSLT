@@ -49,3 +49,30 @@ fn static_namespaced_attribute_retains_a_serializable_prefix_binding() {
         r#"<out xmlns:ns0="urn:example:answer" ns0:answer="forty-two"></out>"#
     );
 }
+
+#[test]
+fn computed_attribute_accepts_explicit_text_content() {
+    let stylesheet = document(
+        "memory:attribute-text.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:attribute name="answer"><xsl:text>forty-two &amp; safe</xsl:text></xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+    );
+    let source = document("memory:source.xml", b"<source/>");
+    let program = compile_stylesheet(&stylesheet).expect("stylesheet should compile");
+    let result = execute_program(
+        &program,
+        &source,
+        "attribute-text-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("stylesheet should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "attribute-text-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("attribute should serialize");
+
+    assert_eq!(serialized, r#"<out answer="forty-two &amp; safe"></out>"#);
+}

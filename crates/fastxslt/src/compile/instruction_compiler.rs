@@ -883,7 +883,7 @@ pub(super) fn compile_sort_keys(
         ensure_only_attributes(
             document,
             child,
-            &["select", "data-type", "order"],
+            &["select", "data-type", "order", "lang", "case-order"],
             "xsl:sort",
         )?;
         ensure_no_meaningful_children(document, child, "xsl:sort")?;
@@ -937,6 +937,7 @@ pub(super) fn compile_sort_keys(
                 ));
             }
         };
+        validate_sort_collation_metadata(document, child, data_type, &location)?;
         let order = match optional_attribute(document, child, None, "order") {
             None | Some("ascending") => SortOrder::Ascending,
             Some("descending") => SortOrder::Descending,
@@ -958,6 +959,36 @@ pub(super) fn compile_sort_keys(
         sort_nodes.push(child);
     }
     Ok((sorts, sort_nodes))
+}
+
+fn validate_sort_collation_metadata(
+    document: &Document,
+    sort: NodeId,
+    data_type: SortDataType,
+    location: &SourceLocation,
+) -> Result<(), CompileFailure> {
+    let lang = optional_attribute(document, sort, None, "lang");
+    let case_order = optional_attribute(document, sort, None, "case-order");
+    if data_type == SortDataType::Text && (lang.is_some() || case_order.is_some()) {
+        return Err(unsupported(
+            "FXST1063",
+            "language-sensitive text collation is outside the admitted xsl:sort slice",
+            location,
+        ));
+    }
+    if data_type == SortDataType::Number
+        && lang
+            .into_iter()
+            .chain(case_order)
+            .any(|value| value.contains(['{', '}']))
+    {
+        return Err(unsupported(
+            "FXST1064",
+            "dynamic ignored xsl:sort collation attributes are outside the admitted numeric slice",
+            location,
+        ));
+    }
+    Ok(())
 }
 
 fn compile_sort_path(
@@ -1069,6 +1100,17 @@ pub(super) fn compile_text(
     document: &Document,
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
+    let value = compile_text_value(document, element)?;
+    Ok(Instruction::Text {
+        value,
+        location: document.location(element).clone(),
+    })
+}
+
+pub(super) fn compile_text_value(
+    document: &Document,
+    element: NodeId,
+) -> Result<String, CompileFailure> {
     ensure_only_attributes(document, element, &["disable-output-escaping"], "xsl:text")?;
     match optional_attribute(document, element, None, "disable-output-escaping") {
         None | Some("no") => {}
@@ -1101,10 +1143,7 @@ pub(super) fn compile_text(
             }
         }
     }
-    Ok(Instruction::Text {
-        value,
-        location: document.location(element).clone(),
-    })
+    Ok(value)
 }
 
 pub(super) fn compile_processing_instruction(
