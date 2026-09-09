@@ -2409,6 +2409,16 @@ fn evaluate_boolean(
             control,
         );
     }
+    if let BooleanExpression::Xslt10VariableNumericComparison {
+        left,
+        operator,
+        right,
+    } = expression
+    {
+        return evaluate_xslt10_variable_numeric_comparison(
+            inputs, left, *operator, right, variables, control,
+        );
+    }
     evaluate_ordinary_boolean(inputs, expression, context, focus, variables, control)
 }
 
@@ -2480,7 +2490,8 @@ fn evaluate_ordinary_boolean(
         | BooleanExpression::RootIdentityEqualsVariable { .. }
         | BooleanExpression::TemporaryRootIdentityEqual { .. }
         | BooleanExpression::DocumentRootIdentityEqual { .. }
-        | BooleanExpression::Xslt10VariableStringLengthComparison { .. } => {
+        | BooleanExpression::Xslt10VariableStringLengthComparison { .. }
+        | BooleanExpression::Xslt10VariableNumericComparison { .. } => {
             unreachable!("identity expressions return before ordinary boolean dispatch")
         }
         BooleanExpression::VariableEqualsInteger(test) => {
@@ -2538,8 +2549,12 @@ fn evaluate_xslt10_variable_string_length_comparison(
         .to_string()
         .parse::<f64>()
         .expect("usize lexical values are valid XPath doubles");
-    let ordering = length.partial_cmp(&numeric);
-    Ok(match operator {
+    Ok(compare_xpath_numbers(length, operator, numeric))
+}
+
+fn compare_xpath_numbers(left: f64, operator: FocusComparison, right: f64) -> bool {
+    let ordering = left.partial_cmp(&right);
+    match operator {
         FocusComparison::NotEqual => ordering != Some(std::cmp::Ordering::Equal),
         FocusComparison::LessThan => ordering == Some(std::cmp::Ordering::Less),
         FocusComparison::LessThanOrEqual => matches!(
@@ -2551,7 +2566,20 @@ fn evaluate_xslt10_variable_string_length_comparison(
             ordering,
             Some(std::cmp::Ordering::Greater | std::cmp::Ordering::Equal)
         ),
-    })
+    }
+}
+
+fn evaluate_xslt10_variable_numeric_comparison(
+    inputs: &SequenceInputs<'_>,
+    left: &str,
+    operator: FocusComparison,
+    right: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let left = value_evaluator::xslt10_variable_number(inputs, left, variables, control)?;
+    let right = value_evaluator::xslt10_variable_number(inputs, right, variables, control)?;
+    Ok(compare_xpath_numbers(left, operator, right))
 }
 
 fn evaluate_identity_boolean(

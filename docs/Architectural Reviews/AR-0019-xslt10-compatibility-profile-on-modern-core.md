@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Content-built template parameters now reuse the ordinary typed
+  `xsl:value-of` plan under the caller's exact focus and remain temporary text
+  trees. Variable numeric ordering and existing exact-rational arithmetic close
+  unchanged Lotus `namedtemplate10`, raising the lower bound from 1,231 to
+  1,232. Four additionally admitted cases remain explicitly visible as two
+  whitespace mismatches and two local-scope execution frontiers.
 - 2026-09-08 -- XSLT 1.0 `string-length($variable)` now reuses the shared
   compatibility string-value owner and composes with a numeric-variable stop
   condition. A content-built `xsl:with-param` containing one admitted

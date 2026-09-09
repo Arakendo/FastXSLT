@@ -4552,6 +4552,36 @@ fn xslt10_recursive_template_counts_content_built_parameter_strings() {
 }
 
 #[test]
+fn xslt10_content_built_numeric_parameters_reuse_typed_value_evaluation() {
+    const SOURCE: &str = "urn:fastxslt:recursive-numeric-parameter:source";
+    const STYLESHEET: &str = "urn:fastxslt:recursive-numeric-parameter:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><item repeat=\"3\">A</item></doc>".to_vec())
+        .expect("admit recursive-numeric source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc/item"/></out></xsl:template><xsl:template match="item"><xsl:call-template name="loop"><xsl:with-param name="stop"><xsl:value-of select="@repeat"/></xsl:with-param></xsl:call-template></xsl:template><xsl:template name="loop"><xsl:param name="start">1</xsl:param><xsl:param name="stop">1</xsl:param><xsl:param name="step">1</xsl:param><xsl:value-of select="."/><xsl:if test="$start &lt; $stop"><xsl:call-template name="loop"><xsl:with-param name="stop"><xsl:value-of select="$stop"/></xsl:with-param><xsl:with-param name="start"><xsl:value-of select="$start + $step"/></xsl:with-param></xsl:call-template></xsl:if></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit recursive-numeric stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile recursive numeric parameter stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("recursive-numeric", "result", SOURCE))
+        .expect("admit recursive-numeric request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute recursive numeric parameter stylesheet");
+    assert_eq!(
+        results.by_request["recursive-numeric"].serialized,
+        "<out>AAA</out>"
+    );
+}
+
+#[test]
 fn node_template_parameter_shadows_same_named_global_atomic_in_both_frame_paths() {
     const SOURCE: &str = "urn:fastxslt:parameter-shadow:source";
     const STYLESHEET: &str = "urn:fastxslt:parameter-shadow:stylesheet";

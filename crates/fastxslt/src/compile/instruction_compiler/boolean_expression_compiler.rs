@@ -88,13 +88,16 @@ pub(super) fn compile(
             location: location.clone(),
         });
     }
-    if let Some((path, expected)) = parse_count_path_equality(parsed) {
-        return parse_location_path(path, location.clone())
-            .map(|path| BooleanExpression::CountPathEquals { path, expected })
-            .map_err(map_path_failure);
+    if let Some(count) = compile_count_path_equality(parsed, location)? {
+        return Ok(count);
     }
     if let Some(comparison) =
         compile_xslt10_variable_string_length_comparison(parsed, xslt10_compatibility)
+    {
+        return Ok(comparison);
+    }
+    if let Some(comparison) =
+        compile_xslt10_variable_numeric_comparison(parsed, xslt10_compatibility)
     {
         return Ok(comparison);
     }
@@ -116,6 +119,31 @@ pub(super) fn compile(
         comparison,
         xslt10_compatibility,
     )
+}
+
+fn compile_count_path_equality(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<BooleanExpression>, CompileFailure> {
+    let Some((path, expected)) = parse_count_path_equality(expression) else {
+        return Ok(None);
+    };
+    parse_location_path(path, location.clone())
+        .map(|path| Some(BooleanExpression::CountPathEquals { path, expected }))
+        .map_err(map_path_failure)
+}
+
+fn compile_xslt10_variable_numeric_comparison(
+    expression: &str,
+    xslt10_compatibility: bool,
+) -> Option<BooleanExpression> {
+    let (left, operator, right) =
+        xslt10_compatibility.then(|| parse_xslt10_variable_numeric_comparison(expression))??;
+    Some(BooleanExpression::Xslt10VariableNumericComparison {
+        left: left.to_owned(),
+        operator,
+        right: right.to_owned(),
+    })
 }
 
 fn compile_xslt10_variable_string_length_comparison(
@@ -186,6 +214,30 @@ const fn reverse_comparison(operator: FocusComparison) -> FocusComparison {
         FocusComparison::GreaterThan => FocusComparison::LessThan,
         FocusComparison::GreaterThanOrEqual => FocusComparison::LessThanOrEqual,
     }
+}
+
+fn parse_xslt10_variable_numeric_comparison(
+    expression: &str,
+) -> Option<(&str, FocusComparison, &str)> {
+    for (token, operator) in [
+        (">=", FocusComparison::GreaterThanOrEqual),
+        ("<=", FocusComparison::LessThanOrEqual),
+        (">", FocusComparison::GreaterThan),
+        ("<", FocusComparison::LessThan),
+    ] {
+        let Some((left, right)) = expression.split_once(token) else {
+            continue;
+        };
+        if left.contains(['=', '!', '<', '>']) || right.contains(['=', '!', '<', '>']) {
+            return None;
+        }
+        return Some((
+            parse_variable_operand(left)?,
+            operator,
+            parse_variable_operand(right)?,
+        ));
+    }
+    None
 }
 
 pub(super) fn parse_xslt10_source_path_comparison(expression: &str) -> Option<(&str, &str, bool)> {

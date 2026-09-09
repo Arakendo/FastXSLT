@@ -7,7 +7,7 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 use super::super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
-use super::value_expression_compiler::{compile_xslt10_concat, compile_xslt10_sum_path};
+use super::value_expression_compiler::{compile_value_expression, compile_xslt10_sum_path};
 use super::{
     CompileFailure, effective_default_mode, effective_xpath_default_namespace,
     ensure_no_meaningful_children, ensure_only_attributes, invalid, is_ascii_ncname,
@@ -599,11 +599,9 @@ fn compile_content_argument_value(
         ensure_only_attributes(document, *value_of, &["select"], "xsl:value-of")?;
         ensure_no_meaningful_children(document, *value_of, "xsl:value-of")?;
         let select = required_attribute(document, *value_of, None, "select")?;
-        if let Some(expression) =
-            compile_xslt10_concat(document, *value_of, select, document.location(*value_of))?
-        {
-            return Ok(TemplateArgumentValue::Xslt10Concat(Box::new(expression)));
-        }
+        let expression =
+            compile_value_expression(document, *value_of, select, document.location(*value_of))?;
+        return Ok(TemplateArgumentValue::Xslt10Value(Box::new(expression)));
     }
     Err(unsupported(
         "FXST1033",

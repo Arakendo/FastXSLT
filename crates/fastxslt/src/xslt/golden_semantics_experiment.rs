@@ -895,6 +895,11 @@ pub(crate) enum BooleanExpression {
         operator: FocusComparison,
         numeric_variable: String,
     },
+    Xslt10VariableNumericComparison {
+        left: String,
+        operator: FocusComparison,
+        right: String,
+    },
     Xslt10SourcePathStringComparison {
         left: LocationPath,
         right: Box<LocationPath>,
@@ -993,7 +998,7 @@ pub(crate) enum TemplateArgumentValue {
     Variable(String),
     SourcePath(LocationPath),
     Xslt10SumPath(LocationPath),
-    Xslt10Concat(Box<Xslt10ConcatExpression>),
+    Xslt10Value(Box<ValueExpression>),
     SourcePathStringComparison {
         left: LocationPath,
         right: Box<LocationPath>,

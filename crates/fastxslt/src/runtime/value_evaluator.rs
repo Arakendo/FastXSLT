@@ -107,14 +107,38 @@ pub(super) fn xslt10_variable_number(
     )
 }
 
-pub(super) fn xslt10_concat_value(
+pub(super) fn evaluate_as_temporary_text(
     inputs: &SequenceInputs<'_>,
+    expression: &ValueExpression,
     context: Option<NodeId>,
-    expression: &crate::xslt::golden_semantics_experiment::Xslt10ConcatExpression,
+    focus_position: usize,
+    focus_size: usize,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
-    xslt10_compatibility::concat_value(inputs, context, expression, variables, control)
+    let mut result = Vec::new();
+    execute_value_of(
+        inputs,
+        expression,
+        " ",
+        SequenceContext {
+            node: context,
+            focus_position,
+            focus_size,
+            ..SequenceContext::new(context, None)
+        },
+        variables,
+        &mut result,
+        control,
+    )?;
+    let mut value = String::new();
+    for node in result {
+        let ResultNode::Text(text) = node else {
+            unreachable!("the typed xsl:value-of evaluator emits only text")
+        };
+        value.push_str(&text);
+    }
+    Ok(value)
 }
 
 pub(super) fn evaluate_xslt10_sum_path(

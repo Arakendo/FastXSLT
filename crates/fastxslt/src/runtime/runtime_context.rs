@@ -178,9 +178,15 @@ pub(super) fn evaluate_template_arguments(
                         value,
                     ))
                 }
-                TemplateArgumentValue::Xslt10Concat(expression) => {
-                    let value = super::value_evaluator::xslt10_concat_value(
-                        inputs, context, expression, variables, control,
+                TemplateArgumentValue::Xslt10Value(expression) => {
+                    let value = super::value_evaluator::evaluate_as_temporary_text(
+                        inputs,
+                        expression,
+                        context,
+                        focus_position,
+                        focus_size,
+                        variables,
+                        control,
                     )?;
                     InvocationParameterValue::TemporaryTree(materialize_parentless_temporary_node(
                         TemporaryNodeKind::Text(value),

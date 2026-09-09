@@ -824,6 +824,11 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
             left,
             right,
             comparison: _,
+        }
+        | BooleanExpression::Xslt10VariableNumericComparison {
+            left,
+            right,
+            operator: _,
         } => left.capacity() + right.capacity(),
         BooleanExpression::Xslt10VariableStringLiteralEquals {
             variable,
@@ -940,8 +945,8 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
             | TemplateArgumentValue::CurrentSourceNode => 0,
             TemplateArgumentValue::SourcePath(path)
             | TemplateArgumentValue::Xslt10SumPath(path) => path.known_owned_capacity_bytes(),
-            TemplateArgumentValue::Xslt10Concat(expression) => {
-                size_of_val(expression.as_ref()) + xslt10_concat_owned(expression)
+            TemplateArgumentValue::Xslt10Value(expression) => {
+                size_of_val(expression.as_ref()) + value_expression_owned(expression)
             }
             TemplateArgumentValue::SourcePathStringComparison { left, right, .. } => {
                 path_pair_owned(left, right) + size_of_val(right.as_ref())
