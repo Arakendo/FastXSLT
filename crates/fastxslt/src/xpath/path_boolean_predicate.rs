@@ -9,16 +9,37 @@ use super::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum PathBooleanPredicate {
     Present(String),
-    Equals { name: String, value: String },
-    NotEquals { name: String, value: String },
+    Equals {
+        name: String,
+        value: String,
+    },
+    NotEquals {
+        name: String,
+        value: String,
+    },
     ContextStringEquals(String),
     ContextNameStartsWith(String),
     ContextNameLengthEquals(usize),
-    ChildElementCountEquals { name: String, count: usize },
-    AttributeStringLengthEquals { name: String, length: usize },
-    AttributeStringLengthGreaterThan { name: String, length: usize },
-    DescendantElementComparison { value: String, equal: bool },
-    FollowingSiblingElementNumberEquals(i32),
+    ChildElementCountEquals {
+        name: String,
+        count: usize,
+    },
+    AttributeStringLengthEquals {
+        name: String,
+        length: usize,
+    },
+    AttributeStringLengthGreaterThan {
+        name: String,
+        length: usize,
+    },
+    DescendantElementComparison {
+        value: String,
+        equal: bool,
+    },
+    FollowingSiblingElementNumberComparison {
+        value: i32,
+        operator: NumberComparison,
+    },
     Not(Box<Self>),
     And(Box<Self>, Box<Self>),
     Or(Box<Self>, Box<Self>),
@@ -37,7 +58,8 @@ impl PathBooleanPredicate {
             Self::ContextStringEquals(value)
             | Self::ContextNameStartsWith(value)
             | Self::DescendantElementComparison { value, .. } => value.capacity(),
-            Self::ContextNameLengthEquals(_) | Self::FollowingSiblingElementNumberEquals(_) => 0,
+            Self::ContextNameLengthEquals(_)
+            | Self::FollowingSiblingElementNumberComparison { .. } => 0,
             Self::Not(operand) => operand.known_owned_capacity_bytes(),
             Self::And(left, right) | Self::Or(left, right) => {
                 left.known_owned_capacity_bytes() + right.known_owned_capacity_bytes()
@@ -99,10 +121,10 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
     if let Some((value, equal)) = parse_descendant_element_comparison(predicate) {
         return Some(PathBooleanPredicate::DescendantElementComparison { value, equal });
     }
-    if let Some(value) = parse_following_sibling_number_equality(predicate) {
-        return Some(PathBooleanPredicate::FollowingSiblingElementNumberEquals(
-            value,
-        ));
+    if let Some((value, operator)) = parse_following_sibling_number_comparison(predicate) {
+        return Some(
+            PathBooleanPredicate::FollowingSiblingElementNumberComparison { value, operator },
+        );
     }
     predicate
         .strip_prefix('@')
@@ -157,13 +179,14 @@ pub(super) fn evaluate(
             }
             Ok(false)
         }
-        PathBooleanPredicate::FollowingSiblingElementNumberEquals(value) => {
+        PathBooleanPredicate::FollowingSiblingElementNumberComparison { value, operator } => {
             for sibling in following_siblings(document, node) {
                 control.charge(WorkDomain::XPathNodeVisit, 1)?;
                 if document.kind(sibling) == NodeKind::Element
                     && crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(
                         &document.string_value(sibling),
-                    ) == Some(f64::from(*value))
+                    )
+                    .is_some_and(|actual| operator.evaluate(actual, f64::from(*value)))
                 {
                     return Ok(true);
                 }
@@ -182,6 +205,42 @@ pub(super) fn evaluate(
                 return Ok(true);
             }
             evaluate(document, node, right, control)
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum NumberComparison {
+    Equal,
+    NotEqual,
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
+}
+
+impl NumberComparison {
+    fn evaluate(self, left: f64, right: f64) -> bool {
+        match self {
+            Self::Equal => left
+                .partial_cmp(&right)
+                .is_some_and(std::cmp::Ordering::is_eq),
+            Self::NotEqual => left.partial_cmp(&right).is_none_or(|order| !order.is_eq()),
+            Self::LessThan => left < right,
+            Self::LessThanOrEqual => left <= right,
+            Self::GreaterThan => left > right,
+            Self::GreaterThanOrEqual => left >= right,
+        }
+    }
+
+    fn reversed(self) -> Self {
+        match self {
+            Self::Equal => Self::Equal,
+            Self::NotEqual => Self::NotEqual,
+            Self::LessThan => Self::GreaterThan,
+            Self::LessThanOrEqual => Self::GreaterThanOrEqual,
+            Self::GreaterThan => Self::LessThan,
+            Self::GreaterThanOrEqual => Self::LessThanOrEqual,
         }
     }
 }
@@ -344,17 +403,28 @@ fn parse_attribute_inequality(predicate: &str) -> Option<(&str, String)> {
     xpath_string_literal(value.trim()).map(|value| (name, value.to_owned()))
 }
 
-fn parse_following_sibling_number_equality(predicate: &str) -> Option<i32> {
-    let (left, right) = split_top_level_predicate_operator(predicate, "=")?;
-    let left = left.trim();
-    let right = right.trim();
-    if left == "following-sibling::*" {
-        right.parse().ok()
-    } else if right == "following-sibling::*" {
-        left.parse().ok()
-    } else {
-        None
+fn parse_following_sibling_number_comparison(predicate: &str) -> Option<(i32, NumberComparison)> {
+    for (token, operator) in [
+        ("!=", NumberComparison::NotEqual),
+        ("<=", NumberComparison::LessThanOrEqual),
+        (">=", NumberComparison::GreaterThanOrEqual),
+        ("=", NumberComparison::Equal),
+        ("<", NumberComparison::LessThan),
+        (">", NumberComparison::GreaterThan),
+    ] {
+        let Some((left, right)) = split_top_level_predicate_operator(predicate, token) else {
+            continue;
+        };
+        let left = left.trim();
+        let right = right.trim();
+        if left == "following-sibling::*" {
+            return Some((right.parse().ok()?, operator));
+        }
+        if right == "following-sibling::*" {
+            return Some((left.parse().ok()?, operator.reversed()));
+        }
     }
+    None
 }
 
 fn parse_descendant_element_comparison(predicate: &str) -> Option<(String, bool)> {

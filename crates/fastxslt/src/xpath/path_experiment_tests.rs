@@ -1652,20 +1652,28 @@ fn path_boolean_predicate_compares_following_sibling_node_set_with_integer() {
     .expect("source should parse");
     let document = Document::from_parsed(parsed).expect("source XDM should build");
     let doc = document.children(document.document_node())[0];
-    let selected = evaluate_location_path(
-        &document,
-        doc,
-        &parse_location_path("a[following-sibling::*=3]", location())
-            .expect("numeric node-set predicate should parse"),
-    );
+    let values = |expression: &str| {
+        evaluate_location_path(
+            &document,
+            doc,
+            &parse_location_path(expression, location())
+                .expect("numeric node-set predicate should parse"),
+        )
+        .into_iter()
+        .map(|node| document.string_value(node))
+        .collect::<String>()
+    };
 
-    assert_eq!(
-        selected
-            .into_iter()
-            .map(|node| document.string_value(node))
-            .collect::<String>(),
-        "12"
-    );
+    assert_eq!(values("a[following-sibling::*=3]"), "12");
+    assert_eq!(values("a[following-sibling::*!=4]"), "12");
+    assert_eq!(values("a[following-sibling::* < 3]"), "1");
+    assert_eq!(values("a[3 < following-sibling::*]"), "123");
+    assert_eq!(values("a[following-sibling::* >= 3]"), "123");
+    assert_eq!(values("a[3 >= following-sibling::*]"), "12");
+    assert_eq!(values("a[following-sibling::* > 3]"), "123");
+    assert_eq!(values("a[3 > following-sibling::*]"), "1");
+    assert_eq!(values("a[following-sibling::* <= 3]"), "12");
+    assert_eq!(values("a[3 <= following-sibling::*]"), "123");
 }
 
 #[test]

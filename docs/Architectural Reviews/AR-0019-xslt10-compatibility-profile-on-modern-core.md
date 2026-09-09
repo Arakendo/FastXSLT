@@ -534,6 +534,11 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- The typed following-sibling predicate leaf now implements
+  existential XSLT 1.0 numeric `=`, `!=`, `<`, `<=`, `>`, and `>=` comparisons
+  with correct operand reversal and charged sibling visits. Ten unchanged
+  cases raise the strict lower bound from 1,321 to 1,331. See
+  [following-sibling relational-predicate evidence](../Evidence/oasis-xslt10-following-sibling-relational-predicates-2026-09-09.md).
 - 2026-09-09 -- Bounded child-count, attribute string-length, and attribute
   inequality predicate leaves now compose with path execution and effective
   boolean value. Bare-axis condition admission remains narrowed to the
