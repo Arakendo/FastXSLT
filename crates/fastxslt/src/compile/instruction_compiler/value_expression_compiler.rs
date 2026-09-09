@@ -18,7 +18,8 @@ use super::{
     recognizes_case_conversion, recognizes_deep_equal, recognizes_default_collation,
     recognizes_document_boolean, recognizes_duration_component, recognizes_encode_for_uri,
     recognizes_escape_html_uri, recognizes_iri_to_uri, recognizes_sequence_cardinality,
-    recognizes_source_free_scalar, recognizes_string_length, unsupported, xpath_string_literal,
+    recognizes_source_free_scalar, recognizes_string_length, split_top_level_union, unsupported,
+    xpath_string_literal,
 };
 use crate::xslt::golden_semantics_experiment::{
     Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10PathStringFunction,
@@ -254,6 +255,11 @@ pub(super) fn compile_value_expression(
     }
     if let Some(path) = compile_string_path(document, element, expression, location) {
         return Ok(ValueExpression::StringPath(path));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(alternatives) = compile_xslt10_name_union_last(expression, location)
+    {
+        return Ok(ValueExpression::Xslt10NodeNamePathUnionLast(alternatives));
     }
     if let Some(path) = compile_name_path(document, element, expression, location) {
         return Ok(ValueExpression::NodeNamePath(path));
@@ -1593,6 +1599,20 @@ fn compile_string_path(
         }
     }
     Some(path)
+}
+
+fn compile_xslt10_name_union_last(
+    expression: &str,
+    location: &SourceLocation,
+) -> Option<Vec<LocationPath>> {
+    let union = expression
+        .trim()
+        .strip_prefix("name((")?
+        .strip_suffix(")[last()])")?;
+    split_top_level_union(union)?
+        .into_iter()
+        .map(|alternative| parse_location_path(alternative.trim(), location.clone()).ok())
+        .collect()
 }
 
 fn compile_name_path(

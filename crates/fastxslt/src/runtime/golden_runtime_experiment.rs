@@ -13,7 +13,9 @@ use crate::xpath::castable_experiment::{CastEvaluationFailure, CastExpression, e
 use crate::xpath::for_distinct_values_experiment::{
     ForDistinctValuesExpression, evaluate as evaluate_for_distinct_values,
 };
-use crate::xpath::path_experiment::evaluate_location_path_controlled;
+use crate::xpath::path_experiment::{
+    evaluate_location_path_controlled, evaluate_location_path_union_controlled,
+};
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, BooleanExpression, ComputedAttribute, FocusComparison, FocusEqualityOperand,
     Instruction, NodeTest, OnMultipleMatchPolicy, OnNoMatchPolicy, SequenceItemExpression,
@@ -914,16 +916,8 @@ fn evaluate_source_path_union(
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let mut selected = Vec::new();
-    for alternative in alternatives {
-        selected.extend(
-            evaluate_location_path_controlled(source, context, alternative, control)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?,
-        );
-    }
-    selected.sort_unstable_by_key(|node| source.document_order(*node));
-    selected.dedup();
-    Ok(selected)
+    evaluate_location_path_union_controlled(source, context, alternatives, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))
 }
 
 fn execute_copy_of_variable(

@@ -8,10 +8,10 @@ use super::{
     ConstructedNode, DecimalSumForExpression, DeepEqualBooleanExpression, ExpandedName,
     FocusSumForExpression, ForDistinctValuesExpression, FormatNumberExpression, GlobalBinding,
     GlobalBindingDefault, Instruction, IntegerForExpression, LiteralAttribute,
-    LiteralAttributeValue, MatchPattern, MatchedTemplate, NamedTemplate, NamespaceBinding,
-    OutputSettings, SequenceItemExpression, SortKey, SortSelect, SourceLocation, StylesheetProgram,
-    Template, TemplateArgument, TemplateArgumentValue, TemplateParameter, TemplateParameterDefault,
-    ValueExpression, VariableFilteredElementPath, Xslt10ConcatPart,
+    LiteralAttributeValue, LocationPath, MatchPattern, MatchedTemplate, NamedTemplate,
+    NamespaceBinding, OutputSettings, SequenceItemExpression, SortKey, SortSelect, SourceLocation,
+    StylesheetProgram, Template, TemplateArgument, TemplateArgumentValue, TemplateParameter,
+    TemplateParameterDefault, ValueExpression, VariableFilteredElementPath, Xslt10ConcatPart,
 };
 
 impl StylesheetProgram {
@@ -670,6 +670,9 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::NumberPath(path)
         | ValueExpression::Xslt10SumPath(path)
         | ValueExpression::IntegralFunctionPath { path, .. } => path.known_owned_capacity_bytes(),
+        ValueExpression::Xslt10NodeNamePathUnionLast(alternatives) => {
+            vec_owned(alternatives, LocationPath::known_owned_capacity_bytes)
+        }
         ValueExpression::BinaryNumeric(expression) => {
             size_of_val(expression.as_ref()) + expression.known_owned_capacity_bytes()
         }
@@ -964,6 +967,9 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
         | LiteralAttributeValue::Variable(text)
         | LiteralAttributeValue::CountSourceNodeVariable(text) => text.capacity(),
         LiteralAttributeValue::CountSourcePath(path) => path.known_owned_capacity_bytes(),
+        LiteralAttributeValue::CountSourcePathUnion(alternatives) => {
+            vec_owned(alternatives, LocationPath::known_owned_capacity_bytes)
+        }
         LiteralAttributeValue::Xslt10Concat(expression) => {
             size_of_val(expression.as_ref())
                 + vec_owned(&expression.parts, |part| match part {

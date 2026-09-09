@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Typed path unions now share one controlled document-order and
+  identity-normalizing evaluator across existing consumers. XSLT 1.0 computed
+  attributes can count such unions, and the exact `name((union)[last()])` value
+  shape preserves lexical node names. Both unchanged Lotus `position83`
+  identities raise the strict lower bound from 1,226 to 1,228 with no new
+  mismatch or execution failure.
 - 2026-09-08 -- Computed `xsl:attribute` values now reuse typed, controlled
   `count(location-path)` evaluation from source focus. The unchanged Lotus
   `axes131` case raises the strict lower bound from 1,225 to 1,226 without

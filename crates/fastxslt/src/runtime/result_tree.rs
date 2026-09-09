@@ -5,7 +5,9 @@ use std::sync::Arc;
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
-use crate::xpath::path_experiment::{LocationPath, evaluate_location_path_controlled};
+use crate::xpath::path_experiment::{
+    LocationPath, evaluate_location_path_controlled, evaluate_location_path_union_controlled,
+};
 use crate::xslt::golden_semantics_experiment::{
     ComputedAttribute, LiteralAttribute, LiteralAttributeValue,
 };
@@ -151,25 +153,22 @@ pub(super) fn materialize_computed_attributes(
                 });
             }
             LiteralAttributeValue::CountSourcePath(path) => {
-                control
-                    .charge(WorkDomain::ResultNode, 1)
-                    .and_then(|()| control.charge(WorkDomain::XPathOperation, 1))
-                    .map_err(|failure| control_failure(failure, request_id))?;
-                let (source, node) = focus.source.ok_or_else(|| {
-                    failure_at(
-                        "XPDY0002",
-                        FailureCategory::Invalid,
-                        Some(request_id),
-                        attribute.location.clone(),
-                        "computed-attribute count requires a source context item",
-                    )
-                })?;
-                let nodes = evaluate_location_path_controlled(source, node, path, control)
-                    .map_err(|failure| control_failure(failure, request_id))?;
-                materialized.push(ResultAttribute {
-                    name: attribute.name.clone(),
-                    value: nodes.len().to_string(),
-                });
+                materialized.push(materialize_source_path_count(
+                    attribute,
+                    std::slice::from_ref(path),
+                    focus.source,
+                    request_id,
+                    control,
+                )?);
+            }
+            LiteralAttributeValue::CountSourcePathUnion(alternatives) => {
+                materialized.push(materialize_source_path_count(
+                    attribute,
+                    alternatives,
+                    focus.source,
+                    request_id,
+                    control,
+                )?);
             }
             _ => {
                 materialized.push(materialize_attribute(
@@ -183,6 +182,34 @@ pub(super) fn materialize_computed_attributes(
         }
     }
     Ok(materialized)
+}
+
+fn materialize_source_path_count(
+    attribute: &ComputedAttribute,
+    alternatives: &[LocationPath],
+    source_focus: Option<(&Document, NodeId)>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<ResultAttribute, ExecutionFailure> {
+    control
+        .charge(WorkDomain::ResultNode, 1)
+        .and_then(|()| control.charge(WorkDomain::XPathOperation, 1))
+        .map_err(|failure| control_failure(failure, request_id))?;
+    let (source, node) = source_focus.ok_or_else(|| {
+        failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(request_id),
+            attribute.location.clone(),
+            "computed-attribute count requires a source context item",
+        )
+    })?;
+    let nodes = evaluate_location_path_union_controlled(source, node, alternatives, control)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    Ok(ResultAttribute {
+        name: attribute.name.clone(),
+        value: nodes.len().to_string(),
+    })
 }
 
 fn materialize_attribute(
@@ -206,6 +233,9 @@ fn materialize_attribute(
         LiteralAttributeValue::CountSourcePath(_) => {
             unreachable!("source-path counts are materialized by the computed-attribute owner")
         }
+        LiteralAttributeValue::CountSourcePathUnion(_) => unreachable!(
+            "source-path union counts are materialized by the computed-attribute owner"
+        ),
         LiteralAttributeValue::Xslt10Concat(_) => {
             unreachable!("dynamic computed-attribute values are materialized by their owner")
         }

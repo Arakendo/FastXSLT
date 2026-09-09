@@ -238,6 +238,15 @@ pub(super) fn execute_value_of(
         ValueExpression::NodeNamePath(path) => {
             append_node_name_path(inputs, context, path, result, control)?;
         }
+        ValueExpression::Xslt10NodeNamePathUnionLast(alternatives) => {
+            append_xslt10_node_name_path_union_last(
+                inputs,
+                context,
+                alternatives,
+                result,
+                control,
+            )?;
+        }
         ValueExpression::ContextNodeLocalName => {
             append_context_node_local_name(inputs, context, result, control)?;
         }
@@ -1433,6 +1442,36 @@ fn append_node_name_path(
         ));
     }
     let Some(node) = selected.first().copied() else {
+        return Ok(());
+    };
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let Some(name) = source.name(node) else {
+        return Ok(());
+    };
+    append_source_lexical_name(inputs, source, node, name, result, control)
+}
+
+fn append_xslt10_node_name_path_union_last(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    alternatives: &[crate::xpath::path_experiment::LocationPath],
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let selected = crate::xpath::path_experiment::evaluate_location_path_union_controlled(
+        source,
+        context,
+        alternatives,
+        control,
+    )
+    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let Some(node) = selected.last().copied() else {
         return Ok(());
     };
     control

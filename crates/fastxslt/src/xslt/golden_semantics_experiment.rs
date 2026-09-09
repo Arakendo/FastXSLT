@@ -666,6 +666,7 @@ pub(crate) enum ValueExpression {
     },
     ContextNodeName,
     NodeNamePath(LocationPath),
+    Xslt10NodeNamePathUnionLast(Vec<LocationPath>),
     ContextNodeLocalName,
     NodeLocalNamePath(LocationPath),
     ContextNodeNamespaceUri,
@@ -1013,6 +1014,7 @@ pub(crate) enum LiteralAttributeValue {
     Variable(String),
     CountSourceNodeVariable(String),
     CountSourcePath(LocationPath),
+    CountSourcePathUnion(Vec<LocationPath>),
     Xslt10Concat(Box<Xslt10ConcatExpression>),
     Xslt10TextAndPath {
         prefix: String,

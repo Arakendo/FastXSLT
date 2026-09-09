@@ -884,7 +884,7 @@ fn xslt10_source_node_set_comparisons_are_independently_existential() {
 fn xslt10_computed_attributes_count_typed_source_paths() {
     let source = parse_document(
         "memory:computed-attribute-count.xml",
-        b"<doc><item><child><leaf/></child></item><item/></doc>",
+        b"<doc><section><item><child><leaf/></child></item><simplesect><item/></simplesect></section></doc>",
         ParseLimits {
             max_events: 20,
             max_depth: 6,
@@ -896,7 +896,7 @@ fn xslt10_computed_attributes_count_typed_source_paths() {
         "memory:computed-attribute-count.xsl",
         br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
           <xsl:output omit-xml-declaration="yes"/>
-          <xsl:template match="doc"><out><xsl:for-each select="item"><n><xsl:attribute name="descendants"><xsl:value-of select="count(descendant::*)"/></xsl:attribute><xsl:attribute name="with-self"><xsl:value-of select="count(descendant-or-self::*)"/></xsl:attribute></n></xsl:for-each></out></xsl:template>
+          <xsl:template match="doc"><out><xsl:for-each select="descendant::item"><n><xsl:attribute name="descendants"><xsl:value-of select="count(descendant::*)"/></xsl:attribute><xsl:attribute name="with-self"><xsl:value-of select="count(descendant-or-self::*)"/></xsl:attribute><xsl:attribute name="section-ancestors"><xsl:value-of select="count(ancestor::section | ancestor::simplesect)"/></xsl:attribute><xsl:value-of select="name((ancestor::section | ancestor::simplesect)[last()])"/></n></xsl:for-each></out></xsl:template>
         </xsl:stylesheet>"#,
         ParseLimits {
             max_events: 48,
@@ -926,7 +926,7 @@ fn xslt10_computed_attributes_count_typed_source_paths() {
 
     assert_eq!(
         serialized,
-        r#"<out><n descendants="2" with-self="3"></n><n descendants="0" with-self="1"></n></out>"#
+        r#"<out><n descendants="2" with-self="3" section-ancestors="1">section</n><n descendants="0" with-self="1" section-ancestors="2">simplesect</n></out>"#
     );
 }
 

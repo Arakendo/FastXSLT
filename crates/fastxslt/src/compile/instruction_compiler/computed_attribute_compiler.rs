@@ -8,8 +8,8 @@ use crate::xslt::golden_semantics_experiment::{ComputedAttribute, LiteralAttribu
 use super::value_expression_compiler::compile_xslt10_concat;
 use super::{
     CompileFailure, ensure_no_meaningful_children, ensure_only_attributes, invalid,
-    is_ascii_ncname, is_xslt_element, meaningful_children, required_attribute, unsupported,
-    uses_xslt10_compatibility, xpath_string_literal,
+    is_ascii_ncname, is_xslt_element, meaningful_children, required_attribute,
+    split_top_level_union, unsupported, uses_xslt10_compatibility, xpath_string_literal,
 };
 
 pub(super) fn compile_computed_attributes(
@@ -80,6 +80,19 @@ pub(super) fn compile_computed_attribute(
             .filter(|name| is_ascii_ncname(name))
     {
         LiteralAttributeValue::CountSourceNodeVariable(variable.to_owned())
+    } else if uses_xslt10_compatibility(document, *value_of)
+        && let Some(path) = select
+            .strip_prefix("count(")
+            .and_then(|value| value.strip_suffix(')'))
+        && let Some(alternatives) = split_top_level_union(path)
+        && let Some(alternatives) = alternatives
+            .into_iter()
+            .map(|alternative| {
+                parse_location_path(alternative.trim(), document.location(*value_of).clone()).ok()
+            })
+            .collect::<Option<Vec<_>>>()
+    {
+        LiteralAttributeValue::CountSourcePathUnion(alternatives)
     } else if uses_xslt10_compatibility(document, *value_of)
         && let Some(path) = select
             .strip_prefix("count(")

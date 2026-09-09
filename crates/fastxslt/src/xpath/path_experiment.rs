@@ -1433,6 +1433,26 @@ pub(crate) fn evaluate_location_path_controlled(
     Ok(current)
 }
 
+pub(crate) fn evaluate_location_path_union_controlled(
+    document: &Document,
+    context: NodeId,
+    alternatives: &[LocationPath],
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ControlFailure> {
+    let mut selected = Vec::new();
+    for alternative in alternatives {
+        selected.extend(evaluate_location_path_controlled(
+            document,
+            context,
+            alternative,
+            control,
+        )?);
+    }
+    selected.sort_unstable_by_key(|node| document.document_order(*node));
+    selected.dedup();
+    Ok(selected)
+}
+
 fn apply_position_predicates(
     document: &Document,
     mut candidates: Vec<NodeId>,
