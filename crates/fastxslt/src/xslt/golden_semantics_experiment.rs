@@ -130,6 +130,7 @@ pub(crate) enum GlobalBindingDefault {
     TemporaryTree(Vec<ConstructedElement>),
     TemporaryText(String),
     Xslt10TemporarySourceString(LocationPath),
+    Xslt10ForEachText(LocationPath),
     TemporaryAttribute {
         name: ExpandedName,
         value: String,
@@ -463,6 +464,11 @@ pub(crate) enum Instruction {
     Xslt10TextTreeVariable {
         name: String,
         value: String,
+        location: SourceLocation,
+    },
+    Xslt10ForEachTextTreeVariable {
+        name: String,
+        select: LocationPath,
         location: SourceLocation,
     },
     SequenceNodes {

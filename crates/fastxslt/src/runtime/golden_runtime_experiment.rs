@@ -777,7 +777,8 @@ fn execute_instruction(
         | Instruction::SourceNodeUnionVariable { .. }
         | Instruction::IntegerRangeVariable { .. }
         | Instruction::TemporaryTreeVariable { .. }
-        | Instruction::Xslt10TextTreeVariable { .. } => {
+        | Instruction::Xslt10TextTreeVariable { .. }
+        | Instruction::Xslt10ForEachTextTreeVariable { .. } => {
             execute_binding(inputs, instruction, execution, scope, control)?;
         }
         Instruction::ApplyTemplates { .. } => {
@@ -1558,6 +1559,9 @@ fn execute_binding(
         Instruction::Xslt10TextTreeVariable { name, value, .. } => {
             bind_xslt10_text_tree(scope, name, value, inputs.request_id, control)?;
         }
+        Instruction::Xslt10ForEachTextTreeVariable { name, select, .. } => {
+            bind_xslt10_for_each_text_tree(inputs, scope, name, select, execution.node, control)?;
+        }
         _ => unreachable!("execute_binding receives a variable instruction"),
     }
     Ok(())
@@ -1573,6 +1577,26 @@ fn bind_xslt10_text_tree(
     let tree = runtime_context::materialize_parentless_temporary_node(
         TemporaryNodeKind::Text(value.to_owned()),
         request_id,
+        control,
+    )?;
+    scope.bind_temporary_tree(name.to_owned(), tree);
+    Ok(())
+}
+
+fn bind_xslt10_for_each_text_tree(
+    inputs: &SequenceInputs<'_>,
+    scope: &mut RuntimeVariables,
+    name: &str,
+    select: &crate::xpath::path_experiment::LocationPath,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let tree = runtime_context::materialize_xslt10_for_each_text_tree(
+        source,
+        context,
+        select,
+        inputs.request_id,
         control,
     )?;
     scope.bind_temporary_tree(name.to_owned(), tree);

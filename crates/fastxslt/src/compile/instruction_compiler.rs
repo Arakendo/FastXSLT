@@ -301,7 +301,8 @@ fn local_variable_name(variable: &Instruction) -> &String {
     | Instruction::SourceNodeUnionVariable { name, .. }
     | Instruction::IntegerRangeVariable { name, .. }
     | Instruction::TemporaryTreeVariable { name, .. }
-    | Instruction::Xslt10TextTreeVariable { name, .. }) = variable
+    | Instruction::Xslt10TextTreeVariable { name, .. }
+    | Instruction::Xslt10ForEachTextTreeVariable { name, .. }) = variable
     else {
         unreachable!("compile_variable returns a variable instruction")
     };
@@ -1260,32 +1261,7 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
         ));
     }
     let Some(expression) = optional_attribute(document, element, None, "select") else {
-        if optional_attribute(document, element, None, "as").is_none()
-            && document.children(element).is_empty()
-        {
-            return Ok(Instruction::StaticAtomicVariable {
-                name: name.to_owned(),
-                value: AtomicValue::string(String::new()),
-                location,
-            });
-        }
-        if let Some(variable) =
-            compile_xslt10_text_tree_variable(document, element, name, &location)
-        {
-            return Ok(variable);
-        }
-        if optional_attribute(document, element, None, "as").is_none()
-            && meaningful_children(document, element)
-                .iter()
-                .all(|child| document.kind(*child) == NodeKind::Element)
-        {
-            return Ok(Instruction::TemporaryTreeVariable {
-                name: name.to_owned(),
-                elements: super::compile_constructed_elements(document, element)?,
-                location,
-            });
-        }
-        return compile_integer_range_variable(document, element, name, &location);
+        return compile_content_variable(document, element, name, location);
     };
     ensure_no_meaningful_children(document, element, "xsl:variable")?;
     if optional_attribute(document, element, None, "as").is_some() {
@@ -1348,6 +1324,43 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
     })
 }
 
+fn compile_content_variable(
+    document: &Document,
+    element: NodeId,
+    name: &str,
+    location: SourceLocation,
+) -> Result<Instruction, CompileFailure> {
+    if optional_attribute(document, element, None, "as").is_none()
+        && document.children(element).is_empty()
+    {
+        return Ok(Instruction::StaticAtomicVariable {
+            name: name.to_owned(),
+            value: AtomicValue::string(String::new()),
+            location,
+        });
+    }
+    if let Some(variable) = compile_xslt10_text_tree_variable(document, element, name, &location) {
+        return Ok(variable);
+    }
+    if let Some(variable) =
+        compile_xslt10_for_each_text_variable(document, element, name, &location)?
+    {
+        return Ok(variable);
+    }
+    if optional_attribute(document, element, None, "as").is_none()
+        && meaningful_children(document, element)
+            .iter()
+            .all(|child| document.kind(*child) == NodeKind::Element)
+    {
+        return Ok(Instruction::TemporaryTreeVariable {
+            name: name.to_owned(),
+            elements: super::compile_constructed_elements(document, element)?,
+            location,
+        });
+    }
+    compile_integer_range_variable(document, element, name, &location)
+}
+
 fn compile_xslt10_text_tree_variable(
     document: &Document,
     element: NodeId,
@@ -1368,6 +1381,55 @@ fn compile_xslt10_text_tree_variable(
         value: document.value(*child).unwrap_or_default().to_owned(),
         location: location.clone(),
     })
+}
+
+pub(super) fn compile_xslt10_for_each_text_path(
+    document: &Document,
+    element: NodeId,
+) -> Result<Option<LocationPath>, CompileFailure> {
+    if !uses_xslt10_compatibility(document, element) {
+        return Ok(None);
+    }
+    let children = meaningful_children(document, element);
+    let [for_each] = children.as_slice() else {
+        return Ok(None);
+    };
+    if !is_xslt_element(document, *for_each, "for-each") {
+        return Ok(None);
+    }
+    ensure_only_attributes(document, *for_each, &["select"], "xsl:for-each")?;
+    let body = meaningful_children(document, *for_each);
+    let [value_of] = body.as_slice() else {
+        return Ok(None);
+    };
+    if !is_xslt_element(document, *value_of, "value-of")
+        || required_attribute(document, *value_of, None, "select")?.trim() != "."
+    {
+        return Ok(None);
+    }
+    ensure_only_attributes(document, *value_of, &["select"], "xsl:value-of")?;
+    ensure_no_meaningful_children(document, *value_of, "xsl:value-of")?;
+    let select = required_attribute(document, *for_each, None, "select")?;
+    parse_location_path(select, document.location(*for_each).clone())
+        .map(Some)
+        .map_err(map_path_failure)
+}
+
+fn compile_xslt10_for_each_text_variable(
+    document: &Document,
+    element: NodeId,
+    name: &str,
+    location: &SourceLocation,
+) -> Result<Option<Instruction>, CompileFailure> {
+    Ok(
+        compile_xslt10_for_each_text_path(document, element)?.map(|select| {
+            Instruction::Xslt10ForEachTextTreeVariable {
+                name: name.to_owned(),
+                select,
+                location: location.clone(),
+            }
+        }),
+    )
 }
 
 fn compile_source_node_union_variable(

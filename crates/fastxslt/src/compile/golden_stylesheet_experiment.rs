@@ -776,6 +776,12 @@ fn compile_global_default(
         .iter()
         .any(|node| document.kind(*node) == NodeKind::Element)
     {
+        if declared_type.is_none()
+            && let Some(select) =
+                instruction_compiler::compile_xslt10_for_each_text_path(document, element)?
+        {
+            return Ok(GlobalBindingDefault::Xslt10ForEachText(select));
+        }
         if let Some(temporary) =
             compile_parentless_temporary_node(document, element, declared_type)?
         {

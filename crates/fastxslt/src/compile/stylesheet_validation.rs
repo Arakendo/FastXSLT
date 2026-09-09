@@ -68,6 +68,7 @@ fn validate_named_calls(
             | Instruction::IntegerRangeVariable { .. }
             | Instruction::TemporaryTreeVariable { .. }
             | Instruction::Xslt10TextTreeVariable { .. }
+            | Instruction::Xslt10ForEachTextTreeVariable { .. }
             | Instruction::SequenceNodes { .. }
             | Instruction::SequenceItems { .. }
             | Instruction::ApplyTemplates { .. }

@@ -131,7 +131,8 @@ fn global_binding_owned(value: &GlobalBinding) -> usize {
             } => numerator.known_owned_capacity_bytes() + denominator.known_owned_capacity_bytes(),
             GlobalBindingDefault::CountLocationPath(path)
             | GlobalBindingDefault::LocationPath(path)
-            | GlobalBindingDefault::SourceNodeIdentity(path) => path.known_owned_capacity_bytes(),
+            | GlobalBindingDefault::SourceNodeIdentity(path)
+            | GlobalBindingDefault::Xslt10ForEachText(path) => path.known_owned_capacity_bytes(),
             GlobalBindingDefault::TemporaryTree(elements) => {
                 vec_owned(elements, constructed_element_owned)
             }
@@ -288,11 +289,8 @@ fn instruction_owned(value: &Instruction) -> usize {
         | Instruction::IntegerRangeVariable { name, location, .. } => {
             name.capacity() + location_owned(location)
         }
-        Instruction::SourceNodeVariable {
-            name,
-            select,
-            location,
-        } => name.capacity() + select.known_owned_capacity_bytes() + location_owned(location),
+        instruction @ (Instruction::SourceNodeVariable { .. }
+        | Instruction::Xslt10ForEachTextTreeVariable { .. }) => path_binding_owned(instruction),
         Instruction::SourceNodeUnionVariable {
             name,
             sources,
@@ -354,6 +352,23 @@ fn instruction_owned(value: &Instruction) -> usize {
             location,
         } => copy_owned(attributes, body, location),
     }
+}
+
+fn path_binding_owned(instruction: &Instruction) -> usize {
+    let (Instruction::SourceNodeVariable {
+        name,
+        select,
+        location,
+    }
+    | Instruction::Xslt10ForEachTextTreeVariable {
+        name,
+        select,
+        location,
+    }) = instruction
+    else {
+        unreachable!("path-binding accounting receives one path binding")
+    };
+    name.capacity() + select.known_owned_capacity_bytes() + location_owned(location)
 }
 
 fn xslt10_text_tree_variable_owned(instruction: &Instruction) -> usize {

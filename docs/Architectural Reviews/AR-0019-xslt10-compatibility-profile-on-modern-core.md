@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-08 -- Local variables and global defaults now share a bounded XSLT
+  1.0 temporary-tree materializer for exactly
+  `for-each(location-path) -> value-of(.)`. Controlled navigation and node
+  string-value accounting remain authoritative. Unchanged Lotus `variable15`
+  and `variable16` raise the strict lower bound from 1,233 to 1,235 without
+  adding a mismatch or execution failure.
 - 2026-09-08 -- A bounded content-parameter constructor now permits text-only
   XSLT 1.0 local variables before one typed `xsl:value-of`. The bindings live
   only in a cloned invocation-local frame, remain charged temporary text trees,

@@ -506,6 +506,11 @@ fn materialize_global_default(
                 materialize_xslt10_temporary_source_string(path, source, request_id, control)?;
             globals.temporary_trees.insert(binding.name.clone(), tree);
         }
+        GlobalBindingDefault::Xslt10ForEachText(path) => {
+            materialize_global_xslt10_for_each_text(
+                globals, binding, path, source, request_id, control,
+            )?;
+        }
         GlobalBindingDefault::TemporaryAttribute { name, value } => {
             let tree = materialize_parentless_temporary_node(
                 TemporaryNodeKind::Attribute {
@@ -611,6 +616,52 @@ fn materialize_xslt10_temporary_source_string(
                 .map_err(|failure| control_failure(failure, request_id))
         },
     )?;
+    materialize_parentless_temporary_node(TemporaryNodeKind::Text(value), request_id, control)
+}
+
+fn materialize_global_xslt10_for_each_text(
+    globals: &mut RuntimeGlobals,
+    binding: &GlobalBinding,
+    path: &crate::xpath::path_experiment::LocationPath,
+    source: Option<&Document>,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let source = source.ok_or_else(|| {
+        failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(request_id),
+            "an XSLT 1.0 for-each temporary tree requires a principal source",
+        )
+    })?;
+    let tree = materialize_xslt10_for_each_text_tree(
+        source,
+        source.document_node(),
+        path,
+        request_id,
+        control,
+    )?;
+    globals.temporary_trees.insert(binding.name.clone(), tree);
+    Ok(())
+}
+
+pub(super) fn materialize_xslt10_for_each_text_tree(
+    source: &Document,
+    context: NodeId,
+    path: &crate::xpath::path_experiment::LocationPath,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<TemporaryTree, ExecutionFailure> {
+    let selected = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    let mut value = String::new();
+    for node in selected {
+        let part = source
+            .string_value_controlled(node, control)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        value.push_str(&part);
+    }
     materialize_parentless_temporary_node(TemporaryNodeKind::Text(value), request_id, control)
 }
 

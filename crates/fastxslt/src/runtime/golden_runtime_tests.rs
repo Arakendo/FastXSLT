@@ -4612,6 +4612,36 @@ fn xslt10_content_built_parameter_variables_have_constructor_local_scope() {
 }
 
 #[test]
+fn xslt10_for_each_text_trees_share_local_and_global_source_semantics() {
+    const SOURCE: &str = "urn:fastxslt:for-each-text-tree:source";
+    const STYLESHEET: &str = "urn:fastxslt:for-each-text-tree:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<docs><a>X</a><a>Y</a><a>Z</a></docs>".to_vec())
+        .expect("admit for-each-text-tree source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:param name="global"><xsl:for-each select="/docs/a"><xsl:value-of select="."/></xsl:for-each></xsl:param><xsl:template match="docs"><xsl:variable name="local"><xsl:for-each select="a"><xsl:value-of select="."/></xsl:for-each></xsl:variable><out><xsl:value-of select="$global"/><xsl:text>|</xsl:text><xsl:value-of select="$local"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit for-each-text-tree stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile local and global for-each text-tree constructors");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("for-each-text-tree", "result", SOURCE))
+        .expect("admit for-each-text-tree request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute local and global for-each text-tree constructors");
+    assert_eq!(
+        results.by_request["for-each-text-tree"].serialized,
+        "<out>XYZ|XYZ</out>"
+    );
+}
+
+#[test]
 fn node_template_parameter_shadows_same_named_global_atomic_in_both_frame_paths() {
     const SOURCE: &str = "urn:fastxslt:parameter-shadow:source";
     const STYLESHEET: &str = "urn:fastxslt:parameter-shadow:stylesheet";
