@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- Dynamic sibling/descendant node-set equality and bounded
+  nested positional-child comparisons now share the typed path evaluator.
+  The matching positional-child forms reuse `MatchPattern::Path`, while
+  general attribute-comparison patterns remain unsupported. Exact results rise
+  from 1,331 to 1,332; one newly executable `indent="yes"` whitespace
+  difference remains visibly mismatched.
+  See [dynamic node-set and predicate-match evidence](../Evidence/oasis-xslt10-dynamic-node-set-and-predicate-match-paths-2026-09-09.md).
 - 2026-09-09 -- The typed following-sibling predicate leaf now implements
   existential XSLT 1.0 numeric `=`, `!=`, `<`, `<=`, `>`, and `>=` comparisons
   with correct operand reversal and charged sibling visits. Ten unchanged

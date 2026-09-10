@@ -94,6 +94,18 @@ pub(super) fn compile_match_pattern(
                 },
             }
         }
+        predicate
+            if predicate.contains('[')
+                && !predicate.contains('/')
+                && effective_xpath_default_namespace(document, element).is_none()
+                && parse_location_path(predicate, document.location(element).clone())
+                    .is_ok_and(|path| path.has_positional_child_string_predicate()) =>
+        {
+            MatchPattern::Path(
+                parse_location_path(predicate, document.location(element).clone())
+                    .expect("single-step predicate path shape was checked"),
+            )
+        }
         "@*" | "attribute()" | "attribute::*" | "attribute::node()" => MatchPattern::AnyAttribute,
         attribute if attribute.starts_with('@') && is_ascii_ncname(&attribute[1..]) => {
             MatchPattern::Attribute(crate::xml::quick_xml_experiment::ExpandedName {

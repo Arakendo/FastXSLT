@@ -1199,6 +1199,23 @@ fn compiles_exact_descendant_wildcard_with_non_simple_priority() {
 }
 
 #[test]
+fn compiles_single_step_typed_predicate_match_patterns_as_paths() {
+    let stylesheet = parse_stylesheet(
+        "memory:predicate-pattern.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="foo[(bar[2])='this']"><one/></xsl:template><xsl:template match="foo[(bar[2][(baz[2])='goodbye'])]"><two/></xsl:template></xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&stylesheet).expect("typed predicate patterns should compile");
+
+    assert!(
+        program
+            .matched_templates
+            .iter()
+            .all(|template| matches!(template.pattern, MatchPattern::Path(_)))
+    );
+}
+
+#[test]
 fn compiles_prefixed_element_and_explicit_namespace_wildcard_patterns() {
     let stylesheet = parse_stylesheet(
             "memory:namespace-wildcard-pattern.xsl",

@@ -45,6 +45,16 @@ impl LocationPath {
         })
     }
 
+    pub(crate) fn has_positional_child_string_predicate(&self) -> bool {
+        matches!(
+            self.final_boolean_predicate.as_deref(),
+            Some(
+                PathBooleanPredicate::PositionalChildStringEquals { .. }
+                    | PathBooleanPredicate::NestedPositionalChildStringEquals(_)
+            )
+        )
+    }
+
     #[cfg(feature = "workbench")]
     pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
         self.steps.capacity() * std::mem::size_of::<PathStep>()
@@ -1098,7 +1108,8 @@ fn parse_final_boolean_predicate(expression: &str) -> (&str, Option<Box<PathBool
             && !predicate.contains("starts-with(name(")
             && !predicate.contains("string-length(name(")
             && !predicate.contains("count(./")
-            && !predicate.contains("string-length(@"))
+            && !predicate.contains("string-length(@")
+            && !predicate.contains('['))
     {
         return (expression, None);
     }

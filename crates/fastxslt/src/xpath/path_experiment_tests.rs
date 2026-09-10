@@ -1677,6 +1677,54 @@ fn path_boolean_predicate_compares_following_sibling_node_set_with_integer() {
 }
 
 #[test]
+fn path_boolean_predicate_compares_dynamic_node_sets_and_positional_children() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><a><inner>match</inner></a><peer>miss</peer><peer>match</peer><foo><bar>first</bar><bar>this</bar></foo><foo><bar>this</bar><bar>other</bar></foo><foo><bar><baz>x</baz><baz>goodbye</baz></bar></foo><foo><bar>x</bar><bar><baz>x</baz><baz>goodbye</baz></bar></foo></doc>",
+        ParseLimits {
+            max_events: 64,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+
+    let sibling_match = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("a[following-sibling::*=descendant::*]", location())
+            .expect("node-set equality predicate should parse"),
+    );
+    let positional_match = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("foo[(bar[2])='this']", location())
+            .expect("positional child equality predicate should parse"),
+    );
+    let nested_any = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("foo[(bar[(baz[2])='goodbye'])]", location())
+            .expect("nested child equality predicate should parse"),
+    );
+    let nested_second = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("foo[(bar[2][(baz[2])='goodbye'])]", location())
+            .expect("nested positioned child equality predicate should parse"),
+    );
+
+    assert_eq!(sibling_match, [document.children(doc)[0]]);
+    assert_eq!(positional_match, [document.children(doc)[3]]);
+    assert_eq!(
+        nested_any,
+        [document.children(doc)[5], document.children(doc)[6]]
+    );
+    assert_eq!(nested_second, [document.children(doc)[6]]);
+}
+
+#[test]
 fn path_boolean_predicate_negates_context_string_equality() {
     let parsed = parse_document(
         "memory:source.xml",

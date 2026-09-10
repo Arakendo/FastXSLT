@@ -40,6 +40,13 @@ pub(super) enum PathBooleanPredicate {
         value: i32,
         operator: NumberComparison,
     },
+    FollowingSiblingDescendantStringEquals,
+    PositionalChildStringEquals {
+        name: String,
+        position: usize,
+        value: String,
+    },
+    NestedPositionalChildStringEquals(NestedPositionComparison),
     Not(Box<Self>),
     And(Box<Self>, Box<Self>),
     Or(Box<Self>, Box<Self>),
@@ -52,14 +59,22 @@ impl PathBooleanPredicate {
             | Self::ChildElementCountEquals { name, .. }
             | Self::AttributeStringLengthEquals { name, .. }
             | Self::AttributeStringLengthGreaterThan { name, .. } => name.capacity(),
-            Self::Equals { name, value } | Self::NotEquals { name, value } => {
+            Self::Equals { name, value }
+            | Self::NotEquals { name, value }
+            | Self::PositionalChildStringEquals { name, value, .. } => {
                 name.capacity() + value.capacity()
+            }
+            Self::NestedPositionalChildStringEquals(comparison) => {
+                comparison.outer_name.capacity()
+                    + comparison.inner_name.capacity()
+                    + comparison.value.capacity()
             }
             Self::ContextStringEquals(value)
             | Self::ContextNameStartsWith(value)
             | Self::DescendantElementComparison { value, .. } => value.capacity(),
             Self::ContextNameLengthEquals(_)
-            | Self::FollowingSiblingElementNumberComparison { .. } => 0,
+            | Self::FollowingSiblingElementNumberComparison { .. }
+            | Self::FollowingSiblingDescendantStringEquals => 0,
             Self::Not(operand) => operand.known_owned_capacity_bytes(),
             Self::And(left, right) | Self::Or(left, right) => {
                 left.known_owned_capacity_bytes() + right.known_owned_capacity_bytes()
@@ -125,6 +140,21 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
         return Some(
             PathBooleanPredicate::FollowingSiblingElementNumberComparison { value, operator },
         );
+    }
+    if parse_sibling_descendant_equality(predicate) {
+        return Some(PathBooleanPredicate::FollowingSiblingDescendantStringEquals);
+    }
+    if let Some(comparison) = parse_nested_positional_child_string_equality(predicate) {
+        return Some(PathBooleanPredicate::NestedPositionalChildStringEquals(
+            comparison,
+        ));
+    }
+    if let Some((name, position, value)) = parse_positional_child_string_equality(predicate) {
+        return Some(PathBooleanPredicate::PositionalChildStringEquals {
+            name,
+            position,
+            value,
+        });
     }
     predicate
         .strip_prefix('@')
@@ -193,6 +223,17 @@ pub(super) fn evaluate(
             }
             Ok(false)
         }
+        PathBooleanPredicate::FollowingSiblingDescendantStringEquals => {
+            sibling_descendant_string_equals(document, node, control)
+        }
+        PathBooleanPredicate::PositionalChildStringEquals {
+            name,
+            position,
+            value,
+        } => positional_child_string_equals(document, node, name, *position, value, control),
+        PathBooleanPredicate::NestedPositionalChildStringEquals(comparison) => {
+            nested_positional_child_string_equals(document, node, comparison, control)
+        }
         PathBooleanPredicate::Not(operand) => Ok(!evaluate(document, node, operand, control)?),
         PathBooleanPredicate::And(left, right) => {
             if !evaluate(document, node, left, control)? {
@@ -207,6 +248,97 @@ pub(super) fn evaluate(
             evaluate(document, node, right, control)
         }
     }
+}
+
+fn sibling_descendant_string_equals(
+    document: &Document,
+    node: NodeId,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    let descendants = descendant_nodes(document, node, control)?;
+    for sibling in following_siblings(document, node) {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if document.kind(sibling) != NodeKind::Element {
+            continue;
+        }
+        let sibling_value = document.string_value(sibling);
+        for descendant in descendants.iter().copied() {
+            if document.kind(descendant) != NodeKind::Element {
+                continue;
+            }
+            control.charge(WorkDomain::XPathOperation, 1)?;
+            if sibling_value == document.string_value(descendant) {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
+}
+
+fn positional_child_string_equals(
+    document: &Document,
+    node: NodeId,
+    name: &str,
+    position: usize,
+    value: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    let mut matched = 0usize;
+    for child in document.children(node).iter().copied() {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if document.kind(child) == NodeKind::Element
+            && document
+                .name(child)
+                .is_some_and(|candidate| candidate.namespace.is_none() && candidate.local == name)
+        {
+            matched += 1;
+            if matched == position {
+                control.charge(WorkDomain::XPathOperation, 1)?;
+                return Ok(document.string_value(child) == value);
+            }
+        }
+    }
+    Ok(false)
+}
+
+fn nested_positional_child_string_equals(
+    document: &Document,
+    node: NodeId,
+    comparison: &NestedPositionComparison,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    let mut outer_index = 0usize;
+    for child in document.children(node).iter().copied() {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if document.kind(child) != NodeKind::Element
+            || !document.name(child).is_some_and(|candidate| {
+                candidate.namespace.is_none() && candidate.local == comparison.outer_name
+            })
+        {
+            continue;
+        }
+        outer_index += 1;
+        if comparison
+            .outer_position
+            .is_some_and(|required| outer_index != required)
+        {
+            continue;
+        }
+        if positional_child_string_equals(
+            document,
+            child,
+            &comparison.inner_name,
+            comparison.inner_position,
+            &comparison.value,
+            control,
+        )? {
+            return Ok(true);
+        }
+        if comparison.outer_position.is_some() {
+            return Ok(false);
+        }
+    }
+    Ok(false)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -425,6 +557,77 @@ fn parse_following_sibling_number_comparison(predicate: &str) -> Option<(i32, Nu
         }
     }
     None
+}
+
+fn parse_sibling_descendant_equality(predicate: &str) -> bool {
+    let Some((left, right)) = split_top_level_predicate_operator(predicate, "=") else {
+        return false;
+    };
+    matches!(
+        (left.trim(), right.trim()),
+        ("following-sibling::*", "descendant::*") | ("descendant::*", "following-sibling::*")
+    )
+}
+
+fn parse_positional_child_string_equality(predicate: &str) -> Option<(String, usize, String)> {
+    let (left, right) = split_top_level_predicate_operator(predicate, "=")?;
+    parse_positional_child_string_operand(left.trim(), right.trim())
+        .or_else(|| parse_positional_child_string_operand(right.trim(), left.trim()))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct NestedPositionComparison {
+    outer_name: String,
+    outer_position: Option<usize>,
+    inner_name: String,
+    inner_position: usize,
+    value: String,
+}
+
+fn parse_nested_positional_child_string_equality(
+    predicate: &str,
+) -> Option<NestedPositionComparison> {
+    let predicate = strip_outer_parentheses(predicate);
+    let (outer_name, remainder) = predicate.split_once('[')?;
+    if !is_ascii_ncname(outer_name) {
+        return None;
+    }
+    let (outer_position, nested) = if remainder.as_bytes().first().is_some_and(u8::is_ascii_digit) {
+        let (position, nested) = remainder.split_once(']')?;
+        let position = position.parse().ok()?;
+        if position == 0 {
+            return None;
+        }
+        (Some(position), nested)
+    } else {
+        (None, predicate.strip_prefix(outer_name)?)
+    };
+    let nested = nested.strip_prefix('[')?.strip_suffix(']')?;
+    let (inner_name, inner_position, value) = parse_positional_child_string_equality(nested)?;
+    Some(NestedPositionComparison {
+        outer_name: outer_name.to_owned(),
+        outer_position,
+        inner_name,
+        inner_position,
+        value,
+    })
+}
+
+fn parse_positional_child_string_operand(
+    path: &str,
+    literal: &str,
+) -> Option<(String, usize, String)> {
+    let path = strip_outer_parentheses(path);
+    let (name, position) = path.split_once('[')?;
+    let position = position.strip_suffix(']')?.parse().ok()?;
+    if position == 0 || !is_ascii_ncname(name) {
+        return None;
+    }
+    Some((
+        name.to_owned(),
+        position,
+        xpath_string_literal(literal)?.to_owned(),
+    ))
 }
 
 fn parse_descendant_element_comparison(predicate: &str) -> Option<(String, bool)> {
