@@ -1397,6 +1397,55 @@ fn descendant_match_path_accepts_nonadjacent_ancestor() {
 }
 
 #[test]
+fn leading_descendant_name_match_uses_document_membership() {
+    let source = parse_document(
+        "memory:leading-descendant-match.xml",
+        b"<doc><foo att='one'><foo att='two'/></foo></doc>",
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:leading-descendant-match.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:output method="xml" omit-xml-declaration="yes"/>
+          <xsl:template match="/"><out><xsl:apply-templates/></out></xsl:template>
+          <xsl:template match="doc"><xsl:apply-templates/></xsl:template>
+          <xsl:template match="//foo"><hit><xsl:value-of select="@att"/></hit><xsl:apply-templates/></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 64,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("leading descendant match should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "leading-descendant-match-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("leading descendant match should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "leading-descendant-match-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out><hit>one</hit><hit>two</hit></out>");
+}
+
+#[test]
 fn one_prepared_source_supports_preserving_and_stripping_stylesheets_without_mutation() {
     let parsed_source = parse_document(
         "memory:shared-source.xml",

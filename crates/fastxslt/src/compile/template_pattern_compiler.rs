@@ -156,6 +156,16 @@ pub(super) fn compile_match_pattern(
                 document.location(element),
             ));
         }
+        path if path.starts_with("//")
+            && effective_xpath_default_namespace(document, element).is_none()
+            && parse_location_path(path, document.location(element).clone())
+                .is_ok_and(|path| path.is_simple_descendant_named_match_path()) =>
+        {
+            MatchPattern::Path(
+                parse_location_path(path, document.location(element).clone())
+                    .expect("simple descendant named match path shape was checked"),
+            )
+        }
         path if path.contains('/') && !path.starts_with("//") => {
             let path = parse_location_path(path, document.location(element).clone())
                 .map_err(map_path_failure)?;

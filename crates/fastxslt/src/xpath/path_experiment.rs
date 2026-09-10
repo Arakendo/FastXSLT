@@ -28,7 +28,20 @@ pub(crate) struct LocationPath {
 
 impl LocationPath {
     pub(crate) fn starts_at_document_node(&self) -> bool {
-        self.origin == PathOrigin::DocumentNode
+        matches!(
+            self.origin,
+            PathOrigin::DocumentNode | PathOrigin::Descendant
+        )
+    }
+
+    pub(crate) fn is_simple_descendant_named_match_path(&self) -> bool {
+        self.origin == PathOrigin::Descendant
+            && matches!(self.steps.as_slice(), [PathStep::ChildNamed(_)])
+            && self.final_predicate.is_none()
+            && self.final_boolean_predicate.is_none()
+            && self.final_context_predicate.is_none()
+            && self.step_axis_predicates.iter().all(Option::is_none)
+            && self.step_position_predicates.iter().all(Vec::is_empty)
     }
 
     pub(crate) fn has_non_simple_position_predicate(&self) -> bool {

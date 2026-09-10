@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-09 -- The exact unqualified `match="//name"` abbreviation now
+  retains typed path priority and uses bounded document-rooted membership.
+  Eight more cases execute, five match exactly, and three downstream
+  serialization/whitespace differences remain visible. The generic unsupported
+  match-pattern frontier falls from 85 to 59 without admitting descendant
+  predicates or multi-step forms. Exact results rise from 1,332 to 1,337.
+  See [leading descendant name match evidence](../Evidence/oasis-xslt10-leading-descendant-name-match-patterns-2026-09-09.md).
 - 2026-09-09 -- Dynamic sibling/descendant node-set equality and bounded
   nested positional-child comparisons now share the typed path evaluator.
   The matching positional-child forms reuse `MatchPattern::Path`, while

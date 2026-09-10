@@ -1192,8 +1192,19 @@ fn compiles_exact_descendant_wildcard_with_non_simple_priority() {
             "memory:named-descendant-pattern.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="//foo"><out/></xsl:template></xsl:stylesheet>"#,
         );
-    let failure = compile_stylesheet(&named_descendant)
-        .expect_err("general descendant patterns must remain unsupported");
+    let named_descendant_program = compile_stylesheet(&named_descendant)
+        .expect("simple descendant named patterns should compile");
+    assert!(matches!(
+        named_descendant_program.matched_templates[0].pattern,
+        crate::xslt::golden_semantics_experiment::MatchPattern::Path(_)
+    ));
+
+    let predicate_descendant = parse_stylesheet(
+        "memory:predicate-descendant-pattern.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="//foo[@id='1']"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&predicate_descendant)
+        .expect_err("descendant predicate patterns remain outside the bounded slice");
     assert_eq!(failure.code, "FXST1005");
     assert_eq!(failure.category, CompileCategory::Unsupported);
 }
