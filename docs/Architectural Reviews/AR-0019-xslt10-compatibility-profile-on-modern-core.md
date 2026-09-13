@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-13 -- The typed context-node string matcher now admits exact
+  inequality, negated exact equality, and two-literal equality-or while
+  preserving source/temporary parity and bounded charging. Three more cases
+  execute and all match exactly; general boolean trees, numeric or relational
+  comparison, functions, variables, and multiple predicates remain outside the
+  slice. Exact results rise from 1,353 to 1,356.
+  See [composed node-string match evidence](../Evidence/oasis-xslt10-composed-node-string-match-predicates-2026-09-13.md).
 - 2026-09-13 -- Exact context-node string equality now composes with bounded
   unqualified element, text, comment, and processing-instruction match tests
   through one charged typed matcher shared by source and temporary trees. Five

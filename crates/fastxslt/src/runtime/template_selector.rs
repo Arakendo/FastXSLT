@@ -7,8 +7,8 @@ use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xpath::path_experiment::{PathStep, evaluate_location_path_controlled};
 use crate::xslt::golden_semantics_experiment::{
-    ChildPresenceTest, MatchNodeTest, MatchPattern, MatchedTemplate, NamedSiblingBoundary,
-    StylesheetProgram,
+    ChildPresenceTest, MatchNodeTest, MatchPattern, MatchStringPredicate, MatchedTemplate,
+    NamedSiblingBoundary, StylesheetProgram,
 };
 
 use super::MultipleMatchPolicy;
@@ -254,12 +254,15 @@ fn matches_pattern(
             }
             Ok(false)
         }
-        MatchPattern::NodeStringValueEquals { node_test, value } => {
+        MatchPattern::NodeStringPredicate {
+            node_test,
+            predicate,
+        } => {
             control
                 .charge(WorkDomain::XPathOperation, 1)
                 .map_err(|failure| control_failure(failure, request_id))?;
             Ok(source_node_test_matches(source, node, node_test)
-                && source.string_value(node) == value.as_str())
+                && match_string_predicate(&source.string_value(node), predicate))
         }
         MatchPattern::ElementWithAttributeValue {
             element,
@@ -367,6 +370,14 @@ fn matches_pattern(
                 .name(node)
                 .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())),
         MatchPattern::AnyNode => Ok(matches_any_node(source.kind(node))),
+    }
+}
+
+fn match_string_predicate(value: &str, predicate: &MatchStringPredicate) -> bool {
+    match predicate {
+        MatchStringPredicate::Equals(expected) => value == expected,
+        MatchStringPredicate::NotEquals(expected) => value != expected,
+        MatchStringPredicate::EqualsEither(left, right) => value == left || value == right,
     }
 }
 

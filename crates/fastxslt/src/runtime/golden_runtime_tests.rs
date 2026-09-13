@@ -2120,7 +2120,7 @@ fn exact_node_string_value_patterns_dispatch_source_and_temporary_nodes() {
     let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
         <xsl:output method="xml" omit-xml-declaration="yes"/>
         <xsl:variable name="temporary"><letter>b</letter><letter>x</letter></xsl:variable>
-        <xsl:template match="/"><out><xsl:apply-templates select="doc/node()"/><xsl:apply-templates select="$temporary/letter" mode="temporary"/></out></xsl:template>
+        <xsl:template match="/"><out><xsl:apply-templates select="doc/node()"/><xsl:apply-templates select="$temporary/letter" mode="temporary"/><or><xsl:apply-templates select="doc/letter" mode="or"/></or><not><xsl:apply-templates select="doc/letter" mode="not"/></not><neq><xsl:apply-templates select="doc/letter" mode="neq"/></neq></out></xsl:template>
         <xsl:template match="text()[.='alpha']"><text/></xsl:template>
         <xsl:template match="comment()[.='note']"><comment/></xsl:template>
         <xsl:template match="processing-instruction('target')[.='junk']"><pi/></xsl:template>
@@ -2128,6 +2128,12 @@ fn exact_node_string_value_patterns_dispatch_source_and_temporary_nodes() {
         <xsl:template match="letter"/>
         <xsl:template match="letter[.='b']" mode="temporary"><temporary/></xsl:template>
         <xsl:template match="letter" mode="temporary"/>
+        <xsl:template match="letter[.='b' or .='h']" mode="or"><hit/></xsl:template>
+        <xsl:template match="letter" mode="or"/>
+        <xsl:template match="letter[not(.='b')]" mode="not"><hit/></xsl:template>
+        <xsl:template match="letter" mode="not"/>
+        <xsl:template match="letter[.!='b']" mode="neq"><hit/></xsl:template>
+        <xsl:template match="letter" mode="neq"/>
     </xsl:stylesheet>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
     resources
@@ -2152,7 +2158,7 @@ fn exact_node_string_value_patterns_dispatch_source_and_temporary_nodes() {
         execute_transform_set(builder.seal()).expect("execute node string-value match predicates");
     assert_eq!(
         results.by_request["node-string-value"].serialized,
-        "<out><text></text><comment></comment><pi></pi><element></element><temporary></temporary></out>"
+        "<out><text></text><comment></comment><pi></pi><element></element><temporary></temporary><or><hit></hit></or><not><hit></hit></not><neq><hit></hit></neq></out>"
     );
 }
 

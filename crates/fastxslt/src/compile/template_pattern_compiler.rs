@@ -3,7 +3,8 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xpath::path_experiment::{PathStep, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
-    ChildPresenceTest, MatchNodeTest, MatchPattern, NamedSiblingBoundary, TemplatePriority,
+    ChildPresenceTest, MatchNodeTest, MatchPattern, MatchStringPredicate, NamedSiblingBoundary,
+    TemplatePriority,
 };
 
 use super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
@@ -49,7 +50,7 @@ pub(super) fn compile_match_pattern(
         predicate if parse_any_element_attribute_variable_predicate(predicate).is_some() => {
             compile_any_element_attribute_variable_pattern(predicate)
         }
-        predicate if parse_node_string_value_predicate(predicate).is_some() => {
+        predicate if parse_node_string_predicate(predicate).is_some() => {
             compile_node_string_value_pattern(document, element, predicate)
         }
         alternatives if is_homogeneous_qualified_path_union(alternatives) => {
@@ -456,22 +457,46 @@ fn parse_any_element_attribute_predicate(pattern: &str) -> Option<&str> {
     is_ascii_ncname(attribute).then_some(attribute)
 }
 
-fn parse_node_string_value_predicate(pattern: &str) -> Option<(&str, &str)> {
+fn parse_node_string_predicate(pattern: &str) -> Option<(&str, MatchStringPredicate)> {
     let (node_test, predicate) = pattern.split_once('[')?;
-    let literal = predicate.strip_prefix(".=")?.strip_suffix(']')?.trim();
-    let value = ['\'', '"'].into_iter().find_map(|delimiter| {
-        literal
-            .strip_prefix(delimiter)
-            .and_then(|value| value.strip_suffix(delimiter))
-            .filter(|value| !value.contains(delimiter))
-    })?;
+    let predicate = predicate.strip_suffix(']')?.trim();
+    let predicate = if let Some((left, right)) = predicate.split_once(" or ") {
+        MatchStringPredicate::EqualsEither(
+            parse_context_string_literal(left, "=")?,
+            parse_context_string_literal(right, "=")?,
+        )
+    } else if let Some(operand) = predicate
+        .strip_prefix("not(")
+        .and_then(|value| value.strip_suffix(')'))
+    {
+        MatchStringPredicate::NotEquals(parse_context_string_literal(operand, "=")?)
+    } else if predicate.starts_with(".!=") {
+        MatchStringPredicate::NotEquals(parse_context_string_literal(predicate, "!=")?)
+    } else {
+        MatchStringPredicate::Equals(parse_context_string_literal(predicate, "=")?)
+    };
     let supported_node_test = is_ascii_ncname(node_test)
         || matches!(
             node_test,
             "text()" | "comment()" | "processing-instruction()"
         )
         || parse_named_processing_instruction_pattern(node_test).is_some();
-    supported_node_test.then_some((node_test, value))
+    supported_node_test.then_some((node_test, predicate))
+}
+
+fn parse_context_string_literal(expression: &str, operator: &str) -> Option<String> {
+    let literal = expression
+        .trim()
+        .strip_prefix('.')?
+        .strip_prefix(operator)?
+        .trim();
+    ['\'', '"'].into_iter().find_map(|delimiter| {
+        literal
+            .strip_prefix(delimiter)
+            .and_then(|value| value.strip_suffix(delimiter))
+            .filter(|value| !value.contains(delimiter))
+            .map(str::to_owned)
+    })
 }
 
 fn compile_node_string_value_pattern(
@@ -479,7 +504,7 @@ fn compile_node_string_value_pattern(
     element: NodeId,
     pattern: &str,
 ) -> MatchPattern {
-    let (node_test, value) = parse_node_string_value_predicate(pattern)
+    let (node_test, predicate) = parse_node_string_predicate(pattern)
         .expect("node string-value predicate shape was checked");
     let node_test = match node_test {
         "text()" => MatchNodeTest::Text,
@@ -497,9 +522,9 @@ fn compile_node_string_value_pattern(
             local: name.to_owned(),
         }),
     };
-    MatchPattern::NodeStringValueEquals {
+    MatchPattern::NodeStringPredicate {
         node_test,
-        value: value.to_owned(),
+        predicate,
     }
 }
 
@@ -555,7 +580,7 @@ fn compile_template_priority(
             | MatchPattern::DescendantAnyElement
             | MatchPattern::ElementWithAttribute { .. }
             | MatchPattern::AnyElementWithAttribute(_)
-            | MatchPattern::NodeStringValueEquals { .. }
+            | MatchPattern::NodeStringPredicate { .. }
             | MatchPattern::ElementWithAttributeValue { .. }
             | MatchPattern::ElementWithChild { .. }
             | MatchPattern::AnyElementWithAttributeVariable { .. }

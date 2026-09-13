@@ -271,9 +271,9 @@ pub(crate) enum MatchPattern {
         attribute: ExpandedName,
     },
     AnyElementWithAttribute(ExpandedName),
-    NodeStringValueEquals {
+    NodeStringPredicate {
         node_test: MatchNodeTest,
-        value: String,
+        predicate: MatchStringPredicate,
     },
     ElementWithAttributeValue {
         element: ExpandedName,
@@ -315,6 +315,13 @@ pub(crate) enum MatchNodeTest {
     Text,
     Comment,
     ProcessingInstruction(Option<String>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum MatchStringPredicate {
+    Equals(String),
+    NotEquals(String),
+    EqualsEither(String, String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

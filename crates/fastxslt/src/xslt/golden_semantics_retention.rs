@@ -8,11 +8,11 @@ use super::{
     ConstructedNode, DecimalSumForExpression, DeepEqualBooleanExpression, ExpandedName,
     FocusSumForExpression, ForDistinctValuesExpression, FormatNumberExpression, GlobalBinding,
     GlobalBindingDefault, Instruction, IntegerForExpression, LiteralAttribute,
-    LiteralAttributeValue, LocationPath, MatchNodeTest, MatchPattern, MatchedTemplate,
-    NamedTemplate, NamespaceBinding, OutputSettings, SequenceItemExpression, SortKey, SortSelect,
-    SourceLocation, StylesheetProgram, Template, TemplateArgument, TemplateArgumentValue,
-    TemplateParameter, TemplateParameterDefault, ValueExpression, VariableFilteredElementPath,
-    Xslt10ConcatPart,
+    LiteralAttributeValue, LocationPath, MatchNodeTest, MatchPattern, MatchStringPredicate,
+    MatchedTemplate, NamedTemplate, NamespaceBinding, OutputSettings, SequenceItemExpression,
+    SortKey, SortSelect, SourceLocation, StylesheetProgram, Template, TemplateArgument,
+    TemplateArgumentValue, TemplateParameter, TemplateParameterDefault, ValueExpression,
+    VariableFilteredElementPath, Xslt10ConcatPart,
 };
 
 impl StylesheetProgram {
@@ -207,8 +207,11 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
             name_owned(element) + name_owned(attribute)
         }
         MatchPattern::AnyElementWithAttribute(attribute) => name_owned(attribute),
-        MatchPattern::NodeStringValueEquals { node_test, value } => {
-            value.capacity()
+        MatchPattern::NodeStringPredicate {
+            node_test,
+            predicate,
+        } => {
+            match_string_predicate_owned(predicate)
                 + match node_test {
                     MatchNodeTest::Element(name) => name_owned(name),
                     MatchNodeTest::ProcessingInstruction(target) => {
@@ -240,6 +243,15 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
         }
         MatchPattern::UnionAlternatives(patterns) => vec_owned(patterns, match_pattern_owned),
         MatchPattern::Path(path) => path.known_owned_capacity_bytes(),
+    }
+}
+
+fn match_string_predicate_owned(value: &MatchStringPredicate) -> usize {
+    match value {
+        MatchStringPredicate::Equals(value) | MatchStringPredicate::NotEquals(value) => {
+            value.capacity()
+        }
+        MatchStringPredicate::EqualsEither(left, right) => left.capacity() + right.capacity(),
     }
 }
 

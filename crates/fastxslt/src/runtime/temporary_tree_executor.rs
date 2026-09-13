@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xslt::golden_semantics_experiment::{
-    ChildPresenceTest, Instruction, LiteralAttribute, MatchNodeTest, MatchPattern, MatchedTemplate,
-    OnNoMatchPolicy,
+    ChildPresenceTest, Instruction, LiteralAttribute, MatchNodeTest, MatchPattern,
+    MatchStringPredicate, MatchedTemplate, OnNoMatchPolicy,
 };
 
 use super::result_tree::ResultNode;
@@ -805,15 +805,39 @@ fn temporary_matches(
             }
             false
         }
-        (_, MatchPattern::NodeStringValueEquals { node_test, value }) => {
-            temporary_node_test_matches(kind, node_test)
-                && super::runtime_context::temporary_node_string_value(
-                    tree, node, request_id, control,
-                )? == *value
-        }
+        (
+            _,
+            MatchPattern::NodeStringPredicate {
+                node_test,
+                predicate,
+            },
+        ) => temporary_string_predicate_matches(
+            tree, node, node_test, predicate, request_id, control,
+        )?,
         _ => false,
     };
     Ok(matched)
+}
+
+fn temporary_string_predicate_matches(
+    tree: &TemporaryTree,
+    node: usize,
+    node_test: &MatchNodeTest,
+    predicate: &MatchStringPredicate,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if temporary_node_test_matches(&tree.nodes[node].kind, node_test) {
+        let value =
+            super::runtime_context::temporary_node_string_value(tree, node, request_id, control)?;
+        Ok(match predicate {
+            MatchStringPredicate::Equals(expected) => value == *expected,
+            MatchStringPredicate::NotEquals(expected) => value != *expected,
+            MatchStringPredicate::EqualsEither(left, right) => value == *left || value == *right,
+        })
+    } else {
+        Ok(false)
+    }
 }
 
 fn temporary_node_test_matches(kind: &TemporaryNodeKind, node_test: &MatchNodeTest) -> bool {

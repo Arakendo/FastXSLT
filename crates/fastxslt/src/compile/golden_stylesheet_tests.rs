@@ -1141,41 +1141,62 @@ fn compiles_bounded_attribute_presence_match_predicate() {
 
 #[test]
 fn compiles_exact_node_string_value_match_predicates() {
-    use crate::xslt::golden_semantics_experiment::MatchNodeTest;
+    use crate::xslt::golden_semantics_experiment::{MatchNodeTest, MatchStringPredicate};
 
     let stylesheet = parse_stylesheet(
         "memory:node-string-value-patterns.xsl",
-        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="letter[.='b']"/><xsl:template match="text()[.='text']"/><xsl:template match="comment()[.='comment']"/><xsl:template match="processing-instruction('target')[.='data']"/></xsl:stylesheet>"#,
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="letter[.='b']"/><xsl:template match="text()[.='text']"/><xsl:template match="comment()[.='comment']"/><xsl:template match="processing-instruction('target')[.='data']"/><xsl:template match="letter[.='b' or .='h']"/><xsl:template match="letter[not(.='b')]"/><xsl:template match="letter[.!='b']"/></xsl:stylesheet>"#,
     );
     let program = compile_stylesheet(&stylesheet)
         .expect("exact node string-value match predicates should compile");
     assert!(matches!(
         &program.matched_templates[0].pattern,
-        MatchPattern::NodeStringValueEquals {
+        MatchPattern::NodeStringPredicate {
             node_test: MatchNodeTest::Element(name),
-            value
+            predicate: MatchStringPredicate::Equals(value)
         } if name.local == "letter" && value == "b"
     ));
     assert!(matches!(
         &program.matched_templates[1].pattern,
-        MatchPattern::NodeStringValueEquals {
+        MatchPattern::NodeStringPredicate {
             node_test: MatchNodeTest::Text,
-            value
+            predicate: MatchStringPredicate::Equals(value)
         } if value == "text"
     ));
     assert!(matches!(
         &program.matched_templates[2].pattern,
-        MatchPattern::NodeStringValueEquals {
+        MatchPattern::NodeStringPredicate {
             node_test: MatchNodeTest::Comment,
-            value
+            predicate: MatchStringPredicate::Equals(value)
         } if value == "comment"
     ));
     assert!(matches!(
         &program.matched_templates[3].pattern,
-        MatchPattern::NodeStringValueEquals {
+        MatchPattern::NodeStringPredicate {
             node_test: MatchNodeTest::ProcessingInstruction(Some(target)),
-            value
+            predicate: MatchStringPredicate::Equals(value)
         } if target == "target" && value == "data"
+    ));
+    assert!(matches!(
+        &program.matched_templates[4].pattern,
+        MatchPattern::NodeStringPredicate {
+            predicate: MatchStringPredicate::EqualsEither(left, right),
+            ..
+        } if left == "b" && right == "h"
+    ));
+    assert!(matches!(
+        &program.matched_templates[5].pattern,
+        MatchPattern::NodeStringPredicate {
+            predicate: MatchStringPredicate::NotEquals(value),
+            ..
+        } if value == "b"
+    ));
+    assert!(matches!(
+        &program.matched_templates[6].pattern,
+        MatchPattern::NodeStringPredicate {
+            predicate: MatchStringPredicate::NotEquals(value),
+            ..
+        } if value == "b"
     ));
     assert!(
         program
