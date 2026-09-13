@@ -3,7 +3,7 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xpath::path_experiment::{PathStep, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
-    ChildPresenceTest, MatchPattern, NamedSiblingBoundary, TemplatePriority,
+    ChildPresenceTest, MatchNodeTest, MatchPattern, NamedSiblingBoundary, TemplatePriority,
 };
 
 use super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
@@ -48,6 +48,9 @@ pub(super) fn compile_match_pattern(
         }
         predicate if parse_any_element_attribute_variable_predicate(predicate).is_some() => {
             compile_any_element_attribute_variable_pattern(predicate)
+        }
+        predicate if parse_node_string_value_predicate(predicate).is_some() => {
+            compile_node_string_value_pattern(document, element, predicate)
         }
         alternatives if is_homogeneous_qualified_path_union(alternatives) => {
             MatchPattern::QualifiedElementPathAlternatives(
@@ -453,6 +456,53 @@ fn parse_any_element_attribute_predicate(pattern: &str) -> Option<&str> {
     is_ascii_ncname(attribute).then_some(attribute)
 }
 
+fn parse_node_string_value_predicate(pattern: &str) -> Option<(&str, &str)> {
+    let (node_test, predicate) = pattern.split_once('[')?;
+    let literal = predicate.strip_prefix(".=")?.strip_suffix(']')?.trim();
+    let value = ['\'', '"'].into_iter().find_map(|delimiter| {
+        literal
+            .strip_prefix(delimiter)
+            .and_then(|value| value.strip_suffix(delimiter))
+            .filter(|value| !value.contains(delimiter))
+    })?;
+    let supported_node_test = is_ascii_ncname(node_test)
+        || matches!(
+            node_test,
+            "text()" | "comment()" | "processing-instruction()"
+        )
+        || parse_named_processing_instruction_pattern(node_test).is_some();
+    supported_node_test.then_some((node_test, value))
+}
+
+fn compile_node_string_value_pattern(
+    document: &Document,
+    element: NodeId,
+    pattern: &str,
+) -> MatchPattern {
+    let (node_test, value) = parse_node_string_value_predicate(pattern)
+        .expect("node string-value predicate shape was checked");
+    let node_test = match node_test {
+        "text()" => MatchNodeTest::Text,
+        "comment()" => MatchNodeTest::Comment,
+        "processing-instruction()" => MatchNodeTest::ProcessingInstruction(None),
+        named if parse_named_processing_instruction_pattern(named).is_some() => {
+            MatchNodeTest::ProcessingInstruction(Some(
+                parse_named_processing_instruction_pattern(named)
+                    .expect("named processing-instruction shape was checked")
+                    .to_owned(),
+            ))
+        }
+        name => MatchNodeTest::Element(crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: effective_xpath_default_namespace(document, element).map(str::to_owned),
+            local: name.to_owned(),
+        }),
+    };
+    MatchPattern::NodeStringValueEquals {
+        node_test,
+        value: value.to_owned(),
+    }
+}
+
 fn parse_element_child_presence_predicate(pattern: &str) -> Option<(&str, &str)> {
     let (element, child) = pattern.split_once('[')?;
     let child = child.strip_suffix(']')?.trim();
@@ -505,6 +555,7 @@ fn compile_template_priority(
             | MatchPattern::DescendantAnyElement
             | MatchPattern::ElementWithAttribute { .. }
             | MatchPattern::AnyElementWithAttribute(_)
+            | MatchPattern::NodeStringValueEquals { .. }
             | MatchPattern::ElementWithAttributeValue { .. }
             | MatchPattern::ElementWithChild { .. }
             | MatchPattern::AnyElementWithAttributeVariable { .. }

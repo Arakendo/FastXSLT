@@ -8,10 +8,11 @@ use super::{
     ConstructedNode, DecimalSumForExpression, DeepEqualBooleanExpression, ExpandedName,
     FocusSumForExpression, ForDistinctValuesExpression, FormatNumberExpression, GlobalBinding,
     GlobalBindingDefault, Instruction, IntegerForExpression, LiteralAttribute,
-    LiteralAttributeValue, LocationPath, MatchPattern, MatchedTemplate, NamedTemplate,
-    NamespaceBinding, OutputSettings, SequenceItemExpression, SortKey, SortSelect, SourceLocation,
-    StylesheetProgram, Template, TemplateArgument, TemplateArgumentValue, TemplateParameter,
-    TemplateParameterDefault, ValueExpression, VariableFilteredElementPath, Xslt10ConcatPart,
+    LiteralAttributeValue, LocationPath, MatchNodeTest, MatchPattern, MatchedTemplate,
+    NamedTemplate, NamespaceBinding, OutputSettings, SequenceItemExpression, SortKey, SortSelect,
+    SourceLocation, StylesheetProgram, Template, TemplateArgument, TemplateArgumentValue,
+    TemplateParameter, TemplateParameterDefault, ValueExpression, VariableFilteredElementPath,
+    Xslt10ConcatPart,
 };
 
 impl StylesheetProgram {
@@ -206,6 +207,16 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
             name_owned(element) + name_owned(attribute)
         }
         MatchPattern::AnyElementWithAttribute(attribute) => name_owned(attribute),
+        MatchPattern::NodeStringValueEquals { node_test, value } => {
+            value.capacity()
+                + match node_test {
+                    MatchNodeTest::Element(name) => name_owned(name),
+                    MatchNodeTest::ProcessingInstruction(target) => {
+                        target.as_ref().map_or(0, String::capacity)
+                    }
+                    MatchNodeTest::Text | MatchNodeTest::Comment => 0,
+                }
+        }
         MatchPattern::ElementWithAttributeValue {
             element,
             attribute,

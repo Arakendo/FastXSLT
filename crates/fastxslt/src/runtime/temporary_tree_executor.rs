@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xslt::golden_semantics_experiment::{
-    ChildPresenceTest, Instruction, LiteralAttribute, MatchPattern, MatchedTemplate,
+    ChildPresenceTest, Instruction, LiteralAttribute, MatchNodeTest, MatchPattern, MatchedTemplate,
     OnNoMatchPolicy,
 };
 
@@ -805,9 +805,30 @@ fn temporary_matches(
             }
             false
         }
+        (_, MatchPattern::NodeStringValueEquals { node_test, value }) => {
+            temporary_node_test_matches(kind, node_test)
+                && super::runtime_context::temporary_node_string_value(
+                    tree, node, request_id, control,
+                )? == *value
+        }
         _ => false,
     };
     Ok(matched)
+}
+
+fn temporary_node_test_matches(kind: &TemporaryNodeKind, node_test: &MatchNodeTest) -> bool {
+    match (kind, node_test) {
+        (TemporaryNodeKind::Element { name, .. }, MatchNodeTest::Element(expected)) => {
+            name == expected
+        }
+        (TemporaryNodeKind::Text(_), MatchNodeTest::Text)
+        | (TemporaryNodeKind::Comment(_), MatchNodeTest::Comment) => true,
+        (
+            TemporaryNodeKind::ProcessingInstruction { target, .. },
+            MatchNodeTest::ProcessingInstruction(required),
+        ) => required.as_ref().is_none_or(|required| target == required),
+        _ => false,
+    }
 }
 
 fn matches_temporary_path_alternatives(

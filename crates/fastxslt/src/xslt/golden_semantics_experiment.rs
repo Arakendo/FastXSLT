@@ -271,6 +271,10 @@ pub(crate) enum MatchPattern {
         attribute: ExpandedName,
     },
     AnyElementWithAttribute(ExpandedName),
+    NodeStringValueEquals {
+        node_test: MatchNodeTest,
+        value: String,
+    },
     ElementWithAttributeValue {
         element: ExpandedName,
         attribute: ExpandedName,
@@ -303,6 +307,14 @@ pub(crate) enum MatchPattern {
     ProcessingInstructionNamed(String),
     AnyNode,
     AnyElement,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum MatchNodeTest {
+    Element(ExpandedName),
+    Text,
+    Comment,
+    ProcessingInstruction(Option<String>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

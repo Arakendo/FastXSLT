@@ -1140,6 +1140,52 @@ fn compiles_bounded_attribute_presence_match_predicate() {
 }
 
 #[test]
+fn compiles_exact_node_string_value_match_predicates() {
+    use crate::xslt::golden_semantics_experiment::MatchNodeTest;
+
+    let stylesheet = parse_stylesheet(
+        "memory:node-string-value-patterns.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="letter[.='b']"/><xsl:template match="text()[.='text']"/><xsl:template match="comment()[.='comment']"/><xsl:template match="processing-instruction('target')[.='data']"/></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet)
+        .expect("exact node string-value match predicates should compile");
+    assert!(matches!(
+        &program.matched_templates[0].pattern,
+        MatchPattern::NodeStringValueEquals {
+            node_test: MatchNodeTest::Element(name),
+            value
+        } if name.local == "letter" && value == "b"
+    ));
+    assert!(matches!(
+        &program.matched_templates[1].pattern,
+        MatchPattern::NodeStringValueEquals {
+            node_test: MatchNodeTest::Text,
+            value
+        } if value == "text"
+    ));
+    assert!(matches!(
+        &program.matched_templates[2].pattern,
+        MatchPattern::NodeStringValueEquals {
+            node_test: MatchNodeTest::Comment,
+            value
+        } if value == "comment"
+    ));
+    assert!(matches!(
+        &program.matched_templates[3].pattern,
+        MatchPattern::NodeStringValueEquals {
+            node_test: MatchNodeTest::ProcessingInstruction(Some(target)),
+            value
+        } if target == "target" && value == "data"
+    ));
+    assert!(
+        program
+            .matched_templates
+            .iter()
+            .all(|template| template.priority == TemplatePriority::PATH_DEFAULT)
+    );
+}
+
+#[test]
 fn compiles_exact_descendant_wildcard_with_non_simple_priority() {
     let stylesheet = parse_stylesheet(
             "memory:descendant-wildcard-pattern.xsl",

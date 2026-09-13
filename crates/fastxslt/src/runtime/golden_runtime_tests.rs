@@ -2114,6 +2114,49 @@ fn wildcard_attribute_presence_patterns_share_source_and_temporary_semantics() {
 }
 
 #[test]
+fn exact_node_string_value_patterns_dispatch_source_and_temporary_nodes() {
+    const SOURCE: &str = "urn:fastxslt:node-string-value-pattern:source";
+    const STYLESHEET: &str = "urn:fastxslt:node-string-value-pattern:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:variable name="temporary"><letter>b</letter><letter>x</letter></xsl:variable>
+        <xsl:template match="/"><out><xsl:apply-templates select="doc/node()"/><xsl:apply-templates select="$temporary/letter" mode="temporary"/></out></xsl:template>
+        <xsl:template match="text()[.='alpha']"><text/></xsl:template>
+        <xsl:template match="comment()[.='note']"><comment/></xsl:template>
+        <xsl:template match="processing-instruction('target')[.='junk']"><pi/></xsl:template>
+        <xsl:template match="letter[.='b']"><element/></xsl:template>
+        <xsl:template match="letter"/>
+        <xsl:template match="letter[.='b']" mode="temporary"><temporary/></xsl:template>
+        <xsl:template match="letter" mode="temporary"/>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc>alpha<!--note--><?target junk?><letter>b</letter><letter>x</letter></doc>"
+                .to_vec(),
+        )
+        .expect("admit node string-value source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit node string-value stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile node string-value match predicates");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("node-string-value", "result", SOURCE))
+        .expect("admit node string-value request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute node string-value match predicates");
+    assert_eq!(
+        results.by_request["node-string-value"].serialized,
+        "<out><text></text><comment></comment><pi></pi><element></element><temporary></temporary></out>"
+    );
+}
+
+#[test]
 fn local_position_variable_uses_each_selected_source_node_focus() {
     const SOURCE: &str = "urn:fastxslt:position-variable:source";
     const STYLESHEET: &str = "urn:fastxslt:position-variable:stylesheet";

@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-13 -- Exact context-node string equality now composes with bounded
+  unqualified element, text, comment, and processing-instruction match tests
+  through one charged typed matcher shared by source and temporary trees. Five
+  more cases execute and all match exactly; numeric, function, composed,
+  qualified, and multiple predicates remain outside the slice. Exact results
+  rise from 1,348 to 1,353.
+  See [node string-value match evidence](../Evidence/oasis-xslt10-node-string-value-match-patterns-2026-09-13.md).
 - 2026-09-13 -- The exact `*[@name]` wildcard-element attribute-presence
   pattern now uses a dedicated charged typed matcher with source and temporary-
   tree parity. Two more cases execute and both match exactly; value comparisons,

@@ -7,7 +7,8 @@ use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind};
 use crate::xpath::path_experiment::{PathStep, evaluate_location_path_controlled};
 use crate::xslt::golden_semantics_experiment::{
-    ChildPresenceTest, MatchPattern, MatchedTemplate, NamedSiblingBoundary, StylesheetProgram,
+    ChildPresenceTest, MatchNodeTest, MatchPattern, MatchedTemplate, NamedSiblingBoundary,
+    StylesheetProgram,
 };
 
 use super::MultipleMatchPolicy;
@@ -253,6 +254,13 @@ fn matches_pattern(
             }
             Ok(false)
         }
+        MatchPattern::NodeStringValueEquals { node_test, value } => {
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            Ok(source_node_test_matches(source, node, node_test)
+                && source.string_value(node) == value.as_str())
+        }
         MatchPattern::ElementWithAttributeValue {
             element,
             attribute,
@@ -359,6 +367,24 @@ fn matches_pattern(
                 .name(node)
                 .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())),
         MatchPattern::AnyNode => Ok(matches_any_node(source.kind(node))),
+    }
+}
+
+fn source_node_test_matches(source: &Document, node: NodeId, node_test: &MatchNodeTest) -> bool {
+    match node_test {
+        MatchNodeTest::Element(name) => {
+            source.kind(node) == NodeKind::Element && source.name(node) == Some(name)
+        }
+        MatchNodeTest::Text => source.kind(node) == NodeKind::Text,
+        MatchNodeTest::Comment => source.kind(node) == NodeKind::Comment,
+        MatchNodeTest::ProcessingInstruction(target) => {
+            source.kind(node) == NodeKind::ProcessingInstruction
+                && target.as_ref().is_none_or(|target| {
+                    source
+                        .name(node)
+                        .is_some_and(|name| name.namespace.is_none() && name.local == *target)
+                })
+        }
     }
 }
 
