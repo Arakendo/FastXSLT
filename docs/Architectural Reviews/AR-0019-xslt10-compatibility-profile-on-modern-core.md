@@ -1390,3 +1390,8 @@ maintained redistributable legacy suite becomes available.
   mismatches with substantive doubts metadata separately from the other 27;
   the later path-union tranche adds `copy_copy09` as a third doubt-annotated
   mismatch without changing any case disposition.
+- 2026-09-13 -- Whole-pattern variable references and non-literal `key()`
+  arguments now fail as invalid `FXST1005` grammar, while valid literal
+  `id()`/`key()` patterns remain explicitly unsupported. The generic
+  unsupported match frontier fell from 17 to 15 without changing the 1,369
+  exact-result lower bound or any observed expected-error disposition.

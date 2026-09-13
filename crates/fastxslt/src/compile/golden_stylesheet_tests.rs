@@ -1326,6 +1326,36 @@ fn compiles_attribute_name_predicate_with_path_priority() {
 }
 
 #[test]
+fn distinguishes_invalid_match_grammar_from_unimplemented_id_key_semantics() {
+    for lexical in ["$var", "key(bookstore, bookstore)"] {
+        let stylesheet = parse_stylesheet(
+            "memory:invalid-match-grammar.xsl",
+            format!(
+                r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="{lexical}"/></xsl:stylesheet>"#
+            )
+            .as_bytes(),
+        );
+        let failure = compile_stylesheet(&stylesheet).expect_err("invalid match grammar must fail");
+        assert_eq!(failure.code, "FXST1005");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+    }
+
+    for lexical in ["id('b')", "key('x','Redmond')"] {
+        let stylesheet = parse_stylesheet(
+            "memory:unsupported-match-capability.xsl",
+            format!(
+                r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="{lexical}"/></xsl:stylesheet>"#
+            )
+            .as_bytes(),
+        );
+        let failure = compile_stylesheet(&stylesheet)
+            .expect_err("valid but unimplemented id/key semantics must fail");
+        assert_eq!(failure.code, "FXST1005");
+        assert_eq!(failure.category, CompileCategory::Unsupported);
+    }
+}
+
+#[test]
 fn compiles_ordered_position_and_attribute_match_predicates() {
     let stylesheet = parse_stylesheet(
         "memory:ordered-position-attribute-patterns.xsl",

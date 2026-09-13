@@ -4187,6 +4187,11 @@ host lifecycle.
   string value through the typed node-string matcher shared by source and
   temporary trees. Leave dynamic operands and general function predicates
   unsupported.
+- [x] Classify whole-pattern variable references and non-literal `key()`
+  arguments as invalid match grammar while retaining literal `id()` and
+  `key()` patterns as valid but unsupported capability. This reduces the
+  generic unsupported match frontier from 17 to 15 without changing any
+  compatibility denominator or claiming ID/key semantics.
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

@@ -286,6 +286,14 @@ pub(super) fn compile_match_pattern(
             }
             MatchPattern::Path(path)
         }
+        invalid_pattern if invalid_match_pattern_reason(invalid_pattern).is_some() => {
+            return Err(invalid(
+                "FXST1005",
+                invalid_match_pattern_reason(invalid_pattern)
+                    .expect("invalid match-pattern reason was checked"),
+                document.location(element),
+            ));
+        }
         _ => {
             return Err(unsupported(
                 "FXST1005",
@@ -296,6 +304,28 @@ pub(super) fn compile_match_pattern(
     };
     let priority = compile_template_priority(document, element, &pattern)?;
     Ok((pattern, priority))
+}
+
+fn invalid_match_pattern_reason(pattern: &str) -> Option<String> {
+    if pattern.starts_with('$') {
+        return Some(
+            "a variable reference cannot replace a match-pattern location path".to_owned(),
+        );
+    }
+    let arguments = pattern.strip_prefix("key(")?.strip_suffix(')')?;
+    let (name, value) = arguments.split_once(',')?;
+    (!is_xpath_string_literal(name.trim()) || !is_xpath_string_literal(value.trim())).then(|| {
+        "xsl:key match-pattern arguments must be string literals in this pattern grammar".to_owned()
+    })
+}
+
+fn is_xpath_string_literal(value: &str) -> bool {
+    ['\'', '"'].into_iter().any(|delimiter| {
+        value
+            .strip_prefix(delimiter)
+            .and_then(|inner| inner.strip_suffix(delimiter))
+            .is_some_and(|inner| !inner.contains(delimiter))
+    })
 }
 
 fn parse_leading_descendant_static_true_pattern(pattern: &str) -> Option<&str> {
