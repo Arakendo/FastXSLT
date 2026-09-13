@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-13 -- Single-name leading descendant patterns now admit one
+  unqualified attribute presence/value predicate or one positive static sibling
+  position through the existing typed path evaluator. Three more cases execute
+  and all three match exactly; the generic unsupported match-pattern frontier
+  falls from 47 to 43 without admitting child-value, relational, dynamic, or
+  multi-step predicate forms. Exact results rise from 1,341 to 1,344.
+  See [leading descendant predicate evidence](../Evidence/oasis-xslt10-leading-descendant-attribute-and-position-patterns-2026-09-13.md).
 - 2026-09-13 -- Leading descendant patterns now extend to the bounded
   `//ancestor/child` and `//ancestor//descendant` forms while retaining typed
   path priority and document-rooted membership. Ten more cases execute and

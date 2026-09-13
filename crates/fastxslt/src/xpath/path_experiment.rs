@@ -35,8 +35,8 @@ impl LocationPath {
     }
 
     pub(crate) fn is_bounded_descendant_named_match_path(&self) -> bool {
-        self.origin == PathOrigin::Descendant
-            && matches!(
+        if self.origin != PathOrigin::Descendant
+            || !matches!(
                 self.steps.as_slice(),
                 [PathStep::ChildNamed(_)]
                     | [PathStep::ChildNamed(_), PathStep::ChildNamed(_)]
@@ -46,11 +46,34 @@ impl LocationPath {
                         PathStep::ChildNamed(_)
                     ]
             )
-            && self.final_predicate.is_none()
-            && self.final_boolean_predicate.is_none()
-            && self.final_context_predicate.is_none()
+            || self.final_boolean_predicate.is_some()
+            || self.final_context_predicate.is_some()
+        {
+            return false;
+        }
+        let no_predicate = self.final_predicate.is_none()
             && self.step_axis_predicates.iter().all(Option::is_none)
-            && self.step_position_predicates.iter().all(Vec::is_empty)
+            && self.step_position_predicates.iter().all(Vec::is_empty);
+        if no_predicate {
+            return true;
+        }
+        if !matches!(self.steps.as_slice(), [PathStep::ChildNamed(_)]) {
+            return false;
+        }
+        let one_attribute_predicate = self.final_predicate.as_deref().is_some_and(|predicate| {
+            predicate.axis == PredicateAxis::Attribute
+                && predicate.position.is_none()
+                && predicate.conjunct.is_none()
+        }) && self.step_axis_predicates.iter().all(Option::is_none)
+            && self.step_position_predicates.iter().all(Vec::is_empty);
+        let one_static_position = self.final_predicate.is_none()
+            && self.step_axis_predicates.iter().all(Option::is_none)
+            && matches!(
+                self.step_position_predicates.as_slice(),
+                [predicates]
+                    if matches!(predicates.as_slice(), [StepPredicate::Position(PositionPredicate::Select(_))])
+            );
+        one_attribute_predicate || one_static_position
     }
 
     pub(crate) fn has_non_simple_position_predicate(&self) -> bool {
