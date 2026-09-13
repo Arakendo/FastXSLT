@@ -715,6 +715,10 @@ pub(super) fn execute_temporary_copy(
     }
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "the exhaustive private temporary-pattern dispatch remains one semantic ownership point"
+)]
 fn temporary_matches(
     tree: &TemporaryTree,
     node: usize,
@@ -806,6 +810,27 @@ fn temporary_matches(
             false
         }
         (
+            TemporaryNodeKind::Element {
+                name, attributes, ..
+            },
+            MatchPattern::ElementWithTwoAttributeValues {
+                element,
+                first_attribute,
+                first_value,
+                second_attribute,
+                second_value,
+            },
+        ) if name == element => temporary_has_two_attribute_values(
+            tree,
+            attributes,
+            first_attribute,
+            first_value,
+            second_attribute,
+            second_value,
+            request_id,
+            control,
+        )?,
+        (
             _,
             MatchPattern::NodeStringPredicate {
                 node_test,
@@ -817,6 +842,31 @@ fn temporary_matches(
         _ => false,
     };
     Ok(matched)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn temporary_has_two_attribute_values(
+    tree: &TemporaryTree,
+    attributes: &[usize],
+    first_attribute: &ExpandedName,
+    first_value: &str,
+    second_attribute: &ExpandedName,
+    second_value: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let mut first_matches = false;
+    let mut second_matches = false;
+    for attribute in attributes {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if let TemporaryNodeKind::Attribute { name, value } = &tree.nodes[*attribute].kind {
+            first_matches |= name == first_attribute && value == first_value;
+            second_matches |= name == second_attribute && value == second_value;
+        }
+    }
+    Ok(first_matches && second_matches)
 }
 
 fn temporary_string_predicate_matches(

@@ -284,6 +284,29 @@ fn matches_pattern(
             }
             Ok(false)
         }
+        MatchPattern::ElementWithTwoAttributeValues {
+            element,
+            first_attribute,
+            first_value,
+            second_attribute,
+            second_value,
+        } => {
+            if source.name(node) != Some(element) {
+                return Ok(false);
+            }
+            let mut first_matches = false;
+            let mut second_matches = false;
+            for candidate in source.attributes(node) {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                let name = source.name(*candidate);
+                let value = source.string_value(*candidate);
+                first_matches |= name == Some(first_attribute) && value == *first_value;
+                second_matches |= name == Some(second_attribute) && value == *second_value;
+            }
+            Ok(first_matches && second_matches)
+        }
         MatchPattern::ElementWithChild { element, child } => {
             if source.name(node) != Some(element) {
                 return Ok(false);

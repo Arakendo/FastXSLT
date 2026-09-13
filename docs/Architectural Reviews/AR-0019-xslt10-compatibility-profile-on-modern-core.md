@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-13 -- Chained and conjunctive pairs of exact unqualified attribute-
+  value match predicates now normalize to one typed, charged attribute scan
+  shared by source and temporary trees. Three more cases execute and all match
+  exactly; larger predicate sets, namespaces, inequality, numeric/relational
+  comparison, variables, functions, and general boolean composition remain
+  outside the slice. Exact results rise from 1,356 to 1,359.
+  See [two-attribute-value match evidence](../Evidence/oasis-xslt10-two-attribute-value-match-patterns-2026-09-13.md).
 - 2026-09-13 -- The typed context-node string matcher now admits exact
   inequality, negated exact equality, and two-literal equality-or while
   preserving source/temporary parity and bounded charging. Three more cases

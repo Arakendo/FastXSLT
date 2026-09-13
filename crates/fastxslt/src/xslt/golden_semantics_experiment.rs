@@ -280,6 +280,13 @@ pub(crate) enum MatchPattern {
         attribute: ExpandedName,
         value: String,
     },
+    ElementWithTwoAttributeValues {
+        element: ExpandedName,
+        first_attribute: ExpandedName,
+        first_value: String,
+        second_attribute: ExpandedName,
+        second_value: String,
+    },
     ElementWithChild {
         element: ExpandedName,
         child: ChildPresenceTest,

@@ -41,6 +41,9 @@ pub(super) fn compile_match_pattern(
         lexical if parse_document_element_test(lexical).is_some() => {
             compile_document_element_pattern(document, element, lexical)
         }
+        predicate if parse_element_two_attribute_values(predicate).is_some() => {
+            compile_element_two_attribute_values_pattern(predicate)
+        }
         predicate if parse_element_attribute_value_predicate(predicate).is_some() => {
             compile_element_attribute_value_pattern(predicate)
         }
@@ -544,6 +547,50 @@ fn parse_element_attribute_value_predicate(pattern: &str) -> Option<(&str, &str,
         .then_some((element, attribute, value))
 }
 
+fn parse_element_two_attribute_values(pattern: &str) -> Option<(&str, &str, &str, &str, &str)> {
+    let (element, predicates) = pattern.split_once("[@")?;
+    if !is_ascii_ncname(element) {
+        return None;
+    }
+    let (first, second) = if let Some((first, second)) = predicates.split_once("][@") {
+        (first, second.strip_suffix(']')?)
+    } else {
+        predicates.strip_suffix(']')?.split_once(" and @")?
+    };
+    let (first_attribute, first_value) = parse_attribute_literal(first)?;
+    let (second_attribute, second_value) = parse_attribute_literal(second)?;
+    Some((
+        element,
+        first_attribute,
+        first_value,
+        second_attribute,
+        second_value,
+    ))
+}
+
+fn parse_attribute_literal(expression: &str) -> Option<(&str, &str)> {
+    let (attribute, literal) = expression.split_once('=')?;
+    let value = literal.strip_prefix('\'')?.strip_suffix('\'')?;
+    (is_ascii_ncname(attribute) && !value.contains('\'')).then_some((attribute, value))
+}
+
+fn compile_element_two_attribute_values_pattern(pattern: &str) -> MatchPattern {
+    let (element, first_attribute, first_value, second_attribute, second_value) =
+        parse_element_two_attribute_values(pattern)
+            .expect("two-attribute predicate shape was checked");
+    let name = |local: &str| crate::xml::quick_xml_experiment::ExpandedName {
+        namespace: None,
+        local: local.to_owned(),
+    };
+    MatchPattern::ElementWithTwoAttributeValues {
+        element: name(element),
+        first_attribute: name(first_attribute),
+        first_value: first_value.to_owned(),
+        second_attribute: name(second_attribute),
+        second_value: second_value.to_owned(),
+    }
+}
+
 fn parse_any_element_attribute_variable_predicate(pattern: &str) -> Option<(&str, &str)> {
     let predicate = pattern.strip_prefix("*[@")?.strip_suffix(']')?;
     let (attribute, variable) = predicate.split_once("=$")?;
@@ -582,6 +629,7 @@ fn compile_template_priority(
             | MatchPattern::AnyElementWithAttribute(_)
             | MatchPattern::NodeStringPredicate { .. }
             | MatchPattern::ElementWithAttributeValue { .. }
+            | MatchPattern::ElementWithTwoAttributeValues { .. }
             | MatchPattern::ElementWithChild { .. }
             | MatchPattern::AnyElementWithAttributeVariable { .. }
             | MatchPattern::VariableFilteredElementPath(_)

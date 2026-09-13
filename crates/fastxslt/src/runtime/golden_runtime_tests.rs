@@ -2163,6 +2163,45 @@ fn exact_node_string_value_patterns_dispatch_source_and_temporary_nodes() {
 }
 
 #[test]
+fn two_attribute_value_patterns_share_source_and_temporary_semantics() {
+    const SOURCE: &str = "urn:fastxslt:two-attribute-pattern:source";
+    const STYLESHEET: &str = "urn:fastxslt:two-attribute-pattern:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:variable name="temporary"><foo a="x" b="y"/><foo a="x" b="n"/></xsl:variable>
+        <xsl:template match="/"><out><xsl:apply-templates select="doc/foo"/><xsl:apply-templates select="$temporary/foo" mode="temporary"/></out></xsl:template>
+        <xsl:template match="foo[@a='x'][@b='y']"><source/></xsl:template>
+        <xsl:template match="foo"/>
+        <xsl:template match="foo[@a='x' and @b='y']" mode="temporary"><temporary/></xsl:template>
+        <xsl:template match="foo" mode="temporary"/>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><foo a=\"x\" b=\"y\"/><foo a=\"x\" b=\"n\"/></doc>".to_vec(),
+        )
+        .expect("admit two-attribute source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit two-attribute stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile two-attribute value patterns");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("two-attribute", "result", SOURCE))
+        .expect("admit two-attribute request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute two-attribute value patterns");
+    assert_eq!(
+        results.by_request["two-attribute"].serialized,
+        "<out><source></source><temporary></temporary></out>"
+    );
+}
+
+#[test]
 fn local_position_variable_uses_each_selected_source_node_focus() {
     const SOURCE: &str = "urn:fastxslt:position-variable:source";
     const STYLESHEET: &str = "urn:fastxslt:position-variable:stylesheet";

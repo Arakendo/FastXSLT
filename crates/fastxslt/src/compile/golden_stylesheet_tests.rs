@@ -1207,6 +1207,34 @@ fn compiles_exact_node_string_value_match_predicates() {
 }
 
 #[test]
+fn normalizes_two_exact_attribute_value_match_predicates() {
+    let stylesheet = parse_stylesheet(
+        "memory:two-attribute-value-patterns.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="foo[@a='x'][@b='y']"/><xsl:template match="foo[@a='x' and @b='y']"/></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet)
+        .expect("both two-attribute predicate spellings should compile");
+    assert_eq!(
+        program.matched_templates[0].pattern,
+        program.matched_templates[1].pattern
+    );
+    assert!(matches!(
+        &program.matched_templates[0].pattern,
+        MatchPattern::ElementWithTwoAttributeValues {
+            element,
+            first_attribute,
+            first_value,
+            second_attribute,
+            second_value,
+        } if element.local == "foo"
+            && first_attribute.local == "a"
+            && first_value == "x"
+            && second_attribute.local == "b"
+            && second_value == "y"
+    ));
+}
+
+#[test]
 fn compiles_exact_descendant_wildcard_with_non_simple_priority() {
     let stylesheet = parse_stylesheet(
             "memory:descendant-wildcard-pattern.xsl",
