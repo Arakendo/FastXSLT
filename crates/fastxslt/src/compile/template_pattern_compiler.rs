@@ -94,6 +94,14 @@ pub(super) fn compile_match_pattern(
                 },
             }
         }
+        predicate if parse_any_element_attribute_predicate(predicate).is_some() => {
+            MatchPattern::AnyElementWithAttribute(crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: None,
+                local: parse_any_element_attribute_predicate(predicate)
+                    .expect("wildcard attribute predicate shape was checked")
+                    .to_owned(),
+            })
+        }
         predicate
             if predicate.contains('[')
                 && !predicate.contains('/')
@@ -440,6 +448,11 @@ fn parse_element_attribute_predicate(pattern: &str) -> Option<(&str, &str)> {
     (is_ascii_ncname(element) && is_ascii_ncname(attribute)).then_some((element, attribute))
 }
 
+fn parse_any_element_attribute_predicate(pattern: &str) -> Option<&str> {
+    let attribute = pattern.strip_prefix("*[@")?.strip_suffix(']')?;
+    is_ascii_ncname(attribute).then_some(attribute)
+}
+
 fn parse_element_child_presence_predicate(pattern: &str) -> Option<(&str, &str)> {
     let (element, child) = pattern.split_once('[')?;
     let child = child.strip_suffix(']')?.trim();
@@ -491,6 +504,7 @@ fn compile_template_priority(
             | MatchPattern::QualifiedElementPathAlternatives(_)
             | MatchPattern::DescendantAnyElement
             | MatchPattern::ElementWithAttribute { .. }
+            | MatchPattern::AnyElementWithAttribute(_)
             | MatchPattern::ElementWithAttributeValue { .. }
             | MatchPattern::ElementWithChild { .. }
             | MatchPattern::AnyElementWithAttributeVariable { .. }

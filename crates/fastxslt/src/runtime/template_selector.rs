@@ -239,6 +239,20 @@ fn matches_pattern(
             }
             Ok(false)
         }
+        MatchPattern::AnyElementWithAttribute(attribute) => {
+            if source.kind(node) != NodeKind::Element {
+                return Ok(false);
+            }
+            for candidate in source.attributes(node) {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                if source.name(*candidate) == Some(attribute) {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
         MatchPattern::ElementWithAttributeValue {
             element,
             attribute,

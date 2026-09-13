@@ -788,6 +788,23 @@ fn temporary_matches(
             }
             false
         }
+        (
+            TemporaryNodeKind::Element { attributes, .. },
+            MatchPattern::AnyElementWithAttribute(required),
+        ) => {
+            for attribute in attributes {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                if matches!(
+                    &tree.nodes[*attribute].kind,
+                    TemporaryNodeKind::Attribute { name, .. } if name == required
+                ) {
+                    return Ok(true);
+                }
+            }
+            false
+        }
         _ => false,
     };
     Ok(matched)

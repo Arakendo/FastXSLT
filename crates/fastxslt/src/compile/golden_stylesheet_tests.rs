@@ -1098,6 +1098,22 @@ fn compiles_bounded_attribute_presence_match_predicate() {
         program.matched_templates[1].priority
     );
 
+    let wildcard = parse_stylesheet(
+        "memory:wildcard-attribute-pattern.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="*[@test]"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let wildcard_program = compile_stylesheet(&wildcard)
+        .expect("wildcard element attribute-presence pattern should compile");
+    assert!(matches!(
+        &wildcard_program.matched_templates[0].pattern,
+        crate::xslt::golden_semantics_experiment::MatchPattern::AnyElementWithAttribute(attribute)
+            if attribute.namespace.is_none() && attribute.local == "test"
+    ));
+    assert_eq!(
+        wildcard_program.matched_templates[0].priority,
+        TemplatePriority::PATH_DEFAULT
+    );
+
     let comparison = parse_stylesheet(
             "memory:attribute-comparison-pattern.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="foo[@test='true']"><out/></xsl:template></xsl:stylesheet>"#,

@@ -270,6 +270,7 @@ pub(crate) enum MatchPattern {
         element: ExpandedName,
         attribute: ExpandedName,
     },
+    AnyElementWithAttribute(ExpandedName),
     ElementWithAttributeValue {
         element: ExpandedName,
         attribute: ExpandedName,

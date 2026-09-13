@@ -2080,6 +2080,40 @@ fn context_string_value_avts_share_source_and_temporary_node_semantics() {
 }
 
 #[test]
+fn wildcard_attribute_presence_patterns_share_source_and_temporary_semantics() {
+    const SOURCE: &str = "urn:fastxslt:wildcard-attribute-pattern:source";
+    const STYLESHEET: &str = "urn:fastxslt:wildcard-attribute-pattern:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:variable name="temporary"><item marked="yes"/><item/></xsl:variable>
+        <xsl:template match="/"><out><xsl:apply-templates select="doc/*"/><xsl:apply-templates select="$temporary/item" mode="temporary"/></out></xsl:template>
+        <xsl:template match="*[@marked]"><source/></xsl:template>
+        <xsl:template match="*[@marked]" mode="temporary"><temporary/></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><item marked=\"yes\"/><item/></doc>".to_vec())
+        .expect("admit wildcard attribute source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit wildcard attribute stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile wildcard attribute-presence patterns");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("wildcard-attribute", "result", SOURCE))
+        .expect("admit wildcard attribute request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute wildcard attribute-presence patterns");
+    assert_eq!(
+        results.by_request["wildcard-attribute"].serialized,
+        "<out><source></source><temporary></temporary></out>"
+    );
+}
+
+#[test]
 fn local_position_variable_uses_each_selected_source_node_focus() {
     const SOURCE: &str = "urn:fastxslt:position-variable:source";
     const STYLESHEET: &str = "urn:fastxslt:position-variable:stylesheet";

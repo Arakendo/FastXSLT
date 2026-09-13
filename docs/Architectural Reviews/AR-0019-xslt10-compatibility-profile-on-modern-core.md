@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-13 -- The exact `*[@name]` wildcard-element attribute-presence
+  pattern now uses a dedicated charged typed matcher with source and temporary-
+  tree parity. Two more cases execute and both match exactly; value comparisons,
+  namespace wildcards, composed predicates, and general boolean predicates
+  remain outside the slice. Exact results rise from 1,346 to 1,348.
+  See [wildcard attribute-presence evidence](../Evidence/oasis-xslt10-wildcard-attribute-presence-patterns-2026-09-13.md).
 - 2026-09-13 -- The exact `//name[true()]` pattern now normalizes at compile
   time to the existing typed leading-descendant path while retaining path
   priority and charged document-rooted membership. Two more cases execute and

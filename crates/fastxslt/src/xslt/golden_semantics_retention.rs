@@ -205,6 +205,7 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
         MatchPattern::ElementWithAttribute { element, attribute } => {
             name_owned(element) + name_owned(attribute)
         }
+        MatchPattern::AnyElementWithAttribute(attribute) => name_owned(attribute),
         MatchPattern::ElementWithAttributeValue {
             element,
             attribute,
