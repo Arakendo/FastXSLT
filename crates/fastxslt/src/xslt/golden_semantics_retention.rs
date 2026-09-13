@@ -196,7 +196,8 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
         | MatchPattern::ProcessingInstruction
         | MatchPattern::AnyNode
         | MatchPattern::AnyElement
-        | MatchPattern::AnyAttribute => 0,
+        | MatchPattern::AnyAttribute
+        | MatchPattern::AnyElementNumberEquals(_) => 0,
         MatchPattern::DocumentElement(name) => name.as_ref().map_or(0, name_owned),
         MatchPattern::Element(name) | MatchPattern::Attribute(name) => name_owned(name),
         MatchPattern::ProcessingInstructionNamed(target) => target.capacity(),
@@ -209,6 +210,9 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
         MatchPattern::AnyElementWithAttribute(attribute) => name_owned(attribute),
         MatchPattern::AnyElementWithAttributeValue { attribute, value } => {
             name_owned(attribute) + value.capacity()
+        }
+        MatchPattern::AnyElementWithAttributeNumberEquals { attribute, .. } => {
+            name_owned(attribute)
         }
         MatchPattern::NodeStringPredicate {
             node_test,

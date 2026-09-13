@@ -534,6 +534,14 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-13 -- Exact integer equality against a wildcard element string value
+  or unqualified attribute now uses explicit XPath numeric conversion shared by
+  source and temporary trees. One more case executes and matches exactly. A
+  second identity reveals a later broad composed predicate and remains visibly
+  unsupported; decimal/exponent, relational, arithmetic, variable, namespace,
+  and general predicate forms remain outside the slice. Exact results rise from
+  1,361 to 1,362.
+  See [wildcard numeric match evidence](../Evidence/oasis-xslt10-wildcard-numeric-match-predicates-2026-09-13.md).
 - 2026-09-13 -- Wildcard-element exact attribute-value predicates now use a
   charged typed matcher, while `node()` attribute-presence predicates normalize
   to the equivalent wildcard-element presence matcher. Source and temporary

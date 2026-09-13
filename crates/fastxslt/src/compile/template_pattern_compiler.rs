@@ -56,6 +56,15 @@ pub(super) fn compile_match_pattern(
         predicate if parse_any_element_attribute_value_predicate(predicate).is_some() => {
             compile_any_element_attribute_value_pattern(predicate)
         }
+        predicate if parse_any_element_attribute_number_predicate(predicate).is_some() => {
+            compile_any_element_attribute_number_pattern(predicate)
+        }
+        predicate if parse_any_element_number_predicate(predicate).is_some() => {
+            MatchPattern::AnyElementNumberEquals(
+                parse_any_element_number_predicate(predicate)
+                    .expect("wildcard element numeric predicate shape was checked"),
+            )
+        }
         predicate if parse_node_string_predicate(predicate).is_some() => {
             compile_node_string_value_pattern(document, element, predicate)
         }
@@ -493,6 +502,33 @@ fn compile_any_element_attribute_value_pattern(pattern: &str) -> MatchPattern {
     }
 }
 
+fn parse_any_element_number_predicate(pattern: &str) -> Option<i32> {
+    pattern
+        .strip_prefix("*[.=")?
+        .strip_suffix(']')?
+        .parse()
+        .ok()
+}
+
+fn parse_any_element_attribute_number_predicate(pattern: &str) -> Option<(&str, i32)> {
+    let predicate = pattern.strip_prefix("*[@")?.strip_suffix(']')?;
+    let (attribute, value) = predicate.split_once('=')?;
+    is_ascii_ncname(attribute).then_some(())?;
+    Some((attribute, value.parse().ok()?))
+}
+
+fn compile_any_element_attribute_number_pattern(pattern: &str) -> MatchPattern {
+    let (attribute, value) = parse_any_element_attribute_number_predicate(pattern)
+        .expect("wildcard element attribute-number predicate shape was checked");
+    MatchPattern::AnyElementWithAttributeNumberEquals {
+        attribute: crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: None,
+            local: attribute.to_owned(),
+        },
+        value,
+    }
+}
+
 fn parse_node_string_predicate(pattern: &str) -> Option<(&str, MatchStringPredicate)> {
     let (node_test, predicate) = pattern.split_once('[')?;
     let predicate = predicate.strip_suffix(']')?.trim();
@@ -661,6 +697,8 @@ fn compile_template_priority(
             | MatchPattern::ElementWithAttribute { .. }
             | MatchPattern::AnyElementWithAttribute(_)
             | MatchPattern::AnyElementWithAttributeValue { .. }
+            | MatchPattern::AnyElementNumberEquals(_)
+            | MatchPattern::AnyElementWithAttributeNumberEquals { .. }
             | MatchPattern::NodeStringPredicate { .. }
             | MatchPattern::ElementWithAttributeValue { .. }
             | MatchPattern::ElementWithTwoAttributeValues { .. }

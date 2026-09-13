@@ -836,6 +836,22 @@ fn temporary_matches(
             request_id,
             control,
         )?,
+        (TemporaryNodeKind::Element { .. }, MatchPattern::AnyElementNumberEquals(expected)) => {
+            let value = super::runtime_context::temporary_node_string_value(
+                tree, node, request_id, control,
+            )?;
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&value)
+                == Some(f64::from(*expected))
+        }
+        (
+            TemporaryNodeKind::Element { attributes, .. },
+            MatchPattern::AnyElementWithAttributeNumberEquals { attribute, value },
+        ) => temporary_has_attribute_number(
+            tree, attributes, attribute, *value, request_id, control,
+        )?,
         (
             _,
             MatchPattern::NodeStringPredicate {
@@ -848,6 +864,34 @@ fn temporary_matches(
         _ => false,
     };
     Ok(matched)
+}
+
+fn temporary_has_attribute_number(
+    tree: &TemporaryTree,
+    attributes: &[usize],
+    required_name: &ExpandedName,
+    required_value: i32,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    for attribute in attributes {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if let TemporaryNodeKind::Attribute { name, value } = &tree.nodes[*attribute].kind
+            && name == required_name
+        {
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            if crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(value)
+                == Some(f64::from(required_value))
+            {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
 }
 
 fn temporary_has_attribute_value(

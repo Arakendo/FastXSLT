@@ -1116,7 +1116,7 @@ fn compiles_bounded_attribute_presence_match_predicate() {
 
     let generalized = parse_stylesheet(
         "memory:generalized-attribute-patterns.xsl",
-        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="*[@test='true']"/><xsl:template match="node()[@test]"/></xsl:stylesheet>"#,
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="*[@test='true']"/><xsl:template match="node()[@test]"/><xsl:template match="*[.=117]"/><xsl:template match="*[@value=4]"/></xsl:stylesheet>"#,
     );
     let generalized_program = compile_stylesheet(&generalized)
         .expect("generalized bounded attribute patterns should compile");
@@ -1131,6 +1131,17 @@ fn compiles_bounded_attribute_presence_match_predicate() {
         &generalized_program.matched_templates[1].pattern,
         crate::xslt::golden_semantics_experiment::MatchPattern::AnyElementWithAttribute(attribute)
             if attribute.local == "test"
+    ));
+    assert!(matches!(
+        generalized_program.matched_templates[2].pattern,
+        crate::xslt::golden_semantics_experiment::MatchPattern::AnyElementNumberEquals(117)
+    ));
+    assert!(matches!(
+        &generalized_program.matched_templates[3].pattern,
+        crate::xslt::golden_semantics_experiment::MatchPattern::AnyElementWithAttributeNumberEquals {
+            attribute,
+            value: 4,
+        } if attribute.local == "value"
     ));
 
     let comparison = parse_stylesheet(

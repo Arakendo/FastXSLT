@@ -275,6 +275,11 @@ pub(crate) enum MatchPattern {
         attribute: ExpandedName,
         value: String,
     },
+    AnyElementNumberEquals(i32),
+    AnyElementWithAttributeNumberEquals {
+        attribute: ExpandedName,
+        value: i32,
+    },
     NodeStringPredicate {
         node_test: MatchNodeTest,
         predicate: MatchStringPredicate,

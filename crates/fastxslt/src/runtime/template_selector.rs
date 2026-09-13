@@ -270,6 +270,37 @@ fn matches_pattern(
             }
             Ok(false)
         }
+        MatchPattern::AnyElementNumberEquals(expected) => {
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            Ok(source.kind(node) == NodeKind::Element
+                && crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(
+                    &source.string_value(node),
+                ) == Some(f64::from(*expected)))
+        }
+        MatchPattern::AnyElementWithAttributeNumberEquals { attribute, value } => {
+            if source.kind(node) != NodeKind::Element {
+                return Ok(false);
+            }
+            for candidate in source.attributes(node) {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                if source.name(*candidate) == Some(attribute) {
+                    control
+                        .charge(WorkDomain::XPathOperation, 1)
+                        .map_err(|failure| control_failure(failure, request_id))?;
+                    if crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(
+                        &source.string_value(*candidate),
+                    ) == Some(f64::from(*value))
+                    {
+                        return Ok(true);
+                    }
+                }
+            }
+            Ok(false)
+        }
         MatchPattern::NodeStringPredicate {
             node_test,
             predicate,
