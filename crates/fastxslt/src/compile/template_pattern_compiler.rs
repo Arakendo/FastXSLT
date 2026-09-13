@@ -685,7 +685,9 @@ fn compile_any_element_attribute_number_pattern(pattern: &str) -> MatchPattern {
 fn parse_node_string_predicate(pattern: &str) -> Option<(&str, MatchStringPredicate)> {
     let (node_test, predicate) = pattern.split_once('[')?;
     let predicate = predicate.strip_suffix(']')?.trim();
-    let predicate = if let Some((left, right)) = predicate.split_once(" or ") {
+    let predicate = if let Some(value) = parse_context_contains_literal(predicate) {
+        MatchStringPredicate::Contains(value)
+    } else if let Some((left, right)) = predicate.split_once(" or ") {
         MatchStringPredicate::EqualsEither(
             parse_context_string_literal(left, "=")?,
             parse_context_string_literal(right, "=")?,
@@ -707,6 +709,22 @@ fn parse_node_string_predicate(pattern: &str) -> Option<(&str, MatchStringPredic
         )
         || parse_named_processing_instruction_pattern(node_test).is_some();
     supported_node_test.then_some((node_test, predicate))
+}
+
+fn parse_context_contains_literal(expression: &str) -> Option<String> {
+    let arguments = expression.strip_prefix("contains(")?.strip_suffix(')')?;
+    let (context, literal) = arguments.split_once(',')?;
+    if context.trim() != "." {
+        return None;
+    }
+    let literal = literal.trim();
+    ['\'', '"'].into_iter().find_map(|delimiter| {
+        literal
+            .strip_prefix(delimiter)
+            .and_then(|value| value.strip_suffix(delimiter))
+            .filter(|value| !value.contains(delimiter))
+            .map(str::to_owned)
+    })
 }
 
 fn parse_context_string_literal(expression: &str, operator: &str) -> Option<String> {

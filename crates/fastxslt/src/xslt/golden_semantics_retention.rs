@@ -275,9 +275,9 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
 
 fn match_string_predicate_owned(value: &MatchStringPredicate) -> usize {
     match value {
-        MatchStringPredicate::Equals(value) | MatchStringPredicate::NotEquals(value) => {
-            value.capacity()
-        }
+        MatchStringPredicate::Equals(value)
+        | MatchStringPredicate::NotEquals(value)
+        | MatchStringPredicate::Contains(value) => value.capacity(),
         MatchStringPredicate::EqualsEither(left, right) => left.capacity() + right.capacity(),
     }
 }

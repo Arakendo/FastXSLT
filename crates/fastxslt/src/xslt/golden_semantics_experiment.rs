@@ -347,6 +347,7 @@ pub(crate) enum MatchStringPredicate {
     Equals(String),
     NotEquals(String),
     EqualsEither(String, String),
+    Contains(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

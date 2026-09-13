@@ -479,6 +479,7 @@ fn match_string_predicate(value: &str, predicate: &MatchStringPredicate) -> bool
         MatchStringPredicate::Equals(expected) => value == expected,
         MatchStringPredicate::NotEquals(expected) => value != expected,
         MatchStringPredicate::EqualsEither(left, right) => value == left || value == right,
+        MatchStringPredicate::Contains(expected) => value.contains(expected),
     }
 }
 

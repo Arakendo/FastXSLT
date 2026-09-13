@@ -1175,7 +1175,7 @@ fn compiles_exact_node_string_value_match_predicates() {
 
     let stylesheet = parse_stylesheet(
         "memory:node-string-value-patterns.xsl",
-        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="letter[.='b']"/><xsl:template match="text()[.='text']"/><xsl:template match="comment()[.='comment']"/><xsl:template match="processing-instruction('target')[.='data']"/><xsl:template match="letter[.='b' or .='h']"/><xsl:template match="letter[not(.='b')]"/><xsl:template match="letter[.!='b']"/></xsl:stylesheet>"#,
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="letter[.='b']"/><xsl:template match="text()[.='text']"/><xsl:template match="comment()[.='comment']"/><xsl:template match="processing-instruction('target')[.='data']"/><xsl:template match="letter[.='b' or .='h']"/><xsl:template match="letter[not(.='b')]"/><xsl:template match="letter[.!='b']"/><xsl:template match="text()[contains(., 'needle')]"/></xsl:stylesheet>"#,
     );
     let program = compile_stylesheet(&stylesheet)
         .expect("exact node string-value match predicates should compile");
@@ -1227,6 +1227,13 @@ fn compiles_exact_node_string_value_match_predicates() {
             predicate: MatchStringPredicate::NotEquals(value),
             ..
         } if value == "b"
+    ));
+    assert!(matches!(
+        &program.matched_templates[7].pattern,
+        MatchPattern::NodeStringPredicate {
+            node_test: MatchNodeTest::Text,
+            predicate: MatchStringPredicate::Contains(value)
+        } if value == "needle"
     ));
     assert!(
         program

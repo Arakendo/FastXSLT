@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-13 -- Literal `contains()` over the context-node string value now
+  extends the typed node-string match family with shared source/temporary
+  semantics. One more case executes and matches exactly; the generic
+  unsupported match-pattern frontier falls from 18 to 17 and exact results
+  rise from 1,368 to 1,369.
+  See [text contains match evidence](../Evidence/oasis-xslt10-text-contains-match-pattern-2026-09-13.md).
 - 2026-09-13 -- One exact named-sibling position now composes with one exact
   attribute-value predicate without erasing predicate order. Source and
   temporary trees distinguish position-then-attribute from attribute-then-

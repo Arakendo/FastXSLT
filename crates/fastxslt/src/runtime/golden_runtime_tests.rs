@@ -2176,6 +2176,37 @@ fn exact_node_string_value_patterns_dispatch_source_and_temporary_nodes() {
 }
 
 #[test]
+fn text_contains_match_pattern_shares_source_and_temporary_semantics() {
+    const SOURCE: &str = "urn:fastxslt:text-contains-pattern:source";
+    const STYLESHEET: &str = "urn:fastxslt:text-contains-pattern:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output omit-xml-declaration="yes"/>
+        <xsl:variable name="temporary"><item>has needle here</item><item>other</item></xsl:variable>
+        <xsl:template match="/"><out><xsl:apply-templates select="doc/text()" mode="contains"/><xsl:apply-templates select="$temporary/item" mode="contains"/></out></xsl:template>
+        <xsl:template match="text()[contains(., 'needle')]" mode="contains"><hit/></xsl:template>
+        <xsl:template match="text()" mode="contains"/>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc>has needle here</doc>".to_vec())
+        .expect("admit text-contains source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit text-contains stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile text-contains pattern");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("text-contains", "result", SOURCE))
+        .expect("admit text-contains request");
+    let results = execute_transform_set(builder.seal()).expect("execute text-contains pattern");
+    assert_eq!(
+        results.by_request["text-contains"].serialized,
+        "<out><hit></hit><hit></hit></out>"
+    );
+}
+
+#[test]
 fn two_attribute_value_patterns_share_source_and_temporary_semantics() {
     const SOURCE: &str = "urn:fastxslt:two-attribute-pattern:source";
     const STYLESHEET: &str = "urn:fastxslt:two-attribute-pattern:stylesheet";

@@ -1056,6 +1056,7 @@ fn temporary_string_predicate_matches(
             MatchStringPredicate::Equals(expected) => value == *expected,
             MatchStringPredicate::NotEquals(expected) => value != *expected,
             MatchStringPredicate::EqualsEither(left, right) => value == *left || value == *right,
+            MatchStringPredicate::Contains(expected) => value.contains(expected),
         })
     } else {
         Ok(false)
