@@ -428,6 +428,10 @@ fn matches_pattern(
         MatchPattern::Attribute(name) => {
             Ok(source.kind(node) == NodeKind::Attribute && source.name(node) == Some(name))
         }
+        MatchPattern::AttributeNamespace(namespace) => Ok(source.kind(node) == NodeKind::Attribute
+            && source
+                .name(node)
+                .is_some_and(|name| name.namespace.as_deref() == Some(namespace.as_str()))),
         MatchPattern::AnyAttribute => Ok(source.kind(node) == NodeKind::Attribute),
         MatchPattern::Comment => Ok(source.kind(node) == NodeKind::Comment),
         MatchPattern::Text => Ok(source.kind(node) == NodeKind::Text),

@@ -1265,6 +1265,42 @@ fn normalizes_two_exact_attribute_value_match_predicates() {
 }
 
 #[test]
+fn compiles_namespace_aware_attribute_match_patterns() {
+    let stylesheet = parse_stylesheet(
+        "memory:namespace-attribute-patterns.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:test"><xsl:template match="@p:*"/><xsl:template match="@p:code"/><xsl:template match="p:book[@style='leather']"/></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet)
+        .expect("namespace-aware attribute match patterns should compile");
+    assert!(matches!(
+        &program.matched_templates[0].pattern,
+        MatchPattern::AttributeNamespace(namespace) if namespace == "urn:test"
+    ));
+    assert!(matches!(
+        &program.matched_templates[1].pattern,
+        MatchPattern::Attribute(name)
+            if name.namespace.as_deref() == Some("urn:test") && name.local == "code"
+    ));
+    assert!(matches!(
+        &program.matched_templates[2].pattern,
+        MatchPattern::ElementWithAttributeValue { element, attribute, value }
+            if element.namespace.as_deref() == Some("urn:test")
+                && element.local == "book"
+                && attribute.namespace.is_none()
+                && attribute.local == "style"
+                && value == "leather"
+    ));
+
+    let unbound = parse_stylesheet(
+        "memory:unbound-attribute-pattern.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="*[@missing:value]"/></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&unbound).expect_err("unbound attribute prefix must fail");
+    assert_eq!(failure.code, "FXST0031");
+    assert_eq!(failure.category, CompileCategory::Invalid);
+}
+
+#[test]
 fn compiles_exact_descendant_wildcard_with_non_simple_priority() {
     let stylesheet = parse_stylesheet(
             "memory:descendant-wildcard-pattern.xsl",

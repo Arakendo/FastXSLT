@@ -732,6 +732,10 @@ fn temporary_matches(
         | (TemporaryNodeKind::Attribute { name, .. }, MatchPattern::Attribute(expected)) => {
             name == expected
         }
+        (
+            TemporaryNodeKind::Attribute { name, .. },
+            MatchPattern::AttributeNamespace(namespace),
+        ) => name.namespace.as_deref() == Some(namespace.as_str()),
         (TemporaryNodeKind::Element { name, .. }, MatchPattern::ElementLocal(local)) => {
             name.local == *local
         }
@@ -813,6 +817,18 @@ fn temporary_matches(
             TemporaryNodeKind::Element { attributes, .. },
             MatchPattern::AnyElementWithAttributeValue { attribute, value },
         ) => {
+            temporary_has_attribute_value(tree, attributes, attribute, value, request_id, control)?
+        }
+        (
+            TemporaryNodeKind::Element {
+                name, attributes, ..
+            },
+            MatchPattern::ElementWithAttributeValue {
+                element,
+                attribute,
+                value,
+            },
+        ) if name == element => {
             temporary_has_attribute_value(tree, attributes, attribute, value, request_id, control)?
         }
         (

@@ -316,6 +316,7 @@ pub(crate) enum MatchPattern {
     UnionAlternatives(Vec<MatchPattern>),
     Path(LocationPath),
     Attribute(ExpandedName),
+    AttributeNamespace(String),
     AnyAttribute,
     Comment,
     Text,

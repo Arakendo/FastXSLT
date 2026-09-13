@@ -2215,6 +2215,44 @@ fn two_attribute_value_patterns_share_source_and_temporary_semantics() {
 }
 
 #[test]
+fn namespace_aware_attribute_patterns_dispatch_expanded_names() {
+    const SOURCE: &str = "urn:fastxslt:namespace-attribute-pattern:source";
+    const STYLESHEET: &str = "urn:fastxslt:namespace-attribute-pattern:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:test" exclude-result-prefixes="p">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:template match="/"><out><xsl:apply-templates select="doc/*"/><attributes><xsl:apply-templates select="doc/*/@*" mode="attributes"/></attributes></out></xsl:template>
+        <xsl:template match="p:book[@style='leather']"><book/></xsl:template>
+        <xsl:template match="*"/>
+        <xsl:template match="@p:*" mode="attributes"><namespaced/></xsl:template>
+        <xsl:template match="@*" mode="attributes"/>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc xmlns:p=\"urn:test\"><p:book style=\"leather\" p:code=\"x\"/></doc>".to_vec(),
+        )
+        .expect("admit namespace-aware attribute source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit namespace-aware attribute stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile namespace-aware attribute patterns");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("namespace-attribute", "result", SOURCE))
+        .expect("admit namespace-aware attribute request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute namespace-aware attribute patterns");
+    assert_eq!(
+        results.by_request["namespace-attribute"].serialized,
+        "<out><book></book><attributes><namespaced></namespaced></attributes></out>"
+    );
+}
+
+#[test]
 fn local_position_variable_uses_each_selected_source_node_focus() {
     const SOURCE: &str = "urn:fastxslt:position-variable:source";
     const STYLESHEET: &str = "urn:fastxslt:position-variable:stylesheet";

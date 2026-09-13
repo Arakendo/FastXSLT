@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-13 -- Bounded namespace-aware attribute patterns now resolve exact
+  names, namespace wildcards, presence predicates, and qualified-element
+  attribute-value predicates against stylesheet namespace context. Two more
+  cases match exactly; a third advances to a visible import/result-namespace
+  mismatch and remains uncredited. The generic unsupported match-pattern
+  frontier falls from 25 to 22 and exact results rise from 1,362 to 1,364.
+  See [namespace-aware attribute match evidence](../Evidence/oasis-xslt10-namespace-aware-attribute-match-patterns-2026-09-13.md).
 - 2026-09-13 -- Exact integer equality against a wildcard element string value
   or unqualified attribute now uses explicit XPath numeric conversion shared by
   source and temporary trees. One more case executes and matches exactly. A

@@ -44,6 +44,9 @@ pub(super) fn compile_match_pattern(
         predicate if parse_element_two_attribute_values(predicate).is_some() => {
             compile_element_two_attribute_values_pattern(predicate)
         }
+        predicate if parse_qualified_element_attribute_value(predicate).is_some() => {
+            compile_qualified_element_attribute_value(document, element, predicate)?
+        }
         predicate if parse_element_attribute_value_predicate(predicate).is_some() => {
             compile_element_attribute_value_pattern(predicate)
         }
@@ -141,7 +144,40 @@ pub(super) fn compile_match_pattern(
                     .to_owned(),
             })
         }
+        predicate if parse_any_element_qualified_attribute_predicate(predicate).is_some() => {
+            compile_any_element_qualified_attribute(document, element, predicate)?
+        }
         "@*" | "attribute()" | "attribute::*" | "attribute::node()" => MatchPattern::AnyAttribute,
+        attribute if parse_attribute_namespace_wildcard(attribute).is_some() => {
+            let prefix = parse_attribute_namespace_wildcard(attribute)
+                .expect("attribute namespace wildcard shape was checked");
+            MatchPattern::AttributeNamespace(
+                namespace_for_prefix(document, element, prefix)
+                    .ok_or_else(|| {
+                        invalid(
+                            "FXST0031",
+                            format!("unbound prefix in attribute match pattern: {prefix}"),
+                            document.location(element),
+                        )
+                    })?
+                    .to_owned(),
+            )
+        }
+        attribute if parse_qualified_attribute_test(attribute).is_some() => {
+            let (prefix, local) = parse_qualified_attribute_test(attribute)
+                .expect("qualified attribute test shape was checked");
+            let namespace = namespace_for_prefix(document, element, prefix).ok_or_else(|| {
+                invalid(
+                    "FXST0031",
+                    format!("unbound prefix in attribute match pattern: {prefix}"),
+                    document.location(element),
+                )
+            })?;
+            MatchPattern::Attribute(crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: Some(namespace.to_owned()),
+                local: local.to_owned(),
+            })
+        }
         attribute if attribute.starts_with('@') && is_ascii_ncname(&attribute[1..]) => {
             MatchPattern::Attribute(crate::xml::quick_xml_experiment::ExpandedName {
                 namespace: None,
@@ -485,6 +521,44 @@ fn parse_any_node_attribute_predicate(pattern: &str) -> Option<&str> {
     is_ascii_ncname(attribute).then_some(attribute)
 }
 
+fn parse_attribute_namespace_wildcard(pattern: &str) -> Option<&str> {
+    let prefix = pattern.strip_prefix('@')?.strip_suffix(":*")?;
+    is_ascii_ncname(prefix).then_some(prefix)
+}
+
+fn parse_qualified_attribute_test(pattern: &str) -> Option<(&str, &str)> {
+    let (prefix, local) = pattern.strip_prefix('@')?.split_once(':')?;
+    (is_ascii_ncname(prefix) && is_ascii_ncname(local)).then_some((prefix, local))
+}
+
+fn parse_any_element_qualified_attribute_predicate(pattern: &str) -> Option<(&str, &str)> {
+    let attribute = pattern.strip_prefix("*[@")?.strip_suffix(']')?;
+    let (prefix, local) = attribute.split_once(':')?;
+    (is_ascii_ncname(prefix) && is_ascii_ncname(local)).then_some((prefix, local))
+}
+
+fn compile_any_element_qualified_attribute(
+    document: &Document,
+    element: NodeId,
+    pattern: &str,
+) -> Result<MatchPattern, CompileFailure> {
+    let (prefix, local) = parse_any_element_qualified_attribute_predicate(pattern)
+        .expect("qualified attribute predicate shape was checked");
+    let namespace = namespace_for_prefix(document, element, prefix).ok_or_else(|| {
+        invalid(
+            "FXST0031",
+            format!("unbound prefix in attribute match predicate: {prefix}"),
+            document.location(element),
+        )
+    })?;
+    Ok(MatchPattern::AnyElementWithAttribute(
+        crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: Some(namespace.to_owned()),
+            local: local.to_owned(),
+        },
+    ))
+}
+
 fn parse_any_element_attribute_value_predicate(pattern: &str) -> Option<(&str, &str)> {
     let predicate = pattern.strip_prefix("*[@")?.strip_suffix(']')?;
     parse_attribute_literal(predicate)
@@ -616,6 +690,40 @@ fn parse_element_attribute_value_predicate(pattern: &str) -> Option<(&str, &str,
         .then_some((element, attribute, value))
 }
 
+fn parse_qualified_element_attribute_value(pattern: &str) -> Option<(&str, &str, &str, &str)> {
+    let (element, predicate) = pattern.split_once("[@")?;
+    let (prefix, local) = parse_qualified_element_test(element)?;
+    let (attribute, value) = parse_attribute_literal(predicate.strip_suffix(']')?)?;
+    is_ascii_ncname(attribute).then_some((prefix, local, attribute, value))
+}
+
+fn compile_qualified_element_attribute_value(
+    document: &Document,
+    element: NodeId,
+    pattern: &str,
+) -> Result<MatchPattern, CompileFailure> {
+    let (prefix, local, attribute, value) = parse_qualified_element_attribute_value(pattern)
+        .expect("qualified element attribute-value pattern shape was checked");
+    let namespace = namespace_for_prefix(document, element, prefix).ok_or_else(|| {
+        invalid(
+            "FXST0031",
+            format!("unbound prefix in template match pattern: {prefix}"),
+            document.location(element),
+        )
+    })?;
+    Ok(MatchPattern::ElementWithAttributeValue {
+        element: crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: Some(namespace.to_owned()),
+            local: local.to_owned(),
+        },
+        attribute: crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: None,
+            local: attribute.to_owned(),
+        },
+        value: value.to_owned(),
+    })
+}
+
 fn parse_element_two_attribute_values(pattern: &str) -> Option<(&str, &str, &str, &str, &str)> {
     let (element, predicates) = pattern.split_once("[@")?;
     if !is_ascii_ncname(element) {
@@ -717,6 +825,7 @@ fn compile_template_priority(
             | MatchPattern::Element(_)
             | MatchPattern::Attribute(_)
             | MatchPattern::ProcessingInstructionNamed(_) => TemplatePriority::EXACT_NAME_DEFAULT,
+            MatchPattern::AttributeNamespace(_) => TemplatePriority::NAMESPACE_WILDCARD_DEFAULT,
             MatchPattern::ElementLocal(_) | MatchPattern::ElementNamespace(_) => {
                 TemplatePriority::NAMESPACE_WILDCARD_DEFAULT
             }
