@@ -736,6 +736,15 @@ fn temporary_matches(
             TemporaryNodeKind::Attribute { name, .. },
             MatchPattern::AttributeNamespace(namespace),
         ) => name.namespace.as_deref() == Some(namespace.as_str()),
+        (
+            TemporaryNodeKind::Attribute { name, .. },
+            MatchPattern::AttributeNameEquals(expected),
+        ) => {
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            name.namespace.is_none() && name.local == *expected
+        }
         (TemporaryNodeKind::Element { name, .. }, MatchPattern::ElementLocal(local)) => {
             name.local == *local
         }

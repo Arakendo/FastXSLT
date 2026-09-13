@@ -2253,6 +2253,32 @@ fn namespace_aware_attribute_patterns_dispatch_expanded_names() {
 }
 
 #[test]
+fn attribute_name_predicate_outranks_exact_name_pattern() {
+    const SOURCE: &str = "urn:fastxslt:attribute-name-pattern:source";
+    const STYLESHEET: &str = "urn:fastxslt:attribute-name-pattern:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc/@*"/></out></xsl:template><xsl:template match="@*[name()='x1']"><correct/></xsl:template><xsl:template match="@x1"><wrong/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc x1=\"value\"/>".to_vec())
+        .expect("admit attribute-name source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit attribute-name stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile attribute-name predicate");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("attribute-name", "result", SOURCE))
+        .expect("admit attribute-name request");
+    let results = execute_transform_set(builder.seal()).expect("execute attribute-name predicate");
+    assert_eq!(
+        results.by_request["attribute-name"].serialized,
+        "<out><correct></correct></out>"
+    );
+}
+
+#[test]
 fn local_position_variable_uses_each_selected_source_node_focus() {
     const SOURCE: &str = "urn:fastxslt:position-variable:source";
     const STYLESHEET: &str = "urn:fastxslt:position-variable:stylesheet";

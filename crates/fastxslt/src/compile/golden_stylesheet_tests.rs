@@ -1301,6 +1301,24 @@ fn compiles_namespace_aware_attribute_match_patterns() {
 }
 
 #[test]
+fn compiles_attribute_name_predicate_with_path_priority() {
+    let stylesheet = parse_stylesheet(
+        "memory:attribute-name-pattern.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="@*[name()='x1']"/></xsl:stylesheet>"#,
+    );
+    let program =
+        compile_stylesheet(&stylesheet).expect("bounded attribute name predicate should compile");
+    assert!(matches!(
+        &program.matched_templates[0].pattern,
+        MatchPattern::AttributeNameEquals(name) if name == "x1"
+    ));
+    assert_eq!(
+        program.matched_templates[0].priority,
+        TemplatePriority::PATH_DEFAULT
+    );
+}
+
+#[test]
 fn compiles_exact_descendant_wildcard_with_non_simple_priority() {
     let stylesheet = parse_stylesheet(
             "memory:descendant-wildcard-pattern.xsl",

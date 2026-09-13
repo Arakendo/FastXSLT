@@ -317,6 +317,7 @@ pub(crate) enum MatchPattern {
     Path(LocationPath),
     Attribute(ExpandedName),
     AttributeNamespace(String),
+    AttributeNameEquals(String),
     AnyAttribute,
     Comment,
     Text,

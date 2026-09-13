@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-13 -- The exact `@*[name()='NCName']` match predicate now retains its
+  lexical-name semantics and `0.5` predicate priority instead of collapsing to
+  an exact expanded-name pattern. One more case executes and matches exactly;
+  the generic unsupported match-pattern frontier falls from 22 to 21 and exact
+  results rise from 1,364 to 1,365.
+  See [attribute-name match evidence](../Evidence/oasis-xslt10-attribute-name-match-predicate-2026-09-13.md).
 - 2026-09-13 -- Bounded namespace-aware attribute patterns now resolve exact
   names, namespace wildcards, presence predicates, and qualified-element
   attribute-value predicates against stylesheet namespace context. Two more

@@ -432,6 +432,16 @@ fn matches_pattern(
             && source
                 .name(node)
                 .is_some_and(|name| name.namespace.as_deref() == Some(namespace.as_str()))),
+        MatchPattern::AttributeNameEquals(expected) => {
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            Ok(source.kind(node) == NodeKind::Attribute
+                && source.prefix(node).is_none()
+                && source
+                    .name(node)
+                    .is_some_and(|name| name.namespace.is_none() && name.local == *expected))
+        }
         MatchPattern::AnyAttribute => Ok(source.kind(node) == NodeKind::Attribute),
         MatchPattern::Comment => Ok(source.kind(node) == NodeKind::Comment),
         MatchPattern::Text => Ok(source.kind(node) == NodeKind::Text),

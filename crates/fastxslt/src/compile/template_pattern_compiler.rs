@@ -147,6 +147,12 @@ pub(super) fn compile_match_pattern(
         predicate if parse_any_element_qualified_attribute_predicate(predicate).is_some() => {
             compile_any_element_qualified_attribute(document, element, predicate)?
         }
+        predicate if parse_attribute_name_predicate(predicate).is_some() => {
+            MatchPattern::AttributeNameEquals(
+                parse_attribute_name_predicate(predicate)
+                    .expect("attribute name predicate shape was checked"),
+            )
+        }
         "@*" | "attribute()" | "attribute::*" | "attribute::node()" => MatchPattern::AnyAttribute,
         attribute if parse_attribute_namespace_wildcard(attribute).is_some() => {
             let prefix = parse_attribute_namespace_wildcard(attribute)
@@ -526,6 +532,26 @@ fn parse_attribute_namespace_wildcard(pattern: &str) -> Option<&str> {
     is_ascii_ncname(prefix).then_some(prefix)
 }
 
+fn parse_attribute_name_predicate(pattern: &str) -> Option<String> {
+    let predicate = pattern.strip_prefix("@*[")?.strip_suffix(']')?;
+    parse_context_name_literal(predicate)
+}
+
+fn parse_context_name_literal(predicate: &str) -> Option<String> {
+    let (function, literal) = predicate.split_once('=')?;
+    if !matches!(function.trim(), "name()" | "name(.)") {
+        return None;
+    }
+    let literal = literal.trim();
+    ['\'', '"'].into_iter().find_map(|delimiter| {
+        literal
+            .strip_prefix(delimiter)
+            .and_then(|value| value.strip_suffix(delimiter))
+            .filter(|value| !value.contains(delimiter) && is_ascii_ncname(value))
+            .map(str::to_owned)
+    })
+}
+
 fn parse_qualified_attribute_test(pattern: &str) -> Option<(&str, &str)> {
     let (prefix, local) = pattern.strip_prefix('@')?.split_once(':')?;
     (is_ascii_ncname(prefix) && is_ascii_ncname(local)).then_some((prefix, local))
@@ -807,6 +833,7 @@ fn compile_template_priority(
             | MatchPattern::AnyElementWithAttributeValue { .. }
             | MatchPattern::AnyElementNumberEquals(_)
             | MatchPattern::AnyElementWithAttributeNumberEquals { .. }
+            | MatchPattern::AttributeNameEquals(_)
             | MatchPattern::NodeStringPredicate { .. }
             | MatchPattern::ElementWithAttributeValue { .. }
             | MatchPattern::ElementWithTwoAttributeValues { .. }
