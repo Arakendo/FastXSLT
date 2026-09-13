@@ -34,9 +34,18 @@ impl LocationPath {
         )
     }
 
-    pub(crate) fn is_simple_descendant_named_match_path(&self) -> bool {
+    pub(crate) fn is_bounded_descendant_named_match_path(&self) -> bool {
         self.origin == PathOrigin::Descendant
-            && matches!(self.steps.as_slice(), [PathStep::ChildNamed(_)])
+            && matches!(
+                self.steps.as_slice(),
+                [PathStep::ChildNamed(_)]
+                    | [PathStep::ChildNamed(_), PathStep::ChildNamed(_)]
+                    | [
+                        PathStep::ChildNamed(_),
+                        PathStep::DescendantOrSelfAnyNode,
+                        PathStep::ChildNamed(_)
+                    ]
+            )
             && self.final_predicate.is_none()
             && self.final_boolean_predicate.is_none()
             && self.final_context_predicate.is_none()

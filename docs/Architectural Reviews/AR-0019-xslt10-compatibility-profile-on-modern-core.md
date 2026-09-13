@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-13 -- Leading descendant patterns now extend to the bounded
+  `//ancestor/child` and `//ancestor//descendant` forms while retaining typed
+  path priority and document-rooted membership. Ten more cases execute and
+  four match exactly; six named-whitespace cases remain visibly outside
+  ADR-0012. The generic unsupported match-pattern frontier falls from 59 to 47
+  and exact results rise from 1,337 to 1,341.
+  See [bounded leading descendant path evidence](../Evidence/oasis-xslt10-bounded-leading-descendant-path-patterns-2026-09-13.md).
 - 2026-09-09 -- The exact unqualified `match="//name"` abbreviation now
   retains typed path priority and uses bounded document-rooted membership.
   Eight more cases execute, five match exactly, and three downstream

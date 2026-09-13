@@ -1446,6 +1446,60 @@ fn leading_descendant_name_match_uses_document_membership() {
 }
 
 #[test]
+fn bounded_leading_descendant_paths_distinguish_child_and_descendant_steps() {
+    let source = parse_document(
+        "memory:leading-descendant-paths.xml",
+        b"<doc><branch><item id='child'/><middle><item id='nested'/></middle></branch><item id='other'/></doc>",
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:leading-descendant-paths.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+          <xsl:output method="xml" omit-xml-declaration="yes"/>
+          <xsl:template match="/"><out><xsl:apply-templates select="//item" mode="child"/><xsl:apply-templates select="//item" mode="descendant"/></out></xsl:template>
+          <xsl:template match="//branch/item" mode="child"><child><xsl:value-of select="@id"/></child></xsl:template>
+          <xsl:template match="item" mode="child"/>
+          <xsl:template match="//branch//item" mode="descendant"><descendant><xsl:value-of select="@id"/></descendant></xsl:template>
+          <xsl:template match="item" mode="descendant"/>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 96,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("bounded leading descendant paths should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "leading-descendant-paths-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("bounded leading descendant paths should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "leading-descendant-paths-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(
+        serialized,
+        "<out><child>child</child><descendant>child</descendant><descendant>nested</descendant></out>"
+    );
+}
+
+#[test]
 fn one_prepared_source_supports_preserving_and_stripping_stylesheets_without_mutation() {
     let parsed_source = parse_document(
         "memory:shared-source.xml",

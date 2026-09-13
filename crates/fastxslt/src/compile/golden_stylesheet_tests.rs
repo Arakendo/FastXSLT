@@ -1190,14 +1190,16 @@ fn compiles_exact_descendant_wildcard_with_non_simple_priority() {
 
     let named_descendant = parse_stylesheet(
             "memory:named-descendant-pattern.xsl",
-            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="//foo"><out/></xsl:template></xsl:stylesheet>"#,
+            br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="//foo"><one/></xsl:template><xsl:template match="//foo/bar"><two/></xsl:template><xsl:template match="//foo//bar"><three/></xsl:template></xsl:stylesheet>"#,
         );
     let named_descendant_program = compile_stylesheet(&named_descendant)
-        .expect("simple descendant named patterns should compile");
-    assert!(matches!(
-        named_descendant_program.matched_templates[0].pattern,
-        crate::xslt::golden_semantics_experiment::MatchPattern::Path(_)
-    ));
+        .expect("bounded descendant named patterns should compile");
+    assert!(
+        named_descendant_program
+            .matched_templates
+            .iter()
+            .all(|template| matches!(template.pattern, MatchPattern::Path(_)))
+    );
 
     let predicate_descendant = parse_stylesheet(
         "memory:predicate-descendant-pattern.xsl",
