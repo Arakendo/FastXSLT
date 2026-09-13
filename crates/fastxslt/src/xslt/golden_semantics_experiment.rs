@@ -312,6 +312,13 @@ pub(crate) enum MatchPattern {
         element: ExpandedName,
         boundary: NamedSiblingBoundary,
     },
+    ElementAtNamedSiblingWithAttributeValue {
+        element: ExpandedName,
+        position: usize,
+        attribute: ExpandedName,
+        value: String,
+        attribute_filters_position: bool,
+    },
     QualifiedElementPathAlternatives(Vec<Vec<ExpandedName>>),
     UnionAlternatives(Vec<MatchPattern>),
     Path(LocationPath),

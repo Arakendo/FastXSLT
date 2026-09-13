@@ -2279,6 +2279,44 @@ fn attribute_name_predicate_outranks_exact_name_pattern() {
 }
 
 #[test]
+fn ordered_position_and_attribute_patterns_share_source_and_temporary_semantics() {
+    const SOURCE: &str = "urn:fastxslt:ordered-position-attribute:source";
+    const STYLESHEET: &str = "urn:fastxslt:ordered-position-attribute:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output omit-xml-declaration="yes"/>
+        <xsl:variable name="temporary"><doc><foo att1="c"/><foo att2="ok"/><foo att1="c"/></doc></xsl:variable>
+        <xsl:template match="/"><out><a><xsl:apply-templates select="doc/foo" mode="a"/><xsl:apply-templates select="$temporary/doc/foo" mode="a"/></a><b><xsl:apply-templates select="doc/foo" mode="b"/><xsl:apply-templates select="$temporary/doc/foo" mode="b"/></b><c><xsl:apply-templates select="doc/foo" mode="c"/><xsl:apply-templates select="$temporary/doc/foo" mode="c"/></c></out></xsl:template>
+        <xsl:template match="foo[2][@att2='ok']" mode="a"><hit/></xsl:template>
+        <xsl:template match="foo[position()=2 and @att2='ok']" mode="b"><hit/></xsl:template>
+        <xsl:template match="foo[@att1='c'][2]" mode="c"><hit/></xsl:template>
+        <xsl:template match="foo" mode="a"/><xsl:template match="foo" mode="b"/><xsl:template match="foo" mode="c"/>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 16_384, 32_768));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><foo att1=\"c\"/><foo att2=\"ok\"/><foo att1=\"c\"/></doc>".to_vec(),
+        )
+        .expect("admit ordered position/attribute source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit ordered position/attribute stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile ordered position/attribute patterns");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("ordered-position-attribute", "result", SOURCE))
+        .expect("admit ordered position/attribute request");
+    let results =
+        execute_transform_set(builder.seal()).expect("execute ordered position/attribute patterns");
+    assert_eq!(
+        results.by_request["ordered-position-attribute"].serialized,
+        "<out><a><hit></hit><hit></hit></a><b><hit></hit><hit></hit></b><c><hit></hit><hit></hit></c></out>"
+    );
+}
+
+#[test]
 fn local_position_variable_uses_each_selected_source_node_focus() {
     const SOURCE: &str = "urn:fastxslt:position-variable:source";
     const STYLESHEET: &str = "urn:fastxslt:position-variable:stylesheet";

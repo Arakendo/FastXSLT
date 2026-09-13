@@ -405,6 +405,23 @@ fn matches_pattern(
         MatchPattern::ElementAtNamedSiblingBoundary { element, boundary } => {
             matches_named_sibling_boundary(source, node, element, *boundary, request_id, control)
         }
+        MatchPattern::ElementAtNamedSiblingWithAttributeValue {
+            element,
+            position,
+            attribute,
+            value,
+            attribute_filters_position,
+        } => matches_named_sibling_attribute_value(
+            source,
+            node,
+            element,
+            *position,
+            attribute,
+            value,
+            *attribute_filters_position,
+            request_id,
+            control,
+        ),
         MatchPattern::Path(path) => match_path_pattern(
             source,
             node,
@@ -563,6 +580,67 @@ fn matches_named_sibling_boundary(
         NamedSiblingBoundary::BeforeLast => later_match,
         NamedSiblingBoundary::Last => !later_match,
     })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn matches_named_sibling_attribute_value(
+    source: &Document,
+    node: NodeId,
+    element: &crate::xml::quick_xml_experiment::ExpandedName,
+    position: usize,
+    attribute: &crate::xml::quick_xml_experiment::ExpandedName,
+    value: &str,
+    attribute_filters_position: bool,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if source.name(node) != Some(element)
+        || !source_has_attribute_value(source, node, attribute, value, request_id, control)?
+    {
+        return Ok(false);
+    }
+    let Some(parent) = source.parent(node) else {
+        return Ok(false);
+    };
+    let mut filtered_position = 0usize;
+    for sibling in source.children(parent).iter().copied() {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if source.name(sibling) != Some(element) {
+            continue;
+        }
+        if !attribute_filters_position
+            || source_has_attribute_value(source, sibling, attribute, value, request_id, control)?
+        {
+            filtered_position += 1;
+        }
+        if sibling == node {
+            return Ok(filtered_position == position);
+        }
+    }
+    Ok(false)
+}
+
+fn source_has_attribute_value(
+    source: &Document,
+    node: NodeId,
+    required_name: &crate::xml::quick_xml_experiment::ExpandedName,
+    required_value: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    for attribute in source.attributes(node) {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if source.name(*attribute) == Some(required_name)
+            && source.string_value(*attribute) == required_value
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn matches_name_relation(

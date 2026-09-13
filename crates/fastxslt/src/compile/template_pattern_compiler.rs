@@ -90,6 +90,25 @@ pub(super) fn compile_match_pattern(
         }
         "*[name()=name(current())]/*" => MatchPattern::ElementWithSameNamedParent,
         "*[name()=name(current())][2]/*" => MatchPattern::ElementWithSameNamedParentAtPosition(2),
+        positional if parse_named_sibling_attribute_value(positional).is_some() => {
+            let (element_name, position, attribute, value, attribute_filters_position) =
+                parse_named_sibling_attribute_value(positional)
+                    .expect("positional attribute pattern shape was checked");
+            MatchPattern::ElementAtNamedSiblingWithAttributeValue {
+                element: crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: effective_xpath_default_namespace(document, element)
+                        .map(str::to_owned),
+                    local: element_name.to_owned(),
+                },
+                position,
+                attribute: crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: None,
+                    local: attribute.to_owned(),
+                },
+                value: value.to_owned(),
+                attribute_filters_position,
+            }
+        }
         positional if parse_named_sibling_boundary(positional).is_some() => {
             let (element_name, boundary) =
                 parse_named_sibling_boundary(positional).expect("positional shape was checked");
@@ -406,6 +425,40 @@ fn parse_named_sibling_boundary(pattern: &str) -> Option<(&str, NamedSiblingBoun
         _ => parse_static_named_sibling_position(predicate)?,
     };
     Some((element, boundary))
+}
+
+fn parse_named_sibling_attribute_value(pattern: &str) -> Option<(&str, usize, &str, &str, bool)> {
+    let (element, predicates) = pattern.split_once('[')?;
+    if !is_ascii_ncname(element) {
+        return None;
+    }
+
+    if let Some((position, attribute)) = predicates.split_once("][@") {
+        let position = parse_exact_position(position)?;
+        let (attribute, value) = parse_attribute_literal(attribute.strip_suffix(']')?)?;
+        return Some((element, position, attribute, value, false));
+    }
+    if let Some((position, attribute)) = predicates.strip_suffix(']')?.split_once(" and @") {
+        let position = parse_exact_position(position)?;
+        let (attribute, value) = parse_attribute_literal(attribute)?;
+        return Some((element, position, attribute, value, false));
+    }
+    if let Some(predicates) = predicates.strip_prefix('@')
+        && let Some((attribute, position)) = predicates.split_once("][")
+    {
+        let (attribute, value) = parse_attribute_literal(attribute)?;
+        let position = parse_exact_position(position.strip_suffix(']')?)?;
+        return Some((element, position, attribute, value, true));
+    }
+    None
+}
+
+fn parse_exact_position(predicate: &str) -> Option<usize> {
+    let lexical = predicate
+        .trim()
+        .strip_prefix("position()=")
+        .unwrap_or(predicate.trim());
+    lexical.parse().ok().filter(|position| *position > 0)
 }
 
 fn parse_static_named_sibling_position(predicate: &str) -> Option<NamedSiblingBoundary> {
@@ -844,6 +897,7 @@ fn compile_template_priority(
             | MatchPattern::ElementWithSameNamedParent
             | MatchPattern::ElementWithSameNamedParentAtPosition(_)
             | MatchPattern::ElementAtNamedSiblingBoundary { .. }
+            | MatchPattern::ElementAtNamedSiblingWithAttributeValue { .. }
             | MatchPattern::UnionAlternatives(_) => TemplatePriority::PATH_DEFAULT,
             MatchPattern::Document | MatchPattern::DocumentElement(None) => {
                 TemplatePriority::ROOT_DEFAULT

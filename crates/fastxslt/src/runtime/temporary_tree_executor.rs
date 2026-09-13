@@ -745,6 +745,26 @@ fn temporary_matches(
                 .map_err(|failure| control_failure(failure, request_id))?;
             name.namespace.is_none() && name.local == *expected
         }
+        (
+            TemporaryNodeKind::Element { .. },
+            MatchPattern::ElementAtNamedSiblingWithAttributeValue {
+                element,
+                position,
+                attribute,
+                value,
+                attribute_filters_position,
+            },
+        ) => temporary_matches_named_sibling_attribute_value(
+            tree,
+            node,
+            element,
+            *position,
+            attribute,
+            value,
+            *attribute_filters_position,
+            request_id,
+            control,
+        )?,
         (TemporaryNodeKind::Element { name, .. }, MatchPattern::ElementLocal(local)) => {
             name.local == *local
         }
@@ -914,6 +934,60 @@ fn temporary_has_attribute_number(
             {
                 return Ok(true);
             }
+        }
+    }
+    Ok(false)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn temporary_matches_named_sibling_attribute_value(
+    tree: &TemporaryTree,
+    node: usize,
+    element: &ExpandedName,
+    position: usize,
+    attribute: &ExpandedName,
+    value: &str,
+    attribute_filters_position: bool,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let TemporaryNodeKind::Element {
+        name, attributes, ..
+    } = &tree.nodes[node].kind
+    else {
+        return Ok(false);
+    };
+    if name != element
+        || !temporary_has_attribute_value(tree, attributes, attribute, value, request_id, control)?
+    {
+        return Ok(false);
+    }
+    let Some(parent) = tree.nodes[node].parent else {
+        return Ok(false);
+    };
+    let mut filtered_position = 0usize;
+    for sibling in &tree.nodes[parent].children {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        let TemporaryNodeKind::Element {
+            name, attributes, ..
+        } = &tree.nodes[*sibling].kind
+        else {
+            continue;
+        };
+        if name != element {
+            continue;
+        }
+        if !attribute_filters_position
+            || temporary_has_attribute_value(
+                tree, attributes, attribute, value, request_id, control,
+            )?
+        {
+            filtered_position += 1;
+        }
+        if *sibling == node {
+            return Ok(filtered_position == position);
         }
     }
     Ok(false)

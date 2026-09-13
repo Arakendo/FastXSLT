@@ -1319,6 +1319,41 @@ fn compiles_attribute_name_predicate_with_path_priority() {
 }
 
 #[test]
+fn compiles_ordered_position_and_attribute_match_predicates() {
+    let stylesheet = parse_stylesheet(
+        "memory:ordered-position-attribute-patterns.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="foo[2][@att2='ok']"/><xsl:template match="foo[position()=2 and @att2='ok']"/><xsl:template match="foo[@att1='c'][2]"/></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet)
+        .expect("ordered position/attribute patterns should compile");
+    let expected = [
+        ("att2", "ok", false),
+        ("att2", "ok", false),
+        ("att1", "c", true),
+    ];
+    for (template, (attribute_local, value, attribute_filters_position)) in
+        program.matched_templates.iter().zip(expected)
+    {
+        assert!(matches!(
+            &template.pattern,
+            MatchPattern::ElementAtNamedSiblingWithAttributeValue {
+                element,
+                position: 2,
+                attribute,
+                value: actual_value,
+                attribute_filters_position: actual_order,
+            } if element.namespace.is_none()
+                && element.local == "foo"
+                && attribute.namespace.is_none()
+                && attribute.local == attribute_local
+                && actual_value == value
+                && *actual_order == attribute_filters_position
+        ));
+        assert_eq!(template.priority, TemplatePriority::PATH_DEFAULT);
+    }
+}
+
+#[test]
 fn compiles_exact_descendant_wildcard_with_non_simple_priority() {
     let stylesheet = parse_stylesheet(
             "memory:descendant-wildcard-pattern.xsl",

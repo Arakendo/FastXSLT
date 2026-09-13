@@ -534,6 +534,13 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-13 -- One exact named-sibling position now composes with one exact
+  attribute-value predicate without erasing predicate order. Source and
+  temporary trees distinguish position-then-attribute from attribute-then-
+  position. Three more cases execute and match exactly; the generic unsupported
+  match-pattern frontier falls from 21 to 18 and exact results rise from 1,365
+  to 1,368.
+  See [ordered position/attribute match evidence](../Evidence/oasis-xslt10-ordered-position-attribute-match-patterns-2026-09-13.md).
 - 2026-09-13 -- The exact `@*[name()='NCName']` match predicate now retains its
   lexical-name semantics and `0.5` predicate priority instead of collapsing to
   an exact expanded-name pattern. One more case executes and matches exactly;

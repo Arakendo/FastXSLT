@@ -232,6 +232,12 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
             element,
             attribute,
             value,
+        }
+        | MatchPattern::ElementAtNamedSiblingWithAttributeValue {
+            element,
+            attribute,
+            value,
+            ..
         } => name_owned(element) + name_owned(attribute) + value.capacity(),
         MatchPattern::ElementWithTwoAttributeValues {
             element,
