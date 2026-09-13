@@ -1214,6 +1214,17 @@ fn compiles_exact_descendant_wildcard_with_non_simple_priority() {
             .all(|template| matches!(template.pattern, MatchPattern::Path(_)))
     );
 
+    let static_true_descendant = parse_stylesheet(
+        "memory:static-true-descendant-pattern.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="//foo[true()]"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let static_true_program = compile_stylesheet(&static_true_descendant)
+        .expect("static-true descendant predicate should normalize");
+    assert!(matches!(
+        static_true_program.matched_templates[0].pattern,
+        MatchPattern::Path(_)
+    ));
+
     let child_value_descendant = parse_stylesheet(
         "memory:child-value-descendant-pattern.xsl",
         br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="//foo[bar='1']"><out/></xsl:template></xsl:stylesheet>"#,

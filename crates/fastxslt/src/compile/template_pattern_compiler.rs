@@ -156,6 +156,18 @@ pub(super) fn compile_match_pattern(
                 document.location(element),
             ));
         }
+        path if parse_leading_descendant_static_true_pattern(path).is_some()
+            && effective_xpath_default_namespace(document, element).is_none() =>
+        {
+            MatchPattern::Path(
+                parse_location_path(
+                    parse_leading_descendant_static_true_pattern(path)
+                        .expect("static-true descendant pattern shape was checked"),
+                    document.location(element).clone(),
+                )
+                .expect("normalized static-true descendant name is a location path"),
+            )
+        }
         path if path.starts_with("//")
             && effective_xpath_default_namespace(document, element).is_none()
             && parse_location_path(path, document.location(element).clone())
@@ -188,6 +200,12 @@ pub(super) fn compile_match_pattern(
     };
     let priority = compile_template_priority(document, element, &pattern)?;
     Ok((pattern, priority))
+}
+
+fn parse_leading_descendant_static_true_pattern(pattern: &str) -> Option<&str> {
+    let path = pattern.strip_suffix("[true()]")?;
+    let name = path.strip_prefix("//")?;
+    is_ascii_ncname(name).then_some(path)
 }
 
 fn parse_named_processing_instruction_pattern(pattern: &str) -> Option<&str> {

@@ -534,6 +534,12 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-13 -- The exact `//name[true()]` pattern now normalizes at compile
+  time to the existing typed leading-descendant path while retaining path
+  priority and charged document-rooted membership. Two more cases execute and
+  both match exactly; no general function-predicate matcher was admitted. Exact
+  results rise from 1,344 to 1,346.
+  See [static-true descendant match evidence](../Evidence/oasis-xslt10-static-true-descendant-match-patterns-2026-09-13.md).
 - 2026-09-13 -- Single-name leading descendant patterns now admit one
   unqualified attribute presence/value predicate or one positive static sibling
   position through the existing typed path evaluator. Three more cases execute
