@@ -534,6 +534,14 @@ maintained redistributable legacy suite becomes available.
 
 ## Review history
 
+- 2026-09-13 -- Wildcard-element exact attribute-value predicates now use a
+  charged typed matcher, while `node()` attribute-presence predicates normalize
+  to the equivalent wildcard-element presence matcher. Source and temporary
+  trees share both operations. Two more cases execute and both match exactly;
+  namespace-qualified, numeric/relational, broader node-test, variable,
+  function, and general boolean predicates remain outside the slice. Exact
+  results rise from 1,359 to 1,361.
+  See [generalized attribute node-test evidence](../Evidence/oasis-xslt10-generalized-attribute-match-node-tests-2026-09-13.md).
 - 2026-09-13 -- Chained and conjunctive pairs of exact unqualified attribute-
   value match predicates now normalize to one typed, charged attribute scan
   shared by source and temporary trees. Three more cases execute and all match

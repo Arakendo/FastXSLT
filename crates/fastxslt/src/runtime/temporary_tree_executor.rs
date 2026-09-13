@@ -810,6 +810,12 @@ fn temporary_matches(
             false
         }
         (
+            TemporaryNodeKind::Element { attributes, .. },
+            MatchPattern::AnyElementWithAttributeValue { attribute, value },
+        ) => {
+            temporary_has_attribute_value(tree, attributes, attribute, value, request_id, control)?
+        }
+        (
             TemporaryNodeKind::Element {
                 name, attributes, ..
             },
@@ -842,6 +848,29 @@ fn temporary_matches(
         _ => false,
     };
     Ok(matched)
+}
+
+fn temporary_has_attribute_value(
+    tree: &TemporaryTree,
+    attributes: &[usize],
+    required_name: &ExpandedName,
+    required_value: &str,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    for attribute in attributes {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if matches!(
+            &tree.nodes[*attribute].kind,
+            TemporaryNodeKind::Attribute { name, value }
+                if name == required_name && value == required_value
+        ) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 #[allow(clippy::too_many_arguments)]

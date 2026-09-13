@@ -254,6 +254,22 @@ fn matches_pattern(
             }
             Ok(false)
         }
+        MatchPattern::AnyElementWithAttributeValue { attribute, value } => {
+            if source.kind(node) != NodeKind::Element {
+                return Ok(false);
+            }
+            for candidate in source.attributes(node) {
+                control
+                    .charge(WorkDomain::XPathNodeVisit, 1)
+                    .map_err(|failure| control_failure(failure, request_id))?;
+                if source.name(*candidate) == Some(attribute)
+                    && source.string_value(*candidate) == value.as_str()
+                {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
         MatchPattern::NodeStringPredicate {
             node_test,
             predicate,

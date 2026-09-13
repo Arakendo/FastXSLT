@@ -207,6 +207,9 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
             name_owned(element) + name_owned(attribute)
         }
         MatchPattern::AnyElementWithAttribute(attribute) => name_owned(attribute),
+        MatchPattern::AnyElementWithAttributeValue { attribute, value } => {
+            name_owned(attribute) + value.capacity()
+        }
         MatchPattern::NodeStringPredicate {
             node_test,
             predicate,

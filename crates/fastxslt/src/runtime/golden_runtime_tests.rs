@@ -2086,9 +2086,13 @@ fn wildcard_attribute_presence_patterns_share_source_and_temporary_semantics() {
     let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
         <xsl:output method="xml" omit-xml-declaration="yes"/>
         <xsl:variable name="temporary"><item marked="yes"/><item/></xsl:variable>
-        <xsl:template match="/"><out><xsl:apply-templates select="doc/*"/><xsl:apply-templates select="$temporary/item" mode="temporary"/></out></xsl:template>
+        <xsl:template match="/"><out><xsl:apply-templates select="doc/*"/><xsl:apply-templates select="$temporary/item" mode="temporary"/><value><xsl:apply-templates select="doc/*" mode="value"/></value><node><xsl:apply-templates select="doc/node()" mode="node"/></node><temporary-node><xsl:apply-templates select="$temporary/item" mode="node"/></temporary-node></out></xsl:template>
         <xsl:template match="*[@marked]"><source/></xsl:template>
         <xsl:template match="*[@marked]" mode="temporary"><temporary/></xsl:template>
+        <xsl:template match="*[@marked='yes']" mode="value"><hit/></xsl:template>
+        <xsl:template match="*" mode="value"/>
+        <xsl:template match="node()[@marked]" mode="node"><hit/></xsl:template>
+        <xsl:template match="node()" mode="node"/>
     </xsl:stylesheet>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
     resources
@@ -2109,7 +2113,7 @@ fn wildcard_attribute_presence_patterns_share_source_and_temporary_semantics() {
         .expect("execute wildcard attribute-presence patterns");
     assert_eq!(
         results.by_request["wildcard-attribute"].serialized,
-        "<out><source></source><temporary></temporary></out>"
+        "<out><source></source><temporary></temporary><value><hit></hit></value><node><hit></hit></node><temporary-node><hit></hit></temporary-node></out>"
     );
 }
 

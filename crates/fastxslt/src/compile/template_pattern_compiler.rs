@@ -53,6 +53,9 @@ pub(super) fn compile_match_pattern(
         predicate if parse_any_element_attribute_variable_predicate(predicate).is_some() => {
             compile_any_element_attribute_variable_pattern(predicate)
         }
+        predicate if parse_any_element_attribute_value_predicate(predicate).is_some() => {
+            compile_any_element_attribute_value_pattern(predicate)
+        }
         predicate if parse_node_string_predicate(predicate).is_some() => {
             compile_node_string_value_pattern(document, element, predicate)
         }
@@ -120,6 +123,14 @@ pub(super) fn compile_match_pattern(
                 parse_location_path(predicate, document.location(element).clone())
                     .expect("single-step predicate path shape was checked"),
             )
+        }
+        predicate if parse_any_node_attribute_predicate(predicate).is_some() => {
+            MatchPattern::AnyElementWithAttribute(crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: None,
+                local: parse_any_node_attribute_predicate(predicate)
+                    .expect("node-test attribute predicate shape was checked")
+                    .to_owned(),
+            })
         }
         "@*" | "attribute()" | "attribute::*" | "attribute::node()" => MatchPattern::AnyAttribute,
         attribute if attribute.starts_with('@') && is_ascii_ncname(&attribute[1..]) => {
@@ -460,6 +471,28 @@ fn parse_any_element_attribute_predicate(pattern: &str) -> Option<&str> {
     is_ascii_ncname(attribute).then_some(attribute)
 }
 
+fn parse_any_node_attribute_predicate(pattern: &str) -> Option<&str> {
+    let attribute = pattern.strip_prefix("node()[@")?.strip_suffix(']')?;
+    is_ascii_ncname(attribute).then_some(attribute)
+}
+
+fn parse_any_element_attribute_value_predicate(pattern: &str) -> Option<(&str, &str)> {
+    let predicate = pattern.strip_prefix("*[@")?.strip_suffix(']')?;
+    parse_attribute_literal(predicate)
+}
+
+fn compile_any_element_attribute_value_pattern(pattern: &str) -> MatchPattern {
+    let (attribute, value) = parse_any_element_attribute_value_predicate(pattern)
+        .expect("wildcard element attribute-value predicate shape was checked");
+    MatchPattern::AnyElementWithAttributeValue {
+        attribute: crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: None,
+            local: attribute.to_owned(),
+        },
+        value: value.to_owned(),
+    }
+}
+
 fn parse_node_string_predicate(pattern: &str) -> Option<(&str, MatchStringPredicate)> {
     let (node_test, predicate) = pattern.split_once('[')?;
     let predicate = predicate.strip_suffix(']')?.trim();
@@ -627,6 +660,7 @@ fn compile_template_priority(
             | MatchPattern::DescendantAnyElement
             | MatchPattern::ElementWithAttribute { .. }
             | MatchPattern::AnyElementWithAttribute(_)
+            | MatchPattern::AnyElementWithAttributeValue { .. }
             | MatchPattern::NodeStringPredicate { .. }
             | MatchPattern::ElementWithAttributeValue { .. }
             | MatchPattern::ElementWithTwoAttributeValues { .. }

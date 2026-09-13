@@ -1114,6 +1114,25 @@ fn compiles_bounded_attribute_presence_match_predicate() {
         TemplatePriority::PATH_DEFAULT
     );
 
+    let generalized = parse_stylesheet(
+        "memory:generalized-attribute-patterns.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="*[@test='true']"/><xsl:template match="node()[@test]"/></xsl:stylesheet>"#,
+    );
+    let generalized_program = compile_stylesheet(&generalized)
+        .expect("generalized bounded attribute patterns should compile");
+    assert!(matches!(
+        &generalized_program.matched_templates[0].pattern,
+        crate::xslt::golden_semantics_experiment::MatchPattern::AnyElementWithAttributeValue {
+            attribute,
+            value,
+        } if attribute.local == "test" && value == "true"
+    ));
+    assert!(matches!(
+        &generalized_program.matched_templates[1].pattern,
+        crate::xslt::golden_semantics_experiment::MatchPattern::AnyElementWithAttribute(attribute)
+            if attribute.local == "test"
+    ));
+
     let comparison = parse_stylesheet(
             "memory:attribute-comparison-pattern.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="foo[@test='true']"><out/></xsl:template></xsl:stylesheet>"#,
