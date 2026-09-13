@@ -1395,3 +1395,9 @@ maintained redistributable legacy suite becomes available.
   `id()`/`key()` patterns remain explicitly unsupported. The generic
   unsupported match frontier fell from 17 to 15 without changing the 1,369
   exact-result lower bound or any observed expected-error disposition.
+- 2026-09-13 -- A bounded typed sequential-predicate matcher admitted the seven
+  unchanged Xalan `match20` through `match26` cases, raising exact results from
+  1,369 to 1,376 without adding a mismatch or execution failure. Predicate
+  position and size are recomputed after each filter, source and temporary
+  trees share scalar semantics, and general match-pattern XPath remains out of
+  scope.

@@ -319,6 +319,10 @@ pub(crate) enum MatchPattern {
         value: String,
         attribute_filters_position: bool,
     },
+    ElementWithSequentialPredicates {
+        element: ExpandedName,
+        predicates: Vec<MatchSequencePredicate>,
+    },
     QualifiedElementPathAlternatives(Vec<Vec<ExpandedName>>),
     UnionAlternatives(Vec<MatchPattern>),
     Path(LocationPath),
@@ -332,6 +336,38 @@ pub(crate) enum MatchPattern {
     ProcessingInstructionNamed(String),
     AnyNode,
     AnyElement,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum MatchSequencePredicate {
+    PositionModulo {
+        divisor: usize,
+        relation: MatchNumericRelation,
+        value: usize,
+    },
+    Position {
+        relation: MatchNumericRelation,
+        value: usize,
+    },
+    AttributeModulo {
+        attribute: ExpandedName,
+        divisor: i32,
+        relation: MatchNumericRelation,
+        value: i32,
+    },
+    AttributeNumber {
+        attribute: ExpandedName,
+        relation: MatchNumericRelation,
+        value: i32,
+    },
+    Last,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MatchNumericRelation {
+    Equal,
+    Greater,
+    Less,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

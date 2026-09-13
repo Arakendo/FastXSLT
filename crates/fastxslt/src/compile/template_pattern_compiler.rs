@@ -7,6 +7,7 @@ use crate::xslt::golden_semantics_experiment::{
     TemplatePriority,
 };
 
+use super::match_sequence_predicate_compiler::parse as parse_match_sequence_predicates;
 use super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
 use super::{
     CompileFailure, effective_xpath_default_namespace, invalid, is_ascii_ncname, map_path_failure,
@@ -119,6 +120,18 @@ pub(super) fn compile_match_pattern(
                     local: element_name.to_owned(),
                 },
                 boundary,
+            }
+        }
+        sequential if parse_match_sequence_predicates(sequential).is_some() => {
+            let (element_name, predicates) = parse_match_sequence_predicates(sequential)
+                .expect("sequential match-predicate shape was checked");
+            MatchPattern::ElementWithSequentialPredicates {
+                element: crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: effective_xpath_default_namespace(document, element)
+                        .map(str::to_owned),
+                    local: element_name.to_owned(),
+                },
+                predicates,
             }
         }
         predicate if parse_element_attribute_predicate(predicate).is_some() => {
@@ -946,6 +959,7 @@ fn compile_template_priority(
             | MatchPattern::ElementWithSameNamedParentAtPosition(_)
             | MatchPattern::ElementAtNamedSiblingBoundary { .. }
             | MatchPattern::ElementAtNamedSiblingWithAttributeValue { .. }
+            | MatchPattern::ElementWithSequentialPredicates { .. }
             | MatchPattern::UnionAlternatives(_) => TemplatePriority::PATH_DEFAULT,
             MatchPattern::Document | MatchPattern::DocumentElement(None) => {
                 TemplatePriority::ROOT_DEFAULT

@@ -7,6 +7,9 @@ use crate::xslt::golden_semantics_experiment::{
     MatchStringPredicate, MatchedTemplate, OnNoMatchPolicy,
 };
 
+use super::match_sequence_predicate::{
+    evaluate as evaluate_sequence_predicate, required_attribute,
+};
 use super::result_tree::ResultNode;
 use super::runtime_context::{
     InvocationParameter, RuntimeVariables, SequenceInputs, TemporaryNodeKind, TemporaryTree,
@@ -765,6 +768,15 @@ fn temporary_matches(
             request_id,
             control,
         )?,
+        (
+            TemporaryNodeKind::Element { .. },
+            MatchPattern::ElementWithSequentialPredicates {
+                element,
+                predicates,
+            },
+        ) => temporary_matches_sequential_predicates(
+            tree, node, element, predicates, request_id, control,
+        )?,
         (TemporaryNodeKind::Element { name, .. }, MatchPattern::ElementLocal(local)) => {
             name.local == *local
         }
@@ -909,6 +921,75 @@ fn temporary_matches(
         _ => false,
     };
     Ok(matched)
+}
+
+fn temporary_matches_sequential_predicates(
+    tree: &TemporaryTree,
+    node: usize,
+    element: &ExpandedName,
+    predicates: &[crate::xslt::golden_semantics_experiment::MatchSequencePredicate],
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if !matches!(
+        &tree.nodes[node].kind,
+        TemporaryNodeKind::Element { name, .. } if name == element
+    ) {
+        return Ok(false);
+    }
+    let Some(parent) = tree.nodes[node].parent else {
+        return Ok(false);
+    };
+    let mut candidates = Vec::new();
+    for sibling in &tree.nodes[parent].children {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if matches!(
+            &tree.nodes[*sibling].kind,
+            TemporaryNodeKind::Element { name, .. } if name == element
+        ) {
+            candidates.push(*sibling);
+        }
+    }
+    for predicate in predicates {
+        let size = candidates.len();
+        let mut filtered = Vec::with_capacity(size);
+        for (offset, candidate) in candidates.into_iter().enumerate() {
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            let attribute_value = if let Some(required) = required_attribute(predicate) {
+                let TemporaryNodeKind::Element { attributes, .. } = &tree.nodes[candidate].kind
+                else {
+                    unreachable!("candidate list contains only elements");
+                };
+                let mut value = None;
+                for attribute in attributes {
+                    control
+                        .charge(WorkDomain::XPathNodeVisit, 1)
+                        .map_err(|failure| control_failure(failure, request_id))?;
+                    if let TemporaryNodeKind::Attribute {
+                        name,
+                        value: lexical,
+                    } = &tree.nodes[*attribute].kind
+                        && name == required
+                    {
+                        value = Some(lexical.as_str());
+                        break;
+                    }
+                }
+                value
+            } else {
+                None
+            };
+            if evaluate_sequence_predicate(predicate, offset + 1, size, attribute_value) {
+                filtered.push(candidate);
+            }
+        }
+        candidates = filtered;
+    }
+    Ok(candidates.contains(&node))
 }
 
 fn temporary_has_attribute_number(

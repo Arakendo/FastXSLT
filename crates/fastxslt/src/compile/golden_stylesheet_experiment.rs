@@ -15,6 +15,8 @@ use crate::xslt::golden_semantics_experiment::{
 
 #[path = "instruction_compiler.rs"]
 mod instruction_compiler;
+#[path = "match_sequence_predicate_compiler.rs"]
+mod match_sequence_predicate_compiler;
 #[path = "mode_declaration_compiler.rs"]
 mod mode_declaration_compiler;
 #[path = "output_compiler.rs"]

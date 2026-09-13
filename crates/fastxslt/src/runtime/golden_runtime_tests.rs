@@ -2207,6 +2207,49 @@ fn text_contains_match_pattern_shares_source_and_temporary_semantics() {
 }
 
 #[test]
+fn sequential_match_predicates_share_filtered_focus_across_source_and_temporary_trees() {
+    const SOURCE: &str = "urn:fastxslt:sequential-match-source";
+    const STYLESHEET: &str = "urn:fastxslt:sequential-match-stylesheet";
+    let items = r#"<x num="1"/><x num="2"/><x num="3"/><x num="4"/><x num="5"/><x num="6"/><x num="7"/><x num="8"/><x num="9"/><x num="10"/><x num="11"/><x num="12"/>"#;
+    let stylesheet = format!(
+        r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+          <xsl:output omit-xml-declaration="yes"/>
+          <xsl:variable name="temporary"><root>{items}</root></xsl:variable>
+          <xsl:template match="/"><out>
+            <xsl:apply-templates select="root/x" mode="p20"/><xsl:apply-templates select="root/x" mode="p21"/><xsl:apply-templates select="root/x" mode="p22"/><xsl:apply-templates select="root/x" mode="p23"/><xsl:apply-templates select="root/x" mode="p24"/><xsl:apply-templates select="root/x" mode="p25"/><xsl:apply-templates select="root/x" mode="p26"/>
+            <xsl:apply-templates select="$temporary/root/x" mode="p20"/><xsl:apply-templates select="$temporary/root/x" mode="p21"/><xsl:apply-templates select="$temporary/root/x" mode="p22"/><xsl:apply-templates select="$temporary/root/x" mode="p23"/><xsl:apply-templates select="$temporary/root/x" mode="p24"/><xsl:apply-templates select="$temporary/root/x" mode="p25"/><xsl:apply-templates select="$temporary/root/x" mode="p26"/>
+          </out></xsl:template>
+          <xsl:template match="x[(position() mod 2)=1][position() &gt; 3]" mode="p20"><p20/></xsl:template>
+          <xsl:template match="x[(position() mod 2)=1][position() &gt; 3][position()=2]" mode="p21"><p21/></xsl:template>
+          <xsl:template match="x[(position() mod 2) &gt; 0][position() &gt; 3][2]" mode="p22"><p22/></xsl:template>
+          <xsl:template match="x[(position() mod 2)=1][position() &gt; 3][last()]" mode="p23"><p23/></xsl:template>
+          <xsl:template match="x[(position() mod 2)=1][@num &gt; 5][last()]" mode="p24"><p24/></xsl:template>
+          <xsl:template match="x[(@num mod 3)=2][position() &gt; 2][last()]" mode="p25"><p25/></xsl:template>
+          <xsl:template match="x[(position() mod 2)=1][2][@num &lt; 10]" mode="p26"><p26/></xsl:template>
+          <xsl:template match="x" mode="p20"/><xsl:template match="x" mode="p21"/><xsl:template match="x" mode="p22"/><xsl:template match="x" mode="p23"/><xsl:template match="x" mode="p24"/><xsl:template match="x" mode="p25"/><xsl:template match="x" mode="p26"/>
+        </xsl:stylesheet>"#
+    );
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 100_000, 200_000));
+    resources
+        .admit(SOURCE, format!("<root>{items}</root>").into_bytes())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.into_bytes())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile sequential predicates");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(100_000));
+    builder
+        .add(request("sequential-match", "result", SOURCE))
+        .expect("admit request");
+    let results = execute_transform_set(builder.seal()).expect("execute sequential predicates");
+    assert_eq!(
+        results.by_request["sequential-match"].serialized,
+        "<out><p20></p20><p20></p20><p20></p20><p21></p21><p22></p22><p23></p23><p24></p24><p25></p25><p26></p26><p20></p20><p20></p20><p20></p20><p21></p21><p22></p22><p23></p23><p24></p24><p25></p25><p26></p26></out>"
+    );
+}
+
+#[test]
 fn two_attribute_value_patterns_share_source_and_temporary_semantics() {
     const SOURCE: &str = "urn:fastxslt:two-attribute-pattern:source";
     const STYLESHEET: &str = "urn:fastxslt:two-attribute-pattern:stylesheet";

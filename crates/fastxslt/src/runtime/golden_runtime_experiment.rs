@@ -30,6 +30,8 @@ mod atomic_template_executor;
 mod byte_encoding;
 #[path = "dynamic_document.rs"]
 mod dynamic_document;
+#[path = "match_sequence_predicate.rs"]
+mod match_sequence_predicate;
 #[path = "number_executor.rs"]
 mod number_executor;
 #[cfg(test)]

@@ -8,11 +8,11 @@ use super::{
     ConstructedNode, DecimalSumForExpression, DeepEqualBooleanExpression, ExpandedName,
     FocusSumForExpression, ForDistinctValuesExpression, FormatNumberExpression, GlobalBinding,
     GlobalBindingDefault, Instruction, IntegerForExpression, LiteralAttribute,
-    LiteralAttributeValue, LocationPath, MatchNodeTest, MatchPattern, MatchStringPredicate,
-    MatchedTemplate, NamedTemplate, NamespaceBinding, OutputSettings, SequenceItemExpression,
-    SortKey, SortSelect, SourceLocation, StylesheetProgram, Template, TemplateArgument,
-    TemplateArgumentValue, TemplateParameter, TemplateParameterDefault, ValueExpression,
-    VariableFilteredElementPath, Xslt10ConcatPart,
+    LiteralAttributeValue, LocationPath, MatchNodeTest, MatchPattern, MatchSequencePredicate,
+    MatchStringPredicate, MatchedTemplate, NamedTemplate, NamespaceBinding, OutputSettings,
+    SequenceItemExpression, SortKey, SortSelect, SourceLocation, StylesheetProgram, Template,
+    TemplateArgument, TemplateArgumentValue, TemplateParameter, TemplateParameterDefault,
+    ValueExpression, VariableFilteredElementPath, Xslt10ConcatPart,
 };
 
 impl StylesheetProgram {
@@ -265,12 +265,35 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
         } => name_owned(attribute) + variable.capacity(),
         MatchPattern::VariableFilteredElementPath(path) => variable_filtered_path_owned(path),
         MatchPattern::ElementAtNamedSiblingBoundary { element, .. } => name_owned(element),
+        MatchPattern::ElementWithSequentialPredicates {
+            element,
+            predicates,
+        } => {
+            name_owned(element) + match_sequence_predicates_owned(predicates, predicates.capacity())
+        }
         MatchPattern::QualifiedElementPathAlternatives(paths) => {
             vec_owned(paths, |path| vec_owned(path, name_owned))
         }
         MatchPattern::UnionAlternatives(patterns) => vec_owned(patterns, match_pattern_owned),
         MatchPattern::Path(path) => path.known_owned_capacity_bytes(),
     }
+}
+
+fn match_sequence_predicates_owned(
+    values: &[MatchSequencePredicate],
+    reserved_slots: usize,
+) -> usize {
+    reserved_slots * size_of::<MatchSequencePredicate>()
+        + values
+            .iter()
+            .map(|predicate| match predicate {
+                MatchSequencePredicate::AttributeModulo { attribute, .. }
+                | MatchSequencePredicate::AttributeNumber { attribute, .. } => {
+                    name_owned(attribute)
+                }
+                _ => 0,
+            })
+            .sum::<usize>()
 }
 
 fn match_string_predicate_owned(value: &MatchStringPredicate) -> usize {

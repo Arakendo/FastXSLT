@@ -12,6 +12,9 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 use super::MultipleMatchPolicy;
+use super::match_sequence_predicate::{
+    evaluate as evaluate_sequence_predicate, required_attribute,
+};
 use super::runtime_failure::{
     ExecutionFailure, FailureCategory, control_failure, failure, failure_at,
 };
@@ -422,6 +425,10 @@ fn matches_pattern(
             request_id,
             control,
         ),
+        MatchPattern::ElementWithSequentialPredicates {
+            element,
+            predicates,
+        } => matches_sequential_predicates(source, node, element, predicates, request_id, control),
         MatchPattern::Path(path) => match_path_pattern(
             source,
             node,
@@ -472,6 +479,61 @@ fn matches_pattern(
                 .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())),
         MatchPattern::AnyNode => Ok(matches_any_node(source.kind(node))),
     }
+}
+
+fn matches_sequential_predicates(
+    source: &Document,
+    node: NodeId,
+    element: &crate::xml::quick_xml_experiment::ExpandedName,
+    predicates: &[crate::xslt::golden_semantics_experiment::MatchSequencePredicate],
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if source.name(node) != Some(element) {
+        return Ok(false);
+    }
+    let Some(parent) = source.parent(node) else {
+        return Ok(false);
+    };
+    let mut candidates = Vec::new();
+    for sibling in source.children(parent) {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if source.name(*sibling) == Some(element) {
+            candidates.push(*sibling);
+        }
+    }
+    for predicate in predicates {
+        let size = candidates.len();
+        let mut filtered = Vec::with_capacity(size);
+        for (offset, candidate) in candidates.into_iter().enumerate() {
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, request_id))?;
+            let attribute_value = if let Some(required) = required_attribute(predicate) {
+                let mut value = None;
+                for attribute in source.attributes(candidate) {
+                    control
+                        .charge(WorkDomain::XPathNodeVisit, 1)
+                        .map_err(|failure| control_failure(failure, request_id))?;
+                    if source.name(*attribute) == Some(required) {
+                        value = Some(source.string_value(*attribute));
+                        break;
+                    }
+                }
+                value
+            } else {
+                None
+            };
+            if evaluate_sequence_predicate(predicate, offset + 1, size, attribute_value.as_deref())
+            {
+                filtered.push(candidate);
+            }
+        }
+        candidates = filtered;
+    }
+    Ok(candidates.contains(&node))
 }
 
 fn match_string_predicate(value: &str, predicate: &MatchStringPredicate) -> bool {
