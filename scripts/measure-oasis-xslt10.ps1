@@ -1,7 +1,8 @@
 param(
     [string]$ArchivePath = (Join-Path $PSScriptRoot '..\.workbench\oasis-xslt10\XSLT-testsuite-04.ZIP'),
     [string]$ExtractedTestsPath = (Join-Path $PSScriptRoot '..\.workbench\oasis-xslt10\extracted-full\testsuite\TESTS'),
-    [string]$TraceCase
+    [string]$TraceCase,
+    [string]$TraceFrontier
 )
 
 $ErrorActionPreference = 'Stop'
@@ -28,6 +29,7 @@ if ($cases.Count -ne 3173) {
 
 $priorRoot = $env:FASTXSLT_OASIS_XSLT10_ROOT
 $priorTraceCase = $env:FASTXSLT_OASIS_XSLT10_TRACE_CASE
+$priorTraceFrontier = $env:FASTXSLT_OASIS_XSLT10_TRACE_FRONTIER
 try {
     $env:FASTXSLT_OASIS_XSLT10_ROOT = $resolvedTests
     if ([string]::IsNullOrWhiteSpace($TraceCase)) {
@@ -35,6 +37,12 @@ try {
     }
     else {
         $env:FASTXSLT_OASIS_XSLT10_TRACE_CASE = $TraceCase
+    }
+    if ([string]::IsNullOrWhiteSpace($TraceFrontier)) {
+        Remove-Item Env:FASTXSLT_OASIS_XSLT10_TRACE_FRONTIER -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:FASTXSLT_OASIS_XSLT10_TRACE_FRONTIER = $TraceFrontier
     }
     & cargo test --release -p fastxslt --all-features measures_local_oasis_xslt10_compatibility -- --ignored --nocapture
     if ($LASTEXITCODE -ne 0) {
@@ -44,4 +52,5 @@ try {
 finally {
     $env:FASTXSLT_OASIS_XSLT10_ROOT = $priorRoot
     $env:FASTXSLT_OASIS_XSLT10_TRACE_CASE = $priorTraceCase
+    $env:FASTXSLT_OASIS_XSLT10_TRACE_FRONTIER = $priorTraceFrontier
 }

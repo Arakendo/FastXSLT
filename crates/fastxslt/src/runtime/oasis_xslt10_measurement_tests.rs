@@ -12,6 +12,7 @@ use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
 
 const SUITE_ROOT_ENVIRONMENT: &str = "FASTXSLT_OASIS_XSLT10_ROOT";
 const TRACE_CASE_ENVIRONMENT: &str = "FASTXSLT_OASIS_XSLT10_TRACE_CASE";
+const TRACE_FRONTIER_ENVIRONMENT: &str = "FASTXSLT_OASIS_XSLT10_TRACE_FRONTIER";
 
 #[derive(Debug)]
 struct LegacyCase {
@@ -58,6 +59,7 @@ impl Measurement {
     fn initialization_failure(&mut self, identity: &str, failure: &WorkbenchFailure) {
         self.increment("initialization-failure");
         let frontier = failure_frontier(failure);
+        trace_frontier_failure(identity, "initialization", &frontier, failure);
         *self
             .initialization_frontiers
             .entry(frontier.clone())
@@ -70,6 +72,7 @@ impl Measurement {
     fn execution_failure(&mut self, identity: &str, failure: &WorkbenchFailure) {
         self.increment("execution-failure");
         let frontier = failure_frontier(failure);
+        trace_frontier_failure(identity, "execution", &frontier, failure);
         *self
             .execution_frontiers
             .entry(frontier.clone())
@@ -336,6 +339,19 @@ fn trace_case_failure(identity: &str, phase: &str, failure: &WorkbenchFailure) {
         "failure-trace\t{identity}\tphase={phase}\tcategory={:?}\tcode={}\tdetail={}",
         failure.category,
         failure.code,
+        escaped_detail(&failure.detail)
+    );
+}
+
+fn trace_frontier_failure(identity: &str, phase: &str, frontier: &str, failure: &WorkbenchFailure) {
+    let Some(requested) = std::env::var_os(TRACE_FRONTIER_ENVIRONMENT) else {
+        return;
+    };
+    if !frontier.contains(requested.to_string_lossy().as_ref()) {
+        return;
+    }
+    println!(
+        "frontier-trace\t{identity}\tphase={phase}\tfrontier={frontier}\tdetail={}",
         escaped_detail(&failure.detail)
     );
 }
