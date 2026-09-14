@@ -2288,6 +2288,44 @@ fn qualified_descendant_position_match_shares_source_and_temporary_semantics() {
 }
 
 #[test]
+fn descendant_match_positions_are_relative_to_each_child_axis() {
+    const SOURCE: &str = "urn:fastxslt:descendant-child-axis-position:source";
+    const STYLESHEET: &str = "urn:fastxslt:descendant-child-axis-position:stylesheet";
+    let chapter = r"<chapter><section><footnote>one</footnote><footnote>two</footnote></section><section><footnote>three</footnote><footnote>four</footnote></section></chapter>";
+    let stylesheet = format!(
+        r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+          <xsl:output omit-xml-declaration="yes"/>
+          <xsl:variable name="temporary">{chapter}</xsl:variable>
+          <xsl:template match="/"><out><source><xsl:apply-templates select="chapter/section/footnote" mode="source"/></source><temporary><xsl:apply-templates select="$temporary/chapter/section/footnote" mode="temporary"/></temporary></out></xsl:template>
+          <xsl:template match="chapter//footnote[position() != 1]" mode="source"><other/></xsl:template>
+          <xsl:template match="footnote" mode="source"><first/></xsl:template>
+          <xsl:template match="chapter//footnote[position() != 1]" mode="temporary"><other/></xsl:template>
+          <xsl:template match="footnote" mode="temporary"><first/></xsl:template>
+        </xsl:stylesheet>"#
+    );
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 16_384, 32_768));
+    resources
+        .admit(SOURCE, chapter.as_bytes().to_vec())
+        .expect("admit descendant-position source");
+    resources
+        .admit(STYLESHEET, stylesheet.into_bytes())
+        .expect("admit descendant-position stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile descendant child-axis position patterns");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("descendant-child-position", "result", SOURCE))
+        .expect("admit descendant-position request");
+    let results = execute_transform_set(builder.seal())
+        .expect("execute descendant child-axis position patterns");
+    assert_eq!(
+        results.by_request["descendant-child-position"].serialized,
+        "<out><source><first></first><other></other><first></first><other></other></source><temporary><first></first><other></other><first></first><other></other></temporary></out>"
+    );
+}
+
+#[test]
 fn two_attribute_value_patterns_share_source_and_temporary_semantics() {
     const SOURCE: &str = "urn:fastxslt:two-attribute-pattern:source";
     const STYLESHEET: &str = "urn:fastxslt:two-attribute-pattern:stylesheet";

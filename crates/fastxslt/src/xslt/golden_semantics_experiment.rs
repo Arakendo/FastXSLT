@@ -329,6 +329,11 @@ pub(crate) enum MatchPattern {
         position: usize,
         leaf: ExpandedName,
     },
+    DescendantElementAtNamedSiblingBoundary {
+        ancestor: ExpandedName,
+        element: ExpandedName,
+        boundary: NamedSiblingBoundary,
+    },
     QualifiedElementPathAlternatives(Vec<Vec<ExpandedName>>),
     UnionAlternatives(Vec<MatchPattern>),
     Path(LocationPath),
@@ -1204,6 +1209,7 @@ pub(crate) enum LiteralAttributeValue {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum NamedSiblingBoundary {
     Exact(usize),
+    NotExact(usize),
     Before(usize),
     BeforeLast,
     Last,

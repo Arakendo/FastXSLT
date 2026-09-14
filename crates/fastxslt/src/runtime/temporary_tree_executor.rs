@@ -4,7 +4,7 @@ use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xslt::golden_semantics_experiment::{
     ChildPresenceTest, Instruction, LiteralAttribute, MatchNodeTest, MatchPattern,
-    MatchStringPredicate, MatchedTemplate, OnNoMatchPolicy,
+    MatchStringPredicate, MatchedTemplate, NamedSiblingBoundary, OnNoMatchPolicy,
 };
 
 use super::match_sequence_predicate::{
@@ -904,6 +904,16 @@ fn temporary_matches(
             request_id,
             control,
         )?,
+        (
+            TemporaryNodeKind::Element { .. },
+            MatchPattern::DescendantElementAtNamedSiblingBoundary {
+                ancestor,
+                element,
+                boundary,
+            },
+        ) => temporary_matches_descendant_sibling_boundary(
+            tree, node, ancestor, element, *boundary, request_id, control,
+        )?,
         (TemporaryNodeKind::Element { .. }, MatchPattern::AnyElementNumberEquals(expected)) => {
             let value = super::runtime_context::temporary_node_string_value(
                 tree, node, request_id, control,
@@ -989,6 +999,68 @@ fn temporary_matches_descendant_positioned_path(
         if *sibling == parent {
             return Ok(filtered_position == position);
         }
+    }
+    Ok(false)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn temporary_matches_descendant_sibling_boundary(
+    tree: &TemporaryTree,
+    node: usize,
+    ancestor: &ExpandedName,
+    element: &ExpandedName,
+    boundary: NamedSiblingBoundary,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if !matches!(
+        &tree.nodes[node].kind,
+        TemporaryNodeKind::Element { name, .. } if name == element
+    ) {
+        return Ok(false);
+    }
+    let Some(parent) = tree.nodes[node].parent else {
+        return Ok(false);
+    };
+    let mut named_position = 0usize;
+    let mut candidate_position = None;
+    let mut later_match = false;
+    for sibling in &tree.nodes[parent].children {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if matches!(
+            &tree.nodes[*sibling].kind,
+            TemporaryNodeKind::Element { name, .. } if name == element
+        ) {
+            named_position += 1;
+            if candidate_position.is_some() {
+                later_match = true;
+            }
+        }
+        if *sibling == node {
+            candidate_position = Some(named_position);
+        }
+    }
+    if !super::template_selector::sibling_boundary_accepts(
+        candidate_position,
+        later_match,
+        boundary,
+    ) {
+        return Ok(false);
+    }
+    let mut current = Some(parent);
+    while let Some(candidate_ancestor) = current {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if matches!(
+            &tree.nodes[candidate_ancestor].kind,
+            TemporaryNodeKind::Element { name, .. } if name == ancestor
+        ) {
+            return Ok(true);
+        }
+        current = tree.nodes[candidate_ancestor].parent;
     }
     Ok(false)
 }

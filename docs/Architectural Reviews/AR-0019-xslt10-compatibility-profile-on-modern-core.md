@@ -1415,3 +1415,10 @@ maintained redistributable legacy suite becomes available.
   exact-result lower bound remain unchanged; no namespace-axis support is
   inferred.
   [Evidence](../Evidence/oasis-xslt10-qualified-descendant-position-match-2026-09-13.md)
+- 2026-09-13 -- Child-axis-relative position is now explicit for the bounded
+  `chapter//footnote[position() != 1]` match plan. Charged source and temporary
+  execution independently number same-named siblings under each immediate
+  parent, moving unchanged Xalan `match16` from initialization failure to exact
+  pass and raising the lower bound from 1,376 to 1,377 without a new mismatch
+  or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-descendant-child-axis-position-2026-09-13.md)

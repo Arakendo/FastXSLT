@@ -437,6 +437,13 @@ fn matches_pattern(
         } => matches_descendant_positioned_path(
             source, node, ancestor, positioned, *position, leaf, request_id, control,
         ),
+        MatchPattern::DescendantElementAtNamedSiblingBoundary {
+            ancestor,
+            element,
+            boundary,
+        } => matches_descendant_sibling_boundary(
+            source, node, ancestor, element, *boundary, request_id, control,
+        ),
         MatchPattern::Path(path) => match_path_pattern(
             source,
             node,
@@ -534,6 +541,71 @@ fn matches_descendant_positioned_path(
         }
     }
     Ok(false)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn matches_descendant_sibling_boundary(
+    source: &Document,
+    node: NodeId,
+    ancestor: &crate::xml::quick_xml_experiment::ExpandedName,
+    element: &crate::xml::quick_xml_experiment::ExpandedName,
+    boundary: NamedSiblingBoundary,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if source.name(node) != Some(element) {
+        return Ok(false);
+    }
+    let Some(parent) = source.parent(node) else {
+        return Ok(false);
+    };
+    let mut named_position = 0usize;
+    let mut candidate_position = None;
+    let mut later_match = false;
+    for sibling in source.children(parent).iter().copied() {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if source.name(sibling) == Some(element) {
+            named_position += 1;
+            if candidate_position.is_some() {
+                later_match = true;
+            }
+        }
+        if sibling == node {
+            candidate_position = Some(named_position);
+        }
+    }
+    if !sibling_boundary_accepts(candidate_position, later_match, boundary) {
+        return Ok(false);
+    }
+    let mut current = Some(parent);
+    while let Some(candidate_ancestor) = current {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if source.name(candidate_ancestor) == Some(ancestor) {
+            return Ok(true);
+        }
+        current = source.parent(candidate_ancestor);
+    }
+    Ok(false)
+}
+
+pub(super) fn sibling_boundary_accepts(
+    candidate_position: Option<usize>,
+    later_match: bool,
+    boundary: NamedSiblingBoundary,
+) -> bool {
+    match boundary {
+        NamedSiblingBoundary::Exact(expected) => candidate_position == Some(expected),
+        NamedSiblingBoundary::NotExact(expected) => {
+            candidate_position.is_some_and(|p| p != expected)
+        }
+        NamedSiblingBoundary::Before(expected) => candidate_position.is_some_and(|p| p < expected),
+        NamedSiblingBoundary::BeforeLast => later_match,
+        NamedSiblingBoundary::Last => !later_match,
+    }
 }
 
 fn matches_sequential_predicates(
@@ -692,12 +764,11 @@ fn matches_named_sibling_boundary(
             later_match = true;
         }
     }
-    Ok(match boundary {
-        NamedSiblingBoundary::Exact(expected) => candidate_position == Some(expected),
-        NamedSiblingBoundary::Before(expected) => candidate_position.is_some_and(|p| p < expected),
-        NamedSiblingBoundary::BeforeLast => later_match,
-        NamedSiblingBoundary::Last => !later_match,
-    })
+    Ok(sibling_boundary_accepts(
+        candidate_position,
+        later_match,
+        boundary,
+    ))
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -1458,6 +1458,31 @@ fn compiles_namespace_aware_descendant_path_with_positioned_middle_step() {
 }
 
 #[test]
+fn compiles_descendant_match_position_relative_to_the_child_axis() {
+    let stylesheet = parse_stylesheet(
+        "memory:descendant-child-axis-position.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="chapter//footnote[position() != 1]"/></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet)
+        .expect("descendant child-axis position pattern should compile");
+    assert!(matches!(
+        &program.matched_templates[0].pattern,
+        MatchPattern::DescendantElementAtNamedSiblingBoundary {
+            ancestor,
+            element,
+            boundary: crate::xslt::golden_semantics_experiment::NamedSiblingBoundary::NotExact(1),
+        } if ancestor.namespace.is_none()
+            && ancestor.local == "chapter"
+            && element.namespace.is_none()
+            && element.local == "footnote"
+    ));
+    assert_eq!(
+        program.matched_templates[0].priority,
+        TemplatePriority::PATH_DEFAULT
+    );
+}
+
+#[test]
 fn compiles_exact_descendant_wildcard_with_non_simple_priority() {
     let stylesheet = parse_stylesheet(
             "memory:descendant-wildcard-pattern.xsl",
@@ -1485,15 +1510,6 @@ fn compiles_exact_descendant_wildcard_with_non_simple_priority() {
         document_rooted_program.matched_templates[1].priority
             > document_rooted_program.matched_templates[0].priority
     );
-
-    let relational_position = parse_stylesheet(
-        "memory:relational-position-pattern.xsl",
-        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="chapter//footnote[position()!=1]"><out/></xsl:template></xsl:stylesheet>"#,
-    );
-    let failure = compile_stylesheet(&relational_position)
-        .expect_err("general position comparisons need match-pattern-specific semantics");
-    assert_eq!(failure.code, "FXST1005");
-    assert_eq!(failure.category, CompileCategory::Unsupported);
 
     let last_minus_position = parse_stylesheet(
         "memory:last-minus-position-pattern.xsl",

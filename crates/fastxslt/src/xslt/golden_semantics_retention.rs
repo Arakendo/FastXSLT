@@ -183,6 +183,10 @@ fn constructed_node_owned(value: &ConstructedNode) -> usize {
     }
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "the exhaustive private match-plan retention accounting remains one ownership point"
+)]
 fn match_pattern_owned(value: &MatchPattern) -> usize {
     match value {
         MatchPattern::AtomicIntegerGreaterOrEqual(_)
@@ -277,6 +281,9 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
             leaf,
             ..
         } => name_owned(ancestor) + name_owned(positioned) + name_owned(leaf),
+        MatchPattern::DescendantElementAtNamedSiblingBoundary {
+            ancestor, element, ..
+        } => name_owned(ancestor) + name_owned(element),
         MatchPattern::QualifiedElementPathAlternatives(paths) => {
             vec_owned(paths, |path| vec_owned(path, name_owned))
         }

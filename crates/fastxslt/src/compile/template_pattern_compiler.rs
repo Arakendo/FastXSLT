@@ -303,6 +303,15 @@ pub(super) fn compile_match_pattern(
                 leaf: compile_pattern_element_name(document, element, leaf)?,
             }
         }
+        path if parse_descendant_sibling_boundary(path).is_some() => {
+            let (ancestor, candidate, boundary) = parse_descendant_sibling_boundary(path)
+                .expect("descendant sibling-boundary shape was checked");
+            MatchPattern::DescendantElementAtNamedSiblingBoundary {
+                ancestor: compile_pattern_element_name(document, element, ancestor)?,
+                element: compile_pattern_element_name(document, element, candidate)?,
+                boundary,
+            }
+        }
         path if path.starts_with("//")
             && effective_xpath_default_namespace(document, element).is_none()
             && parse_location_path(path, document.location(element).clone())
@@ -360,6 +369,26 @@ fn parse_descendant_positioned_path(pattern: &str) -> Option<(&str, &str, usize,
         && valid_lexical_qname(leaf)
         && position > 0)
         .then_some((ancestor, positioned, position, leaf))
+}
+
+fn parse_descendant_sibling_boundary(pattern: &str) -> Option<(&str, &str, NamedSiblingBoundary)> {
+    let pattern = pattern.strip_prefix("//").unwrap_or(pattern);
+    let (ancestor, candidate) = pattern.split_once("//")?;
+    let (candidate, predicate) = candidate.split_once('[')?;
+    let predicate = predicate.strip_suffix(']')?.trim();
+    if !valid_lexical_qname(ancestor) || !valid_lexical_qname(candidate) {
+        return None;
+    }
+    let boundary = predicate
+        .strip_prefix("position()")?
+        .trim_start()
+        .strip_prefix("!=")?
+        .trim()
+        .parse()
+        .ok()
+        .filter(|position| *position > 0)
+        .map(NamedSiblingBoundary::NotExact)?;
+    Some((ancestor, candidate, boundary))
 }
 
 fn valid_lexical_qname(value: &str) -> bool {
@@ -1054,6 +1083,7 @@ fn compile_template_priority(
             | MatchPattern::ElementAtNamedSiblingWithAttributeValue { .. }
             | MatchPattern::ElementWithSequentialPredicates { .. }
             | MatchPattern::DescendantElementPathAtPosition { .. }
+            | MatchPattern::DescendantElementAtNamedSiblingBoundary { .. }
             | MatchPattern::UnionAlternatives(_) => TemplatePriority::PATH_DEFAULT,
             MatchPattern::Document | MatchPattern::DocumentElement(None) => {
                 TemplatePriority::ROOT_DEFAULT
