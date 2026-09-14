@@ -2704,14 +2704,11 @@ fn evaluate_ordinary_boolean(
             path,
             local,
             comparison,
-        } => evaluate_unqualified_node_name_equals(
-            inputs,
-            path,
-            local,
-            *comparison,
-            context,
-            control,
-        ),
+        } => node_name_path_equals(inputs, path, local, *comparison, context, control),
+        BooleanExpression::ContextNodeNameEquals {
+            lexical,
+            comparison,
+        } => evaluate_context_node_name_equals(inputs, context, lexical, *comparison, control),
         BooleanExpression::ContextStringEquals(expected) => {
             evaluate_context_string_equals(inputs, context, expected, control)
         }
@@ -3132,7 +3129,7 @@ fn variable_string_value(
     runtime_context::temporary_tree_string_value(tree, inputs.request_id, control)
 }
 
-fn evaluate_unqualified_node_name_equals(
+fn node_name_path_equals(
     inputs: &SequenceInputs<'_>,
     path: &crate::xpath::path_experiment::LocationPath,
     local: &str,
@@ -3154,6 +3151,29 @@ fn evaluate_unqualified_node_name_equals(
                 }
         })
     }))
+}
+
+fn evaluate_context_node_name_equals(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expected: &str,
+    comparison: StringComparison,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let actual = source.name(context).map_or_else(String::new, |name| {
+        source.prefix(context).map_or_else(
+            || name.local.clone(),
+            |prefix| format!("{prefix}:{}", name.local),
+        )
+    });
+    Ok(match comparison {
+        StringComparison::Codepoint => actual == expected,
+        StringComparison::HtmlAsciiCaseInsensitive => actual.eq_ignore_ascii_case(expected),
+    })
 }
 
 fn evaluate_variable_integer_equality(

@@ -1485,3 +1485,11 @@ maintained redistributable legacy suite becomes available.
   1,388; the sorted-variable path also replaces one exposed panic assumption
   with typed source-node handling.
   [Evidence](../Evidence/oasis-xslt10-variable-flow-and-sort-2026-09-14.md)
+- 2026-09-14 -- Context-node `name()` equality now retains the source lexical
+  QName and its comparison mode in a private boolean plan. Unchanged Lotus
+  `axes121` reaches its intended line-feed branch. The local XML comparator now
+  applies XML source line-ending normalization and ignores post-declaration
+  whitespace before tree comparison, moving six executing mismatches to exact
+  results and raising the lower bound from 1,388 to 1,394. The engine's DTD
+  authority boundary remains unchanged.
+  [Evidence](../Evidence/oasis-xslt10-context-name-condition-and-xml-line-endings-2026-09-14.md)

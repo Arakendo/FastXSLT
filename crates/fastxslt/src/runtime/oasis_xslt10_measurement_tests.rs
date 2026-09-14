@@ -601,6 +601,8 @@ fn print_ranked(label: &str, values: &BTreeMap<String, usize>) {
 
 fn xml_equivalent(actual: &str, expected: &[u8]) -> Result<bool, String> {
     let expected = decode_expected_xml(expected)?;
+    let actual = normalize_xml_source_line_endings(actual);
+    let expected = normalize_xml_source_line_endings(&expected);
     if actual.trim().is_empty() || expected.trim().is_empty() {
         return Ok(actual.trim() == expected.trim());
     }
@@ -633,6 +635,37 @@ fn oasis_xml_comparator_ignores_serialization_only_empty_element_and_prolog_spac
     let expected = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<out test=\"hello\"/>\r\n";
 
     assert_eq!(xml_equivalent(actual, expected), Ok(true));
+}
+
+#[test]
+fn oasis_xml_comparator_normalizes_literal_xml_line_endings_before_parsing() {
+    assert_eq!(
+        xml_equivalent("<out>a\nb</out>", b"<out>a\r\nb</out>"),
+        Ok(true)
+    );
+    assert_eq!(
+        xml_equivalent("<out>&#13;</out>", b"<out>\r</out>"),
+        Ok(false)
+    );
+    let actual = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>far-north north near-north far-west west near-west center\nnear-south south near-south-west near-east east far-east </out>";
+    let expected = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<out>far-north north near-north far-west west near-west center\r\nnear-south south near-south-west near-east east far-east </out>";
+    assert_eq!(xml_equivalent(actual, expected), Ok(true));
+}
+
+fn normalize_xml_source_line_endings(value: &str) -> String {
+    let normalized = value.replace("\r\n", "\n").replace('\r', "\n");
+    let trimmed = normalized.trim_start();
+    let Some(after_declaration) = trimmed.strip_prefix("<?xml").and_then(|value| {
+        let end = value.find("?>")? + 2;
+        Some((&value[..end], &value[end..]))
+    }) else {
+        return normalized;
+    };
+    format!(
+        "<?xml{}{}",
+        after_declaration.0,
+        after_declaration.1.trim_start()
+    )
 }
 
 fn decode_expected_xml(expected: &[u8]) -> Result<String, String> {

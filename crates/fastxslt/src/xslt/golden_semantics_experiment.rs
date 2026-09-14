@@ -1063,6 +1063,10 @@ pub(crate) enum BooleanExpression {
         local: String,
         comparison: StringComparison,
     },
+    ContextNodeNameEquals {
+        lexical: String,
+        comparison: StringComparison,
+    },
     ContextStringEquals(String),
     ContextStringLengthEquals(usize),
     ContextPositionNotEqualSize(SourceLocation),

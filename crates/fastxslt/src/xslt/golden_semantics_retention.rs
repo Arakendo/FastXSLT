@@ -1014,6 +1014,7 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
             local,
             comparison: _,
         } => path.known_owned_capacity_bytes() + local.capacity(),
+        BooleanExpression::ContextNodeNameEquals { lexical, .. } => lexical.capacity(),
         BooleanExpression::ContextStringEquals(value)
         | BooleanExpression::ContextLanguageMatches(value) => value.capacity(),
         BooleanExpression::ContextPositionNotEqualSize(location)

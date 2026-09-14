@@ -631,6 +631,12 @@ fn parse_path_boolean_expression(
     location: &SourceLocation,
     comparison: StringComparison,
 ) -> Result<Option<BooleanExpression>, CompileFailure> {
+    if let Some(lexical) = parse_context_name_equality(expression) {
+        return Ok(Some(BooleanExpression::ContextNodeNameEquals {
+            lexical: lexical.to_owned(),
+            comparison,
+        }));
+    }
     if let Some((path, value)) = parse_path_context_string_predicate(expression) {
         return parse_location_path(path, location.clone())
             .map(|path| {
@@ -668,6 +674,18 @@ fn parse_path_boolean_expression(
             .map_err(map_path_failure);
     }
     Ok(None)
+}
+
+fn parse_context_name_equality(expression: &str) -> Option<&str> {
+    let (left, right) = expression.split_once('=')?;
+    parse_context_name_operand(left.trim(), right.trim())
+        .or_else(|| parse_context_name_operand(right.trim(), left.trim()))
+}
+
+fn parse_context_name_operand<'a>(name: &str, literal: &'a str) -> Option<&'a str> {
+    matches!(name, "name()" | "name(.)")
+        .then(|| xpath_string_literal(literal))
+        .flatten()
 }
 
 fn parse_constant_string_boolean(expression: &str) -> Option<bool> {
