@@ -310,6 +310,7 @@ fn local_variable_name(variable: &Instruction) -> &String {
     | Instruction::ContextPositionVariable { name, .. }
     | Instruction::ContextNodeNameVariable { name, .. }
     | Instruction::ContextCountPathVariable { name, .. }
+    | Instruction::Xslt10BinaryNumericVariable { name, .. }
     | Instruction::SourceNodeVariable { name, .. }
     | Instruction::SourceNodeUnionVariable { name, .. }
     | Instruction::IntegerRangeVariable { name, .. }
@@ -1430,6 +1431,11 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
     if let Some(variable) = compile_static_atomic_variable(name, expression, &location) {
         return Ok(variable);
     }
+    if let Some(variable) =
+        compile_local_binary_numeric_variable(document, element, name, expression, &location)
+    {
+        return Ok(variable);
+    }
     let node_path = match parse_location_path(expression, location.clone()) {
         Ok(path) => Some(path),
         Err(PathFailure::Unsupported { .. }) if expression.contains(':') => Some(
@@ -1457,6 +1463,26 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
         name: name.to_owned(),
         select: Box::new(select),
         location,
+    })
+}
+
+fn compile_local_binary_numeric_variable(
+    document: &Document,
+    element: NodeId,
+    name: &str,
+    expression: &str,
+    location: &SourceLocation,
+) -> Option<Instruction> {
+    let select = value_expression_compiler::compile_xslt10_binary_numeric(
+        document,
+        element,
+        expression.trim(),
+        location,
+    )?;
+    Some(Instruction::Xslt10BinaryNumericVariable {
+        name: name.to_owned(),
+        select: Box::new(select),
+        location: location.clone(),
     })
 }
 

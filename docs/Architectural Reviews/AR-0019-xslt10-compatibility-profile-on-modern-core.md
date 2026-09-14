@@ -1460,3 +1460,9 @@ maintained redistributable legacy suite becomes available.
   exact passes, raising the lower bound from 1,382 to 1,384 without a new
   mismatch or execution failure.
   [Evidence](../Evidence/oasis-xslt10-template-argument-arithmetic-and-reverse-axis-position-2026-09-14.md)
+- 2026-09-14 -- Local source-dependent numeric variables now reuse the same
+  bounded binary-numeric plan, controlled evaluator, and typed atomic frame as
+  other numeric consumers. Unchanged Lotus `variable43` moves from `FXXP1008`
+  to exact result, raising the lower bound from 1,384 to 1,385 without a new
+  mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-local-path-arithmetic-variable-2026-09-14.md)

@@ -273,6 +273,7 @@ fn observe_instructions(
             | Instruction::ContextPositionVariable { .. }
             | Instruction::ContextNodeNameVariable { .. }
             | Instruction::ContextCountPathVariable { .. }
+            | Instruction::Xslt10BinaryNumericVariable { .. }
             | Instruction::SourceNodeVariable { .. }
             | Instruction::SourceNodeUnionVariable { .. }
             | Instruction::IntegerRangeVariable { .. }

@@ -555,6 +555,11 @@ pub(crate) enum Instruction {
         select: LocationPath,
         location: SourceLocation,
     },
+    Xslt10BinaryNumericVariable {
+        name: String,
+        select: Box<BinaryNumericExpression>,
+        location: SourceLocation,
+    },
     SourceNodeVariable {
         name: String,
         select: LocationPath,

@@ -65,6 +65,7 @@ fn validate_named_calls(
             | Instruction::ContextPositionVariable { .. }
             | Instruction::ContextNodeNameVariable { .. }
             | Instruction::ContextCountPathVariable { .. }
+            | Instruction::Xslt10BinaryNumericVariable { .. }
             | Instruction::SourceNodeVariable { .. }
             | Instruction::SourceNodeUnionVariable { .. }
             | Instruction::IntegerRangeVariable { .. }

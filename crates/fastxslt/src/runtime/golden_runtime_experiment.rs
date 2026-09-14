@@ -769,6 +769,7 @@ fn execute_instruction(
         | Instruction::ContextPositionVariable { .. }
         | Instruction::ContextNodeNameVariable { .. }
         | Instruction::ContextCountPathVariable { .. }
+        | Instruction::Xslt10BinaryNumericVariable { .. }
         | Instruction::SourceNodeVariable { .. }
         | Instruction::SourceNodeUnionVariable { .. }
         | Instruction::IntegerRangeVariable { .. }
@@ -1520,11 +1521,11 @@ fn execute_binding(
         Instruction::ContextCountPathVariable { name, select, .. } => {
             bind_context_count_path(inputs, execution, name, select, scope, control)?;
         }
+        Instruction::Xslt10BinaryNumericVariable { name, select, .. } => {
+            bind_binary_numeric_variable(inputs, execution, name, select, scope, control)?;
+        }
         Instruction::SourceNodeVariable { name, select, .. } => {
-            let (source, context) = required_source_context(inputs, execution.node)?;
-            let nodes = evaluate_location_path_controlled(source, context, select, control)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            scope.bind_source_nodes(name.clone(), nodes);
+            bind_source_node_variable(inputs, execution, name, select, scope, control)?;
         }
         Instruction::SourceNodeUnionVariable { name, sources, .. } => {
             let source = inputs.source.ok_or_else(|| {
@@ -1579,6 +1580,43 @@ fn execute_binding(
         }
         _ => unreachable!("execute_binding receives a variable instruction"),
     }
+    Ok(())
+}
+
+fn bind_source_node_variable(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    name: &str,
+    select: &crate::xpath::path_experiment::LocationPath,
+    scope: &mut RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, execution.node)?;
+    let nodes = evaluate_location_path_controlled(source, context, select, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    scope.bind_source_nodes(name.to_owned(), nodes);
+    Ok(())
+}
+
+fn bind_binary_numeric_variable(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    name: &str,
+    select: &crate::xpath::binary_numeric_experiment::BinaryNumericExpression,
+    scope: &mut RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let value = value_evaluator::evaluate_binary_numeric_value(
+        inputs,
+        execution.node,
+        select,
+        scope,
+        control,
+    )?;
+    scope.bind_atomic(
+        name.to_owned(),
+        AtomicValue::from_validated_lexical(BuiltinAtomicType::Double, value),
+    );
     Ok(())
 }
 

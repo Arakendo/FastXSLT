@@ -2272,6 +2272,34 @@ fn xslt10_template_arguments_reuse_variable_numeric_arithmetic() {
 }
 
 #[test]
+fn xslt10_local_variables_reuse_path_numeric_arithmetic() {
+    const SOURCE: &str = "urn:fastxslt:local-path-arithmetic:source";
+    const STYLESHEET: &str = "urn:fastxslt:local-path-arithmetic:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+      <xsl:output method="text"/>
+      <xsl:template match="doc"><xsl:variable name="area" select="width * depth"/><xsl:value-of select="$area"/></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><width>6</width><depth>7</depth></doc>".to_vec(),
+        )
+        .expect("admit local-path-arithmetic source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit local-path-arithmetic stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile local path arithmetic");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("local-path-arithmetic", "result", SOURCE))
+        .expect("admit local-path-arithmetic request");
+    let results = execute_transform_set(builder.seal()).expect("execute local path arithmetic");
+    assert_eq!(results.by_request["local-path-arithmetic"].serialized, "42");
+}
+
+#[test]
 fn wildcard_attribute_presence_patterns_share_source_and_temporary_semantics() {
     const SOURCE: &str = "urn:fastxslt:wildcard-attribute-pattern:source";
     const STYLESHEET: &str = "urn:fastxslt:wildcard-attribute-pattern:stylesheet";

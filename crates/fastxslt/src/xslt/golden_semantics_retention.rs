@@ -391,8 +391,9 @@ fn instruction_owned(value: &Instruction) -> usize {
         | Instruction::IntegerRangeVariable { name, location, .. } => {
             name.capacity() + location_owned(location)
         }
-        instruction @ Instruction::ContextCountPathVariable { .. } => {
-            context_count_path_variable_owned(instruction)
+        instruction @ (Instruction::ContextCountPathVariable { .. }
+        | Instruction::Xslt10BinaryNumericVariable { .. }) => {
+            context_derived_variable_owned(instruction)
         }
         instruction @ (Instruction::SourceNodeVariable { .. }
         | Instruction::Xslt10ForEachTextTreeVariable { .. }) => path_binding_owned(instruction),
@@ -460,6 +461,27 @@ fn instruction_owned(value: &Instruction) -> usize {
     }
 }
 
+fn context_derived_variable_owned(value: &Instruction) -> usize {
+    match value {
+        Instruction::ContextCountPathVariable {
+            name,
+            select,
+            location,
+        } => name.capacity() + select.known_owned_capacity_bytes() + location_owned(location),
+        Instruction::Xslt10BinaryNumericVariable {
+            name,
+            select,
+            location,
+        } => {
+            name.capacity()
+                + size_of::<crate::xpath::binary_numeric_experiment::BinaryNumericExpression>()
+                + select.known_owned_capacity_bytes()
+                + location_owned(location)
+        }
+        _ => unreachable!("context-derived accounting receives one context-derived binding"),
+    }
+}
+
 fn path_binding_owned(instruction: &Instruction) -> usize {
     let (Instruction::SourceNodeVariable {
         name,
@@ -515,18 +537,6 @@ fn scalar_binding_owned(value: &Instruction) -> usize {
         } => name.capacity() + source.capacity() + location_owned(location),
         _ => unreachable!("scalar binding accounting receives one scalar binding"),
     }
-}
-
-fn context_count_path_variable_owned(value: &Instruction) -> usize {
-    let Instruction::ContextCountPathVariable {
-        name,
-        select,
-        location,
-    } = value
-    else {
-        unreachable!("context count-path accounting receives one count-path binding")
-    };
-    name.capacity() + select.known_owned_capacity_bytes() + location_owned(location)
 }
 
 fn static_atomic_variable_owned(
