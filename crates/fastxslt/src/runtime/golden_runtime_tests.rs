@@ -2250,6 +2250,44 @@ fn sequential_match_predicates_share_filtered_focus_across_source_and_temporary_
 }
 
 #[test]
+fn qualified_descendant_position_match_shares_source_and_temporary_semantics() {
+    const SOURCE: &str = "urn:fastxslt:qualified-descendant-position:source";
+    const STYLESHEET: &str = "urn:fastxslt:qualified-descendant-position:stylesheet";
+    let nested = r#"<outer xmlns:n="urn:foo"><n:book><n:chapter><foo/></n:chapter><n:chapter><foo/></n:chapter></n:book></outer>"#;
+    let stylesheet = format!(
+        r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:n="urn:foo" exclude-result-prefixes="n">
+          <xsl:output omit-xml-declaration="yes"/>
+          <xsl:variable name="temporary">{nested}</xsl:variable>
+          <xsl:template match="/"><out><xsl:apply-templates select="outer/n:book/n:chapter/foo" mode="source"/><xsl:apply-templates select="$temporary/outer/n:book/n:chapter/foo" mode="temporary"/></out></xsl:template>
+          <xsl:template match="//n:book/n:chapter[2]/foo" mode="source"><source/></xsl:template>
+          <xsl:template match="foo" mode="source"/>
+          <xsl:template match="//n:book/n:chapter[2]/foo" mode="temporary"><temporary/></xsl:template>
+          <xsl:template match="foo" mode="temporary"/>
+        </xsl:stylesheet>"#
+    );
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 16_384, 32_768));
+    resources
+        .admit(SOURCE, nested.as_bytes().to_vec())
+        .expect("admit qualified descendant-position source");
+    resources
+        .admit(STYLESHEET, stylesheet.into_bytes())
+        .expect("admit qualified descendant-position stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile qualified descendant-position patterns");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("qualified-descendant-position", "result", SOURCE))
+        .expect("admit qualified descendant-position request");
+    let results = execute_transform_set(builder.seal())
+        .expect("execute qualified descendant-position patterns");
+    assert_eq!(
+        results.by_request["qualified-descendant-position"].serialized,
+        "<out><source></source><temporary></temporary></out>"
+    );
+}
+
+#[test]
 fn two_attribute_value_patterns_share_source_and_temporary_semantics() {
     const SOURCE: &str = "urn:fastxslt:two-attribute-pattern:source";
     const STYLESHEET: &str = "urn:fastxslt:two-attribute-pattern:stylesheet";

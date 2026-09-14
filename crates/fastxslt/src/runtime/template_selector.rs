@@ -429,6 +429,14 @@ fn matches_pattern(
             element,
             predicates,
         } => matches_sequential_predicates(source, node, element, predicates, request_id, control),
+        MatchPattern::DescendantElementPathAtPosition {
+            ancestor,
+            positioned,
+            position,
+            leaf,
+        } => matches_descendant_positioned_path(
+            source, node, ancestor, positioned, *position, leaf, request_id, control,
+        ),
         MatchPattern::Path(path) => match_path_pattern(
             source,
             node,
@@ -479,6 +487,53 @@ fn matches_pattern(
                 .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())),
         MatchPattern::AnyNode => Ok(matches_any_node(source.kind(node))),
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn matches_descendant_positioned_path(
+    source: &Document,
+    node: NodeId,
+    ancestor: &crate::xml::quick_xml_experiment::ExpandedName,
+    positioned: &crate::xml::quick_xml_experiment::ExpandedName,
+    position: usize,
+    leaf: &crate::xml::quick_xml_experiment::ExpandedName,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if source.name(node) != Some(leaf) {
+        return Ok(false);
+    }
+    let Some(parent) = source.parent(node) else {
+        return Ok(false);
+    };
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    if source.name(parent) != Some(positioned) {
+        return Ok(false);
+    }
+    let Some(grandparent) = source.parent(parent) else {
+        return Ok(false);
+    };
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    if source.name(grandparent) != Some(ancestor) {
+        return Ok(false);
+    }
+    let mut filtered_position = 0usize;
+    for sibling in source.children(grandparent) {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if source.name(*sibling) == Some(positioned) {
+            filtered_position += 1;
+        }
+        if *sibling == parent {
+            return Ok(filtered_position == position);
+        }
+    }
+    Ok(false)
 }
 
 fn matches_sequential_predicates(

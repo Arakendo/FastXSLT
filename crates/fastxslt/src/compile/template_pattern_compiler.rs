@@ -293,6 +293,16 @@ pub(super) fn compile_match_pattern(
                 .expect("normalized static-true descendant name is a location path"),
             )
         }
+        path if parse_descendant_positioned_path(path).is_some() => {
+            let (ancestor, positioned, position, leaf) = parse_descendant_positioned_path(path)
+                .expect("descendant positioned path shape was checked");
+            MatchPattern::DescendantElementPathAtPosition {
+                ancestor: compile_pattern_element_name(document, element, ancestor)?,
+                positioned: compile_pattern_element_name(document, element, positioned)?,
+                position,
+                leaf: compile_pattern_element_name(document, element, leaf)?,
+            }
+        }
         path if path.starts_with("//")
             && effective_xpath_default_namespace(document, element).is_none()
             && parse_location_path(path, document.location(element).clone())
@@ -333,6 +343,57 @@ pub(super) fn compile_match_pattern(
     };
     let priority = compile_template_priority(document, element, &pattern)?;
     Ok((pattern, priority))
+}
+
+fn parse_descendant_positioned_path(pattern: &str) -> Option<(&str, &str, usize, &str)> {
+    let mut steps = pattern.strip_prefix("//")?.split('/');
+    let ancestor = steps.next()?;
+    let positioned = steps.next()?;
+    let leaf = steps.next()?;
+    if steps.next().is_some() {
+        return None;
+    }
+    let (positioned, predicate) = positioned.split_once('[')?;
+    let position = predicate.strip_suffix(']')?.trim().parse().ok()?;
+    (valid_lexical_qname(ancestor)
+        && valid_lexical_qname(positioned)
+        && valid_lexical_qname(leaf)
+        && position > 0)
+        .then_some((ancestor, positioned, position, leaf))
+}
+
+fn valid_lexical_qname(value: &str) -> bool {
+    if let Some((prefix, local)) = value.split_once(':') {
+        is_ascii_ncname(prefix) && is_ascii_ncname(local) && !local.contains(':')
+    } else {
+        is_ascii_ncname(value)
+    }
+}
+
+fn compile_pattern_element_name(
+    document: &Document,
+    element: NodeId,
+    lexical: &str,
+) -> Result<crate::xml::quick_xml_experiment::ExpandedName, CompileFailure> {
+    let (namespace, local) = if let Some((prefix, local)) = lexical.split_once(':') {
+        let namespace = namespace_for_prefix(document, element, prefix).ok_or_else(|| {
+            invalid(
+                "FXST0031",
+                format!("unbound prefix in template match pattern: {prefix}"),
+                document.location(element),
+            )
+        })?;
+        (Some(namespace.to_owned()), local)
+    } else {
+        (
+            effective_xpath_default_namespace(document, element).map(str::to_owned),
+            lexical,
+        )
+    };
+    Ok(crate::xml::quick_xml_experiment::ExpandedName {
+        namespace,
+        local: local.to_owned(),
+    })
 }
 
 fn contains_outside_string_literals(pattern: &str, needle: &str) -> bool {
@@ -992,6 +1053,7 @@ fn compile_template_priority(
             | MatchPattern::ElementAtNamedSiblingBoundary { .. }
             | MatchPattern::ElementAtNamedSiblingWithAttributeValue { .. }
             | MatchPattern::ElementWithSequentialPredicates { .. }
+            | MatchPattern::DescendantElementPathAtPosition { .. }
             | MatchPattern::UnionAlternatives(_) => TemplatePriority::PATH_DEFAULT,
             MatchPattern::Document | MatchPattern::DocumentElement(None) => {
                 TemplatePriority::ROOT_DEFAULT

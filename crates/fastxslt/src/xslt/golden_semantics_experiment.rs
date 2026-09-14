@@ -323,6 +323,12 @@ pub(crate) enum MatchPattern {
         element: ExpandedName,
         predicates: Vec<MatchSequencePredicate>,
     },
+    DescendantElementPathAtPosition {
+        ancestor: ExpandedName,
+        positioned: ExpandedName,
+        position: usize,
+        leaf: ExpandedName,
+    },
     QualifiedElementPathAlternatives(Vec<Vec<ExpandedName>>),
     UnionAlternatives(Vec<MatchPattern>),
     Path(LocationPath),

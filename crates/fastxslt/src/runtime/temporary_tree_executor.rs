@@ -777,6 +777,17 @@ fn temporary_matches(
         ) => temporary_matches_sequential_predicates(
             tree, node, element, predicates, request_id, control,
         )?,
+        (
+            TemporaryNodeKind::Element { .. },
+            MatchPattern::DescendantElementPathAtPosition {
+                ancestor,
+                positioned,
+                position,
+                leaf,
+            },
+        ) => temporary_matches_descendant_positioned_path(
+            tree, node, ancestor, positioned, *position, leaf, request_id, control,
+        )?,
         (TemporaryNodeKind::Element { name, .. }, MatchPattern::ElementLocal(local)) => {
             name.local == *local
         }
@@ -921,6 +932,65 @@ fn temporary_matches(
         _ => false,
     };
     Ok(matched)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn temporary_matches_descendant_positioned_path(
+    tree: &TemporaryTree,
+    node: usize,
+    ancestor: &ExpandedName,
+    positioned: &ExpandedName,
+    position: usize,
+    leaf: &ExpandedName,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    if !matches!(
+        &tree.nodes[node].kind,
+        TemporaryNodeKind::Element { name, .. } if name == leaf
+    ) {
+        return Ok(false);
+    }
+    let Some(parent) = tree.nodes[node].parent else {
+        return Ok(false);
+    };
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    if !matches!(
+        &tree.nodes[parent].kind,
+        TemporaryNodeKind::Element { name, .. } if name == positioned
+    ) {
+        return Ok(false);
+    }
+    let Some(grandparent) = tree.nodes[parent].parent else {
+        return Ok(false);
+    };
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, request_id))?;
+    if !matches!(
+        &tree.nodes[grandparent].kind,
+        TemporaryNodeKind::Element { name, .. } if name == ancestor
+    ) {
+        return Ok(false);
+    }
+    let mut filtered_position = 0usize;
+    for sibling in &tree.nodes[grandparent].children {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if matches!(
+            &tree.nodes[*sibling].kind,
+            TemporaryNodeKind::Element { name, .. } if name == positioned
+        ) {
+            filtered_position += 1;
+        }
+        if *sibling == parent {
+            return Ok(filtered_position == position);
+        }
+    }
+    Ok(false)
 }
 
 fn temporary_matches_sequential_predicates(

@@ -271,6 +271,12 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
         } => {
             name_owned(element) + match_sequence_predicates_owned(predicates, predicates.capacity())
         }
+        MatchPattern::DescendantElementPathAtPosition {
+            ancestor,
+            positioned,
+            leaf,
+            ..
+        } => name_owned(ancestor) + name_owned(positioned) + name_owned(leaf),
         MatchPattern::QualifiedElementPathAlternatives(paths) => {
             vec_owned(paths, |path| vec_owned(path, name_owned))
         }

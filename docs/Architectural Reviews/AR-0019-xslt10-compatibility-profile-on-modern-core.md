@@ -1407,3 +1407,11 @@ maintained redistributable legacy suite becomes available.
   generic frontier failures are now invalid diagnostics; the contradictory
   archival Xalan `match14` success expectation remains uncredited, preserving
   the 1,376 exact-result lower bound.
+- 2026-09-13 -- The namespace-aware `//n:book/n:chapter[2]/foo` pattern now
+  compiles to a bounded expanded-name plan and shares charged source/temporary
+  selection semantics. The unchanged Microsoft case reaches its next boundary,
+  `namespace::*`, which is now correctly classified as valid but unsupported
+  `FXXP1001` rather than invalid `XPST0003`. Aggregate counters and the 1,376
+  exact-result lower bound remain unchanged; no namespace-axis support is
+  inferred.
+  [Evidence](../Evidence/oasis-xslt10-qualified-descendant-position-match-2026-09-13.md)

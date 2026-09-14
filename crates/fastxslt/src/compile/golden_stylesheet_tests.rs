@@ -1413,6 +1413,51 @@ fn compiles_ordered_position_and_attribute_match_predicates() {
 }
 
 #[test]
+fn compiles_namespace_aware_descendant_path_with_positioned_middle_step() {
+    let stylesheet = parse_stylesheet(
+        "memory:qualified-descendant-position-pattern.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:n="urn:foo"><xsl:template match="//n:book/n:chapter[2]/foo"/></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet)
+        .expect("qualified descendant-position pattern should compile");
+    assert!(matches!(
+        &program.matched_templates[0].pattern,
+        MatchPattern::DescendantElementPathAtPosition {
+            ancestor,
+            positioned,
+            position: 2,
+            leaf,
+        } if ancestor.namespace.as_deref() == Some("urn:foo")
+            && ancestor.local == "book"
+            && positioned.namespace.as_deref() == Some("urn:foo")
+            && positioned.local == "chapter"
+            && leaf.namespace.is_none()
+            && leaf.local == "foo"
+    ));
+    assert_eq!(
+        program.matched_templates[0].priority,
+        TemplatePriority::PATH_DEFAULT
+    );
+
+    let unbound = parse_stylesheet(
+        "memory:unbound-descendant-position-pattern.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="//n:book/n:chapter[2]/foo"/></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&unbound).expect_err("unbound prefix must fail");
+    assert_eq!(failure.code, "FXST0031");
+    assert_eq!(failure.category, CompileCategory::Invalid);
+
+    let namespace_axis = parse_stylesheet(
+        "memory:namespace-axis-selection.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:for-each select="namespace::*"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure =
+        compile_stylesheet(&namespace_axis).expect_err("namespace axis remains unsupported");
+    assert_eq!(failure.code, "FXXP1001");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+}
+
+#[test]
 fn compiles_exact_descendant_wildcard_with_non_simple_priority() {
     let stylesheet = parse_stylesheet(
             "memory:descendant-wildcard-pattern.xsl",

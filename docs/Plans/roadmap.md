@@ -4203,6 +4203,13 @@ host lifecycle.
   invalid and leave the contradictory archival `match14` success expectation
   uncredited rather than optimizing the compatibility score against the
   standard.
+- [x] Compile the bounded namespace-aware
+  `//n:book/n:chapter[2]/foo` match pattern into expanded names plus a typed
+  middle-step position shared by source and temporary trees. Keep the exact
+  lower bound at 1,376 because the unchanged case next reaches the unsupported
+  `namespace::*` axis; classify that valid syntax as unsupported rather than
+  invalid QName input.
+  [Evidence](../Evidence/oasis-xslt10-qualified-descendant-position-match-2026-09-13.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

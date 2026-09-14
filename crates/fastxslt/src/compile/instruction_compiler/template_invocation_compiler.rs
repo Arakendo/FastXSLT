@@ -392,7 +392,7 @@ fn parse_selection_path(
     match parsed {
         Ok(path) => Ok(path),
         Err(crate::xpath::path_experiment::PathFailure::Unsupported { .. })
-            if expression.contains(':') =>
+            if expression.contains(':') && !expression.contains("::") =>
         {
             parse_qualified_child_path(expression, location, |prefix| {
                 namespace_for_prefix(document, element, prefix).map(str::to_owned)
