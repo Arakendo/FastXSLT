@@ -4232,6 +4232,12 @@ host lifecycle.
   diagnostics, one alias execution failure, and one visible whitespace
   mismatch.
   [Evidence](../Evidence/oasis-xslt10-local-integer-literal-variables-2026-09-14.md)
+- [x] Bind local `name()` and `name(.)` expressions through a dedicated
+  context-derived atomic instruction, preserving source lexical prefixes and
+  work charges. Move three cases beyond `FXXP1008`; retain two later language
+  boundaries and one whitespace mismatch without increasing the 1,381 exact
+  lower bound.
+  [Evidence](../Evidence/oasis-xslt10-local-context-name-variables-2026-09-14.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

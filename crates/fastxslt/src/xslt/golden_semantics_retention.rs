@@ -387,6 +387,7 @@ fn instruction_owned(value: &Instruction) -> usize {
         instruction @ (Instruction::StaticAtomicVariable { .. }
         | Instruction::AtomicVariableAlias { .. }) => scalar_binding_owned(instruction),
         Instruction::ContextPositionVariable { name, location }
+        | Instruction::ContextNodeNameVariable { name, location }
         | Instruction::IntegerRangeVariable { name, location, .. } => {
             name.capacity() + location_owned(location)
         }

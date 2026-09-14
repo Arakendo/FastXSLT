@@ -546,6 +546,10 @@ pub(crate) enum Instruction {
         name: String,
         location: SourceLocation,
     },
+    ContextNodeNameVariable {
+        name: String,
+        location: SourceLocation,
+    },
     SourceNodeVariable {
         name: String,
         select: LocationPath,

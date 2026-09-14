@@ -308,6 +308,7 @@ fn local_variable_name(variable: &Instruction) -> &String {
     | Instruction::StaticAtomicVariable { name, .. }
     | Instruction::AtomicVariableAlias { name, .. }
     | Instruction::ContextPositionVariable { name, .. }
+    | Instruction::ContextNodeNameVariable { name, .. }
     | Instruction::SourceNodeVariable { name, .. }
     | Instruction::SourceNodeUnionVariable { name, .. }
     | Instruction::IntegerRangeVariable { name, .. }
@@ -1388,6 +1389,12 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
     }
     if expression.trim() == "position()" {
         return Ok(Instruction::ContextPositionVariable {
+            name: name.to_owned(),
+            location,
+        });
+    }
+    if matches!(expression.trim(), "name()" | "name(.)") {
+        return Ok(Instruction::ContextNodeNameVariable {
             name: name.to_owned(),
             location,
         });

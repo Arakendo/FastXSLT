@@ -1440,3 +1440,9 @@ maintained redistributable legacy suite becomes available.
   one alias execution failure, and one whitespace mismatch remain explicitly
   visible. The exact lower bound rises from 1,379 to 1,381.
   [Evidence](../Evidence/oasis-xslt10-local-integer-literal-variables-2026-09-14.md)
+- 2026-09-14 -- Local `name()` and `name(.)` bindings now retain a private
+  context-derived atomic instruction with source-prefix and work-accounting
+  semantics. Three cases leave `FXXP1008`; two expose later language boundaries
+  and one exposes an existing whitespace mismatch, so the exact lower bound
+  remains 1,381.
+  [Evidence](../Evidence/oasis-xslt10-local-context-name-variables-2026-09-14.md)

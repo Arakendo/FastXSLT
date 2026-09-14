@@ -7,7 +7,9 @@ use std::{
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::resources::ResourceSnapshot;
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
-use crate::xdm::owned_tree_experiment::{Document, NodeId, NodeKind, StringValueVisitFailure};
+use crate::xdm::owned_tree_experiment::{
+    Document, NodeId, NodeKind, SourceLocation, StringValueVisitFailure,
+};
 use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits};
 use crate::xpath::castable_experiment::{CastEvaluationFailure, CastExpression, evaluate_cast};
 use crate::xpath::for_distinct_values_experiment::{
@@ -765,6 +767,7 @@ fn execute_instruction(
         | Instruction::StaticAtomicVariable { .. }
         | Instruction::AtomicVariableAlias { .. }
         | Instruction::ContextPositionVariable { .. }
+        | Instruction::ContextNodeNameVariable { .. }
         | Instruction::SourceNodeVariable { .. }
         | Instruction::SourceNodeUnionVariable { .. }
         | Instruction::IntegerRangeVariable { .. }
@@ -1508,14 +1511,10 @@ fn execute_binding(
             scope.bind_atomic(name.clone(), value);
         }
         Instruction::ContextPositionVariable { name, .. } => {
-            control
-                .charge(WorkDomain::XPathOperation, 1)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            let value = AtomicValue::from_validated_lexical(
-                BuiltinAtomicType::Integer,
-                execution.focus_position.to_string(),
-            );
-            scope.bind_atomic(name.clone(), value);
+            bind_context_position(inputs, execution, name, scope, control)?;
+        }
+        Instruction::ContextNodeNameVariable { name, location } => {
+            bind_context_node_name(inputs, execution, name, location, scope, control)?;
         }
         Instruction::SourceNodeVariable { name, select, .. } => {
             let (source, context) = required_source_context(inputs, execution.node)?;
@@ -1576,6 +1575,40 @@ fn execute_binding(
         }
         _ => unreachable!("execute_binding receives a variable instruction"),
     }
+    Ok(())
+}
+
+fn bind_context_position(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    name: &str,
+    scope: &mut RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let value = AtomicValue::from_validated_lexical(
+        BuiltinAtomicType::Integer,
+        execution.focus_position.to_string(),
+    );
+    scope.bind_atomic(name.to_owned(), value);
+    Ok(())
+}
+
+fn bind_context_node_name(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    name: &str,
+    location: &SourceLocation,
+    scope: &mut RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let value = execution_context_lexical_name(inputs, execution, location, control)?;
+    scope.bind_atomic(name.to_owned(), AtomicValue::string(value));
     Ok(())
 }
 
@@ -1855,6 +1888,52 @@ fn execution_context_name<'a>(
     execution
         .node
         .and_then(|node| inputs.source.and_then(|source| source.name(node)))
+}
+
+fn execution_context_lexical_name(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    location: &SourceLocation,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    if let Some(TemporaryFocus::Node(tree, node)) = execution.temporary_focus {
+        return Ok(match &tree.nodes[node].kind {
+            TemporaryNodeKind::Element { name, .. } | TemporaryNodeKind::Attribute { name, .. } => {
+                name.local.clone()
+            }
+            TemporaryNodeKind::Text(_)
+            | TemporaryNodeKind::Comment(_)
+            | TemporaryNodeKind::ProcessingInstruction { .. } => String::new(),
+        });
+    }
+    if execution.atomic_focus.is_some() {
+        return Err(failure_at(
+            "XPTY0004",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            "fn:name requires a node context item",
+        ));
+    }
+    let (source, node) = execution_source_focus(inputs, execution).ok_or_else(|| {
+        failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            "fn:name requires a context node",
+        )
+    })?;
+    let Some(name) = source.name(node) else {
+        return Ok(String::new());
+    };
+    Ok(source.prefix(node).map_or_else(
+        || name.local.clone(),
+        |prefix| format!("{prefix}:{}", name.local),
+    ))
 }
 
 fn execution_context_value<'a>(

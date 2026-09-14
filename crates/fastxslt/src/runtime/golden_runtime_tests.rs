@@ -2180,6 +2180,37 @@ fn local_integer_literal_variables_reuse_typed_atomic_bindings() {
 }
 
 #[test]
+fn local_context_name_variables_preserve_source_prefixes() {
+    const SOURCE: &str = "urn:fastxslt:local-context-name:source";
+    const STYLESHEET: &str = "urn:fastxslt:local-context-name:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:example">
+      <xsl:output omit-xml-declaration="yes"/>
+      <xsl:template match="/"><xsl:apply-templates select="p:doc"/></xsl:template>
+      <xsl:template match="p:doc"><xsl:variable name="named" select="name(.)"/><out><xsl:value-of select="$named"/></out></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br#"<p:doc xmlns:p="urn:example"/>"#.to_vec())
+        .expect("admit local-context-name source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit local-context-name stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile local context-name variable");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("local-context-name", "result", SOURCE))
+        .expect("admit local-context-name request");
+    let results =
+        execute_transform_set(builder.seal()).expect("execute local context-name variable");
+    assert_eq!(
+        results.by_request["local-context-name"].serialized,
+        r#"<out xmlns:p="urn:example">p:doc</out>"#
+    );
+}
+
+#[test]
 fn wildcard_attribute_presence_patterns_share_source_and_temporary_semantics() {
     const SOURCE: &str = "urn:fastxslt:wildcard-attribute-pattern:source";
     const STYLESHEET: &str = "urn:fastxslt:wildcard-attribute-pattern:stylesheet";
