@@ -1356,6 +1356,28 @@ fn distinguishes_invalid_match_grammar_from_unimplemented_id_key_semantics() {
 }
 
 #[test]
+fn xslt10_rejects_match_variables_and_current_without_narrowing_modern_patterns() {
+    for lexical in ["foo[. &gt; $screen]", "foo[current()]"] {
+        let stylesheet = parse_stylesheet(
+            "memory:xslt10-forbidden-match-context.xsl",
+            format!(
+                r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:variable name="screen" select="7"/><xsl:template match="{lexical}"/></xsl:stylesheet>"#
+            )
+            .as_bytes(),
+        );
+        let failure = compile_stylesheet(&stylesheet).expect_err("XSLT 1.0 pattern must fail");
+        assert_eq!(failure.code, "FXST1005");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+    }
+
+    let modern = parse_stylesheet(
+        "memory:modern-match-variable.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:variable name="expected" select="'yes'"/><xsl:template match="*[@mark=$expected]"/></xsl:stylesheet>"#,
+    );
+    compile_stylesheet(&modern).expect("modern variable match pattern remains admitted");
+}
+
+#[test]
 fn compiles_ordered_position_and_attribute_match_predicates() {
     let stylesheet = parse_stylesheet(
         "memory:ordered-position-attribute-patterns.xsl",

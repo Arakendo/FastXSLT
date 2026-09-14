@@ -1401,3 +1401,9 @@ maintained redistributable legacy suite becomes available.
   position and size are recomputed after each filter, source and temporary
   trees share scalar semantics, and general match-pattern XPath remains out of
   scope.
+- 2026-09-13 -- Version-sensitive validation now enforces XSLT 1.0's normative
+  prohibition on variable references and `current()` in template match
+  patterns while leaving later-edition variable patterns available. Two
+  generic frontier failures are now invalid diagnostics; the contradictory
+  archival Xalan `match14` success expectation remains uncredited, preserving
+  the 1,376 exact-result lower bound.

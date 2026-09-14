@@ -19,6 +19,22 @@ pub(super) fn compile_match_pattern(
     element: NodeId,
     lexical_pattern: &str,
 ) -> Result<(MatchPattern, TemplatePriority), CompileFailure> {
+    if super::instruction_compiler::uses_xslt10_compatibility(document, element) {
+        if contains_outside_string_literals(lexical_pattern, "$") {
+            return Err(invalid(
+                "FXST1005",
+                "XSLT 1.0 template match patterns cannot contain variable references",
+                document.location(element),
+            ));
+        }
+        if contains_outside_string_literals(lexical_pattern, "current()") {
+            return Err(invalid(
+                "FXST1005",
+                "XSLT 1.0 template match patterns cannot call current()",
+                document.location(element),
+            ));
+        }
+    }
     let pattern = match lexical_pattern {
         atomic if parse_atomic_integer_threshold(atomic).is_some() => {
             MatchPattern::AtomicIntegerGreaterOrEqual(
@@ -317,6 +333,22 @@ pub(super) fn compile_match_pattern(
     };
     let priority = compile_template_priority(document, element, &pattern)?;
     Ok((pattern, priority))
+}
+
+fn contains_outside_string_literals(pattern: &str, needle: &str) -> bool {
+    let mut quote = None;
+    for (offset, character) in pattern.char_indices() {
+        if matches!(character, '\'' | '"') {
+            if quote == Some(character) {
+                quote = None;
+            } else if quote.is_none() {
+                quote = Some(character);
+            }
+        } else if quote.is_none() && pattern[offset..].starts_with(needle) {
+            return true;
+        }
+    }
+    false
 }
 
 fn invalid_match_pattern_reason(pattern: &str) -> Option<String> {

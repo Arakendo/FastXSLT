@@ -4197,6 +4197,12 @@ host lifecycle.
   Recompute predicate focus after every filter, share scalar semantics across
   source and temporary trees, and leave variables, general expressions, and
   multi-step predicate patterns unsupported.
+- [x] Preserve the normative XSLT 1.0 prohibition on variable references and
+  `current()` calls in template match patterns, while retaining the existing
+  later-edition variable-enabled slice. Classify two generic frontier cases as
+  invalid and leave the contradictory archival `match14` success expectation
+  uncredited rather than optimizing the compatibility score against the
+  standard.
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.
