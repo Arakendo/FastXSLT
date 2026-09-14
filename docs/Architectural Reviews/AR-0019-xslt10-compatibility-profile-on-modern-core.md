@@ -1434,3 +1434,9 @@ maintained redistributable legacy suite becomes available.
   later HTML-serialization boundary; the exact lower bound remains 1,379 and
   no new mismatch is introduced.
   [Evidence](../Evidence/oasis-xslt10-computed-attribute-context-string-2026-09-13.md)
+- 2026-09-14 -- Plain local integer-literal variables now reuse the existing
+  typed atomic binding path. Eight cases leave `FXXP1008`; two become exact
+  passes, while two later path boundaries, two duplicate-binding diagnostics,
+  one alias execution failure, and one whitespace mismatch remain explicitly
+  visible. The exact lower bound rises from 1,379 to 1,381.
+  [Evidence](../Evidence/oasis-xslt10-local-integer-literal-variables-2026-09-14.md)

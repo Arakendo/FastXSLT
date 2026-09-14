@@ -1586,6 +1586,8 @@ fn compile_static_atomic_variable(
 ) -> Option<Instruction> {
     let value = if let Some(value) = xpath_string_literal(expression.trim()) {
         AtomicValue::string(value.to_owned())
+    } else if let Ok(value) = expression.trim().parse::<i64>() {
+        AtomicValue::from_validated_lexical(BuiltinAtomicType::Integer, value.to_string())
     } else if let Some(value) = parse_static_contains(expression) {
         AtomicValue::from_validated_lexical(BuiltinAtomicType::Boolean, value.to_string())
     } else {

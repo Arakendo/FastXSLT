@@ -2150,6 +2150,36 @@ fn standalone_computed_attribute_reads_the_complete_context_string() {
 }
 
 #[test]
+fn local_integer_literal_variables_reuse_typed_atomic_bindings() {
+    const SOURCE: &str = "urn:fastxslt:local-integer-literal:source";
+    const STYLESHEET: &str = "urn:fastxslt:local-integer-literal:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+      <xsl:output omit-xml-declaration="yes"/>
+      <xsl:template match="/"><xsl:variable name="one" select="1"/><xsl:variable name="two" select="2"/><out><xsl:value-of select="$one"/><xsl:text>|</xsl:text><xsl:if test="$two = 2">typed</xsl:if></out></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit local-integer source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit local-integer stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile local integer literal variables");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("local-integer", "result", SOURCE))
+        .expect("admit local-integer request");
+    let results =
+        execute_transform_set(builder.seal()).expect("execute local integer literal variables");
+    assert_eq!(
+        results.by_request["local-integer"].serialized,
+        "<out>1|typed</out>"
+    );
+}
+
+#[test]
 fn wildcard_attribute_presence_patterns_share_source_and_temporary_semantics() {
     const SOURCE: &str = "urn:fastxslt:wildcard-attribute-pattern:source";
     const STYLESHEET: &str = "urn:fastxslt:wildcard-attribute-pattern:stylesheet";
