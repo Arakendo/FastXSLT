@@ -13,8 +13,7 @@ use crate::xslt::golden_semantics_experiment::{
 
 use super::MultipleMatchPolicy;
 use super::match_sequence_predicate::{
-    context_number_greater_than_variable, evaluate as evaluate_sequence_predicate,
-    required_attribute,
+    evaluate as evaluate_sequence_predicate, required_attribute,
 };
 use super::runtime_failure::{
     ExecutionFailure, FailureCategory, control_failure, failure, failure_at,
@@ -397,17 +396,6 @@ fn matches_pattern(
                 }
             }
             Ok(false)
-        }
-        MatchPattern::ElementNumberGreaterThanVariable { element, variable } => {
-            if source.name(node) != Some(element) {
-                return Ok(false);
-            }
-            control
-                .charge(WorkDomain::XPathOperation, 1)
-                .map_err(|failure| control_failure(failure, request_id))?;
-            Ok(variables.get(variable).is_some_and(|variable| {
-                context_number_greater_than_variable(&source.string_value(node), variable)
-            }))
         }
         MatchPattern::VariableFilteredElementPath(path) => {
             matches_variable_path(source, node, path, variables, request_id, control)

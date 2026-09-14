@@ -2250,40 +2250,6 @@ fn sequential_match_predicates_share_filtered_focus_across_source_and_temporary_
 }
 
 #[test]
-fn global_number_match_predicate_shares_source_and_temporary_string_value_semantics() {
-    const SOURCE: &str = "urn:fastxslt:global-number-match-source";
-    const STYLESHEET: &str = "urn:fastxslt:global-number-match-stylesheet";
-    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
-      <xsl:output omit-xml-declaration="yes"/>
-      <xsl:variable name="screen" select="7"/>
-      <xsl:variable name="temporary"><foo>9</foo><foo>6</foo></xsl:variable>
-      <xsl:template match="/"><out><xsl:apply-templates select="doc/foo" mode="source"/><xsl:apply-templates select="$temporary/foo" mode="temporary"/></out></xsl:template>
-      <xsl:template match="foo[. &gt; $screen]" mode="source"><source-hit/></xsl:template>
-      <xsl:template match="foo" mode="source"/>
-      <xsl:template match="foo[. &gt; $screen]" mode="temporary"><temporary-hit/></xsl:template>
-      <xsl:template match="foo" mode="temporary"/>
-    </xsl:stylesheet>"#;
-    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 16_384, 32_768));
-    resources
-        .admit(SOURCE, b"<doc><foo>8</foo><foo>5</foo></doc>".to_vec())
-        .expect("admit source");
-    resources
-        .admit(STYLESHEET, stylesheet.to_vec())
-        .expect("admit stylesheet");
-    let snapshot = resources.seal();
-    let program = compile_resource(&snapshot, STYLESHEET).expect("compile global match variable");
-    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
-    builder
-        .add(request("global-number-match", "result", SOURCE))
-        .expect("admit request");
-    let results = execute_transform_set(builder.seal()).expect("execute global match variable");
-    assert_eq!(
-        results.by_request["global-number-match"].serialized,
-        "<out><source-hit></source-hit><temporary-hit></temporary-hit></out>"
-    );
-}
-
-#[test]
 fn two_attribute_value_patterns_share_source_and_temporary_semantics() {
     const SOURCE: &str = "urn:fastxslt:two-attribute-pattern:source";
     const STYLESHEET: &str = "urn:fastxslt:two-attribute-pattern:stylesheet";

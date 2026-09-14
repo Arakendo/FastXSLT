@@ -8,8 +8,7 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 use super::match_sequence_predicate::{
-    context_number_greater_than_variable, evaluate as evaluate_sequence_predicate,
-    required_attribute,
+    evaluate as evaluate_sequence_predicate, required_attribute,
 };
 use super::result_tree::ResultNode;
 use super::runtime_context::{
@@ -101,14 +100,7 @@ fn select_temporary_template<'a>(
             .charge_template_candidate()
             .map_err(|failure| control_failure(failure, inputs.request_id))?;
         if !template_accepts_mode(&candidate.modes, mode)
-            || !temporary_matches(
-                tree,
-                node,
-                &candidate.pattern,
-                &inputs.globals.atomics,
-                inputs.request_id,
-                control,
-            )?
+            || !temporary_matches(tree, node, &candidate.pattern, inputs.request_id, control)?
         {
             continue;
         }
@@ -288,7 +280,7 @@ fn select_next_temporary_template<'a>(
         let rank = (candidate.import_precedence, candidate.priority, index);
         if rank >= current_rank
             || !template_accepts_mode(&candidate.modes, mode)
-            || !temporary_focus_matches(focus, &candidate.pattern, inputs, control)?
+            || !temporary_focus_matches(focus, &candidate.pattern, inputs.request_id, control)?
         {
             continue;
         }
@@ -320,19 +312,14 @@ fn select_next_temporary_template<'a>(
 fn temporary_focus_matches(
     focus: TemporaryFocus<'_>,
     pattern: &MatchPattern,
-    inputs: &SequenceInputs<'_>,
+    request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
     match focus {
         TemporaryFocus::Document(_) => Ok(pattern == &MatchPattern::Document),
-        TemporaryFocus::Node(tree, node) => temporary_matches(
-            tree,
-            node,
-            pattern,
-            &inputs.globals.atomics,
-            inputs.request_id,
-            control,
-        ),
+        TemporaryFocus::Node(tree, node) => {
+            temporary_matches(tree, node, pattern, request_id, control)
+        }
     }
 }
 
@@ -739,7 +726,6 @@ fn temporary_matches(
     tree: &TemporaryTree,
     node: usize,
     pattern: &MatchPattern,
-    variables: &BTreeMap<String, crate::xdm::atomic_value_experiment::AtomicValue>,
     request_id: &str,
     control: &mut InvocationControl,
 ) -> Result<bool, ExecutionFailure> {
@@ -820,7 +806,7 @@ fn temporary_matches(
         }
         (_, MatchPattern::UnionAlternatives(alternatives)) => {
             for alternative in alternatives {
-                if temporary_matches(tree, node, alternative, variables, request_id, control)? {
+                if temporary_matches(tree, node, alternative, request_id, control)? {
                     return Ok(true);
                 }
             }
@@ -923,21 +909,6 @@ fn temporary_matches(
         ) => temporary_has_attribute_number(
             tree, attributes, attribute, *value, request_id, control,
         )?,
-        (
-            TemporaryNodeKind::Element { name, .. },
-            MatchPattern::ElementNumberGreaterThanVariable { element, variable },
-        ) if name == element => {
-            let Some(variable) = variables.get(variable) else {
-                return Ok(false);
-            };
-            let context_value = super::runtime_context::temporary_node_string_value(
-                tree, node, request_id, control,
-            )?;
-            control
-                .charge(WorkDomain::XPathOperation, 1)
-                .map_err(|failure| control_failure(failure, request_id))?;
-            context_number_greater_than_variable(&context_value, variable)
-        }
         (
             _,
             MatchPattern::NodeStringPredicate {

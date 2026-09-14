@@ -1401,8 +1401,3 @@ maintained redistributable legacy suite becomes available.
   position and size are recomputed after each filter, source and temporary
   trees share scalar semantics, and general match-pattern XPath remains out of
   scope.
-- 2026-09-13 -- The exact XSLT 1.0 `NCName[. > $global]` match form now uses a
-  typed element/global-variable plan and shared XPath numeric conversion,
-  raising exact results from 1,376 to 1,377 without adding a mismatch or
-  execution failure. Temporary matching now observes the same immutable global
-  atomic frame as source matching; general match expressions remain deferred.

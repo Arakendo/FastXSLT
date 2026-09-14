@@ -1356,23 +1356,6 @@ fn distinguishes_invalid_match_grammar_from_unimplemented_id_key_semantics() {
 }
 
 #[test]
-fn compiles_context_number_against_a_global_match_variable() {
-    let stylesheet = parse_stylesheet(
-        "memory:match-global-number.xsl",
-        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
-          <xsl:variable name="screen" select="7"/>
-          <xsl:template match="foo[. &gt; $screen]"/>
-        </xsl:stylesheet>"#,
-    );
-    let program = compile_stylesheet(&stylesheet).expect("bounded global predicate must compile");
-    assert!(matches!(
-        &program.matched_templates[0].pattern,
-        MatchPattern::ElementNumberGreaterThanVariable { element, variable }
-            if element.namespace.is_none() && element.local == "foo" && variable == "screen"
-    ));
-}
-
-#[test]
 fn compiles_ordered_position_and_attribute_match_predicates() {
     let stylesheet = parse_stylesheet(
         "memory:ordered-position-attribute-patterns.xsl",
