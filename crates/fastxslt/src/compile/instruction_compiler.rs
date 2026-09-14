@@ -923,6 +923,10 @@ pub(super) fn compile_sort_keys(
             SortSelect::PathUnion(alternatives)
         } else if let Some(value) = xpath_string_literal(select.trim()) {
             SortSelect::Literal(value.to_owned())
+        } else if let Some(variable) = select.trim().strip_prefix('$')
+            && is_ascii_ncname(variable)
+        {
+            SortSelect::Variable(variable.to_owned())
         } else if select.trim() == "position()" {
             SortSelect::ContextPosition
         } else if select.trim() == "last()" {
@@ -1390,9 +1394,10 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
             &location,
         ));
     }
-    if expression.trim() == "position()" {
+    if let Some(offset) = parse_context_position_offset(expression) {
         return Ok(Instruction::ContextPositionVariable {
             name: name.to_owned(),
+            offset,
             location,
         });
     }
@@ -1443,6 +1448,17 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
         return Ok(variable);
     }
     compile_local_node_or_cast_variable(document, element, name, expression, location)
+}
+
+fn parse_context_position_offset(expression: &str) -> Option<usize> {
+    let expression = expression.trim();
+    if expression == "position()" {
+        return Some(0);
+    }
+    let (position, offset) = expression.split_once('+')?;
+    (position.trim() == "position()")
+        .then(|| offset.trim().parse().ok())
+        .flatten()
 }
 
 fn compile_local_node_or_cast_variable(

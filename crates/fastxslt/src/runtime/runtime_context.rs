@@ -160,6 +160,11 @@ pub(super) fn evaluate_template_arguments(
                         ));
                     }
                 }
+                TemplateArgumentValue::SourceVariablePath { variable, path } => {
+                    evaluate_source_variable_path_argument(
+                        inputs, variable, path, variables, control,
+                    )?
+                }
                 TemplateArgumentValue::Xslt10BinaryNumeric(expression) => {
                     evaluate_numeric_template_argument(
                         inputs, context, expression, variables, control,
@@ -215,6 +220,26 @@ fn integer_parameter(value: usize) -> InvocationParameterValue {
         BuiltinAtomicType::Integer,
         value.to_string(),
     ))
+}
+
+fn evaluate_source_variable_path_argument(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    path: &crate::xpath::path_experiment::LocationPath,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<InvocationParameterValue, ExecutionFailure> {
+    let source = inputs.source.ok_or_else(|| {
+        failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "a variable-rooted template argument requires a principal source",
+        )
+    })?;
+    let nodes =
+        super::evaluate_source_variable_path(inputs, source, variable, path, variables, control)?;
+    Ok(InvocationParameterValue::SourceNodes(nodes))
 }
 
 fn evaluate_context_name_argument(

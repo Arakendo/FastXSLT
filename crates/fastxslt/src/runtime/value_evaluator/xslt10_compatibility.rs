@@ -1,7 +1,7 @@
 //! Private `XPath` 1.0 value-conversion compatibility operations.
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
-use crate::xdm::atomic_value_experiment::AtomicValue;
+use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xpath::path_experiment::{LocationPath, evaluate_location_path_controlled};
 use crate::xslt::golden_semantics_experiment::{
@@ -60,6 +60,43 @@ pub(super) fn variable_string_value(
         Some(inputs.request_id),
         format!("unbound variable: ${name}"),
     ))
+}
+
+pub(super) fn variable_numeric_lexical_value(
+    inputs: &SequenceInputs<'_>,
+    name: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let atomic = variables.atomics.get(name).or_else(|| {
+        variables
+            .allows_global_fallback(name)
+            .then(|| inputs.globals.atomics.get(name))
+            .flatten()
+    });
+    if let Some(value) = atomic {
+        return Ok(xslt10_atomic_number_lexical(value));
+    }
+    if let Some(value) = variables
+        .atomic_sequences
+        .get(name)
+        .and_then(|values| values.first())
+    {
+        return Ok(xslt10_atomic_number_lexical(value));
+    }
+    variable_string_value(inputs, name, variables, control)
+}
+
+fn xslt10_atomic_number_lexical(value: &AtomicValue) -> String {
+    if value.atomic_type() == BuiltinAtomicType::Boolean {
+        if value.lexical() == "true" {
+            "1".to_owned()
+        } else {
+            "0".to_owned()
+        }
+    } else {
+        value.lexical().to_owned()
+    }
 }
 
 pub(super) fn variable_string_length(

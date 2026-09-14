@@ -448,6 +448,50 @@ fn xslt10_binary_numeric_tree_composes_paths_and_a_global_variable() {
 }
 
 #[test]
+fn xslt10_untyped_global_boolean_retains_atomic_value() {
+    let source = parse_document(
+        "memory:global-boolean.xml",
+        b"<doc/>",
+        ParseLimits {
+            max_events: 8,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:global-boolean.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:variable name="number" select="1"/><xsl:variable name="string" select="'1000'"/><xsl:variable name="enabled" select="true()"/><xsl:variable name="disabled" select="false()"/><xsl:template match="/"><xsl:value-of select="$enabled"/>|<xsl:value-of select="$disabled"/>|<xsl:value-of select="number($number) + number($string) + number($enabled)"/></xsl:template></xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("untyped global boolean constants should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "global-boolean-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("global boolean constants should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "global-boolean-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "true|false|1002");
+}
+
+#[test]
 fn standalone_exact_numeric_literal_uses_the_checked_numeric_value_path() {
     let source = parse_document(
         "memory:standalone-numeric.xml",
@@ -2783,7 +2827,7 @@ fn local_position_variable_uses_each_selected_source_node_focus() {
     const STYLESHEET: &str = "urn:fastxslt:position-variable:stylesheet";
     let stylesheet = br#"<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
         <xsl:output method="xml" omit-xml-declaration="yes"/>
-        <xsl:template match="/"><out><xsl:for-each select="doc/item"><xsl:variable name="p" select="position()"/><xsl:value-of select="$p"/></xsl:for-each></out></xsl:template>
+        <xsl:template match="/"><out><xsl:for-each select="doc/item"><xsl:variable name="p" select="position()"/><xsl:variable name="offset" select="position() + 50"/><xsl:value-of select="$p"/>:<xsl:value-of select="$offset"/>;</xsl:for-each></out></xsl:template>
     </xsl:stylesheet>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
     resources
@@ -2802,7 +2846,7 @@ fn local_position_variable_uses_each_selected_source_node_focus() {
     let results = execute_transform_set(builder.seal()).expect("execute position variable");
     assert_eq!(
         results.by_request["position-variable"].serialized,
-        "<out>12</out>"
+        "<out>1:51;2:52;</out>"
     );
 }
 
@@ -2812,7 +2856,7 @@ fn xslt10_sort_orders_for_each_and_apply_templates_with_stable_multiple_keys() {
     const STYLESHEET: &str = "urn:fastxslt:xslt10-sort:stylesheet";
     let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
         <xsl:output method="xml" omit-xml-declaration="yes"/>
-        <xsl:template match="/"><out>
+        <xsl:template match="/"><xsl:variable name="constant-key" select="'same'"/><out>
           <numbers><xsl:for-each select="doc/item"><xsl:sort select="@rank" data-type="number"/><xsl:value-of select="@name"/></xsl:for-each></numbers>
           <names><xsl:apply-templates select="doc/item" mode="named"><xsl:sort select="@group"/><xsl:sort select="@name" order="descending"/></xsl:apply-templates></names>
           <positions><xsl:for-each select="doc/item"><xsl:sort select="position()" data-type="number" order="descending"/><xsl:value-of select="@name"/></xsl:for-each></positions>
@@ -2821,6 +2865,7 @@ fn xslt10_sort_orders_for_each_and_apply_templates_with_stable_multiple_keys() {
           <lengths><xsl:for-each select="doc/lengths/*"><xsl:sort select="string-length(.)" data-type="number"/><xsl:value-of select="name()"/><xsl:text>|</xsl:text></xsl:for-each></lengths>
           <counts><xsl:for-each select="doc/counts/*"><xsl:sort select="count(*)" data-type="number"/><xsl:value-of select="name()"/><xsl:text>|</xsl:text></xsl:for-each></counts>
           <number-conversion><xsl:for-each select="doc/number-conversion/n"><xsl:sort select="number(@x)"/><xsl:value-of select="@x"/><xsl:text>|</xsl:text></xsl:for-each></number-conversion>
+          <variable-key><xsl:for-each select="doc/item"><xsl:sort select="$constant-key"/><xsl:value-of select="@name"/><xsl:text>|</xsl:text></xsl:for-each></variable-key>
         </out></xsl:template>
         <xsl:template match="item" mode="named"><xsl:value-of select="@name"/></xsl:template>
     </xsl:stylesheet>"#;
@@ -2844,7 +2889,7 @@ fn xslt10_sort_orders_for_each_and_apply_templates_with_stable_multiple_keys() {
     let results = execute_transform_set(builder.seal()).expect("execute xsl:sort");
     assert_eq!(
         results.by_request["xslt10-sort"].serialized,
-        "<out><numbers>twothreeXMLone</numbers><names>XMLtwothreeone</names><positions>XMLthreetwoone</positions><node-names>a|b|p:c|</node-names><attribute-names>a|b|p:c|</attribute-names><lengths>b|aa|ccc|</lengths><counts>c1|c2|c3|</counts><number-conversion>1|2|3|a|</number-conversion></out>"
+        "<out><numbers>twothreeXMLone</numbers><names>XMLtwothreeone</names><positions>XMLthreetwoone</positions><node-names>a|b|p:c|</node-names><attribute-names>a|b|p:c|</attribute-names><lengths>b|aa|ccc|</lengths><counts>c1|c2|c3|</counts><number-conversion>1|2|3|a|</number-conversion><variable-key>one|two|three|XML|</variable-key></out>"
     );
 }
 
@@ -5550,12 +5595,15 @@ fn named_template_parameters_apply_defaults_and_atomic_select_arguments() {
     const STYLESHEET: &str = "urn:fastxslt:named-template-parameters:stylesheet";
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
     resources
-        .admit(SOURCE, b"<doc/>".to_vec())
+        .admit(
+            SOURCE,
+            b"<doc><author><last-name>A</last-name></author></doc>".to_vec(),
+        )
         .expect("admit parameter source");
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:call-template name="emit"/><xsl:call-template name="emit"><xsl:with-param name="value" select="7"/></xsl:call-template><xsl:call-template name="emit"><xsl:with-param name="value" select="'literal'"/></xsl:call-template><xsl:call-template name="emit"><xsl:with-param name="value" select="true()"/></xsl:call-template><xsl:call-template name="emit"><xsl:with-param name="value" select="position()"/></xsl:call-template><xsl:call-template name="emit"><xsl:with-param name="value" select="last()"/></xsl:call-template></out></xsl:template><xsl:template name="emit">
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:call-template name="emit"/><xsl:call-template name="emit"><xsl:with-param name="value" select="7"/></xsl:call-template><xsl:call-template name="emit"><xsl:with-param name="value" select="'literal'"/></xsl:call-template><xsl:call-template name="emit"><xsl:with-param name="value" select="true()"/></xsl:call-template><xsl:call-template name="emit"><xsl:with-param name="value" select="position()"/></xsl:call-template><xsl:call-template name="emit"><xsl:with-param name="value" select="last()"/></xsl:call-template><xsl:variable name="authors" select="doc/author"/><xsl:call-template name="emit"><xsl:with-param name="value" select="$authors/last-name"/></xsl:call-template></out></xsl:template><xsl:template name="emit">
                 <xsl:param name="value" select="5"/>
                 <xsl:value-of select="$value"/>
             </xsl:template></xsl:stylesheet>"#.to_vec(),
@@ -5572,7 +5620,7 @@ fn named_template_parameters_apply_defaults_and_atomic_select_arguments() {
 
     assert_eq!(
         results.by_request["parameters"].serialized,
-        "<out>57literaltrue11</out>"
+        "<out>57literaltrue11A</out>"
     );
 }
 

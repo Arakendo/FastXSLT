@@ -1218,7 +1218,7 @@ fn execute_for_each_nodes<'a>(
     } else {
         select_apply_nodes(inputs, Some(select), context, variables, control)?
     };
-    let selected = sort_selected_nodes(inputs, selected, sorts, control)?;
+    let selected = sort_selected_nodes(inputs, selected, sorts, variables, control)?;
     let focus_size = selected.len();
     let mut result = Vec::new();
     for (index, node) in selected.into_iter().enumerate() {
@@ -1250,6 +1250,7 @@ fn sort_selected_nodes(
     inputs: &SequenceInputs<'_>,
     selected: Vec<NodeId>,
     sorts: &[SortKey],
+    variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ExecutionFailure> {
     if sorts.is_empty() || selected.len() < 2 {
@@ -1277,6 +1278,7 @@ fn sort_selected_nodes(
                         .map_or_else(String::new, |selected| source.string_value(*selected))
                 }
                 SortSelect::Literal(value) => value.clone(),
+                SortSelect::Variable(name) => sort_variable(inputs, name, variables, control)?,
                 SortSelect::ContextPosition => (offset + 1).to_string(),
                 SortSelect::ContextSize => focus_size.to_string(),
                 SortSelect::ContextNodeName => {
@@ -1316,18 +1318,7 @@ fn sort_selected_nodes(
                     control,
                 )?,
             };
-            values.push(match sort.data_type {
-                SortDataType::Text => EvaluatedSortKey::Text(value),
-                SortDataType::Number => {
-                    EvaluatedSortKey::Number(if sort.xslt10_numeric_conversion {
-                        crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(
-                            &value,
-                        )
-                    } else {
-                        value.trim().parse().ok()
-                    })
-                }
-            });
+            values.push(typed_sort_key(sort, value));
         }
         keyed.push((node, values));
     }
@@ -1352,6 +1343,17 @@ fn sort_selected_nodes(
         std::cmp::Ordering::Equal
     });
     Ok(keyed.into_iter().map(|(node, _)| node).collect())
+}
+
+fn typed_sort_key(sort: &SortKey, value: String) -> EvaluatedSortKey {
+    match sort.data_type {
+        SortDataType::Text => EvaluatedSortKey::Text(value),
+        SortDataType::Number => EvaluatedSortKey::Number(if sort.xslt10_numeric_conversion {
+            crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&value)
+        } else {
+            value.trim().parse().ok()
+        }),
+    }
 }
 
 fn evaluate_sort_number_path(
@@ -1441,6 +1443,15 @@ fn evaluate_sort_context_string_length(
     Ok(length)
 }
 
+fn sort_variable(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    value_evaluator::xslt10_variable_string_value(inputs, variable, variables, control)
+}
+
 fn compare_sort_keys(left: &EvaluatedSortKey, right: &EvaluatedSortKey) -> std::cmp::Ordering {
     match (left, right) {
         (EvaluatedSortKey::Text(left), EvaluatedSortKey::Text(right)) => {
@@ -1513,8 +1524,8 @@ fn execute_binding(
             })?;
             scope.bind_atomic(name.clone(), value);
         }
-        Instruction::ContextPositionVariable { name, .. } => {
-            bind_context_position(inputs, execution, name, scope, control)?;
+        Instruction::ContextPositionVariable { name, offset, .. } => {
+            bind_context_position(inputs, execution, name, *offset, scope, control)?;
         }
         Instruction::ContextNodeNameVariable { name, location } => {
             bind_context_node_name(inputs, execution, name, location, scope, control)?;
@@ -1665,16 +1676,26 @@ fn bind_context_position(
     inputs: &SequenceInputs<'_>,
     execution: SequenceContext<'_>,
     name: &str,
+    offset: usize,
     scope: &mut RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let value = AtomicValue::from_validated_lexical(
-        BuiltinAtomicType::Integer,
-        execution.focus_position.to_string(),
-    );
+    let position = execution
+        .focus_position
+        .checked_add(offset)
+        .ok_or_else(|| {
+            failure(
+                "FOAR0002",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                "context position offset exceeds the supported integer range",
+            )
+        })?;
+    let value =
+        AtomicValue::from_validated_lexical(BuiltinAtomicType::Integer, position.to_string());
     scope.bind_atomic(name.to_owned(), value);
     Ok(())
 }
@@ -2166,7 +2187,7 @@ fn execute_apply_templates(
     }
     let (_, context) = required_source_context(inputs, execution.node)?;
     let selected = select_apply_nodes(inputs, select, context, variables, control)?;
-    let selected = sort_selected_nodes(inputs, selected, sorts, control)?;
+    let selected = sort_selected_nodes(inputs, selected, sorts, variables, control)?;
     let mut result = Vec::new();
     let focus_size = selected.len();
     for (offset, node) in selected.into_iter().enumerate() {
@@ -3625,13 +3646,31 @@ fn select_apply_nodes(
             inputs.request_id,
             control,
         ),
+        ApplySelection::VariableSequence(name) => source_variable_nodes(inputs, name, variables),
         ApplySelection::GlobalTemporaryChildren(_)
-        | ApplySelection::VariableSequence(_)
         | ApplySelection::TemporaryPath { .. }
         | ApplySelection::AtomicIntegerRange { .. } => {
             unreachable!("temporary-tree selection is dispatched before source selection")
         }
     }
+}
+
+fn source_variable_nodes(
+    inputs: &SequenceInputs<'_>,
+    name: &str,
+    variables: &RuntimeVariables,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    variables
+        .source_nodes(inputs.globals, name)
+        .cloned()
+        .ok_or_else(|| {
+            failure(
+                "XPTY0004",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("sorted variable selection requires source nodes: ${name}"),
+            )
+        })
 }
 
 fn evaluate_source_variable_path(

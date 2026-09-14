@@ -478,6 +478,7 @@ pub(crate) enum SortSelect {
     LocationPath(LocationPath),
     PathUnion(Vec<LocationPath>),
     Literal(String),
+    Variable(String),
     ContextPosition,
     ContextSize,
     ContextNodeName,
@@ -544,6 +545,7 @@ pub(crate) enum Instruction {
     },
     ContextPositionVariable {
         name: String,
+        offset: usize,
         location: SourceLocation,
     },
     ContextNodeNameVariable {
@@ -1146,6 +1148,10 @@ pub(crate) enum TemplateArgumentValue {
     ContextNodeName,
     CurrentSourceNode,
     Variable(String),
+    SourceVariablePath {
+        variable: String,
+        path: LocationPath,
+    },
     Xslt10BinaryNumeric(Box<BinaryNumericExpression>),
     SourcePath(LocationPath),
     Xslt10SumPath(LocationPath),

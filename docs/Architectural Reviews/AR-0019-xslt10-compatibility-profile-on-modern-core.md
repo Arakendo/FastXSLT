@@ -1477,3 +1477,11 @@ maintained redistributable legacy suite becomes available.
   named-template case retains caller focus and becomes exact, raising the lower
   bound from 1,386 to 1,387 without a new mismatch or execution failure.
   [Evidence](../Evidence/oasis-xslt10-template-argument-context-name-2026-09-14.md)
+- 2026-09-14 -- Untyped boolean globals, variable numeric conversion,
+  focus-position offsets, variable sort keys, and source-variable template
+  argument paths now compose through existing typed state. One unchanged
+  Microsoft variable-sort case becomes exact and a broader BVT reaches a
+  visible indentation mismatch. The exact lower bound rises from 1,387 to
+  1,388; the sorted-variable path also replaces one exposed panic assumption
+  with typed source-node handling.
+  [Evidence](../Evidence/oasis-xslt10-variable-flow-and-sort-2026-09-14.md)

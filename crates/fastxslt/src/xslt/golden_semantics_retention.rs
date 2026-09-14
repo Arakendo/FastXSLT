@@ -386,7 +386,7 @@ fn instruction_owned(value: &Instruction) -> usize {
         } => local_atomic_variable_owned(name, select, location),
         instruction @ (Instruction::StaticAtomicVariable { .. }
         | Instruction::AtomicVariableAlias { .. }) => scalar_binding_owned(instruction),
-        Instruction::ContextPositionVariable { name, location }
+        Instruction::ContextPositionVariable { name, location, .. }
         | Instruction::ContextNodeNameVariable { name, location }
         | Instruction::IntegerRangeVariable { name, location, .. } => {
             name.capacity() + location_owned(location)
@@ -727,7 +727,7 @@ fn sort_key_owned(sort: &SortKey) -> usize {
             alternatives,
             crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
         ),
-        SortSelect::Literal(value) => value.capacity(),
+        SortSelect::Literal(value) | SortSelect::Variable(value) => value.capacity(),
         SortSelect::ContextPosition
         | SortSelect::ContextSize
         | SortSelect::ContextNodeName
@@ -1096,6 +1096,9 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
         + match &value.value {
             TemplateArgumentValue::Text(text) | TemplateArgumentValue::Variable(text) => {
                 text.capacity()
+            }
+            TemplateArgumentValue::SourceVariablePath { variable, path } => {
+                variable.capacity() + path.known_owned_capacity_bytes()
             }
             TemplateArgumentValue::Xslt10BinaryNumeric(expression) => {
                 size_of::<crate::xpath::binary_numeric_experiment::BinaryNumericExpression>()

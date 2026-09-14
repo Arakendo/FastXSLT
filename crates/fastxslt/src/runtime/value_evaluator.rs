@@ -94,6 +94,15 @@ pub(super) fn xslt10_variable_string_length(
     xslt10_compatibility::variable_string_length(inputs, variable, variables, control)
 }
 
+pub(super) fn xslt10_variable_string_value(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    xslt10_compatibility::variable_string_value(inputs, variable, variables, control)
+}
+
 pub(super) fn xslt10_variable_number(
     inputs: &SequenceInputs<'_>,
     variable: &str,
@@ -606,7 +615,9 @@ pub(super) fn evaluate_binary_numeric_value(
         context,
         control,
         |name, control| {
-            xslt10_compatibility::variable_string_value(inputs, name, variables, control)
+            xslt10_compatibility::variable_numeric_lexical_value(
+                inputs, name, variables, control,
+            )
         },
     )
     .map_err(

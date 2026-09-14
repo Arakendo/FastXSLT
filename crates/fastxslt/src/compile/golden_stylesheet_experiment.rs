@@ -761,15 +761,9 @@ fn compile_global_default(
             Ok(division)
         } else if let Some(atomic) = compile_atomic_constructor_global(document, element, select)? {
             Ok(atomic)
-        } else if let Some(variable) = select.strip_prefix('$') {
-            if !is_ascii_ncname(variable) {
-                return Err(invalid(
-                    "FXXP0002",
-                    format!("invalid variable reference: {select}"),
-                    document.location(element),
-                ));
-            }
-            Ok(GlobalBindingDefault::Variable(variable.to_owned()))
+        } else if let Some(variable) = compile_variable_global(select, document.location(element))?
+        {
+            Ok(variable)
         } else if let Some(value) = select
             .strip_prefix('\'')
             .and_then(|value| value.strip_suffix('\''))
@@ -777,6 +771,8 @@ fn compile_global_default(
             Ok(GlobalBindingDefault::Text(value.to_owned()))
         } else if let Ok(value) = select.parse::<i64>() {
             Ok(GlobalBindingDefault::Integer(value))
+        } else if let Some(boolean) = compile_untyped_boolean_global(select) {
+            Ok(boolean)
         } else if let Some(value) =
             crate::xpath::constant_numeric_experiment::fold_exact_integral_arithmetic(select)
         {
@@ -850,6 +846,34 @@ fn compile_global_default(
             Ok(GlobalBindingDefault::TemporaryText(value))
         }
     }
+}
+
+fn compile_variable_global(
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<GlobalBindingDefault>, CompileFailure> {
+    let Some(variable) = expression.strip_prefix('$') else {
+        return Ok(None);
+    };
+    if !is_ascii_ncname(variable) {
+        return Err(invalid(
+            "FXXP0002",
+            format!("invalid variable reference: {expression}"),
+            location,
+        ));
+    }
+    Ok(Some(GlobalBindingDefault::Variable(variable.to_owned())))
+}
+
+fn compile_untyped_boolean_global(expression: &str) -> Option<GlobalBindingDefault> {
+    let lexical = match expression.trim() {
+        "true()" => "true",
+        "false()" => "false",
+        _ => return None,
+    };
+    Some(GlobalBindingDefault::Atomic(
+        AtomicValue::from_validated_lexical(BuiltinAtomicType::Boolean, lexical),
+    ))
 }
 
 fn compile_count_global(

@@ -12,6 +12,7 @@ use crate::xslt::golden_semantics_experiment::{
 use super::super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
 use super::value_expression_compiler::{
     compile_value_expression, compile_xslt10_binary_numeric, compile_xslt10_sum_path,
+    compile_xslt10_variable_path,
 };
 use super::{
     CompileFailure, effective_default_mode, effective_xpath_default_namespace,
@@ -145,6 +146,11 @@ fn compile_selected_argument_value(
         return Ok(TemplateArgumentValue::Xslt10BinaryNumeric(Box::new(
             expression,
         )));
+    }
+    if let Some((variable, path)) =
+        compile_xslt10_variable_path(document, element, select, document.location(element))?
+    {
+        return Ok(TemplateArgumentValue::SourceVariablePath { variable, path });
     }
     if let Some(variable) = select.strip_prefix('$') {
         if !is_ascii_ncname(variable) {

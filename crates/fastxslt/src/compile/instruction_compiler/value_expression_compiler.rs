@@ -1068,12 +1068,6 @@ fn compile_binary_numeric_node(
             .collect::<Option<Vec<_>>>()?;
         return Some(BinaryNumericNode::PathUnion(alternatives));
     }
-    if allow_xslt10_variables
-        && let Some(variable) = operand.strip_prefix('$')
-        && is_ascii_ncname(variable)
-    {
-        return Some(BinaryNumericNode::Variable(variable.to_owned()));
-    }
     let operand = if allow_xslt10_variables {
         operand
             .strip_prefix("number(")
@@ -1082,6 +1076,12 @@ fn compile_binary_numeric_node(
     } else {
         operand
     };
+    if allow_xslt10_variables
+        && let Some(variable) = operand.strip_prefix('$')
+        && is_ascii_ncname(variable)
+    {
+        return Some(BinaryNumericNode::Variable(variable.to_owned()));
+    }
     Some(BinaryNumericNode::Path {
         path: parse_location_path(operand, location.clone()).ok()?,
         negate: false,
