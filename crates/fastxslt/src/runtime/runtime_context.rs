@@ -136,17 +136,10 @@ pub(super) fn evaluate_template_arguments(
                         value.to_string(),
                     ))
                 }
-                TemplateArgumentValue::ContextPosition => {
-                    InvocationParameterValue::Atomic(AtomicValue::from_validated_lexical(
-                        BuiltinAtomicType::Integer,
-                        focus_position.to_string(),
-                    ))
-                }
-                TemplateArgumentValue::ContextSize => {
-                    InvocationParameterValue::Atomic(AtomicValue::from_validated_lexical(
-                        BuiltinAtomicType::Integer,
-                        focus_size.to_string(),
-                    ))
+                TemplateArgumentValue::ContextPosition => integer_parameter(focus_position),
+                TemplateArgumentValue::ContextSize => integer_parameter(focus_size),
+                TemplateArgumentValue::ContextNodeName => {
+                    evaluate_context_name_argument(inputs, context, &argument.location, control)?
                 }
                 TemplateArgumentValue::CurrentSourceNode => {
                     let (_, context) = required_source_context(inputs, context)?;
@@ -215,6 +208,43 @@ pub(super) fn evaluate_template_arguments(
             ))
         })
         .collect()
+}
+
+fn integer_parameter(value: usize) -> InvocationParameterValue {
+    InvocationParameterValue::Atomic(AtomicValue::from_validated_lexical(
+        BuiltinAtomicType::Integer,
+        value.to_string(),
+    ))
+}
+
+fn evaluate_context_name_argument(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    control: &mut InvocationControl,
+) -> Result<InvocationParameterValue, ExecutionFailure> {
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let (source, node) = super::required_source_context(inputs, context).map_err(|_| {
+        failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            "fn:name requires a source context node in a template argument",
+        )
+    })?;
+    let value = source.name(node).map_or_else(String::new, |name| {
+        source.prefix(node).map_or_else(
+            || name.local.clone(),
+            |prefix| format!("{prefix}:{}", name.local),
+        )
+    });
+    Ok(InvocationParameterValue::Atomic(AtomicValue::string(value)))
 }
 
 fn evaluate_numeric_template_argument(

@@ -1472,3 +1472,8 @@ maintained redistributable legacy suite becomes available.
   case moves from `FXXP1008` to exact result, raising the lower bound from 1,385
   to 1,386 without a new mismatch or execution failure.
   [Evidence](../Evidence/oasis-xslt10-local-variable-rooted-path-2026-09-14.md)
+- 2026-09-14 -- Exact `name()` and `name(.)` template arguments now reuse the
+  charged source lexical-name operation. The unchanged Lotus recursive
+  named-template case retains caller focus and becomes exact, raising the lower
+  bound from 1,386 to 1,387 without a new mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-template-argument-context-name-2026-09-14.md)

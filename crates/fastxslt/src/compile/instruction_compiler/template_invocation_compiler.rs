@@ -175,6 +175,9 @@ fn compile_selected_argument_value(
     if select.trim() == "last()" {
         return Ok(TemplateArgumentValue::ContextSize);
     }
+    if matches!(select.trim(), "name()" | "name(.)") {
+        return Ok(TemplateArgumentValue::ContextNodeName);
+    }
     if select.trim() == "current()" {
         return Ok(TemplateArgumentValue::CurrentSourceNode);
     }

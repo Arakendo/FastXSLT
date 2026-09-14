@@ -1105,6 +1105,7 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
             | TemplateArgumentValue::Boolean(_)
             | TemplateArgumentValue::ContextPosition
             | TemplateArgumentValue::ContextSize
+            | TemplateArgumentValue::ContextNodeName
             | TemplateArgumentValue::CurrentSourceNode => 0,
             TemplateArgumentValue::SourcePath(path)
             | TemplateArgumentValue::Xslt10SumPath(path) => path.known_owned_capacity_bytes(),

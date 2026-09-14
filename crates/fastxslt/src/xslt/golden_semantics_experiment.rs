@@ -1143,6 +1143,7 @@ pub(crate) enum TemplateArgumentValue {
     Boolean(bool),
     ContextPosition,
     ContextSize,
+    ContextNodeName,
     CurrentSourceNode,
     Variable(String),
     Xslt10BinaryNumeric(Box<BinaryNumericExpression>),
