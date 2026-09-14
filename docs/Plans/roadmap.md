@@ -4221,6 +4221,11 @@ host lifecycle.
   body. Move five cases beyond the overlapping-union frontier, credit the two
   exact results, and leave three later compiler boundaries visible.
   [Evidence](../Evidence/oasis-xslt10-union-alternative-priority-2026-09-13.md)
+- [x] Reuse complete context-string semantics for `xsl:attribute` values built
+  with `xsl:value-of select="."`, including source and temporary trees. Move
+  all eleven affected Microsoft Output cases from the compiler frontier to
+  their later HTML-serialization boundary without crediting a new pass.
+  [Evidence](../Evidence/oasis-xslt10-computed-attribute-context-string-2026-09-13.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

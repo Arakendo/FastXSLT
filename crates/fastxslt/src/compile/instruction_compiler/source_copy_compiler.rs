@@ -61,20 +61,23 @@ fn compile_static_attribute(
             ensure_only_attributes(document, *value_of, &["select"], "xsl:value-of")?;
             ensure_no_meaningful_children(document, *value_of, "xsl:value-of")?;
             let select = required_attribute(document, *value_of, None, "select")?;
-            let Some(local) = select
+            if select.trim() == "." {
+                LiteralAttributeValue::ContextStringValue
+            } else if let Some(local) = select
                 .strip_prefix('@')
                 .filter(|local| is_ascii_ncname(local))
-            else {
+            {
+                LiteralAttributeValue::SourceAttribute(ExpandedName {
+                    namespace: None,
+                    local: local.to_owned(),
+                })
+            } else {
                 return Err(unsupported(
                     "FXXP1012",
                     format!("unsupported source-copy attribute value expression: {select}"),
                     document.location(*value_of),
                 ));
-            };
-            LiteralAttributeValue::SourceAttribute(ExpandedName {
-                namespace: None,
-                local: local.to_owned(),
-            })
+            }
         }
         _ if children.iter().all(|child| {
             document.kind(*child) == crate::xdm::owned_tree_experiment::NodeKind::Text

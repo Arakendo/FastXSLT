@@ -2080,6 +2080,76 @@ fn context_string_value_avts_share_source_and_temporary_node_semantics() {
 }
 
 #[test]
+fn computed_attribute_context_strings_share_source_and_temporary_node_semantics() {
+    const SOURCE: &str = "urn:fastxslt:computed-context-string:source";
+    const STYLESHEET: &str = "urn:fastxslt:computed-context-string:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+      <xsl:output omit-xml-declaration="yes"/>
+      <xsl:variable name="temporary"><item>alpha<part>beta</part>gamma</item></xsl:variable>
+      <xsl:template match="/"><out><xsl:apply-templates select="doc/item"/><xsl:apply-templates select="$temporary/item" mode="temporary"/></out></xsl:template>
+      <xsl:template match="item"><source><xsl:attribute name="value"><xsl:value-of select="."/></xsl:attribute></source></xsl:template>
+      <xsl:template match="item" mode="temporary"><temporary><xsl:attribute name="value"><xsl:value-of select="."/></xsl:attribute></temporary></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item>head<part>middle</part>tail</item></doc>".to_vec(),
+        )
+        .expect("admit computed-context source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit computed-context stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile computed context-string attributes");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("computed-context", "result", SOURCE))
+        .expect("admit computed-context request");
+    let results =
+        execute_transform_set(builder.seal()).expect("execute computed context-string attributes");
+    assert_eq!(
+        results.by_request["computed-context"].serialized,
+        "<out><source value=\"headmiddletail\"></source><temporary value=\"alphabetagamma\"></temporary></out>"
+    );
+}
+
+#[test]
+fn standalone_computed_attribute_reads_the_complete_context_string() {
+    const SOURCE: &str = "urn:fastxslt:standalone-computed-context:source";
+    const STYLESHEET: &str = "urn:fastxslt:standalone-computed-context:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+      <xsl:output omit-xml-declaration="yes"/>
+      <xsl:template match="/"><xsl:apply-templates select="doc/item"/></xsl:template>
+      <xsl:template match="item"><xsl:copy><xsl:attribute name="value"><xsl:value-of select="."/></xsl:attribute></xsl:copy></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item>head<part>middle</part>tail</item></doc>".to_vec(),
+        )
+        .expect("admit standalone computed-context source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit standalone computed-context stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile standalone computed context-string attribute");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("standalone-computed-context", "result", SOURCE))
+        .expect("admit standalone computed-context request");
+    let results = execute_transform_set(builder.seal())
+        .expect("execute standalone computed context-string attribute");
+    assert_eq!(
+        results.by_request["standalone-computed-context"].serialized,
+        "<item value=\"headmiddletail\"></item>"
+    );
+}
+
+#[test]
 fn wildcard_attribute_presence_patterns_share_source_and_temporary_semantics() {
     const SOURCE: &str = "urn:fastxslt:wildcard-attribute-pattern:source";
     const STYLESHEET: &str = "urn:fastxslt:wildcard-attribute-pattern:stylesheet";

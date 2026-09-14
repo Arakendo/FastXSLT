@@ -1428,3 +1428,9 @@ maintained redistributable legacy suite becomes available.
   passes and three expose later independent boundaries, raising the exact lower
   bound from 1,377 to 1,379 without a new mismatch or execution failure.
   [Evidence](../Evidence/oasis-xslt10-union-alternative-priority-2026-09-13.md)
+- 2026-09-13 -- Computed attributes now reuse the complete context-string
+  operation for `xsl:value-of select="."` across source and temporary trees.
+  Eleven Microsoft Output cases leave the compiler frontier and expose their
+  later HTML-serialization boundary; the exact lower bound remains 1,379 and
+  no new mismatch is introduced.
+  [Evidence](../Evidence/oasis-xslt10-computed-attribute-context-string-2026-09-13.md)

@@ -815,6 +815,11 @@ fn execute_attribute_instruction(
     scope: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<ResultNode, ExecutionFailure> {
+    let context_string =
+        result_tree::computed_attributes_require_context_string(std::slice::from_ref(attribute))
+            .then(|| execution_context_string_value(inputs, execution, control))
+            .transpose()?
+            .flatten();
     let mut materialized = materialize_computed_attributes(
         inputs,
         std::slice::from_ref(attribute),
@@ -823,7 +828,9 @@ fn execute_attribute_instruction(
             position: execution.focus_position,
             size: execution.focus_size,
             name: execution_context_name(inputs, execution),
-            value: execution_context_value(inputs, execution),
+            value: context_string
+                .as_deref()
+                .or_else(|| execution_context_value(inputs, execution)),
             source: execution_source_focus(inputs, execution),
         },
         inputs.request_id,
@@ -1746,10 +1753,11 @@ fn execute_literal_element(
     control
         .charge(WorkDomain::ResultNode, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let context_string = literal_attributes_require_context_string(attributes)
-        .then(|| execution_context_string_value(inputs, execution, control))
-        .transpose()?
-        .flatten();
+    let context_string = (literal_attributes_require_context_string(attributes)
+        || result_tree::computed_attributes_require_context_string(computed_attributes))
+    .then(|| execution_context_string_value(inputs, execution, control))
+    .transpose()?
+    .flatten();
     let mut attributes = materialize_literal_attributes(
         attributes,
         variables,
@@ -1771,7 +1779,7 @@ fn execute_literal_element(
             position: execution.focus_position,
             size: execution.focus_size,
             name: execution_context_name(inputs, execution),
-            value: None,
+            value: context_string.as_deref(),
             source: execution_source_focus(inputs, execution),
         },
         inputs.request_id,

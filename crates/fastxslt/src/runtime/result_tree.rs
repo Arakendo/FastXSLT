@@ -47,6 +47,12 @@ pub(super) fn literal_attributes_require_context_string(attributes: &[LiteralAtt
         .any(|attribute| attribute.value == LiteralAttributeValue::ContextStringValue)
 }
 
+pub(super) fn computed_attributes_require_context_string(attributes: &[ComputedAttribute]) -> bool {
+    attributes
+        .iter()
+        .any(|attribute| attribute.value == LiteralAttributeValue::ContextStringValue)
+}
+
 struct AttributeContext<'a> {
     variables: &'a RuntimeVariables,
     focus_position: usize,

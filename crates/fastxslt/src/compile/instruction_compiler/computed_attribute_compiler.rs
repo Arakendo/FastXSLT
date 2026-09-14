@@ -218,6 +218,8 @@ fn compile_computed_attribute_value(
         && select.trim() == "string-length(normalize-space(.))"
     {
         LiteralAttributeValue::ContextNormalizedStringLength
+    } else if select.trim() == "." {
+        LiteralAttributeValue::ContextStringValue
     } else if select.trim() == "position()" {
         LiteralAttributeValue::ContextPosition
     } else if select.trim() == "last()" {
