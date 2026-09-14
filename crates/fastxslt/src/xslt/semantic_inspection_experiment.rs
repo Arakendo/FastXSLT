@@ -275,6 +275,7 @@ fn observe_instructions(
             | Instruction::ContextCountPathVariable { .. }
             | Instruction::Xslt10BinaryNumericVariable { .. }
             | Instruction::SourceNodeVariable { .. }
+            | Instruction::SourceVariablePathVariable { .. }
             | Instruction::SourceNodeUnionVariable { .. }
             | Instruction::IntegerRangeVariable { .. }
             | Instruction::TemporaryTreeVariable { .. }

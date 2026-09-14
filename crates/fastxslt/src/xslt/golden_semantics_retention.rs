@@ -396,6 +396,7 @@ fn instruction_owned(value: &Instruction) -> usize {
             context_derived_variable_owned(instruction)
         }
         instruction @ (Instruction::SourceNodeVariable { .. }
+        | Instruction::SourceVariablePathVariable { .. }
         | Instruction::Xslt10ForEachTextTreeVariable { .. }) => path_binding_owned(instruction),
         Instruction::SourceNodeUnionVariable {
             name,
@@ -408,11 +409,7 @@ fn instruction_owned(value: &Instruction) -> usize {
         instruction @ Instruction::Xslt10TextTreeVariable { .. } => {
             xslt10_text_tree_variable_owned(instruction)
         }
-        Instruction::SequenceNodes { select, location } => {
-            size_of::<ForDistinctValuesExpression>()
-                + select.known_owned_capacity_bytes()
-                + location_owned(location)
-        }
+        Instruction::SequenceNodes { select, location } => sequence_nodes_owned(select, location),
         Instruction::SequenceItems { select, location } => {
             vec_owned(select, sequence_item_owned) + location_owned(location)
         }
@@ -461,6 +458,12 @@ fn instruction_owned(value: &Instruction) -> usize {
     }
 }
 
+fn sequence_nodes_owned(select: &ForDistinctValuesExpression, location: &SourceLocation) -> usize {
+    size_of::<ForDistinctValuesExpression>()
+        + select.known_owned_capacity_bytes()
+        + location_owned(location)
+}
+
 fn context_derived_variable_owned(value: &Instruction) -> usize {
     match value {
         Instruction::ContextCountPathVariable {
@@ -483,20 +486,30 @@ fn context_derived_variable_owned(value: &Instruction) -> usize {
 }
 
 fn path_binding_owned(instruction: &Instruction) -> usize {
-    let (Instruction::SourceNodeVariable {
-        name,
-        select,
-        location,
+    match instruction {
+        Instruction::SourceNodeVariable {
+            name,
+            select,
+            location,
+        }
+        | Instruction::Xslt10ForEachTextTreeVariable {
+            name,
+            select,
+            location,
+        } => name.capacity() + select.known_owned_capacity_bytes() + location_owned(location),
+        Instruction::SourceVariablePathVariable {
+            name,
+            source,
+            select,
+            location,
+        } => {
+            name.capacity()
+                + source.capacity()
+                + select.known_owned_capacity_bytes()
+                + location_owned(location)
+        }
+        _ => unreachable!("path-binding accounting receives one path binding"),
     }
-    | Instruction::Xslt10ForEachTextTreeVariable {
-        name,
-        select,
-        location,
-    }) = instruction
-    else {
-        unreachable!("path-binding accounting receives one path binding")
-    };
-    name.capacity() + select.known_owned_capacity_bytes() + location_owned(location)
 }
 
 fn xslt10_text_tree_variable_owned(instruction: &Instruction) -> usize {

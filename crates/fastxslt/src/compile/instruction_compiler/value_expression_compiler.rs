@@ -613,7 +613,7 @@ fn parse_variable_position_predicate(predicate: &str) -> Option<(&str, bool)> {
     is_ascii_ncname(variable).then_some((variable, true))
 }
 
-fn compile_xslt10_variable_path(
+pub(super) fn compile_xslt10_variable_path(
     document: &Document,
     element: NodeId,
     expression: &str,

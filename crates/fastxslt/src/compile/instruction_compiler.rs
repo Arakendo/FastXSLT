@@ -312,6 +312,7 @@ fn local_variable_name(variable: &Instruction) -> &String {
     | Instruction::ContextCountPathVariable { name, .. }
     | Instruction::Xslt10BinaryNumericVariable { name, .. }
     | Instruction::SourceNodeVariable { name, .. }
+    | Instruction::SourceVariablePathVariable { name, .. }
     | Instruction::SourceNodeUnionVariable { name, .. }
     | Instruction::IntegerRangeVariable { name, .. }
     | Instruction::TemporaryTreeVariable { name, .. }
@@ -1436,6 +1437,21 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
     {
         return Ok(variable);
     }
+    if let Some(variable) =
+        compile_local_variable_path_variable(document, element, name, expression, &location)?
+    {
+        return Ok(variable);
+    }
+    compile_local_node_or_cast_variable(document, element, name, expression, location)
+}
+
+fn compile_local_node_or_cast_variable(
+    document: &Document,
+    element: NodeId,
+    name: &str,
+    expression: &str,
+    location: SourceLocation,
+) -> Result<Instruction, CompileFailure> {
     let node_path = match parse_location_path(expression, location.clone()) {
         Ok(path) => Some(path),
         Err(PathFailure::Unsupported { .. }) if expression.contains(':') => Some(
@@ -1464,6 +1480,27 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
         select: Box::new(select),
         location,
     })
+}
+
+fn compile_local_variable_path_variable(
+    document: &Document,
+    element: NodeId,
+    name: &str,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<Instruction>, CompileFailure> {
+    let Some((source, select)) = value_expression_compiler::compile_xslt10_variable_path(
+        document, element, expression, location,
+    )?
+    else {
+        return Ok(None);
+    };
+    Ok(Some(Instruction::SourceVariablePathVariable {
+        name: name.to_owned(),
+        source,
+        select,
+        location: location.clone(),
+    }))
 }
 
 fn compile_local_binary_numeric_variable(

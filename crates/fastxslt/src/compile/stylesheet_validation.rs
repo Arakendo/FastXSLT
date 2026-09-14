@@ -67,6 +67,7 @@ fn validate_named_calls(
             | Instruction::ContextCountPathVariable { .. }
             | Instruction::Xslt10BinaryNumericVariable { .. }
             | Instruction::SourceNodeVariable { .. }
+            | Instruction::SourceVariablePathVariable { .. }
             | Instruction::SourceNodeUnionVariable { .. }
             | Instruction::IntegerRangeVariable { .. }
             | Instruction::TemporaryTreeVariable { .. }

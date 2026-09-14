@@ -771,6 +771,7 @@ fn execute_instruction(
         | Instruction::ContextCountPathVariable { .. }
         | Instruction::Xslt10BinaryNumericVariable { .. }
         | Instruction::SourceNodeVariable { .. }
+        | Instruction::SourceVariablePathVariable { .. }
         | Instruction::SourceNodeUnionVariable { .. }
         | Instruction::IntegerRangeVariable { .. }
         | Instruction::TemporaryTreeVariable { .. }
@@ -1527,40 +1528,11 @@ fn execute_binding(
         Instruction::SourceNodeVariable { name, select, .. } => {
             bind_source_node_variable(inputs, execution, name, select, scope, control)?;
         }
-        Instruction::SourceNodeUnionVariable { name, sources, .. } => {
-            let source = inputs.source.ok_or_else(|| {
-                failure(
-                    "XPDY0002",
-                    FailureCategory::Invalid,
-                    Some(inputs.request_id),
-                    "source-node union variable requires a source document",
-                )
-            })?;
-            control
-                .charge(WorkDomain::XPathOperation, 1)
-                .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            let mut nodes = Vec::new();
-            for source_name in sources {
-                nodes.extend(
-                    scope
-                        .source_nodes(inputs.globals, source_name)
-                        .ok_or_else(|| {
-                            failure(
-                                "XPTY0004",
-                                FailureCategory::Invalid,
-                                Some(inputs.request_id),
-                                format!(
-                                    "node-set union requires a source-node sequence: ${source_name}"
-                                ),
-                            )
-                        })?
-                        .iter()
-                        .copied(),
-                );
-            }
-            nodes.sort_unstable_by_key(|node| source.document_order(*node));
-            nodes.dedup();
-            scope.bind_source_nodes(name.clone(), nodes);
+        instruction @ Instruction::SourceVariablePathVariable { .. } => {
+            bind_source_variable_path_variable(inputs, instruction, scope, control)?;
+        }
+        instruction @ Instruction::SourceNodeUnionVariable { .. } => {
+            bind_source_node_union(inputs, instruction, scope, control)?;
         }
         Instruction::IntegerRangeVariable {
             name, start, end, ..
@@ -1583,6 +1555,46 @@ fn execute_binding(
     Ok(())
 }
 
+fn bind_source_node_union(
+    inputs: &SequenceInputs<'_>,
+    instruction: &Instruction,
+    scope: &mut RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let Instruction::SourceNodeUnionVariable { name, sources, .. } = instruction else {
+        unreachable!("source-node union binder receives one union binding")
+    };
+    let source = inputs.source.ok_or_else(|| {
+        failure(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            "source-node union variable requires a source document",
+        )
+    })?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let mut nodes = Vec::new();
+    for source_name in sources {
+        let selected = scope
+            .source_nodes(inputs.globals, source_name)
+            .ok_or_else(|| {
+                failure(
+                    "XPTY0004",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    format!("node-set union requires a source-node sequence: ${source_name}"),
+                )
+            })?;
+        nodes.extend(selected.iter().copied());
+    }
+    nodes.sort_unstable_by_key(|node| source.document_order(*node));
+    nodes.dedup();
+    scope.bind_source_nodes(name.clone(), nodes);
+    Ok(())
+}
+
 fn bind_source_node_variable(
     inputs: &SequenceInputs<'_>,
     execution: SequenceContext<'_>,
@@ -1595,6 +1607,35 @@ fn bind_source_node_variable(
     let nodes = evaluate_location_path_controlled(source, context, select, control)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
     scope.bind_source_nodes(name.to_owned(), nodes);
+    Ok(())
+}
+
+fn bind_source_variable_path_variable(
+    inputs: &SequenceInputs<'_>,
+    instruction: &Instruction,
+    scope: &mut RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let Instruction::SourceVariablePathVariable {
+        name,
+        source: source_name,
+        select,
+        ..
+    } = instruction
+    else {
+        unreachable!("source-variable path binder receives one path binding")
+    };
+    let source = inputs.source.ok_or_else(|| {
+        failure(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            "source-variable path binding requires a principal source",
+        )
+    })?;
+    let selected =
+        evaluate_source_variable_path(inputs, source, source_name, select, scope, control)?;
+    scope.bind_source_nodes(name.to_owned(), selected);
     Ok(())
 }
 

@@ -1466,3 +1466,9 @@ maintained redistributable legacy suite becomes available.
   to exact result, raising the lower bound from 1,384 to 1,385 without a new
   mismatch or execution failure.
   [Evidence](../Evidence/oasis-xslt10-local-path-arithmetic-variable-2026-09-14.md)
+- 2026-09-14 -- Local source-node variables now compose through typed relative
+  paths while preserving controlled evaluation, document order, duplicate
+  elimination, and downstream focus size. The unchanged Microsoft `last()`
+  case moves from `FXXP1008` to exact result, raising the lower bound from 1,385
+  to 1,386 without a new mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-local-variable-rooted-path-2026-09-14.md)

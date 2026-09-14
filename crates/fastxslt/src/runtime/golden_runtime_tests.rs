@@ -2300,6 +2300,34 @@ fn xslt10_local_variables_reuse_path_numeric_arithmetic() {
 }
 
 #[test]
+fn xslt10_local_node_variables_compose_with_relative_paths() {
+    const SOURCE: &str = "urn:fastxslt:local-variable-path:source";
+    const STYLESHEET: &str = "urn:fastxslt:local-variable-path:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+      <xsl:output method="text"/>
+      <xsl:template match="/"><xsl:variable name="store" select="bookstore"/><xsl:variable name="books" select="$store/book"/><xsl:for-each select="$books"><xsl:value-of select="last()"/></xsl:for-each></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            b"<bookstore><book/><book/><book/></bookstore>".to_vec(),
+        )
+        .expect("admit local-variable-path source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit local-variable-path stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile local variable path");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("local-variable-path", "result", SOURCE))
+        .expect("admit local-variable-path request");
+    let results = execute_transform_set(builder.seal()).expect("execute local variable path");
+    assert_eq!(results.by_request["local-variable-path"].serialized, "333");
+}
+
+#[test]
 fn wildcard_attribute_presence_patterns_share_source_and_temporary_semantics() {
     const SOURCE: &str = "urn:fastxslt:wildcard-attribute-pattern:source";
     const STYLESHEET: &str = "urn:fastxslt:wildcard-attribute-pattern:stylesheet";

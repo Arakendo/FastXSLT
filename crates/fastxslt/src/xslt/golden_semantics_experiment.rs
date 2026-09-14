@@ -565,6 +565,12 @@ pub(crate) enum Instruction {
         select: LocationPath,
         location: SourceLocation,
     },
+    SourceVariablePathVariable {
+        name: String,
+        source: String,
+        select: LocationPath,
+        location: SourceLocation,
+    },
     SourceNodeUnionVariable {
         name: String,
         sources: Vec<String>,
