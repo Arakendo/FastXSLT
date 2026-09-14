@@ -21,6 +21,21 @@ fn parses_the_golden_relative_child_path() {
 }
 
 #[test]
+fn permits_xpath_whitespace_before_node_test_parentheses() {
+    for (expression, canonical) in [
+        ("comment ()", "comment()"),
+        ("child::text \t ( )", "text()"),
+        (
+            "processing-instruction ( 'target' )",
+            "processing-instruction('target')",
+        ),
+    ] {
+        let path = parse_location_path(expression, location()).expect("node test should parse");
+        assert_eq!(path.steps[0], canonical);
+    }
+}
+
+#[test]
 fn explicit_context_child_path_is_the_same_relative_navigation() {
     let implicit = parse_location_path("greeting/name", location()).expect("implicit path");
     let explicit = parse_location_path("./greeting/name", location()).expect("explicit path");

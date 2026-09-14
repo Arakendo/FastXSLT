@@ -1493,3 +1493,9 @@ maintained redistributable legacy suite becomes available.
   results and raising the lower bound from 1,388 to 1,394. The engine's DTD
   authority boundary remains unchanged.
   [Evidence](../Evidence/oasis-xslt10-context-name-condition-and-xml-line-endings-2026-09-14.md)
+- 2026-09-14 -- Recognized XPath node tests now accept intervening whitespace
+  before their parentheses and canonicalize into the existing typed path plan.
+  Unchanged Lotus `select18` moves from the generic function-shaped path
+  frontier to an exact comment-copy result, raising the lower bound from 1,394
+  to 1,395 without admitting arbitrary function steps.
+  [Evidence](../Evidence/oasis-xslt10-node-test-whitespace-2026-09-14.md)

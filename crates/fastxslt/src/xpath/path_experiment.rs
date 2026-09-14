@@ -713,6 +713,7 @@ pub(crate) fn parse_location_path(
     } = parsed_steps.expect("checked above");
     for step in &mut steps {
         normalize_axis_separator_whitespace(step);
+        normalize_node_test_whitespace(step);
     }
     validate_unambiguous_step_syntax(&steps, expression, &location)?;
     if steps.iter().any(|step| has_unadmitted_name_test(step)) {
@@ -804,6 +805,27 @@ fn normalize_axis_separator_whitespace(step: &mut String) {
     let node_test = node_test.trim_start_matches(is_xpath_whitespace);
     if axis.len() + 2 + node_test.len() != step.len() {
         *step = format!("{axis}::{node_test}");
+    }
+}
+
+fn normalize_node_test_whitespace(step: &mut String) {
+    let Some((head, arguments)) = step.rsplit_once('(') else {
+        return;
+    };
+    let Some(arguments) = arguments.strip_suffix(')') else {
+        return;
+    };
+    let head = head.trim_end_matches(is_xpath_whitespace);
+    let node_test = head.rsplit_once("::").map_or(head, |(_, value)| value);
+    let arguments = arguments.trim_matches(is_xpath_whitespace);
+    let empty_node_test =
+        matches!(node_test, "node" | "text" | "element" | "comment") && arguments.is_empty();
+    let processing_instruction = node_test == "processing-instruction"
+        && (arguments.is_empty()
+            || processing_instruction_target(&format!("processing-instruction({arguments})"))
+                .is_some());
+    if empty_node_test || processing_instruction {
+        *step = format!("{head}({arguments})");
     }
 }
 
