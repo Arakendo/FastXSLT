@@ -1422,3 +1422,9 @@ maintained redistributable legacy suite becomes available.
   pass and raising the lower bound from 1,376 to 1,377 without a new mismatch
   or execution failure.
   [Evidence](../Evidence/oasis-xslt10-descendant-child-axis-position-2026-09-13.md)
+- 2026-09-13 -- Differently ranked union-pattern alternatives now retain their
+  individual default priorities as separate matched rules sharing one compiled
+  body. Five Microsoft cases leave the generic union frontier; two become exact
+  passes and three expose later independent boundaries, raising the exact lower
+  bound from 1,377 to 1,379 without a new mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-union-alternative-priority-2026-09-13.md)

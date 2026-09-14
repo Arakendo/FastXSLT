@@ -2326,6 +2326,39 @@ fn descendant_match_positions_are_relative_to_each_child_axis() {
 }
 
 #[test]
+fn union_alternatives_apply_their_individual_default_priorities() {
+    const SOURCE: &str = "urn:fastxslt:union-default-priority:source";
+    const STYLESHEET: &str = "urn:fastxslt:union-default-priority:stylesheet";
+    let stylesheet =
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+      <xsl:output omit-xml-declaration="yes"/>
+      <xsl:template match="/"><out><xsl:apply-templates select="//text()"/></out></xsl:template>
+      <xsl:template match="text() | chapter/text()"><union/></xsl:template>
+      <xsl:template match="text()"><fallback/></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc>outer<chapter>inner</chapter></doc>".to_vec())
+        .expect("admit union-priority source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit union-priority stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile individual union-alternative priorities");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("union-default-priority", "result", SOURCE))
+        .expect("admit union-priority request");
+    let results = execute_transform_set(builder.seal())
+        .expect("execute individual union-alternative priorities");
+    assert_eq!(
+        results.by_request["union-default-priority"].serialized,
+        "<out><fallback></fallback><union></union></out>"
+    );
+}
+
+#[test]
 fn two_attribute_value_patterns_share_source_and_temporary_semantics() {
     const SOURCE: &str = "urn:fastxslt:two-attribute-pattern:source";
     const STYLESHEET: &str = "urn:fastxslt:two-attribute-pattern:stylesheet";

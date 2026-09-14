@@ -939,7 +939,7 @@ fn compiles_inherited_default_mode_without_overriding_explicit_mode() {
 }
 
 #[test]
-fn compiles_only_provably_disjoint_union_rules_with_individual_priorities() {
+fn compiles_union_rules_with_individual_default_priorities() {
     let stylesheet = parse_stylesheet(
             "memory:disjoint-union.xsl",
             br##"<xsl:stylesheet version="3.0" default-mode=" a " xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="v | chapter/text()" mode="#unnamed"><xsl:apply-templates mode="#unnamed"/></xsl:template></xsl:stylesheet>"##,
@@ -970,10 +970,17 @@ fn compiles_only_provably_disjoint_union_rules_with_individual_priorities() {
             "memory:overlapping-union.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="text() | chapter/text()"/></xsl:stylesheet>"#,
         );
-    let failure = compile_stylesheet(&overlapping)
-        .expect_err("potentially overlapping alternatives must remain unsupported");
-    assert_eq!(failure.code, "FXST1005");
-    assert_eq!(failure.category, CompileCategory::Unsupported);
+    let overlapping_program = compile_stylesheet(&overlapping)
+        .expect("overlapping alternatives retain their individual default priorities");
+    assert_eq!(overlapping_program.matched_templates.len(), 2);
+    assert_eq!(
+        overlapping_program.matched_templates[0].priority,
+        TemplatePriority::NODE_TEST_DEFAULT
+    );
+    assert_eq!(
+        overlapping_program.matched_templates[1].priority,
+        TemplatePriority::PATH_DEFAULT
+    );
 }
 
 #[test]

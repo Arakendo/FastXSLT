@@ -1296,23 +1296,18 @@ fn compile_matched_templates(
         };
         if patterns
             .iter()
-            .any(|(_, candidate_priority)| *candidate_priority != priority)
+            .all(|(_, candidate_priority)| *candidate_priority == priority)
         {
-            return Err(unsupported(
-                "FXST1005",
-                "overlapping union alternatives with different default priorities are outside the private slice",
-                document.location(element),
-            ));
+            return Ok(vec![MatchedTemplate {
+                pattern: MatchPattern::UnionAlternatives(
+                    patterns.into_iter().map(|(pattern, _)| pattern).collect(),
+                ),
+                import_precedence: 0,
+                priority,
+                modes: compile_template_modes_for_rule(document, element)?,
+                template: compile_template(document, element)?,
+            }]);
         }
-        return Ok(vec![MatchedTemplate {
-            pattern: MatchPattern::UnionAlternatives(
-                patterns.into_iter().map(|(pattern, _)| pattern).collect(),
-            ),
-            import_precedence: 0,
-            priority,
-            modes: compile_template_modes_for_rule(document, element)?,
-            template: compile_template(document, element)?,
-        }]);
     }
     let modes = compile_template_modes_for_rule(document, element)?;
     let template = compile_template(document, element)?;
