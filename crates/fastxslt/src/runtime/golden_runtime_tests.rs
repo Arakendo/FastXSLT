@@ -2211,6 +2211,36 @@ fn local_context_name_variables_preserve_source_prefixes() {
 }
 
 #[test]
+fn local_count_path_variables_reuse_controlled_axis_evaluation() {
+    const SOURCE: &str = "urn:fastxslt:local-count-path:source";
+    const STYLESHEET: &str = "urn:fastxslt:local-count-path:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+      <xsl:output omit-xml-declaration="yes"/>
+      <xsl:template match="/"><xsl:apply-templates select="root/e"/></xsl:template>
+      <xsl:template match="e"><xsl:variable name="before" select="count(preceding::text())"/><out><xsl:value-of select="$before"/></out></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<root>one<a/>two<e/></root>".to_vec())
+        .expect("admit local-count-path source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit local-count-path stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile local count-path variable");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("local-count-path", "result", SOURCE))
+        .expect("admit local-count-path request");
+    let results = execute_transform_set(builder.seal()).expect("execute local count-path variable");
+    assert_eq!(
+        results.by_request["local-count-path"].serialized,
+        "<out>2</out>"
+    );
+}
+
+#[test]
 fn wildcard_attribute_presence_patterns_share_source_and_temporary_semantics() {
     const SOURCE: &str = "urn:fastxslt:wildcard-attribute-pattern:source";
     const STYLESHEET: &str = "urn:fastxslt:wildcard-attribute-pattern:stylesheet";

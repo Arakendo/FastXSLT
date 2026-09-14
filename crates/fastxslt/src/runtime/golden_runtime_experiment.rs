@@ -768,6 +768,7 @@ fn execute_instruction(
         | Instruction::AtomicVariableAlias { .. }
         | Instruction::ContextPositionVariable { .. }
         | Instruction::ContextNodeNameVariable { .. }
+        | Instruction::ContextCountPathVariable { .. }
         | Instruction::SourceNodeVariable { .. }
         | Instruction::SourceNodeUnionVariable { .. }
         | Instruction::IntegerRangeVariable { .. }
@@ -1516,6 +1517,9 @@ fn execute_binding(
         Instruction::ContextNodeNameVariable { name, location } => {
             bind_context_node_name(inputs, execution, name, location, scope, control)?;
         }
+        Instruction::ContextCountPathVariable { name, select, .. } => {
+            bind_context_count_path(inputs, execution, name, select, scope, control)?;
+        }
         Instruction::SourceNodeVariable { name, select, .. } => {
             let (source, context) = required_source_context(inputs, execution.node)?;
             let nodes = evaluate_location_path_controlled(source, context, select, control)
@@ -1609,6 +1613,28 @@ fn bind_context_node_name(
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
     let value = execution_context_lexical_name(inputs, execution, location, control)?;
     scope.bind_atomic(name.to_owned(), AtomicValue::string(value));
+    Ok(())
+}
+
+fn bind_context_count_path(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    name: &str,
+    select: &crate::xpath::path_experiment::LocationPath,
+    scope: &mut RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, execution.node)?;
+    let count = evaluate_location_path_controlled(source, context, select, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?
+        .len();
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    scope.bind_atomic(
+        name.to_owned(),
+        AtomicValue::from_validated_lexical(BuiltinAtomicType::Integer, count.to_string()),
+    );
     Ok(())
 }
 

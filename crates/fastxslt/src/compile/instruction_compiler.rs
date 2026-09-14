@@ -309,6 +309,7 @@ fn local_variable_name(variable: &Instruction) -> &String {
     | Instruction::AtomicVariableAlias { name, .. }
     | Instruction::ContextPositionVariable { name, .. }
     | Instruction::ContextNodeNameVariable { name, .. }
+    | Instruction::ContextCountPathVariable { name, .. }
     | Instruction::SourceNodeVariable { name, .. }
     | Instruction::SourceNodeUnionVariable { name, .. }
     | Instruction::IntegerRangeVariable { name, .. }
@@ -1398,6 +1399,19 @@ fn compile_variable(document: &Document, element: NodeId) -> Result<Instruction,
             name: name.to_owned(),
             location,
         });
+    }
+    if let Some(path) = expression
+        .trim()
+        .strip_prefix("count(")
+        .and_then(|path| path.strip_suffix(')'))
+    {
+        if let Ok(select) = parse_location_path(path.trim(), location.clone()) {
+            return Ok(Instruction::ContextCountPathVariable {
+                name: name.to_owned(),
+                select,
+                location,
+            });
+        }
     }
     if let Some(variable) = compile_source_node_union_variable(name, expression, &location)? {
         return Ok(variable);

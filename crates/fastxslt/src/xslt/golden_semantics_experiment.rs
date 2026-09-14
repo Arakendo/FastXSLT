@@ -550,6 +550,11 @@ pub(crate) enum Instruction {
         name: String,
         location: SourceLocation,
     },
+    ContextCountPathVariable {
+        name: String,
+        select: LocationPath,
+        location: SourceLocation,
+    },
     SourceNodeVariable {
         name: String,
         select: LocationPath,

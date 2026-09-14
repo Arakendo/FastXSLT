@@ -391,6 +391,9 @@ fn instruction_owned(value: &Instruction) -> usize {
         | Instruction::IntegerRangeVariable { name, location, .. } => {
             name.capacity() + location_owned(location)
         }
+        instruction @ Instruction::ContextCountPathVariable { .. } => {
+            context_count_path_variable_owned(instruction)
+        }
         instruction @ (Instruction::SourceNodeVariable { .. }
         | Instruction::Xslt10ForEachTextTreeVariable { .. }) => path_binding_owned(instruction),
         Instruction::SourceNodeUnionVariable {
@@ -512,6 +515,18 @@ fn scalar_binding_owned(value: &Instruction) -> usize {
         } => name.capacity() + source.capacity() + location_owned(location),
         _ => unreachable!("scalar binding accounting receives one scalar binding"),
     }
+}
+
+fn context_count_path_variable_owned(value: &Instruction) -> usize {
+    let Instruction::ContextCountPathVariable {
+        name,
+        select,
+        location,
+    } = value
+    else {
+        unreachable!("context count-path accounting receives one count-path binding")
+    };
+    name.capacity() + select.known_owned_capacity_bytes() + location_owned(location)
 }
 
 fn static_atomic_variable_owned(

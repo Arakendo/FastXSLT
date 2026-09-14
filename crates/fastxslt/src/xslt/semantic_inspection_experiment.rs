@@ -272,6 +272,7 @@ fn observe_instructions(
             | Instruction::AtomicVariableAlias { .. }
             | Instruction::ContextPositionVariable { .. }
             | Instruction::ContextNodeNameVariable { .. }
+            | Instruction::ContextCountPathVariable { .. }
             | Instruction::SourceNodeVariable { .. }
             | Instruction::SourceNodeUnionVariable { .. }
             | Instruction::IntegerRangeVariable { .. }

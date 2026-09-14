@@ -1446,3 +1446,9 @@ maintained redistributable legacy suite becomes available.
   and one exposes an existing whitespace mismatch, so the exact lower bound
   remains 1,381.
   [Evidence](../Evidence/oasis-xslt10-local-context-name-variables-2026-09-14.md)
+- 2026-09-14 -- Local `count(location-path)` variables now reuse the controlled
+  path evaluator and typed integer frames. All three
+  `count(preceding::text())` cases leave `FXXP1008`; one becomes an exact pass
+  and two expose a later `$this + 1` classification defect. The exact lower
+  bound rises from 1,381 to 1,382.
+  [Evidence](../Evidence/oasis-xslt10-local-count-path-variables-2026-09-14.md)
