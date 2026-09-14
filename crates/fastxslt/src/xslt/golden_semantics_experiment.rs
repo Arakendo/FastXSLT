@@ -304,6 +304,10 @@ pub(crate) enum MatchPattern {
         attribute: ExpandedName,
         variable: String,
     },
+    ElementNumberGreaterThanVariable {
+        element: ExpandedName,
+        variable: String,
+    },
     VariableFilteredElementPath(VariableFilteredElementPath),
     ElementWithSameNamedChild,
     ElementWithSameNamedParent,

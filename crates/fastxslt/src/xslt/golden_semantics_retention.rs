@@ -263,6 +263,9 @@ fn match_pattern_owned(value: &MatchPattern) -> usize {
             attribute,
             variable,
         } => name_owned(attribute) + variable.capacity(),
+        MatchPattern::ElementNumberGreaterThanVariable { element, variable } => {
+            name_owned(element) + variable.capacity()
+        }
         MatchPattern::VariableFilteredElementPath(path) => variable_filtered_path_owned(path),
         MatchPattern::ElementAtNamedSiblingBoundary { element, .. } => name_owned(element),
         MatchPattern::ElementWithSequentialPredicates {

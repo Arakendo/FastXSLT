@@ -1,5 +1,6 @@
 //! Shared scalar semantics for sequential match-pattern focus predicates.
 
+use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xslt::golden_semantics_experiment::{MatchNumericRelation, MatchSequencePredicate};
 
@@ -46,6 +47,16 @@ pub(super) fn evaluate(
             .is_some_and(|number| compare(number, f64::from(*value), *relation)),
         MatchSequencePredicate::Last => position == size,
     }
+}
+
+pub(super) fn context_number_greater_than_variable(
+    context_value: &str,
+    variable: &AtomicValue,
+) -> bool {
+    let parse = crate::xpath::constant_boolean_experiment::parse_xpath_number_literal;
+    parse(context_value)
+        .zip(parse(variable.lexical()))
+        .is_some_and(|(left, right)| left > right)
 }
 
 fn compare_usize(left: usize, right: usize, relation: MatchNumericRelation) -> bool {

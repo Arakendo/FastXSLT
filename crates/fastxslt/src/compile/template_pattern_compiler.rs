@@ -57,6 +57,18 @@ pub(super) fn compile_match_pattern(
         predicate if parse_any_element_attribute_variable_predicate(predicate).is_some() => {
             compile_any_element_attribute_variable_pattern(predicate)
         }
+        predicate if parse_element_number_variable_predicate(predicate).is_some() => {
+            let (element_name, variable) = parse_element_number_variable_predicate(predicate)
+                .expect("element-number variable predicate shape was checked");
+            MatchPattern::ElementNumberGreaterThanVariable {
+                element: crate::xml::quick_xml_experiment::ExpandedName {
+                    namespace: effective_xpath_default_namespace(document, element)
+                        .map(str::to_owned),
+                    local: element_name.to_owned(),
+                },
+                variable: variable.to_owned(),
+            }
+        }
         predicate if parse_any_element_attribute_value_predicate(predicate).is_some() => {
             compile_any_element_attribute_value_pattern(predicate)
         }
@@ -914,6 +926,22 @@ fn parse_any_element_attribute_variable_predicate(pattern: &str) -> Option<(&str
     (is_ascii_ncname(attribute) && is_ascii_ncname(variable)).then_some((attribute, variable))
 }
 
+fn parse_element_number_variable_predicate(pattern: &str) -> Option<(&str, &str)> {
+    let (element, predicate) = pattern.split_once('[')?;
+    if !is_ascii_ncname(element) {
+        return None;
+    }
+    let variable = predicate
+        .strip_suffix(']')?
+        .trim()
+        .strip_prefix('.')?
+        .trim_start()
+        .strip_prefix('>')?
+        .trim_start()
+        .strip_prefix('$')?;
+    is_ascii_ncname(variable).then_some((element, variable))
+}
+
 fn compile_any_element_attribute_variable_pattern(pattern: &str) -> MatchPattern {
     let (attribute, variable) = parse_any_element_attribute_variable_predicate(pattern)
         .expect("variable predicate shape was checked");
@@ -953,6 +981,7 @@ fn compile_template_priority(
             | MatchPattern::ElementWithTwoAttributeValues { .. }
             | MatchPattern::ElementWithChild { .. }
             | MatchPattern::AnyElementWithAttributeVariable { .. }
+            | MatchPattern::ElementNumberGreaterThanVariable { .. }
             | MatchPattern::VariableFilteredElementPath(_)
             | MatchPattern::ElementWithSameNamedChild
             | MatchPattern::ElementWithSameNamedParent
