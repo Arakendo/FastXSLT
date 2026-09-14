@@ -1134,6 +1134,7 @@ pub(crate) enum TemplateArgumentValue {
     ContextSize,
     CurrentSourceNode,
     Variable(String),
+    Xslt10BinaryNumeric(Box<BinaryNumericExpression>),
     SourcePath(LocationPath),
     Xslt10SumPath(LocationPath),
     Xslt10Content(Box<Xslt10ContentArgument>),

@@ -2241,6 +2241,37 @@ fn local_count_path_variables_reuse_controlled_axis_evaluation() {
 }
 
 #[test]
+fn xslt10_template_arguments_reuse_variable_numeric_arithmetic() {
+    const SOURCE: &str = "urn:fastxslt:argument-variable-arithmetic:source";
+    const STYLESHEET: &str = "urn:fastxslt:argument-variable-arithmetic:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+      <xsl:output omit-xml-declaration="yes"/>
+      <xsl:template match="/"><xsl:variable name="one" select="1"/><xsl:call-template name="emit"><xsl:with-param name="value" select="$one + 1"/></xsl:call-template></xsl:template>
+      <xsl:template name="emit"><xsl:param name="value" select="0"/><out><xsl:value-of select="$value"/></out></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit argument-arithmetic source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit argument-arithmetic stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile argument variable arithmetic");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("argument-arithmetic", "result", SOURCE))
+        .expect("admit argument-arithmetic request");
+    let results =
+        execute_transform_set(builder.seal()).expect("execute argument variable arithmetic");
+    assert_eq!(
+        results.by_request["argument-arithmetic"].serialized,
+        "<out>2</out>"
+    );
+}
+
+#[test]
 fn wildcard_attribute_presence_patterns_share_source_and_temporary_semantics() {
     const SOURCE: &str = "urn:fastxslt:wildcard-attribute-pattern:source";
     const STYLESHEET: &str = "urn:fastxslt:wildcard-attribute-pattern:stylesheet";
@@ -3504,6 +3535,38 @@ fn xslt10_numeric_variables_select_path_positions() {
     assert_eq!(
         results.by_request["xslt10-variable-position"].serialized,
         "A|C|C||A"
+    );
+}
+
+#[test]
+fn xslt10_numeric_variable_predicates_use_reverse_axis_proximity_positions() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-reverse-variable-position:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-reverse-variable-position:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0"
+        xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="text"/>
+        <xsl:template match="/"><xsl:apply-templates select="root/e"/></xsl:template>
+        <xsl:template match="e"><xsl:variable name="nearest" select="1"/><xsl:value-of select="preceding::text()[$nearest]"/>|<xsl:value-of select="preceding::text()[position() = $nearest]"/></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<root>one<a/>two<b/>three<e/></root>".to_vec())
+        .expect("admit reverse-variable-position source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit reverse-variable-position stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile reverse variable position");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("reverse-variable-position", "result", SOURCE))
+        .expect("admit reverse-variable-position request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute reverse variable position");
+    assert_eq!(
+        results.by_request["reverse-variable-position"].serialized,
+        "three|three"
     );
 }
 

@@ -100,6 +100,30 @@ impl LocationPath {
         )
     }
 
+    pub(crate) fn single_step_predicate_axis_is_reverse(&self) -> bool {
+        matches!(
+            self.steps.as_slice(),
+            [PathStep::AncestorNamed(_)
+                | PathStep::AncestorAnyElement
+                | PathStep::AncestorAnyNode
+                | PathStep::AncestorOrSelfNamed(_)
+                | PathStep::AncestorOrSelfAnyElement
+                | PathStep::AncestorOrSelfAnyNode
+                | PathStep::ParentNamed(_)
+                | PathStep::ParentAnyElement
+                | PathStep::ParentAnyNode
+                | PathStep::PrecedingNamed(_)
+                | PathStep::PrecedingAnyElement
+                | PathStep::PrecedingAnyNode
+                | PathStep::PrecedingText
+                | PathStep::PrecedingComment
+                | PathStep::PrecedingProcessingInstruction
+                | PathStep::PrecedingSiblingNamed(_)
+                | PathStep::PrecedingSiblingAnyElement
+                | PathStep::PrecedingSiblingAnyNode]
+        )
+    }
+
     #[cfg(feature = "workbench")]
     pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
         self.steps.capacity() * std::mem::size_of::<PathStep>()

@@ -1074,6 +1074,10 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
             TemplateArgumentValue::Text(text) | TemplateArgumentValue::Variable(text) => {
                 text.capacity()
             }
+            TemplateArgumentValue::Xslt10BinaryNumeric(expression) => {
+                size_of::<crate::xpath::binary_numeric_experiment::BinaryNumericExpression>()
+                    + expression.known_owned_capacity_bytes()
+            }
             TemplateArgumentValue::Integer(_)
             | TemplateArgumentValue::Boolean(_)
             | TemplateArgumentValue::ContextPosition

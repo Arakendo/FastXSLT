@@ -10,7 +10,9 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 use super::super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
-use super::value_expression_compiler::{compile_value_expression, compile_xslt10_sum_path};
+use super::value_expression_compiler::{
+    compile_value_expression, compile_xslt10_binary_numeric, compile_xslt10_sum_path,
+};
 use super::{
     CompileFailure, effective_default_mode, effective_xpath_default_namespace,
     ensure_no_meaningful_children, ensure_only_attributes, invalid, is_ascii_ncname,
@@ -137,6 +139,13 @@ fn compile_selected_argument_value(
     element: NodeId,
     select: &str,
 ) -> Result<TemplateArgumentValue, CompileFailure> {
+    if let Some(expression) =
+        compile_xslt10_binary_numeric(document, element, select, document.location(element))
+    {
+        return Ok(TemplateArgumentValue::Xslt10BinaryNumeric(Box::new(
+            expression,
+        )));
+    }
     if let Some(variable) = select.strip_prefix('$') {
         if !is_ascii_ncname(variable) {
             return Err(invalid(

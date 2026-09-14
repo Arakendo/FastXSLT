@@ -232,7 +232,13 @@ pub(super) fn append_variable_position_path(
     let Ok(position) = position.to_string().parse::<usize>() else {
         return Ok(());
     };
-    let Some(node) = selected.get(position.saturating_sub(1)).copied() else {
+    let index = position.saturating_sub(1);
+    let node = if path.single_step_predicate_axis_is_reverse() {
+        selected.iter().rev().nth(index).copied()
+    } else {
+        selected.get(index).copied()
+    };
+    let Some(node) = node else {
         return Ok(());
     };
     let value = source

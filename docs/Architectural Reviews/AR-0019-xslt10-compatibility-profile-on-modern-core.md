@@ -1452,3 +1452,11 @@ maintained redistributable legacy suite becomes available.
   and two expose a later `$this + 1` classification defect. The exact lower
   bound rises from 1,381 to 1,382.
   [Evidence](../Evidence/oasis-xslt10-local-count-path-variables-2026-09-14.md)
+- 2026-09-14 -- Template arguments now reuse the bounded XSLT 1.0 binary
+  numeric evaluator, moving the two `$this + 1` cases into execution. Their
+  newly visible reverse-axis mismatch was repaired at the existing single-step
+  variable-position seam: predicate proximity observes reverse-axis order while
+  the general path result remains document ordered. Both unchanged cases become
+  exact passes, raising the lower bound from 1,382 to 1,384 without a new
+  mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-template-argument-arithmetic-and-reverse-axis-position-2026-09-14.md)

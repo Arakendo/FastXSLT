@@ -167,6 +167,11 @@ pub(super) fn evaluate_template_arguments(
                         ));
                     }
                 }
+                TemplateArgumentValue::Xslt10BinaryNumeric(expression) => {
+                    evaluate_numeric_template_argument(
+                        inputs, context, expression, variables, control,
+                    )?
+                }
                 TemplateArgumentValue::SourcePath(path) => {
                     let (source, context) = required_source_context(inputs, context)?;
                     let nodes = evaluate_location_path_controlled(source, context, path, control)
@@ -210,6 +215,19 @@ pub(super) fn evaluate_template_arguments(
             ))
         })
         .collect()
+}
+
+fn evaluate_numeric_template_argument(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expression: &crate::xpath::binary_numeric_experiment::BinaryNumericExpression,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<InvocationParameterValue, ExecutionFailure> {
+    let value = evaluate_binary_numeric_value(inputs, context, expression, variables, control)?;
+    Ok(InvocationParameterValue::Atomic(
+        AtomicValue::from_validated_lexical(BuiltinAtomicType::Double, value),
+    ))
 }
 
 fn evaluate_xslt10_content_argument(
