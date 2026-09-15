@@ -3925,6 +3925,39 @@ fn literal_result_attribute_composes_multiple_source_paths() {
 }
 
 #[test]
+fn literal_result_attribute_composes_parenthesized_path_and_escaped_brace() {
+    const SOURCE: &str = "urn:fastxslt:parenthesized-avt:source";
+    const STYLESHEET: &str = "urn:fastxslt:parenthesized-avt:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc><text name="a"/><text name="b"/></doc>"#.to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:for-each select="//text"><a left="{{{(@name)}" right="{(@name)}}}"/></xsl:for-each></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile parenthesized escaped-brace AVT");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("parenthesized-avt", "result", SOURCE))
+        .expect("admit request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute parenthesized escaped-brace AVT");
+    assert_eq!(
+        results.by_request["parenthesized-avt"].serialized,
+        "<a left=\"{a\" right=\"a}\"></a><a left=\"{b\" right=\"b}\"></a>"
+    );
+}
+
+#[test]
 fn node_name_path_returns_retained_element_and_attribute_lexical_names() {
     const SOURCE: &str = "urn:fastxslt:name-path:source";
     const STYLESHEET: &str = "urn:fastxslt:name-path:stylesheet";

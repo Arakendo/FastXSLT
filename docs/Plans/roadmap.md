@@ -4387,6 +4387,12 @@ host lifecycle.
   boolean value. Keep Microsoft `AVTs__77564`'s inter-element fragment-format
   mismatch visible; the exact lower bound remains 1,444.
   [Evidence](../Evidence/oasis-xslt10-text-node-comparison-avt-2026-09-15.md)
+- [x] Admit one parenthesized typed path alongside escaped literal AVT braces
+  without broadening ordinary one-path representation or accepting malformed
+  brace syntax. Three Microsoft cases now execute with the expected attribute
+  values; their inter-element fragment-format mismatches remain visible and
+  the exact lower bound remains 1,444.
+  [Evidence](../Evidence/oasis-xslt10-parenthesized-path-and-escaped-brace-avt-2026-09-15.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

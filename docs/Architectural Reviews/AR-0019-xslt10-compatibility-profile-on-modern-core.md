@@ -1626,3 +1626,10 @@ maintained redistributable legacy suite becomes available.
   because of expected inter-element fragment formatting. The exact lower bound
   remains 1,444.
   [Evidence](../Evidence/oasis-xslt10-text-node-comparison-avt-2026-09-15.md)
+- 2026-09-15 -- The private typed AVT scanner now admits one dynamic path when
+  accompanied by an escaped literal brace, and permits one nonempty outer pair
+  of parentheses around that path. Three unchanged Microsoft cases execute
+  with the expected attribute values but remain visible fragment-format
+  mismatches. The exact lower bound remains 1,444 and malformed brace forms
+  remain rejected.
+  [Evidence](../Evidence/oasis-xslt10-parenthesized-path-and-escaped-brace-avt-2026-09-15.md)

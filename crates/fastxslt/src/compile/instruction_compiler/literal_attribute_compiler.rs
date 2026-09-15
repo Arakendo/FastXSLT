@@ -160,10 +160,17 @@ fn parse_multi_path_avt(lexical: &str, location: &SourceLocation) -> Option<Xslt
     let mut parts = Vec::new();
     let mut text = String::new();
     let mut dynamic_parts = 0_usize;
+    let mut escaped_brace = false;
     while let Some(character) = characters.next() {
         match character {
-            '{' if characters.next_if_eq(&'{').is_some() => text.push('{'),
-            '}' if characters.next_if_eq(&'}').is_some() => text.push('}'),
+            '{' if characters.next_if_eq(&'{').is_some() => {
+                text.push('{');
+                escaped_brace = true;
+            }
+            '}' if characters.next_if_eq(&'}').is_some() => {
+                text.push('}');
+                escaped_brace = true;
+            }
             '{' => {
                 push_avt_text(&mut parts, &mut text);
                 let mut expression = String::new();
@@ -185,7 +192,8 @@ fn parse_multi_path_avt(lexical: &str, location: &SourceLocation) -> Option<Xslt
         }
     }
     push_avt_text(&mut parts, &mut text);
-    (dynamic_parts >= 2 && parts.len() <= MAX_PARTS).then_some(Xslt10AvtExpression { parts })
+    ((dynamic_parts >= 2 || (dynamic_parts == 1 && escaped_brace)) && parts.len() <= MAX_PARTS)
+        .then_some(Xslt10AvtExpression { parts })
 }
 
 fn parse_avt_path_part(expression: &str, location: &SourceLocation) -> Option<Xslt10AvtPart> {
@@ -200,9 +208,22 @@ fn parse_avt_path_part(expression: &str, location: &SourceLocation) -> Option<Xs
             .collect::<Option<Vec<_>>>()?;
         return Some(Xslt10AvtPart::PathUnion(alternatives));
     }
-    parse_location_path(expression, location.clone())
-        .ok()
-        .map(Xslt10AvtPart::Path)
+    parse_location_path(
+        strip_one_parenthesized_expression(expression),
+        location.clone(),
+    )
+    .ok()
+    .map(Xslt10AvtPart::Path)
+}
+
+fn strip_one_parenthesized_expression(expression: &str) -> &str {
+    let expression = expression.trim();
+    expression
+        .strip_prefix('(')
+        .and_then(|inner| inner.strip_suffix(')'))
+        .map(str::trim)
+        .filter(|inner| !inner.is_empty())
+        .unwrap_or(expression)
 }
 
 fn push_avt_text(parts: &mut Vec<Xslt10AvtPart>, text: &mut String) {
@@ -569,6 +590,29 @@ mod tests {
             [Xslt10AvtPart::Path(_), Xslt10AvtPart::PathUnion(alternatives)]
                 if alternatives.len() == 2
         ));
+    }
+
+    #[test]
+    fn compiles_one_parenthesized_path_between_escaped_braces() {
+        for (lexical, expected_text) in [("{{{(@name)}", "{"), ("{(@name)}}}", "}")] {
+            let compiled = parse_literal_attribute_value(lexical, &location())
+                .expect("the escaped-brace parenthesized-path AVT should compile");
+            let LiteralAttributeValue::Xslt10MultiPathAvt(expression) = compiled else {
+                panic!("expected the typed AVT representation");
+            };
+            assert_eq!(expression.parts.len(), 2);
+            assert!(
+                expression
+                    .parts
+                    .iter()
+                    .any(|part| matches!(part, Xslt10AvtPart::Path(_)))
+            );
+            assert!(
+                expression.parts.iter().any(
+                    |part| matches!(part, Xslt10AvtPart::Text(value) if value == expected_text)
+                )
+            );
+        }
     }
 
     #[test]
