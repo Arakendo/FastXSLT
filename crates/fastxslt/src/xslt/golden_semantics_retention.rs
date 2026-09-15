@@ -1212,6 +1212,7 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
         LiteralAttributeValue::ContextPosition
         | LiteralAttributeValue::ContextSize
         | LiteralAttributeValue::ContextLocalName
+        | LiteralAttributeValue::ContextLexicalName
         | LiteralAttributeValue::ContextStringValue
         | LiteralAttributeValue::ContextNormalizedStringLength
         | LiteralAttributeValue::ContextIntegerIncrement(_) => 0,

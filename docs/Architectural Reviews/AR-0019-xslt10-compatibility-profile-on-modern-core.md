@@ -1594,3 +1594,9 @@ maintained redistributable legacy suite becomes available.
   including Lotus `select_select51`, raising the lower bound from 1,439 to
   1,441 without adding a mismatch or execution failure.
   [Evidence](../Evidence/oasis-xslt10-child-node-set-literal-comparison-2026-09-15.md)
+- 2026-09-15 -- Literal-result AVTs now preserve the context node's retained
+  lexical QName for `name()`/`name(.)` and fold one static quoted XPath string
+  expression. Unchanged Lotus `lre_lre06` becomes exact, raising the lower
+  bound from 1,441 to 1,442; Lotus `axes_axes129` advances only to its later
+  namespace-axis frontier and remains excluded from the pass count.
+  [Evidence](../Evidence/oasis-xslt10-literal-result-avt-scalars-2026-09-15.md)

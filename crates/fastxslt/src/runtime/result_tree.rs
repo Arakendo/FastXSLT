@@ -381,9 +381,8 @@ fn materialize_attribute(
         }
         LiteralAttributeValue::ContextPosition => context.focus_position.to_string(),
         LiteralAttributeValue::ContextSize => context.focus_size.to_string(),
-        LiteralAttributeValue::ContextLocalName => context
-            .context_name
-            .map_or_else(String::new, |name| name.local.clone()),
+        LiteralAttributeValue::ContextLocalName => context_local_name(context),
+        LiteralAttributeValue::ContextLexicalName => context_lexical_name(context, control)?,
         LiteralAttributeValue::ContextStringValue => context_string_attribute(location, context)?,
         LiteralAttributeValue::ContextIntegerIncrement(increment) => {
             materialize_context_integer_increment(*increment, location, context)?
@@ -393,6 +392,33 @@ fn materialize_attribute(
         name: name.clone(),
         value,
     })
+}
+
+fn context_local_name(context: &AttributeContext<'_>) -> String {
+    context
+        .context_name
+        .map_or_else(String::new, |name| name.local.clone())
+}
+
+fn context_lexical_name(
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, context.request_id))?;
+    let Some((source, node)) = context.source_focus else {
+        return Ok(context
+            .context_name
+            .map_or_else(String::new, |name| name.local.clone()));
+    };
+    let Some(name) = source.name(node) else {
+        return Ok(String::new());
+    };
+    Ok(source.prefix(node).map_or_else(
+        || name.local.clone(),
+        |prefix| format!("{prefix}:{}", name.local),
+    ))
 }
 
 fn materialize_normalized_source_path_avt(

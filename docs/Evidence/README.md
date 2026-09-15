@@ -9,6 +9,7 @@ pressure architecture but does not silently create a public guarantee.
 
 - [OASIS XSLT 1.0 Lexical Context Comparison](oasis-xslt10-lexical-context-comparison-2026-09-15.md)
 - [OASIS XSLT 1.0 Child Node-Set/Literal Comparison](oasis-xslt10-child-node-set-literal-comparison-2026-09-15.md)
+- [OASIS XSLT 1.0 Literal-Result AVT Scalars](oasis-xslt10-literal-result-avt-scalars-2026-09-15.md)
 - [OASIS XSLT 1.0 Source-Node Union Variable](oasis-xslt10-source-node-union-variable-2026-09-08.md)
 - [OASIS XSLT 1.0 Variable/Path Apply Union](oasis-xslt10-variable-path-apply-union-2026-09-08.md)
 - [OASIS XSLT 1.0 Source-Variable Value Path](oasis-xslt10-source-variable-value-path-2026-09-08.md)

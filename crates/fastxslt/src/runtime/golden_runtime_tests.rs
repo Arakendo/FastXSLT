@@ -3863,6 +3863,37 @@ fn context_node_name_uses_the_retained_source_lexical_prefix() {
 }
 
 #[test]
+fn literal_result_attribute_name_avt_uses_the_retained_source_lexical_prefix() {
+    const SOURCE: &str = "urn:fastxslt:name-avt:source";
+    const STYLESHEET: &str = "urn:fastxslt:name-avt:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc xmlns:p="urn:example"><p:item/></doc>"#.to_vec(),
+        )
+        .expect("admit namespaced source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:example"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:apply-templates select="doc/*"/></xsl:template><xsl:template match="p:item"><out source-name="{name(.)}"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile context-name AVT");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("namespaced-name-avt", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute context-name AVT");
+    assert_eq!(
+        results.by_request["namespaced-name-avt"].serialized,
+        "<out xmlns:p=\"urn:example\" source-name=\"p:item\"></out>"
+    );
+}
+
+#[test]
 fn node_name_path_returns_retained_element_and_attribute_lexical_names() {
     const SOURCE: &str = "urn:fastxslt:name-path:source";
     const STYLESHEET: &str = "urn:fastxslt:name-path:stylesheet";

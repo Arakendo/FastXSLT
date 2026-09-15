@@ -46,6 +46,9 @@ fn parse_literal_attribute_value(
     if lexical == "{local-name()}" {
         return Ok(LiteralAttributeValue::ContextLocalName);
     }
+    if matches!(lexical, "{name()}" | "{name(.)}") {
+        return Ok(LiteralAttributeValue::ContextLexicalName);
+    }
     if lexical == "{.}" {
         return Ok(LiteralAttributeValue::ContextStringValue);
     }
@@ -121,6 +124,11 @@ fn parse_single_dynamic_attribute_value(
     location: &SourceLocation,
 ) -> Option<LiteralAttributeValue> {
     let (prefix, expression, suffix) = single_dynamic_expression(lexical)?;
+    if let Some(literal) = xpath_string_literal(expression) {
+        return Some(LiteralAttributeValue::Text(format!(
+            "{prefix}{literal}{suffix}"
+        )));
+    }
     if let Some(path) = parse_xslt10_normalize_space_path(expression, location.clone()) {
         return Some(LiteralAttributeValue::Xslt10TextAndNormalizedPath {
             prefix: prefix.to_owned(),
@@ -401,6 +409,24 @@ mod tests {
             parse_literal_attribute_value("{.}", &location())
                 .expect("the context-item string-value AVT should compile"),
             LiteralAttributeValue::ContextStringValue
+        );
+    }
+
+    #[test]
+    fn compiles_context_lexical_name_avt() {
+        assert_eq!(
+            parse_literal_attribute_value("{name(.)}", &location())
+                .expect("the context lexical-name AVT should compile"),
+            LiteralAttributeValue::ContextLexicalName
+        );
+    }
+
+    #[test]
+    fn folds_a_string_literal_avt_expression() {
+        assert_eq!(
+            parse_literal_attribute_value("before{'All Done'}after", &location())
+                .expect("a static string AVT should compile"),
+            LiteralAttributeValue::Text("beforeAll Doneafter".to_owned())
         );
     }
 }

@@ -1246,6 +1246,7 @@ pub(crate) enum LiteralAttributeValue {
     ContextPosition,
     ContextSize,
     ContextLocalName,
+    ContextLexicalName,
     ContextStringValue,
     ContextIntegerIncrement(i64),
 }
