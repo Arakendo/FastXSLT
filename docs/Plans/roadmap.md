@@ -4398,6 +4398,13 @@ host lifecycle.
   expected decimal attribute values; its inter-element fragment-format
   mismatch remains visible and the exact lower bound remains 1,444.
   [Evidence](../Evidence/oasis-xslt10-numeric-composition-avt-2026-09-15.md)
+- [x] Preserve `xsl:number level="single"` eligibility when the context node
+  itself matches `count` but no ancestor matches `from`, while still requiring
+  the boundary for a counted ancestor. Lotus `numbering_numbering20` now emits
+  all expected outer and chapter-local numbers and becomes exact. The
+  doubts-annotated Microsoft `Number__84687` legacy gray-area expectation moves
+  from pass to visible mismatch, so the exact lower bound remains 1,444.
+  [Evidence](../Evidence/oasis-xslt10-single-number-self-before-from-boundary-2026-09-15.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

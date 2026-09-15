@@ -332,15 +332,17 @@ fn execute_patterned_single(
     };
     if let Some(pattern) = from {
         let mut boundary = Some(numbered);
-        loop {
-            let Some(node) = boundary else {
-                return Ok(None);
-            };
+        let mut found_boundary = false;
+        while let Some(node) = boundary {
             charge_node_visit(control, inputs.request_id)?;
             if pattern_matches(source, node, pattern, inputs.request_id, control)? {
+                found_boundary = true;
                 break;
             }
             boundary = source.parent(node);
+        }
+        if !found_boundary && numbered != context {
+            return Ok(None);
         }
     }
     sibling_position(source, numbered, context, count, inputs.request_id, control)

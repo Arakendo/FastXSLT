@@ -3145,13 +3145,13 @@ fn xslt10_single_number_honors_static_count_and_from_patterns() {
     resources
         .admit(
             STYLESHEET,
-            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc/chapter/*"/></out></xsl:template><xsl:template match="note"><n><xsl:number level="single" count="note" from="chapter" format="(01)"/></n></xsl:template><xsl:template match="inside"><n><xsl:number level="single" count="note" from="chapter"/></n></xsl:template><xsl:template match="other"/></xsl:stylesheet>"#.to_vec(),
+            br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:apply-templates select="doc/note | doc/chapter/*"/></out></xsl:template><xsl:template match="note"><n><xsl:number level="single" count="note" from="chapter" format="(01)"/></n></xsl:template><xsl:template match="inside"><n><xsl:number level="single" count="note" from="chapter"/></n></xsl:template><xsl:template match="other"/></xsl:stylesheet>"#.to_vec(),
         )
         .expect("admit stylesheet");
     resources
         .admit(
             SOURCE,
-            b"<doc><chapter><note/><other/><note><inside/></note><note/></chapter></doc>".to_vec(),
+            b"<doc><note/><note/><chapter><note/><other/><note><inside/></note><note/></chapter></doc>".to_vec(),
         )
         .expect("admit source");
     let snapshot = resources.seal();
@@ -3165,7 +3165,7 @@ fn xslt10_single_number_honors_static_count_and_from_patterns() {
 
     assert_eq!(
         results.by_request["number-pattern"].serialized,
-        "<out><n>(01)</n><n>(02)</n><n>(03)</n></out>"
+        "<out><n>(01)</n><n>(02)</n><n>(01)</n><n>(02)</n><n>(03)</n></out>"
     );
 }
 

@@ -1639,3 +1639,11 @@ maintained redistributable legacy suite becomes available.
   remains a visible fragment-format mismatch. The exact lower bound remains
   1,444.
   [Evidence](../Evidence/oasis-xslt10-numeric-composition-avt-2026-09-15.md)
+- 2026-09-15 -- Single-level numbering now distinguishes a context node that
+  matches the count pattern from a counted ancestor: the former remains
+  eligible without a matching `from` ancestor, while the latter still requires
+  the boundary. Lotus `numbering_numbering20` becomes exact; doubts-annotated
+  Microsoft `Number__84687`, whose suite metadata calls the behavior a gray
+  area referred for an erratum, moves to a visible legacy-expectation mismatch.
+  The conserved exact lower bound remains 1,444.
+  [Evidence](../Evidence/oasis-xslt10-single-number-self-before-from-boundary-2026-09-15.md)
