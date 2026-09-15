@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use super::{PathFailure, PathOrigin, parse_location_path};
+use super::{PathFailure, PathOrigin, parse_location_path, parse_xslt10_location_path};
 use crate::xdm::owned_tree_experiment::SourceLocation;
 
 fn location() -> SourceLocation {
@@ -33,6 +33,14 @@ fn permits_xpath_whitespace_before_node_test_parentheses() {
         let path = parse_location_path(expression, location()).expect("node test should parse");
         assert_eq!(path.steps[0], canonical);
     }
+}
+
+#[test]
+fn xslt10_exact_current_function_reuses_the_context_item_path() {
+    let current = parse_xslt10_location_path(" current() ", location()).expect("current path");
+    let context = parse_location_path(".", location()).expect("context path");
+
+    assert_eq!(current, context);
 }
 
 #[test]

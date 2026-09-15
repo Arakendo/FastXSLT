@@ -1095,7 +1095,11 @@ fn compile_location_path_or_missing_context(
     location: &SourceLocation,
     static_context: ValueStaticContext,
 ) -> Result<ValueExpression, CompileFailure> {
-    let path = parse_location_path(expression, location.clone()).or_else(|failure| {
+    let path = match static_context.compatibility {
+        ValueCompatibilityMode::Modern => parse_location_path(expression, location.clone()),
+        ValueCompatibilityMode::Xslt10 => parse_xslt10_location_path(expression, location.clone()),
+    }
+    .or_else(|failure| {
         let is_simple_qualified_path = expression.contains(':')
             && !expression.contains('*')
             && !expression.contains("::")

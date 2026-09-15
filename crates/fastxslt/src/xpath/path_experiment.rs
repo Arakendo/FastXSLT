@@ -752,6 +752,9 @@ pub(crate) fn parse_xslt10_location_path(
     expression: &str,
     location: SourceLocation,
 ) -> Result<LocationPath, PathFailure> {
+    if expression.trim() == "current()" {
+        return parse_location_path(".", location);
+    }
     let normalized = normalize_xslt10_following_sibling_boolean_predicate(expression);
     let expression = normalized.as_deref().unwrap_or(expression);
     if let Some((path, matches)) = xslt10_static_comparison_predicate(expression) {

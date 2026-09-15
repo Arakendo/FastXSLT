@@ -1499,3 +1499,10 @@ maintained redistributable legacy suite becomes available.
   frontier to an exact comment-copy result, raising the lower bound from 1,394
   to 1,395 without admitting arbitrary function steps.
   [Evidence](../Evidence/oasis-xslt10-node-test-whitespace-2026-09-14.md)
+- 2026-09-14 -- An exact XSLT 1.0 `current()` expression now lowers to the
+  existing context-item path, and the value-expression fallback consistently
+  uses the compatibility parser. Eight cases leave the generic function path
+  frontier; three become exact and five remain visible mismatches, raising the
+  lower bound from 1,395 to 1,398 without admitting composed `current()`
+  semantics.
+  [Evidence](../Evidence/oasis-xslt10-exact-current-select-2026-09-14.md)
