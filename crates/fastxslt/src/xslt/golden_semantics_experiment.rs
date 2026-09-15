@@ -1074,6 +1074,7 @@ pub(crate) enum BooleanExpression {
         comparison: StringComparison,
     },
     ContextStringEquals(String),
+    Xslt10ContextNumberIsNaN,
     ContextStringLengthEquals(usize),
     ContextPositionNotEqualSize(SourceLocation),
     ContextFocusEquals {

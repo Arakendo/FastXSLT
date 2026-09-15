@@ -101,16 +101,10 @@ pub(super) fn compile(
     {
         return Ok(comparison);
     }
-    if xslt10_compatibility
-        && let Some((left, right, equal)) = parse_xslt10_source_path_comparison(parsed)
-        && let Ok(left) = parse_location_path(left, location.clone())
-        && let Ok(right) = parse_location_path(right, location.clone())
+    if let Some(comparison) =
+        compile_xslt10_context_comparison(parsed, location, xslt10_compatibility)
     {
-        return Ok(BooleanExpression::Xslt10SourcePathStringComparison {
-            left,
-            right: Box::new(right),
-            equal,
-        });
+        return Ok(comparison);
     }
     parse_scalar(
         parsed,
@@ -119,6 +113,27 @@ pub(super) fn compile(
         comparison,
         xslt10_compatibility,
     )
+}
+
+fn compile_xslt10_context_comparison(
+    expression: &str,
+    location: &SourceLocation,
+    xslt10_compatibility: bool,
+) -> Option<BooleanExpression> {
+    if !xslt10_compatibility {
+        return None;
+    }
+    if is_xslt10_context_number_nan_test(expression) {
+        return Some(BooleanExpression::Xslt10ContextNumberIsNaN);
+    }
+    let (left, right, equal) = parse_xslt10_source_path_comparison(expression)?;
+    let left = parse_location_path(left, location.clone()).ok()?;
+    let right = parse_location_path(right, location.clone()).ok()?;
+    Some(BooleanExpression::Xslt10SourcePathStringComparison {
+        left,
+        right: Box::new(right),
+        equal,
+    })
 }
 
 fn compile_count_path_equality(
@@ -610,6 +625,18 @@ fn parse_context_string_length_equality(expression: &str) -> Option<usize> {
     (left.trim() == "string-length(.)")
         .then(|| right.trim().parse().ok())
         .flatten()
+}
+
+fn is_xslt10_context_number_nan_test(expression: &str) -> bool {
+    let Some((left, right)) = expression.split_once('=') else {
+        return false;
+    };
+    !left.contains('=')
+        && !right.contains('=')
+        && ((left.trim() == "string(number(.))"
+            && xpath_string_literal(right.trim()) == Some("NaN"))
+            || (right.trim() == "string(number(.))"
+                && xpath_string_literal(left.trim()) == Some("NaN")))
 }
 
 fn parse_count_path_equality(expression: &str) -> Option<(&str, usize)> {

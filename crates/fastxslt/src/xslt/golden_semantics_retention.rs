@@ -1047,7 +1047,9 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
                 + right.reference.capacity()
                 + right.descendant_local.as_ref().map_or(0, String::capacity)
         }
-        BooleanExpression::ContextStringLengthEquals(_) | BooleanExpression::Constant(_) => 0,
+        BooleanExpression::Xslt10ContextNumberIsNaN
+        | BooleanExpression::ContextStringLengthEquals(_)
+        | BooleanExpression::Constant(_) => 0,
     }
 }
 

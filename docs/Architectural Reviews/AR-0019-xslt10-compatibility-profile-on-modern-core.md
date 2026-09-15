@@ -1524,3 +1524,11 @@ maintained redistributable legacy suite becomes available.
   decimal scale. One case becomes exact, raising the lower bound from 1,410 to
   1,411 with no added mismatch or execution failure.
   [Evidence](../Evidence/oasis-xslt10-string-number-and-exact-decimal-formatting-2026-09-14.md)
+- 2026-09-14 -- The bounded XSLT 1.0 predicate
+  `string(number(.)) = 'NaN'` now compiles to a typed context-number test and
+  reuses controlled context string-value access. Unchanged Microsoft
+  `Number__84431` enters execution and produces the intended numeric branch
+  decisions, but remains an upstream doubts-annotated mismatch because its
+  expected result omits whitespace emitted by normative built-in template
+  processing. The exact lower bound remains 1,411.
+  [Evidence](../Evidence/oasis-xslt10-context-number-nan-predicate-2026-09-14.md)

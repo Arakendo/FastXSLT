@@ -4304,6 +4304,13 @@ host lifecycle.
   shared exact-decimal formatter's excessive intermediate scale. Retain long
   finite decimal values without admitting general nested arithmetic.
   [Evidence](../Evidence/oasis-xslt10-string-number-and-exact-decimal-formatting-2026-09-14.md)
+- [x] Compile the bounded XSLT 1.0 predicate
+  `string(number(.)) = 'NaN'` to a typed context-number test with controlled
+  source string access. Move unchanged Microsoft `Number__84431` into
+  execution, but leave its doubts-annotated source-whitespace difference as a
+  visible mismatch rather than crediting a pass or weakening built-in template
+  semantics.
+  [Evidence](../Evidence/oasis-xslt10-context-number-nan-predicate-2026-09-14.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

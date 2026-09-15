@@ -2712,6 +2712,9 @@ fn evaluate_ordinary_boolean(
         BooleanExpression::ContextStringEquals(expected) => {
             evaluate_context_string_equals(inputs, context, expected, control)
         }
+        BooleanExpression::Xslt10ContextNumberIsNaN => {
+            evaluate_xslt10_context_number_is_nan(inputs, context, control)
+        }
         BooleanExpression::ContextStringLengthEquals(expected) => {
             evaluate_context_string_length(inputs, context, *expected, control)
         }
@@ -3321,6 +3324,21 @@ fn evaluate_context_string_equals(
         .string_value_controlled(context, control)
         .map(|actual| actual == expected)
         .map_err(|failure| control_failure(failure, inputs.request_id))
+}
+
+fn evaluate_xslt10_context_number_is_nan(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    let lexical = source
+        .string_value_controlled(context, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&lexical).is_none())
 }
 
 fn evaluate_context_string_length(
