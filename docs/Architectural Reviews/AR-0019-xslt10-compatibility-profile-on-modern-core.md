@@ -1562,3 +1562,9 @@ maintained redistributable legacy suite becomes available.
   cases retain their upstream manual-comparison disposition. The exact lower
   bound rises from 1,413 to 1,426 without a new mismatch or execution failure.
   [Evidence](../Evidence/oasis-xslt10-static-introspection-2026-09-14.md)
+- 2026-09-14 -- Static XSLT 1.0 `substring()` calls now preserve XPath 1.0
+  NaN and positive/negative infinity behavior when their numeric operands are
+  bounded literal divisions. Five unchanged Lotus cases become exact, raising
+  the lower bound from 1,426 to 1,431 without broadening the modern fold or
+  adding a mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-non-finite-substring-2026-09-14.md)

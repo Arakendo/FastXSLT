@@ -121,6 +121,12 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     {
         return Ok(ValueExpression::LiteralString(literal));
     }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(literal) =
+            crate::xpath::static_string_experiment::fold_xslt10_substring_literals(expression)
+    {
+        return Ok(ValueExpression::LiteralString(literal));
+    }
     if let Some(literal) = crate::xpath::static_string_experiment::fold_string_function(expression)
     {
         return Ok(ValueExpression::LiteralString(literal));

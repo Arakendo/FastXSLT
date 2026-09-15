@@ -130,6 +130,14 @@ pub(crate) fn evaluate_translate(value: &str, search: &str, replacement: &str) -
 }
 
 pub(crate) fn fold_substring_literals(expression: &str) -> Option<String> {
+    fold_substring_with(expression, parse_finite_number)
+}
+
+pub(crate) fn fold_xslt10_substring_literals(expression: &str) -> Option<String> {
+    fold_substring_with(expression, parse_xpath10_static_number)
+}
+
+fn fold_substring_with(expression: &str, parse_number: fn(&str) -> Option<f64>) -> Option<String> {
     let expression = expression.trim();
     let arguments = ["substring", "fn:substring"].iter().find_map(|name| {
         expression
@@ -145,12 +153,23 @@ pub(crate) fn fold_substring_literals(expression: &str) -> Option<String> {
         return None;
     }
     let value = quoted_literal(value)?;
-    let start = parse_finite_number(start)?;
+    let start = parse_number(start)?;
     let length = match remainder.first() {
-        Some(length) => Some(parse_finite_number(length)?),
+        Some(length) => Some(parse_number(length)?),
         None => None,
     };
     Some(evaluate_substring(value, start, length))
+}
+
+fn parse_xpath10_static_number(source: &str) -> Option<f64> {
+    let source = source.trim();
+    if let Some((left, right)) = source.split_once(" div ") {
+        if right.contains(" div ") {
+            return None;
+        }
+        return Some(left.trim().parse::<f64>().ok()? / right.trim().parse::<f64>().ok()?);
+    }
+    source.parse::<f64>().ok()
 }
 
 pub(crate) fn evaluate_substring(value: &str, start: f64, length: Option<f64>) -> String {
@@ -279,6 +298,7 @@ mod tests {
     use super::{
         StaticStringFunctionValue, fold, fold_binary_literal_function, fold_concat_literals,
         fold_string_function, fold_substring_literals, fold_translate_literals,
+        fold_xslt10_substring_literals,
     };
 
     #[test]
@@ -391,5 +411,25 @@ mod tests {
             None
         );
         assert_eq!(fold_substring_literals("substring('abc', 1, 2, 3)"), None);
+    }
+
+    #[test]
+    fn folds_xpath10_substring_with_non_finite_division() {
+        for (source, expected) in [
+            ("substring('12345', 0 div 0, 3)", ""),
+            ("substring('12345', 1, 0 div 0)", ""),
+            ("substring('12345', -42, 1 div 0)", "12345"),
+            ("substring('12345', -1 div 0, 1 div 0)", ""),
+        ] {
+            assert_eq!(
+                fold_xslt10_substring_literals(source).as_deref(),
+                Some(expected),
+                "{source}"
+            );
+        }
+        assert_eq!(
+            fold_xslt10_substring_literals("substring(path, 0 div 0, 3)"),
+            None
+        );
     }
 }

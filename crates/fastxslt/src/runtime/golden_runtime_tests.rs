@@ -5186,6 +5186,35 @@ fn xslt10_static_introspection_is_namespace_aware_and_compiled_once() {
 }
 
 #[test]
+fn xslt10_substring_preserves_non_finite_numeric_rules() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-non-finite-substring:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-non-finite-substring:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, br"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/">[<xsl:value-of select="substring('12345', 0 div 0, 3)"/>]|[<xsl:value-of select="substring('12345', 1, 0 div 0)"/>]|[<xsl:value-of select="substring('12345', -42, 1 div 0)"/>]|[<xsl:value-of select="substring('12345', -1 div 0, 1 div 0)"/>]</xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile XPath 1.0 non-finite substring calls");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("non-finite-substring", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute non-finite substrings");
+    assert_eq!(
+        results.by_request["non-finite-substring"].serialized,
+        "[]|[]|[12345]|[]"
+    );
+}
+
+#[test]
 fn xpath10_ordered_literal_comparison_is_selected_at_compilation() {
     const SOURCE: &str = "urn:fastxslt:xpath10-ordered-literal:source";
     const LEGACY: &str = "urn:fastxslt:xpath10-ordered-literal:legacy";
