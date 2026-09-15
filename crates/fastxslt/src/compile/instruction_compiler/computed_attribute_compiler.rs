@@ -102,7 +102,9 @@ pub(super) fn compile_computed_attribute(
         && is_xslt_element(document, *for_each, "for-each")
         && uses_xslt10_compatibility(document, *for_each)
     {
-        compile_xslt10_for_each_string_value(document, *for_each)?
+        LiteralAttributeValue::Xslt10ForEachPathStringValue(
+            compile_xslt10_for_each_string_value_path(document, *for_each)?,
+        )
     } else {
         return Err(unsupported(
             "FXST1033",
@@ -117,10 +119,10 @@ pub(super) fn compile_computed_attribute(
     })
 }
 
-fn compile_xslt10_for_each_string_value(
+pub(super) fn compile_xslt10_for_each_string_value_path(
     document: &Document,
     for_each: NodeId,
-) -> Result<LiteralAttributeValue, CompileFailure> {
+) -> Result<crate::xpath::path_experiment::LocationPath, CompileFailure> {
     ensure_only_attributes(document, for_each, &["select"], "xsl:for-each")?;
     let select = required_attribute(document, for_each, None, "select")?;
     let children = meaningful_children(document, for_each);
@@ -155,7 +157,7 @@ fn compile_xslt10_for_each_string_value(
                 document.location(for_each),
             )
         })?;
-    Ok(LiteralAttributeValue::Xslt10ForEachPathStringValue(path))
+    Ok(path)
 }
 
 fn compile_static_attribute_name(

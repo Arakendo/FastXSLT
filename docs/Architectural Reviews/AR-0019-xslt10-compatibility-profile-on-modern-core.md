@@ -1661,3 +1661,10 @@ maintained redistributable legacy suite becomes available.
   exact, raising the lower bound from 1,447 to 1,448 without a new mismatch or
   execution failure.
   [Evidence](../Evidence/oasis-xslt10-computed-attribute-for-each-2026-09-15.md)
+- 2026-09-15 -- The same compile-validated `xsl:for-each` plus
+  `xsl:value-of select="."` path constructor now supplies content-valued named
+  template arguments. Runtime evaluation materializes one parentless temporary
+  text node, preserving XSLT 1.0 result-tree-fragment behavior and all existing
+  work controls. Unchanged Lotus `namedtemplate_namedtemplate11` becomes exact,
+  raising the lower bound from 1,448 to 1,449.
+  [Evidence](../Evidence/oasis-xslt10-template-argument-for-each-2026-09-15.md)

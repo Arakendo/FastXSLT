@@ -1924,6 +1924,33 @@ fn xslt10_computed_attribute_for_each_concatenates_selected_string_values() {
 }
 
 #[test]
+fn xslt10_template_argument_for_each_builds_one_temporary_text_value() {
+    const SOURCE: &str = "urn:fastxslt:argument-for-each:source";
+    const STYLESHEET: &str = "urn:fastxslt:argument-for-each:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:call-template name="emit"><xsl:with-param name="joined"><xsl:for-each select="doc/a"><xsl:value-of select="."/></xsl:for-each></xsl:with-param></xsl:call-template></xsl:template><xsl:template name="emit"><xsl:param name="joined"/><out><xsl:value-of select="$joined"/></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><a>one</a><a>two</a></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("argument-for-each", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["argument-for-each"].serialized,
+        "<out>onetwo</out>"
+    );
+}
+
+#[test]
 fn positional_patterns_and_avts_share_the_apply_templates_focus() {
     const POSITION_SOURCE: &str = "urn:fastxslt:position-focus:source";
     const POSITION_STYLESHEET: &str = "urn:fastxslt:position-focus:stylesheet";

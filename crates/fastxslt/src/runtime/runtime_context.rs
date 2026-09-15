@@ -194,6 +194,9 @@ pub(super) fn evaluate_template_arguments(
                         control,
                     )?
                 }
+                TemplateArgumentValue::Xslt10ForEachPathStringContent(path) => {
+                    evaluate_xslt10_for_each_path_string_content(inputs, context, path, control)?
+                }
                 TemplateArgumentValue::SourcePathStringComparison { left, right, equal } => {
                     let value = evaluate_source_path_string_comparison(
                         inputs, context, left, right, *equal, control,
@@ -213,6 +216,38 @@ pub(super) fn evaluate_template_arguments(
             ))
         })
         .collect()
+}
+
+fn evaluate_xslt10_for_each_path_string_content(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    control: &mut InvocationControl,
+) -> Result<InvocationParameterValue, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    control
+        .charge(WorkDomain::XsltInstruction, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let selected = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let mut value = String::new();
+    for node in selected {
+        control
+            .charge(WorkDomain::XsltInstruction, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        value.push_str(
+            &source
+                .string_value_controlled(node, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?,
+        );
+    }
+    Ok(InvocationParameterValue::TemporaryTree(
+        materialize_parentless_temporary_node(
+            TemporaryNodeKind::Text(value),
+            inputs.request_id,
+            control,
+        )?,
+    ))
 }
 
 fn integer_parameter(value: usize) -> InvocationParameterValue {

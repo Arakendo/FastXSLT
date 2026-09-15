@@ -675,6 +675,16 @@ fn compile_content_argument_value(
             },
         )));
     }
+    if let [for_each] = children.as_slice()
+        && is_xslt_element(document, *for_each, "for-each")
+        && uses_xslt10_compatibility(document, *for_each)
+    {
+        return Ok(TemplateArgumentValue::Xslt10ForEachPathStringContent(
+            super::computed_attribute_compiler::compile_xslt10_for_each_string_value_path(
+                document, *for_each,
+            )?,
+        ));
+    }
     Err(unsupported(
         "FXST1033",
         "the private call-template argument content slice permits literal text or one admitted XSLT 1.0 value constructor",

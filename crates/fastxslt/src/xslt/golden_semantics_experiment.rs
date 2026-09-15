@@ -1185,6 +1185,7 @@ pub(crate) enum TemplateArgumentValue {
     SourcePath(LocationPath),
     Xslt10SumPath(LocationPath),
     Xslt10Content(Box<Xslt10ContentArgument>),
+    Xslt10ForEachPathStringContent(LocationPath),
     SourcePathStringComparison {
         left: LocationPath,
         right: Box<LocationPath>,

@@ -1124,7 +1124,10 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
             | TemplateArgumentValue::ContextNodeName
             | TemplateArgumentValue::CurrentSourceNode => 0,
             TemplateArgumentValue::SourcePath(path)
-            | TemplateArgumentValue::Xslt10SumPath(path) => path.known_owned_capacity_bytes(),
+            | TemplateArgumentValue::Xslt10SumPath(path)
+            | TemplateArgumentValue::Xslt10ForEachPathStringContent(path) => {
+                path.known_owned_capacity_bytes()
+            }
             TemplateArgumentValue::Xslt10Content(content) => {
                 size_of_val(content.as_ref())
                     + vec_owned(&content.bindings, |binding| {
