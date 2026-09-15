@@ -475,6 +475,9 @@ fn parse_scalar(
     if let Some(length) = parse_context_string_length_equality(parsed) {
         return Ok(BooleanExpression::ContextStringLengthEquals(length));
     }
+    if let Some(comparison) = compile_context_string_comparison(parsed) {
+        return Ok(comparison);
+    }
     if let Some(expression) = compile_path_boolean_scalar(parsed, location, comparison)? {
         return Ok(expression);
     }
@@ -497,9 +500,6 @@ fn parse_scalar(
         return parse_location_path(parsed, location.clone())
             .map(BooleanExpression::NodeExists)
             .map_err(map_path_failure);
-    }
-    if let Some(literal) = parse_context_string_equality(parsed) {
-        return Ok(BooleanExpression::ContextStringEquals(literal.to_owned()));
     }
     if let Some((variable, integer)) = parsed.split_once('=') {
         let variable = variable.trim().strip_prefix('$').unwrap_or_default();
@@ -568,6 +568,16 @@ fn parse_scalar(
     }))
 }
 
+fn compile_context_string_comparison(expression: &str) -> Option<BooleanExpression> {
+    let (literal, equal) = parse_context_string_comparison(expression)?;
+    let equality = BooleanExpression::ContextStringEquals(literal.to_owned());
+    Some(if equal {
+        equality
+    } else {
+        BooleanExpression::Not(Box::new(equality))
+    })
+}
+
 fn compile_path_boolean_scalar(
     expression: &str,
     location: &SourceLocation,
@@ -630,15 +640,26 @@ fn is_context_position_not_equal_size(expression: &str) -> bool {
     )
 }
 
-fn parse_context_string_equality(expression: &str) -> Option<&str> {
-    let (left, right) = expression.split_once('=')?;
-    if left.trim() == "." {
-        xpath_string_literal(right.trim())
-    } else if right.trim() == "." {
-        xpath_string_literal(left.trim())
-    } else {
-        None
+fn parse_context_string_comparison(expression: &str) -> Option<(&str, bool)> {
+    for (operator, equal) in [("!=", false), ("=", true)] {
+        let Some((left, right)) = expression.split_once(operator) else {
+            continue;
+        };
+        if left.contains(['=', '!']) || right.contains(['=', '!']) {
+            return None;
+        }
+        let literal = if left.trim() == "." {
+            xpath_string_literal(right.trim())
+        } else if right.trim() == "." {
+            xpath_string_literal(left.trim())
+        } else {
+            None
+        };
+        if let Some(literal) = literal {
+            return Some((literal, equal));
+        }
     }
+    None
 }
 
 fn parse_context_string_length_equality(expression: &str) -> Option<usize> {
@@ -686,10 +707,15 @@ fn parse_path_boolean_expression(
     location: &SourceLocation,
     comparison: StringComparison,
 ) -> Result<Option<BooleanExpression>, CompileFailure> {
-    if let Some(lexical) = parse_context_name_equality(expression) {
-        return Ok(Some(BooleanExpression::ContextNodeNameEquals {
+    if let Some((lexical, equal)) = parse_context_name_comparison(expression) {
+        let equality = BooleanExpression::ContextNodeNameEquals {
             lexical: lexical.to_owned(),
             comparison,
+        };
+        return Ok(Some(if equal {
+            equality
+        } else {
+            BooleanExpression::Not(Box::new(equality))
         }));
     }
     if let Some((path, value)) = parse_path_context_string_predicate(expression) {
@@ -731,10 +757,21 @@ fn parse_path_boolean_expression(
     Ok(None)
 }
 
-fn parse_context_name_equality(expression: &str) -> Option<&str> {
-    let (left, right) = expression.split_once('=')?;
-    parse_context_name_operand(left.trim(), right.trim())
-        .or_else(|| parse_context_name_operand(right.trim(), left.trim()))
+fn parse_context_name_comparison(expression: &str) -> Option<(&str, bool)> {
+    for (operator, equal) in [("!=", false), ("=", true)] {
+        let Some((left, right)) = expression.split_once(operator) else {
+            continue;
+        };
+        if left.contains(['=', '!']) || right.contains(['=', '!']) {
+            return None;
+        }
+        if let Some(lexical) = parse_context_name_operand(left.trim(), right.trim())
+            .or_else(|| parse_context_name_operand(right.trim(), left.trim()))
+        {
+            return Some((lexical, equal));
+        }
+    }
+    None
 }
 
 fn parse_context_name_operand<'a>(name: &str, literal: &'a str) -> Option<&'a str> {

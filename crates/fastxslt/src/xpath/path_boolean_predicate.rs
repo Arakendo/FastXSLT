@@ -18,6 +18,10 @@ pub(super) enum PathBooleanPredicate {
         value: String,
     },
     ContextStringEquals(String),
+    ContextNameComparison {
+        value: String,
+        equal: bool,
+    },
     ContextNameStartsWith(String),
     ContextNameLengthEquals(usize),
     ChildElementCountEquals {
@@ -77,6 +81,7 @@ impl PathBooleanPredicate {
                 child_path_capacity(left) + child_path_capacity(right)
             }
             Self::ContextStringEquals(value)
+            | Self::ContextNameComparison { value, .. }
             | Self::ContextNameStartsWith(value)
             | Self::DescendantElementComparison { value, .. } => value.capacity(),
             Self::ContextNameLengthEquals(_)
@@ -127,6 +132,9 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
     }
     if let Some(value) = parse_context_string_equality(predicate) {
         return Some(PathBooleanPredicate::ContextStringEquals(value));
+    }
+    if let Some((value, equal)) = parse_context_name_comparison(predicate) {
+        return Some(PathBooleanPredicate::ContextNameComparison { value, equal });
     }
     if let Some(prefix) = parse_context_name_starts_with(predicate) {
         return Some(PathBooleanPredicate::ContextNameStartsWith(prefix));
@@ -191,6 +199,10 @@ pub(super) fn evaluate(
         PathBooleanPredicate::ContextStringEquals(value) => {
             control.charge(WorkDomain::XPathOperation, 1)?;
             Ok(document.string_value(node) == *value)
+        }
+        PathBooleanPredicate::ContextNameComparison { value, equal } => {
+            control.charge(WorkDomain::XPathOperation, 1)?;
+            Ok((context_lexical_name(document, node) == *value) == *equal)
         }
         PathBooleanPredicate::ContextNameStartsWith(prefix) => {
             control.charge(WorkDomain::XPathOperation, 1)?;
@@ -549,6 +561,28 @@ fn parse_context_name_starts_with(predicate: &str) -> Option<String> {
     matches!(name.trim(), "name()" | "name(.)")
         .then(|| xpath_string_literal(prefix.trim()).map(str::to_owned))
         .flatten()
+}
+
+fn parse_context_name_comparison(predicate: &str) -> Option<(String, bool)> {
+    parse_context_name_comparison_operator(predicate, "!=", false)
+        .or_else(|| parse_context_name_comparison_operator(predicate, "=", true))
+}
+
+fn parse_context_name_comparison_operator(
+    predicate: &str,
+    operator: &str,
+    equal: bool,
+) -> Option<(String, bool)> {
+    let (left, right) = split_top_level_predicate_operator(predicate, operator)?;
+    let left = left.trim();
+    let right = right.trim();
+    if matches!(left, "name()" | "name(.)") {
+        xpath_string_literal(right).map(|value| (value.to_owned(), equal))
+    } else if matches!(right, "name()" | "name(.)") {
+        xpath_string_literal(left).map(|value| (value.to_owned(), equal))
+    } else {
+        None
+    }
 }
 
 fn parse_context_name_length_equality(predicate: &str) -> Option<usize> {

@@ -1582,3 +1582,9 @@ maintained redistributable legacy suite becomes available.
   lower bound from 1,436 to 1,437 while modern and dynamic nested conversions
   remain rejected.
   [Evidence](../Evidence/oasis-xslt10-nested-static-conversion-2026-09-14.md)
+- 2026-09-15 -- Typed lexical context-name comparison now serves both path
+  predicates and instruction conditions, while context string-value
+  inequality reuses the existing equality plan through negation. Unchanged
+  Lotus `sort_sort37` and `node_node15` become exact, raising the lower bound
+  from 1,437 to 1,439 without adding a mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-lexical-context-comparison-2026-09-15.md)

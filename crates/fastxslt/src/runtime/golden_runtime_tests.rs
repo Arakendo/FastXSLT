@@ -2230,7 +2230,7 @@ fn local_context_name_variables_preserve_source_prefixes() {
     let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:example">
       <xsl:output omit-xml-declaration="yes"/>
       <xsl:template match="/"><xsl:apply-templates select="p:doc"/></xsl:template>
-      <xsl:template match="p:doc"><xsl:variable name="named" select="name(.)"/><out><xsl:value-of select="$named"/><xsl:if test="name()='p:doc'"><hit/></xsl:if><xsl:if test="name(.)='doc'"><bad/></xsl:if></out></xsl:template>
+      <xsl:template match="p:doc"><xsl:variable name="named" select="name(.)"/><out><xsl:value-of select="$named"/><xsl:if test="name()='p:doc'"><hit/></xsl:if><xsl:if test="name(.)='doc'"><bad/></xsl:if><xsl:if test="name(.)!='doc'"><different/></xsl:if><xsl:if test=".!='content'"><nonempty/></xsl:if></out></xsl:template>
     </xsl:stylesheet>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
     resources
@@ -2250,7 +2250,7 @@ fn local_context_name_variables_preserve_source_prefixes() {
         execute_transform_set(builder.seal()).expect("execute local context-name variable");
     assert_eq!(
         results.by_request["local-context-name"].serialized,
-        r#"<out xmlns:p="urn:example">p:doc<hit></hit></out>"#
+        r#"<out xmlns:p="urn:example">p:doc<hit></hit><different></different><nonempty></nonempty></out>"#
     );
 }
 

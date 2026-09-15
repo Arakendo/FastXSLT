@@ -1773,12 +1773,27 @@ fn path_boolean_predicates_project_the_context_lexical_name() {
         &parse_location_path("*[string-length(name(.))=3]", location())
             .expect("name length predicate should parse"),
     );
+    let equal = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("*[name()='p:fizz']", location())
+            .expect("name equality predicate should parse"),
+    );
+    let not_equal = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("*['bar'!=name(.)]", location())
+            .expect("reversed name inequality predicate should parse"),
+    );
 
     assert_eq!(starts_with.len(), 1);
     assert_eq!(document.name(starts_with[0]).unwrap().local, "foo");
     assert_eq!(length.len(), 2);
     assert_eq!(document.name(length[0]).unwrap().local, "foo");
     assert_eq!(document.name(length[1]).unwrap().local, "bar");
+    assert_eq!(equal.len(), 1);
+    assert_eq!(document.name(equal[0]).unwrap().local, "fizz");
+    assert_eq!(not_equal, [starts_with[0], equal[0]]);
 }
 
 #[test]

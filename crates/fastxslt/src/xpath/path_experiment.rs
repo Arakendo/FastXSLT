@@ -1201,6 +1201,8 @@ fn parse_final_boolean_predicate(expression: &str) -> (&str, Option<Box<PathBool
             && !predicate.contains(" >= ")
             && !predicate.contains("starts-with(name(")
             && !predicate.contains("string-length(name(")
+            && !predicate.contains("name()")
+            && !predicate.contains("name(.)")
             && !predicate.contains("count(./")
             && !predicate.contains("string-length(@")
             && !predicate.contains(" = ")
