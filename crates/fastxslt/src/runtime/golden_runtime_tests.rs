@@ -3894,6 +3894,37 @@ fn literal_result_attribute_name_avt_uses_the_retained_source_lexical_prefix() {
 }
 
 #[test]
+fn literal_result_attribute_composes_multiple_source_paths() {
+    const SOURCE: &str = "urn:fastxslt:multi-avt:source";
+    const STYLESHEET: &str = "urn:fastxslt:multi-avt:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc><text name="a{" size="1}">   {{} </text><text name="b}" size="{">   { </text></doc>"#.to_vec(),
+        )
+        .expect("admit brace-bearing source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:for-each select="//text"><a href="{@name}{@size}{text()}"/></xsl:for-each></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile multi-path AVT");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("multi-path-avt", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute multi-path AVT");
+    assert_eq!(
+        results.by_request["multi-path-avt"].serialized,
+        "<a href=\"a{1}   {{} \"></a><a href=\"b}{   { \"></a>"
+    );
+}
+
+#[test]
 fn node_name_path_returns_retained_element_and_attribute_lexical_names() {
     const SOURCE: &str = "urn:fastxslt:name-path:source";
     const STYLESHEET: &str = "urn:fastxslt:name-path:stylesheet";

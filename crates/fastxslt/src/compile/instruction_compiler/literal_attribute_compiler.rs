@@ -3,7 +3,9 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::path_experiment::parse_location_path;
-use crate::xslt::golden_semantics_experiment::{LiteralAttribute, LiteralAttributeValue};
+use crate::xslt::golden_semantics_experiment::{
+    LiteralAttribute, LiteralAttributeValue, Xslt10AvtExpression, Xslt10AvtPart,
+};
 
 use super::{
     CompileFailure, XSLT_NAMESPACE, invalid, is_ascii_ncname, parse_xslt10_normalize_space_path,
@@ -84,6 +86,9 @@ fn parse_literal_attribute_value(
         if let Some(value) = parse_variable_and_path(lexical, location) {
             return Ok(value);
         }
+        if let Some(value) = parse_multi_path_avt(lexical, location) {
+            return Ok(LiteralAttributeValue::Xslt10MultiPathAvt(value));
+        }
         if let Some(value) = parse_single_dynamic_attribute_value(lexical, location) {
             return Ok(value);
         }
@@ -94,6 +99,47 @@ fn parse_literal_attribute_value(
         ));
     }
     Ok(LiteralAttributeValue::Text(lexical.to_owned()))
+}
+
+fn parse_multi_path_avt(lexical: &str, location: &SourceLocation) -> Option<Xslt10AvtExpression> {
+    const MAX_PARTS: usize = 32;
+    let mut characters = lexical.chars().peekable();
+    let mut parts = Vec::new();
+    let mut text = String::new();
+    let mut dynamic_parts = 0_usize;
+    while let Some(character) = characters.next() {
+        match character {
+            '{' if characters.next_if_eq(&'{').is_some() => text.push('{'),
+            '}' if characters.next_if_eq(&'}').is_some() => text.push('}'),
+            '{' => {
+                push_avt_text(&mut parts, &mut text);
+                let mut expression = String::new();
+                loop {
+                    match characters.next() {
+                        Some('}') => break,
+                        Some('{') | None => return None,
+                        Some(character) => expression.push(character),
+                    }
+                }
+                let path = parse_location_path(expression.trim(), location.clone()).ok()?;
+                parts.push(Xslt10AvtPart::Path(path));
+                dynamic_parts += 1;
+            }
+            '}' => return None,
+            character => text.push(character),
+        }
+        if parts.len() > MAX_PARTS {
+            return None;
+        }
+    }
+    push_avt_text(&mut parts, &mut text);
+    (dynamic_parts >= 2 && parts.len() <= MAX_PARTS).then_some(Xslt10AvtExpression { parts })
+}
+
+fn push_avt_text(parts: &mut Vec<Xslt10AvtPart>, text: &mut String) {
+    if !text.is_empty() {
+        parts.push(Xslt10AvtPart::Text(std::mem::take(text)));
+    }
 }
 
 fn parse_variable_and_path(
@@ -274,7 +320,7 @@ fn unescape_static_braces(lexical: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use crate::xdm::owned_tree_experiment::SourceLocation;
-    use crate::xslt::golden_semantics_experiment::LiteralAttributeValue;
+    use crate::xslt::golden_semantics_experiment::{LiteralAttributeValue, Xslt10AvtPart};
 
     use super::parse_literal_attribute_value;
 
@@ -428,5 +474,17 @@ mod tests {
                 .expect("a static string AVT should compile"),
             LiteralAttributeValue::Text("beforeAll Doneafter".to_owned())
         );
+    }
+
+    #[test]
+    fn compiles_multiple_source_paths_and_escaped_braces_in_one_avt() {
+        let compiled = parse_literal_attribute_value("{{{@name}{@size}{text()}}}", &location())
+            .expect("the bounded multi-path AVT should compile");
+        let LiteralAttributeValue::Xslt10MultiPathAvt(expression) = compiled else {
+            panic!("expected the typed multi-path AVT representation");
+        };
+        assert_eq!(expression.parts.len(), 5);
+        assert!(matches!(expression.parts[0], Xslt10AvtPart::Text(ref value) if value == "{"));
+        assert!(matches!(expression.parts[4], Xslt10AvtPart::Text(ref value) if value == "}"));
     }
 }

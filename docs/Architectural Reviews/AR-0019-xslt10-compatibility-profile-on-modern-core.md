@@ -1600,3 +1600,10 @@ maintained redistributable legacy suite becomes available.
   bound from 1,441 to 1,442; Lotus `axes_axes129` advances only to its later
   namespace-axis frontier and remains excluded from the pass count.
   [Evidence](../Evidence/oasis-xslt10-literal-result-avt-scalars-2026-09-15.md)
+- 2026-09-15 -- A bounded typed AVT can now compose ordered static text and
+  multiple already-admitted source paths. Microsoft `AVTs__77582` initializes
+  and executes with the expected brace-bearing attribute values, but remains a
+  visible XML-comparison mismatch because of serializer-added whitespace
+  between expected top-level fragment elements. The exact lower bound remains
+  1,442; the comparator was not weakened.
+  [Evidence](../Evidence/oasis-xslt10-multi-path-avt-2026-09-15.md)

@@ -12,7 +12,7 @@ use super::{
     MatchStringPredicate, MatchedTemplate, NamedTemplate, NamespaceBinding, OutputSettings,
     SequenceItemExpression, SortKey, SortSelect, SourceLocation, StylesheetProgram, Template,
     TemplateArgument, TemplateArgumentValue, TemplateParameter, TemplateParameterDefault,
-    ValueExpression, VariableFilteredElementPath, Xslt10ConcatPart,
+    ValueExpression, VariableFilteredElementPath, Xslt10AvtPart, Xslt10ConcatPart,
 };
 
 impl StylesheetProgram {
@@ -1166,6 +1166,12 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
         }
         LiteralAttributeValue::Xslt10Concat(expression) => {
             size_of_val(expression.as_ref()) + xslt10_concat_owned(expression)
+        }
+        LiteralAttributeValue::Xslt10MultiPathAvt(expression) => {
+            vec_owned(&expression.parts, |part| match part {
+                Xslt10AvtPart::Text(value) => value.capacity(),
+                Xslt10AvtPart::Path(path) => path.known_owned_capacity_bytes(),
+            })
         }
         LiteralAttributeValue::Xslt10TextAndPath {
             prefix,

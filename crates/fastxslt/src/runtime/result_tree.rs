@@ -9,7 +9,8 @@ use crate::xpath::path_experiment::{
     LocationPath, evaluate_location_path_controlled, evaluate_location_path_union_controlled,
 };
 use crate::xslt::golden_semantics_experiment::{
-    ComputedAttribute, LiteralAttribute, LiteralAttributeValue, Xslt10ConcatExpression,
+    ComputedAttribute, LiteralAttribute, LiteralAttributeValue, Xslt10AvtExpression, Xslt10AvtPart,
+    Xslt10ConcatExpression,
 };
 
 use super::runtime_context::{RuntimeVariables, SequenceInputs};
@@ -304,20 +305,19 @@ fn materialize_attribute(
         LiteralAttributeValue::Variable(variable) => {
             attribute_variable_string(variable, location, context, control)?
         }
-        LiteralAttributeValue::CountSourceNodeVariable(_) => {
-            unreachable!("source-node counts are materialized by the computed-attribute owner")
+        LiteralAttributeValue::CountSourceNodeVariable(_)
+        | LiteralAttributeValue::CountSourcePath(_)
+        | LiteralAttributeValue::CountSourcePathUnion(_) => {
+            unreachable!("source counts are materialized by the computed-attribute owner")
         }
-        LiteralAttributeValue::CountSourcePath(_) => {
-            unreachable!("source-path counts are materialized by the computed-attribute owner")
-        }
-        LiteralAttributeValue::CountSourcePathUnion(_) => unreachable!(
-            "source-path union counts are materialized by the computed-attribute owner"
-        ),
         LiteralAttributeValue::ContextNormalizedStringLength => unreachable!(
             "normalized context lengths are materialized by the computed-attribute owner"
         ),
         LiteralAttributeValue::Xslt10Concat(_) => {
             unreachable!("dynamic computed-attribute values are materialized by their owner")
+        }
+        LiteralAttributeValue::Xslt10MultiPathAvt(expression) => {
+            multi_path_avt(expression, location, context, control)?
         }
         LiteralAttributeValue::Xslt10TextAndPath {
             prefix,
@@ -392,6 +392,24 @@ fn materialize_attribute(
         name: name.clone(),
         value,
     })
+}
+
+fn multi_path_avt(
+    expression: &Xslt10AvtExpression,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let mut value = String::new();
+    for part in &expression.parts {
+        match part {
+            Xslt10AvtPart::Text(text) => value.push_str(text),
+            Xslt10AvtPart::Path(path) => value.push_str(&materialize_source_path_avt(
+                "", path, "", location, context, control,
+            )?),
+        }
+    }
+    Ok(value)
 }
 
 fn context_local_name(context: &AttributeContext<'_>) -> String {

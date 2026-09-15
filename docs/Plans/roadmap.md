@@ -4367,6 +4367,11 @@ host lifecycle.
   `name()`/`name(.)`, and keep namespace axes, multiple expressions, and
   general dynamic AVT evaluation outside the slice.
   [Evidence](../Evidence/oasis-xslt10-literal-result-avt-scalars-2026-09-15.md)
+- [x] Admit a bounded typed multi-path literal-result AVT without introducing a
+  general expression evaluator. Preserve ordered parts, source brace
+  characters, and existing path work accounting; keep the resulting
+  serializer-whitespace mismatch visible rather than weakening XML comparison.
+  [Evidence](../Evidence/oasis-xslt10-multi-path-avt-2026-09-15.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

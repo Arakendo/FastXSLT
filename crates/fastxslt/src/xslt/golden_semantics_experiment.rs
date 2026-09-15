@@ -942,6 +942,17 @@ pub(crate) struct Xslt10ConcatExpression {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10AvtExpression {
+    pub(crate) parts: Vec<Xslt10AvtPart>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Xslt10AvtPart {
+    Text(String),
+    Path(LocationPath),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Xslt10ConcatPart {
     Literal(String),
     Variable(String),
@@ -1203,6 +1214,7 @@ pub(crate) enum LiteralAttributeValue {
     CountSourcePathUnion(Vec<LocationPath>),
     ContextNormalizedStringLength,
     Xslt10Concat(Box<Xslt10ConcatExpression>),
+    Xslt10MultiPathAvt(Xslt10AvtExpression),
     Xslt10TextAndPath {
         prefix: String,
         path: LocationPath,
