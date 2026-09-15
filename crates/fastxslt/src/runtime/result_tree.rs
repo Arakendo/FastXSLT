@@ -138,33 +138,20 @@ pub(super) fn materialize_computed_attributes(
                     control,
                 )?);
             }
+            LiteralAttributeValue::Xslt10ForEachPathStringValue(path) => {
+                materialized.push(materialize_for_each_attribute(
+                    attribute, path, &context, control,
+                )?);
+            }
             LiteralAttributeValue::Xslt10Concat(expression) => {
                 materialized.push(materialize_concat_attribute(
                     inputs, attribute, expression, variables, focus, request_id, control,
                 )?);
             }
             LiteralAttributeValue::CountSourceNodeVariable(variable) => {
-                control
-                    .charge(WorkDomain::ResultNode, 1)
-                    .and_then(|()| control.charge(WorkDomain::XPathOperation, 1))
-                    .map_err(|failure| control_failure(failure, request_id))?;
-                let nodes = variables
-                    .source_nodes(inputs.globals, variable)
-                    .ok_or_else(|| {
-                        failure_at(
-                            "XPTY0004",
-                            FailureCategory::Invalid,
-                            Some(request_id),
-                            attribute.location.clone(),
-                            format!(
-                                "computed-attribute count requires a source-node variable: ${variable}"
-                            ),
-                        )
-                    })?;
-                materialized.push(ResultAttribute {
-                    name: attribute.name.clone(),
-                    value: nodes.len().to_string(),
-                });
+                materialized.push(materialize_source_node_variable_count(
+                    inputs, attribute, variable, variables, request_id, control,
+                )?);
             }
             LiteralAttributeValue::CountSourcePath(path) => {
                 materialized.push(materialize_source_path_count(
@@ -214,6 +201,48 @@ pub(super) fn materialize_computed_attributes(
         }
     }
     Ok(materialized)
+}
+
+fn materialize_for_each_attribute(
+    attribute: &ComputedAttribute,
+    path: &LocationPath,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<ResultAttribute, ExecutionFailure> {
+    charge_result_node(control, context.request_id)?;
+    Ok(ResultAttribute {
+        name: attribute.name.clone(),
+        value: materialize_for_each_path_string_value(path, &attribute.location, context, control)?,
+    })
+}
+
+fn materialize_source_node_variable_count(
+    inputs: &SequenceInputs<'_>,
+    attribute: &ComputedAttribute,
+    variable: &str,
+    variables: &RuntimeVariables,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<ResultAttribute, ExecutionFailure> {
+    control
+        .charge(WorkDomain::ResultNode, 1)
+        .and_then(|()| control.charge(WorkDomain::XPathOperation, 1))
+        .map_err(|failure| control_failure(failure, request_id))?;
+    let nodes = variables
+        .source_nodes(inputs.globals, variable)
+        .ok_or_else(|| {
+            failure_at(
+                "XPTY0004",
+                FailureCategory::Invalid,
+                Some(request_id),
+                attribute.location.clone(),
+                format!("computed-attribute count requires a source-node variable: ${variable}"),
+            )
+        })?;
+    Ok(ResultAttribute {
+        name: attribute.name.clone(),
+        value: nodes.len().to_string(),
+    })
 }
 
 fn materialize_number_attribute(
@@ -314,7 +343,8 @@ fn materialize_attribute(
         LiteralAttributeValue::ContextNormalizedStringLength => unreachable!(
             "normalized context lengths are materialized by the computed-attribute owner"
         ),
-        LiteralAttributeValue::Xslt10Concat(_) => {
+        LiteralAttributeValue::Xslt10ForEachPathStringValue(_)
+        | LiteralAttributeValue::Xslt10Concat(_) => {
             unreachable!("dynamic computed-attribute values are materialized by their owner")
         }
         LiteralAttributeValue::Xslt10MultiPathAvt(expression) => {
@@ -398,6 +428,40 @@ fn materialize_attribute(
         name: name.clone(),
         value,
     })
+}
+
+fn materialize_for_each_path_string_value(
+    path: &LocationPath,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let Some((source, node)) = context.source_focus else {
+        return Err(failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(context.request_id),
+            location.clone(),
+            "the computed-attribute for-each requires a source-node context",
+        ));
+    };
+    control
+        .charge(WorkDomain::XsltInstruction, 1)
+        .map_err(|failure| control_failure(failure, context.request_id))?;
+    let selected = evaluate_location_path_controlled(source, node, path, control)
+        .map_err(|failure| control_failure(failure, context.request_id))?;
+    let mut value = String::new();
+    for selected in selected {
+        control
+            .charge(WorkDomain::XsltInstruction, 1)
+            .map_err(|failure| control_failure(failure, context.request_id))?;
+        value.push_str(
+            &source
+                .string_value_controlled(selected, control)
+                .map_err(|failure| control_failure(failure, context.request_id))?,
+        );
+    }
+    Ok(value)
 }
 
 fn charge_result_node(

@@ -1897,6 +1897,33 @@ fn ignored_stylesheet_comments_do_not_split_literal_text_runs() {
 }
 
 #[test]
+fn xslt10_computed_attribute_for_each_concatenates_selected_string_values() {
+    const SOURCE: &str = "urn:fastxslt:computed-attribute-for-each:source";
+    const STYLESHEET: &str = "urn:fastxslt:computed-attribute-for-each:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:attribute name="joined"><xsl:for-each select="doc/a"><xsl:value-of select="."/></xsl:for-each></xsl:attribute></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><a>one</a><a>two</a></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("computed-attribute-for-each", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["computed-attribute-for-each"].serialized,
+        "<out joined=\"onetwo\"></out>"
+    );
+}
+
+#[test]
 fn positional_patterns_and_avts_share_the_apply_templates_focus() {
     const POSITION_SOURCE: &str = "urn:fastxslt:position-focus:source";
     const POSITION_STYLESHEET: &str = "urn:fastxslt:position-focus:stylesheet";

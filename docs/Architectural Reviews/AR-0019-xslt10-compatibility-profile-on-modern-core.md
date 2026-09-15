@@ -1653,3 +1653,11 @@ maintained redistributable legacy suite becomes available.
   become exact, one becomes a visible mismatch, and four advance to later
   explicit boundaries, raising the lower bound from 1,444 to 1,447.
   [Evidence](../Evidence/oasis-xslt10-foreign-top-level-data-2026-09-15.md)
+- 2026-09-15 -- One bounded computed-attribute constructor now retains an
+  existing controlled path for `xsl:for-each` with exactly one
+  `xsl:value-of select="."` body. Execution concatenates selected source-node
+  string values while preserving path, string traversal, instruction, budget,
+  and cancellation controls. Unchanged Lotus `attribset_attribset25` becomes
+  exact, raising the lower bound from 1,447 to 1,448 without a new mismatch or
+  execution failure.
+  [Evidence](../Evidence/oasis-xslt10-computed-attribute-for-each-2026-09-15.md)

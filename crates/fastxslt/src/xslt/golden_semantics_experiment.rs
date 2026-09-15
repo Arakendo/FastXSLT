@@ -1215,6 +1215,7 @@ pub(crate) enum LiteralAttributeValue {
     CountSourcePath(LocationPath),
     CountSourcePathUnion(Vec<LocationPath>),
     ContextNormalizedStringLength,
+    Xslt10ForEachPathStringValue(LocationPath),
     Xslt10Concat(Box<Xslt10ConcatExpression>),
     Xslt10MultiPathAvt(Xslt10AvtExpression),
     Xslt10PathStringLiteralComparison {

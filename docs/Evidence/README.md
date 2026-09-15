@@ -18,6 +18,7 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Numeric-Composition AVT](oasis-xslt10-numeric-composition-avt-2026-09-15.md)
 - [OASIS XSLT 1.0 Single Number Self Before `from` Boundary](oasis-xslt10-single-number-self-before-from-boundary-2026-09-15.md)
 - [OASIS XSLT 1.0 Foreign Top-Level Data](oasis-xslt10-foreign-top-level-data-2026-09-15.md)
+- [OASIS XSLT 1.0 Computed-Attribute `for-each`](oasis-xslt10-computed-attribute-for-each-2026-09-15.md)
 - [OASIS XSLT 1.0 Source-Node Union Variable](oasis-xslt10-source-node-union-variable-2026-09-08.md)
 - [OASIS XSLT 1.0 Variable/Path Apply Union](oasis-xslt10-variable-path-apply-union-2026-09-08.md)
 - [OASIS XSLT 1.0 Source-Variable Value Path](oasis-xslt10-source-variable-value-path-2026-09-08.md)

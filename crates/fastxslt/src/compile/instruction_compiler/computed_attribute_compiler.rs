@@ -98,6 +98,11 @@ pub(super) fn compile_computed_attribute(
         LiteralAttributeValue::Number(Box::new(super::number_compiler::compile(
             document, *number,
         )?))
+    } else if let [for_each] = children.as_slice()
+        && is_xslt_element(document, *for_each, "for-each")
+        && uses_xslt10_compatibility(document, *for_each)
+    {
+        compile_xslt10_for_each_string_value(document, *for_each)?
     } else {
         return Err(unsupported(
             "FXST1033",
@@ -110,6 +115,47 @@ pub(super) fn compile_computed_attribute(
         value,
         location: document.location(element).clone(),
     })
+}
+
+fn compile_xslt10_for_each_string_value(
+    document: &Document,
+    for_each: NodeId,
+) -> Result<LiteralAttributeValue, CompileFailure> {
+    ensure_only_attributes(document, for_each, &["select"], "xsl:for-each")?;
+    let select = required_attribute(document, for_each, None, "select")?;
+    let children = meaningful_children(document, for_each);
+    let [value_of] = children.as_slice() else {
+        return Err(unsupported(
+            "FXST1033",
+            "the private XSLT 1.0 computed-attribute for-each slice requires exactly one xsl:value-of child",
+            document.location(for_each),
+        ));
+    };
+    if !is_xslt_element(document, *value_of, "value-of") {
+        return Err(unsupported(
+            "FXST1033",
+            "the private XSLT 1.0 computed-attribute for-each slice requires exactly one xsl:value-of child",
+            document.location(for_each),
+        ));
+    }
+    ensure_only_attributes(document, *value_of, &["select"], "xsl:value-of")?;
+    ensure_no_meaningful_children(document, *value_of, "xsl:value-of")?;
+    if required_attribute(document, *value_of, None, "select")?.trim() != "." {
+        return Err(unsupported(
+            "FXST1033",
+            "the private XSLT 1.0 computed-attribute for-each slice requires xsl:value-of select=\".\"",
+            document.location(*value_of),
+        ));
+    }
+    let path =
+        parse_location_path(select.trim(), document.location(for_each).clone()).map_err(|_| {
+            unsupported(
+                "FXXP1012",
+                format!("unsupported computed-attribute for-each selection: {select}"),
+                document.location(for_each),
+            )
+        })?;
+    Ok(LiteralAttributeValue::Xslt10ForEachPathStringValue(path))
 }
 
 fn compile_static_attribute_name(
