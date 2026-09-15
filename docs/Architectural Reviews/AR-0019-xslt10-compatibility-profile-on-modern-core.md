@@ -1553,3 +1553,12 @@ maintained redistributable legacy suite becomes available.
   raising the lower bound from 1,412 to 1,413 without a new mismatch or
   execution failure.
   [Evidence](../Evidence/oasis-xslt10-position-modulo-boolean-2026-09-14.md)
+- 2026-09-14 -- Literal-QName XSLT 1.0 implementation introspection now folds
+  during stylesheet compilation. `system-property()` supplies the required
+  XSLT properties, `function-available()` reports the admitted function
+  surface, and `element-available()` resolves the expression site's default
+  namespace before reporting admitted instructions. Fifteen unchanged cases
+  enter execution: thirteen become exact XML results and two vendor-property
+  cases retain their upstream manual-comparison disposition. The exact lower
+  bound rises from 1,413 to 1,426 without a new mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-static-introspection-2026-09-14.md)

@@ -5157,6 +5157,35 @@ fn context_position_modulo_predicates_use_the_dynamic_focus() {
 }
 
 #[test]
+fn xslt10_static_introspection_is_namespace_aware_and_compiled_once() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-static-introspection:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-static-introspection:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, br"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="system-property('xsl:version')"/>|<xsl:value-of select="function-available('current')"/>|<xsl:value-of select="function-available('format-number')"/>|<xsl:value-of select="function-available('missing')"/>|<xsl:value-of select="element-available('xsl:value-of')"/>|<xsl:value-of select="element-available('xsl:stylesheet')"/>|<xsl:value-of select="element-available('value-of')"/>|<xsl:value-of xmlns="http://www.w3.org/1999/XSL/Transform" select="element-available('apply-templates')"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile static introspection functions");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("static-introspection", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute static introspection");
+    assert_eq!(
+        results.by_request["static-introspection"].serialized,
+        "1|true|true|false|true|false|false|true"
+    );
+}
+
+#[test]
 fn xpath10_ordered_literal_comparison_is_selected_at_compilation() {
     const SOURCE: &str = "urn:fastxslt:xpath10-ordered-literal:source";
     const LEGACY: &str = "urn:fastxslt:xpath10-ordered-literal:legacy";

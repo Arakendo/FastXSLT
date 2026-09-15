@@ -78,6 +78,21 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     if let Some(literal) = xpath_string_literal(expression.trim()) {
         return Ok(ValueExpression::LiteralString(literal.to_owned()));
     }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(value) =
+            super::xslt10_static_introspection_compiler::fold(document, element, expression)
+    {
+        return Ok(match value {
+            super::xslt10_static_introspection_compiler::StaticIntrospectionValue::String(
+                value,
+            ) => ValueExpression::LiteralString(value),
+            super::xslt10_static_introspection_compiler::StaticIntrospectionValue::Boolean(
+                value,
+            ) => ValueExpression::SourceFreeScalar(Box::new(ScalarExpression::Boolean(
+                crate::xpath::constant_boolean_experiment::BooleanExpression::Constant(value),
+            ))),
+        });
+    }
     if let Some(literal) = crate::xpath::static_string_experiment::fold_concat_literals(expression)
     {
         return Ok(ValueExpression::LiteralString(literal));
