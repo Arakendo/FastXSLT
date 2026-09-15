@@ -207,6 +207,18 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
             }
         });
     }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(value) =
+            crate::xpath::constant_numeric_experiment::fold_xslt10_nested_string_number_equality(
+                expression,
+            )
+    {
+        return Ok(ValueExpression::SourceFreeScalar(Box::new(
+            ScalarExpression::Boolean(
+                crate::xpath::constant_boolean_experiment::BooleanExpression::Constant(value),
+            ),
+        )));
+    }
     if let Some(value) = compile_binary_numeric_path(expression, location, static_context) {
         return Ok(value);
     }

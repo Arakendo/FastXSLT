@@ -5247,6 +5247,44 @@ fn xpath10_predicate_compares_relative_child_node_sets_by_string_value() {
 }
 
 #[test]
+fn xpath10_number_over_static_string_conversion_is_version_selected() {
+    const SOURCE: &str = "urn:fastxslt:xpath10-nested-string-number:source";
+    const LEGACY: &str = "urn:fastxslt:xpath10-nested-string-number:legacy";
+    const MODERN: &str = "urn:fastxslt:xpath10-nested-string-number:modern";
+    let body = r#"<xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="number(string(1.0)) = 1"/></xsl:template>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 16_384));
+    resources
+        .admit(SOURCE, br"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            LEGACY,
+            format!(r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit legacy stylesheet");
+    resources
+        .admit(
+            MODERN,
+            format!(r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit modern stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, LEGACY).expect("compile XPath 1.0 nested conversion");
+    compile_resource(&snapshot, MODERN)
+        .expect_err("modern nested conversion remains outside slice");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("nested-string-number", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute nested conversion");
+    assert_eq!(
+        results.by_request["nested-string-number"].serialized,
+        "true"
+    );
+}
+
+#[test]
 fn xpath10_ordered_literal_comparison_is_selected_at_compilation() {
     const SOURCE: &str = "urn:fastxslt:xpath10-ordered-literal:source";
     const LEGACY: &str = "urn:fastxslt:xpath10-ordered-literal:legacy";

@@ -1576,3 +1576,9 @@ maintained redistributable legacy suite becomes available.
   `Miscellaneous__84427` advances to its later explicit HTML-serialization
   boundary. The exact lower bound rises from 1,431 to 1,436.
   [Evidence](../Evidence/oasis-xslt10-child-node-set-comparison-2026-09-14.md)
+- 2026-09-14 -- The bounded source-free composition
+  `number(string(static-decimal)) = static-decimal` now folds under XSLT 1.0
+  compatibility rules. Unchanged Lotus `math16` becomes exact, raising the
+  lower bound from 1,436 to 1,437 while modern and dynamic nested conversions
+  remain rejected.
+  [Evidence](../Evidence/oasis-xslt10-nested-static-conversion-2026-09-14.md)

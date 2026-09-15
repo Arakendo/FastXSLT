@@ -135,6 +135,29 @@ pub(crate) fn fold_xslt10_nan_composition(expression: &str) -> Option<Xslt10NonF
     None
 }
 
+pub(crate) fn fold_xslt10_nested_string_number_equality(expression: &str) -> Option<bool> {
+    let (left, right) = expression.split_once('=')?;
+    if right.contains('=') || left.trim_end().ends_with('!') {
+        return None;
+    }
+    let left = evaluate_xslt10_nested_string_number(left.trim())?;
+    let right = evaluate_xslt10_nested_string_number(right.trim())?;
+    Some(left == right)
+}
+
+fn evaluate_xslt10_nested_string_number(expression: &str) -> Option<String> {
+    if let Some(argument) = number_function_call(expression) {
+        let string_argument = argument
+            .strip_prefix("string")?
+            .trim_start_matches([' ', '\t', '\r', '\n'])
+            .strip_prefix('(')?
+            .strip_suffix(')')?
+            .trim();
+        return canonical_finite_decimal(string_argument);
+    }
+    canonical_finite_decimal(expression)
+}
+
 fn is_xslt10_numeric_operand(expression: &str) -> bool {
     let expression = expression.trim();
     is_nan_number_call(expression)
@@ -649,7 +672,8 @@ mod tests {
         ConstantNumericFailure, IntegralFunction, Xslt10NonFiniteValue, compare,
         evaluate_integral_lexical, evaluate_number_lexical, fold_boolean_number_equality,
         fold_exact_integral_arithmetic, fold_integral_equality, fold_integral_function,
-        fold_number_conversion, fold_xslt10_nan_composition, fold_xslt10_non_finite_division,
+        fold_number_conversion, fold_xslt10_nan_composition,
+        fold_xslt10_nested_string_number_equality, fold_xslt10_non_finite_division,
         integral_function_call, number_function_call,
     };
 
@@ -758,6 +782,22 @@ mod tests {
         assert_eq!(number_function_call("number()"), Some(""));
         assert_eq!(evaluate_number_lexical(" 001.2500 "), Ok("1.25".to_owned()));
         assert_eq!(evaluate_number_lexical("abc"), Ok("NaN".to_owned()));
+    }
+
+    #[test]
+    fn folds_xpath10_number_over_static_string_conversion_equality() {
+        assert_eq!(
+            fold_xslt10_nested_string_number_equality("number(string(1.0)) = 1"),
+            Some(true)
+        );
+        assert_eq!(
+            fold_xslt10_nested_string_number_equality("2 = number(string(1.0))"),
+            Some(false)
+        );
+        assert_eq!(
+            fold_xslt10_nested_string_number_equality("number(string(path)) = 1"),
+            None
+        );
     }
 
     #[test]
