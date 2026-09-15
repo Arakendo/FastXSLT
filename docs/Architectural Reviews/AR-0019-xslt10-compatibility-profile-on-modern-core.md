@@ -1647,3 +1647,9 @@ maintained redistributable legacy suite becomes available.
   area referred for an erratum, moves to a visible legacy-expectation mismatch.
   The conserved exact lower bound remains 1,444.
   [Evidence](../Evidence/oasis-xslt10-single-number-self-before-from-boundary-2026-09-15.md)
+- 2026-09-15 -- Namespace-qualified foreign top-level stylesheet data is now
+  ignored without interpretation, retention, execution, or new authority;
+  unqualified top-level literals remain invalid. Three unchanged OASIS cases
+  become exact, one becomes a visible mismatch, and four advance to later
+  explicit boundaries, raising the lower bound from 1,444 to 1,447.
+  [Evidence](../Evidence/oasis-xslt10-foreign-top-level-data-2026-09-15.md)

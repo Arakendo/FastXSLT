@@ -113,6 +113,24 @@ fn compiles_the_golden_stylesheet_into_owned_semantics() {
 }
 
 #[test]
+fn ignores_foreign_top_level_data_and_rejects_unqualified_top_level_elements() {
+    let foreign = parse_stylesheet(
+        "memory:foreign-top-level.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:help="urn:help" version="1.0"><help:metadata expression="{not-an-avt}"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&foreign).expect("foreign top-level data should be ignored");
+    assert!(program.root_template.is_some());
+
+    let unqualified = parse_stylesheet(
+        "memory:unqualified-top-level.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><metadata/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&unqualified).expect_err("unqualified top-level is invalid");
+    assert_eq!(failure.code, "FXST1003");
+    assert_eq!(failure.category, CompileCategory::Invalid);
+}
+
+#[test]
 fn compiles_static_unprefixed_xsl_element_without_calling_it_literal() {
     let document = parse_stylesheet(
         "memory:static-computed-element.xsl",

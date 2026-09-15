@@ -4405,6 +4405,12 @@ host lifecycle.
   doubts-annotated Microsoft `Number__84687` legacy gray-area expectation moves
   from pass to visible mismatch, so the exact lower bound remains 1,444.
   [Evidence](../Evidence/oasis-xslt10-single-number-self-before-from-boundary-2026-09-15.md)
+- [x] Raise the exact lower bound to 1,447 by ignoring namespace-qualified
+  foreign top-level stylesheet data without retaining or executing it, while
+  classifying unqualified top-level literals as invalid. Three unchanged cases
+  become exact, one becomes a visible mismatch, and four advance to later
+  explicit language boundaries.
+  [Evidence](../Evidence/oasis-xslt10-foreign-top-level-data-2026-09-15.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

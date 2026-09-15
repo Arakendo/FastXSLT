@@ -245,10 +245,11 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                     document.location(child),
                 ));
             }
-            _ => {
-                return Err(unsupported(
+            (Some(_), _) => {}
+            (None, _) => {
+                return Err(invalid(
                     "FXST1003",
-                    "literal top-level elements are outside the private slice",
+                    "a non-XSLT top-level element must have a non-null namespace URI",
                     document.location(child),
                 ));
             }
