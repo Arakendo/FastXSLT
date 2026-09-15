@@ -1512,3 +1512,9 @@ maintained redistributable legacy suite becomes available.
   Four unchanged Lotus cases become exact, raising the lower bound from 1,398
   to 1,402 without broadening the other binary string functions.
   [Evidence](../Evidence/oasis-xslt10-path-to-path-contains-2026-09-14.md)
+- 2026-09-14 -- Bounded source-free NaN composition now preserves XPath 1.0
+  equality, arithmetic, and integral-function behavior at compilation while
+  leaving modern decimal semantics unchanged. Eight unchanged Lotus cases move
+  from initialization failure to exact results, raising the lower bound from
+  1,402 to 1,410 without a new mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-nan-composition-2026-09-14.md)

@@ -98,6 +98,61 @@ pub(crate) fn fold_xslt10_non_finite_division(expression: &str) -> Option<Xslt10
     ))
 }
 
+pub(crate) fn fold_xslt10_nan_composition(expression: &str) -> Option<Xslt10NonFiniteValue> {
+    let expression = expression.trim();
+    let expression = expression
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(')'))
+        .map_or(expression, str::trim);
+
+    if let Some((_, argument)) = integral_function_call(expression)
+        && is_nan_number_call(argument)
+    {
+        return Some(Xslt10NonFiniteValue::Lexical("NaN"));
+    }
+
+    if let Some((left, right)) = expression.split_once('=')
+        && !right.contains('=')
+        && (is_nan_number_call(left) || is_nan_number_call(right))
+        && is_xslt10_numeric_operand(left)
+        && is_xslt10_numeric_operand(right)
+    {
+        return Some(Xslt10NonFiniteValue::Boolean(false));
+    }
+
+    for operator in [" + ", " - ", " * ", " div ", " mod "] {
+        let Some((left, right)) = expression.split_once(operator) else {
+            continue;
+        };
+        if !right.contains(operator)
+            && (is_nan_number_call(left) || is_nan_number_call(right))
+            && is_xslt10_numeric_operand(left)
+            && is_xslt10_numeric_operand(right)
+        {
+            return Some(Xslt10NonFiniteValue::Lexical("NaN"));
+        }
+    }
+    None
+}
+
+fn is_xslt10_numeric_operand(expression: &str) -> bool {
+    let expression = expression.trim();
+    is_nan_number_call(expression)
+        || canonical_finite_decimal(expression).is_some()
+        || expression.strip_prefix('-').is_some_and(is_nan_number_call)
+}
+
+fn is_nan_number_call(expression: &str) -> bool {
+    let expression = expression.trim();
+    let expression = expression.strip_prefix('-').map_or(expression, str::trim);
+    let Some(argument) = number_function_call(expression) else {
+        return false;
+    };
+    xpath_string_literal(argument)
+        .and_then(|literal| evaluate_number_lexical(literal).ok())
+        .is_some_and(|value| value == "NaN")
+}
+
 pub(crate) fn fold_boolean_number_equality(expression: &str) -> Option<bool> {
     let compact = expression
         .bytes()
@@ -594,8 +649,8 @@ mod tests {
         ConstantNumericFailure, IntegralFunction, Xslt10NonFiniteValue, compare,
         evaluate_integral_lexical, evaluate_number_lexical, fold_boolean_number_equality,
         fold_exact_integral_arithmetic, fold_integral_equality, fold_integral_function,
-        fold_number_conversion, fold_xslt10_non_finite_division, integral_function_call,
-        number_function_call,
+        fold_number_conversion, fold_xslt10_nan_composition, fold_xslt10_non_finite_division,
+        integral_function_call, number_function_call,
     };
 
     #[test]
@@ -726,6 +781,41 @@ mod tests {
             assert_eq!(fold_xslt10_non_finite_division(expression), None);
         }
         assert_eq!(fold_exact_integral_arithmetic("1 div 0"), None);
+    }
+
+    #[test]
+    fn folds_xpath10_nan_composition_without_general_expression_admission() {
+        for expression in [
+            "2 + number('xxx')",
+            "2 - number('xxx')",
+            "2 * -number('xxx')",
+            "2 div number('xxx')",
+            "2 mod number('xxx')",
+            "(2 + number('xxx'))",
+            "floor(number('xxx'))",
+            "ceiling(number('xxx'))",
+            "round(number('xxx'))",
+        ] {
+            assert_eq!(
+                fold_xslt10_nan_composition(expression),
+                Some(Xslt10NonFiniteValue::Lexical("NaN"))
+            );
+        }
+        for expression in ["number('xxx')=number('xxx')", "number('xxx')=0"] {
+            assert_eq!(
+                fold_xslt10_nan_composition(expression),
+                Some(Xslt10NonFiniteValue::Boolean(false))
+            );
+        }
+        for expression in [
+            "2 + 3",
+            "number('2')=2",
+            "floor(2.5)",
+            "number(source)=0",
+            "2 * -source",
+        ] {
+            assert_eq!(fold_xslt10_nan_composition(expression), None);
+        }
     }
 
     #[test]
