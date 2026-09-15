@@ -6,7 +6,7 @@ use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xpath::path_experiment::{LocationPath, evaluate_location_path_controlled};
 use crate::xslt::golden_semantics_experiment::{
     Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10PathStringFunction,
-    Xslt10PathStringFunctionKind, Xslt10PathSubstring, Xslt10PathTranslate,
+    Xslt10PathStringFunctionKind, Xslt10PathSubstring, Xslt10PathTranslate, Xslt10StringOperand,
 };
 
 use super::super::{
@@ -317,32 +317,33 @@ pub(super) fn append_path_string_function(
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     let value = first_path_string(inputs, context, &expression.path, control)?;
+    let path_operand;
+    let operand = match &expression.operand {
+        Xslt10StringOperand::Literal(value) => value.as_str(),
+        Xslt10StringOperand::Path(path) => {
+            path_operand = first_path_string(inputs, context, path, control)?;
+            &path_operand
+        }
+    };
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
     match expression.kind {
         Xslt10PathStringFunctionKind::Contains => {
-            append_boolean(inputs, value.contains(&expression.operand), result, control)
+            append_boolean(inputs, value.contains(operand), result, control)
         }
-        Xslt10PathStringFunctionKind::StartsWith => append_boolean(
-            inputs,
-            value.starts_with(&expression.operand),
-            result,
-            control,
-        ),
+        Xslt10PathStringFunctionKind::StartsWith => {
+            append_boolean(inputs, value.starts_with(operand), result, control)
+        }
         Xslt10PathStringFunctionKind::SubstringBefore => append_text(
             result,
-            value
-                .split_once(&expression.operand)
-                .map_or("", |pair| pair.0),
+            value.split_once(operand).map_or("", |pair| pair.0),
             inputs.request_id,
             control,
         ),
         Xslt10PathStringFunctionKind::SubstringAfter => append_text(
             result,
-            value
-                .split_once(&expression.operand)
-                .map_or("", |pair| pair.1),
+            value.split_once(operand).map_or("", |pair| pair.1),
             inputs.request_id,
             control,
         ),

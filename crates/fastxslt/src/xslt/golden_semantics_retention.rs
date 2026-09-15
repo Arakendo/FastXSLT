@@ -878,7 +878,14 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::Xslt10PathStringFunction(expression) => {
             size_of_val(expression.as_ref())
                 + expression.path.known_owned_capacity_bytes()
-                + expression.operand.capacity()
+                + match &expression.operand {
+                    crate::xslt::golden_semantics_experiment::Xslt10StringOperand::Literal(
+                        value,
+                    ) => value.capacity(),
+                    crate::xslt::golden_semantics_experiment::Xslt10StringOperand::Path(path) => {
+                        path.known_owned_capacity_bytes()
+                    }
+                }
         }
         ValueExpression::Xslt10PathSubstring(expression) => {
             size_of_val(expression.as_ref()) + expression.path.known_owned_capacity_bytes()

@@ -3738,13 +3738,13 @@ fn xslt10_binary_string_functions_convert_first_path_node() {
         xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
         <xsl:output method="text"/>
         <xsl:variable name="suffix" select="'!'"/>
-        <xsl:template match="doc"><xsl:value-of select="starts-with(value, 'alpha')"/>|<xsl:value-of select="contains(value, '/beta')"/>|<xsl:value-of select="substring-before(value, '/')"/>|<xsl:value-of select="substring-after(value, '/')"/>|<xsl:value-of select="contains(missing, '')"/>|<xsl:value-of select="substring(value, 2, 4)"/>|<xsl:value-of select="substring(value, 2.5, 3.6)"/>|<xsl:value-of select="substring(missing, 1)"/>|<xsl:value-of select="translate(value, 'a/', 'A-')"/>|<xsl:value-of select="translate(value, 'ab', 'X')"/>|<xsl:value-of select="concat(first, '-', second, 34, missing, $suffix)"/></xsl:template>
+        <xsl:template match="doc"><xsl:value-of select="starts-with(value, 'alpha')"/>|<xsl:value-of select="contains(value, '/beta')"/>|<xsl:value-of select="contains(value, needle)"/>|<xsl:value-of select="contains(needle, value)"/>|<xsl:value-of select="substring-before(value, '/')"/>|<xsl:value-of select="substring-after(value, '/')"/>|<xsl:value-of select="contains(missing, '')"/>|<xsl:value-of select="substring(value, 2, 4)"/>|<xsl:value-of select="substring(value, 2.5, 3.6)"/>|<xsl:value-of select="substring(missing, 1)"/>|<xsl:value-of select="translate(value, 'a/', 'A-')"/>|<xsl:value-of select="translate(value, 'ab', 'X')"/>|<xsl:value-of select="concat(first, '-', second, 34, missing, $suffix)"/></xsl:template>
     </xsl:stylesheet>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
     resources
         .admit(
             SOURCE,
-            b"<doc><value>alpha/beta</value><value>ignored</value><first>A</first><second>B</second></doc>".to_vec(),
+            b"<doc><value>alpha/beta</value><value>ignored</value><needle>beta</needle><needle>alpha</needle><first>A</first><second>B</second></doc>".to_vec(),
         )
         .expect("admit path string-function source");
     resources
@@ -3760,7 +3760,7 @@ fn xslt10_binary_string_functions_convert_first_path_node() {
     let results = execute_transform_set(builder.seal()).expect("execute path string functions");
     assert_eq!(
         results.by_request["xslt10-path-string-functions"].serialized,
-        "true|true|alpha|beta|true|lpha|pha/||AlphA-betA|XlphX/etX|A-B34!"
+        "true|true|true|false|alpha|beta|true|lpha|pha/||AlphA-betA|XlphX/etX|A-B34!"
     );
 }
 

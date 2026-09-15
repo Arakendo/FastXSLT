@@ -913,7 +913,13 @@ pub(crate) enum Xslt10PathStringFunctionKind {
 pub(crate) struct Xslt10PathStringFunction {
     pub(crate) kind: Xslt10PathStringFunctionKind,
     pub(crate) path: LocationPath,
-    pub(crate) operand: String,
+    pub(crate) operand: Xslt10StringOperand,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Xslt10StringOperand {
+    Literal(String),
+    Path(LocationPath),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

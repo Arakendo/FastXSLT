@@ -1506,3 +1506,9 @@ maintained redistributable legacy suite becomes available.
   lower bound from 1,395 to 1,398 without admitting composed `current()`
   semantics.
   [Evidence](../Evidence/oasis-xslt10-exact-current-select-2026-09-14.md)
+- 2026-09-14 -- The existing XSLT 1.0 path string-function plan now retains a
+  literal or typed path second operand for `contains()`. Both paths use
+  controlled first-node string conversion and complete retention accounting.
+  Four unchanged Lotus cases become exact, raising the lower bound from 1,398
+  to 1,402 without broadening the other binary string functions.
+  [Evidence](../Evidence/oasis-xslt10-path-to-path-contains-2026-09-14.md)

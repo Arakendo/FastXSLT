@@ -24,7 +24,7 @@ use super::{
 use crate::xpath::binary_numeric_experiment::BinaryNumericNode;
 use crate::xslt::golden_semantics_experiment::{
     Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10PathStringFunction,
-    Xslt10PathStringFunctionKind, Xslt10PathSubstring, Xslt10PathTranslate,
+    Xslt10PathStringFunctionKind, Xslt10PathSubstring, Xslt10PathTranslate, Xslt10StringOperand,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -674,9 +674,7 @@ fn compile_xslt10_path_string_function(
     let Some((path, operand)) = arguments.split_once(',') else {
         return Ok(None);
     };
-    let Some(operand) = xpath_string_literal(operand.trim()) else {
-        return Ok(None);
-    };
+    let operand = operand.trim();
     let mut path = parse_location_path(path.trim(), location.clone()).map_err(map_path_failure)?;
     if let Some(namespace) = effective_xpath_default_namespace(document, element) {
         for step in &mut path.steps {
@@ -688,10 +686,29 @@ fn compile_xslt10_path_string_function(
             }
         }
     }
+    let operand = if let Some(literal) = xpath_string_literal(operand) {
+        Xslt10StringOperand::Literal(literal.to_owned())
+    } else if kind == Xslt10PathStringFunctionKind::Contains {
+        let mut operand =
+            parse_location_path(operand, location.clone()).map_err(map_path_failure)?;
+        if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+            for step in &mut operand.steps {
+                if let PathStep::ChildNamed(local) = step {
+                    *step = PathStep::ChildExpandedName(ExpandedName {
+                        namespace: Some(namespace.to_owned()),
+                        local: local.clone(),
+                    });
+                }
+            }
+        }
+        Xslt10StringOperand::Path(operand)
+    } else {
+        return Ok(None);
+    };
     Ok(Some(Xslt10PathStringFunction {
         kind,
         path,
-        operand: operand.to_owned(),
+        operand,
     }))
 }
 
