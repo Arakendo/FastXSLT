@@ -1203,6 +1203,7 @@ fn parse_final_boolean_predicate(expression: &str) -> (&str, Option<Box<PathBool
             && !predicate.contains("string-length(name(")
             && !predicate.contains("count(./")
             && !predicate.contains("string-length(@")
+            && !predicate.contains(" = ")
             && !predicate.contains('['))
     {
         return (expression, None);

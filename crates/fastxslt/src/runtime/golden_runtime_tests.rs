@@ -5215,6 +5215,38 @@ fn xslt10_substring_preserves_non_finite_numeric_rules() {
 }
 
 #[test]
+fn xpath10_predicate_compares_relative_child_node_sets_by_string_value() {
+    const SOURCE: &str = "urn:fastxslt:xpath10-child-node-set-equality:source";
+    const STYLESHEET: &str = "urn:fastxslt:xpath10-child-node-set-equality:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 16_384, 32_768));
+    resources
+        .admit(
+            SOURCE,
+            br"<root><DOCUMENT><TAG1>same</TAG1><TAG2>other</TAG2><TAG2>same</TAG2><TAG3>nested</TAG3><TAG4><TAG5>nested</TAG5></TAG4></DOCUMENT><DOCUMENT><TAG1>left</TAG1><TAG2>right</TAG2><TAG3>x</TAG3><TAG4><TAG5>y</TAG5></TAG4></DOCUMENT></root>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:for-each select="//DOCUMENT[TAG1 = TAG2]">direct</xsl:for-each>|<xsl:for-each select="//DOCUMENT[TAG3 = TAG4/TAG5]">nested</xsl:for-each></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile child node-set comparisons");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("child-node-set-equality", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute node-set comparisons");
+    assert_eq!(
+        results.by_request["child-node-set-equality"].serialized,
+        "direct|nested"
+    );
+}
+
+#[test]
 fn xpath10_ordered_literal_comparison_is_selected_at_compilation() {
     const SOURCE: &str = "urn:fastxslt:xpath10-ordered-literal:source";
     const LEGACY: &str = "urn:fastxslt:xpath10-ordered-literal:legacy";

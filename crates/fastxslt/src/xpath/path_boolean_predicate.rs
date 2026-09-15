@@ -47,6 +47,10 @@ pub(super) enum PathBooleanPredicate {
         value: String,
     },
     NestedPositionalChildStringEquals(NestedPositionComparison),
+    ChildPathStringEquals {
+        left: Vec<String>,
+        right: Vec<String>,
+    },
     Not(Box<Self>),
     And(Box<Self>, Box<Self>),
     Or(Box<Self>, Box<Self>),
@@ -68,6 +72,9 @@ impl PathBooleanPredicate {
                 comparison.outer_name.capacity()
                     + comparison.inner_name.capacity()
                     + comparison.value.capacity()
+            }
+            Self::ChildPathStringEquals { left, right } => {
+                child_path_capacity(left) + child_path_capacity(right)
             }
             Self::ContextStringEquals(value)
             | Self::ContextNameStartsWith(value)
@@ -108,6 +115,9 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
             name: name.to_owned(),
             value,
         });
+    }
+    if let Some((left, right)) = parse_child_path_string_equality(predicate) {
+        return Some(PathBooleanPredicate::ChildPathStringEquals { left, right });
     }
     if let Some((name, value)) = parse_attribute_inequality(predicate) {
         return Some(PathBooleanPredicate::NotEquals {
@@ -234,6 +244,9 @@ pub(super) fn evaluate(
         PathBooleanPredicate::NestedPositionalChildStringEquals(comparison) => {
             nested_positional_child_string_equals(document, node, comparison, control)
         }
+        PathBooleanPredicate::ChildPathStringEquals { left, right } => {
+            child_path_string_equals(document, node, left, right, control)
+        }
         PathBooleanPredicate::Not(operand) => Ok(!evaluate(document, node, operand, control)?),
         PathBooleanPredicate::And(left, right) => {
             if !evaluate(document, node, left, control)? {
@@ -248,6 +261,77 @@ pub(super) fn evaluate(
             evaluate(document, node, right, control)
         }
     }
+}
+
+fn child_path_capacity(path: &[String]) -> usize {
+    std::mem::size_of_val(path)
+        + path
+            .iter()
+            .map(std::string::String::capacity)
+            .sum::<usize>()
+}
+
+fn parse_child_path_string_equality(predicate: &str) -> Option<(Vec<String>, Vec<String>)> {
+    let (left, right) = split_top_level_predicate_operator(predicate, "=")?;
+    Some((
+        parse_relative_child_path(left.trim())?,
+        parse_relative_child_path(right.trim())?,
+    ))
+}
+
+fn parse_relative_child_path(path: &str) -> Option<Vec<String>> {
+    const MAX_STEPS: usize = 4;
+    let steps = path.split('/').collect::<Vec<_>>();
+    (!steps.is_empty()
+        && steps.len() <= MAX_STEPS
+        && steps.iter().all(|step| is_ascii_ncname(step)))
+    .then(|| steps.into_iter().map(str::to_owned).collect())
+}
+
+fn child_path_string_equals(
+    document: &Document,
+    node: NodeId,
+    left: &[String],
+    right: &[String],
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    let left = select_relative_child_path(document, node, left, control)?;
+    let right = select_relative_child_path(document, node, right, control)?;
+    for left in left {
+        for right in right.iter().copied() {
+            control.charge(WorkDomain::XPathOperation, 1)?;
+            if document.string_value(left) == document.string_value(right) {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
+}
+
+fn select_relative_child_path(
+    document: &Document,
+    node: NodeId,
+    path: &[String],
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ControlFailure> {
+    let mut selected = vec![node];
+    for name in path {
+        let mut next = Vec::new();
+        for parent in selected {
+            for child in document.children(parent).iter().copied() {
+                control.charge(WorkDomain::XPathNodeVisit, 1)?;
+                if document.kind(child) == NodeKind::Element
+                    && document.name(child).is_some_and(|candidate| {
+                        candidate.namespace.is_none() && candidate.local == *name
+                    })
+                {
+                    next.push(child);
+                }
+            }
+        }
+        selected = next;
+    }
+    Ok(selected)
 }
 
 fn sibling_descendant_string_equals(

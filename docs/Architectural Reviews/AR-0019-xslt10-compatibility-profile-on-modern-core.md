@@ -1568,3 +1568,11 @@ maintained redistributable legacy suite becomes available.
   the lower bound from 1,426 to 1,431 without broadening the modern fold or
   adding a mismatch or execution failure.
   [Evidence](../Evidence/oasis-xslt10-non-finite-substring-2026-09-14.md)
+- 2026-09-14 -- Bounded relative child paths on both sides of a predicate
+  equality now use XPath 1.0 node-set general-comparison semantics: any pair
+  of selected nodes with equal string values satisfies the predicate. Four
+  Microsoft namespace cases become exact; relaxed recognition also admits the
+  already-typed spaced `. = 'literal'` spelling in Lotus `output25`. Microsoft
+  `Miscellaneous__84427` advances to its later explicit HTML-serialization
+  boundary. The exact lower bound rises from 1,431 to 1,436.
+  [Evidence](../Evidence/oasis-xslt10-child-node-set-comparison-2026-09-14.md)
