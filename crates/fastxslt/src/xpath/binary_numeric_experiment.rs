@@ -498,24 +498,30 @@ impl ExactRational {
             return Ok(self.numerator.to_string());
         }
         let mut denominator = self.denominator;
-        let mut scale = 0_u32;
+        let mut powers_of_two = 0_u32;
         while denominator % 2 == 0 {
             denominator /= 2;
-            scale += 1;
+            powers_of_two += 1;
         }
+        let mut powers_of_five = 0_u32;
         while denominator % 5 == 0 {
             denominator /= 5;
-            scale += 1;
+            powers_of_five += 1;
         }
         if denominator != 1 {
             return Err(BinaryNumericEvaluationFailure::NonIntegral);
         }
-        let power = 10_i128
-            .checked_pow(scale)
+        let scale = powers_of_two.max(powers_of_five);
+        let twos = 2_i128
+            .checked_pow(scale - powers_of_two)
+            .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
+        let fives = 5_i128
+            .checked_pow(scale - powers_of_five)
             .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
         let units = self
             .numerator
-            .checked_mul(power / self.denominator)
+            .checked_mul(twos)
+            .and_then(|value| value.checked_mul(fives))
             .ok_or(BinaryNumericEvaluationFailure::Overflow)?;
         let negative = units.is_negative();
         let magnitude = units
@@ -687,6 +693,14 @@ mod tests {
             (".5", "0.5"),
             (".2", "0.2"),
             ("-01.2500", "-1.25"),
+            (
+                "0.0000000000000000000000000001",
+                "0.0000000000000000000000000001",
+            ),
+            (
+                "0.0000000000001000000000000001",
+                "0.0000000000001000000000000001",
+            ),
         ] {
             assert_eq!(
                 ExactRational::parse_decimal(lexical).and_then(|value| value.format_decimal().ok()),

@@ -1518,3 +1518,9 @@ maintained redistributable legacy suite becomes available.
   from initialization failure to exact results, raising the lower bound from
   1,402 to 1,410 without a new mismatch or execution failure.
   [Evidence](../Evidence/oasis-xslt10-nan-composition-2026-09-14.md)
+- 2026-09-14 -- A bounded XSLT 1.0 `string()` wrapper now reuses context-path
+  numeric plans. The unchanged Lotus long-decimal case exposed a shared exact-
+  rational formatting overflow, repaired by using the minimal terminating-
+  decimal scale. One case becomes exact, raising the lower bound from 1,410 to
+  1,411 with no added mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-string-number-and-exact-decimal-formatting-2026-09-14.md)

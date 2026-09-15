@@ -21,7 +21,7 @@ use super::{
     recognizes_sequence_cardinality, recognizes_source_free_scalar, recognizes_string_length,
     split_top_level_union, unsupported, xpath_string_literal,
 };
-use crate::xpath::binary_numeric_experiment::BinaryNumericNode;
+use crate::xpath::binary_numeric_experiment::{BinaryNumericNode, BinaryNumericOperator};
 use crate::xslt::golden_semantics_experiment::{
     Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10PathStringFunction,
     Xslt10PathStringFunctionKind, Xslt10PathSubstring, Xslt10PathTranslate, Xslt10StringOperand,
@@ -265,6 +265,17 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
         && let Some(concat) = compile_xslt10_concat(document, element, expression, location)?
     {
         return Ok(ValueExpression::Xslt10Concat(Box::new(concat)));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(value) = compile_xslt10_string_numeric_expression(
+            document,
+            element,
+            expression,
+            location,
+            static_context,
+        )?
+    {
+        return Ok(value);
     }
     if let Some(path) = compile_number_path(document, element, expression, location)? {
         return Ok(ValueExpression::NumberPath(path));
@@ -1662,6 +1673,50 @@ fn compile_number_path(
         }
     }
     Ok(Some(path))
+}
+
+fn compile_xslt10_string_numeric_expression(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+    static_context: ValueStaticContext,
+) -> Result<Option<ValueExpression>, CompileFailure> {
+    let Some(numeric_expression) = expression
+        .trim()
+        .strip_prefix("string(")
+        .and_then(|value| value.strip_suffix(')'))
+        .map(str::trim)
+    else {
+        return Ok(None);
+    };
+    if crate::xpath::constant_numeric_experiment::number_function_call(numeric_expression).is_some()
+    {
+        return compile_number_path(document, element, numeric_expression, location)
+            .map(|path| path.map(ValueExpression::NumberPath));
+    }
+    let admitted_product = crate::xpath::binary_numeric_experiment::split_paths(numeric_expression)
+        .is_some_and(|(left, operator, right)| {
+            operator == BinaryNumericOperator::Multiply
+                && ((crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(left)
+                    .is_some()
+                    && crate::xpath::constant_numeric_experiment::number_function_call(right)
+                        .is_some())
+                    || (crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(
+                        right,
+                    )
+                    .is_some()
+                        && crate::xpath::constant_numeric_experiment::number_function_call(left)
+                            .is_some()))
+        });
+    if !admitted_product {
+        return Ok(None);
+    }
+    Ok(compile_binary_numeric_path(
+        numeric_expression,
+        location,
+        static_context,
+    ))
 }
 
 fn compile_string_path(

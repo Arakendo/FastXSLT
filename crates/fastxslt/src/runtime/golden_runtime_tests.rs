@@ -5020,6 +5020,45 @@ fn xpath10_nan_composition_is_selected_at_compilation() {
 }
 
 #[test]
+fn xpath10_string_of_context_number_is_selected_at_compilation() {
+    const SOURCE: &str = "urn:fastxslt:xpath10-string-number:source";
+    const LEGACY: &str = "urn:fastxslt:xpath10-string-number:legacy";
+    const MODERN: &str = "urn:fastxslt:xpath10-string-number:modern";
+    let body = r#"<xsl:output method="text"/><xsl:template match="/"><xsl:apply-templates select="doc/number"/></xsl:template><xsl:template match="number"><xsl:value-of select="string(number(.))"/>|<xsl:value-of select="string(-1 * number(.))"/></xsl:template>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 16_384));
+    resources
+        .admit(SOURCE, br"<doc><number>0.0040</number></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            LEGACY,
+            format!(r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit legacy stylesheet");
+    resources
+        .admit(
+            MODERN,
+            format!(r#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{body}</xsl:stylesheet>"#).into_bytes(),
+        )
+        .expect("admit modern stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, LEGACY).expect("compile XPath 1.0 string(number(.))");
+    compile_resource(&snapshot, MODERN)
+        .expect_err("modern nested conversion stays outside the slice");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("xpath10-string-number", "result", SOURCE))
+        .expect("admit request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute XPath 1.0 string(number(.))");
+    assert_eq!(
+        results.by_request["xpath10-string-number"].serialized,
+        "0.004|-0.004"
+    );
+}
+
+#[test]
 fn xpath10_ordered_literal_comparison_is_selected_at_compilation() {
     const SOURCE: &str = "urn:fastxslt:xpath10-ordered-literal:source";
     const LEGACY: &str = "urn:fastxslt:xpath10-ordered-literal:legacy";
