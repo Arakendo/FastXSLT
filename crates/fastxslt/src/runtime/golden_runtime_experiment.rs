@@ -2718,8 +2718,9 @@ fn evaluate_ordinary_boolean(
         BooleanExpression::ContextStringLengthEquals(expected) => {
             evaluate_context_string_length(inputs, context, *expected, control)
         }
-        BooleanExpression::ContextPositionNotEqualSize(location) => {
-            evaluate_context_position_not_equal_size(inputs, focus, location, control)
+        position @ (BooleanExpression::ContextPositionNotEqualSize(_)
+        | BooleanExpression::ContextPositionModuloEquals { .. }) => {
+            evaluate_context_position_boolean(inputs, position, focus, control)
         }
         BooleanExpression::ContextFocusEquals {
             left,
@@ -2992,6 +2993,50 @@ fn focus_operand_value(focus: SequenceFocus, operand: FocusEqualityOperand) -> u
         FocusEqualityOperand::CeilingHalfSize => focus.size / 2 + focus.size % 2,
         FocusEqualityOperand::Static(value) => value,
     }
+}
+
+fn evaluate_context_position_boolean(
+    inputs: &SequenceInputs<'_>,
+    expression: &BooleanExpression,
+    focus: Option<SequenceFocus>,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    match expression {
+        BooleanExpression::ContextPositionNotEqualSize(location) => {
+            evaluate_context_position_not_equal_size(inputs, focus, location, control)
+        }
+        BooleanExpression::ContextPositionModuloEquals {
+            divisor,
+            remainder,
+            location,
+        } => evaluate_context_position_modulo_equality(
+            inputs, focus, *divisor, *remainder, location, control,
+        ),
+        _ => unreachable!("position expressions are selected before this helper"),
+    }
+}
+
+fn evaluate_context_position_modulo_equality(
+    inputs: &SequenceInputs<'_>,
+    focus: Option<SequenceFocus>,
+    divisor: usize,
+    remainder: usize,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    control: &mut InvocationControl,
+) -> Result<bool, ExecutionFailure> {
+    let focus = focus.ok_or_else(|| {
+        failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            "position() requires a dynamic focus",
+        )
+    })?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(focus.position % divisor == remainder)
 }
 
 fn evaluate_node_identity_equal(

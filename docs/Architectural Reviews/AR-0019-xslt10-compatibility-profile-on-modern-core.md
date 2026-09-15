@@ -1546,3 +1546,10 @@ maintained redistributable legacy suite becomes available.
   `math_math104` becomes exact, raising the lower bound from 1,411 to 1,412
   without a new mismatch or execution failure.
   [Evidence](../Evidence/oasis-xslt10-contains-context-number-nan-2026-09-14.md)
+- 2026-09-14 -- Bounded `position() mod N = M` instruction predicates now
+  compile to a typed dynamic-focus plan with explicit divisor/remainder and
+  source location. Unchanged Lotus `numbering45` composes the predicate with
+  the existing modulo-aware `xsl:number` count pattern and becomes exact,
+  raising the lower bound from 1,412 to 1,413 without a new mismatch or
+  execution failure.
+  [Evidence](../Evidence/oasis-xslt10-position-modulo-boolean-2026-09-14.md)

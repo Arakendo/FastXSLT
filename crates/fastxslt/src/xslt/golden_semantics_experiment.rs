@@ -1088,6 +1088,11 @@ pub(crate) enum BooleanExpression {
         right: FocusEqualityOperand,
         location: SourceLocation,
     },
+    ContextPositionModuloEquals {
+        divisor: usize,
+        remainder: usize,
+        location: SourceLocation,
+    },
     ContextLanguageMatches(String),
     Or {
         left: Box<BooleanExpression>,

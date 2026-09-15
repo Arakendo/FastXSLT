@@ -88,6 +88,13 @@ pub(super) fn compile(
             location: location.clone(),
         });
     }
+    if let Some((divisor, remainder)) = parse_context_position_modulo_equality(parsed) {
+        return Ok(BooleanExpression::ContextPositionModuloEquals {
+            divisor,
+            remainder,
+            location: location.clone(),
+        });
+    }
     if let Some(count) = compile_count_path_equality(parsed, location)? {
         return Ok(count);
     }
@@ -434,6 +441,22 @@ fn parse_context_focus_comparison(
 
 fn is_xpath_name_byte(byte: u8) -> bool {
     byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b'.' | b':')
+}
+
+fn parse_context_position_modulo_equality(expression: &str) -> Option<(usize, usize)> {
+    let (left, right) = expression.split_once('=')?;
+    if left.contains('=') || right.contains('=') {
+        return None;
+    }
+    parse_context_position_modulo_operand(left.trim(), right.trim())
+        .or_else(|| parse_context_position_modulo_operand(right.trim(), left.trim()))
+}
+
+fn parse_context_position_modulo_operand(modulo: &str, remainder: &str) -> Option<(usize, usize)> {
+    let operands = modulo.strip_prefix("position()")?.trim();
+    let divisor = operands.strip_prefix("mod")?.trim().parse::<usize>().ok()?;
+    let remainder = remainder.parse::<usize>().ok()?;
+    (divisor > 0 && remainder < divisor).then_some((divisor, remainder))
 }
 
 fn parse_scalar(

@@ -5129,6 +5129,34 @@ fn explicit_axis_paths_have_effective_boolean_values_in_instructions() {
 }
 
 #[test]
+fn context_position_modulo_predicates_use_the_dynamic_focus() {
+    const SOURCE: &str = "urn:fastxslt:position-modulo:source";
+    const STYLESHEET: &str = "urn:fastxslt:position-modulo:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, br"<doc><n/><n/><n/><n/></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:for-each select="doc/n"><xsl:if test="position() mod 2 = 0">even</xsl:if><xsl:if test="1 = position() mod 2">odd</xsl:if>|</xsl:for-each></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile position modulo tests");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("position-modulo", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute position modulo tests");
+    assert_eq!(
+        results.by_request["position-modulo"].serialized,
+        "odd|even|odd|even|"
+    );
+}
+
+#[test]
 fn xpath10_ordered_literal_comparison_is_selected_at_compilation() {
     const SOURCE: &str = "urn:fastxslt:xpath10-ordered-literal:source";
     const LEGACY: &str = "urn:fastxslt:xpath10-ordered-literal:legacy";

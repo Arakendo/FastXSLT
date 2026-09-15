@@ -1026,7 +1026,10 @@ fn boolean_expression_owned(value: &BooleanExpression) -> usize {
         | BooleanExpression::ContextLanguageMatches(value) => value.capacity(),
         BooleanExpression::ContextPositionNotEqualSize(location)
         | BooleanExpression::ContextFocusEquals { location, .. }
-        | BooleanExpression::ContextFocusCompares { location, .. } => location_owned(location),
+        | BooleanExpression::ContextFocusCompares { location, .. }
+        | BooleanExpression::ContextPositionModuloEquals { location, .. } => {
+            location_owned(location)
+        }
         BooleanExpression::Or { left, right } | BooleanExpression::And { left, right } => {
             boolean_expression_owned(left) + boolean_expression_owned(right)
         }
