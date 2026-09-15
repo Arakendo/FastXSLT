@@ -1668,3 +1668,10 @@ maintained redistributable legacy suite becomes available.
   work controls. Unchanged Lotus `namedtemplate_namedtemplate11` becomes exact,
   raising the lower bound from 1,448 to 1,449.
   [Evidence](../Evidence/oasis-xslt10-template-argument-for-each-2026-09-15.md)
+- 2026-09-15 -- Content-valued named-template arguments now admit a bounded
+  static mixed text/literal-result-element constructor. The compiler reuses the
+  existing private constructed-node plan and each invocation materializes one
+  fresh temporary tree, while dynamic instructions and attributes remain
+  unsupported. Unchanged Lotus `copy_copy08` becomes exact, raising the lower
+  bound from 1,449 to 1,450 without a new mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-static-template-argument-tree-2026-09-15.md)

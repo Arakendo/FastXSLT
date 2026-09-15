@@ -120,93 +120,15 @@ pub(super) fn evaluate_template_arguments(
     arguments
         .iter()
         .map(|argument| {
-            let value = match &argument.value {
-                TemplateArgumentValue::Text(value) => {
-                    InvocationParameterValue::Atomic(AtomicValue::string(value.clone()))
-                }
-                TemplateArgumentValue::Integer(value) => {
-                    InvocationParameterValue::Atomic(AtomicValue::from_validated_lexical(
-                        BuiltinAtomicType::Integer,
-                        value.to_string(),
-                    ))
-                }
-                TemplateArgumentValue::Boolean(value) => {
-                    InvocationParameterValue::Atomic(AtomicValue::from_validated_lexical(
-                        BuiltinAtomicType::Boolean,
-                        value.to_string(),
-                    ))
-                }
-                TemplateArgumentValue::ContextPosition => integer_parameter(focus_position),
-                TemplateArgumentValue::ContextSize => integer_parameter(focus_size),
-                TemplateArgumentValue::ContextNodeName => {
-                    evaluate_context_name_argument(inputs, context, &argument.location, control)?
-                }
-                TemplateArgumentValue::CurrentSourceNode => {
-                    let (_, context) = required_source_context(inputs, context)?;
-                    InvocationParameterValue::SourceNodes(vec![context])
-                }
-                TemplateArgumentValue::Variable(name) => {
-                    if let Some(value) = variables.atomics.get(name) {
-                        InvocationParameterValue::Atomic(value.clone())
-                    } else if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
-                        InvocationParameterValue::SourceNodes(nodes.clone())
-                    } else {
-                        return Err(failure_at(
-                            "FXRT0002",
-                            FailureCategory::Invalid,
-                            Some(inputs.request_id),
-                            argument.location.clone(),
-                            format!("unbound template argument variable: ${name}"),
-                        ));
-                    }
-                }
-                TemplateArgumentValue::SourceVariablePath { variable, path } => {
-                    evaluate_source_variable_path_argument(
-                        inputs, variable, path, variables, control,
-                    )?
-                }
-                TemplateArgumentValue::Xslt10BinaryNumeric(expression) => {
-                    evaluate_numeric_template_argument(
-                        inputs, context, expression, variables, control,
-                    )?
-                }
-                TemplateArgumentValue::SourcePath(path) => {
-                    let (source, context) = required_source_context(inputs, context)?;
-                    let nodes = evaluate_location_path_controlled(source, context, path, control)
-                        .map_err(|failure| control_failure(failure, inputs.request_id))?;
-                    InvocationParameterValue::SourceNodes(nodes)
-                }
-                TemplateArgumentValue::Xslt10SumPath(path) => {
-                    let value = evaluate_xslt10_sum_path(inputs, context, path, control)?;
-                    InvocationParameterValue::Atomic(AtomicValue::from_validated_lexical(
-                        BuiltinAtomicType::Double,
-                        value,
-                    ))
-                }
-                TemplateArgumentValue::Xslt10Content(argument_plan) => {
-                    evaluate_xslt10_content_argument(
-                        argument_plan,
-                        variables,
-                        inputs,
-                        context,
-                        focus_position,
-                        focus_size,
-                        control,
-                    )?
-                }
-                TemplateArgumentValue::Xslt10ForEachPathStringContent(path) => {
-                    evaluate_xslt10_for_each_path_string_content(inputs, context, path, control)?
-                }
-                TemplateArgumentValue::SourcePathStringComparison { left, right, equal } => {
-                    let value = evaluate_source_path_string_comparison(
-                        inputs, context, left, right, *equal, control,
-                    )?;
-                    InvocationParameterValue::Atomic(AtomicValue::from_validated_lexical(
-                        BuiltinAtomicType::Boolean,
-                        value.to_string(),
-                    ))
-                }
-            };
+            let value = evaluate_template_argument(
+                argument,
+                variables,
+                inputs,
+                context,
+                focus_position,
+                focus_size,
+                control,
+            )?;
             Ok((
                 argument.name.clone(),
                 InvocationParameter {
@@ -216,6 +138,99 @@ pub(super) fn evaluate_template_arguments(
             ))
         })
         .collect()
+}
+
+fn evaluate_template_argument(
+    argument: &TemplateArgument,
+    variables: &RuntimeVariables,
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    focus_position: usize,
+    focus_size: usize,
+    control: &mut InvocationControl,
+) -> Result<InvocationParameterValue, ExecutionFailure> {
+    Ok(match &argument.value {
+        TemplateArgumentValue::Text(value) => {
+            InvocationParameterValue::Atomic(AtomicValue::string(value.clone()))
+        }
+        TemplateArgumentValue::Integer(value) => InvocationParameterValue::Atomic(
+            AtomicValue::from_validated_lexical(BuiltinAtomicType::Integer, value.to_string()),
+        ),
+        TemplateArgumentValue::Boolean(value) => InvocationParameterValue::Atomic(
+            AtomicValue::from_validated_lexical(BuiltinAtomicType::Boolean, value.to_string()),
+        ),
+        TemplateArgumentValue::ContextPosition => integer_parameter(focus_position),
+        TemplateArgumentValue::ContextSize => integer_parameter(focus_size),
+        TemplateArgumentValue::ContextNodeName => {
+            evaluate_context_name_argument(inputs, context, &argument.location, control)?
+        }
+        TemplateArgumentValue::CurrentSourceNode => {
+            let (_, context) = required_source_context(inputs, context)?;
+            InvocationParameterValue::SourceNodes(vec![context])
+        }
+        TemplateArgumentValue::Variable(name) => {
+            if let Some(value) = variables.atomics.get(name) {
+                InvocationParameterValue::Atomic(value.clone())
+            } else if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
+                InvocationParameterValue::SourceNodes(nodes.clone())
+            } else {
+                return Err(failure_at(
+                    "FXRT0002",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    argument.location.clone(),
+                    format!("unbound template argument variable: ${name}"),
+                ));
+            }
+        }
+        TemplateArgumentValue::SourceVariablePath { variable, path } => {
+            evaluate_source_variable_path_argument(inputs, variable, path, variables, control)?
+        }
+        TemplateArgumentValue::Xslt10BinaryNumeric(expression) => {
+            evaluate_numeric_template_argument(inputs, context, expression, variables, control)?
+        }
+        TemplateArgumentValue::SourcePath(path) => {
+            let (source, context) = required_source_context(inputs, context)?;
+            let nodes = evaluate_location_path_controlled(source, context, path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            InvocationParameterValue::SourceNodes(nodes)
+        }
+        TemplateArgumentValue::Xslt10SumPath(path) => {
+            let value = evaluate_xslt10_sum_path(inputs, context, path, control)?;
+            InvocationParameterValue::Atomic(AtomicValue::from_validated_lexical(
+                BuiltinAtomicType::Double,
+                value,
+            ))
+        }
+        TemplateArgumentValue::Xslt10Content(argument_plan) => evaluate_xslt10_content_argument(
+            argument_plan,
+            variables,
+            inputs,
+            context,
+            focus_position,
+            focus_size,
+            control,
+        )?,
+        TemplateArgumentValue::Xslt10ForEachPathStringContent(path) => {
+            evaluate_xslt10_for_each_path_string_content(inputs, context, path, control)?
+        }
+        TemplateArgumentValue::Xslt10ConstructedContent(nodes) => {
+            InvocationParameterValue::TemporaryTree(materialize_temporary_nodes(
+                nodes,
+                inputs.request_id,
+                control,
+            )?)
+        }
+        TemplateArgumentValue::SourcePathStringComparison { left, right, equal } => {
+            let value = evaluate_source_path_string_comparison(
+                inputs, context, left, right, *equal, control,
+            )?;
+            InvocationParameterValue::Atomic(AtomicValue::from_validated_lexical(
+                BuiltinAtomicType::Boolean,
+                value.to_string(),
+            ))
+        }
+    })
 }
 
 fn evaluate_xslt10_for_each_path_string_content(
@@ -1055,6 +1070,23 @@ pub(super) fn materialize_temporary_tree(
     };
     for element in elements {
         let root = materialize_temporary_element(element, None, &mut tree, request_id, control)?;
+        tree.roots.push(root);
+    }
+    Ok(tree)
+}
+
+pub(super) fn materialize_temporary_nodes(
+    nodes: &[ConstructedNode],
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<TemporaryTree, ExecutionFailure> {
+    let mut tree = TemporaryTree {
+        identity: allocate_temporary_tree_identity(control, request_id)?,
+        roots: Vec::new(),
+        nodes: Vec::new(),
+    };
+    for node in nodes {
+        let root = materialize_temporary_node(node, None, &mut tree, request_id, control)?;
         tree.roots.push(root);
     }
     Ok(tree)

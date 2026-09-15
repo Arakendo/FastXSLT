@@ -1136,6 +1136,9 @@ fn template_argument_owned(value: &TemplateArgument) -> usize {
                     + size_of_val(content.value.as_ref())
                     + value_expression_owned(&content.value)
             }
+            TemplateArgumentValue::Xslt10ConstructedContent(nodes) => {
+                vec_owned(nodes, constructed_node_owned)
+            }
             TemplateArgumentValue::SourcePathStringComparison { left, right, .. } => {
                 path_pair_owned(left, right) + size_of_val(right.as_ref())
             }

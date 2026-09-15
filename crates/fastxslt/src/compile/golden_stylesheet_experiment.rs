@@ -1254,7 +1254,7 @@ fn compile_constructed_element(
     })
 }
 
-fn compile_constructed_children(
+pub(super) fn compile_constructed_children(
     document: &Document,
     parent: NodeId,
 ) -> Result<Vec<ConstructedNode>, CompileFailure> {

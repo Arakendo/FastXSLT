@@ -630,6 +630,17 @@ fn compile_content_argument_value(
     {
         return Ok(TemplateArgumentValue::Text(document.string_value(element)));
     }
+    if children.iter().all(|node| {
+        document.kind(*node) == NodeKind::Text
+            || (document.kind(*node) == NodeKind::Element
+                && document.name(*node).is_some_and(|name| {
+                    name.namespace.as_deref() != Some(super::super::XSLT_NAMESPACE)
+                }))
+    }) {
+        return Ok(TemplateArgumentValue::Xslt10ConstructedContent(
+            super::super::compile_constructed_children(document, element)?,
+        ));
+    }
     if let Some((value_of, binding_nodes)) = children.split_last()
         && is_xslt_element(document, *value_of, "value-of")
         && binding_nodes.len() <= MAX_CONTENT_BINDINGS
