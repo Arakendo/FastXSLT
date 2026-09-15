@@ -1607,3 +1607,9 @@ maintained redistributable legacy suite becomes available.
   between expected top-level fragment elements. The exact lower bound remains
   1,442; the comparator was not weakened.
   [Evidence](../Evidence/oasis-xslt10-multi-path-avt-2026-09-15.md)
+- 2026-09-15 -- The shared typed location-path evaluator now applies XPath 1.0
+  node-set effective boolean value to `[text()]` and `child::text()` predicates.
+  Unchanged Microsoft `AVTs__77570` becomes exact through the bounded
+  multi-path AVT lane, raising the lower bound from 1,442 to 1,443 without a
+  new mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-text-child-predicate-2026-09-15.md)

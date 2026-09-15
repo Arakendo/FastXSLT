@@ -1154,6 +1154,34 @@ fn abbreviated_named_child_predicate_reuses_child_axis_semantics() {
 }
 
 #[test]
+fn text_child_predicate_uses_node_set_effective_boolean_value() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<root><item>present</item><item><child/></item><item><![CDATA[]]></item></root>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let root = document.children(document.document_node())[0];
+
+    for expression in ["item[text()]", "item[child::text()]"] {
+        let path =
+            parse_location_path(expression, location()).expect("text predicate should parse");
+        let selected = evaluate_location_path(&document, root, &path);
+        assert_eq!(selected.len(), 2);
+        assert_eq!(document.string_value(selected[0]), "present");
+        assert_eq!(document.string_value(selected[1]), "");
+        assert_eq!(
+            path.final_predicate.as_ref().map(|value| value.axis),
+            Some(PredicateAxis::ChildText)
+        );
+    }
+}
+
+#[test]
 fn language_predicate_reuses_context_language_semantics() {
     let parsed = parse_document(
         "memory:source.xml",

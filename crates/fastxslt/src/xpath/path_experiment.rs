@@ -565,6 +565,7 @@ impl PartialEq<&str> for PathStep {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PredicateAxis {
     Child,
+    ChildText,
     Attribute,
     MissingAttribute,
     Ancestor,
@@ -1254,6 +1255,8 @@ fn parse_axis_predicate(predicate: &str) -> Option<AxisPredicate> {
         .and_then(|value| value.strip_suffix(')'))
     {
         (PredicateAxis::MissingAttribute, name)
+    } else if matches!(predicate, "text()" | "child::text()") {
+        (PredicateAxis::ChildText, "")
     } else if let Some(name) = predicate.strip_prefix("child::") {
         (PredicateAxis::Child, name)
     } else if let Some(name) = predicate
@@ -1282,7 +1285,10 @@ fn parse_axis_predicate(predicate: &str) -> Option<AxisPredicate> {
             | PredicateAxis::MissingAttribute
             | PredicateAxis::FollowingSibling
     );
-    if (name != "*" || !wildcard_allowed) && !is_ascii_ncname(name) {
+    if axis != PredicateAxis::ChildText
+        && (name != "*" || !wildcard_allowed)
+        && !is_ascii_ncname(name)
+    {
         return None;
     }
     Some(AxisPredicate {
@@ -1809,6 +1815,7 @@ fn evaluate_axis_predicate(
 ) -> Result<bool, ControlFailure> {
     let matches = match predicate.axis {
         PredicateAxis::Child => has_named_child(document, node, &predicate.name, control),
+        PredicateAxis::ChildText => has_text_child(document, node, control),
         PredicateAxis::Attribute => has_named_attribute(
             document,
             node,
@@ -2105,6 +2112,20 @@ fn has_named_child(
     for child in document.children(node).iter().copied() {
         control.charge(WorkDomain::XPathNodeVisit, 1)?;
         if node_has_unnamespaced_name(document, child, required) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn has_text_child(
+    document: &Document,
+    node: NodeId,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    for child in document.children(node).iter().copied() {
+        control.charge(WorkDomain::XPathNodeVisit, 1)?;
+        if document.kind(child) == NodeKind::Text {
             return Ok(true);
         }
     }
