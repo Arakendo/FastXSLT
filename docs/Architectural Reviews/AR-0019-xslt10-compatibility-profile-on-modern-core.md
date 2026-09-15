@@ -1532,3 +1532,11 @@ maintained redistributable legacy suite becomes available.
   expected result omits whitespace emitted by normative built-in template
   processing. The exact lower bound remains 1,411.
   [Evidence](../Evidence/oasis-xslt10-context-number-nan-predicate-2026-09-14.md)
+- 2026-09-14 -- Explicit-axis paths accepted by the typed XPath parser now
+  participate in ordinary node-set effective-boolean-value evaluation instead
+  of being limited to a special following-sibling spelling. Unchanged Lotus
+  `axes_axes130` enters execution with all four attribute-context self-axis
+  choices correct. Its remaining XML mismatch is implementation-dependent
+  indentation emitted under `indent='yes'`; it is retained as comparison-
+  harness pressure and the exact lower bound remains 1,411.
+  [Evidence](../Evidence/oasis-xslt10-explicit-axis-boolean-paths-2026-09-14.md)

@@ -4311,6 +4311,12 @@ host lifecycle.
   visible mismatch rather than crediting a pass or weakening built-in template
   semantics.
   [Evidence](../Evidence/oasis-xslt10-context-number-nan-predicate-2026-09-14.md)
+- [x] Route every explicit-axis location path accepted by the typed XPath
+  parser through ordinary node-set effective-boolean-value evaluation. Move
+  unchanged Lotus `axes_axes130` into execution with correct attribute-context
+  self-axis decisions, while retaining its implementation-dependent
+  `indent='yes'` whitespace as a visible comparison-harness mismatch.
+  [Evidence](../Evidence/oasis-xslt10-explicit-axis-boolean-paths-2026-09-14.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.
