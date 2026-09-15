@@ -1216,6 +1216,11 @@ pub(crate) enum LiteralAttributeValue {
     ContextNormalizedStringLength,
     Xslt10Concat(Box<Xslt10ConcatExpression>),
     Xslt10MultiPathAvt(Xslt10AvtExpression),
+    Xslt10PathStringLiteralComparison {
+        path: LocationPath,
+        value: String,
+        equal: bool,
+    },
     Xslt10TextAndPath {
         prefix: String,
         path: LocationPath,

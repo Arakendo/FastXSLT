@@ -1790,6 +1790,30 @@ fn path_boolean_predicate_compares_child_node_sets_with_string_literals() {
 }
 
 #[test]
+fn path_boolean_predicate_compares_text_children_with_a_string_literal() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><item>Mary</item><item><child>Mary</child></item><item>Other</item></doc>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+
+    let selected = evaluate_location_path(
+        &document,
+        doc,
+        &parse_location_path("item[text()='Mary']", location())
+            .expect("text child comparison should parse"),
+    );
+
+    assert_eq!(selected, [document.children(doc)[0]]);
+}
+
+#[test]
 fn path_boolean_predicate_negates_context_string_equality() {
     let parsed = parse_document(
         "memory:source.xml",

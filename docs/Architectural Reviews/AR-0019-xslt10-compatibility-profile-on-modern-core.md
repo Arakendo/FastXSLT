@@ -1619,3 +1619,10 @@ maintained redistributable legacy suite becomes available.
   Unchanged Microsoft `AVTs__77571` becomes exact, raising the lower bound from
   1,443 to 1,444 without a new mismatch or execution failure.
   [Evidence](../Evidence/oasis-xslt10-avt-path-union-2026-09-15.md)
+- 2026-09-15 -- Relative child-path comparison now retains a typed terminal
+  text-node step, and a single-expression AVT may emit the lexical result of a
+  bounded path-to-string equality or inequality. Microsoft `AVTs__77564`
+  executes with the expected attribute values but remains a visible mismatch
+  because of expected inter-element fragment formatting. The exact lower bound
+  remains 1,444.
+  [Evidence](../Evidence/oasis-xslt10-text-node-comparison-avt-2026-09-15.md)

@@ -54,6 +54,9 @@ fn parse_literal_attribute_value(
     if lexical == "{.}" {
         return Ok(LiteralAttributeValue::ContextStringValue);
     }
+    if let Some(comparison) = parse_path_string_literal_comparison_avt(lexical, location) {
+        return Ok(comparison);
+    }
     if let Some(name) = lexical
         .strip_prefix("{@")
         .and_then(|value| value.strip_suffix('}'))
@@ -99,6 +102,56 @@ fn parse_literal_attribute_value(
         ));
     }
     Ok(LiteralAttributeValue::Text(lexical.to_owned()))
+}
+
+fn parse_path_string_literal_comparison_avt(
+    lexical: &str,
+    location: &SourceLocation,
+) -> Option<LiteralAttributeValue> {
+    let expression = lexical.strip_prefix('{')?.strip_suffix('}')?.trim();
+    for (operator, equal) in [("!=", false), ("=", true)] {
+        let Some((left, right)) = split_unquoted_operator(expression, operator) else {
+            continue;
+        };
+        let (path, value) = parse_path_and_literal(left.trim(), right.trim(), location)
+            .or_else(|| parse_path_and_literal(right.trim(), left.trim(), location))?;
+        return Some(LiteralAttributeValue::Xslt10PathStringLiteralComparison {
+            path,
+            value,
+            equal,
+        });
+    }
+    None
+}
+
+fn parse_path_and_literal(
+    path: &str,
+    literal: &str,
+    location: &SourceLocation,
+) -> Option<(crate::xpath::path_experiment::LocationPath, String)> {
+    Some((
+        parse_location_path(path, location.clone()).ok()?,
+        xpath_string_literal(literal)?.to_owned(),
+    ))
+}
+
+fn split_unquoted_operator<'a>(expression: &'a str, operator: &str) -> Option<(&'a str, &'a str)> {
+    let bytes = expression.as_bytes();
+    let operator = operator.as_bytes();
+    let mut quote = None;
+    let mut index = 0_usize;
+    while index + operator.len() <= bytes.len() {
+        match bytes[index] {
+            b'\'' | b'"' if quote == Some(bytes[index]) => quote = None,
+            b'\'' | b'"' if quote.is_none() => quote = Some(bytes[index]),
+            _ if quote.is_none() && bytes[index..].starts_with(operator) => {
+                return Some((&expression[..index], &expression[index + operator.len()..]));
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+    None
 }
 
 fn parse_multi_path_avt(lexical: &str, location: &SourceLocation) -> Option<Xslt10AvtExpression> {
@@ -515,6 +568,20 @@ mod tests {
             expression.parts.as_slice(),
             [Xslt10AvtPart::Path(_), Xslt10AvtPart::PathUnion(alternatives)]
                 if alternatives.len() == 2
+        ));
+    }
+
+    #[test]
+    fn compiles_a_path_string_literal_comparison_avt() {
+        let compiled = parse_literal_attribute_value("{.//last-name='Bob'}", &location())
+            .expect("the path comparison AVT should compile");
+        assert!(matches!(
+            compiled,
+            LiteralAttributeValue::Xslt10PathStringLiteralComparison {
+                value,
+                equal: true,
+                ..
+            } if value == "Bob"
         ));
     }
 }

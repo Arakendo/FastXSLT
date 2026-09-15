@@ -294,14 +294,10 @@ fn materialize_attribute(
     context: &AttributeContext<'_>,
     control: &mut InvocationControl,
 ) -> Result<ResultAttribute, ExecutionFailure> {
-    control
-        .charge(WorkDomain::ResultNode, 1)
-        .map_err(|failure| control_failure(failure, context.request_id))?;
+    charge_result_node(control, context.request_id)?;
     let value = match value {
         LiteralAttributeValue::Text(value) => value.clone(),
-        LiteralAttributeValue::Number(_) => {
-            unreachable!("number values are materialized by the computed-attribute owner")
-        }
+        LiteralAttributeValue::Number(_) => unreachable!("computed-attribute number owner"),
         LiteralAttributeValue::Variable(variable) => {
             attribute_variable_string(variable, location, context, control)?
         }
@@ -318,6 +314,11 @@ fn materialize_attribute(
         }
         LiteralAttributeValue::Xslt10MultiPathAvt(expression) => {
             multi_path_avt(expression, location, context, control)?
+        }
+        LiteralAttributeValue::Xslt10PathStringLiteralComparison { path, value, equal } => {
+            materialize_path_string_literal_comparison(
+                path, value, *equal, location, context, control,
+            )?
         }
         LiteralAttributeValue::Xslt10TextAndPath {
             prefix,
@@ -392,6 +393,45 @@ fn materialize_attribute(
         name: name.clone(),
         value,
     })
+}
+
+fn charge_result_node(
+    control: &mut InvocationControl,
+    request_id: &str,
+) -> Result<(), ExecutionFailure> {
+    control
+        .charge(WorkDomain::ResultNode, 1)
+        .map_err(|failure| control_failure(failure, request_id))
+}
+
+fn materialize_path_string_literal_comparison(
+    path: &LocationPath,
+    expected: &str,
+    equal: bool,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let Some((source, node)) = context.source_focus else {
+        return Err(failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(context.request_id),
+            location.clone(),
+            "the path comparison attribute expression requires a source-node context",
+        ));
+    };
+    let selected = evaluate_location_path_controlled(source, node, path, control)
+        .map_err(|failure| control_failure(failure, context.request_id))?;
+    for selected in selected {
+        control
+            .charge(WorkDomain::XPathOperation, 1)
+            .map_err(|failure| control_failure(failure, context.request_id))?;
+        if (source.string_value(selected) == expected) == equal {
+            return Ok("true".to_owned());
+        }
+    }
+    Ok("false".to_owned())
 }
 
 fn multi_path_avt(

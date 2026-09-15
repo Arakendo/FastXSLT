@@ -52,16 +52,16 @@ pub(super) enum PathBooleanPredicate {
     },
     NestedPositionalChildStringEquals(NestedPositionComparison),
     ChildPathStringEquals {
-        left: Vec<String>,
-        right: Vec<String>,
+        left: Vec<RelativeChildStep>,
+        right: Vec<RelativeChildStep>,
     },
     ChildPathStringComparison {
-        path: Vec<String>,
+        path: Vec<RelativeChildStep>,
         value: String,
         equal: bool,
     },
     ChildAttributeStringComparison {
-        children: Vec<String>,
+        children: Vec<RelativeChildStep>,
         attribute: String,
         value: String,
         equal: bool,
@@ -69,6 +69,12 @@ pub(super) enum PathBooleanPredicate {
     Not(Box<Self>),
     And(Box<Self>, Box<Self>),
     Or(Box<Self>, Box<Self>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum RelativeChildStep {
+    Element(String),
+    Text,
 }
 
 impl PathBooleanPredicate {
@@ -325,15 +331,20 @@ pub(super) fn evaluate(
     }
 }
 
-fn child_path_capacity(path: &[String]) -> usize {
+fn child_path_capacity(path: &[RelativeChildStep]) -> usize {
     std::mem::size_of_val(path)
         + path
             .iter()
-            .map(std::string::String::capacity)
+            .map(|step| match step {
+                RelativeChildStep::Element(name) => name.capacity(),
+                RelativeChildStep::Text => 0,
+            })
             .sum::<usize>()
 }
 
-fn parse_child_path_string_equality(predicate: &str) -> Option<(Vec<String>, Vec<String>)> {
+fn parse_child_path_string_equality(
+    predicate: &str,
+) -> Option<(Vec<RelativeChildStep>, Vec<RelativeChildStep>)> {
     let (left, right) = split_top_level_predicate_operator(predicate, "=")?;
     Some((
         parse_relative_child_path(left.trim())?,
@@ -341,7 +352,9 @@ fn parse_child_path_string_equality(predicate: &str) -> Option<(Vec<String>, Vec
     ))
 }
 
-fn parse_child_path_string_comparison(predicate: &str) -> Option<(Vec<String>, String, bool)> {
+fn parse_child_path_string_comparison(
+    predicate: &str,
+) -> Option<(Vec<RelativeChildStep>, String, bool)> {
     for (operator, equal) in [("!=", false), ("=", true)] {
         let Some((left, right)) = split_top_level_predicate_operator(predicate, operator) else {
             continue;
@@ -355,7 +368,10 @@ fn parse_child_path_string_comparison(predicate: &str) -> Option<(Vec<String>, S
     None
 }
 
-fn parse_child_path_string_operand(path: &str, literal: &str) -> Option<(Vec<String>, String)> {
+fn parse_child_path_string_operand(
+    path: &str,
+    literal: &str,
+) -> Option<(Vec<RelativeChildStep>, String)> {
     Some((
         parse_relative_child_path(path)?,
         xpath_string_literal(literal)?.to_owned(),
@@ -364,7 +380,7 @@ fn parse_child_path_string_operand(path: &str, literal: &str) -> Option<(Vec<Str
 
 fn parse_child_attribute_string_comparison(
     predicate: &str,
-) -> Option<(Vec<String>, String, String, bool)> {
+) -> Option<(Vec<RelativeChildStep>, String, String, bool)> {
     for (operator, equal) in [("!=", false), ("=", true)] {
         let Some((left, right)) = split_top_level_predicate_operator(predicate, operator) else {
             continue;
@@ -382,7 +398,7 @@ fn parse_child_attribute_string_comparison(
 fn parse_child_attribute_string_operand(
     path: &str,
     literal: &str,
-) -> Option<(Vec<String>, String, String)> {
+) -> Option<(Vec<RelativeChildStep>, String, String)> {
     let (children, attribute) = path.rsplit_once("/@")?;
     Some((
         parse_relative_child_path(children)?,
@@ -391,20 +407,30 @@ fn parse_child_attribute_string_operand(
     ))
 }
 
-fn parse_relative_child_path(path: &str) -> Option<Vec<String>> {
+fn parse_relative_child_path(path: &str) -> Option<Vec<RelativeChildStep>> {
     const MAX_STEPS: usize = 4;
     let steps = path.split('/').collect::<Vec<_>>();
-    (!steps.is_empty()
-        && steps.len() <= MAX_STEPS
-        && steps.iter().all(|step| is_ascii_ncname(step)))
-    .then(|| steps.into_iter().map(str::to_owned).collect())
+    if steps.is_empty() || steps.len() > MAX_STEPS {
+        return None;
+    }
+    steps
+        .iter()
+        .enumerate()
+        .map(|(index, step)| {
+            if *step == "text()" && index + 1 == steps.len() {
+                Some(RelativeChildStep::Text)
+            } else {
+                is_ascii_ncname(step).then(|| RelativeChildStep::Element((*step).to_owned()))
+            }
+        })
+        .collect()
 }
 
 fn child_path_string_equals(
     document: &Document,
     node: NodeId,
-    left: &[String],
-    right: &[String],
+    left: &[RelativeChildStep],
+    right: &[RelativeChildStep],
     control: &mut InvocationControl,
 ) -> Result<bool, ControlFailure> {
     let left = select_relative_child_path(document, node, left, control)?;
@@ -423,7 +449,7 @@ fn child_path_string_equals(
 fn child_path_string_comparison(
     document: &Document,
     node: NodeId,
-    path: &[String],
+    path: &[RelativeChildStep],
     value: &str,
     equal: bool,
     control: &mut InvocationControl,
@@ -440,7 +466,7 @@ fn child_path_string_comparison(
 fn child_attribute_string_comparison(
     document: &Document,
     node: NodeId,
-    children: &[String],
+    children: &[RelativeChildStep],
     attribute: &str,
     value: &str,
     equal: bool,
@@ -463,20 +489,25 @@ fn child_attribute_string_comparison(
 fn select_relative_child_path(
     document: &Document,
     node: NodeId,
-    path: &[String],
+    path: &[RelativeChildStep],
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ControlFailure> {
     let mut selected = vec![node];
-    for name in path {
+    for step in path {
         let mut next = Vec::new();
         for parent in selected {
             for child in document.children(parent).iter().copied() {
                 control.charge(WorkDomain::XPathNodeVisit, 1)?;
-                if document.kind(child) == NodeKind::Element
-                    && document.name(child).is_some_and(|candidate| {
-                        candidate.namespace.is_none() && candidate.local == *name
-                    })
-                {
+                let matches = match step {
+                    RelativeChildStep::Element(name) => {
+                        document.kind(child) == NodeKind::Element
+                            && document.name(child).is_some_and(|candidate| {
+                                candidate.namespace.is_none() && candidate.local == *name
+                            })
+                    }
+                    RelativeChildStep::Text => document.kind(child) == NodeKind::Text,
+                };
+                if matches {
                     next.push(child);
                 }
             }

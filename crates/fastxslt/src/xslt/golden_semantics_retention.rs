@@ -1176,6 +1176,9 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
                 }
             })
         }
+        LiteralAttributeValue::Xslt10PathStringLiteralComparison { path, value, .. } => {
+            path.known_owned_capacity_bytes() + value.capacity()
+        }
         LiteralAttributeValue::Xslt10TextAndPath {
             prefix,
             path,

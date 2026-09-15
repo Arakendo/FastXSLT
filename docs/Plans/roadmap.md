@@ -4382,6 +4382,11 @@ host lifecycle.
   Bound the union to eight path alternatives and preserve document order,
   duplicate removal, first-node string conversion, and work accounting.
   [Evidence](../Evidence/oasis-xslt10-avt-path-union-2026-09-15.md)
+- [x] Extend typed relative child-path comparisons to terminal text-node steps
+  and allow a bounded path/string equality or inequality to supply one AVT
+  boolean value. Keep Microsoft `AVTs__77564`'s inter-element fragment-format
+  mismatch visible; the exact lower bound remains 1,444.
+  [Evidence](../Evidence/oasis-xslt10-text-node-comparison-avt-2026-09-15.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

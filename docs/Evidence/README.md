@@ -13,6 +13,7 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Bounded Multi-Path AVT](oasis-xslt10-multi-path-avt-2026-09-15.md)
 - [OASIS XSLT 1.0 Text-Child Predicate](oasis-xslt10-text-child-predicate-2026-09-15.md)
 - [OASIS XSLT 1.0 AVT Path Union](oasis-xslt10-avt-path-union-2026-09-15.md)
+- [OASIS XSLT 1.0 Text-Node Comparison AVT](oasis-xslt10-text-node-comparison-avt-2026-09-15.md)
 - [OASIS XSLT 1.0 Source-Node Union Variable](oasis-xslt10-source-node-union-variable-2026-09-08.md)
 - [OASIS XSLT 1.0 Variable/Path Apply Union](oasis-xslt10-variable-path-apply-union-2026-09-08.md)
 - [OASIS XSLT 1.0 Source-Variable Value Path](oasis-xslt10-source-variable-value-path-2026-09-08.md)
