@@ -407,9 +407,34 @@ fn multi_path_avt(
             Xslt10AvtPart::Path(path) => value.push_str(&materialize_source_path_avt(
                 "", path, "", location, context, control,
             )?),
+            Xslt10AvtPart::PathUnion(alternatives) => value.push_str(
+                &materialize_source_path_union_avt(alternatives, location, context, control)?,
+            ),
         }
     }
     Ok(value)
+}
+
+fn materialize_source_path_union_avt(
+    alternatives: &[LocationPath],
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let Some((source, node)) = context.source_focus else {
+        return Err(failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(context.request_id),
+            location.clone(),
+            "the source-path union attribute expression requires a source-node context",
+        ));
+    };
+    let selected = evaluate_location_path_union_controlled(source, node, alternatives, control)
+        .map_err(|failure| control_failure(failure, context.request_id))?;
+    Ok(selected
+        .first()
+        .map_or_else(String::new, |selected| source.string_value(*selected)))
 }
 
 fn context_local_name(context: &AttributeContext<'_>) -> String {

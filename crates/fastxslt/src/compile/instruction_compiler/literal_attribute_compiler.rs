@@ -9,7 +9,7 @@ use crate::xslt::golden_semantics_experiment::{
 
 use super::{
     CompileFailure, XSLT_NAMESPACE, invalid, is_ascii_ncname, parse_xslt10_normalize_space_path,
-    unsupported,
+    split_top_level_union, unsupported,
 };
 
 pub(crate) fn compile_literal_result_attributes(
@@ -121,8 +121,7 @@ fn parse_multi_path_avt(lexical: &str, location: &SourceLocation) -> Option<Xslt
                         Some(character) => expression.push(character),
                     }
                 }
-                let path = parse_location_path(expression.trim(), location.clone()).ok()?;
-                parts.push(Xslt10AvtPart::Path(path));
+                parts.push(parse_avt_path_part(expression.trim(), location)?);
                 dynamic_parts += 1;
             }
             '}' => return None,
@@ -134,6 +133,23 @@ fn parse_multi_path_avt(lexical: &str, location: &SourceLocation) -> Option<Xslt
     }
     push_avt_text(&mut parts, &mut text);
     (dynamic_parts >= 2 && parts.len() <= MAX_PARTS).then_some(Xslt10AvtExpression { parts })
+}
+
+fn parse_avt_path_part(expression: &str, location: &SourceLocation) -> Option<Xslt10AvtPart> {
+    const MAX_UNION_ALTERNATIVES: usize = 8;
+    if let Some(alternatives) = split_top_level_union(expression) {
+        if alternatives.len() > MAX_UNION_ALTERNATIVES {
+            return None;
+        }
+        let alternatives = alternatives
+            .into_iter()
+            .map(|alternative| parse_location_path(alternative.trim(), location.clone()).ok())
+            .collect::<Option<Vec<_>>>()?;
+        return Some(Xslt10AvtPart::PathUnion(alternatives));
+    }
+    parse_location_path(expression, location.clone())
+        .ok()
+        .map(Xslt10AvtPart::Path)
 }
 
 fn push_avt_text(parts: &mut Vec<Xslt10AvtPart>, text: &mut String) {
@@ -486,5 +502,19 @@ mod tests {
         assert_eq!(expression.parts.len(), 5);
         assert!(matches!(expression.parts[0], Xslt10AvtPart::Text(ref value) if value == "{"));
         assert!(matches!(expression.parts[4], Xslt10AvtPart::Text(ref value) if value == "}"));
+    }
+
+    #[test]
+    fn compiles_a_bounded_path_union_as_one_avt_part() {
+        let compiled = parse_literal_attribute_value("{@size}{./* | ./text()}", &location())
+            .expect("the bounded union AVT should compile");
+        let LiteralAttributeValue::Xslt10MultiPathAvt(expression) = compiled else {
+            panic!("expected the typed multi-path AVT representation");
+        };
+        assert!(matches!(
+            expression.parts.as_slice(),
+            [Xslt10AvtPart::Path(_), Xslt10AvtPart::PathUnion(alternatives)]
+                if alternatives.len() == 2
+        ));
     }
 }

@@ -1613,3 +1613,9 @@ maintained redistributable legacy suite becomes available.
   multi-path AVT lane, raising the lower bound from 1,442 to 1,443 without a
   new mismatch or execution failure.
   [Evidence](../Evidence/oasis-xslt10-text-child-predicate-2026-09-15.md)
+- 2026-09-15 -- One bounded multi-part AVT expression may now reuse the shared
+  controlled path-union evaluator, preserving document-order normalization,
+  duplicate removal, traversal charging, and first-node string conversion.
+  Unchanged Microsoft `AVTs__77571` becomes exact, raising the lower bound from
+  1,443 to 1,444 without a new mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-avt-path-union-2026-09-15.md)

@@ -1171,6 +1171,9 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
             vec_owned(&expression.parts, |part| match part {
                 Xslt10AvtPart::Text(value) => value.capacity(),
                 Xslt10AvtPart::Path(path) => path.known_owned_capacity_bytes(),
+                Xslt10AvtPart::PathUnion(alternatives) => {
+                    vec_owned(alternatives, LocationPath::known_owned_capacity_bytes)
+                }
             })
         }
         LiteralAttributeValue::Xslt10TextAndPath {

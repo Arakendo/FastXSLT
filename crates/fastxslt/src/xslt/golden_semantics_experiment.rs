@@ -950,6 +950,7 @@ pub(crate) struct Xslt10AvtExpression {
 pub(crate) enum Xslt10AvtPart {
     Text(String),
     Path(LocationPath),
+    PathUnion(Vec<LocationPath>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
