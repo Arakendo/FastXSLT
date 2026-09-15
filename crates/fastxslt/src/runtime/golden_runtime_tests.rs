@@ -5063,7 +5063,7 @@ fn xpath10_context_number_nan_test_is_selected_at_compilation() {
     const SOURCE: &str = "urn:fastxslt:xpath10-context-number-nan:source";
     const LEGACY: &str = "urn:fastxslt:xpath10-context-number-nan:legacy";
     const MODERN: &str = "urn:fastxslt:xpath10-context-number-nan:modern";
-    let body = r#"<xsl:output method="text"/><xsl:template match="/"><xsl:apply-templates select="doc/number"/></xsl:template><xsl:template match="number"><xsl:if test="string(number(.))='NaN'">invalid</xsl:if>|</xsl:template>"#;
+    let body = r#"<xsl:output method="text"/><xsl:template match="/"><xsl:apply-templates select="doc/number"/></xsl:template><xsl:template match="number"><xsl:if test="string(number(.))='NaN'">invalid</xsl:if>/<xsl:if test="contains(number(.),'NaN')">invalid</xsl:if>|</xsl:template>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 16_384));
     resources
         .admit(
@@ -5096,7 +5096,7 @@ fn xpath10_context_number_nan_test_is_selected_at_compilation() {
         execute_transform_set(builder.seal()).expect("execute XPath 1.0 context NaN test");
     assert_eq!(
         results.by_request["xpath10-context-number-nan"].serialized,
-        "|invalid|invalid|"
+        "/|invalid/invalid|invalid/invalid|"
     );
 }
 

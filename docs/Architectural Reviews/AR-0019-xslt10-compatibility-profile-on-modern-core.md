@@ -1540,3 +1540,9 @@ maintained redistributable legacy suite becomes available.
   indentation emitted under `indent='yes'`; it is retained as comparison-
   harness pressure and the exact lower bound remains 1,411.
   [Evidence](../Evidence/oasis-xslt10-explicit-axis-boolean-paths-2026-09-14.md)
+- 2026-09-14 -- XPath 1.0 `contains(number(.), 'NaN')` now reuses the typed
+  context-number NaN boolean plan, preserving implicit number-to-string
+  conversion without a general nested-function evaluator. Unchanged Lotus
+  `math_math104` becomes exact, raising the lower bound from 1,411 to 1,412
+  without a new mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-contains-context-number-nan-2026-09-14.md)

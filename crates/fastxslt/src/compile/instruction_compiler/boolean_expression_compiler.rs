@@ -626,6 +626,13 @@ fn parse_context_string_length_equality(expression: &str) -> Option<usize> {
 }
 
 fn is_xslt10_context_number_nan_test(expression: &str) -> bool {
+    if let Some(arguments) = expression
+        .strip_prefix("contains(")
+        .and_then(|value| value.strip_suffix(')'))
+        && let Some((number, literal)) = arguments.split_once(',')
+    {
+        return number.trim() == "number(.)" && xpath_string_literal(literal.trim()) == Some("NaN");
+    }
     let Some((left, right)) = expression.split_once('=') else {
         return false;
     };
