@@ -694,6 +694,7 @@ pub(super) fn execute_temporary_copy(
                 name: name.clone(),
                 namespaces: namespaces.clone().into(),
                 attributes: materialize_literal_attributes(
+                    inputs,
                     attributes,
                     variables,
                     LiteralAttributeFocus {

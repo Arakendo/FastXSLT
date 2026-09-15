@@ -25,7 +25,11 @@ pub(crate) fn compile_literal_result_attributes(
             continue;
         }
         let lexical = document.string_value(*attribute);
-        let value = parse_literal_attribute_value(&lexical, document.location(*attribute))?;
+        let value = parse_literal_attribute_value_with_context(
+            &lexical,
+            document.location(*attribute),
+            Some((document, element)),
+        )?;
         attributes.push(LiteralAttribute {
             name: name.clone(),
             value,
@@ -35,9 +39,10 @@ pub(crate) fn compile_literal_result_attributes(
     Ok(attributes)
 }
 
-fn parse_literal_attribute_value(
+fn parse_literal_attribute_value_with_context(
     lexical: &str,
     location: &SourceLocation,
+    static_context: Option<(&Document, NodeId)>,
 ) -> Result<LiteralAttributeValue, CompileFailure> {
     if lexical == "{position()}" {
         return Ok(LiteralAttributeValue::ContextPosition);
@@ -89,7 +94,7 @@ fn parse_literal_attribute_value(
         if let Some(value) = parse_variable_and_path(lexical, location) {
             return Ok(value);
         }
-        if let Some(value) = parse_multi_path_avt(lexical, location) {
+        if let Some(value) = parse_multi_path_avt(lexical, location, static_context) {
             return Ok(LiteralAttributeValue::Xslt10MultiPathAvt(value));
         }
         if let Some(value) = parse_single_dynamic_attribute_value(lexical, location) {
@@ -102,6 +107,14 @@ fn parse_literal_attribute_value(
         ));
     }
     Ok(LiteralAttributeValue::Text(lexical.to_owned()))
+}
+
+#[cfg(test)]
+fn parse_literal_attribute_value(
+    lexical: &str,
+    location: &SourceLocation,
+) -> Result<LiteralAttributeValue, CompileFailure> {
+    parse_literal_attribute_value_with_context(lexical, location, None)
 }
 
 fn parse_path_string_literal_comparison_avt(
@@ -154,7 +167,11 @@ fn split_unquoted_operator<'a>(expression: &'a str, operator: &str) -> Option<(&
     None
 }
 
-fn parse_multi_path_avt(lexical: &str, location: &SourceLocation) -> Option<Xslt10AvtExpression> {
+fn parse_multi_path_avt(
+    lexical: &str,
+    location: &SourceLocation,
+    static_context: Option<(&Document, NodeId)>,
+) -> Option<Xslt10AvtExpression> {
     const MAX_PARTS: usize = 32;
     let mut characters = lexical.chars().peekable();
     let mut parts = Vec::new();
@@ -181,7 +198,11 @@ fn parse_multi_path_avt(lexical: &str, location: &SourceLocation) -> Option<Xslt
                         Some(character) => expression.push(character),
                     }
                 }
-                parts.push(parse_avt_path_part(expression.trim(), location)?);
+                parts.push(parse_avt_path_part(
+                    expression.trim(),
+                    location,
+                    static_context,
+                )?);
                 dynamic_parts += 1;
             }
             '}' => return None,
@@ -196,7 +217,11 @@ fn parse_multi_path_avt(lexical: &str, location: &SourceLocation) -> Option<Xslt
         .then_some(Xslt10AvtExpression { parts })
 }
 
-fn parse_avt_path_part(expression: &str, location: &SourceLocation) -> Option<Xslt10AvtPart> {
+fn parse_avt_path_part(
+    expression: &str,
+    location: &SourceLocation,
+    static_context: Option<(&Document, NodeId)>,
+) -> Option<Xslt10AvtPart> {
     const MAX_UNION_ALTERNATIVES: usize = 8;
     if let Some(alternatives) = split_top_level_union(expression) {
         if alternatives.len() > MAX_UNION_ALTERNATIVES {
@@ -208,12 +233,17 @@ fn parse_avt_path_part(expression: &str, location: &SourceLocation) -> Option<Xs
             .collect::<Option<Vec<_>>>()?;
         return Some(Xslt10AvtPart::PathUnion(alternatives));
     }
-    parse_location_path(
+    if let Ok(path) = parse_location_path(
         strip_one_parenthesized_expression(expression),
         location.clone(),
+    ) {
+        return Some(Xslt10AvtPart::Path(path));
+    }
+    let (document, element) = static_context?;
+    super::value_expression_compiler::compile_xslt10_binary_numeric(
+        document, element, expression, location,
     )
-    .ok()
-    .map(Xslt10AvtPart::Path)
+    .map(Xslt10AvtPart::Numeric)
 }
 
 fn strip_one_parenthesized_expression(expression: &str) -> &str {

@@ -15,7 +15,8 @@ use crate::xslt::golden_semantics_experiment::{
 
 use super::runtime_context::{RuntimeVariables, SequenceInputs};
 use super::value_evaluator::{
-    evaluate_xslt10_concat, normalized_node_string, normalized_node_string_length,
+    evaluate_binary_numeric_value, evaluate_xslt10_concat, normalized_node_string,
+    normalized_node_string_length,
 };
 use super::{ExecutionFailure, FailureCategory, SequenceContext, control_failure, failure_at};
 
@@ -55,6 +56,7 @@ pub(super) fn computed_attributes_require_context_string(attributes: &[ComputedA
 }
 
 struct AttributeContext<'a> {
+    inputs: &'a SequenceInputs<'a>,
     variables: &'a RuntimeVariables,
     focus_position: usize,
     focus_size: usize,
@@ -74,6 +76,7 @@ pub(super) struct LiteralAttributeFocus<'a> {
 }
 
 pub(super) fn materialize_literal_attributes(
+    inputs: &SequenceInputs<'_>,
     attributes: &[LiteralAttribute],
     variables: &RuntimeVariables,
     focus: LiteralAttributeFocus<'_>,
@@ -81,6 +84,7 @@ pub(super) fn materialize_literal_attributes(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultAttribute>, ExecutionFailure> {
     let context = AttributeContext {
+        inputs,
         variables,
         focus_position: focus.position,
         focus_size: focus.size,
@@ -112,6 +116,7 @@ pub(super) fn materialize_computed_attributes(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultAttribute>, ExecutionFailure> {
     let context = AttributeContext {
+        inputs,
         variables,
         focus_position: focus.position,
         focus_size: focus.size,
@@ -450,6 +455,16 @@ fn multi_path_avt(
             Xslt10AvtPart::PathUnion(alternatives) => value.push_str(
                 &materialize_source_path_union_avt(alternatives, location, context, control)?,
             ),
+            Xslt10AvtPart::Numeric(expression) => {
+                let node = context.source_focus.map(|(_, node)| node);
+                value.push_str(&evaluate_binary_numeric_value(
+                    context.inputs,
+                    node,
+                    expression,
+                    context.variables,
+                    control,
+                )?);
+            }
         }
     }
     Ok(value)

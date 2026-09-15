@@ -951,6 +951,7 @@ pub(crate) enum Xslt10AvtPart {
     Text(String),
     Path(LocationPath),
     PathUnion(Vec<LocationPath>),
+    Numeric(crate::xpath::binary_numeric_experiment::BinaryNumericExpression),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -1837,6 +1837,7 @@ fn execute_source_element_copy(
                     .clone(),
                 namespaces: source.in_scope_namespaces(node).into(),
                 attributes: materialize_literal_attributes(
+                    inputs,
                     attributes,
                     variables,
                     LiteralAttributeFocus {
@@ -1918,6 +1919,7 @@ fn execute_literal_element(
     .transpose()?
     .flatten();
     let mut attributes = materialize_literal_attributes(
+        inputs,
         attributes,
         variables,
         LiteralAttributeFocus {

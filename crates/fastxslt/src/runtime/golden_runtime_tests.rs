@@ -3958,6 +3958,37 @@ fn literal_result_attribute_composes_parenthesized_path_and_escaped_brace() {
 }
 
 #[test]
+fn literal_result_attribute_composes_multiple_numeric_expressions() {
+    const SOURCE: &str = "urn:fastxslt:numeric-avt:source";
+    const STYLESHEET: &str = "urn:fastxslt:numeric-avt:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc><text size="1"/><text size="5"/></doc>"#.to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:for-each select="//text"><out value="{(@size + 1)} + {@size div 2}"/></xsl:for-each></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile numeric AVT");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("numeric-avt", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute numeric AVT");
+    assert_eq!(
+        results.by_request["numeric-avt"].serialized,
+        "<out value=\"2 + 0.5\"></out><out value=\"6 + 2.5\"></out>"
+    );
+}
+
+#[test]
 fn node_name_path_returns_retained_element_and_attribute_lexical_names() {
     const SOURCE: &str = "urn:fastxslt:name-path:source";
     const STYLESHEET: &str = "urn:fastxslt:name-path:stylesheet";

@@ -1633,3 +1633,9 @@ maintained redistributable legacy suite becomes available.
   mismatches. The exact lower bound remains 1,444 and malformed brace forms
   remain rejected.
   [Evidence](../Evidence/oasis-xslt10-parenthesized-path-and-escaped-brace-avt-2026-09-15.md)
+- 2026-09-15 -- Bounded multi-part AVTs now retain typed binary numeric parts
+  compiled and executed by the shared controlled XSLT 1.0 exact-rational
+  machinery. Microsoft `AVTs__77576` produces all expected decimal values but
+  remains a visible fragment-format mismatch. The exact lower bound remains
+  1,444.
+  [Evidence](../Evidence/oasis-xslt10-numeric-composition-avt-2026-09-15.md)

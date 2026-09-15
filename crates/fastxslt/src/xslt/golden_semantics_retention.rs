@@ -1174,6 +1174,7 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
                 Xslt10AvtPart::PathUnion(alternatives) => {
                     vec_owned(alternatives, LocationPath::known_owned_capacity_bytes)
                 }
+                Xslt10AvtPart::Numeric(expression) => expression.known_owned_capacity_bytes(),
             })
         }
         LiteralAttributeValue::Xslt10PathStringLiteralComparison { path, value, .. } => {

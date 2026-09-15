@@ -4393,6 +4393,11 @@ host lifecycle.
   values; their inter-element fragment-format mismatches remain visible and
   the exact lower bound remains 1,444.
   [Evidence](../Evidence/oasis-xslt10-parenthesized-path-and-escaped-brace-avt-2026-09-15.md)
+- [x] Reuse the controlled XSLT 1.0 exact-rational evaluator for numeric parts
+  inside bounded multi-part AVTs. Microsoft `AVTs__77576` now produces all
+  expected decimal attribute values; its inter-element fragment-format
+  mismatch remains visible and the exact lower bound remains 1,444.
+  [Evidence](../Evidence/oasis-xslt10-numeric-composition-avt-2026-09-15.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.
