@@ -1588,3 +1588,9 @@ maintained redistributable legacy suite becomes available.
   Lotus `sort_sort37` and `node_node15` become exact, raising the lower bound
   from 1,437 to 1,439 without adding a mismatch or execution failure.
   [Evidence](../Evidence/oasis-xslt10-lexical-context-comparison-2026-09-15.md)
+- 2026-09-15 -- Relative child and child/final-attribute node sets now compare
+  with string literals under bounded XPath 1.0 existential equality and
+  inequality semantics. Two unchanged result-tree cases become exact,
+  including Lotus `select_select51`, raising the lower bound from 1,439 to
+  1,441 without adding a mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-child-node-set-literal-comparison-2026-09-15.md)

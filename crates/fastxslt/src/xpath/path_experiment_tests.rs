@@ -1725,6 +1725,43 @@ fn path_boolean_predicate_compares_dynamic_node_sets_and_positional_children() {
 }
 
 #[test]
+fn path_boolean_predicate_compares_child_node_sets_with_string_literals() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        b"<doc><book><title>Book 1</title><author real='yes'><last>Smith</last></author></book><book><title>Book 2</title><author real='no'><last>Jones</last><last>Smith</last></author></book><book/></doc>",
+        ParseLimits {
+            max_events: 40,
+            max_depth: 5,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let doc = document.children(document.document_node())[0];
+    let values = |expression: &str| {
+        evaluate_location_path(
+            &document,
+            doc,
+            &parse_location_path(expression, location())
+                .expect("child node-set comparison should parse"),
+        )
+    };
+
+    assert_eq!(values("book[title='Book 2']"), [document.children(doc)[1]]);
+    assert_eq!(
+        values("book['Smith'=author/last]"),
+        [document.children(doc)[0], document.children(doc)[1]]
+    );
+    assert_eq!(
+        values("book[author/last!='Smith']"),
+        [document.children(doc)[1]]
+    );
+    assert_eq!(
+        values("book[author/@real='no']"),
+        [document.children(doc)[1]]
+    );
+}
+
+#[test]
 fn path_boolean_predicate_negates_context_string_equality() {
     let parsed = parse_document(
         "memory:source.xml",

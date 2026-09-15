@@ -55,6 +55,17 @@ pub(super) enum PathBooleanPredicate {
         left: Vec<String>,
         right: Vec<String>,
     },
+    ChildPathStringComparison {
+        path: Vec<String>,
+        value: String,
+        equal: bool,
+    },
+    ChildAttributeStringComparison {
+        children: Vec<String>,
+        attribute: String,
+        value: String,
+        equal: bool,
+    },
     Not(Box<Self>),
     And(Box<Self>, Box<Self>),
     Or(Box<Self>, Box<Self>),
@@ -80,6 +91,15 @@ impl PathBooleanPredicate {
             Self::ChildPathStringEquals { left, right } => {
                 child_path_capacity(left) + child_path_capacity(right)
             }
+            Self::ChildPathStringComparison { path, value, .. } => {
+                child_path_capacity(path) + value.capacity()
+            }
+            Self::ChildAttributeStringComparison {
+                children,
+                attribute,
+                value,
+                ..
+            } => child_path_capacity(children) + attribute.capacity() + value.capacity(),
             Self::ContextStringEquals(value)
             | Self::ContextNameComparison { value, .. }
             | Self::ContextNameStartsWith(value)
@@ -123,6 +143,19 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
     }
     if let Some((left, right)) = parse_child_path_string_equality(predicate) {
         return Some(PathBooleanPredicate::ChildPathStringEquals { left, right });
+    }
+    if let Some((path, value, equal)) = parse_child_path_string_comparison(predicate) {
+        return Some(PathBooleanPredicate::ChildPathStringComparison { path, value, equal });
+    }
+    if let Some((children, attribute, value, equal)) =
+        parse_child_attribute_string_comparison(predicate)
+    {
+        return Some(PathBooleanPredicate::ChildAttributeStringComparison {
+            children,
+            attribute,
+            value,
+            equal,
+        });
     }
     if let Some((name, value)) = parse_attribute_inequality(predicate) {
         return Some(PathBooleanPredicate::NotEquals {
@@ -178,6 +211,12 @@ pub(super) fn parse(predicate: &str) -> Option<PathBooleanPredicate> {
         .strip_prefix('@')
         .filter(|name| is_ascii_ncname(name))
         .map(|name| PathBooleanPredicate::Present(name.to_owned()))
+}
+
+pub(super) fn recognizes_child_path_string_comparison(predicate: &str) -> bool {
+    let predicate = strip_outer_parentheses(predicate.trim());
+    parse_child_path_string_comparison(predicate).is_some()
+        || parse_child_attribute_string_comparison(predicate).is_some()
 }
 
 pub(super) fn evaluate(
@@ -259,6 +298,17 @@ pub(super) fn evaluate(
         PathBooleanPredicate::ChildPathStringEquals { left, right } => {
             child_path_string_equals(document, node, left, right, control)
         }
+        PathBooleanPredicate::ChildPathStringComparison { path, value, equal } => {
+            child_path_string_comparison(document, node, path, value, *equal, control)
+        }
+        PathBooleanPredicate::ChildAttributeStringComparison {
+            children,
+            attribute,
+            value,
+            equal,
+        } => child_attribute_string_comparison(
+            document, node, children, attribute, value, *equal, control,
+        ),
         PathBooleanPredicate::Not(operand) => Ok(!evaluate(document, node, operand, control)?),
         PathBooleanPredicate::And(left, right) => {
             if !evaluate(document, node, left, control)? {
@@ -291,6 +341,56 @@ fn parse_child_path_string_equality(predicate: &str) -> Option<(Vec<String>, Vec
     ))
 }
 
+fn parse_child_path_string_comparison(predicate: &str) -> Option<(Vec<String>, String, bool)> {
+    for (operator, equal) in [("!=", false), ("=", true)] {
+        let Some((left, right)) = split_top_level_predicate_operator(predicate, operator) else {
+            continue;
+        };
+        if let Some((path, value)) = parse_child_path_string_operand(left.trim(), right.trim())
+            .or_else(|| parse_child_path_string_operand(right.trim(), left.trim()))
+        {
+            return Some((path, value, equal));
+        }
+    }
+    None
+}
+
+fn parse_child_path_string_operand(path: &str, literal: &str) -> Option<(Vec<String>, String)> {
+    Some((
+        parse_relative_child_path(path)?,
+        xpath_string_literal(literal)?.to_owned(),
+    ))
+}
+
+fn parse_child_attribute_string_comparison(
+    predicate: &str,
+) -> Option<(Vec<String>, String, String, bool)> {
+    for (operator, equal) in [("!=", false), ("=", true)] {
+        let Some((left, right)) = split_top_level_predicate_operator(predicate, operator) else {
+            continue;
+        };
+        if let Some((children, attribute, value)) =
+            parse_child_attribute_string_operand(left.trim(), right.trim())
+                .or_else(|| parse_child_attribute_string_operand(right.trim(), left.trim()))
+        {
+            return Some((children, attribute, value, equal));
+        }
+    }
+    None
+}
+
+fn parse_child_attribute_string_operand(
+    path: &str,
+    literal: &str,
+) -> Option<(Vec<String>, String, String)> {
+    let (children, attribute) = path.rsplit_once("/@")?;
+    Some((
+        parse_relative_child_path(children)?,
+        is_ascii_ncname(attribute).then(|| attribute.to_owned())?,
+        xpath_string_literal(literal)?.to_owned(),
+    ))
+}
+
 fn parse_relative_child_path(path: &str) -> Option<Vec<String>> {
     const MAX_STEPS: usize = 4;
     let steps = path.split('/').collect::<Vec<_>>();
@@ -314,6 +414,46 @@ fn child_path_string_equals(
             control.charge(WorkDomain::XPathOperation, 1)?;
             if document.string_value(left) == document.string_value(right) {
                 return Ok(true);
+            }
+        }
+    }
+    Ok(false)
+}
+
+fn child_path_string_comparison(
+    document: &Document,
+    node: NodeId,
+    path: &[String],
+    value: &str,
+    equal: bool,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    for selected in select_relative_child_path(document, node, path, control)? {
+        control.charge(WorkDomain::XPathOperation, 1)?;
+        if (document.string_value(selected) == value) == equal {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn child_attribute_string_comparison(
+    document: &Document,
+    node: NodeId,
+    children: &[String],
+    attribute: &str,
+    value: &str,
+    equal: bool,
+    control: &mut InvocationControl,
+) -> Result<bool, ControlFailure> {
+    for parent in select_relative_child_path(document, node, children, control)? {
+        for selected in document.attributes(parent).iter().copied() {
+            control.charge(WorkDomain::XPathNodeVisit, 1)?;
+            if unnamespaced_attribute_named(document, selected, attribute) {
+                control.charge(WorkDomain::XPathOperation, 1)?;
+                if (document.value(selected).unwrap_or_default() == value) == equal {
+                    return Ok(true);
+                }
             }
         }
     }
