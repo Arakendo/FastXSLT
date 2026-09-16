@@ -234,11 +234,11 @@ fn declared_extension_elements_fail_explicitly_instead_of_becoming_literal_resul
 }
 
 #[test]
-fn static_xsl_element_keeps_dynamic_names_namespaces_and_attribute_sets_explicit() {
+fn static_xsl_element_keeps_dynamic_names_namespaces_and_unknown_attribute_sets_explicit() {
     for (attribute, code) in [
         ("name=\"{name()}\"", "FXST1047"),
         ("name=\"out\" namespace=\"{namespace-uri()}\"", "FXST1045"),
-        ("name=\"out\" use-attribute-sets=\"common\"", "FXST1046"),
+        ("name=\"out\" use-attribute-sets=\"common\"", "FXST1065"),
     ] {
         let bytes = format!(
             r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:test" version="1.0">

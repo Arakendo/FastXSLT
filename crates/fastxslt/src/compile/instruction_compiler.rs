@@ -388,7 +388,8 @@ fn compile_literal_element(
         &computed_attributes,
         document.location(element),
     )?;
-    let mut attribute_set_values = compile_literal_element_attribute_sets(document, element)?;
+    let mut attribute_set_values =
+        compile_local_attribute_sets(document, element, Some(XSLT_NAMESPACE))?;
     attribute_set_values.retain(|set_attribute| {
         !attributes
             .iter()
@@ -442,16 +443,14 @@ pub(super) fn validate_local_attribute_set(
     Ok(name)
 }
 
-fn compile_literal_element_attribute_sets(
+fn compile_local_attribute_sets(
     document: &Document,
     element: NodeId,
+    attribute_namespace: Option<&str>,
 ) -> Result<Vec<ComputedAttribute>, CompileFailure> {
-    let Some(names) = optional_attribute(
-        document,
-        element,
-        Some(XSLT_NAMESPACE),
-        "use-attribute-sets",
-    ) else {
+    let Some(names) =
+        optional_attribute(document, element, attribute_namespace, "use-attribute-sets")
+    else {
         return Ok(Vec::new());
     };
     let requested = names
@@ -571,17 +570,18 @@ fn compile_static_computed_element(
             document.location(element),
         ));
     }
-    if optional_attribute(document, element, None, "use-attribute-sets").is_some() {
-        return Err(unsupported(
-            "FXST1046",
-            "the private xsl:element slice does not yet support attribute sets",
-            document.location(element),
-        ));
-    }
     let (name, mut namespaces) =
         compile_static_computed_element_name(document, element, name, namespace)?;
-    let (computed_attributes, computed_attribute_nodes) =
+    let (mut computed_attributes, computed_attribute_nodes) =
         compile_computed_attributes(document, element)?;
+    let mut attribute_set_values = compile_local_attribute_sets(document, element, None)?;
+    attribute_set_values.retain(|set_attribute| {
+        !computed_attributes
+            .iter()
+            .any(|attribute| attribute.name == set_attribute.name)
+    });
+    attribute_set_values.append(&mut computed_attributes);
+    let computed_attributes = attribute_set_values;
     retain_computed_attribute_namespace_bindings(&mut namespaces, &computed_attributes);
     Ok(Instruction::LiteralElement {
         origin: ElementConstructorOrigin::ComputedStatic,

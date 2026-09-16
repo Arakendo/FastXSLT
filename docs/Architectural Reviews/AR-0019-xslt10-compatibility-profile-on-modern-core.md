@@ -1689,3 +1689,8 @@ maintained redistributable legacy suite becomes available.
   than producing partial results. Seven unchanged Lotus cases become exact,
   raising the lower bound from 1,451 to 1,458 with no new XML mismatch.
   [Evidence](../Evidence/oasis-xslt10-local-static-attribute-sets-2026-09-15.md)
+- 2026-09-15 -- The same compile-time local static attribute-set resolver now
+  serves statically named `xsl:element`, preserving explicit child-attribute
+  override and existing namespace fixup. Three unchanged cases become exact,
+  raising the lower bound from 1,458 to 1,461 with no new XML mismatch.
+  [Evidence](../Evidence/oasis-xslt10-static-computed-element-attribute-sets-2026-09-15.md)
