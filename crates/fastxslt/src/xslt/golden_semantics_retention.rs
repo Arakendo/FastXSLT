@@ -1166,8 +1166,9 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
         LiteralAttributeValue::Number(instruction) => {
             size_of_val(instruction.as_ref()) + number_instruction_owned(instruction)
         }
-        LiteralAttributeValue::CountSourcePath(path) => path.known_owned_capacity_bytes(),
-        LiteralAttributeValue::Xslt10ForEachPathStringValue(path) => {
+        LiteralAttributeValue::CountSourcePath(path)
+        | LiteralAttributeValue::Xslt10LocalSourcePathCount(path)
+        | LiteralAttributeValue::Xslt10ForEachPathStringValue(path) => {
             path.known_owned_capacity_bytes()
         }
         LiteralAttributeValue::CountSourcePathUnion(alternatives) => {

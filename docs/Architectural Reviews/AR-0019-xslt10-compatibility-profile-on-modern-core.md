@@ -1675,3 +1675,10 @@ maintained redistributable legacy suite becomes available.
   unsupported. Unchanged Lotus `copy_copy08` becomes exact, raising the lower
   bound from 1,449 to 1,450 without a new mismatch or execution failure.
   [Evidence](../Evidence/oasis-xslt10-static-template-argument-tree-2026-09-15.md)
+- 2026-09-15 -- Computed attributes now admit one bounded constructor-local
+  source-path variable followed by `count($same-name)`. The private plan retains
+  only the controlled path, preserves surrounding lexical shadowing, and does
+  not establish a general local-frame contract. Unchanged Microsoft
+  `Variables__78409` becomes exact, raising the lower bound from 1,450 to 1,451
+  without a new mismatch or execution failure.
+  [Evidence](../Evidence/oasis-xslt10-computed-attribute-local-count-2026-09-15.md)

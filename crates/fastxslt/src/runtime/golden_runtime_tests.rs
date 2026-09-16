@@ -1924,6 +1924,33 @@ fn xslt10_computed_attribute_for_each_concatenates_selected_string_values() {
 }
 
 #[test]
+fn xslt10_computed_attribute_counts_its_local_source_path_variable() {
+    const SOURCE: &str = "urn:fastxslt:computed-attribute-local-count:source";
+    const STYLESHEET: &str = "urn:fastxslt:computed-attribute-local-count:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:attribute name="count"><xsl:variable name="selected" select="doc/item"/><xsl:value-of select="count($selected)"/></xsl:attribute></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><item/><item/><item/></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("computed-attribute-local-count", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["computed-attribute-local-count"].serialized,
+        "<out count=\"3\"></out>"
+    );
+}
+
+#[test]
 fn xslt10_template_argument_for_each_builds_one_temporary_text_value() {
     const SOURCE: &str = "urn:fastxslt:argument-for-each:source";
     const STYLESHEET: &str = "urn:fastxslt:argument-for-each:stylesheet";

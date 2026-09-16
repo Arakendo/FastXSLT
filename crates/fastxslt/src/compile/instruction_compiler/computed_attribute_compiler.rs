@@ -105,6 +105,12 @@ pub(super) fn compile_computed_attribute(
         LiteralAttributeValue::Xslt10ForEachPathStringValue(
             compile_xslt10_for_each_string_value_path(document, *for_each)?,
         )
+    } else if let [variable, value_of] = children.as_slice()
+        && is_xslt_element(document, *variable, "variable")
+        && is_xslt_element(document, *value_of, "value-of")
+        && uses_xslt10_compatibility(document, *variable)
+    {
+        compile_xslt10_local_source_path_count(document, *variable, *value_of)?
     } else {
         return Err(unsupported(
             "FXST1033",
@@ -117,6 +123,43 @@ pub(super) fn compile_computed_attribute(
         value,
         location: document.location(element).clone(),
     })
+}
+
+fn compile_xslt10_local_source_path_count(
+    document: &Document,
+    variable: NodeId,
+    value_of: NodeId,
+) -> Result<LiteralAttributeValue, CompileFailure> {
+    ensure_only_attributes(document, variable, &["name", "select"], "xsl:variable")?;
+    ensure_no_meaningful_children(document, variable, "xsl:variable")?;
+    ensure_only_attributes(document, value_of, &["select"], "xsl:value-of")?;
+    ensure_no_meaningful_children(document, value_of, "xsl:value-of")?;
+    let name = required_attribute(document, variable, None, "name")?;
+    if !is_ascii_ncname(name) {
+        return Err(unsupported(
+            "FXST1033",
+            "the private computed-attribute local variable requires an unprefixed NCName",
+            document.location(variable),
+        ));
+    }
+    let expected = format!("count(${name})");
+    if required_attribute(document, value_of, None, "select")?.trim() != expected {
+        return Err(unsupported(
+            "FXST1033",
+            "the private computed-attribute local variable is admitted only through count($name)",
+            document.location(value_of),
+        ));
+    }
+    let select = required_attribute(document, variable, None, "select")?;
+    let path =
+        parse_location_path(select.trim(), document.location(variable).clone()).map_err(|_| {
+            unsupported(
+                "FXXP1012",
+                format!("unsupported computed-attribute local variable selection: {select}"),
+                document.location(variable),
+            )
+        })?;
+    Ok(LiteralAttributeValue::Xslt10LocalSourcePathCount(path))
 }
 
 pub(super) fn compile_xslt10_for_each_string_value_path(

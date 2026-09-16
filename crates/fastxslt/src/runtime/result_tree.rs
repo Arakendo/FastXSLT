@@ -153,7 +153,8 @@ pub(super) fn materialize_computed_attributes(
                     inputs, attribute, variable, variables, request_id, control,
                 )?);
             }
-            LiteralAttributeValue::CountSourcePath(path) => {
+            LiteralAttributeValue::CountSourcePath(path)
+            | LiteralAttributeValue::Xslt10LocalSourcePathCount(path) => {
                 materialized.push(materialize_source_path_count(
                     attribute,
                     std::slice::from_ref(path),
@@ -331,21 +332,18 @@ fn materialize_attribute(
     charge_result_node(control, context.request_id)?;
     let value = match value {
         LiteralAttributeValue::Text(value) => value.clone(),
-        LiteralAttributeValue::Number(_) => unreachable!("computed-attribute number owner"),
         LiteralAttributeValue::Variable(variable) => {
             attribute_variable_string(variable, location, context, control)?
         }
-        LiteralAttributeValue::CountSourceNodeVariable(_)
+        LiteralAttributeValue::Number(_)
+        | LiteralAttributeValue::CountSourceNodeVariable(_)
         | LiteralAttributeValue::CountSourcePath(_)
-        | LiteralAttributeValue::CountSourcePathUnion(_) => {
-            unreachable!("source counts are materialized by the computed-attribute owner")
-        }
-        LiteralAttributeValue::ContextNormalizedStringLength => unreachable!(
-            "normalized context lengths are materialized by the computed-attribute owner"
-        ),
-        LiteralAttributeValue::Xslt10ForEachPathStringValue(_)
+        | LiteralAttributeValue::CountSourcePathUnion(_)
+        | LiteralAttributeValue::Xslt10LocalSourcePathCount(_)
+        | LiteralAttributeValue::ContextNormalizedStringLength
+        | LiteralAttributeValue::Xslt10ForEachPathStringValue(_)
         | LiteralAttributeValue::Xslt10Concat(_) => {
-            unreachable!("dynamic computed-attribute values are materialized by their owner")
+            unreachable!("specialized computed-attribute value is materialized by its owner")
         }
         LiteralAttributeValue::Xslt10MultiPathAvt(expression) => {
             multi_path_avt(expression, location, context, control)?
