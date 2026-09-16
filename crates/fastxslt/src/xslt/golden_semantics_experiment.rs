@@ -43,6 +43,7 @@ pub(crate) struct StylesheetProgram {
     pub(crate) character_maps: Vec<CharacterMapDefinition>,
     pub(crate) output_character_map_names: Vec<ExpandedName>,
     pub(crate) output_character_map_location: Option<SourceLocation>,
+    pub(crate) local_attribute_set_names: Vec<ExpandedName>,
     pub(crate) root_template: Option<Template>,
     pub(crate) root_template_modes: Vec<String>,
     pub(crate) matched_templates: Vec<MatchedTemplate>,

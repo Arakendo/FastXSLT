@@ -1682,3 +1682,10 @@ maintained redistributable legacy suite becomes available.
   `Variables__78409` becomes exact, raising the lower bound from 1,450 to 1,451
   without a new mismatch or execution failure.
   [Evidence](../Evidence/oasis-xslt10-computed-attribute-local-count-2026-09-15.md)
+- 2026-09-15 -- A first attribute-set slice resolves uniquely named local sets
+  with static text values into literal-result-element plans during compilation.
+  Set, literal, and explicit child-attribute precedence is preserved; dynamic
+  values and same-name include/import composition remain unsupported rather
+  than producing partial results. Seven unchanged Lotus cases become exact,
+  raising the lower bound from 1,451 to 1,458 with no new XML mismatch.
+  [Evidence](../Evidence/oasis-xslt10-local-static-attribute-sets-2026-09-15.md)

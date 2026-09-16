@@ -32,6 +32,7 @@ impl StylesheetProgram {
             + vec_owned(&self.output_specified_properties, String::capacity)
             + vec_owned(&self.character_maps, character_map_owned)
             + vec_owned(&self.output_character_map_names, name_owned)
+            + vec_owned(&self.local_attribute_set_names, name_owned)
             + self
                 .output_character_map_location
                 .as_ref()

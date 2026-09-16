@@ -104,6 +104,7 @@ fn merge_included_program(
     location: &SourceLocation,
     allow_duplicate_matches: bool,
 ) -> Result<(), CompileFailure> {
+    merge_local_attribute_set_names(program, &mut included_program, location)?;
     if included_program.source_whitespace == SourceWhitespacePolicy::StripAllElementWhitespace {
         program.source_whitespace = SourceWhitespacePolicy::StripAllElementWhitespace;
     }
@@ -256,6 +257,11 @@ pub(crate) fn compile_stylesheet_with_import_and_include(
     )?;
 
     let mut imported_program = compile_imported_program(imported.0, imported.1, -1)?;
+    merge_local_attribute_set_names(
+        &mut program,
+        &mut imported_program,
+        principal.location(*import),
+    )?;
     validate_fully_shadowed_imported_output(
         &program,
         &imported_program,
@@ -308,6 +314,9 @@ pub(crate) fn compile_stylesheet_with_imports(
             compile_imported_program_excluding(document, *root, precedence, &excluded_modes)
         })
         .collect::<Result<Vec<_>, _>>()?;
+    for program in &mut imported_programs {
+        merge_local_attribute_set_names(&mut principal_program, program, principal.location(root))?;
+    }
     if imported_programs.len() == 1 {
         merge_single_imported_output(
             &mut principal_program,
@@ -359,6 +368,13 @@ pub(crate) fn compile_stylesheet_with_two_imported_programs_at(
         &import_declarations,
     )?;
     let mut imported_programs = imported_programs;
+    for program in &mut imported_programs {
+        merge_local_attribute_set_names(
+            &mut principal_program,
+            program,
+            principal.location(principal_root),
+        )?;
+    }
     for (program, shift) in imported_programs.iter_mut().zip([-3, -1]) {
         rebase_imported_program(program, shift, principal.location(principal_root))?;
     }
@@ -403,6 +419,11 @@ pub(crate) fn compile_stylesheet_with_single_imported_program_at(
         principal,
         principal_root,
         &import_declarations,
+    )?;
+    merge_local_attribute_set_names(
+        &mut principal_program,
+        &mut imported_program,
+        principal.location(principal_root),
     )?;
     rebase_imported_program(
         &mut imported_program,
@@ -619,6 +640,28 @@ fn merge_imported_named_templates(
     }
 }
 
+fn merge_local_attribute_set_names(
+    principal: &mut StylesheetProgram,
+    dependency: &mut StylesheetProgram,
+    location: &SourceLocation,
+) -> Result<(), CompileFailure> {
+    if dependency
+        .local_attribute_set_names
+        .iter()
+        .any(|name| principal.local_attribute_set_names.contains(name))
+    {
+        return Err(unsupported(
+            "FXST1065",
+            "attribute-set composition across stylesheet modules is outside the first attribute-set slice",
+            location,
+        ));
+    }
+    principal
+        .local_attribute_set_names
+        .append(&mut dependency.local_attribute_set_names);
+    Ok(())
+}
+
 fn merge_imported_global_bindings(
     principal: &mut StylesheetProgram,
     mut imported: Vec<crate::xslt::golden_semantics_experiment::GlobalBinding>,
@@ -720,6 +763,7 @@ fn compile_simplified_stylesheet_at(
         character_maps: Vec::new(),
         output_character_map_names: Vec::new(),
         output_character_map_location: None,
+        local_attribute_set_names: Vec::new(),
         root_template: Some(root_template),
         root_template_modes: Vec::new(),
         matched_templates: Vec::new(),
@@ -758,4 +802,49 @@ fn dependency_nodes_at(document: &Document, root: NodeId) -> Result<Vec<NodeId>,
                 || is_xslt_element(document, *child, "import")
         })
         .collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::xdm::owned_tree_experiment::Document;
+    use crate::xml::quick_xml_experiment::{ParseLimits, parse_document};
+
+    use super::compile_stylesheet_with_single_include;
+
+    fn stylesheet(identity: &str, bytes: &[u8]) -> Document {
+        let parsed = parse_document(
+            identity,
+            bytes,
+            ParseLimits {
+                max_events: 128,
+                max_depth: 16,
+            },
+        )
+        .expect("parse stylesheet");
+        Document::from_parsed(parsed).expect("build stylesheet document")
+    }
+
+    #[test]
+    fn rejects_same_name_attribute_set_composition_across_includes() {
+        let principal = stylesheet(
+            "urn:fastxslt:attribute-set-include:principal",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="included.xsl"/><xsl:attribute-set name="common"><xsl:attribute name="a">principal</xsl:attribute></xsl:attribute-set><xsl:template match="/"><out xsl:use-attribute-sets="common"/></xsl:template></xsl:stylesheet>"#,
+        );
+        let included = stylesheet(
+            "urn:fastxslt:attribute-set-include:included",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:attribute-set name="common"><xsl:attribute name="b">included</xsl:attribute></xsl:attribute-set></xsl:stylesheet>"#,
+        );
+        let root = included
+            .children(included.document_node())
+            .iter()
+            .copied()
+            .find(|node| included.name(*node).is_some())
+            .expect("included stylesheet root");
+
+        let failure = compile_stylesheet_with_single_include(&principal, &included, root)
+            .expect_err("same-name module composition must remain explicit");
+
+        assert_eq!(failure.code, "FXST1065");
+        assert!(failure.detail.contains("across stylesheet modules"));
+    }
 }

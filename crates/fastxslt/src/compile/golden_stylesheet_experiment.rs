@@ -131,6 +131,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     let mut global_bindings = Vec::new();
     let mut global_binding_locations = Vec::new();
     let mut character_maps = Vec::new();
+    let mut local_attribute_set_names = Vec::new();
     for child in top_level_children {
         let Some(name) = document.name(child) else {
             continue;
@@ -176,6 +177,17 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
             }
             (Some(XSLT_NAMESPACE), "character-map") => {
                 character_maps.push(compile_character_map(document, child)?);
+            }
+            (Some(XSLT_NAMESPACE), "attribute-set") => {
+                let name = instruction_compiler::validate_local_attribute_set(document, child)?;
+                if local_attribute_set_names.contains(&name) {
+                    return Err(unsupported(
+                        "FXST1065",
+                        "merging multiple local declarations of one attribute set is outside the first attribute-set slice",
+                        document.location(child),
+                    ));
+                }
+                local_attribute_set_names.push(name);
             }
             (Some(XSLT_NAMESPACE), "strip-space") => {
                 ensure_only_attributes(document, child, &["elements"], "xsl:strip-space")?;
@@ -280,6 +292,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         character_maps,
         output_character_map_names,
         output_character_map_location,
+        local_attribute_set_names,
         root_template,
         root_template_modes,
         matched_templates,

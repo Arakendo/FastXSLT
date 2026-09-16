@@ -1951,6 +1951,33 @@ fn xslt10_computed_attribute_counts_its_local_source_path_variable() {
 }
 
 #[test]
+fn xslt10_local_attribute_set_obeys_literal_and_computed_overrides() {
+    const SOURCE: &str = "urn:fastxslt:local-attribute-set:source";
+    const STYLESHEET: &str = "urn:fastxslt:local-attribute-set:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:attribute-set name="common"><xsl:attribute name="color">black</xsl:attribute><xsl:attribute name="font-size">14pt</xsl:attribute><xsl:attribute name="weight">bold</xsl:attribute></xsl:attribute-set><xsl:template match="/"><out xsl:use-attribute-sets="common" font-size="10pt"><xsl:attribute name="color">red</xsl:attribute></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("local-attribute-set", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["local-attribute-set"].serialized,
+        "<out font-size=\"10pt\" weight=\"bold\" color=\"red\"></out>"
+    );
+}
+
+#[test]
 fn xslt10_template_argument_for_each_builds_one_temporary_text_value() {
     const SOURCE: &str = "urn:fastxslt:argument-for-each:source";
     const STYLESHEET: &str = "urn:fastxslt:argument-for-each:stylesheet";

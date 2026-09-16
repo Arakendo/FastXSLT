@@ -380,7 +380,7 @@ fn compile_literal_element(
         ));
     }
     ensure_literal_result_control_attributes(document, element)?;
-    let (computed_attributes, computed_attribute_nodes) =
+    let (mut computed_attributes, computed_attribute_nodes) =
         compile_computed_attributes(document, element)?;
     let attributes = compile_literal_result_attributes(document, element)?;
     ensure_distinct_result_attributes(
@@ -388,6 +388,17 @@ fn compile_literal_element(
         &computed_attributes,
         document.location(element),
     )?;
+    let mut attribute_set_values = compile_literal_element_attribute_sets(document, element)?;
+    attribute_set_values.retain(|set_attribute| {
+        !attributes
+            .iter()
+            .any(|attribute| attribute.name == set_attribute.name)
+            && !computed_attributes
+                .iter()
+                .any(|attribute| attribute.name == set_attribute.name)
+    });
+    attribute_set_values.append(&mut computed_attributes);
+    let computed_attributes = attribute_set_values;
     let mut namespaces = literal_result_namespaces(document, element);
     retain_computed_attribute_namespace_bindings(&mut namespaces, &computed_attributes);
     Ok(Instruction::LiteralElement {
@@ -402,6 +413,112 @@ fn compile_literal_element(
         body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
         location: document.location(element).clone(),
     })
+}
+
+pub(super) fn validate_local_attribute_set(
+    document: &Document,
+    element: NodeId,
+) -> Result<ExpandedName, CompileFailure> {
+    ensure_only_attributes(document, element, &["name"], "xsl:attribute-set")?;
+    let name = required_attribute(document, element, None, "name")?;
+    let name = super::compile_expanded_qname(document, element, name, "xsl:attribute-set name")?;
+    for child in meaningful_children(document, element) {
+        if !is_xslt_element(document, child, "attribute") {
+            return Err(invalid(
+                "XTSE0010",
+                "xsl:attribute-set content must contain only xsl:attribute instructions",
+                document.location(child),
+            ));
+        }
+        let attribute = compile_computed_attribute(document, child)?;
+        if !matches!(attribute.value, LiteralAttributeValue::Text(_)) {
+            return Err(unsupported(
+                "FXST1065",
+                "the first attribute-set slice admits static text attribute values only",
+                document.location(child),
+            ));
+        }
+    }
+    Ok(name)
+}
+
+fn compile_literal_element_attribute_sets(
+    document: &Document,
+    element: NodeId,
+) -> Result<Vec<ComputedAttribute>, CompileFailure> {
+    let Some(names) = optional_attribute(
+        document,
+        element,
+        Some(XSLT_NAMESPACE),
+        "use-attribute-sets",
+    ) else {
+        return Ok(Vec::new());
+    };
+    let requested = names
+        .split_whitespace()
+        .map(|name| {
+            super::compile_expanded_qname(document, element, name, "xsl:use-attribute-sets")
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    if requested.is_empty() {
+        return Err(invalid(
+            "XTSE0020",
+            "xsl:use-attribute-sets must name at least one attribute set",
+            document.location(element),
+        ));
+    }
+    let stylesheet =
+        containing_stylesheet(document, element).expect("literal result has stylesheet");
+    let mut values = Vec::new();
+    for requested_name in requested {
+        let mut declarations = meaningful_children(document, stylesheet)
+            .into_iter()
+            .filter(|child| is_xslt_element(document, *child, "attribute-set"))
+            .filter_map(|declaration| {
+                let lexical = optional_attribute(document, declaration, None, "name")?;
+                let name = super::compile_expanded_qname(
+                    document,
+                    declaration,
+                    lexical,
+                    "xsl:attribute-set name",
+                )
+                .ok()?;
+                (name == requested_name).then_some(declaration)
+            })
+            .collect::<Vec<_>>();
+        let [declaration] = declarations.as_mut_slice() else {
+            return Err(unsupported(
+                "FXST1065",
+                "the first attribute-set slice requires exactly one local declaration per referenced name",
+                document.location(element),
+            ));
+        };
+        for child in meaningful_children(document, *declaration) {
+            let attribute = compile_computed_attribute(document, child)?;
+            debug_assert!(matches!(&attribute.value, LiteralAttributeValue::Text(_)));
+            if let Some(index) = values
+                .iter()
+                .position(|existing: &ComputedAttribute| existing.name == attribute.name)
+            {
+                values.remove(index);
+            }
+            values.push(attribute);
+        }
+    }
+    Ok(values)
+}
+
+fn containing_stylesheet(document: &Document, element: NodeId) -> Option<NodeId> {
+    let mut current = document.parent(element);
+    while let Some(node) = current {
+        if is_xslt_element(document, node, "stylesheet")
+            || is_xslt_element(document, node, "transform")
+        {
+            return Some(node);
+        }
+        current = document.parent(node);
+    }
+    None
 }
 
 fn is_declared_extension_element(document: &Document, element: NodeId) -> bool {
@@ -1105,7 +1222,7 @@ fn ensure_literal_result_control_attributes(
         if name.namespace.as_deref() == Some(XSLT_NAMESPACE)
             && !matches!(
                 name.local.as_str(),
-                "xpath-default-namespace" | "default-mode"
+                "xpath-default-namespace" | "default-mode" | "use-attribute-sets"
             )
         {
             return Err(unsupported(
