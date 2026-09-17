@@ -2432,6 +2432,33 @@ fn value_of_admits_only_semantically_inert_disable_output_escaping() {
 }
 
 #[test]
+fn number_admits_static_letter_values_only_when_existing_tokens_are_equivalent() {
+    for (format, letter_value) in [
+        ("i.I.a.A", "traditional"),
+        ("a.A", "alphabetic"),
+        ("1", "traditional"),
+    ] {
+        let stylesheet = parse_stylesheet(
+            "memory:number-letter-value.xsl",
+            format!(
+                r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:number value="1" format="{format}" letter-value="{letter_value}"/></xsl:template></xsl:stylesheet>"#
+            )
+            .as_bytes(),
+        );
+        compile_stylesheet(&stylesheet).expect("equivalent static letter value should compile");
+    }
+
+    let unsupported = parse_stylesheet(
+        "memory:number-alphabetic-roman.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:number value="1" format="i" letter-value="alphabetic"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&unsupported)
+        .expect_err("alphabetic Roman-token reinterpretation remains unsupported");
+    assert_eq!(failure.code, "FXST1049");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+}
+
+#[test]
 fn static_integer_range_requires_a_context_independent_body() {
     let stylesheet = parse_stylesheet(
             "memory:static-range.xsl",

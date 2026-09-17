@@ -1827,3 +1827,10 @@ maintained redistributable legacy suite becomes available.
   raising the lower bound from 1,517 to 1,518 without adding a result-node
   escape flag, mismatch, failure, runtime version branch, or panic.
   [Evidence](../Evidence/oasis-xslt10-value-of-disabled-output-escaping-2026-09-17.md)
+- 2026-09-17 -- Static `xsl:number letter-value` is now admitted only where the
+  existing ASCII token semantics are equivalent: traditional formatting, or
+  alphabetic formatting over Latin alphabetic tokens. Affected unchanged cases
+  advance to their real non-ASCII or compound-token boundaries; the exact lower
+  bound remains 1,518. Dynamic, locale-sensitive, and non-equivalent semantics
+  remain explicit without a runtime branch.
+  [Evidence](../Evidence/oasis-xslt10-static-letter-value-admission-2026-09-17.md)

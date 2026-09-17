@@ -23,6 +23,7 @@ pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instructio
             "count",
             "from",
             "format",
+            "letter-value",
             "grouping-separator",
             "grouping-size",
         ],
@@ -55,6 +56,7 @@ pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instructio
     } else {
         default_format()
     };
+    validate_letter_value(document, element, &format)?;
     format.grouping = compile_grouping(document, element)?;
     Ok(Instruction::Number {
         value,
@@ -64,6 +66,32 @@ pub(super) fn compile(document: &Document, element: NodeId) -> Result<Instructio
         format,
         location: document.location(element).clone(),
     })
+}
+
+fn validate_letter_value(
+    document: &Document,
+    element: NodeId,
+    format: &NumberFormat,
+) -> Result<(), CompileFailure> {
+    let Some(letter_value) = optional_attribute(document, element, None, "letter-value") else {
+        return Ok(());
+    };
+    if letter_value == "traditional"
+        || (letter_value == "alphabetic"
+            && format.tokens.iter().all(|token| {
+                matches!(
+                    token.style,
+                    NumberTokenStyle::AlphabeticUpper | NumberTokenStyle::AlphabeticLower
+                )
+            }))
+    {
+        return Ok(());
+    }
+    Err(unsupported(
+        "FXST1049",
+        format!("xsl:number letter-value is outside the admitted format semantics: {letter_value}"),
+        document.location(element),
+    ))
 }
 
 fn compile_pattern(

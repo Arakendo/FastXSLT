@@ -4571,6 +4571,11 @@ host lifecycle.
   unsupported and invalid lexicals rejected without adding escape state to the
   semantic result tree.
   [Evidence](../Evidence/oasis-xslt10-value-of-disabled-output-escaping-2026-09-17.md)
+- [x] Admit static `xsl:number letter-value` only when the existing ASCII token
+  semantics are equivalent. Advance affected cases to their real non-ASCII or
+  compound-format boundaries while keeping the exact lower bound at 1,518 and
+  dynamic, locale-sensitive, or non-equivalent behavior explicit.
+  [Evidence](../Evidence/oasis-xslt10-static-letter-value-admission-2026-09-17.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.
