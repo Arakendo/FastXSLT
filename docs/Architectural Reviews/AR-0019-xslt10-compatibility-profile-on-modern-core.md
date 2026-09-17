@@ -1853,3 +1853,12 @@ maintained redistributable legacy suite becomes available.
   The exact lower bound remains 1,523; no expected bytes are rewritten and no
   general constructor or expression-composition claim is made.
   [Evidence](../Evidence/oasis-xslt10-static-text-tree-sequence-2026-09-17.md)
+- 2026-09-17 -- Qualified `//` and `.//` paths now retain the existing typed
+  document- or context-descendant origin, while prefixed element and attribute
+  namespace wildcards compile to exact namespace tests. Six unchanged cases
+  leave the generic path frontier: two become exact, raising the lower bound
+  from 1,523 to 1,525; two expose visible later whitespace/serialization
+  mismatches; and two reach independent expression or numbering boundaries.
+  Prefix validation, charged traversal, cancellation, document order, and
+  source identity remain shared with the ordinary path evaluator.
+  [Evidence](../Evidence/oasis-xslt10-qualified-descendant-paths-2026-09-17.md)

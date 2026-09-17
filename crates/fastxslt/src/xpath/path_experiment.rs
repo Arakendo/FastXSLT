@@ -186,6 +186,7 @@ pub(crate) enum PathStep {
     ChildNamed(String),
     ChildLocalName(String),
     ChildExpandedName(ExpandedName),
+    ChildNamespace(String),
     ChildAnyElement,
     ChildAnyNode,
     ChildText,
@@ -194,6 +195,7 @@ pub(crate) enum PathStep {
     ChildProcessingInstructionNamed(String),
     AttributeNamed(String),
     AttributeExpandedName(ExpandedName),
+    AttributeNamespace(String),
     AttributeAny,
     AncestorNamed(String),
     AncestorAnyElement,
@@ -243,7 +245,9 @@ impl PathStep {
             Self::ChildNamed(value)
             | Self::ChildLocalName(value)
             | Self::ChildProcessingInstructionNamed(value)
+            | Self::ChildNamespace(value)
             | Self::AttributeNamed(value)
+            | Self::AttributeNamespace(value)
             | Self::AncestorNamed(value)
             | Self::AncestorOrSelfNamed(value)
             | Self::ParentNamed(value)
@@ -404,7 +408,10 @@ impl PathStep {
     fn uses_attribute_axis(&self) -> bool {
         matches!(
             self,
-            Self::AttributeNamed(_) | Self::AttributeExpandedName(_) | Self::AttributeAny
+            Self::AttributeNamed(_)
+                | Self::AttributeExpandedName(_)
+                | Self::AttributeNamespace(_)
+                | Self::AttributeAny
         )
     }
 
@@ -521,6 +528,7 @@ impl PartialEq<&str> for PathStep {
             Self::ChildExpandedName(value) | Self::AttributeExpandedName(value) => {
                 value.namespace.is_none() && value.local == *other
             }
+            Self::ChildNamespace(_) | Self::AttributeNamespace(_) => false,
             Self::ChildAnyElement
             | Self::AncestorAnyElement
             | Self::AncestorOrSelfAnyElement
@@ -863,17 +871,34 @@ pub(crate) fn parse_qualified_child_path(
     mut resolve_prefix: impl FnMut(&str) -> Option<String>,
 ) -> Result<LocationPath, PathFailure> {
     validate_expression_opening(expression, &location)?;
-    if !expression.is_ascii()
-        || expression.starts_with('/')
-        || expression.ends_with('/')
-        || expression.contains("//")
-    {
+    if !expression.is_ascii() || expression.ends_with('/') {
         return Err(PathFailure::Unsupported {
             detail: format!(
                 "the private slice does not support this qualified location-path form: {expression}"
             ),
             location,
         });
+    }
+
+    let (origin, expression) = if let Some(path) = expression.strip_prefix(".//") {
+        (PathOrigin::ContextDescendant, path)
+    } else if let Some(path) = expression.strip_prefix("//") {
+        (PathOrigin::Descendant, path)
+    } else if expression.starts_with('/') || expression.contains("//") {
+        return Err(PathFailure::Unsupported {
+            detail: format!(
+                "the private slice does not support this qualified location-path form: {expression}"
+            ),
+            location,
+        });
+    } else {
+        (PathOrigin::Relative, expression)
+    };
+    if expression.is_empty() {
+        return Err(invalid_syntax(
+            "a descendant abbreviation requires a following name test",
+            &location,
+        ));
     }
 
     let mut found_qualified_step = false;
@@ -896,7 +921,10 @@ pub(crate) fn parse_qualified_child_path(
             });
             continue;
         };
-        if !is_ascii_ncname(prefix) || !is_ascii_ncname(local) || local.contains(':') {
+        if !is_ascii_ncname(prefix)
+            || (local != "*" && !is_ascii_ncname(local))
+            || local.contains(':')
+        {
             return Err(invalid_syntax(
                 format!("the qualified path contains an invalid QName: {step}"),
                 &location,
@@ -908,14 +936,20 @@ pub(crate) fn parse_qualified_child_path(
             location: location.clone(),
         })?;
         found_qualified_step = true;
-        let name = ExpandedName {
-            namespace: Some(namespace),
-            local: local.to_owned(),
-        };
-        steps.push(if attribute {
-            PathStep::AttributeExpandedName(name)
+        steps.push(if local == "*" && attribute {
+            PathStep::AttributeNamespace(namespace)
+        } else if local == "*" {
+            PathStep::ChildNamespace(namespace)
         } else {
-            PathStep::ChildExpandedName(name)
+            let name = ExpandedName {
+                namespace: Some(namespace),
+                local: local.to_owned(),
+            };
+            if attribute {
+                PathStep::AttributeExpandedName(name)
+            } else {
+                PathStep::ChildExpandedName(name)
+            }
         });
     }
     if !found_qualified_step {
@@ -927,7 +961,7 @@ pub(crate) fn parse_qualified_child_path(
     let step_count = steps.len();
     Ok(LocationPath {
         steps,
-        origin: PathOrigin::Relative,
+        origin,
         final_predicate: None,
         final_boolean_predicate: None,
         final_context_predicate: None,
@@ -1905,19 +1939,16 @@ fn step_candidates(
 fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathStep) -> bool {
     match name_test {
         PathStep::ChildNamed(required) => {
-            document.kind(child) == NodeKind::Element
-                && document
-                    .name(child)
-                    .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
+            candidate_has_unnamespaced_name(document, child, NodeKind::Element, required)
         }
         PathStep::ChildLocalName(required) => {
-            document.kind(child) == NodeKind::Element
-                && document
-                    .name(child)
-                    .is_some_and(|name| name.local == required.as_str())
+            candidate_has_local_name(document, child, NodeKind::Element, required)
         }
         PathStep::ChildExpandedName(required) => {
-            document.kind(child) == NodeKind::Element && document.name(child) == Some(required)
+            candidate_has_expanded_name(document, child, NodeKind::Element, required)
+        }
+        PathStep::ChildNamespace(required) => {
+            candidate_has_namespace(document, child, NodeKind::Element, required)
         }
         PathStep::ChildAnyElement
         | PathStep::AncestorAnyElement
@@ -1968,7 +1999,10 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
                     .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
         }
         PathStep::AttributeExpandedName(required) => {
-            document.kind(child) == NodeKind::Attribute && document.name(child) == Some(required)
+            candidate_has_expanded_name(document, child, NodeKind::Attribute, required)
+        }
+        PathStep::AttributeNamespace(required) => {
+            candidate_has_namespace(document, child, NodeKind::Attribute, required)
         }
         PathStep::AttributeAny => document.kind(child) == NodeKind::Attribute,
         PathStep::AncestorNamed(required) | PathStep::AncestorOrSelfNamed(required) => {
@@ -2001,6 +2035,52 @@ fn step_matches_candidate(document: &Document, child: NodeId, name_test: &PathSt
                     .is_some_and(|name| name.namespace.is_none() && name.local == required.as_str())
         }
     }
+}
+
+fn candidate_has_expanded_name(
+    document: &Document,
+    candidate: NodeId,
+    kind: NodeKind,
+    required: &ExpandedName,
+) -> bool {
+    document.kind(candidate) == kind && document.name(candidate) == Some(required)
+}
+
+fn candidate_has_unnamespaced_name(
+    document: &Document,
+    candidate: NodeId,
+    kind: NodeKind,
+    required: &str,
+) -> bool {
+    document.kind(candidate) == kind
+        && document
+            .name(candidate)
+            .is_some_and(|name| name.namespace.is_none() && name.local == required)
+}
+
+fn candidate_has_local_name(
+    document: &Document,
+    candidate: NodeId,
+    kind: NodeKind,
+    required: &str,
+) -> bool {
+    document.kind(candidate) == kind
+        && document
+            .name(candidate)
+            .is_some_and(|name| name.local == required)
+}
+
+fn candidate_has_namespace(
+    document: &Document,
+    candidate: NodeId,
+    kind: NodeKind,
+    required: &str,
+) -> bool {
+    document.kind(candidate) == kind
+        && document
+            .name(candidate)
+            .and_then(|name| name.namespace.as_deref())
+            == Some(required)
 }
 
 fn following_siblings(document: &Document, context: NodeId) -> Vec<NodeId> {

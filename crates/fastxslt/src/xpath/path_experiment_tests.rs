@@ -66,6 +66,70 @@ fn qualified_child_and_attribute_steps_match_expanded_names() {
 }
 
 #[test]
+fn qualified_descendant_paths_preserve_document_and_context_origins() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        br#"<outer xmlns:p="urn:items"><p:item>outer</p:item><inner><p:item>inner</p:item></inner></outer>"#,
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let resolve = |prefix: &str| (prefix == "p").then(|| "urn:items".to_owned());
+    let document_path = parse_qualified_child_path("//p:item", location(), resolve)
+        .expect("document descendant path should parse");
+    let context_path = parse_qualified_child_path(".//p:item", location(), resolve)
+        .expect("context descendant path should parse");
+    let outer = document.children(document.document_node())[0];
+    let inner = document
+        .children(outer)
+        .iter()
+        .copied()
+        .find(|node| {
+            document
+                .name(*node)
+                .is_some_and(|name| name.local == "inner")
+        })
+        .expect("inner element");
+
+    let document_selected =
+        evaluate_location_path(&document, document.document_node(), &document_path);
+    let context_selected = evaluate_location_path(&document, inner, &context_path);
+
+    assert_eq!(document_selected.len(), 2);
+    assert_eq!(context_selected.len(), 1);
+    assert_eq!(document.string_value(context_selected[0]), "inner");
+}
+
+#[test]
+fn qualified_descendant_namespace_wildcards_filter_elements_and_attributes() {
+    let parsed = parse_document(
+        "memory:source.xml",
+        br#"<outer xmlns:p="urn:selected" xmlns:q="urn:other"><p:item p:code="yes" q:code="no"/><q:item p:code="also"/></outer>"#,
+        ParseLimits {
+            max_events: 16,
+            max_depth: 3,
+        },
+    )
+    .expect("source should parse");
+    let document = Document::from_parsed(parsed).expect("source XDM should build");
+    let resolve = |prefix: &str| (prefix == "p").then(|| "urn:selected".to_owned());
+    let elements = parse_qualified_child_path("//p:*", location(), resolve)
+        .expect("element namespace wildcard should parse");
+    let attributes = parse_qualified_child_path("//@p:*", location(), resolve)
+        .expect("attribute namespace wildcard should parse");
+
+    let selected_elements = evaluate_location_path(&document, document.document_node(), &elements);
+    let selected_attributes =
+        evaluate_location_path(&document, document.document_node(), &attributes);
+
+    assert_eq!(selected_elements.len(), 1);
+    assert_eq!(selected_attributes.len(), 2);
+}
+
+#[test]
 fn qualified_child_steps_reject_unbound_prefixes() {
     let failure = parse_qualified_child_path("doc/missing:a", location(), |_| None)
         .expect_err("unbound prefix must fail statically");
