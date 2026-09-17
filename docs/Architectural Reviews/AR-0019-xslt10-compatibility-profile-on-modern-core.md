@@ -1761,3 +1761,11 @@ maintained redistributable legacy suite becomes available.
   Microsoft comment case becomes exact, raising the lower bound from 1,492 to
   1,493; one simplified case advances to the existing HTML serializer boundary.
   [Evidence](../Evidence/oasis-xslt10-static-comment-pi-text-2026-09-16.md)
+- 2026-09-16 -- `xsl:text` now accepts and validates its legal `xml:space`
+  attribute, and static comment/processing-instruction constructors fold
+  bounded context-free `xsl:value-of` literal, `concat()`, and `substring()`
+  expressions. Unchanged Lotus `output_output54` becomes exact, raising the
+  lower bound from 1,493 to 1,494. Two `xml:space` cases advance only to their
+  real serializer or ordinary disable-output-escaping boundary; dynamic
+  constructor content remains explicit.
+  [Evidence](../Evidence/oasis-xslt10-static-node-content-and-text-space-2026-09-16.md)

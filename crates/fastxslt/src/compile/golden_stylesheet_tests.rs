@@ -1993,6 +1993,25 @@ fn xsl_text_preserves_explicit_whitespace_and_rejects_element_content() {
     };
     assert_eq!(value, "  kept  ");
 
+    let xml_space = parse_stylesheet(
+        "memory:text-xml-space.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:text xml:space="preserve">   </xsl:text></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&xml_space).expect("xml:space should be valid on xsl:text");
+    let root_template = program.root_template.expect("root template");
+    assert!(matches!(
+        root_template.body.as_slice(),
+        [Instruction::Text { value, .. }] if value == "   "
+    ));
+
+    let invalid_space = parse_stylesheet(
+        "memory:text-invalid-xml-space.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:text xml:space="sometimes">text</xsl:text></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&invalid_space).expect_err("invalid xml:space must fail");
+    assert_eq!(failure.code, "XTSE0020");
+    assert_eq!(failure.category, CompileCategory::Invalid);
+
     let invalid_text = parse_stylesheet(
             "memory:invalid-text.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:text><bad/></xsl:text></xsl:template></xsl:stylesheet>"#,
@@ -2133,6 +2152,24 @@ fn comment_and_processing_instruction_fold_explicit_static_text() {
             Instruction::CommentNode { value: comment, .. },
             Instruction::ProcessingInstructionNode { value: pi, .. }
         ] if comment == "<>&'" && pi == "<\">"
+    ));
+}
+
+#[test]
+fn comment_and_processing_instruction_fold_static_value_expressions() {
+    let stylesheet = parse_stylesheet(
+        "memory:static-node-value.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:comment><xsl:value-of select="substring('abcdef', 2, 3)"/></xsl:comment><xsl:processing-instruction name="doe"><xsl:value-of disable-output-escaping="yes" select="concat('a', 'b')"/></xsl:processing-instruction></xsl:template></xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&stylesheet).expect("static node values should compile");
+    let root_template = program.root_template.expect("root template");
+    assert!(matches!(
+        root_template.body.as_slice(),
+        [
+            Instruction::CommentNode { value: comment, .. },
+            Instruction::ProcessingInstructionNode { value: pi, .. }
+        ] if comment == "bcd" && pi == "ab"
     ));
 }
 

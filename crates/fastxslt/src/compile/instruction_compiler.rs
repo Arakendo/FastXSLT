@@ -1182,7 +1182,7 @@ fn compile_text_value_with_ignored_escaping(
     element: NodeId,
     ignore_disable_output_escaping: bool,
 ) -> Result<String, CompileFailure> {
-    ensure_only_attributes(document, element, &["disable-output-escaping"], "xsl:text")?;
+    ensure_text_attributes(document, element)?;
     match optional_attribute(document, element, None, "disable-output-escaping") {
         Some("yes") if !ignore_disable_output_escaping => {
             return Err(unsupported(
@@ -1217,6 +1217,40 @@ fn compile_text_value_with_ignored_escaping(
     Ok(value)
 }
 
+fn ensure_text_attributes(document: &Document, element: NodeId) -> Result<(), CompileFailure> {
+    const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
+    for attribute in document.attributes(element) {
+        let name = document
+            .name(*attribute)
+            .expect("attribute nodes have expanded names");
+        if name.namespace.is_none() && name.local == "disable-output-escaping" {
+            continue;
+        }
+        if name.namespace.as_deref() == Some(XML_NAMESPACE) && name.local == "space" {
+            match document.value(*attribute).unwrap_or_default() {
+                "default" | "preserve" => continue,
+                _ => {
+                    return Err(invalid(
+                        "XTSE0020",
+                        "xml:space must be 'default' or 'preserve'",
+                        document.location(*attribute),
+                    ));
+                }
+            }
+        }
+        return Err(unsupported(
+            "FXST1009",
+            format!(
+                "unsupported attribute on xsl:text: {{{}}}{}",
+                name.namespace.as_deref().unwrap_or(""),
+                name.local
+            ),
+            document.location(*attribute),
+        ));
+    }
+    Ok(())
+}
+
 pub(super) fn compile_processing_instruction(
     document: &Document,
     element: NodeId,
@@ -1240,6 +1274,10 @@ pub(super) fn compile_processing_instruction(
                     value.push_str(&compile_text_value_with_ignored_escaping(
                         document, child, true,
                     )?);
+                } else if is_xslt_element(document, child, "value-of")
+                    && let Some(static_value) = compile_static_node_content_value(document, child)?
+                {
+                    value.push_str(&static_value);
                 } else {
                     return Err(unsupported(
                         "FXST1034",
@@ -1296,6 +1334,11 @@ pub(super) fn compile_comment(
                         value.push_str(&compile_text_value_with_ignored_escaping(
                             document, child, true,
                         )?);
+                    } else if is_xslt_element(document, child, "value-of")
+                        && let Some(static_value) =
+                            compile_static_node_content_value(document, child)?
+                    {
+                        value.push_str(&static_value);
                     } else {
                         return Err(unsupported(
                             "FXST1036",
@@ -1326,6 +1369,46 @@ pub(super) fn compile_comment(
         value,
         location: document.location(element).clone(),
     })
+}
+
+fn compile_static_node_content_value(
+    document: &Document,
+    element: NodeId,
+) -> Result<Option<String>, CompileFailure> {
+    for attribute in document.attributes(element) {
+        let name = document
+            .name(*attribute)
+            .expect("attribute nodes have expanded names");
+        if name.namespace.is_none()
+            && matches!(name.local.as_str(), "select" | "disable-output-escaping")
+        {
+            continue;
+        }
+        return Err(unsupported(
+            "FXST1009",
+            format!(
+                "unsupported attribute on xsl:value-of: {{{}}}{}",
+                name.namespace.as_deref().unwrap_or(""),
+                name.local
+            ),
+            document.location(*attribute),
+        ));
+    }
+    match optional_attribute(document, element, None, "disable-output-escaping") {
+        None | Some("no" | "yes") => {}
+        Some(_) => {
+            return Err(invalid(
+                "XTSE0020",
+                "disable-output-escaping must be 'yes' or 'no'",
+                document.location(element),
+            ));
+        }
+    }
+    ensure_no_meaningful_children(document, element, "xsl:value-of")?;
+    let select = required_attribute(document, element, None, "select")?;
+    Ok(crate::xpath::static_string_experiment::fold(select)
+        .or_else(|| crate::xpath::static_string_experiment::fold_concat_literals(select))
+        .or_else(|| crate::xpath::static_string_experiment::fold_substring_literals(select)))
 }
 
 pub(super) fn literal_result_namespaces(
