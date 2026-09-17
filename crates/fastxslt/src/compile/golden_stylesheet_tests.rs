@@ -253,6 +253,38 @@ fn static_xsl_element_keeps_dynamic_names_namespaces_and_unknown_attribute_sets_
 }
 
 #[test]
+fn local_attribute_set_graph_rejects_undefined_and_circular_references() {
+    for (label, declaration, code) in [
+        (
+            "undefined",
+            r#"<xsl:attribute-set name="outer" use-attribute-sets="missing"/>"#,
+            "XTSE0710",
+        ),
+        (
+            "self-cycle",
+            r#"<xsl:attribute-set name="outer" use-attribute-sets="outer"/>"#,
+            "XTSE0720",
+        ),
+        (
+            "indirect-cycle",
+            r#"<xsl:attribute-set name="outer" use-attribute-sets="inner"/><xsl:attribute-set name="inner" use-attribute-sets="outer"/>"#,
+            "XTSE0720",
+        ),
+    ] {
+        let stylesheet = format!(
+            r#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">{declaration}<xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#
+        );
+        let document = parse_stylesheet(
+            &format!("memory:attribute-set-{label}.xsl"),
+            stylesheet.as_bytes(),
+        );
+        let failure = compile_stylesheet(&document).expect_err("invalid graph should fail");
+        assert_eq!(failure.code, code, "{label}");
+        assert_eq!(failure.category, CompileCategory::Invalid, "{label}");
+    }
+}
+
+#[test]
 fn compiles_static_xsl_element_namespace_without_runtime_qname_work() {
     let document = parse_stylesheet(
         "memory:static-computed-element-namespace.xsl",

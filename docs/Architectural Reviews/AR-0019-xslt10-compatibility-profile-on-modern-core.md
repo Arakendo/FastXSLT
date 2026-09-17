@@ -1694,3 +1694,10 @@ maintained redistributable legacy suite becomes available.
   override and existing namespace fixup. Three unchanged cases become exact,
   raising the lower bound from 1,458 to 1,461 with no new XML mismatch.
   [Evidence](../Evidence/oasis-xslt10-static-computed-element-attribute-sets-2026-09-15.md)
+- 2026-09-15 -- Local static attribute sets now form a compile-validated
+  dependency graph. Referenced sets expand before the referring set, final
+  consumers retain higher precedence, undefined names report `XTSE0710`, and
+  direct or indirect cycles report `XTSE0720`. Seven unchanged cases become
+  exact, raising the lower bound from 1,461 to 1,468 without a runtime registry
+  or a new XML mismatch.
+  [Evidence](../Evidence/oasis-xslt10-inherited-static-attribute-sets-2026-09-15.md)

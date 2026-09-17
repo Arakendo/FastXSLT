@@ -2005,6 +2005,33 @@ fn xslt10_local_attribute_set_applies_to_static_computed_elements() {
 }
 
 #[test]
+fn xslt10_local_attribute_set_inheritance_applies_references_before_local_values() {
+    const SOURCE: &str = "urn:fastxslt:inherited-attribute-set:source";
+    const STYLESHEET: &str = "urn:fastxslt:inherited-attribute-set:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:attribute-set name="base"><xsl:attribute name="color">green</xsl:attribute><xsl:attribute name="size">14pt</xsl:attribute></xsl:attribute-set><xsl:attribute-set name="middle" use-attribute-sets="base"><xsl:attribute name="color">blue</xsl:attribute><xsl:attribute name="decoration">underline</xsl:attribute></xsl:attribute-set><xsl:attribute-set name="outer" use-attribute-sets="middle"><xsl:attribute name="color">black</xsl:attribute></xsl:attribute-set><xsl:template match="/"><out xsl:use-attribute-sets="outer"><xsl:attribute name="decoration">none</xsl:attribute></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("inherited-attribute-set", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["inherited-attribute-set"].serialized,
+        "<out size=\"14pt\" color=\"black\" decoration=\"none\"></out>"
+    );
+}
+
+#[test]
 fn xslt10_template_argument_for_each_builds_one_temporary_text_value() {
     const SOURCE: &str = "urn:fastxslt:argument-for-each:source";
     const STYLESHEET: &str = "urn:fastxslt:argument-for-each:stylesheet";

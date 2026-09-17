@@ -267,6 +267,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
             }
         }
     }
+    instruction_compiler::validate_local_attribute_set_graph(document, root)?;
     reject_unordered_global_dependencies(&global_bindings, &global_binding_locations)?;
     let output_character_map_names = output
         .as_ref()
