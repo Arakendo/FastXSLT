@@ -2259,6 +2259,94 @@ fn exclude_result_prefixes_rejects_unbound_prefixes_at_each_declaration_site() {
 }
 
 #[test]
+fn xslt10_literal_result_ignores_unknown_xslt_namespace_attributes() {
+    let stylesheet = parse_stylesheet(
+        "memory:xslt10-unknown-lre-control.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out xsl:unknown="not-a-result-attribute" keep="yes"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet).expect("XSLT 1.0 stylesheet should compile");
+    let root_template = program.root_template.expect("root template");
+    let [Instruction::LiteralElement { attributes, .. }] = root_template.body.as_slice() else {
+        panic!("template should retain one literal result element");
+    };
+    assert_eq!(attributes.len(), 1);
+    assert_eq!(attributes[0].name.local, "keep");
+
+    let modern = parse_stylesheet(
+        "memory:modern-unknown-lre-control.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out xsl:unknown="unsupported"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&modern).expect_err("modern behavior remains explicit");
+    assert_eq!(failure.code, "FXST1007");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+
+    let extension_control = parse_stylesheet(
+        "memory:xslt10-extension-lre-control.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out xsl:extension-element-prefixes="missing"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&extension_control)
+        .expect_err("unbound extension-element prefix must be invalid");
+    assert_eq!(failure.code, "XTSE1430");
+    assert_eq!(failure.category, CompileCategory::Invalid);
+
+    let unbound_default = parse_stylesheet(
+        "memory:xslt10-unbound-default-extension.xsl",
+        br##"<out xsl:version="1.0" xsl:extension-element-prefixes="#default" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"/>"##,
+    );
+    let failure =
+        compile_stylesheet(&unbound_default).expect_err("unbound #default must be invalid");
+    assert_eq!(failure.code, "XTSE1430");
+    assert_eq!(failure.category, CompileCategory::Invalid);
+}
+
+#[test]
+fn literal_result_extension_prefixes_are_scoped_validated_and_excluded() {
+    let stylesheet = parse_stylesheet(
+        "memory:lre-extension-prefix.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:keep="urn:keep" xmlns:ext="urn:extension"><xsl:template match="/"><out xsl:extension-element-prefixes="ext"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet).expect("literal result should compile");
+    let root_template = program.root_template.expect("root template");
+    let [Instruction::LiteralElement { namespaces, .. }] = root_template.body.as_slice() else {
+        panic!("template should retain one literal result element");
+    };
+    assert!(
+        namespaces
+            .iter()
+            .any(|binding| binding.prefix.as_deref() == Some("keep"))
+    );
+    assert!(
+        !namespaces
+            .iter()
+            .any(|binding| binding.prefix.as_deref() == Some("ext"))
+    );
+
+    let extension = parse_stylesheet(
+        "memory:self-declared-extension.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:ext="urn:extension"><xsl:template match="/"><ext:run xsl:extension-element-prefixes="ext"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&extension).expect_err("extension execution stays explicit");
+    assert_eq!(failure.code, "FXST1059");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+
+    let required_attribute_binding = parse_stylesheet(
+        "memory:required-extension-attribute-prefix.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:ext="urn:extension" extension-element-prefixes="ext"><xsl:template match="/"><out ext:kept="yes"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&required_attribute_binding)
+        .expect("a result attribute must keep its required namespace binding");
+    let root_template = program.root_template.expect("root template");
+    let [Instruction::LiteralElement { namespaces, .. }] = root_template.body.as_slice() else {
+        panic!("template should retain one literal result element");
+    };
+    assert!(
+        namespaces
+            .iter()
+            .any(|binding| binding.prefix.as_deref() == Some("ext"))
+    );
+}
+
+#[test]
 fn static_integer_range_requires_a_context_independent_body() {
     let stylesheet = parse_stylesheet(
             "memory:static-range.xsl",

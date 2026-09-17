@@ -389,6 +389,7 @@ pub(super) fn compile_literal_element(
     document: &Document,
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
+    validate_extension_element_prefixes(document, element)?;
     if is_declared_extension_element(document, element) {
         return Err(unsupported(
             "FXST1059",
@@ -449,24 +450,33 @@ fn is_declared_extension_element(document: &Document, element: NodeId) -> bool {
     else {
         return false;
     };
-    let mut current = document.parent(element);
+    let mut current = Some(element);
     while let Some(node) = current {
-        if document.name(node).is_some_and(|name| {
+        let declaration = if document.name(node).is_some_and(|name| {
             name.namespace.as_deref() == Some(XSLT_NAMESPACE)
                 && matches!(name.local.as_str(), "stylesheet" | "transform")
         }) {
-            return optional_attribute(document, node, None, "extension-element-prefixes")
-                .is_some_and(|prefixes| {
-                    prefixes.split_whitespace().any(|prefix| {
-                        if prefix == "#default" {
-                            document.namespace_declarations(node).iter().any(|binding| {
-                                binding.prefix.is_none() && binding.namespace == element_namespace
-                            })
-                        } else {
-                            namespace_for_prefix(document, node, prefix) == Some(element_namespace)
-                        }
+            optional_attribute(document, node, None, "extension-element-prefixes")
+        } else {
+            optional_attribute(
+                document,
+                node,
+                Some(XSLT_NAMESPACE),
+                "extension-element-prefixes",
+            )
+        };
+        if declaration.is_some_and(|prefixes| {
+            prefixes.split_whitespace().any(|prefix| {
+                if prefix == "#default" {
+                    document.namespace_declarations(node).iter().any(|binding| {
+                        binding.prefix.is_none() && binding.namespace == element_namespace
                     })
-                });
+                } else {
+                    namespace_for_prefix(document, node, prefix) == Some(element_namespace)
+                }
+            })
+        }) {
+            return true;
         }
         current = document.parent(node);
     }
@@ -1152,8 +1162,12 @@ fn ensure_literal_result_control_attributes(
                     | "default-mode"
                     | "use-attribute-sets"
                     | "exclude-result-prefixes"
+                    | "extension-element-prefixes"
             )
         {
+            if uses_xslt10_compatibility(document, element) {
+                continue;
+            }
             return Err(unsupported(
                 "FXST1007",
                 "unsupported XSLT control attribute on a literal result element",
@@ -1468,6 +1482,44 @@ pub(super) fn validate_exclude_result_prefixes(
     Ok(())
 }
 
+pub(super) fn validate_extension_element_prefixes(
+    document: &Document,
+    element: NodeId,
+) -> Result<(), CompileFailure> {
+    let Some(prefixes) = optional_attribute(document, element, None, "extension-element-prefixes")
+        .or_else(|| {
+            optional_attribute(
+                document,
+                element,
+                Some(XSLT_NAMESPACE),
+                "extension-element-prefixes",
+            )
+        })
+    else {
+        return Ok(());
+    };
+    for prefix in prefixes.split_whitespace() {
+        if prefix == "#default" {
+            if namespace_for_prefix(document, element, "").is_none_or(str::is_empty) {
+                return Err(invalid(
+                    "XTSE1430",
+                    "extension-element-prefixes names #default without a bound default namespace",
+                    document.location(element),
+                ));
+            }
+            continue;
+        }
+        if !is_ascii_ncname(prefix) || namespace_for_prefix(document, element, prefix).is_none() {
+            return Err(invalid(
+                "XTSE1430",
+                format!("invalid or unbound extension-element prefix: {prefix}"),
+                document.location(element),
+            ));
+        }
+    }
+    Ok(())
+}
+
 pub(super) fn literal_result_namespaces(
     document: &Document,
     element: NodeId,
@@ -1495,6 +1547,22 @@ pub(super) fn literal_result_namespaces(
                 }
             }
         }
+        if let Some(extensions) =
+            optional_attribute(document, node, None, "extension-element-prefixes").or_else(|| {
+                optional_attribute(
+                    document,
+                    node,
+                    Some(XSLT_NAMESPACE),
+                    "extension-element-prefixes",
+                )
+            })
+        {
+            for prefix in extensions.split_whitespace() {
+                if !excluded_prefixes.contains(&prefix) {
+                    excluded_prefixes.push(prefix);
+                }
+            }
+        }
         current = document.parent(node);
     }
     let mut current = Some(element);
@@ -1505,6 +1573,13 @@ pub(super) fn literal_result_namespaces(
                 name.namespace.as_deref() == Some(binding.namespace.as_str())
                     && document.prefix(element) == prefix
             });
+            let required_for_attribute = document.attributes(element).iter().any(|attribute| {
+                document.name(*attribute).is_some_and(|name| {
+                    name.namespace.as_deref() == Some(binding.namespace.as_str())
+                        && name.namespace.as_deref() != Some(XSLT_NAMESPACE)
+                        && document.prefix(*attribute) == prefix
+                })
+            });
             let excluded = match prefix {
                 Some(prefix) => excluded_prefixes.contains(&prefix),
                 None => excluded_prefixes.contains(&"#default"),
@@ -1512,7 +1587,7 @@ pub(super) fn literal_result_namespaces(
             if prefix != Some("xml")
                 && binding.namespace != XSLT_NAMESPACE
                 && !binding.namespace.is_empty()
-                && (required_for_element || (!exclude_all && !excluded))
+                && (required_for_element || required_for_attribute || (!exclude_all && !excluded))
                 && !namespaces
                     .iter()
                     .any(|existing: &NamespaceBinding| existing.prefix.as_deref() == prefix)

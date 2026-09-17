@@ -43,7 +43,7 @@ use template_pattern_compiler::compile_match_pattern;
 use instruction_compiler::{
     compile_comment, compile_literal_result_attributes, compile_processing_instruction,
     compile_sequence_excluding_with_bindings, compile_text, literal_result_namespaces,
-    parse_template_modes, validate_exclude_result_prefixes,
+    parse_template_modes, validate_exclude_result_prefixes, validate_extension_element_prefixes,
 };
 use mode_declaration_compiler::{
     validate_mode_declaration as validate_mode, validate_same_precedence_mode_declaration_conflicts,
@@ -612,28 +612,13 @@ fn validate_stylesheet_root_controls(
     root: NodeId,
 ) -> Result<(), CompileFailure> {
     validate_exclude_result_prefixes(document, root)?;
+    validate_extension_element_prefixes(document, root)?;
     if optional_attribute(document, root, None, "mode").is_some() {
         return Err(invalid(
             "XTSE0090",
             "mode is not permitted on xsl:stylesheet",
             document.location(root),
         ));
-    }
-    let Some(prefixes) = optional_attribute(document, root, None, "extension-element-prefixes")
-    else {
-        return Ok(());
-    };
-    for prefix in prefixes.split_whitespace() {
-        if prefix == "#default" {
-            continue;
-        }
-        if !is_ascii_ncname(prefix) || namespace_for_prefix(document, root, prefix).is_none() {
-            return Err(invalid(
-                "XTSE1430",
-                format!("invalid or unbound extension-element prefix: {prefix}"),
-                document.location(root),
-            ));
-        }
     }
     Ok(())
 }

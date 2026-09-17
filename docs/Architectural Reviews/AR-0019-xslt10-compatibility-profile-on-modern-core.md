@@ -1798,3 +1798,12 @@ maintained redistributable legacy suite becomes available.
   four while the exact-result lower bound remains 1,512. All four survivors are
   upstream doubt-marked and remain visible rather than being forced to fail.
   [Evidence](../Evidence/oasis-xslt10-excluded-prefix-validation-2026-09-17.md)
+- 2026-09-17 -- Literal result elements now apply XSLT 1.0 handling for
+  unknown XSLT-namespace attributes and lexically scoped
+  `extension-element-prefixes`. Declarations are validated at their sites,
+  extension namespaces are excluded unless a result name requires them, and
+  actual extension execution remains explicit unsupported. Three unchanged
+  cases become exact, raising the lower bound from 1,512 to 1,515; two more
+  advance to later honest boundaries without adding a mismatch, execution
+  failure, unexpected success, runtime version branch, or panic.
+  [Evidence](../Evidence/oasis-xslt10-literal-result-extension-controls-2026-09-17.md)

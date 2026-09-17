@@ -4544,6 +4544,15 @@ host lifecycle.
   from five to four without changing the 1,512 exact-result lower bound. All
   four survivors are upstream doubt-marked and remain explicitly reported.
   [Evidence](../Evidence/oasis-xslt10-excluded-prefix-validation-2026-09-17.md)
+- [x] Raise the exact lower bound to 1,515 by applying XSLT 1.0 handling for
+  unknown XSLT-namespace attributes and lexically scoped
+  `extension-element-prefixes` on literal result elements. Validate each
+  declaration, exclude extension namespaces unless a result name requires the
+  binding, and keep extension execution explicit unsupported. Three unchanged
+  cases become exact and two advance to later honest boundaries without a new
+  mismatch, execution failure, unexpected success, runtime version branch, or
+  panic.
+  [Evidence](../Evidence/oasis-xslt10-literal-result-extension-controls-2026-09-17.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.
