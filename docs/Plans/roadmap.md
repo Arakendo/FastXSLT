@@ -4560,6 +4560,12 @@ host lifecycle.
   a mismatch, execution failure, unexpected success, runtime extension hook,
   or panic.
   [Evidence](../Evidence/oasis-xslt10-extension-attributes-2026-09-17.md)
+- [x] Admit and validate `xml:space` on ordinary XSLT instructions through the
+  existing inherited stylesheet-text preservation path. Two unchanged cases
+  advance from static unsupported to visible mismatches; keep the exact lower
+  bound at 1,517 and leave broader structural preserved-whitespace behavior
+  unclaimed.
+  [Evidence](../Evidence/oasis-xslt10-stylesheet-xml-space-admission-2026-09-17.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

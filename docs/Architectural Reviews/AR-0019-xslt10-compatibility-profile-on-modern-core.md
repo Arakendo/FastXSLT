@@ -1814,3 +1814,10 @@ maintained redistributable legacy suite becomes available.
   bound from 1,515 to 1,517 without adding a mismatch, execution failure,
   unexpected success, runtime extension hook, or panic.
   [Evidence](../Evidence/oasis-xslt10-extension-attributes-2026-09-17.md)
+- 2026-09-17 -- Ordinary XSLT instruction validation now admits and validates
+  `xml:space`, connecting it to the existing inherited stylesheet-text
+  preservation path. Two unchanged Microsoft cases advance from static
+  unsupported to visible output mismatches; the exact lower bound remains
+  1,517. The slice is retained as honest frontier movement and does not claim
+  complete preserved-whitespace behavior for every structural content model.
+  [Evidence](../Evidence/oasis-xslt10-stylesheet-xml-space-admission-2026-09-17.md)

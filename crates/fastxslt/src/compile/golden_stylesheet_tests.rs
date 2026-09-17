@@ -2370,6 +2370,43 @@ fn xslt10_instructions_ignore_foreign_namespaced_attributes() {
 }
 
 #[test]
+fn xml_space_is_validated_and_controls_stylesheet_text_preservation() {
+    let preserve = parse_stylesheet(
+        "memory:xml-space-preserve.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/" xml:space="preserve"> <out/> </xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&preserve).expect("xml:space preserve should compile");
+    let body = &program.root_template.expect("root template").body;
+    assert!(matches!(
+        body.as_slice(),
+        [
+            Instruction::Text { .. },
+            Instruction::LiteralElement { .. },
+            Instruction::Text { .. }
+        ]
+    ));
+
+    let defaulted = parse_stylesheet(
+        "memory:xml-space-default.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xml:space="preserve"><xsl:template match="/" xml:space="default"> <out/> </xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&defaulted).expect("xml:space default should compile");
+    let body = &program.root_template.expect("root template").body;
+    assert!(matches!(
+        body.as_slice(),
+        [Instruction::LiteralElement { .. }]
+    ));
+
+    let invalid_space = parse_stylesheet(
+        "memory:xml-space-invalid.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/" xml:space="sometimes"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&invalid_space).expect_err("xml:space lexical must be valid");
+    assert_eq!(failure.code, "XTSE0020");
+    assert_eq!(failure.category, CompileCategory::Invalid);
+}
+
+#[test]
 fn static_integer_range_requires_a_context_independent_body() {
     let stylesheet = parse_stylesheet(
             "memory:static-range.xsl",

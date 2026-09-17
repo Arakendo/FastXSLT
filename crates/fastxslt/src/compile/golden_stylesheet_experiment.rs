@@ -1929,6 +1929,20 @@ pub(super) fn ensure_only_attributes(
         let name = document
             .name(*attribute)
             .expect("attribute nodes have expanded names");
+        if name.namespace.as_deref() == Some("http://www.w3.org/XML/1998/namespace")
+            && name.local == "space"
+        {
+            match document.value(*attribute).unwrap_or_default() {
+                "default" | "preserve" => continue,
+                _ => {
+                    return Err(invalid(
+                        "XTSE0020",
+                        "xml:space must be 'default' or 'preserve'",
+                        document.location(*attribute),
+                    ));
+                }
+            }
+        }
         if is_ignored_xslt10_extension_attribute(document, element, *attribute) {
             continue;
         }
