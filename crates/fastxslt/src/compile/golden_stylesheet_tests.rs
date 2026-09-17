@@ -2407,6 +2407,31 @@ fn xml_space_is_validated_and_controls_stylesheet_text_preservation() {
 }
 
 #[test]
+fn value_of_admits_only_semantically_inert_disable_output_escaping() {
+    let disabled = parse_stylesheet(
+        "memory:value-of-doe-no.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out><xsl:value-of select="doc/value" disable-output-escaping="no"/></out></xsl:template></xsl:stylesheet>"#,
+    );
+    compile_stylesheet(&disabled).expect("disable-output-escaping no should compile");
+
+    let enabled = parse_stylesheet(
+        "memory:value-of-doe-yes.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="doc/value" disable-output-escaping="yes"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&enabled).expect_err("DOE yes remains unsupported");
+    assert_eq!(failure.code, "FXST1060");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+
+    let invalid_lexical = parse_stylesheet(
+        "memory:value-of-doe-invalid.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:value-of select="doc/value" disable-output-escaping="sometimes"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&invalid_lexical).expect_err("DOE lexical must be valid");
+    assert_eq!(failure.code, "XTSE0020");
+    assert_eq!(failure.category, CompileCategory::Invalid);
+}
+
+#[test]
 fn static_integer_range_requires_a_context_independent_body() {
     let stylesheet = parse_stylesheet(
             "memory:static-range.xsl",

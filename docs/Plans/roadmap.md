@@ -4566,6 +4566,11 @@ host lifecycle.
   bound at 1,517 and leave broader structural preserved-whitespace behavior
   unclaimed.
   [Evidence](../Evidence/oasis-xslt10-stylesheet-xml-space-admission-2026-09-17.md)
+- [x] Raise the exact lower bound to 1,518 by admitting the semantically inert
+  `xsl:value-of disable-output-escaping="no"` value. Keep `yes` explicit
+  unsupported and invalid lexicals rejected without adding escape state to the
+  semantic result tree.
+  [Evidence](../Evidence/oasis-xslt10-value-of-disabled-output-escaping-2026-09-17.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

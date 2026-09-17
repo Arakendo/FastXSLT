@@ -1640,9 +1640,31 @@ fn compile_value_of(document: &Document, element: NodeId) -> Result<Instruction,
     ensure_only_attributes(
         document,
         element,
-        &["select", "separator", "xpath-default-namespace"],
+        &[
+            "select",
+            "separator",
+            "xpath-default-namespace",
+            "disable-output-escaping",
+        ],
         "xsl:value-of",
     )?;
+    match optional_attribute(document, element, None, "disable-output-escaping") {
+        None | Some("no") => {}
+        Some("yes") => {
+            return Err(unsupported(
+                "FXST1060",
+                "disable-output-escaping='yes' is outside the semantic result-tree slice",
+                document.location(element),
+            ));
+        }
+        Some(_) => {
+            return Err(invalid(
+                "XTSE0020",
+                "disable-output-escaping must be 'yes' or 'no'",
+                document.location(element),
+            ));
+        }
+    }
     ensure_no_meaningful_children(document, element, "xsl:value-of")?;
     let location = document.location(element).clone();
     let expression = required_attribute(document, element, None, "select")?;

@@ -1821,3 +1821,9 @@ maintained redistributable legacy suite becomes available.
   1,517. The slice is retained as honest frontier movement and does not claim
   complete preserved-whitespace behavior for every structural content model.
   [Evidence](../Evidence/oasis-xslt10-stylesheet-xml-space-admission-2026-09-17.md)
+- 2026-09-17 -- `xsl:value-of disable-output-escaping="no"` now uses the
+  ordinary semantic-result path; `yes` remains explicit unsupported and other
+  lexicals are invalid. Unchanged Lotus `output_output07` becomes exact,
+  raising the lower bound from 1,517 to 1,518 without adding a result-node
+  escape flag, mismatch, failure, runtime version branch, or panic.
+  [Evidence](../Evidence/oasis-xslt10-value-of-disabled-output-escaping-2026-09-17.md)
