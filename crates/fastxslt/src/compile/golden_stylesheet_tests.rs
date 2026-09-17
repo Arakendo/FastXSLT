@@ -125,7 +125,7 @@ fn xslt10_namespace_alias_treats_an_undeclared_default_as_no_namespace() {
 }
 
 #[test]
-fn xslt10_unnamed_decimal_format_is_static_and_named_formats_remain_explicit() {
+fn xslt10_decimal_formats_are_statically_resolved() {
     let unnamed = parse_stylesheet(
         "test:decimal-format.xsl",
         br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
@@ -139,11 +139,19 @@ fn xslt10_unnamed_decimal_format_is_static_and_named_formats_remain_explicit() {
         "test:named-decimal-format.xsl",
         br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
               <xsl:decimal-format name="european" decimal-separator="," grouping-separator="."/>
-              <xsl:template match="/"/>
+              <xsl:template match="/"><xsl:value-of select="format-number(1234.5, '#.##0,0', 'european')"/></xsl:template>
             </xsl:stylesheet>"#,
     );
-    let failure = compile_stylesheet(&named).expect_err("named lookup is not yet admitted");
-    assert_eq!(failure.code, "FXST1090");
+    compile_stylesheet(&named).expect("static named format lookup should compile");
+
+    let missing = parse_stylesheet(
+        "test:missing-decimal-format.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+              <xsl:template match="/"><xsl:value-of select="format-number(1, '0', 'missing')"/></xsl:template>
+            </xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&missing).expect_err("missing format must remain explicit");
+    assert_eq!(failure.code, "FXST1092");
     assert_eq!(failure.category, CompileCategory::Unsupported);
 }
 

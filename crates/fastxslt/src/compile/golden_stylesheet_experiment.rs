@@ -152,7 +152,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     let mut global_bindings = Vec::new();
     let mut global_binding_locations = Vec::new();
     let mut character_maps = Vec::new();
-    let mut default_decimal_format = None;
+    let mut decimal_formats = decimal_format_compiler::DecimalFormats::default();
     let mut namespace_aliases = Vec::new();
     let mut local_attribute_set_names = Vec::new();
     for child in top_level_children {
@@ -209,10 +209,10 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                 )?;
             }
             (Some(XSLT_NAMESPACE), "decimal-format") => {
-                decimal_format_compiler::compile_default_declaration(
+                decimal_format_compiler::compile_declaration(
                     document,
                     child,
-                    &mut default_decimal_format,
+                    &mut decimal_formats,
                 )?;
             }
             (Some(XSLT_NAMESPACE), "attribute-set") => {
@@ -333,9 +333,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         global_bindings,
     };
     namespace_alias_compiler::apply(&mut program, &namespace_aliases);
-    if let Some(format) = default_decimal_format {
-        decimal_format_compiler::apply(&mut program, &format)?;
-    }
+    decimal_format_compiler::apply(&mut program, &decimal_formats)?;
     Ok(program)
 }
 

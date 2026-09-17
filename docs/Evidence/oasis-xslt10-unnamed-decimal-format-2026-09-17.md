@@ -31,10 +31,12 @@ positive and negative subpictures still require the configured minus sign.
 That rule is now covered by a focused evaluator test and the unchanged corpus
 case.
 
-Named decimal formats remain explicitly unsupported as `FXST1090`. Non-ASCII
-zero-digit families remain explicitly unsupported as `FXST1091` until digit-
-family substitution is implemented. Computed or dynamic third-argument format
-selection is not approximated.
+This tranche does not admit named decimal formats. The subsequent
+[static named-format tranche](oasis-xslt10-static-named-decimal-format-2026-09-17.md)
+adds compile-resolved literal QName selection. Non-ASCII zero-digit families
+remain explicitly unsupported as `FXST1091` until digit-family substitution is
+implemented. Computed or dynamic third-argument format selection is not
+approximated.
 General decimal-format composition across separately compiled include/import
 modules remains outside this tranche; no cross-module precedence claim is
 made.

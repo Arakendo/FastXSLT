@@ -4,13 +4,17 @@ use std::collections::BTreeMap;
 
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::SourceLocation;
+use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::binary_numeric_experiment::ExactRational;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct FormatNumberExpression {
     number: Operand,
     picture: Operand,
+    requested_format_lexical: Option<String>,
+    requested_format: Option<ExpandedName>,
     decimal_format: DecimalFormat,
+    location: SourceLocation,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -63,6 +67,22 @@ impl FormatNumberExpression {
     pub(crate) fn set_default_decimal_format(&mut self, format: &DecimalFormat) {
         self.decimal_format.clone_from(format);
     }
+
+    pub(crate) fn requested_format_lexical(&self) -> Option<&str> {
+        self.requested_format_lexical.as_deref()
+    }
+
+    pub(crate) fn set_requested_format(&mut self, name: ExpandedName) {
+        self.requested_format = Some(name);
+    }
+
+    pub(crate) fn requested_format(&self) -> Option<&ExpandedName> {
+        self.requested_format.as_ref()
+    }
+
+    pub(crate) fn location(&self) -> &SourceLocation {
+        &self.location
+    }
 }
 
 #[cfg(feature = "workbench")]
@@ -72,6 +92,14 @@ impl FormatNumberExpression {
             + operand_capacity(&self.picture)
             + self.decimal_format.infinity.capacity()
             + self.decimal_format.nan.capacity()
+            + self
+                .requested_format_lexical
+                .as_ref()
+                .map_or(0, String::capacity)
+            + self.requested_format.as_ref().map_or(0, |name| {
+                name.local.capacity() + name.namespace.as_ref().map_or(0, String::capacity)
+            })
+            + self.location.resource.capacity()
     }
 }
 
@@ -103,14 +131,29 @@ pub(crate) fn parse(
         .strip_prefix("format-number(")
         .and_then(|value| value.strip_suffix(')'))
         .ok_or_else(|| unsupported(expression, location))?;
-    let (number, picture) =
+    let (number, remainder) =
         split_top_level_comma(arguments).ok_or_else(|| unsupported(expression, location))?;
+    let (picture, requested_format_lexical) = match split_top_level_comma(remainder) {
+        Some((picture, format)) => (
+            picture,
+            Some(
+                quoted(format.trim())
+                    .filter(|name| !name.is_empty())
+                    .ok_or_else(|| unsupported(expression, location))?
+                    .to_owned(),
+            ),
+        ),
+        None => (remainder, None),
+    };
     let number = parse_number(number.trim()).ok_or_else(|| unsupported(expression, location))?;
     let picture = parse_picture(picture.trim()).ok_or_else(|| unsupported(expression, location))?;
     Ok(FormatNumberExpression {
         number,
         picture,
+        requested_format_lexical,
+        requested_format: None,
         decimal_format: DecimalFormat::default(),
+        location: location.clone(),
     })
 }
 
@@ -118,6 +161,9 @@ pub(crate) fn evaluate(
     expression: &FormatNumberExpression,
     variables: &BTreeMap<String, AtomicValue>,
 ) -> Result<String, FormatNumberEvaluationFailure> {
+    if expression.requested_format_lexical.is_some() && expression.requested_format.is_none() {
+        return Err(FormatNumberEvaluationFailure::Unsupported);
+    }
     let number = resolve(&expression.number, variables)?;
     let picture = resolve(&expression.picture, variables)?;
     format_decimal(number, picture, &expression.decimal_format)
@@ -519,6 +565,7 @@ mod tests {
 
     use crate::xdm::atomic_value_experiment::AtomicValue;
     use crate::xdm::owned_tree_experiment::SourceLocation;
+    use crate::xml::quick_xml_experiment::ExpandedName;
 
     use super::{DecimalFormat, FormatNumberEvaluationFailure, evaluate, parse};
 
@@ -606,6 +653,19 @@ mod tests {
             evaluate(&non_finite, &BTreeMap::new()),
             Ok("huge".to_owned())
         );
+
+        let mut named = parse("format-number(1234.5, '#.##0,0', 'european')", &location())
+            .expect("static named formatting should parse");
+        named.set_requested_format(ExpandedName {
+            namespace: None,
+            local: "european".to_owned(),
+        });
+        named.set_default_decimal_format(&DecimalFormat {
+            decimal_separator: ',',
+            grouping_separator: '.',
+            ..DecimalFormat::default()
+        });
+        assert_eq!(evaluate(&named, &BTreeMap::new()), Ok("1.234,5".to_owned()));
     }
 
     #[test]

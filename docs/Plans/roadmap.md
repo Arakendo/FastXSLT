@@ -2026,7 +2026,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally. The initial 366 definite unchanged XML passes have grown to 1,549 exact expected-result matches through the shared modern compiler/runtime, explicitly bounded XSLT 1.0 compatibility semantics, and XML-semantic expected-result comparison. Current detail and tranche history live in AR-0019 and its linked evidence. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally. The initial 366 definite unchanged XML passes have grown to 1,558 exact expected-result matches through the shared modern compiler/runtime, explicitly bounded XSLT 1.0 compatibility semantics, and XML-semantic expected-result comparison. Current detail and tranche history live in AR-0019 and its linked evidence. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -4615,6 +4615,12 @@ host lifecycle.
   shared runtime and do not approximate dynamic third-argument format lookup
   or general include/import decimal-format composition.
   [Evidence](../Evidence/oasis-xslt10-unnamed-decimal-format-2026-09-17.md)
+- [x] Raise the exact lower bound to 1,558 by resolving named decimal-format
+  declarations and literal third-argument QNames at compilation. Eleven more
+  cases initialize and all nine newly executing ordinary cases compare
+  exactly. Keep computed format names, non-ASCII digit families, undeclared
+  names, and cross-module format composition explicit.
+  [Evidence](../Evidence/oasis-xslt10-static-named-decimal-format-2026-09-17.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

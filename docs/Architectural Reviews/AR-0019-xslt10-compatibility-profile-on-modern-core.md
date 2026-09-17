@@ -1880,3 +1880,10 @@ maintained redistributable legacy suite becomes available.
   include/import decimal-format composition remain explicit rather than
   approximated.
   [Evidence](../Evidence/oasis-xslt10-unnamed-decimal-format-2026-09-17.md)
+- 2026-09-17 -- Named decimal-format declarations and literal third-argument
+  QNames now resolve in their static namespace contexts and specialize the
+  same direct formatting plan. Eleven additional cases initialize and all nine
+  newly executing ordinary cases compare exactly, raising the lower bound from
+  1,549 to 1,558. Undeclared and cross-module format lookup remains explicit;
+  computed names and non-ASCII digit families are not approximated.
+  [Evidence](../Evidence/oasis-xslt10-static-named-decimal-format-2026-09-17.md)

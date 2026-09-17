@@ -1,12 +1,13 @@
-//! Static unnamed XSLT 1.0 decimal-format compilation.
+//! Static XSLT 1.0 decimal-format compilation.
 
 use std::collections::BTreeSet;
 
 use super::{
-    CompileFailure, Document, NodeId, ensure_no_meaningful_children, ensure_only_attributes,
-    invalid, optional_attribute, unsupported,
+    CompileFailure, Document, NodeId, compile_expanded_qname, ensure_no_meaningful_children,
+    ensure_only_attributes, invalid, optional_attribute, unsupported,
 };
 use crate::xdm::owned_tree_experiment::SourceLocation;
+use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::format_number_experiment::DecimalFormat;
 use crate::xslt::golden_semantics_experiment::{
     Instruction, StylesheetProgram, TemplateArgument, TemplateArgumentValue, ValueExpression,
@@ -26,16 +27,22 @@ const PROPERTIES: [&str; 10] = [
 ];
 
 #[derive(Debug)]
-pub(super) struct DefaultDecimalFormat {
+struct DecimalFormatDeclaration {
     format: DecimalFormat,
     specified: BTreeSet<&'static str>,
     location: SourceLocation,
 }
 
-pub(super) fn compile_default_declaration(
+#[derive(Debug, Default)]
+pub(super) struct DecimalFormats {
+    default: Option<DecimalFormatDeclaration>,
+    named: Vec<(ExpandedName, DecimalFormatDeclaration)>,
+}
+
+pub(super) fn compile_declaration(
     document: &Document,
     element: NodeId,
-    declaration: &mut Option<DefaultDecimalFormat>,
+    declarations: &mut DecimalFormats,
 ) -> Result<(), CompileFailure> {
     ensure_only_attributes(
         document,
@@ -56,19 +63,10 @@ pub(super) fn compile_default_declaration(
         "xsl:decimal-format",
     )?;
     ensure_no_meaningful_children(document, element, "xsl:decimal-format")?;
-    if let Some(name) = optional_attribute(document, element, None, "name") {
-        return Err(unsupported(
-            "FXST1090",
-            format!("named decimal formats remain outside the private slice: {name}"),
-            document.location(element),
-        ));
-    }
-
-    let target = declaration.get_or_insert_with(|| DefaultDecimalFormat {
-        format: DecimalFormat::default(),
-        specified: BTreeSet::new(),
-        location: document.location(element).clone(),
-    });
+    let name = optional_attribute(document, element, None, "name")
+        .map(|name| compile_expanded_qname(document, element, name, "xsl:decimal-format name"))
+        .transpose()?;
+    let target = declaration_for(declarations, name, document.location(element));
     for property in PROPERTIES {
         let Some(value) = optional_attribute(document, element, None, property) else {
             continue;
@@ -85,6 +83,34 @@ pub(super) fn compile_default_declaration(
         target.specified.insert(property);
     }
     Ok(())
+}
+
+fn declaration_for<'a>(
+    declarations: &'a mut DecimalFormats,
+    name: Option<ExpandedName>,
+    location: &SourceLocation,
+) -> &'a mut DecimalFormatDeclaration {
+    let create = || DecimalFormatDeclaration {
+        format: DecimalFormat::default(),
+        specified: BTreeSet::new(),
+        location: location.clone(),
+    };
+    let Some(name) = name else {
+        return declarations.default.get_or_insert_with(create);
+    };
+    if let Some(index) = declarations
+        .named
+        .iter()
+        .position(|(existing, _)| existing == &name)
+    {
+        return &mut declarations.named[index].1;
+    }
+    declarations.named.push((name, create()));
+    &mut declarations
+        .named
+        .last_mut()
+        .expect("inserted declaration")
+        .1
 }
 
 fn set_property(
@@ -190,60 +216,100 @@ fn validate_distinct_symbols(
 
 pub(super) fn apply(
     program: &mut StylesheetProgram,
-    declaration: &DefaultDecimalFormat,
+    declarations: &DecimalFormats,
 ) -> Result<(), CompileFailure> {
-    validate_distinct_symbols(&declaration.format, &declaration.location)?;
+    if let Some(declaration) = &declarations.default {
+        validate_distinct_symbols(&declaration.format, &declaration.location)?;
+    }
+    for (_, declaration) in &declarations.named {
+        validate_distinct_symbols(&declaration.format, &declaration.location)?;
+    }
     if let Some(template) = &mut program.root_template {
-        apply_instructions(&mut template.body, &declaration.format);
+        apply_instructions(&mut template.body, declarations)?;
     }
     for template in &mut program.matched_templates {
-        apply_instructions(&mut template.template.body, &declaration.format);
+        apply_instructions(&mut template.template.body, declarations)?;
     }
     for template in &mut program.named_templates {
-        apply_instructions(&mut template.template.body, &declaration.format);
+        apply_instructions(&mut template.template.body, declarations)?;
     }
     Ok(())
 }
 
-fn apply_instructions(instructions: &mut [Instruction], format: &DecimalFormat) {
+fn apply_instructions(
+    instructions: &mut [Instruction],
+    declarations: &DecimalFormats,
+) -> Result<(), CompileFailure> {
     for instruction in instructions {
         match instruction {
-            Instruction::ValueOf { select, .. } => apply_value(select, format),
+            Instruction::ValueOf { select, .. } => apply_value(select, declarations)?,
             Instruction::LiteralElement { body, .. }
             | Instruction::ForEachVariable { body, .. }
             | Instruction::ForEachStaticIntegerRange { body, .. }
             | Instruction::ForEachNodes { body, .. }
             | Instruction::If { body, .. }
-            | Instruction::Copy { body, .. } => apply_instructions(body, format),
+            | Instruction::Copy { body, .. } => apply_instructions(body, declarations)?,
             Instruction::Choose {
                 branches,
                 otherwise,
                 ..
             } => {
                 for branch in branches {
-                    apply_instructions(&mut branch.body, format);
+                    apply_instructions(&mut branch.body, declarations)?;
                 }
-                apply_instructions(otherwise, format);
+                apply_instructions(otherwise, declarations)?;
             }
             Instruction::ApplyTemplates { arguments, .. }
             | Instruction::NextMatch { arguments, .. }
             | Instruction::ApplyImports { arguments, .. }
-            | Instruction::CallTemplate { arguments, .. } => apply_arguments(arguments, format),
+            | Instruction::CallTemplate { arguments, .. } => {
+                apply_arguments(arguments, declarations)?;
+            }
             _ => {}
         }
     }
+    Ok(())
 }
 
-fn apply_arguments(arguments: &mut [TemplateArgument], format: &DecimalFormat) {
+fn apply_arguments(
+    arguments: &mut [TemplateArgument],
+    declarations: &DecimalFormats,
+) -> Result<(), CompileFailure> {
     for argument in arguments {
         if let TemplateArgumentValue::Xslt10Content(content) = &mut argument.value {
-            apply_value(&mut content.value, format);
+            apply_value(&mut content.value, declarations)?;
         }
     }
+    Ok(())
 }
 
-fn apply_value(value: &mut ValueExpression, format: &DecimalFormat) {
+fn apply_value(
+    value: &mut ValueExpression,
+    declarations: &DecimalFormats,
+) -> Result<(), CompileFailure> {
     if let ValueExpression::FormatNumber(expression) = value {
-        expression.set_default_decimal_format(format);
+        let declaration = if let Some(name) = expression.requested_format() {
+            declarations
+                .named
+                .iter()
+                .find(|(candidate, _)| candidate == name)
+                .map(|(_, declaration)| declaration)
+                .ok_or_else(|| {
+                    unsupported(
+                        "FXST1092",
+                        format!(
+                            "the requested decimal format is not declared: {}",
+                            expression.requested_format_lexical().unwrap_or(&name.local)
+                        ),
+                        expression.location(),
+                    )
+                })?
+        } else if let Some(declaration) = &declarations.default {
+            declaration
+        } else {
+            return Ok(());
+        };
+        expression.set_default_decimal_format(&declaration.format);
     }
+    Ok(())
 }

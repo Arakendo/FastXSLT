@@ -513,14 +513,23 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
             })?,
         ))
     } else if expression.trim_start().starts_with("format-number(") {
-        ValueExpression::FormatNumber(Box::new(
+        let mut format =
             parse_format_number(expression, location).map_err(|failure| CompileFailure {
                 code: "FXXP1009",
                 category: CompileCategory::Unsupported,
                 detail: failure.detail,
                 location: failure.location,
-            })?,
-        ))
+            })?;
+        if let Some(lexical) = format.requested_format_lexical().map(str::to_owned) {
+            let name = super::super::compile_expanded_qname(
+                document,
+                element,
+                &lexical,
+                "format-number decimal-format name",
+            )?;
+            format.set_requested_format(name);
+        }
+        ValueExpression::FormatNumber(Box::new(format))
     } else if expression.trim_start().starts_with("sum(for $") {
         ValueExpression::FocusSumFor(Box::new(
             parse_focus_sum_for(expression, location).map_err(|failure| CompileFailure {
