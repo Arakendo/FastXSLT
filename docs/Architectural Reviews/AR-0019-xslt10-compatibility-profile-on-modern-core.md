@@ -1769,3 +1769,10 @@ maintained redistributable legacy suite becomes available.
   real serializer or ordinary disable-output-escaping boundary; dynamic
   constructor content remains explicit.
   [Evidence](../Evidence/oasis-xslt10-static-node-content-and-text-space-2026-09-16.md)
+- 2026-09-16 -- Static comment construction now applies XSLT 1.0's permitted
+  add-space recovery when content contains `--` or ends in `-`. The recovery is
+  selected during compilation; later versions retain `FXST1037`. All ten
+  formerly blocked unchanged cases become exact, raising the lower bound from
+  1,494 to 1,504 without a new mismatch, failure, unexpected success, runtime
+  version branch, or panic.
+  [Evidence](../Evidence/oasis-xslt10-comment-delimiter-recovery-2026-09-16.md)

@@ -1314,7 +1314,7 @@ pub(super) fn compile_comment(
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
     ensure_only_attributes(document, element, &["select"], "xsl:comment")?;
-    let value = if let Some(select) = optional_attribute(document, element, None, "select") {
+    let mut value = if let Some(select) = optional_attribute(document, element, None, "select") {
         ensure_no_meaningful_children(document, element, "xsl:comment")?;
         crate::xpath::static_string_experiment::fold(select).ok_or_else(|| {
             unsupported(
@@ -1359,16 +1359,34 @@ pub(super) fn compile_comment(
         value
     };
     if value.contains("--") || value.ends_with('-') {
-        return Err(unsupported(
-            "FXST1037",
-            "comment content requiring lexical recovery is outside the private slice",
-            document.location(element),
-        ));
+        if uses_xslt10_compatibility(document, element) {
+            value = recover_xslt10_comment_content(&value);
+        } else {
+            return Err(unsupported(
+                "FXST1037",
+                "comment content requiring lexical recovery is outside the private slice",
+                document.location(element),
+            ));
+        }
     }
     Ok(Instruction::CommentNode {
         value,
         location: document.location(element).clone(),
     })
+}
+
+fn recover_xslt10_comment_content(value: &str) -> String {
+    let characters = value.chars().collect::<Vec<_>>();
+    let mut recovered = String::with_capacity(value.len() + 1);
+    for (index, character) in characters.iter().copied().enumerate() {
+        recovered.push(character);
+        if character == '-'
+            && (characters.get(index + 1) == Some(&'-') || index + 1 == characters.len())
+        {
+            recovered.push(' ');
+        }
+    }
+    recovered
 }
 
 fn compile_static_node_content_value(

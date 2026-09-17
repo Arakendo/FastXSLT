@@ -2174,6 +2174,28 @@ fn comment_and_processing_instruction_fold_static_value_expressions() {
 }
 
 #[test]
+fn xslt10_comment_recovers_xml_comment_delimiters_without_widening_modern_semantics() {
+    let stylesheet = parse_stylesheet(
+        "memory:xslt10-comment-recovery.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:comment>one--two---</xsl:comment></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet).expect("XSLT 1.0 recovery should compile");
+    let root_template = program.root_template.expect("root template");
+    assert!(matches!(
+        root_template.body.as_slice(),
+        [Instruction::CommentNode { value, .. }] if value == "one- -two- - - "
+    ));
+
+    let modern = parse_stylesheet(
+        "memory:modern-comment-recovery.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:comment>one--two-</xsl:comment></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&modern).expect_err("modern recovery remains unsupported");
+    assert_eq!(failure.code, "FXST1037");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+}
+
+#[test]
 fn static_integer_range_requires_a_context_independent_body() {
     let stylesheet = parse_stylesheet(
             "memory:static-range.xsl",
