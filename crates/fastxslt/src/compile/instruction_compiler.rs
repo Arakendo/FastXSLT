@@ -399,12 +399,20 @@ fn compile_literal_element(
     ensure_literal_result_control_attributes(document, element)?;
     let (mut computed_attributes, computed_attribute_nodes) =
         compile_computed_attributes(document, element)?;
-    let attributes = compile_literal_result_attributes(document, element)?;
-    ensure_distinct_result_attributes(
-        &attributes,
-        &computed_attributes,
-        document.location(element),
-    )?;
+    let mut attributes = compile_literal_result_attributes(document, element)?;
+    if uses_xslt10_compatibility(document, element) {
+        attributes.retain(|literal| {
+            !computed_attributes
+                .iter()
+                .any(|computed| computed.name == literal.name)
+        });
+    } else {
+        ensure_distinct_result_attributes(
+            &attributes,
+            &computed_attributes,
+            document.location(element),
+        )?;
+    }
     let mut attribute_set_values =
         compile_local_attribute_sets(document, element, Some(XSLT_NAMESPACE))?;
     attribute_set_values.retain(|set_attribute| {

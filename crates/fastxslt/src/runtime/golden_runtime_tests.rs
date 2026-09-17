@@ -2086,6 +2086,33 @@ fn xslt10_attribute_set_values_resolve_only_global_variables() {
 }
 
 #[test]
+fn xslt10_duplicate_result_attributes_recover_with_the_last_value() {
+    const SOURCE: &str = "urn:fastxslt:duplicate-attribute-recovery:source";
+    const STYLESHEET: &str = "urn:fastxslt:duplicate-attribute-recovery:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out literal="wrong"><xsl:attribute name="literal">right</xsl:attribute><xsl:attribute name="computed">wrong</xsl:attribute><xsl:attribute name="computed">right</xsl:attribute></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("duplicate-attribute-recovery", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["duplicate-attribute-recovery"].serialized,
+        "<out literal=\"right\" computed=\"right\"></out>"
+    );
+}
+
+#[test]
 fn xslt10_source_copy_applies_static_attribute_sets_before_explicit_attributes() {
     const SOURCE: &str = "urn:fastxslt:copy-attribute-set:source";
     const STYLESHEET: &str = "urn:fastxslt:copy-attribute-set:stylesheet";

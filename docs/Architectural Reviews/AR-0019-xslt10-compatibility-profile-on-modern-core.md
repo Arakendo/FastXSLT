@@ -1724,3 +1724,11 @@ maintained redistributable legacy suite becomes available.
   bound from 1,482 to 1,483 without a new mismatch, execution failure, runtime
   attribute-set registry, or panic.
   [Evidence](../Evidence/oasis-xslt10-attribute-set-global-variable-scope-2026-09-16.md)
+- 2026-09-16 -- XSLT 1.0 same-expanded-name result attributes now select the
+  last statically compiled value, covering computed-over-literal and repeated
+  leading computed attributes. The compatibility choice is made during
+  compilation; later versions retain `XTDE0410`, and dynamic late-attribute
+  failures are unchanged. Three unchanged cases become exact, raising the lower
+  bound from 1,483 to 1,486 without a new mismatch, execution failure, or
+  runtime version branch.
+  [Evidence](../Evidence/oasis-xslt10-duplicate-result-attribute-recovery-2026-09-16.md)

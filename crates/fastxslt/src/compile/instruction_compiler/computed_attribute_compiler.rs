@@ -23,6 +23,7 @@ pub(super) fn compile_computed_attributes(
     let mut attributes = Vec::new();
     let mut attribute_nodes = Vec::new();
     let mut body_started = false;
+    let recover_duplicate_attributes = uses_xslt10_compatibility(document, parent);
     for child in meaningful_children(document, parent) {
         if !is_xslt_element(document, child, "attribute") {
             body_started = true;
@@ -35,7 +36,15 @@ pub(super) fn compile_computed_attributes(
                 document.location(child),
             ));
         }
-        attributes.push(compile_computed_attribute(document, child)?);
+        let attribute = compile_computed_attribute(document, child)?;
+        if recover_duplicate_attributes
+            && let Some(index) = attributes
+                .iter()
+                .position(|existing: &ComputedAttribute| existing.name == attribute.name)
+        {
+            attributes.remove(index);
+        }
+        attributes.push(attribute);
         attribute_nodes.push(child);
     }
     Ok((attributes, attribute_nodes))
