@@ -4660,6 +4660,12 @@ host lifecycle.
   expected attribute spellings but retain visible pretty-print/newline
   differences, so the strict lower bound correctly remains 1,565.
   [Evidence](../Evidence/oasis-xslt10-html-ordinary-attribute-escaping-2026-09-17.md)
+- [x] Preserve a legacy HTML ampersand immediately followed by `{` on the
+  no-character-map path, and omit end tags for HTML void elements even when a
+  result tree supplied child content. Unchanged Lotus and Microsoft cases now
+  reach the expected HTML spellings, but their non-XML HTML syntax and other
+  presentation differences remain uncredited; the lower bound stays 1,565.
+  [Evidence](../Evidence/oasis-xslt10-html-ampersand-curly-and-void-content-2026-09-17.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

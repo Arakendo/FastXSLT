@@ -6987,75 +6987,64 @@ fn absent_output_declaration_infers_html_from_an_unnamespaced_html_root() {
     assert_eq!(actual, "<html></html>");
 }
 
-#[test]
-fn legacy_html_serialization_accepts_a_general_nested_result_tree() {
-    let element = |local: &str, attributes: Vec<ResultAttribute>, children: Vec<ResultNode>| {
-        ResultNode::Element {
-            name: crate::xml::quick_xml_experiment::ExpandedName {
-                namespace: None,
-                local: local.to_owned(),
-            },
-            namespaces: Vec::new().into(),
-            attributes,
-            children,
-        }
-    };
-    let data_kind = ResultAttribute {
+fn unnamespaced_result_attribute(local: &str, value: &str) -> ResultAttribute {
+    ResultAttribute {
         name: crate::xml::quick_xml_experiment::ExpandedName {
             namespace: None,
-            local: "data-kind".to_owned(),
+            local: local.to_owned(),
         },
-        value: "general".to_owned(),
-    };
+        value: value.to_owned(),
+    }
+}
+
+fn unnamespaced_result_element(
+    local: &str,
+    attributes: Vec<ResultAttribute>,
+    children: Vec<ResultNode>,
+) -> ResultNode {
+    ResultNode::Element {
+        name: crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: None,
+            local: local.to_owned(),
+        },
+        namespaces: Vec::new().into(),
+        attributes,
+        children,
+    }
+}
+
+#[test]
+fn legacy_html_serialization_accepts_a_general_nested_result_tree() {
     let result = SemanticResult {
-        children: vec![element(
+        children: vec![unnamespaced_result_element(
             "html",
             Vec::new(),
-            vec![element(
+            vec![unnamespaced_result_element(
                 "body",
                 Vec::new(),
-                vec![element(
+                vec![unnamespaced_result_element(
                     "section",
                     vec![
-                        data_kind,
-                        ResultAttribute {
-                            name: crate::xml::quick_xml_experiment::ExpandedName {
-                                namespace: None,
-                                local: "data-expression".to_owned(),
-                            },
-                            value: "<bar>".to_owned(),
-                        },
-                        ResultAttribute {
-                            name: crate::xml::quick_xml_experiment::ExpandedName {
-                                namespace: None,
-                                local: "data-lines".to_owned(),
-                            },
-                            value: "x\ny".to_owned(),
-                        },
+                        unnamespaced_result_attribute("data-kind", "general"),
+                        unnamespaced_result_attribute("data-expression", "<bar>"),
+                        unnamespaced_result_attribute("data-lines", "x\ny"),
+                        unnamespaced_result_attribute("data-template", "&{color}; &other"),
                     ],
                     vec![
-                        element("p", Vec::new(), vec![ResultNode::Text("A & B".to_owned())]),
-                        element(
+                        unnamespaced_result_element(
+                            "p",
+                            Vec::new(),
+                            vec![ResultNode::Text("A & B".to_owned())],
+                        ),
+                        unnamespaced_result_element(
                             "A",
-                            vec![ResultAttribute {
-                                name: crate::xml::quick_xml_experiment::ExpandedName {
-                                    namespace: None,
-                                    local: "HREF".to_owned(),
-                                },
-                                value: "\"'café".to_owned(),
-                            }],
+                            vec![unnamespaced_result_attribute("HREF", "\"'café")],
                             Vec::new(),
                         ),
-                        element(
+                        unnamespaced_result_element(
                             "input",
-                            vec![ResultAttribute {
-                                name: crate::xml::quick_xml_experiment::ExpandedName {
-                                    namespace: None,
-                                    local: "CHECKED".to_owned(),
-                                },
-                                value: "checked".to_owned(),
-                            }],
-                            Vec::new(),
+                            vec![unnamespaced_result_attribute("CHECKED", "checked")],
+                            vec![ResultNode::Text("void child".to_owned())],
                         ),
                     ],
                 )],
@@ -7089,7 +7078,7 @@ fn legacy_html_serialization_accepts_a_general_nested_result_tree() {
 
     assert_eq!(
         actual,
-        "<html><body><section data-kind=\"general\" data-expression=\"<bar>\" data-lines=\"x\ny\"><p>A &amp; B</p><A HREF=\"%22'caf%C3%A9\"></A><input CHECKED></section></body></html>"
+        "<html><body><section data-kind=\"general\" data-expression=\"<bar>\" data-lines=\"x\ny\" data-template=\"&{color}; &amp;other\"><p>A &amp; B</p><A HREF=\"%22'caf%C3%A9\"></A><input CHECKED>void child</section></body></html>"
     );
 }
 

@@ -1487,11 +1487,11 @@ fn serialize_element<'a>(
         for attribute in attributes {
             serialize_element_attribute(attribute, name, namespace_scope, options, output)?;
         }
+        let html_void = options.html_mode != HtmlMode::None && is_html_void_element(name);
         if options.xml_empty_element_tag && children.is_empty() {
             return output.push_str("/>");
         }
-        if options.html_mode != HtmlMode::None && children.is_empty() && is_html_void_element(name)
-        {
+        if html_void && children.is_empty() {
             return output.push('>');
         }
         if options.xhtml_mode != XhtmlMode::None
@@ -1538,6 +1538,9 @@ fn serialize_element<'a>(
         }
         if indent_children {
             write_indentation(depth, output)?;
+        }
+        if html_void {
+            return Ok(());
         }
         output.push_str("</")?;
         write_name(prefix.as_deref(), &name.local, output)?;
@@ -1866,6 +1869,13 @@ fn escape_html_attribute_with_character_map(
     normalization_form: NormalizationForm,
     output: &mut BudgetedString,
 ) -> Result<(), ExecutionFailure> {
+    if character_map.is_empty() {
+        return match normalization_form {
+            NormalizationForm::None => write_html_attribute_characters(value.chars(), output),
+            NormalizationForm::Nfc => write_html_attribute_characters(value.nfc(), output),
+            NormalizationForm::Nfd => write_html_attribute_characters(value.nfd(), output),
+        };
+    }
     write_character_expansion(
         value,
         character_map,
@@ -1880,6 +1890,28 @@ fn escape_html_attribute_with_character_map(
         },
         output,
     )
+}
+
+fn write_html_attribute_characters(
+    characters: impl Iterator<Item = char>,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    let mut characters = characters.peekable();
+    while let Some(character) = characters.next() {
+        if character == '&' && characters.peek() == Some(&'{') {
+            output.push('&')?;
+            continue;
+        }
+        match character {
+            '&' => output.push_str("&amp;")?,
+            '"' => output.push_str("&quot;")?,
+            _ if is_c1_control(character) => {
+                output.push_str(&format!("&#x{:X};", u32::from(character)))?;
+            }
+            _ => output.push(character)?,
+        }
+    }
+    Ok(())
 }
 
 fn is_uri_attribute(

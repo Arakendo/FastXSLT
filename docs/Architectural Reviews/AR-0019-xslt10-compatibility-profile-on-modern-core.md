@@ -1930,3 +1930,12 @@ maintained redistributable legacy suite becomes available.
   attribute spellings but retain later pretty-print/newline differences. They
   remain visible mismatches, and the strict lower bound remains 1,565.
   [Evidence](../Evidence/oasis-xslt10-html-ordinary-attribute-escaping-2026-09-17.md)
+- 2026-09-17 -- The XSLT 1.0 no-character-map HTML path now preserves `&`
+  immediately before `{`, and legacy HTML void elements omit their end tags
+  even when result-tree content follows their start tag. The unchanged
+  `Lotus/output_output37#1` and
+  `Microsoft/Output_HtmlOutputWithAmpersandCurlyBracket#1` cases reach the
+  relevant expected HTML spellings. Non-XML comparison and independent
+  presentation differences remain visible, so the exact lower bound remains
+  1,565.
+  [Evidence](../Evidence/oasis-xslt10-html-ampersand-curly-and-void-content-2026-09-17.md)

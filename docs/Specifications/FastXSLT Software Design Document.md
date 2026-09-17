@@ -854,8 +854,12 @@ unnamespaced value equals its attribute name without ASCII case sensitivity;
 other and namespaced attributes retain quoted serialization. Ordinary HTML
 attribute values preserve angle brackets and XML whitespace characters rather
 than applying XML attribute escaping; ampersands, double quotes, and C1
-controls retain their required escaped forms. XHTML and XML output continue to
-use XML-compatible attribute escaping.
+controls retain their required escaped forms. On the XSLT 1.0 no-character-map
+path, an ampersand immediately followed by `{` remains literal. XHTML and XML
+output continue to use XML-compatible attribute escaping. Legacy HTML void
+elements omit their end tags even if the semantic result tree supplied child
+content; the children are serialized after the start tag without manufacturing
+an end tag.
 `suppress-indentation` is retained as a list of expanded element names in
 compiled output settings and merged by expanded-name identity. When indentation
 is enabled, the serializer does not add indentation inside a matching element
