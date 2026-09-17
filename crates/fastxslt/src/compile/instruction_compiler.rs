@@ -385,7 +385,7 @@ fn compile_attribute(document: &Document, element: NodeId) -> Result<Instruction
     })
 }
 
-fn compile_literal_element(
+pub(super) fn compile_literal_element(
     document: &Document,
     element: NodeId,
 ) -> Result<Instruction, CompileFailure> {
@@ -1105,6 +1105,9 @@ fn compile_sort_function_path(
 pub(super) fn uses_xslt10_compatibility(document: &Document, element: NodeId) -> bool {
     let mut current = Some(element);
     while let Some(node) = current {
+        if let Some(version) = optional_attribute(document, node, Some(XSLT_NAMESPACE), "version") {
+            return version == "1.0";
+        }
         if document.name(node).is_some_and(|name| {
             name.namespace.as_deref() == Some(XSLT_NAMESPACE)
                 && matches!(name.local.as_str(), "stylesheet" | "transform")
@@ -1143,7 +1146,7 @@ fn ensure_literal_result_control_attributes(
         if name.namespace.as_deref() == Some(XSLT_NAMESPACE)
             && !matches!(
                 name.local.as_str(),
-                "xpath-default-namespace" | "default-mode" | "use-attribute-sets"
+                "version" | "xpath-default-namespace" | "default-mode" | "use-attribute-sets"
             )
         {
             return Err(unsupported(

@@ -77,6 +77,12 @@ pub(crate) fn compile_stylesheet_at(
     document: &Document,
     root: NodeId,
 ) -> Result<StylesheetProgram, CompileFailure> {
+    if !document.name(root).is_some_and(|name| {
+        name.namespace.as_deref() == Some(XSLT_NAMESPACE)
+            && matches!(name.local.as_str(), "stylesheet" | "transform")
+    }) {
+        return stylesheet_module_compiler::compile_simplified_stylesheet_at(document, root);
+    }
     let mut program = compile_stylesheet_at_excluding_unvalidated(document, root, &[])?;
     finalize_character_maps(&mut program)?;
     validate_named_template_references(&program)?;

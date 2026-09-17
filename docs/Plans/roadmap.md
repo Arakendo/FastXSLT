@@ -4490,6 +4490,13 @@ host lifecycle.
   expected-error observations unchanged. Five unchanged standard-operation
   cases become exact without a new mismatch, execution failure, or panic.
   [Evidence](../Evidence/oasis-xslt10-late-result-attribute-recovery-2026-09-16.md)
+- [x] Admit principal XSLT 1.0 simplified stylesheet syntax through the same
+  literal-result-element compiler used by conventional stylesheets. Eliminate
+  the blanket `FXST0009` frontier for all 30 candidates while keeping their
+  specific invalid, unsupported, execution, serialization, and mismatch
+  dispositions visible. This frontier refinement intentionally leaves the
+  exact lower bound at 1,491 and does not increase unexpected successes.
+  [Evidence](../Evidence/oasis-xslt10-simplified-stylesheet-frontier-2026-09-16.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

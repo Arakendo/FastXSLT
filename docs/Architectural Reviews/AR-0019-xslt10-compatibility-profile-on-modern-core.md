@@ -1740,3 +1740,11 @@ maintained redistributable legacy suite becomes available.
   accounting remains unchanged and no mismatch, execution failure, or panic is
   added.
   [Evidence](../Evidence/oasis-xslt10-late-result-attribute-recovery-2026-09-16.md)
+- 2026-09-16 -- Principal simplified stylesheets now compile their document
+  element as the implicit root template through the ordinary literal-result
+  compiler. All 30 former blanket `FXST0009` candidates advance to their real
+  semantic boundary: 21 remain initialization failures, eight reach an
+  execution/serialization failure, and one reaches a visible mismatch. No
+  exact pass is claimed, the lower bound remains 1,491, and the six unexpected
+  expected-error successes remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-simplified-stylesheet-frontier-2026-09-16.md)

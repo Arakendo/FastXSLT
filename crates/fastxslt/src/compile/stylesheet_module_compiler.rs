@@ -1,10 +1,10 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId, SourceLocation};
 use crate::xslt::golden_semantics_experiment::{
-    Instruction, MatchPattern, MatchedTemplate, SourceWhitespacePolicy, StylesheetProgram,
-    Template, TemplatePriority,
+    MatchPattern, MatchedTemplate, SourceWhitespacePolicy, StylesheetProgram, Template,
+    TemplatePriority,
 };
 
-use super::instruction_compiler::{compile_sequence_excluding, literal_result_namespaces};
+use super::instruction_compiler::compile_literal_element;
 use super::stylesheet_validation::validate_named_template_references;
 use super::{
     CompileFailure, XSLT_NAMESPACE, compile_stylesheet_at_excluding_unvalidated,
@@ -712,7 +712,7 @@ fn merge_included_character_maps(
     Ok(())
 }
 
-fn compile_simplified_stylesheet_at(
+pub(super) fn compile_simplified_stylesheet_at(
     document: &Document,
     root: NodeId,
 ) -> Result<StylesheetProgram, CompileFailure> {
@@ -726,29 +726,9 @@ fn compile_simplified_stylesheet_at(
     }
     let declared_version = required_attribute(document, root, Some(XSLT_NAMESPACE), "version")?;
     super::validate_declared_version(document, root, declared_version)?;
-    for attribute in document.attributes(root) {
-        let name = document
-            .name(*attribute)
-            .expect("attribute nodes have names");
-        if name.namespace.as_deref() != Some(XSLT_NAMESPACE) || name.local != "version" {
-            return Err(unsupported(
-                "FXST1023",
-                "literal attributes on the simplified stylesheet root are outside the first include slice",
-                document.location(*attribute),
-            ));
-        }
-    }
     let root_template = Template {
         parameters: Vec::new(),
-        body: vec![Instruction::LiteralElement {
-            origin: crate::xslt::golden_semantics_experiment::ElementConstructorOrigin::Literal,
-            name: root_name.clone(),
-            namespaces: literal_result_namespaces(document, root).into(),
-            attributes: Vec::new(),
-            computed_attributes: Vec::new(),
-            body: compile_sequence_excluding(document, root, &[])?,
-            location: document.location(root).clone(),
-        }],
+        body: vec![compile_literal_element(document, root)?],
         location: document.location(root).clone(),
     };
     Ok(StylesheetProgram {

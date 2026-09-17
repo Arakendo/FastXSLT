@@ -113,6 +113,46 @@ fn compiles_the_golden_stylesheet_into_owned_semantics() {
 }
 
 #[test]
+fn compiles_a_simplified_stylesheet_through_the_literal_result_element_path() {
+    let document = parse_stylesheet(
+        "test:simplified.xsl",
+        br#"<out xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+                  xsl:version="1.0"
+                  marker="yes">
+                <xsl:value-of select="/*/value"/>
+              </out>"#,
+    );
+
+    let program = compile_stylesheet(&document).expect("simplified stylesheet should compile");
+
+    assert_eq!(program.declared_version, "1.0");
+    let [
+        Instruction::LiteralElement {
+            name,
+            attributes,
+            body,
+            ..
+        },
+    ] = program
+        .root_template
+        .as_ref()
+        .expect("simplified stylesheet has an implicit root template")
+        .body
+        .as_slice()
+    else {
+        panic!("simplified stylesheet should compile as one literal result element");
+    };
+    assert_eq!(name.local, "out");
+    assert_eq!(attributes.len(), 1);
+    assert_eq!(attributes[0].name.local, "marker");
+    assert_eq!(
+        attributes[0].value,
+        LiteralAttributeValue::Text("yes".to_owned())
+    );
+    assert!(matches!(body.as_slice(), [Instruction::ValueOf { .. }]));
+}
+
+#[test]
 fn ignores_foreign_top_level_data_and_rejects_unqualified_top_level_elements() {
     let foreign = parse_stylesheet(
         "memory:foreign-top-level.xsl",
