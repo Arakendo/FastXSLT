@@ -5193,6 +5193,36 @@ fn xslt10_text_tree_variable_composes_with_source_path_avts() {
 }
 
 #[test]
+fn xslt10_static_text_constructors_share_local_and_global_temporary_tree_semantics() {
+    const SOURCE: &str = "urn:fastxslt:static-text-tree-sequence:source";
+    const STYLESHEET: &str = "urn:fastxslt:static-text-tree-sequence:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, br"<doc/>".to_vec())
+        .expect("admit static text-tree source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:variable name="global"><xsl:text>global-</xsl:text><xsl:text>tree</xsl:text></xsl:variable><xsl:template match="doc"><xsl:variable name="local"><xsl:text>local-</xsl:text><xsl:text>tree</xsl:text></xsl:variable><out><xsl:value-of select="$global"/>|<xsl:value-of select="$local"/>|<xsl:value-of select="string-length(string($global)) * 3"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit static text-tree stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile static text-tree sequences");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("static-text-tree-sequence", "result", SOURCE))
+        .expect("admit static text-tree request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute static text-tree sequences");
+    assert_eq!(
+        results.by_request["static-text-tree-sequence"].serialized,
+        "<out>global-tree|local-tree|33</out>"
+    );
+}
+
+#[test]
 fn xslt10_text_tree_variable_avts_shadow_across_nested_scope() {
     const SOURCE: &str = "urn:fastxslt:text-tree-variable-shadow:source";
     const STYLESHEET: &str = "urn:fastxslt:text-tree-variable-shadow:stylesheet";

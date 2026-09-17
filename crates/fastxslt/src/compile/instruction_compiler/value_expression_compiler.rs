@@ -382,6 +382,15 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
         return Ok(ValueExpression::ContextNodeStringLength(location.clone()));
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some((variable, factor)) =
+            parse_xslt10_variable_string_length_times_integer(expression)
+    {
+        return Ok(ValueExpression::Xslt10VariableStringLengthTimes {
+            variable: variable.to_owned(),
+            factor,
+        });
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(variable) = parse_xslt10_variable_string_length(expression)
     {
         return Ok(ValueExpression::Xslt10VariableStringLength(
@@ -595,6 +604,24 @@ fn parse_xslt10_variable_string_length(expression: &str) -> Option<&str> {
         .trim()
         .strip_prefix('$')?;
     is_ascii_ncname(variable).then_some(variable)
+}
+
+fn parse_xslt10_variable_string_length_times_integer(expression: &str) -> Option<(&str, usize)> {
+    let (left, operator, right) = crate::xpath::binary_numeric_experiment::split_paths(expression)?;
+    if operator != crate::xpath::binary_numeric_experiment::BinaryNumericOperator::Multiply {
+        return None;
+    }
+    let variable = left
+        .trim()
+        .strip_prefix("string-length(")?
+        .strip_suffix(')')?
+        .trim()
+        .strip_prefix("string(")?
+        .strip_suffix(')')?
+        .trim()
+        .strip_prefix('$')?;
+    let factor = right.trim().parse().ok()?;
+    (is_ascii_ncname(variable) && factor > 0).then_some((variable, factor))
 }
 
 fn parse_variable_boolean_call(expression: &str) -> Option<&str> {

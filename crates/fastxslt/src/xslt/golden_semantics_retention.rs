@@ -867,14 +867,15 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::Xslt10VariableString(name)
         | ValueExpression::Xslt10VariableStringLength(name)
         | ValueExpression::Xslt10VariableNumber(name) => name.capacity(),
+        ValueExpression::Xslt10VariableStringLengthTimes { variable, .. }
+        | ValueExpression::Xslt10VariableBooleanComparison { variable, .. }
+        | ValueExpression::Xslt10VariableNumberComparison { variable, .. } => variable.capacity(),
         ValueExpression::Xslt10VariablePositionPath { path, variable, .. } => {
             path.known_owned_capacity_bytes() + variable.capacity()
         }
         ValueExpression::Xslt10VariablePath { variable, path } => {
             variable.capacity() + path.known_owned_capacity_bytes()
         }
-        ValueExpression::Xslt10VariableBooleanComparison { variable, .. }
-        | ValueExpression::Xslt10VariableNumberComparison { variable, .. } => variable.capacity(),
         ValueExpression::Xslt10VariableStringComparison {
             variable, value, ..
         } => variable.capacity() + value.capacity(),

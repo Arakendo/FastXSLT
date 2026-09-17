@@ -1843,3 +1843,13 @@ maintained redistributable legacy suite becomes available.
   sequence constructors, later-version result-tree-fragment behavior,
   cross-invocation sharing, a new mismatch, or a panic.
   [Evidence](../Evidence/oasis-xslt10-local-value-of-temporary-tree-2026-09-17.md)
+- 2026-09-17 -- Local and global XSLT 1.0 bindings made entirely from static
+  text and `xsl:text` now fold into the existing temporary text-tree
+  representation. The exact nested
+  `string-length(string($variable)) * positive-integer` shape composes through
+  controlled codepoint counting. Four cases leave generic `FXST1015`: three
+  reach the retained disable-output-escaping boundary and Microsoft
+  `BVTs_bvt085` executes to a visible archival replacement-character mismatch.
+  The exact lower bound remains 1,523; no expected bytes are rewritten and no
+  general constructor or expression-composition claim is made.
+  [Evidence](../Evidence/oasis-xslt10-static-text-tree-sequence-2026-09-17.md)

@@ -1862,7 +1862,7 @@ fn compile_content_variable(
             location,
         });
     }
-    if let Some(variable) = compile_xslt10_text_tree_variable(document, element, name, &location) {
+    if let Some(variable) = compile_xslt10_text_tree_variable(document, element, name, &location)? {
         return Ok(variable);
     }
     if let Some(variable) =
@@ -1894,21 +1894,50 @@ fn compile_xslt10_text_tree_variable(
     element: NodeId,
     name: &str,
     location: &SourceLocation,
-) -> Option<Instruction> {
+) -> Result<Option<Instruction>, CompileFailure> {
     if optional_attribute(document, element, None, "as").is_some()
         || !uses_xslt10_compatibility(document, element)
     {
-        return None;
+        return Ok(None);
+    }
+    Ok(
+        compile_xslt10_static_text_tree(document, element)?.map(|value| {
+            Instruction::Xslt10TextTreeVariable {
+                name: name.to_owned(),
+                value,
+                location: location.clone(),
+            }
+        }),
+    )
+}
+
+pub(super) fn compile_xslt10_static_text_tree(
+    document: &Document,
+    element: NodeId,
+) -> Result<Option<String>, CompileFailure> {
+    if !uses_xslt10_compatibility(document, element) {
+        return Ok(None);
     }
     let children = meaningful_children(document, element);
-    let [child] = children.as_slice() else {
-        return None;
-    };
-    (document.kind(*child) == NodeKind::Text).then(|| Instruction::Xslt10TextTreeVariable {
-        name: name.to_owned(),
-        value: document.value(*child).unwrap_or_default().to_owned(),
-        location: location.clone(),
-    })
+    if children.is_empty()
+        || !children.iter().all(|child| {
+            document.kind(*child) == NodeKind::Text || is_xslt_element(document, *child, "text")
+        })
+    {
+        return Ok(None);
+    }
+    let mut value = String::new();
+    for child in children {
+        if document.kind(child) == NodeKind::Text {
+            value.push_str(document.value(child).unwrap_or_default());
+            continue;
+        }
+        let Instruction::Text { value: text, .. } = compile_text(document, child)? else {
+            unreachable!("compile_text returns one text instruction")
+        };
+        value.push_str(&text);
+    }
+    Ok(Some(value))
 }
 
 fn compile_xslt10_value_of_tree_variable(

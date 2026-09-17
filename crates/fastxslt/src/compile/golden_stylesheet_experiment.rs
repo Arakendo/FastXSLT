@@ -825,6 +825,9 @@ fn compile_global_default(
         {
             return Ok(GlobalBindingDefault::Xslt10ForEachText(select));
         }
+        if let Some(text) = compile_xslt10_static_text_global(document, element, declared_type)? {
+            return Ok(text);
+        }
         if let Some(temporary) =
             compile_parentless_temporary_node(document, element, declared_type)?
         {
@@ -859,6 +862,18 @@ fn compile_global_default(
             Ok(GlobalBindingDefault::TemporaryText(value))
         }
     }
+}
+
+fn compile_xslt10_static_text_global(
+    document: &Document,
+    element: NodeId,
+    declared_type: Option<&str>,
+) -> Result<Option<GlobalBindingDefault>, CompileFailure> {
+    if declared_type.is_some() {
+        return Ok(None);
+    }
+    instruction_compiler::compile_xslt10_static_text_tree(document, element)
+        .map(|value| value.map(GlobalBindingDefault::TemporaryText))
 }
 
 fn compile_variable_global(

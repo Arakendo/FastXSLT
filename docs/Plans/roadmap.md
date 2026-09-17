@@ -4583,6 +4583,15 @@ host lifecycle.
   unchanged Lotus cases become exact without admitting general sequence
   constructors, cross-invocation sharing, a mismatch, or a panic.
   [Evidence](../Evidence/oasis-xslt10-local-value-of-temporary-tree-2026-09-17.md)
+- [x] Fold XSLT 1.0 local and global bindings made entirely from static text and
+  `xsl:text` into the existing temporary text-tree representation, and compose
+  the exact `string-length(string($variable)) * positive-integer` shape through
+  controlled codepoint counting. Four cases leave generic `FXST1015`: three
+  reach the real disable-output-escaping boundary, while one executes to a
+  visible archival replacement-character mismatch. Keep the exact lower bound
+  at 1,523 and do not rewrite the expected bytes or infer general constructor
+  and expression composition.
+  [Evidence](../Evidence/oasis-xslt10-static-text-tree-sequence-2026-09-17.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

@@ -855,6 +855,10 @@ pub(crate) enum ValueExpression {
     VariableEffectiveBooleanValue(String),
     Xslt10VariableString(String),
     Xslt10VariableStringLength(String),
+    Xslt10VariableStringLengthTimes {
+        variable: String,
+        factor: usize,
+    },
     Xslt10VariableNumber(String),
     Xslt10VariablePositionPath {
         path: LocationPath,

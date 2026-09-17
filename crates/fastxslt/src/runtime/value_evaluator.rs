@@ -468,6 +468,22 @@ pub(super) fn execute_value_of(
                 xslt10_compatibility::variable_string_length(inputs, variable, variables, control)?;
             append_text(result, &length.to_string(), inputs.request_id, control)?;
         }
+        ValueExpression::Xslt10VariableStringLengthTimes { variable, factor } => {
+            let length =
+                xslt10_compatibility::variable_string_length(inputs, variable, variables, control)?;
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let value = length.checked_mul(*factor).ok_or_else(|| {
+                failure(
+                    "FOAR0002",
+                    FailureCategory::Invalid,
+                    Some(inputs.request_id),
+                    "variable string-length multiplication exceeds the supported integer range",
+                )
+            })?;
+            append_text(result, &value.to_string(), inputs.request_id, control)?;
+        }
         ValueExpression::Xslt10VariableNumber(variable) => {
             let value =
                 xslt10_compatibility::variable_string_value(inputs, variable, variables, control)?;
