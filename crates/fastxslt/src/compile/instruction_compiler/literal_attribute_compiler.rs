@@ -88,6 +88,7 @@ fn parse_literal_attribute_value_with_context(
         }
     }
     if lexical.contains(['{', '}']) {
+        validate_avt_delimiters(lexical, location)?;
         if let Some(text) = unescape_static_braces(lexical) {
             return Ok(LiteralAttributeValue::Text(text));
         }
@@ -107,6 +108,65 @@ fn parse_literal_attribute_value_with_context(
         ));
     }
     Ok(LiteralAttributeValue::Text(lexical.to_owned()))
+}
+
+fn validate_avt_delimiters(lexical: &str, location: &SourceLocation) -> Result<(), CompileFailure> {
+    let characters: Vec<_> = lexical.char_indices().collect();
+    let mut index = 0_usize;
+    while index < characters.len() {
+        match characters[index].1 {
+            '{' if characters
+                .get(index + 1)
+                .is_some_and(|entry| entry.1 == '{') =>
+            {
+                index += 2;
+            }
+            '{' => {
+                let expression_start = characters[index].0 + 1;
+                index += 1;
+                let mut quote = None;
+                let mut expression_end = None;
+                while index < characters.len() {
+                    let character = characters[index].1;
+                    match (quote, character) {
+                        (Some(active), current) if active == current => quote = None,
+                        (None, '\'' | '"') => quote = Some(character),
+                        (None, '{') => return Err(malformed_avt(lexical, location)),
+                        (None, '}') => {
+                            expression_end = Some(characters[index].0);
+                            index += 1;
+                            break;
+                        }
+                        _ => {}
+                    }
+                    index += 1;
+                }
+                let Some(expression_end) = expression_end else {
+                    return Err(malformed_avt(lexical, location));
+                };
+                if lexical[expression_start..expression_end].trim().is_empty() {
+                    return Err(malformed_avt(lexical, location));
+                }
+            }
+            '}' if characters
+                .get(index + 1)
+                .is_some_and(|entry| entry.1 == '}') =>
+            {
+                index += 2;
+            }
+            '}' => return Err(malformed_avt(lexical, location)),
+            _ => index += 1,
+        }
+    }
+    Ok(())
+}
+
+fn malformed_avt(lexical: &str, location: &SourceLocation) -> CompileFailure {
+    invalid(
+        "XTSE0370",
+        format!("malformed attribute value template delimiters: {lexical}"),
+        location,
+    )
 }
 
 #[cfg(test)]
@@ -459,6 +519,31 @@ mod tests {
             LiteralAttributeValue::Text("{font:helvetica}".to_owned())
         );
         assert!(parse_literal_attribute_value("{{broken}", &location()).is_err());
+    }
+
+    #[test]
+    fn classifies_malformed_avt_delimiters_as_static_errors() {
+        for lexical in [
+            "{}",
+            "{   }",
+            "{@style",
+            "@style}",
+            "{{node()}",
+            "{node()}}",
+            "{concat('}', @name)",
+            "{a{b}}",
+        ] {
+            let failure = parse_literal_attribute_value(lexical, &location())
+                .expect_err("malformed AVT delimiters must be invalid, not unsupported");
+            assert_eq!(failure.code, "XTSE0370", "unexpected result for {lexical}");
+        }
+    }
+
+    #[test]
+    fn delimiter_validation_ignores_braces_inside_xpath_strings() {
+        let failure = parse_literal_attribute_value("{concat('{', '}')}", &location())
+            .expect_err("the valid but unsupported expression should remain unsupported");
+        assert_eq!(failure.code, "FXST1031");
     }
 
     #[test]

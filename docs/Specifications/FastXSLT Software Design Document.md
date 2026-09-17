@@ -313,7 +313,10 @@ general focus functions, positional expressions, or arbitrary AVTs.
 
 Static literal-result attributes recognize doubled AVT braces: `{{` and `}}`
 compile to literal `{` and `}` characters in the retained attribute value.
-Unpaired braces and dynamic expressions remain explicit unsupported syntax.
+Unpaired, nested, or empty expression delimiters report static `XTSE0370` as
+invalid; delimiter scanning ignores braces inside quoted XPath string literals.
+Well-formed dynamic expressions outside the admitted evaluator remain explicit
+unsupported behavior.
 Dynamic AVTs must eventually obtain their context through typed XDM value
 evaluation; the runtime's optional atomic context value is not a substitute for
 an element or document node's string value.

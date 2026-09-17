@@ -4637,6 +4637,12 @@ host lifecycle.
   gaps, and one missing expected error. Do not call those 119 passes; use the
   newly visible failures to drive serializer, comparator, and validation work.
   [Evidence](../Evidence/oasis-xslt10-general-html-result-admission-2026-09-17.md)
+- [x] Classify malformed AVT delimiters as static `XTSE0370 / invalid` before
+  expression capability selection. Eight unchanged cases leave the generic
+  unsupported frontier while the 1,564 exact-match lower bound remains
+  unchanged; valid but unsupported AVT expressions retain their honest
+  capability boundary.
+  [Evidence](../Evidence/oasis-xslt10-malformed-avt-classification-2026-09-17.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

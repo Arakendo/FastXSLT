@@ -1901,3 +1901,9 @@ maintained redistributable legacy suite becomes available.
   expected error remain visible. This is result-tree admission and frontier
   discovery, not a claim of complete HTML serialization conformance.
   [Evidence](../Evidence/oasis-xslt10-general-html-result-admission-2026-09-17.md)
+- 2026-09-17 -- Literal-result AVTs now validate escaped, quoted, empty,
+  unmatched, and nested brace structure before expression capability
+  selection. Eight unchanged malformed cases move from generic unsupported to
+  static `XTSE0370 / invalid`; valid but unimplemented expressions continue to
+  report `FXST1031`. The exact lower bound remains 1,564.
+  [Evidence](../Evidence/oasis-xslt10-malformed-avt-classification-2026-09-17.md)
