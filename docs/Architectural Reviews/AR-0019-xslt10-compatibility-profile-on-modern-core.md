@@ -1914,3 +1914,11 @@ maintained redistributable legacy suite becomes available.
   the 1,564 exact lower bound therefore remains unchanged and the harness gap
   stays visible.
   [Evidence](../Evidence/oasis-xslt10-html-boolean-attribute-minimization-2026-09-17.md)
+- 2026-09-17 -- HTML URI-attribute recognition now uses the standard
+  element/attribute pairs instead of treating every `href` as URI-valued. URI
+  serialization percent-encodes an embedded double quote as `%22` while
+  preserving apostrophes and existing percent escapes. The unchanged
+  `Lotus/output_output70#1` case moves from mismatch to exact comparison,
+  raising the strict lower bound from 1,564 to 1,565 without changing any
+  execution or comparator denominator.
+  [Evidence](../Evidence/oasis-xslt10-html-uri-attribute-escaping-2026-09-17.md)

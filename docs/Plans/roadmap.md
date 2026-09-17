@@ -2030,7 +2030,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally. The initial 366 definite unchanged XML passes have grown to 1,564 exact expected-result matches through the shared modern compiler/runtime, explicitly bounded XSLT 1.0 compatibility semantics, and XML-semantic expected-result comparison. General HTML result admission also moves all 119 formerly blocked HTML executions into five exact matches, 72 visible mismatches, 41 visible comparator gaps, and one visible missing error. Current detail and tranche history live in AR-0019 and its linked evidence. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally. The initial 366 definite unchanged XML passes have grown to 1,565 exact expected-result matches through the shared modern compiler/runtime, explicitly bounded XSLT 1.0 compatibility semantics, and XML-semantic expected-result comparison. General HTML result admission also moved all 119 formerly blocked HTML executions into visible later dispositions; subsequent URI-attribute work converted one mismatch into an exact match without changing the denominator. Current detail and tranche history live in AR-0019 and its linked evidence. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -4648,6 +4648,12 @@ host lifecycle.
   because the XML-semantic comparator cannot parse minimized HTML syntax; keep
   that comparator gap visible rather than weakening XML comparison.
   [Evidence](../Evidence/oasis-xslt10-html-boolean-attribute-minimization-2026-09-17.md)
+- [x] Raise the exact lower bound to 1,565 by recognizing standard HTML URI
+  element/attribute pairs and percent-encoding an embedded double quote as
+  `%22` after NFC normalization. The unchanged `Lotus/output_output70#1`
+  result now compares exactly; existing percent escapes and apostrophes remain
+  unchanged, and arbitrary `href` attributes no longer acquire URI semantics.
+  [Evidence](../Evidence/oasis-xslt10-html-uri-attribute-escaping-2026-09-17.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

@@ -765,7 +765,7 @@ fn applies_source_free_xhtml_uri_attribute_escaping() {
     assert!(
         enabled_c
             .actual
-            .contains("href=\"% %C2%96 %C2%96 a &quot;  %C2%A1 &lt; &gt; &amp; end\""),
+            .contains("href=\"% %C2%96 %C2%96 a %22  %C2%A1 &lt; &gt; &amp; end\""),
         "{}",
         enabled_c.actual
     );

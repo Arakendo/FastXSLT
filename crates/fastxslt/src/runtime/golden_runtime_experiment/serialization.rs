@@ -1857,22 +1857,63 @@ fn is_uri_attribute(
     element: &crate::xml::quick_xml_experiment::ExpandedName,
     attribute: &ResultAttribute,
 ) -> bool {
+    const URI_ATTRIBUTES: &[(&str, &str)] = &[
+        ("a", "href"),
+        ("a", "name"),
+        ("applet", "archive"),
+        ("applet", "codebase"),
+        ("area", "href"),
+        ("base", "href"),
+        ("blockquote", "cite"),
+        ("body", "background"),
+        ("del", "cite"),
+        ("form", "action"),
+        ("frame", "longdesc"),
+        ("frame", "src"),
+        ("head", "profile"),
+        ("iframe", "longdesc"),
+        ("iframe", "src"),
+        ("img", "longdesc"),
+        ("img", "src"),
+        ("img", "usemap"),
+        ("input", "src"),
+        ("input", "usemap"),
+        ("ins", "cite"),
+        ("link", "href"),
+        ("object", "archive"),
+        ("object", "classid"),
+        ("object", "codebase"),
+        ("object", "data"),
+        ("object", "usemap"),
+        ("q", "cite"),
+        ("script", "for"),
+        ("script", "src"),
+    ];
+
     attribute.name.namespace.is_none()
-        && attribute.name.local == "href"
         && matches!(
             element.namespace.as_deref(),
             None | Some("http://www.w3.org/1999/xhtml")
         )
+        && URI_ATTRIBUTES.iter().any(|(element_name, attribute_name)| {
+            element.local.eq_ignore_ascii_case(element_name)
+                && attribute.name.local.eq_ignore_ascii_case(attribute_name)
+        })
 }
 
 fn escape_uri_attribute(value: &str, output: &mut BudgetedString) -> Result<(), ExecutionFailure> {
     for character in value.nfc() {
-        if character.is_ascii() {
+        if character == '"' {
+            output.push_str("%22")?;
+        } else if character.is_ascii() {
             escape_attribute_character(character, output)?;
         } else {
             let mut encoded = [0_u8; 4];
             for byte in character.encode_utf8(&mut encoded).as_bytes() {
-                output.push_str(&format!("%{byte:02X}"))?;
+                const HEX: &[u8; 16] = b"0123456789ABCDEF";
+                output.push('%')?;
+                output.push(char::from(HEX[usize::from(byte >> 4)]))?;
+                output.push(char::from(HEX[usize::from(byte & 0x0f)]))?;
             }
         }
     }

@@ -790,14 +790,16 @@ outside the private compiled slice.
 An explicit XML, XHTML, or HTML output declaration may carry a valid
 `escape-uri-attributes` boolean, which the compiled output settings retain.
 The property has no effect on XML output. The currently admitted XHTML/HTML
-URI-attribute rule recognizes only an unnamespaced `href` on an XHTML or null-namespace element as
-URI-valued: when enabled or defaulted, the complete value first normalizes to
-NFC, then each non-ASCII character becomes its uppercase percent-escaped UTF-8
-bytes while existing ASCII percent sequences remain unchanged; when disabled,
-ordinary XML-compatible attribute escaping applies. Character maps do not
-rewrite an enabled URI-expansion path. The property remains unsupported for an
-absent output method. The wider HTML/XHTML URI-attribute vocabulary remains
-outside this slice. A separate bounded XPath `escape-html-uri()` semantic path
+URI-attribute rule recognizes the standard HTML element/attribute pairs rather
+than treating every `href` spelling as URI-valued. When enabled or defaulted,
+the complete value first normalizes to NFC, then each non-ASCII character
+becomes its uppercase percent-escaped UTF-8 bytes, a double quote becomes
+`%22`, and existing ASCII percent sequences remain unchanged; when disabled,
+ordinary XML-compatible attribute escaping applies. Element and attribute
+recognition is ASCII-case-insensitive for the HTML vocabulary, and both names
+must be unprefixed. Character maps do not rewrite an enabled URI-expansion
+path. The property remains unsupported for an absent output method. A separate
+bounded XPath `escape-html-uri()` semantic path
 preserves printable ASCII and percent-escapes every other character's UTF-8
 bytes without Unicode normalization. The original leading-computed-attribute
 path constant-folds one single-quoted literal. A typed production value
