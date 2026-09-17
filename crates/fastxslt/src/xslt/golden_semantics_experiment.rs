@@ -1214,6 +1214,7 @@ pub(crate) enum LiteralAttributeValue {
     Text(String),
     Number(Box<Instruction>),
     Variable(String),
+    GlobalVariable(String),
     CountSourceNodeVariable(String),
     CountSourcePath(LocationPath),
     CountSourcePathUnion(Vec<LocationPath>),

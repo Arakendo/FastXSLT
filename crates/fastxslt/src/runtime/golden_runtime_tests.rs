@@ -2059,6 +2059,33 @@ fn xslt10_same_name_attribute_set_declarations_compose_in_document_order() {
 }
 
 #[test]
+fn xslt10_attribute_set_values_resolve_only_global_variables() {
+    const SOURCE: &str = "urn:fastxslt:global-attribute-set-value:source";
+    const STYLESHEET: &str = "urn:fastxslt:global-attribute-set-value:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:variable name="value" select="'global'"/><xsl:attribute-set name="common"><xsl:attribute name="scope"><xsl:value-of select="$value"/></xsl:attribute></xsl:attribute-set><xsl:template match="/"><xsl:variable name="value" select="'local'"/><out xsl:use-attribute-sets="common"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("global-attribute-set-value", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["global-attribute-set-value"].serialized,
+        "<out scope=\"global\"></out>"
+    );
+}
+
+#[test]
 fn xslt10_source_copy_applies_static_attribute_sets_before_explicit_attributes() {
     const SOURCE: &str = "urn:fastxslt:copy-attribute-set:source";
     const STYLESHEET: &str = "urn:fastxslt:copy-attribute-set:stylesheet";

@@ -32,14 +32,7 @@ pub(super) fn validate_local_attribute_set(
                 document.location(child),
             ));
         }
-        let attribute = compile_computed_attribute(document, child)?;
-        if !matches!(attribute.value, LiteralAttributeValue::Text(_)) {
-            return Err(unsupported(
-                "FXST1065",
-                "the first attribute-set slice admits static text attribute values only",
-                document.location(child),
-            ));
-        }
+        compile_attribute_set_attribute(document, child)?;
     }
     Ok(name)
 }
@@ -150,8 +143,7 @@ fn apply(
             )?;
         }
         for child in meaningful_children(document, declaration) {
-            let attribute = compile_computed_attribute(document, child)?;
-            debug_assert!(matches!(&attribute.value, LiteralAttributeValue::Text(_)));
+            let attribute = compile_attribute_set_attribute(document, child)?;
             if let Some(index) = values
                 .iter()
                 .position(|existing| existing.name == attribute.name)
@@ -163,6 +155,47 @@ fn apply(
     }
     active.pop();
     Ok(())
+}
+
+fn compile_attribute_set_attribute(
+    document: &Document,
+    element: NodeId,
+) -> Result<ComputedAttribute, CompileFailure> {
+    let mut attribute = compile_computed_attribute(document, element)?;
+    match &attribute.value {
+        LiteralAttributeValue::Text(_) => {}
+        LiteralAttributeValue::Variable(name) => {
+            let stylesheet = containing_stylesheet(document, element)
+                .expect("attribute-set attribute has stylesheet");
+            let declared_globally = meaningful_children(document, stylesheet)
+                .into_iter()
+                .filter(|child| {
+                    is_xslt_element(document, *child, "variable")
+                        || is_xslt_element(document, *child, "param")
+                })
+                .any(|binding| {
+                    optional_attribute(document, binding, None, "name") == Some(name.as_str())
+                });
+            if !declared_globally {
+                return Err(invalid(
+                    "XPST0008",
+                    format!(
+                        "attribute-set value references an undeclared global variable: ${name}"
+                    ),
+                    document.location(element),
+                ));
+            }
+            attribute.value = LiteralAttributeValue::GlobalVariable(name.clone());
+        }
+        _ => {
+            return Err(unsupported(
+                "FXST1065",
+                "the local attribute-set slice admits static text or one global atomic variable value",
+                document.location(element),
+            ));
+        }
+    }
+    Ok(attribute)
 }
 
 fn validate_dependencies(

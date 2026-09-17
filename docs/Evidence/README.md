@@ -28,6 +28,7 @@ pressure architecture but does not silently create a public guarantee.
 - [Attribute-Set Compiler Decomposition](attribute-set-compiler-decomposition-2026-09-16.md)
 - [OASIS XSLT 1.0 Source-Copy Attribute Sets](oasis-xslt10-source-copy-attribute-sets-2026-09-16.md)
 - [OASIS XSLT 1.0 Composed Local Attribute Sets](oasis-xslt10-composed-local-attribute-sets-2026-09-16.md)
+- [OASIS XSLT 1.0 Attribute-Set Global Variable Scope](oasis-xslt10-attribute-set-global-variable-scope-2026-09-16.md)
 - [OASIS XSLT 1.0 Source-Node Union Variable](oasis-xslt10-source-node-union-variable-2026-09-08.md)
 - [OASIS XSLT 1.0 Variable/Path Apply Union](oasis-xslt10-variable-path-apply-union-2026-09-08.md)
 - [OASIS XSLT 1.0 Source-Variable Value Path](oasis-xslt10-source-variable-value-path-2026-09-08.md)

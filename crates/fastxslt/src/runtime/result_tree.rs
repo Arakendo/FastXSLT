@@ -335,6 +335,9 @@ fn materialize_attribute(
         LiteralAttributeValue::Variable(variable) => {
             attribute_variable_string(variable, location, context, control)?
         }
+        LiteralAttributeValue::GlobalVariable(variable) => {
+            attribute_global_variable_string(variable, location, context)?
+        }
         LiteralAttributeValue::Number(_)
         | LiteralAttributeValue::CountSourceNodeVariable(_)
         | LiteralAttributeValue::CountSourcePath(_)
@@ -426,6 +429,28 @@ fn materialize_attribute(
         name: name.clone(),
         value,
     })
+}
+
+fn attribute_global_variable_string(
+    variable: &str,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+) -> Result<String, ExecutionFailure> {
+    context
+        .inputs
+        .globals
+        .atomics
+        .get(variable)
+        .map(|value| value.lexical().to_owned())
+        .ok_or_else(|| {
+            failure_at(
+                "FXRT0002",
+                FailureCategory::Invalid,
+                Some(context.request_id),
+                location.clone(),
+                format!("unbound global variable in attribute-set value: ${variable}"),
+            )
+        })
 }
 
 fn materialize_for_each_path_string_value(

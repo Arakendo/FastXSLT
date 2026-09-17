@@ -1163,6 +1163,7 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
     match value {
         LiteralAttributeValue::Text(text)
         | LiteralAttributeValue::Variable(text)
+        | LiteralAttributeValue::GlobalVariable(text)
         | LiteralAttributeValue::CountSourceNodeVariable(text) => text.capacity(),
         LiteralAttributeValue::Number(instruction) => {
             size_of_val(instruction.as_ref()) + number_instruction_owned(instruction)

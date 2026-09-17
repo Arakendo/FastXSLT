@@ -1717,3 +1717,10 @@ maintained redistributable legacy suite becomes available.
   cases become exact, raising the lower bound from 1,474 to 1,482 without a new
   XML mismatch, execution failure, runtime registry, or panic.
   [Evidence](../Evidence/oasis-xslt10-composed-local-attribute-sets-2026-09-16.md)
+- 2026-09-16 -- Attribute-set computed values may now reference one declared
+  global atomic variable or parameter. Compilation records the reference as
+  global, so a same-named local binding at the consuming instruction cannot
+  capture it. Unchanged Lotus `attribset44` becomes exact, raising the lower
+  bound from 1,482 to 1,483 without a new mismatch, execution failure, runtime
+  attribute-set registry, or panic.
+  [Evidence](../Evidence/oasis-xslt10-attribute-set-global-variable-scope-2026-09-16.md)
