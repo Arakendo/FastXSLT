@@ -528,7 +528,22 @@ fn format_finite_exact(
     } else {
         format!("{whole}{}{fraction}", format.decimal_separator)
     };
-    Some(formatted)
+    substitute_digit_family(&formatted, format.zero_digit)
+}
+
+fn substitute_digit_family(value: &str, zero_digit: char) -> Option<String> {
+    if zero_digit == '0' {
+        return Some(value.to_owned());
+    }
+    let zero = u32::from(zero_digit);
+    value
+        .chars()
+        .map(|character| {
+            character.to_digit(10).map_or(Some(character), |digit| {
+                char::from_u32(zero.checked_add(digit)?)
+            })
+        })
+        .collect()
 }
 
 fn quoted(value: &str) -> Option<&str> {
@@ -666,6 +681,17 @@ mod tests {
             ..DecimalFormat::default()
         });
         assert_eq!(evaluate(&named, &BTreeMap::new()), Ok("1.234,5".to_owned()));
+
+        let mut alternate_digits = parse("format-number(102.3, 'aaa.a')", &location())
+            .expect("alternate digit family should parse");
+        alternate_digits.set_default_decimal_format(&DecimalFormat {
+            zero_digit: 'a',
+            ..DecimalFormat::default()
+        });
+        assert_eq!(
+            evaluate(&alternate_digits, &BTreeMap::new()),
+            Ok("bac.d".to_owned())
+        );
     }
 
     #[test]

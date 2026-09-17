@@ -1887,3 +1887,8 @@ maintained redistributable legacy suite becomes available.
   1,549 to 1,558. Undeclared and cross-module format lookup remains explicit;
   computed names and non-ASCII digit families are not approximated.
   [Evidence](../Evidence/oasis-xslt10-static-named-decimal-format-2026-09-17.md)
+- 2026-09-17 -- Decimal formatting now applies XSLT 1.0's consecutive-character
+  digit-family rule inside numeric output only. Five more cases initialize and
+  one becomes exact, raising the lower bound from 1,558 to 1,559; four reach
+  later explicit runtime boundaries.
+  [Evidence](../Evidence/oasis-xslt10-decimal-digit-family-2026-09-17.md)

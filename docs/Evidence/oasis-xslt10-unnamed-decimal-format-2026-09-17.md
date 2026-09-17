@@ -33,10 +33,9 @@ case.
 
 This tranche does not admit named decimal formats. The subsequent
 [static named-format tranche](oasis-xslt10-static-named-decimal-format-2026-09-17.md)
-adds compile-resolved literal QName selection. Non-ASCII zero-digit families
-remain explicitly unsupported as `FXST1091` until digit-family substitution is
-implemented. Computed or dynamic third-argument format selection is not
-approximated.
+adds compile-resolved literal QName selection, followed by the
+[digit-family tranche](oasis-xslt10-decimal-digit-family-2026-09-17.md).
+Computed or dynamic third-argument format selection is not approximated.
 General decimal-format composition across separately compiled include/import
 modules remains outside this tranche; no cross-module precedence claim is
 made.

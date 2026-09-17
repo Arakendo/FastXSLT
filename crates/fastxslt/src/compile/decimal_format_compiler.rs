@@ -123,13 +123,6 @@ fn set_property(
     match property {
         "infinity" => value.clone_into(&mut format.infinity),
         "NaN" => value.clone_into(&mut format.nan),
-        "zero-digit" if value != "0" => {
-            return Err(unsupported(
-                "FXST1091",
-                "non-ASCII zero-digit formatting remains outside the private slice",
-                document.location(element),
-            ));
-        }
         "decimal-separator" => {
             format.decimal_separator = one_character(document, element, property, value)?;
         }
@@ -139,7 +132,18 @@ fn set_property(
         "minus-sign" => format.minus_sign = one_character(document, element, property, value)?,
         "percent" => format.percent = one_character(document, element, property, value)?,
         "per-mille" => format.per_mille = one_character(document, element, property, value)?,
-        "zero-digit" => format.zero_digit = '0',
+        "zero-digit" => {
+            let zero = one_character(document, element, property, value)?;
+            let last = u32::from(zero).checked_add(9).and_then(char::from_u32);
+            if last.is_none() {
+                return Err(invalid(
+                    "XTSE0020",
+                    "xsl:decimal-format zero-digit must begin a ten-character scalar family",
+                    document.location(element),
+                ));
+            }
+            format.zero_digit = zero;
+        }
         "digit" => format.digit = one_character(document, element, property, value)?,
         "pattern-separator" => {
             format.pattern_separator = one_character(document, element, property, value)?;

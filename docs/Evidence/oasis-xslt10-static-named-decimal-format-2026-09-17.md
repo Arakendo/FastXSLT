@@ -26,7 +26,8 @@ particularly important for include/import cases: general decimal-format
 composition across separately compiled modules remains outside this tranche,
 so a module-local lookup cannot silently fall back to the standard format.
 Variable and computed third-argument names remain unsupported expression
-shapes. Non-ASCII digit-family substitution remains `FXST1091`.
+shapes. Digit-family substitution is covered by the subsequent
+[digit-family tranche](oasis-xslt10-decimal-digit-family-2026-09-17.md).
 
 ## Corpus result
 
