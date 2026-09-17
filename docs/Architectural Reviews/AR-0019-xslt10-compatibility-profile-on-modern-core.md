@@ -1708,3 +1708,12 @@ maintained redistributable legacy suite becomes available.
   become exact, raising the lower bound from 1,468 to 1,474 without a new XML
   mismatch, execution failure, or runtime registry.
   [Evidence](../Evidence/oasis-xslt10-source-copy-attribute-sets-2026-09-16.md)
+- 2026-09-16 -- Multiple same-name local `xsl:attribute-set` declarations now
+  compose at compilation in document order. Each declaration applies its
+  referenced sets before its own values, later declarations override earlier
+  values, and the consuming instruction retains final precedence. Complete
+  graph validation still diagnoses undefined references and cycles, while
+  same-name cross-module composition remains explicit. Eight unchanged Lotus
+  cases become exact, raising the lower bound from 1,474 to 1,482 without a new
+  XML mismatch, execution failure, runtime registry, or panic.
+  [Evidence](../Evidence/oasis-xslt10-composed-local-attribute-sets-2026-09-16.md)

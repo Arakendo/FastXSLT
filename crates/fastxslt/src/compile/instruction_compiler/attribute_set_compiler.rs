@@ -48,6 +48,7 @@ pub(super) fn validate_local_attribute_set_graph(
     document: &Document,
     stylesheet: NodeId,
 ) -> Result<(), CompileFailure> {
+    let mut validated = Vec::new();
     for declaration in meaningful_children(document, stylesheet)
         .into_iter()
         .filter(|child| is_xslt_element(document, *child, "attribute-set"))
@@ -59,6 +60,9 @@ pub(super) fn validate_local_attribute_set_graph(
             name,
             "xsl:attribute-set name",
         )?;
+        if validated.contains(&name) {
+            continue;
+        }
         validate_dependencies(
             document,
             stylesheet,
@@ -66,6 +70,7 @@ pub(super) fn validate_local_attribute_set_graph(
             &mut Vec::new(),
             document.location(declaration),
         )?;
+        validated.push(name);
     }
     Ok(())
 }
@@ -124,36 +129,39 @@ fn apply(
             use_location,
         ));
     }
-    let declaration = declaration(document, stylesheet, requested_name).ok_or_else(|| {
-        unsupported(
+    let declarations = declarations(document, stylesheet, requested_name);
+    if declarations.is_empty() {
+        return Err(unsupported(
             "FXST1065",
-            "the local attribute-set slice requires exactly one declaration per referenced name",
+            "the local attribute-set slice requires a declaration for every referenced name",
             use_location,
-        )
-    })?;
+        ));
+    }
     active.push(requested_name.clone());
-    for referenced_name in attribute_set_references(document, declaration)? {
-        apply(
-            document,
-            stylesheet,
-            &referenced_name,
-            values,
-            active,
-            document.location(declaration),
-        )?;
+    for declaration in declarations {
+        for referenced_name in attribute_set_references(document, declaration)? {
+            apply(
+                document,
+                stylesheet,
+                &referenced_name,
+                values,
+                active,
+                document.location(declaration),
+            )?;
+        }
+        for child in meaningful_children(document, declaration) {
+            let attribute = compile_computed_attribute(document, child)?;
+            debug_assert!(matches!(&attribute.value, LiteralAttributeValue::Text(_)));
+            if let Some(index) = values
+                .iter()
+                .position(|existing| existing.name == attribute.name)
+            {
+                values.remove(index);
+            }
+            values.push(attribute);
+        }
     }
     active.pop();
-    for child in meaningful_children(document, declaration) {
-        let attribute = compile_computed_attribute(document, child)?;
-        debug_assert!(matches!(&attribute.value, LiteralAttributeValue::Text(_)));
-        if let Some(index) = values
-            .iter()
-            .position(|existing| existing.name == attribute.name)
-        {
-            values.remove(index);
-        }
-        values.push(attribute);
-    }
     Ok(())
 }
 
@@ -171,36 +179,39 @@ fn validate_dependencies(
             reference_location,
         ));
     }
-    let Some(declaration) = declaration(document, stylesheet, requested_name) else {
+    let declarations = declarations(document, stylesheet, requested_name);
+    if declarations.is_empty() {
         return Err(invalid(
             "XTSE0710",
             "xsl:attribute-set references an undefined attribute set",
             reference_location,
         ));
-    };
+    }
     active.push(requested_name.clone());
-    for referenced_name in attribute_set_references(document, declaration)? {
-        validate_dependencies(
-            document,
-            stylesheet,
-            &referenced_name,
-            active,
-            document.location(declaration),
-        )?;
+    for declaration in declarations {
+        for referenced_name in attribute_set_references(document, declaration)? {
+            validate_dependencies(
+                document,
+                stylesheet,
+                &referenced_name,
+                active,
+                document.location(declaration),
+            )?;
+        }
     }
     active.pop();
     Ok(())
 }
 
-fn declaration(
+fn declarations(
     document: &Document,
     stylesheet: NodeId,
     requested_name: &ExpandedName,
-) -> Option<NodeId> {
+) -> Vec<NodeId> {
     meaningful_children(document, stylesheet)
         .into_iter()
         .filter(|child| is_xslt_element(document, *child, "attribute-set"))
-        .find(|candidate| {
+        .filter(|candidate| {
             let Some(lexical) = optional_attribute(document, *candidate, None, "name") else {
                 return false;
             };
@@ -212,6 +223,7 @@ fn declaration(
             )
             .is_ok_and(|name| name == *requested_name)
         })
+        .collect()
 }
 
 fn attribute_set_references(

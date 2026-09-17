@@ -180,14 +180,9 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
             }
             (Some(XSLT_NAMESPACE), "attribute-set") => {
                 let name = instruction_compiler::validate_local_attribute_set(document, child)?;
-                if local_attribute_set_names.contains(&name) {
-                    return Err(unsupported(
-                        "FXST1065",
-                        "merging multiple local declarations of one attribute set is outside the first attribute-set slice",
-                        document.location(child),
-                    ));
+                if !local_attribute_set_names.contains(&name) {
+                    local_attribute_set_names.push(name);
                 }
-                local_attribute_set_names.push(name);
             }
             (Some(XSLT_NAMESPACE), "strip-space") => {
                 ensure_only_attributes(document, child, &["elements"], "xsl:strip-space")?;
