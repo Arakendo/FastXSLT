@@ -108,18 +108,10 @@ fn serialize_xml_with_namespace_mode(
         .children
         .iter()
         .find(|node| is_significant_result_node(node));
-    if settings.method.is_none()
+    let legacy_html_by_root = settings.method.is_none()
         && matches!(first_significant, Some(ResultNode::Element { name, .. })
-            if name.namespace.is_none() && name.local.eq_ignore_ascii_case("html"))
-    {
-        return Err(failure(
-            "FXSR1001",
-            FailureCategory::Unsupported,
-            Some(request_id),
-            "the selected output method is outside the private XML serialization slice",
-        ));
-    }
-    let default_is_xhtml = settings.method.is_none()
+            if name.namespace.is_none() && name.local.eq_ignore_ascii_case("html"));
+    let xhtml_serialization_by_root = settings.method.is_none()
         && matches!(
             first_significant,
             Some(ResultNode::Element { name, .. })
@@ -136,10 +128,9 @@ fn serialize_xml_with_namespace_mode(
             control,
         );
     }
-    let html = settings.method.as_deref() == Some("html");
+    let html = settings.method.as_deref() == Some("html") || legacy_html_by_root;
     if html {
         validate_html_processing_instructions(result, request_id)?;
-        validate_bounded_html_result(result, settings, request_id)?;
     }
     if settings
         .method
@@ -153,7 +144,7 @@ fn serialize_xml_with_namespace_mode(
             "the selected output method is outside the private XML-compatible serialization slice",
         ));
     }
-    let xhtml = settings.method.as_deref() == Some("xhtml") || default_is_xhtml;
+    let xhtml = settings.method.as_deref() == Some("xhtml") || xhtml_serialization_by_root;
     let mut output = BudgetedString::new(byte_limit, request_id, control);
     if !settings.omit_xml_declaration && !html {
         output.push_str("<?xml version=\"")?;
@@ -271,6 +262,9 @@ fn select_html_mode(settings: &OutputSettings, html: bool) -> HtmlMode {
     }
 }
 
+// Retained as a conservative reference oracle for the result shapes that
+// incrementally established the serializer before general HTML admission.
+#[allow(dead_code)]
 fn validate_bounded_html_result(
     result: &SemanticResult,
     settings: &OutputSettings,

@@ -786,8 +786,8 @@ resolution, a retained named-format table, and `xsl:result-document` remain
 outside the private compiled slice.
 An explicit XML, XHTML, or HTML output declaration may carry a valid
 `escape-uri-attributes` boolean, which the compiled output settings retain.
-The property has no effect on XML output. The bounded XHTML and HTML lanes
-recognize only an unnamespaced `href` on an XHTML or null-namespace element as
+The property has no effect on XML output. The currently admitted XHTML/HTML
+URI-attribute rule recognizes only an unnamespaced `href` on an XHTML or null-namespace element as
 URI-valued: when enabled or defaulted, the complete value first normalizes to
 NFC, then each non-ASCII character becomes its uppercase percent-escaped UTF-8
 bytes while existing ASCII percent sequences remain unchanged; when disabled,
@@ -830,24 +830,21 @@ Requested indentation currently adds newline plus two-space depth prefixes only
 around non-empty element-only child sequences. Text-only and mixed-content
 elements remain inline so indentation does not alter their string values; wider
 pretty-printing choices remain implementation-defined and unclaimed.
-The private HTML 5 lane admits one no-namespace document element with a bounded
-HTML/SVG/MathML vocabulary and a fixed set of non-URI attributes. Its standard
-void-element list serializes without end tags. Known XHTML, SVG, and MathML
-element prefix bindings normalize to the required default namespace. A
-qualified attribute retains the exact prefix binding it consumes, and an
-admitted arbitrary foreign namespace retains its prefix. HTML URI attributes, raw-text
-handling, arbitrary element and attribute vocabularies, general namespace
-fixup, and other HTML versions remain outside this successful slice.
-An independent HTML 5 character-map slice admits only the unchanged
-`doc/a/@value` corpus shape and applies the compiled map to both text and
-attribute values; it does not widen the ordinary HTML 5 element vocabulary.
-The explicit HTML serialization version 5 path emits C1 controls (`#x7F` through
-`#x9F`) as hexadecimal numeric character references for the bounded corpus
-shape. A separate exact source-free HTML 5 lane admits one empty `input` with
-the corpus `type` and `value` attributes, emits void-element syntax, and keeps
-the non-URI value out of URI percent encoding. HTML 4 serialization remains
-excluded from the selected profile, and an
-environment-supplied default HTML version is not inferred by this evidence.
+The private HTML serializer accepts general semantic result trees for explicit
+`method="html"`. When the output method is absent, an unnamespaced `html` first
+significant result element selects legacy HTML serialization; this adaptive
+selection does not mutate the semantic result. The explicit HTML 5 path uses
+its standard void-element list, emits C1 controls (`#x7F` through `#x9F`) as
+hexadecimal numeric character references, and normalizes known XHTML, SVG, and
+MathML element prefix bindings to the required default namespace. Qualified
+attributes retain the exact prefix binding they consume, and arbitrary foreign
+namespaces retain their prefix. URI attributes, raw-text elements, indentation,
+content-type injection, character maps, namespace scope, byte limits, and
+cancellation use the shared serializer paths. General tree admission is not a
+claim that every HTML serialization rule or comparison case conforms; corpus
+mismatches and HTML-shaped results that the XML-semantic comparator cannot
+assess remain explicit evidence. An environment-supplied default HTML version
+is not inferred.
 `suppress-indentation` is retained as a list of expanded element names in
 compiled output settings and merged by expanded-name identity. When indentation
 is enabled, the serializer does not add indentation inside a matching element
@@ -871,24 +868,16 @@ For XHTML output, `include-content-type` defaults to enabled. An XHTML `head`
 receives one serializer-owned empty `meta` whose content combines the explicit
 media type or `text/html` default with UTF-8; an existing Content-Type meta is
 replaced for serialization rather than mutating the semantic result tree.
-The bounded HTML lane applies the same enabled-by-default policy to its exact
-text-only `HTML/HEAD/BODY` corpus shape, but emits the injected `meta` using
-HTML void-element syntax rather than XHTML empty-element syntax. Explicit false
-lexicals suppress injection without altering the semantic result tree. That
-shape may contain one existing two-attribute Content-Type `meta`; serialization
-replaces it with one UTF-8 meta, discarding the authored charset or additional
-content parameters without mutating the result tree.
-Disabling the property retains authored metadata. This does not extend the
-private lane to general HTML serialization. A separate bounded HTML lane admits
-only the exact attribute-free `html/head/body/p/del/ins` hierarchy needed to
-verify preservation of significant `del` and `ins` text under `indent="no"`;
-other HTML hierarchies remain unsupported. Another exact HTML lane admits one
-`html/head/script/body` result and emits the manually escaped script value as
-raw text. Its bounded extension admits the corpus hierarchy containing one
-script and style in the head plus one pre/b and textarea in the body, preserving
-their significant whitespace under `indent="no"`; this does not admit arbitrary
-script/style or preformatted structures. XHTML `script` and `style` text
-continues to use XML escaping. Selected XHTML CDATA elements use the same
+The HTML lane applies the same enabled-by-default content-type policy and emits
+the injected `meta` using HTML void-element syntax rather than XHTML empty-
+element syntax. Explicit false lexicals suppress injection without altering the
+semantic result tree. An existing Content-Type meta is replaced for
+serialization, discarding the authored charset or additional content parameters
+without mutating the result tree; disabling the property retains authored
+metadata. Legacy HTML `script` and `style` text uses raw-text serialization,
+and `pre`/`textarea` preserve the existing significant-whitespace behavior.
+XHTML `script` and `style` text continues to use XML escaping. Selected XHTML
+CDATA elements use the same
 expanded-name matching and terminator-splitting behavior as XML output, so a
 literal `]]>` becomes adjacent CDATA sections without changing result text.
 DOCTYPE system and public identifiers are retained as compiled output metadata.

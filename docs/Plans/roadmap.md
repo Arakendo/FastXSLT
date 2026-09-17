@@ -1538,6 +1538,10 @@ the bounded HTML result-shape gate. General HTML output remains unadmitted. The
 output denominator advances to 138 passes and 94 visible default not-run cases.
 [Evidence](../Evidence/xslt30-output-html-parameter-errors-2026-09-01.md)
 
+That historical result-shape gate was retired on 2026-09-17 after the shared
+serializer admitted general semantic HTML result trees; the parameter-error
+ordering established here remains unchanged.
+
 The unchanged HTML negative case `output-0196` now reports native `SERE0015`
 when result processing-instruction data contains `>`. The check traverses the
 bounded result tree before private HTML shape selection, preserving the
@@ -2026,7 +2030,7 @@ conformance percentage or a promise about unselected cases.
 | First-party golden | Four reviewed directories under `corpus/golden` | `hello`, `template-dispatch`, `built-in-template-rules`, and `host-owned-two-stage` all execute in normal tests; the staged case proves that produced sibling output is unavailable until the host admits it into a later snapshot. |
 | QT3 | Immutable submodule `83993587711dbd5c18ed846385ec37d079d6e492` | 428 test sets and 31,821 cases are structurally inventoried; 1,170 explicitly selected cases execute through suite-specific XPath adapters. |
 | XSLT30 | Immutable submodule `6f8fd9e966ae74a251a2604abef9d904c7bc5c9b` | 234 test sets and 14,600 cases are structurally inventoried; 112 complete test-set denominators plus one separate AVT pressure case have first-party records. |
-| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally. The initial 366 definite unchanged XML passes have grown to 1,559 exact expected-result matches through the shared modern compiler/runtime, explicitly bounded XSLT 1.0 compatibility semantics, and XML-semantic expected-result comparison. Current detail and tranche history live in AR-0019 and its linked evidence. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
+| OASIS XSLT/XPath 1.0 CD04 | Hash-verified ignored local archive | All 3,173 catalog cases are measured locally. The initial 366 definite unchanged XML passes have grown to 1,564 exact expected-result matches through the shared modern compiler/runtime, explicitly bounded XSLT 1.0 compatibility semantics, and XML-semantic expected-result comparison. General HTML result admission also moves all 119 formerly blocked HTML executions into five exact matches, 72 visible mismatches, 41 visible comparator gaps, and one visible missing error. Current detail and tranche history live in AR-0019 and its linked evidence. The archive remains non-redistributed and the result is compatibility evidence, not conformance. |
 | W3C XML 20130923 | Hash-recorded ignored local candidate | 2,586 cases were inventoried during candidate review, but no bytes are admitted or redistributed pending rights and acquisition decisions. |
 | First-party adversarial | Policy and XML plan only | Focused unit/integration tests exercise limits and cancellation, but there is no separately versioned `corpus/adversarial` family, manifest, or report denominator yet. |
 | Performance | Workbench fixtures, ignored release probes, and evidence records | Useful ASP.NET/native/isolated and prepared-state measurements exist, but there is no formal `corpus/performance` manifest with correctness gates and reproducible workload identity. |
@@ -4626,6 +4630,13 @@ host lifecycle.
   cases initialize; one becomes exact and four reach later explicit runtime
   boundaries without rewriting literal affixes or non-finite labels.
   [Evidence](../Evidence/oasis-xslt10-decimal-digit-family-2026-09-17.md)
+- [x] Raise the exact lower bound to 1,564 by replacing the corpus-shaped HTML
+  result whitelist with general semantic-result admission and the standard
+  adaptive HTML method rule. All 119 former `FXSR1001` executions now expose
+  their real disposition: five exact matches, 72 mismatches, 41 comparator
+  gaps, and one missing expected error. Do not call those 119 passes; use the
+  newly visible failures to drive serializer, comparator, and validation work.
+  [Evidence](../Evidence/oasis-xslt10-general-html-result-admission-2026-09-17.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

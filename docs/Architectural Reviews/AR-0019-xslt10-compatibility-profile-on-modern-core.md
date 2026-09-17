@@ -1892,3 +1892,12 @@ maintained redistributable legacy suite becomes available.
   one becomes exact, raising the lower bound from 1,558 to 1,559; four reach
   later explicit runtime boundaries.
   [Evidence](../Evidence/oasis-xslt10-decimal-digit-family-2026-09-17.md)
+- 2026-09-17 -- The shared HTML serializer now admits general semantic result
+  trees instead of using corpus-shaped production whitelists, and an absent
+  output method selects legacy HTML when the first significant result element
+  is an unnamespaced `html`. All 119 former `FXSR1001` execution failures now
+  expose their real disposition: five exact matches raise the lower bound from
+  1,559 to 1,564, while 72 mismatches, 41 XML-comparator gaps, and one missing
+  expected error remain visible. This is result-tree admission and frontier
+  discovery, not a claim of complete HTML serialization conformance.
+  [Evidence](../Evidence/oasis-xslt10-general-html-result-admission-2026-09-17.md)

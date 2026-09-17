@@ -6947,7 +6947,7 @@ fn invocation_parameters_override_global_defaults_without_cross_request_state() 
 }
 
 #[test]
-fn absent_output_declaration_does_not_silently_apply_html_serialization() {
+fn absent_output_declaration_infers_html_from_an_unnamespaced_html_root() {
     let result = SemanticResult {
         children: vec![ResultNode::Element {
             name: crate::xml::quick_xml_experiment::ExpandedName {
@@ -6981,12 +6981,80 @@ fn absent_output_declaration_does_not_silently_apply_html_serialization() {
     };
 
     let mut control = InvocationControl::unbounded();
-    let failure = serialize_xml(&result, &settings, "html-result", 4_096, &mut control)
-        .expect_err("adaptive HTML output remains unsupported");
+    let actual = serialize_xml(&result, &settings, "html-result", 4_096, &mut control)
+        .expect("the standard adaptive method should select HTML");
 
-    assert_eq!(failure.code, "FXSR1001");
-    assert_eq!(failure.category, FailureCategory::Unsupported);
-    assert_eq!(failure.request_id.as_deref(), Some("html-result"));
+    assert_eq!(actual, "<html></html>");
+}
+
+#[test]
+fn legacy_html_serialization_accepts_a_general_nested_result_tree() {
+    let element = |local: &str, attributes: Vec<ResultAttribute>, children: Vec<ResultNode>| {
+        ResultNode::Element {
+            name: crate::xml::quick_xml_experiment::ExpandedName {
+                namespace: None,
+                local: local.to_owned(),
+            },
+            namespaces: Vec::new().into(),
+            attributes,
+            children,
+        }
+    };
+    let data_kind = ResultAttribute {
+        name: crate::xml::quick_xml_experiment::ExpandedName {
+            namespace: None,
+            local: "data-kind".to_owned(),
+        },
+        value: "general".to_owned(),
+    };
+    let result = SemanticResult {
+        children: vec![element(
+            "html",
+            Vec::new(),
+            vec![element(
+                "body",
+                Vec::new(),
+                vec![element(
+                    "section",
+                    vec![data_kind],
+                    vec![element(
+                        "p",
+                        Vec::new(),
+                        vec![ResultNode::Text("A & B".to_owned())],
+                    )],
+                )],
+            )],
+        )],
+    };
+    let settings = crate::xslt::golden_semantics_experiment::OutputSettings {
+        method: Some("html".to_owned()),
+        version: None,
+        html_version: None,
+        encoding: None,
+        media_type: None,
+        doctype_system: None,
+        doctype_public: None,
+        include_content_type: None,
+        escape_uri_attributes: None,
+        byte_order_mark: None,
+        normalization_form: None,
+        character_map: Vec::new(),
+        undeclare_prefixes: None,
+        standalone: None,
+        suppress_indentation_elements: Vec::new(),
+        cdata_section_elements: Vec::new(),
+        omit_xml_declaration: false,
+        indent: None,
+    };
+
+    let mut control = InvocationControl::unbounded();
+    let actual = serialize_xml(&result, &settings, "general-html", 4_096, &mut control)
+        .expect("serialize a general HTML result tree");
+
+    assert_eq!(
+        actual,
+        "<html><body><section data-kind=\"general\"><p>A &amp; B</p></section></body></html>"
+    );
 }
 
 #[test]

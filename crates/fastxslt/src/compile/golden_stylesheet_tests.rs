@@ -825,9 +825,9 @@ fn preserves_absent_output_declaration_for_runtime_method_inference() {
 }
 
 #[test]
-fn html_method_is_retained_without_claiming_general_serializer_support() {
+fn html_method_is_retained_for_shared_serializer_selection() {
     let stylesheet = parse_stylesheet(
-            "memory:unsupported-general-html.xsl",
+            "memory:general-html.xsl",
             br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="html"/><xsl:template match="/"><html/></xsl:template></xsl:stylesheet>"#,
         );
 
