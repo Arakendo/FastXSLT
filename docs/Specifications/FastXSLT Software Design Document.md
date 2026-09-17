@@ -847,7 +847,9 @@ cancellation use the shared serializer paths. General tree admission is not a
 claim that every HTML serialization rule or comparison case conforms; corpus
 mismatches and HTML-shaped results that the XML-semantic comparator cannot
 assess remain explicit evidence. An environment-supplied default HTML version
-is not inferred.
+is not inferred. The XSLT 1.0 HTML boolean-attribute set is minimized when an
+unnamespaced value equals its attribute name without ASCII case sensitivity;
+other and namespaced attributes retain ordinary quoted serialization.
 `suppress-indentation` is retained as a list of expanded element names in
 compiled output settings and merged by expanded-name identity. When indentation
 is enabled, the serializer does not add indentation inside a matching element

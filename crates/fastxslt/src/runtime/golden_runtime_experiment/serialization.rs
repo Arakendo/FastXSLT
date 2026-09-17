@@ -1485,22 +1485,7 @@ fn serialize_element<'a>(
         write_name(prefix.as_deref(), &name.local, output)?;
         namespace_scope.write_declarations(&frame, output)?;
         for attribute in attributes {
-            output.push(' ')?;
-            let prefix =
-                namespace_scope.attribute_prefix(attribute.name.namespace.as_deref(), output)?;
-            write_name(prefix.as_deref(), &attribute.name.local, output)?;
-            output.push_str("=\"")?;
-            if options.escape_uri_attributes && is_uri_attribute(name, attribute) {
-                escape_uri_attribute(&attribute.value, output)?;
-            } else {
-                escape_attribute_with_character_map(
-                    &attribute.value,
-                    options.character_map,
-                    options.normalization_form,
-                    output,
-                )?;
-            }
-            output.push('"')?;
+            serialize_element_attribute(attribute, name, namespace_scope, options, output)?;
         }
         if options.xml_empty_element_tag && children.is_empty() {
             return output.push_str("/>");
@@ -1560,6 +1545,36 @@ fn serialize_element<'a>(
     })();
     namespace_scope.exit(frame);
     result
+}
+
+fn serialize_element_attribute(
+    attribute: &ResultAttribute,
+    element_name: &crate::xml::quick_xml_experiment::ExpandedName,
+    namespace_scope: &mut NamespaceScope<'_>,
+    options: SerializationOptions<'_>,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    output.push(' ')?;
+    let prefix = namespace_scope.attribute_prefix(attribute.name.namespace.as_deref(), output)?;
+    write_name(prefix.as_deref(), &attribute.name.local, output)?;
+    if options.html_mode != HtmlMode::None
+        && prefix.is_none()
+        && is_minimized_html_boolean_attribute(attribute)
+    {
+        return Ok(());
+    }
+    output.push_str("=\"")?;
+    if options.escape_uri_attributes && is_uri_attribute(element_name, attribute) {
+        escape_uri_attribute(&attribute.value, output)?;
+    } else {
+        escape_attribute_with_character_map(
+            &attribute.value,
+            options.character_map,
+            options.normalization_form,
+            output,
+        )?;
+    }
+    output.push('"')
 }
 
 fn enter_element_namespace_scope<'a>(
@@ -1637,6 +1652,17 @@ fn is_html_void_element(name: &crate::xml::quick_xml_experiment::ExpandedName) -
         ]
         .iter()
         .any(|local| name.local.eq_ignore_ascii_case(local))
+}
+
+fn is_minimized_html_boolean_attribute(attribute: &ResultAttribute) -> bool {
+    attribute.name.namespace.is_none()
+        && [
+            "checked", "compact", "declare", "defer", "disabled", "ismap", "multiple", "nohref",
+            "noresize", "noshade", "nowrap", "readonly", "selected",
+        ]
+        .iter()
+        .any(|name| attribute.name.local.eq_ignore_ascii_case(name))
+        && attribute.value.eq_ignore_ascii_case(&attribute.name.local)
 }
 
 fn is_html_raw_text_element(name: &crate::xml::quick_xml_experiment::ExpandedName) -> bool {

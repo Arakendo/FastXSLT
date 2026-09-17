@@ -1907,3 +1907,10 @@ maintained redistributable legacy suite becomes available.
   static `XTSE0370 / invalid`; valid but unimplemented expressions continue to
   report `FXST1031`. The exact lower bound remains 1,564.
   [Evidence](../Evidence/oasis-xslt10-malformed-avt-classification-2026-09-17.md)
+- 2026-09-17 -- HTML serialization now minimizes the XSLT 1.0 boolean-
+  attribute set when an unnamespaced value equals its name case-insensitively.
+  `Lotus/attribset_attribset17#1` reaches the expected minimized attribute
+  spelling, but the XML-semantic comparator cannot parse that legal HTML form;
+  the 1,564 exact lower bound therefore remains unchanged and the harness gap
+  stays visible.
+  [Evidence](../Evidence/oasis-xslt10-html-boolean-attribute-minimization-2026-09-17.md)

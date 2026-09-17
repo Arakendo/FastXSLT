@@ -4643,6 +4643,11 @@ host lifecycle.
   unchanged; valid but unsupported AVT expressions retain their honest
   capability boundary.
   [Evidence](../Evidence/oasis-xslt10-malformed-avt-classification-2026-09-17.md)
+- [x] Minimize the XSLT 1.0 HTML boolean-attribute set when an unnamespaced
+  value equals its name case-insensitively. The exact lower bound remains 1,564
+  because the XML-semantic comparator cannot parse minimized HTML syntax; keep
+  that comparator gap visible rather than weakening XML comparison.
+  [Evidence](../Evidence/oasis-xslt10-html-boolean-attribute-minimization-2026-09-17.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.
