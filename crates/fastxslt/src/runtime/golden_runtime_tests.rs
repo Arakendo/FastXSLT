@@ -2089,7 +2089,7 @@ fn xslt10_attribute_set_values_resolve_only_global_variables() {
 fn xslt10_duplicate_result_attributes_recover_with_the_last_value() {
     const SOURCE: &str = "urn:fastxslt:duplicate-attribute-recovery:source";
     const STYLESHEET: &str = "urn:fastxslt:duplicate-attribute-recovery:stylesheet";
-    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out literal="wrong"><xsl:attribute name="literal">right</xsl:attribute><xsl:attribute name="computed">wrong</xsl:attribute><xsl:attribute name="computed">right</xsl:attribute></out></xsl:template></xsl:stylesheet>"#;
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out literal="wrong"><xsl:attribute name="literal">right</xsl:attribute><xsl:attribute name="computed">wrong</xsl:attribute><xsl:attribute name="computed">right</xsl:attribute><child/><xsl:attribute name="late">ignored</xsl:attribute></out></xsl:template></xsl:stylesheet>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
     resources
         .admit(SOURCE, b"<doc/>".to_vec())
@@ -2108,7 +2108,7 @@ fn xslt10_duplicate_result_attributes_recover_with_the_last_value() {
 
     assert_eq!(
         results.by_request["duplicate-attribute-recovery"].serialized,
-        "<out literal=\"right\" computed=\"right\"></out>"
+        "<out literal=\"right\" computed=\"right\"><child></child></out>"
     );
 }
 

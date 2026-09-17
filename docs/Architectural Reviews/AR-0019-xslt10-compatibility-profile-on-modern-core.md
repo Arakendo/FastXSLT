@@ -1732,3 +1732,11 @@ maintained redistributable legacy suite becomes available.
   bound from 1,483 to 1,486 without a new mismatch, execution failure, or
   runtime version branch.
   [Evidence](../Evidence/oasis-xslt10-duplicate-result-attribute-recovery-2026-09-16.md)
+- 2026-09-16 -- Statically evident XSLT 1.0 `xsl:attribute` constructors after
+  result child construction now use the specification's permitted recovery and
+  are ignored. Later versions retain `XTDE0410`, and dynamically late pending
+  attributes retain the runtime error. Five unchanged standard-operation cases
+  become exact, raising the lower bound from 1,486 to 1,491 while expected-error
+  accounting remains unchanged and no mismatch, execution failure, or panic is
+  added.
+  [Evidence](../Evidence/oasis-xslt10-late-result-attribute-recovery-2026-09-16.md)

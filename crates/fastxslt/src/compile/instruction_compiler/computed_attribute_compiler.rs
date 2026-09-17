@@ -30,6 +30,10 @@ pub(super) fn compile_computed_attributes(
             continue;
         }
         if body_started {
+            if recover_duplicate_attributes {
+                attribute_nodes.push(child);
+                continue;
+            }
             return Err(invalid(
                 "XTDE0410",
                 "xsl:attribute must precede result child construction",
