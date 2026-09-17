@@ -122,6 +122,17 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         .into_iter()
         .filter(|child| !excluded_top_level.contains(child))
         .collect::<Vec<_>>();
+    if let Some(child) = top_level_children
+        .iter()
+        .copied()
+        .find(|child| document.kind(*child) != NodeKind::Element)
+    {
+        return Err(invalid(
+            "FXST0008",
+            "non-whitespace text is not permitted at stylesheet top level",
+            document.location(child),
+        ));
+    }
     validate_same_precedence_mode_declaration_conflicts(document, &top_level_children)?;
 
     let mut output = None;

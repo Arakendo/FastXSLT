@@ -4527,10 +4527,16 @@ host lifecycle.
 - [x] Raise the exact lower bound to 1,512 by applying namespaced
   `xsl:exclude-result-prefixes` on literal result elements through the existing
   compiled namespace-selection path. Fourteen cases leave `FXST1007`: eight
-  become exact, two expose later namespace mismatches, and four reach the
+  become exact, two expose later discretionary indentation mismatches, and four reach the
   explicit namespace-alias boundary. The XSLT control does not become a result
   attribute and no runtime namespace-policy branch is added.
   [Evidence](../Evidence/oasis-xslt10-literal-result-prefix-exclusion-2026-09-16.md)
+- [x] Reject non-whitespace text at stylesheet top level instead of silently
+  discarding it. Unchanged Microsoft
+  `Stylesheet_InvalidStylesheetMustThrowException` moves from unexpected
+  success to observed initialization failure, reducing the unexpected-success
+  class from six to five without changing the 1,512 exact-result lower bound.
+  [Evidence](../Evidence/oasis-xslt10-top-level-text-rejection-2026-09-17.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

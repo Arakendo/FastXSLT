@@ -1779,7 +1779,14 @@ maintained redistributable legacy suite becomes available.
 - 2026-09-16 -- Literal result elements now apply their namespaced
   `xsl:exclude-result-prefixes` control through the existing compiled namespace
   selection path. Fourteen cases leave `FXST1007`: eight become exact, raising
-  the lower bound from 1,504 to 1,512; two expose later namespace mismatches;
+  the lower bound from 1,504 to 1,512; two expose later discretionary
+  indentation mismatches after producing the required namespace nodes;
   and four reach the explicit namespace-alias boundary. The control attribute
   is not copied to the result and no runtime policy branch is introduced.
   [Evidence](../Evidence/oasis-xslt10-literal-result-prefix-exclusion-2026-09-16.md)
+- 2026-09-17 -- The stylesheet compiler now rejects retained non-whitespace
+  top-level text rather than silently skipping non-element children. Unchanged
+  Microsoft `Stylesheet_InvalidStylesheetMustThrowException` moves from
+  unexpected success to observed initialization failure, reducing that class
+  from six to five while the exact-result lower bound remains 1,512.
+  [Evidence](../Evidence/oasis-xslt10-top-level-text-rejection-2026-09-17.md)

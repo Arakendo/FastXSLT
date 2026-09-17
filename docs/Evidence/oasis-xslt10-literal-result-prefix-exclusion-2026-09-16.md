@@ -29,7 +29,8 @@ branch.
 
 Fourteen cases leave the blanket `FXST1007` control-attribute frontier. Ten
 initialize and execute: eight produce exact XML-semantic results, while Lotus
-`lre_lre15` and `lre_lre18` expose later namespace-result mismatches. Four
+`lre_lre15` and `lre_lre18` expose later discretionary indentation mismatches
+after producing the required namespace nodes. Four
 namespace-alias cases reach their already explicit `xsl:namespace-alias`
 declaration boundary. The mismatches are newly visible dispositions, not
 regressions from former passes.
