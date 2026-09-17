@@ -42,6 +42,17 @@ impl ValueStaticContext {
     fn for_element(document: &Document, element: NodeId) -> Self {
         let mut current = Some(element);
         while let Some(node) = current {
+            if let Some(version) =
+                optional_attribute(document, node, Some(XSLT_NAMESPACE), "version")
+            {
+                return Self {
+                    compatibility: if version == "1.0" {
+                        ValueCompatibilityMode::Xslt10
+                    } else {
+                        ValueCompatibilityMode::Modern
+                    },
+                };
+            }
             if document.name(node).is_some_and(|name| {
                 name.namespace.as_deref() == Some(XSLT_NAMESPACE)
                     && matches!(name.local.as_str(), "stylesheet" | "transform")

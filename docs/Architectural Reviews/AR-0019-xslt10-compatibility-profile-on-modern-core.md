@@ -1748,3 +1748,10 @@ maintained redistributable legacy suite becomes available.
   exact pass is claimed, the lower bound remains 1,491, and the six unexpected
   expected-error successes remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-simplified-stylesheet-frontier-2026-09-16.md)
+- 2026-09-16 -- An `xsl:version="1.0"` control attribute on a simplified
+  stylesheet root now establishes the same typed value-expression compatibility
+  context as a conventional stylesheet root. The existing first-node
+  conversion plan makes unchanged Microsoft `Namespace__78215` exact, raising
+  the lower bound from 1,491 to 1,492; the higher-version forward-compatibility
+  companion remains explicit.
+  [Evidence](../Evidence/oasis-xslt10-simplified-stylesheet-value-conversion-2026-09-16.md)

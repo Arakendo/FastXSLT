@@ -149,7 +149,13 @@ fn compiles_a_simplified_stylesheet_through_the_literal_result_element_path() {
         attributes[0].value,
         LiteralAttributeValue::Text("yes".to_owned())
     );
-    assert!(matches!(body.as_slice(), [Instruction::ValueOf { .. }]));
+    assert!(matches!(
+        body.as_slice(),
+        [Instruction::ValueOf {
+            select: ValueExpression::Xslt10FirstNodeLocationPath(_),
+            ..
+        }]
+    ));
 }
 
 #[test]
