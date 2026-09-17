@@ -1870,3 +1870,13 @@ maintained redistributable legacy suite becomes available.
   later semantic mismatches and five later execution failures remain visible;
   general include/import alias precedence is not inferred.
   [Evidence](../Evidence/oasis-xslt10-static-namespace-alias-2026-09-17.md)
+- 2026-09-17 -- Unnamed `xsl:decimal-format` declarations now compose and
+  validate during compilation, then specialize the existing two-argument
+  `format-number()` plan without adding runtime stylesheet-policy lookup. The
+  first corpus pass exposed and repaired the configured-minus-sign rule for
+  identical negative subpictures. Twenty additional cases initialize and
+  sixteen become exact, raising the lower bound from 1,533 to 1,549. Named
+  formats, non-ASCII digit families, dynamic third-argument lookup, and general
+  include/import decimal-format composition remain explicit rather than
+  approximated.
+  [Evidence](../Evidence/oasis-xslt10-unnamed-decimal-format-2026-09-17.md)

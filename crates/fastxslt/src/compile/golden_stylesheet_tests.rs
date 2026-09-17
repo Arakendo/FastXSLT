@@ -125,6 +125,52 @@ fn xslt10_namespace_alias_treats_an_undeclared_default_as_no_namespace() {
 }
 
 #[test]
+fn xslt10_unnamed_decimal_format_is_static_and_named_formats_remain_explicit() {
+    let unnamed = parse_stylesheet(
+        "test:decimal-format.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+              <xsl:decimal-format decimal-separator="|" grouping-separator="."/>
+              <xsl:template match="/"><xsl:value-of select="format-number(931.4857, '000.000|###')"/></xsl:template>
+            </xsl:stylesheet>"#,
+    );
+    compile_stylesheet(&unnamed).expect("unnamed decimal format should compile statically");
+
+    let named = parse_stylesheet(
+        "test:named-decimal-format.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+              <xsl:decimal-format name="european" decimal-separator="," grouping-separator="."/>
+              <xsl:template match="/"/>
+            </xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&named).expect_err("named lookup is not yet admitted");
+    assert_eq!(failure.code, "FXST1090");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+}
+
+#[test]
+fn xslt10_decimal_format_rejects_conflicts_and_non_distinct_symbols() {
+    for (declarations, code) in [
+        (
+            r#"<xsl:decimal-format decimal-separator="."/><xsl:decimal-format decimal-separator=","/>"#,
+            "XTSE1290",
+        ),
+        (
+            r#"<xsl:decimal-format decimal-separator="!" grouping-separator="!"/>"#,
+            "XTSE0020",
+        ),
+    ] {
+        let bytes = format!(
+            r#"<xsl:stylesheet version="1.0" xmlns:xsl="{}">{declarations}<xsl:template match="/"/></xsl:stylesheet>"#,
+            super::XSLT_NAMESPACE
+        );
+        let document = parse_stylesheet("test:invalid-decimal-format.xsl", bytes.as_bytes());
+        let failure = compile_stylesheet(&document).expect_err("invalid decimal format must fail");
+        assert_eq!(failure.code, code);
+        assert_eq!(failure.category, CompileCategory::Invalid);
+    }
+}
+
+#[test]
 #[ignore = "manual release-mode character-map composition scaling measurement"]
 fn measure_character_map_composition_scaling() {
     for entry_count in [100_usize, 1_000, 5_000, 10_000] {

@@ -13,6 +13,8 @@ use crate::xslt::golden_semantics_experiment::{
     Xslt10TextChoiceBranch,
 };
 
+#[path = "decimal_format_compiler.rs"]
+mod decimal_format_compiler;
 #[path = "instruction_compiler.rs"]
 mod instruction_compiler;
 #[path = "match_sequence_predicate_compiler.rs"]
@@ -150,6 +152,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     let mut global_bindings = Vec::new();
     let mut global_binding_locations = Vec::new();
     let mut character_maps = Vec::new();
+    let mut default_decimal_format = None;
     let mut namespace_aliases = Vec::new();
     let mut local_attribute_set_names = Vec::new();
     for child in top_level_children {
@@ -203,6 +206,13 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                     document,
                     child,
                     &mut namespace_aliases,
+                )?;
+            }
+            (Some(XSLT_NAMESPACE), "decimal-format") => {
+                decimal_format_compiler::compile_default_declaration(
+                    document,
+                    child,
+                    &mut default_decimal_format,
                 )?;
             }
             (Some(XSLT_NAMESPACE), "attribute-set") => {
@@ -323,6 +333,9 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         global_bindings,
     };
     namespace_alias_compiler::apply(&mut program, &namespace_aliases);
+    if let Some(format) = default_decimal_format {
+        decimal_format_compiler::apply(&mut program, &format)?;
+    }
     Ok(program)
 }
 

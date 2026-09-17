@@ -10,6 +10,38 @@ use crate::xpath::binary_numeric_experiment::ExactRational;
 pub(crate) struct FormatNumberExpression {
     number: Operand,
     picture: Operand,
+    decimal_format: DecimalFormat,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DecimalFormat {
+    pub(crate) decimal_separator: char,
+    pub(crate) grouping_separator: char,
+    pub(crate) infinity: String,
+    pub(crate) minus_sign: char,
+    pub(crate) nan: String,
+    pub(crate) percent: char,
+    pub(crate) per_mille: char,
+    pub(crate) zero_digit: char,
+    pub(crate) digit: char,
+    pub(crate) pattern_separator: char,
+}
+
+impl Default for DecimalFormat {
+    fn default() -> Self {
+        Self {
+            decimal_separator: '.',
+            grouping_separator: ',',
+            infinity: "Infinity".to_owned(),
+            minus_sign: '-',
+            nan: "NaN".to_owned(),
+            percent: '%',
+            per_mille: '‰',
+            zero_digit: '0',
+            digit: '#',
+            pattern_separator: ';',
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,12 +59,19 @@ impl FormatNumberExpression {
                 Operand::Literal(_) => None,
             })
     }
+
+    pub(crate) fn set_default_decimal_format(&mut self, format: &DecimalFormat) {
+        self.decimal_format.clone_from(format);
+    }
 }
 
 #[cfg(feature = "workbench")]
 impl FormatNumberExpression {
     pub(crate) fn known_owned_capacity_bytes(&self) -> usize {
-        operand_capacity(&self.number) + operand_capacity(&self.picture)
+        operand_capacity(&self.number)
+            + operand_capacity(&self.picture)
+            + self.decimal_format.infinity.capacity()
+            + self.decimal_format.nan.capacity()
     }
 }
 
@@ -68,7 +107,11 @@ pub(crate) fn parse(
         split_top_level_comma(arguments).ok_or_else(|| unsupported(expression, location))?;
     let number = parse_number(number.trim()).ok_or_else(|| unsupported(expression, location))?;
     let picture = parse_picture(picture.trim()).ok_or_else(|| unsupported(expression, location))?;
-    Ok(FormatNumberExpression { number, picture })
+    Ok(FormatNumberExpression {
+        number,
+        picture,
+        decimal_format: DecimalFormat::default(),
+    })
 }
 
 pub(crate) fn evaluate(
@@ -77,7 +120,8 @@ pub(crate) fn evaluate(
 ) -> Result<String, FormatNumberEvaluationFailure> {
     let number = resolve(&expression.number, variables)?;
     let picture = resolve(&expression.picture, variables)?;
-    format_default_decimal(number, picture).ok_or(FormatNumberEvaluationFailure::Unsupported)
+    format_decimal(number, picture, &expression.decimal_format)
+        .ok_or(FormatNumberEvaluationFailure::Unsupported)
 }
 
 fn resolve<'a>(
@@ -138,31 +182,42 @@ fn variable(value: &str) -> Option<&str> {
         .then_some(name)
 }
 
-fn format_default_decimal(value: &str, picture: &str) -> Option<String> {
+fn format_decimal(value: &str, picture: &str, format: &DecimalFormat) -> Option<String> {
     let number = evaluate_source_free_number(value)?;
-    let (positive, negative) = split_subpictures(picture)?;
+    let (positive, negative) = split_subpictures(picture, format.pattern_separator)?;
     let negative_value = number.is_sign_negative();
     let selected = if negative_value {
         negative.unwrap_or(positive)
     } else {
         positive
     };
-    let parsed = parse_subpicture(selected)?;
-    let implicit_minus = negative_value && negative.is_none();
+    let parsed = parse_subpicture(selected, format)?;
+    let implicit_minus = negative_value
+        && negative.is_none_or(|negative| {
+            let positive = parse_subpicture(positive, format);
+            let negative = parse_subpicture(negative, format);
+            positive.zip(negative).is_some_and(|(positive, negative)| {
+                positive.prefix == negative.prefix && positive.suffix == negative.suffix
+            })
+        });
     let mut output = String::new();
     if implicit_minus {
-        output.push('-');
+        output.push(format.minus_sign);
     }
     output.push_str(parsed.prefix);
     if number.is_nan() {
-        output.push_str("NaN");
+        output.push_str(&format.nan);
     } else if number.is_infinite() {
-        output.push_str("Infinity");
+        output.push_str(&format.infinity);
     } else {
         let exact = evaluate_source_free_exact(value).or_else(|| {
             ExactRational::parse_decimal(&evaluate_source_free_number(value)?.to_string())
         })?;
-        output.push_str(&format_finite_exact(&exact.format_decimal().ok()?, parsed)?);
+        output.push_str(&format_finite_exact(
+            &exact.format_decimal().ok()?,
+            parsed,
+            format,
+        )?);
     }
     output.push_str(parsed.suffix);
     Some(output)
@@ -177,47 +232,62 @@ struct ParsedSubpicture<'a> {
     scale: i128,
 }
 
-fn split_subpictures(picture: &str) -> Option<(&str, Option<&str>)> {
-    let mut parts = picture.split(';');
+fn split_subpictures(picture: &str, separator: char) -> Option<(&str, Option<&str>)> {
+    let mut parts = picture.split(separator);
     let positive = parts.next()?;
     let negative = parts.next();
     (parts.next().is_none() && !positive.is_empty() && negative != Some(""))
         .then_some((positive, negative))
 }
 
-fn parse_subpicture(picture: &str) -> Option<ParsedSubpicture<'_>> {
-    let first_digit = picture.find(['#', '0'])?;
-    let first = if first_digit > 0 && picture.as_bytes()[first_digit - 1] == b'.' {
-        first_digit - 1
-    } else {
-        first_digit
-    };
-    let last = picture.rfind(['#', '0'])?;
+fn parse_subpicture<'a>(picture: &'a str, format: &DecimalFormat) -> Option<ParsedSubpicture<'a>> {
+    let first_digit = picture.find([format.digit, format.zero_digit])?;
+    let decimal_before_first = picture[..first_digit]
+        .char_indices()
+        .next_back()
+        .filter(|(_, character)| *character == format.decimal_separator)
+        .map(|(offset, _)| offset);
+    let first = decimal_before_first.unwrap_or(first_digit);
+    let last = picture.rfind([format.digit, format.zero_digit])?;
     let prefix = &picture[..first];
     let suffix = &picture[last + 1..];
     let numeric = &picture[first..=last];
-    if prefix.contains(['#', '0', '.', ',', ';'])
-        || suffix.contains(['#', '0', '.', ',', ';'])
+    let active = [
+        format.digit,
+        format.zero_digit,
+        format.decimal_separator,
+        format.grouping_separator,
+        format.pattern_separator,
+    ];
+    if prefix.chars().any(|character| active.contains(&character))
+        || suffix.chars().any(|character| active.contains(&character))
         || numeric
             .chars()
-            .any(|character| !matches!(character, '#' | '0' | '.' | ','))
-        || numeric.matches('.').count() > 1
+            .any(|character| !matches_active_numeric(character, format))
+        || numeric.matches(format.decimal_separator).count() > 1
     {
         return None;
     }
-    let (integer, fraction) = numeric.split_once('.').unwrap_or((numeric, ""));
-    let integer_digits = integer.chars().filter(|character| *character != ',');
-    if integer.starts_with(',')
-        || integer.ends_with(',')
-        || integer.contains(",,")
-        || fraction.contains(',')
-        || !placeholders_are_ordered(integer_digits, '#', '0')
-        || !placeholders_are_ordered(fraction.chars(), '0', '#')
+    let (integer, fraction) = numeric
+        .split_once(format.decimal_separator)
+        .unwrap_or((numeric, ""));
+    let integer_digits = integer
+        .chars()
+        .filter(|character| *character != format.grouping_separator);
+    if integer.starts_with(format.grouping_separator)
+        || integer.ends_with(format.grouping_separator)
+        || integer.contains(&format!(
+            "{}{}",
+            format.grouping_separator, format.grouping_separator
+        ))
+        || fraction.contains(format.grouping_separator)
+        || !placeholders_are_ordered(integer_digits, format.digit, format.zero_digit)
+        || !placeholders_are_ordered(fraction.chars(), format.zero_digit, format.digit)
     {
         return None;
     }
-    let percent = picture.matches('%').count();
-    let per_mille = picture.matches('‰').count();
+    let percent = picture.matches(format.percent).count();
+    let per_mille = picture.matches(format.per_mille).count();
     if percent + per_mille > 1 {
         return None;
     }
@@ -235,6 +305,13 @@ fn parse_subpicture(picture: &str) -> Option<ParsedSubpicture<'_>> {
         fraction,
         scale,
     })
+}
+
+fn matches_active_numeric(character: char, format: &DecimalFormat) -> bool {
+    character == format.digit
+        || character == format.zero_digit
+        || character == format.decimal_separator
+        || character == format.grouping_separator
 }
 
 fn placeholders_are_ordered(
@@ -319,17 +396,21 @@ fn evaluate_source_free_exact(value: &str) -> Option<ExactRational> {
     ExactRational::parse_decimal(value)
 }
 
-fn format_finite_exact(value: &str, picture: ParsedSubpicture<'_>) -> Option<String> {
-    let maximum_fraction = picture.fraction.len();
+fn format_finite_exact(
+    value: &str,
+    picture: ParsedSubpicture<'_>,
+    format: &DecimalFormat,
+) -> Option<String> {
+    let maximum_fraction = picture.fraction.chars().count();
     let minimum_fraction = picture
         .fraction
-        .bytes()
-        .filter(|digit| *digit == b'0')
+        .chars()
+        .filter(|digit| *digit == format.zero_digit)
         .count();
     let minimum_integer = picture
         .integer
-        .bytes()
-        .filter(|digit| *digit == b'0')
+        .chars()
+        .filter(|digit| *digit == format.zero_digit)
         .count();
     let (_negative, value) = value
         .strip_prefix('-')
@@ -380,15 +461,17 @@ fn format_finite_exact(value: &str, picture: ParsedSubpicture<'_>) -> Option<Str
     if whole.len() < minimum_integer {
         whole.insert_str(0, &"0".repeat(minimum_integer - whole.len()));
     }
-    if let Some(separator) = picture.integer.rfind(',') {
-        let group_size = picture.integer.len() - separator - 1;
+    if let Some(separator) = picture.integer.rfind(format.grouping_separator) {
+        let group_size = picture.integer[separator + format.grouping_separator.len_utf8()..]
+            .chars()
+            .count();
         if group_size == 0 {
             return None;
         }
         let mut grouped = String::with_capacity(whole.len() + whole.len() / group_size);
         for (index, character) in whole.chars().rev().enumerate() {
             if index > 0 && index % group_size == 0 {
-                grouped.push(',');
+                grouped.push(format.grouping_separator);
             }
             grouped.push(character);
         }
@@ -397,7 +480,7 @@ fn format_finite_exact(value: &str, picture: ParsedSubpicture<'_>) -> Option<Str
     let formatted = if fraction.is_empty() {
         whole
     } else {
-        format!("{whole}.{fraction}")
+        format!("{whole}{}{fraction}", format.decimal_separator)
     };
     Some(formatted)
 }
@@ -437,7 +520,7 @@ mod tests {
     use crate::xdm::atomic_value_experiment::AtomicValue;
     use crate::xdm::owned_tree_experiment::SourceLocation;
 
-    use super::{FormatNumberEvaluationFailure, evaluate, parse};
+    use super::{DecimalFormat, FormatNumberEvaluationFailure, evaluate, parse};
 
     fn location() -> SourceLocation {
         SourceLocation {
@@ -475,6 +558,53 @@ mod tests {
             Err(FormatNumberEvaluationFailure::UnboundVariable(
                 "picture".to_owned()
             ))
+        );
+    }
+
+    #[test]
+    fn applies_a_compiled_unnamed_decimal_format() {
+        let mut expression = parse("format-number(931.4857, '000.000|###')", &location())
+            .expect("format-number expression should parse");
+        expression.set_default_decimal_format(&DecimalFormat {
+            decimal_separator: '|',
+            grouping_separator: '.',
+            infinity: "huge".to_owned(),
+            minus_sign: '_',
+            nan: "not-a-number".to_owned(),
+            percent: 'c',
+            per_mille: 'm',
+            zero_digit: '0',
+            digit: '#',
+            pattern_separator: '\\',
+        });
+        assert_eq!(
+            evaluate(&expression, &BTreeMap::new()),
+            Ok("000.931|486".to_owned())
+        );
+
+        let mut negative = parse(
+            "format-number(-26931.4, '###,###.###;###,###.###')",
+            &location(),
+        )
+        .expect("negative formatting should parse");
+        negative.set_default_decimal_format(&DecimalFormat {
+            minus_sign: '_',
+            ..DecimalFormat::default()
+        });
+        assert_eq!(
+            evaluate(&negative, &BTreeMap::new()),
+            Ok("_26,931.4".to_owned())
+        );
+
+        let mut non_finite = parse("format-number(1 div 0, '0')", &location())
+            .expect("non-finite formatting should parse");
+        non_finite.set_default_decimal_format(&DecimalFormat {
+            infinity: "huge".to_owned(),
+            ..DecimalFormat::default()
+        });
+        assert_eq!(
+            evaluate(&non_finite, &BTreeMap::new()),
+            Ok("huge".to_owned())
         );
     }
 
