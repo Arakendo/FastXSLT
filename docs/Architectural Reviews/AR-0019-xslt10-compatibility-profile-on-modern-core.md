@@ -1790,3 +1790,11 @@ maintained redistributable legacy suite becomes available.
   unexpected success to observed initialization failure, reducing that class
   from six to five while the exact-result lower bound remains 1,512.
   [Evidence](../Evidence/oasis-xslt10-top-level-text-rejection-2026-09-17.md)
+- 2026-09-17 -- `exclude-result-prefixes` is now validated at each declaration
+  site, so a prefix declared only by an included module cannot satisfy an
+  unbound token on the principal stylesheet. Unchanged Microsoft
+  `Include_Include_ParentExplicitlyExcludesChildNamespace` moves from
+  unexpected success to static `XTSE0808`, reducing that class from five to
+  four while the exact-result lower bound remains 1,512. All four survivors are
+  upstream doubt-marked and remain visible rather than being forced to fail.
+  [Evidence](../Evidence/oasis-xslt10-excluded-prefix-validation-2026-09-17.md)

@@ -4537,6 +4537,13 @@ host lifecycle.
   success to observed initialization failure, reducing the unexpected-success
   class from six to five without changing the 1,512 exact-result lower bound.
   [Evidence](../Evidence/oasis-xslt10-top-level-text-rejection-2026-09-17.md)
+- [x] Validate `exclude-result-prefixes` at the declaration site on stylesheet
+  roots and literal result elements. An included module's namespace scope no
+  longer masks an unbound principal-module token; the unchanged Microsoft case
+  now reports static `XTSE0808`, reducing unexpected expected-error successes
+  from five to four without changing the 1,512 exact-result lower bound. All
+  four survivors are upstream doubt-marked and remain explicitly reported.
+  [Evidence](../Evidence/oasis-xslt10-excluded-prefix-validation-2026-09-17.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

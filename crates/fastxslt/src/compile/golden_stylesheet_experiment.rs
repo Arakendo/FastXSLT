@@ -43,7 +43,7 @@ use template_pattern_compiler::compile_match_pattern;
 use instruction_compiler::{
     compile_comment, compile_literal_result_attributes, compile_processing_instruction,
     compile_sequence_excluding_with_bindings, compile_text, literal_result_namespaces,
-    parse_template_modes,
+    parse_template_modes, validate_exclude_result_prefixes,
 };
 use mode_declaration_compiler::{
     validate_mode_declaration as validate_mode, validate_same_precedence_mode_declaration_conflicts,
@@ -611,6 +611,7 @@ fn validate_stylesheet_root_controls(
     document: &Document,
     root: NodeId,
 ) -> Result<(), CompileFailure> {
+    validate_exclude_result_prefixes(document, root)?;
     if optional_attribute(document, root, None, "mode").is_some() {
         return Err(invalid(
             "XTSE0090",

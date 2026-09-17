@@ -397,6 +397,7 @@ pub(super) fn compile_literal_element(
         ));
     }
     ensure_literal_result_control_attributes(document, element)?;
+    validate_exclude_result_prefixes(document, element)?;
     let (mut computed_attributes, computed_attribute_nodes) =
         compile_computed_attributes(document, element)?;
     let mut attributes = compile_literal_result_attributes(document, element)?;
@@ -1431,6 +1432,40 @@ fn compile_static_node_content_value(
     Ok(crate::xpath::static_string_experiment::fold(select)
         .or_else(|| crate::xpath::static_string_experiment::fold_concat_literals(select))
         .or_else(|| crate::xpath::static_string_experiment::fold_substring_literals(select)))
+}
+
+pub(super) fn validate_exclude_result_prefixes(
+    document: &Document,
+    element: NodeId,
+) -> Result<(), CompileFailure> {
+    let Some(exclusions) = optional_attribute(document, element, None, "exclude-result-prefixes")
+        .or_else(|| {
+            optional_attribute(
+                document,
+                element,
+                Some(XSLT_NAMESPACE),
+                "exclude-result-prefixes",
+            )
+        })
+    else {
+        return Ok(());
+    };
+    for prefix in exclusions.split_whitespace() {
+        if prefix == "#all" {
+            continue;
+        }
+        let namespace_prefix = if prefix == "#default" { "" } else { prefix };
+        if (prefix != "#default" && !is_ascii_ncname(prefix))
+            || namespace_for_prefix(document, element, namespace_prefix).is_none()
+        {
+            return Err(invalid(
+                "XTSE0808",
+                format!("invalid or unbound excluded result prefix: {prefix}"),
+                document.location(element),
+            ));
+        }
+    }
+    Ok(())
 }
 
 pub(super) fn literal_result_namespaces(

@@ -2240,6 +2240,25 @@ fn literal_result_element_applies_namespaced_exclude_result_prefixes() {
 }
 
 #[test]
+fn exclude_result_prefixes_rejects_unbound_prefixes_at_each_declaration_site() {
+    for (label, bytes) in [
+        (
+            "stylesheet root",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" exclude-result-prefixes="missing"><xsl:template match="/"/></xsl:stylesheet>"#.as_slice(),
+        ),
+        (
+            "literal result element",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out xsl:exclude-result-prefixes="missing"/></xsl:template></xsl:stylesheet>"#.as_slice(),
+        ),
+    ] {
+        let stylesheet = parse_stylesheet("memory:unbound-excluded-prefix.xsl", bytes);
+        let failure = compile_stylesheet(&stylesheet).expect_err(label);
+        assert_eq!(failure.category, CompileCategory::Invalid, "{label}");
+        assert_eq!(failure.code, "XTSE0808", "{label}");
+    }
+}
+
+#[test]
 fn static_integer_range_requires_a_context_independent_body() {
     let stylesheet = parse_stylesheet(
             "memory:static-range.xsl",
