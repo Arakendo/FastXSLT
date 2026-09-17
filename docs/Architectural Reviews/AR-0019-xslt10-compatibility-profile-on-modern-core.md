@@ -1701,3 +1701,10 @@ maintained redistributable legacy suite becomes available.
   exact, raising the lower bound from 1,461 to 1,468 without a runtime registry
   or a new XML mismatch.
   [Evidence](../Evidence/oasis-xslt10-inherited-static-attribute-sets-2026-09-15.md)
+- 2026-09-16 -- `xsl:copy` now consumes the same immutable compile-time static
+  attribute-set expansion, with explicit child attributes overriding set
+  values. Document-node copy emits the set constructors as pending attributes
+  before its body, preserving XSLT 1.0 root-copy behavior. Six unchanged cases
+  become exact, raising the lower bound from 1,468 to 1,474 without a new XML
+  mismatch, execution failure, or runtime registry.
+  [Evidence](../Evidence/oasis-xslt10-source-copy-attribute-sets-2026-09-16.md)

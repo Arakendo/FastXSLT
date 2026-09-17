@@ -2032,6 +2032,60 @@ fn xslt10_local_attribute_set_inheritance_applies_references_before_local_values
 }
 
 #[test]
+fn xslt10_source_copy_applies_static_attribute_sets_before_explicit_attributes() {
+    const SOURCE: &str = "urn:fastxslt:copy-attribute-set:source";
+    const STYLESHEET: &str = "urn:fastxslt:copy-attribute-set:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:attribute-set name="base"><xsl:attribute name="color">black</xsl:attribute><xsl:attribute name="weight">bold</xsl:attribute></xsl:attribute-set><xsl:template match="/"><xsl:apply-templates select="doc/item"/></xsl:template><xsl:template match="item"><xsl:copy use-attribute-sets="base"><xsl:attribute name="color">red</xsl:attribute></xsl:copy></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc><item/></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("copy-attribute-set", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["copy-attribute-set"].serialized,
+        "<item weight=\"bold\" color=\"red\"></item>"
+    );
+}
+
+#[test]
+fn xslt10_root_copy_exposes_attribute_set_constructors_to_the_parent_result() {
+    const SOURCE: &str = "urn:fastxslt:root-copy-attribute-set:source";
+    const STYLESHEET: &str = "urn:fastxslt:root-copy-attribute-set:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:attribute-set name="root-copy"><xsl:attribute name="kind">document</xsl:attribute></xsl:attribute-set><xsl:template match="/"><out><xsl:copy use-attribute-sets="root-copy"/></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("root-copy-attribute-set", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["root-copy-attribute-set"].serialized,
+        "<out kind=\"document\"></out>"
+    );
+}
+
+#[test]
 fn xslt10_template_argument_for_each_builds_one_temporary_text_value() {
     const SOURCE: &str = "urn:fastxslt:argument-for-each:source";
     const STYLESHEET: &str = "urn:fastxslt:argument-for-each:stylesheet";

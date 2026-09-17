@@ -1821,7 +1821,33 @@ fn execute_source_element_copy(
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let (source, node) = required_source_context(inputs, execution.node)?;
     match source.kind(node) {
-        NodeKind::Document => execute_sequence(inputs, body, execution, variables, control),
+        NodeKind::Document => {
+            let context_string = literal_attributes_require_context_string(attributes)
+                .then(|| source.string_value_controlled(node, control))
+                .transpose()
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let mut copied = materialize_literal_attributes(
+                inputs,
+                attributes,
+                variables,
+                LiteralAttributeFocus {
+                    position: execution.focus_position,
+                    size: execution.focus_size,
+                    name: None,
+                    value: context_string.as_deref(),
+                    source: Some((source, node)),
+                },
+                inputs.request_id,
+                control,
+            )?
+            .into_iter()
+            .map(ResultNode::PendingAttribute)
+            .collect::<Vec<_>>();
+            copied.extend(execute_sequence(
+                inputs, body, execution, variables, control,
+            )?);
+            Ok(copied)
+        }
         NodeKind::Element => {
             let context_string = literal_attributes_require_context_string(attributes)
                 .then(|| source.string_value_controlled(node, control))
