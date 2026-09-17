@@ -42,6 +42,89 @@ fn character_map_composition_sorts_keys_and_preserves_last_entry_precedence() {
 }
 
 #[test]
+fn xslt10_namespace_alias_rewrites_literal_result_names_and_bindings() {
+    let document = parse_stylesheet(
+        "test:namespace-alias.xsl",
+        br#"<xsl:stylesheet version="1.0"
+              xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+              xmlns:axsl="urn:literal-xsl"
+              exclude-result-prefixes="axsl">
+              <xsl:namespace-alias stylesheet-prefix="axsl" result-prefix="xsl"/>
+              <xsl:template match="/">
+                <axsl:stylesheet axsl:version="1.0"><axsl:template/></axsl:stylesheet>
+              </xsl:template>
+            </xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&document).expect("static namespace alias should compile");
+    let template = program.root_template.expect("root template");
+    let [
+        Instruction::LiteralElement {
+            name,
+            namespaces,
+            attributes,
+            body,
+            ..
+        },
+    ] = template.body.as_slice()
+    else {
+        panic!("namespace alias test should retain one literal result element");
+    };
+    assert_eq!(name.namespace.as_deref(), Some(super::XSLT_NAMESPACE));
+    assert!(namespaces.iter().any(|binding| {
+        binding.prefix.as_deref() == Some("xsl") && binding.namespace == super::XSLT_NAMESPACE
+    }));
+    assert_eq!(
+        attributes[0].name.namespace.as_deref(),
+        Some(super::XSLT_NAMESPACE)
+    );
+    let [Instruction::LiteralElement { name, .. }] = body.as_slice() else {
+        panic!("nested aliased literal result element should be preserved");
+    };
+    assert_eq!(name.namespace.as_deref(), Some(super::XSLT_NAMESPACE));
+}
+
+#[test]
+fn xslt10_namespace_alias_validates_required_bound_prefixes() {
+    for (declaration, code) in [
+        (r#"<xsl:namespace-alias result-prefix="xsl"/>"#, "XTSE0010"),
+        (
+            r#"<xsl:namespace-alias stylesheet-prefix="missing" result-prefix="xsl"/>"#,
+            "XTSE0812",
+        ),
+    ] {
+        let bytes = format!(
+            r#"<xsl:stylesheet version="1.0" xmlns:xsl="{}">{}<xsl:template match="/"/></xsl:stylesheet>"#,
+            super::XSLT_NAMESPACE,
+            declaration
+        );
+        let document = parse_stylesheet("test:invalid-namespace-alias.xsl", bytes.as_bytes());
+        let failure = compile_stylesheet(&document).expect_err("invalid alias must fail");
+        assert_eq!(failure.code, code);
+        assert_eq!(failure.category, CompileCategory::Invalid);
+    }
+}
+
+#[test]
+fn xslt10_namespace_alias_treats_an_undeclared_default_as_no_namespace() {
+    let document = parse_stylesheet(
+        "test:default-namespace-alias.xsl",
+        br##"<xsl:stylesheet version="1.0"
+              xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+              <xsl:namespace-alias stylesheet-prefix="#default" result-prefix="xsl"/>
+              <xsl:template match="/"><generated/></xsl:template>
+            </xsl:stylesheet>"##,
+    );
+
+    let program = compile_stylesheet(&document).expect("the null namespace can be aliased");
+    let template = program.root_template.expect("root template");
+    let [Instruction::LiteralElement { name, .. }] = template.body.as_slice() else {
+        panic!("default alias should retain one literal element");
+    };
+    assert_eq!(name.namespace.as_deref(), Some(super::XSLT_NAMESPACE));
+}
+
+#[test]
 #[ignore = "manual release-mode character-map composition scaling measurement"]
 fn measure_character_map_composition_scaling() {
     for entry_count in [100_usize, 1_000, 5_000, 10_000] {

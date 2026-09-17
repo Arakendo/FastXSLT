@@ -1862,3 +1862,11 @@ maintained redistributable legacy suite becomes available.
   Prefix validation, charged traversal, cancellation, document order, and
   source identity remain shared with the ordinary path evaluator.
   [Evidence](../Evidence/oasis-xslt10-qualified-descendant-paths-2026-09-17.md)
+- 2026-09-17 -- Static `xsl:namespace-alias` declarations now resolve ordinary
+  and `#default` prefixes during compilation and rewrite literal result names
+  and namespace bindings before execution. The 43-case blanket frontier is
+  eliminated: 27 additional cases initialize, 22 execute, and eight become
+  exact, raising the lower bound from 1,525 to 1,533. Fourteen discretionary or
+  later semantic mismatches and five later execution failures remain visible;
+  general include/import alias precedence is not inferred.
+  [Evidence](../Evidence/oasis-xslt10-static-namespace-alias-2026-09-17.md)

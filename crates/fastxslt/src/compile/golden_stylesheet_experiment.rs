@@ -19,6 +19,8 @@ mod instruction_compiler;
 mod match_sequence_predicate_compiler;
 #[path = "mode_declaration_compiler.rs"]
 mod mode_declaration_compiler;
+#[path = "namespace_alias_compiler.rs"]
+mod namespace_alias_compiler;
 #[path = "output_compiler.rs"]
 mod output_compiler;
 #[path = "stylesheet_module_compiler.rs"]
@@ -148,6 +150,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     let mut global_bindings = Vec::new();
     let mut global_binding_locations = Vec::new();
     let mut character_maps = Vec::new();
+    let mut namespace_aliases = Vec::new();
     let mut local_attribute_set_names = Vec::new();
     for child in top_level_children {
         let Some(name) = document.name(child) else {
@@ -194,6 +197,13 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
             }
             (Some(XSLT_NAMESPACE), "character-map") => {
                 character_maps.push(compile_character_map(document, child)?);
+            }
+            (Some(XSLT_NAMESPACE), "namespace-alias") => {
+                namespace_alias_compiler::compile_declaration(
+                    document,
+                    child,
+                    &mut namespace_aliases,
+                )?;
             }
             (Some(XSLT_NAMESPACE), "attribute-set") => {
                 let name = instruction_compiler::validate_local_attribute_set(document, child)?;
@@ -293,7 +303,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         .map(|declaration| declaration.specified.iter().cloned().collect())
         .unwrap_or_default();
 
-    Ok(StylesheetProgram {
+    let mut program = StylesheetProgram {
         declared_version,
         default_initial_mode,
         source_whitespace,
@@ -311,7 +321,9 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         matched_templates,
         named_templates,
         global_bindings,
-    })
+    };
+    namespace_alias_compiler::apply(&mut program, &namespace_aliases);
+    Ok(program)
 }
 
 fn compile_character_map(
