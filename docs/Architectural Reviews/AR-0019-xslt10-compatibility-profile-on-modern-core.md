@@ -1776,3 +1776,10 @@ maintained redistributable legacy suite becomes available.
   1,494 to 1,504 without a new mismatch, failure, unexpected success, runtime
   version branch, or panic.
   [Evidence](../Evidence/oasis-xslt10-comment-delimiter-recovery-2026-09-16.md)
+- 2026-09-16 -- Literal result elements now apply their namespaced
+  `xsl:exclude-result-prefixes` control through the existing compiled namespace
+  selection path. Fourteen cases leave `FXST1007`: eight become exact, raising
+  the lower bound from 1,504 to 1,512; two expose later namespace mismatches;
+  and four reach the explicit namespace-alias boundary. The control attribute
+  is not copied to the result and no runtime policy branch is introduced.
+  [Evidence](../Evidence/oasis-xslt10-literal-result-prefix-exclusion-2026-09-16.md)

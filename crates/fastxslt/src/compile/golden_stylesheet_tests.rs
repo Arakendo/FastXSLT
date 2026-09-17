@@ -2196,6 +2196,40 @@ fn xslt10_comment_recovers_xml_comment_delimiters_without_widening_modern_semant
 }
 
 #[test]
+fn literal_result_element_applies_namespaced_exclude_result_prefixes() {
+    let stylesheet = parse_stylesheet(
+        "memory:lre-excluded-prefixes.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:keep="urn:keep" xmlns:drop="urn:drop"><xsl:template match="/"><out xsl:exclude-result-prefixes="drop"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let program = compile_stylesheet(&stylesheet).expect("LRE prefix exclusion should compile");
+    let root_template = program.root_template.expect("root template");
+    let [
+        Instruction::LiteralElement {
+            namespaces,
+            attributes,
+            ..
+        },
+    ] = root_template.body.as_slice()
+    else {
+        panic!("template should retain one literal result element");
+    };
+    assert!(
+        attributes.is_empty(),
+        "the XSLT control must not become a result attribute"
+    );
+    assert!(
+        namespaces
+            .iter()
+            .any(|binding| binding.prefix.as_deref() == Some("keep"))
+    );
+    assert!(
+        !namespaces
+            .iter()
+            .any(|binding| binding.prefix.as_deref() == Some("drop"))
+    );
+}
+
+#[test]
 fn static_integer_range_requires_a_context_independent_body() {
     let stylesheet = parse_stylesheet(
             "memory:static-range.xsl",

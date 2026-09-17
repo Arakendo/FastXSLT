@@ -1146,7 +1146,11 @@ fn ensure_literal_result_control_attributes(
         if name.namespace.as_deref() == Some(XSLT_NAMESPACE)
             && !matches!(
                 name.local.as_str(),
-                "version" | "xpath-default-namespace" | "default-mode" | "use-attribute-sets"
+                "version"
+                    | "xpath-default-namespace"
+                    | "default-mode"
+                    | "use-attribute-sets"
+                    | "exclude-result-prefixes"
             )
         {
             return Err(unsupported(
@@ -1439,7 +1443,14 @@ pub(super) fn literal_result_namespaces(
     let mut current = Some(element);
     while let Some(node) = current {
         if let Some(exclusions) =
-            optional_attribute(document, node, None, "exclude-result-prefixes")
+            optional_attribute(document, node, None, "exclude-result-prefixes").or_else(|| {
+                optional_attribute(
+                    document,
+                    node,
+                    Some(XSLT_NAMESPACE),
+                    "exclude-result-prefixes",
+                )
+            })
         {
             for prefix in exclusions.split_whitespace() {
                 if prefix == "#all" {
