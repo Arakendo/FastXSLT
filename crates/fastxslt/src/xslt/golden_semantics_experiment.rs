@@ -595,6 +595,11 @@ pub(crate) enum Instruction {
         value: String,
         location: SourceLocation,
     },
+    Xslt10ValueOfTreeVariable {
+        name: String,
+        select: LocationPath,
+        location: SourceLocation,
+    },
     Xslt10ForEachTextTreeVariable {
         name: String,
         select: LocationPath,

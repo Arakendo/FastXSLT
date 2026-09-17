@@ -776,6 +776,7 @@ fn execute_instruction(
         | Instruction::IntegerRangeVariable { .. }
         | Instruction::TemporaryTreeVariable { .. }
         | Instruction::Xslt10TextTreeVariable { .. }
+        | Instruction::Xslt10ValueOfTreeVariable { .. }
         | Instruction::Xslt10ForEachTextTreeVariable { .. } => {
             execute_binding(inputs, instruction, execution, scope, control)?;
         }
@@ -1558,6 +1559,9 @@ fn execute_binding(
         Instruction::Xslt10TextTreeVariable { name, value, .. } => {
             bind_xslt10_text_tree(scope, name, value, inputs.request_id, control)?;
         }
+        Instruction::Xslt10ValueOfTreeVariable { name, select, .. } => {
+            bind_xslt10_value_of_tree(inputs, execution, scope, name, select, control)?;
+        }
         Instruction::Xslt10ForEachTextTreeVariable { name, select, .. } => {
             bind_xslt10_for_each_text_tree(inputs, scope, name, select, execution.node, control)?;
         }
@@ -1735,6 +1739,26 @@ fn bind_context_count_path(
         name.to_owned(),
         AtomicValue::from_validated_lexical(BuiltinAtomicType::Integer, count.to_string()),
     );
+    Ok(())
+}
+
+fn bind_xslt10_value_of_tree(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    scope: &mut RuntimeVariables,
+    name: &str,
+    select: &crate::xpath::path_experiment::LocationPath,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, execution.node)?;
+    let tree = runtime_context::materialize_xslt10_temporary_context_string(
+        source,
+        context,
+        select,
+        inputs.request_id,
+        control,
+    )?;
+    scope.bind_temporary_tree(name.to_owned(), tree);
     Ok(())
 }
 

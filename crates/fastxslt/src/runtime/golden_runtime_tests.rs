@@ -3990,6 +3990,39 @@ fn xslt10_string_and_number_convert_variable_values() {
 }
 
 #[test]
+fn xslt10_local_value_of_content_builds_a_temporary_text_tree() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-local-value-of-tree:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-local-value-of-tree:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item>first</item><item>second</item></doc>".to_vec(),
+        )
+        .expect("admit local value-of tree source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="doc"><xsl:variable name="temporary"><xsl:value-of select="item"/></xsl:variable><xsl:call-template name="emit"><xsl:with-param name="value" select="$temporary"/></xsl:call-template></xsl:template><xsl:template name="emit"><xsl:param name="value"/><out><xsl:value-of select="$value"/></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit local value-of tree stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile local value-of temporary tree constructor");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("xslt10-local-value-of-tree", "result", SOURCE))
+        .expect("admit local value-of tree request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute local value-of temporary tree constructor");
+    assert_eq!(
+        results.by_request["xslt10-local-value-of-tree"].serialized,
+        "<out>first</out>"
+    );
+}
+
+#[test]
 fn xslt10_numeric_variables_select_path_positions() {
     const SOURCE: &str = "urn:fastxslt:xslt10-variable-position:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-variable-position:stylesheet";

@@ -1834,3 +1834,12 @@ maintained redistributable legacy suite becomes available.
   bound remains 1,518. Dynamic, locale-sensitive, and non-equivalent semantics
   remain explicit without a runtime branch.
   [Evidence](../Evidence/oasis-xslt10-static-letter-value-admission-2026-09-17.md)
+- 2026-09-17 -- An XSLT 1.0 local variable whose complete constructor is one
+  admitted `xsl:value-of` path now materializes through the existing charged,
+  invocation-owned temporary-tree path. Variable-valued named-template
+  arguments preserve that temporary-tree value kind rather than reporting the
+  binding as absent. Five unchanged Lotus named-template cases become exact,
+  raising the lower bound from 1,518 to 1,523 without admitting general
+  sequence constructors, later-version result-tree-fragment behavior,
+  cross-invocation sharing, a new mismatch, or a panic.
+  [Evidence](../Evidence/oasis-xslt10-local-value-of-temporary-tree-2026-09-17.md)

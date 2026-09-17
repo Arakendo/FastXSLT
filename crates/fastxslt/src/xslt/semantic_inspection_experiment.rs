@@ -280,6 +280,7 @@ fn observe_instructions(
             | Instruction::IntegerRangeVariable { .. }
             | Instruction::TemporaryTreeVariable { .. }
             | Instruction::Xslt10TextTreeVariable { .. }
+            | Instruction::Xslt10ValueOfTreeVariable { .. }
             | Instruction::Xslt10ForEachTextTreeVariable { .. } => {
                 (SemanticFeature::LocalVariable, None)
             }

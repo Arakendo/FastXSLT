@@ -173,6 +173,8 @@ fn evaluate_template_argument(
                 InvocationParameterValue::Atomic(value.clone())
             } else if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
                 InvocationParameterValue::SourceNodes(nodes.clone())
+            } else if let Some(tree) = variables.temporary_tree(inputs.globals, name) {
+                InvocationParameterValue::TemporaryTree(tree.clone())
             } else {
                 return Err(failure_at(
                     "FXRT0002",
@@ -730,7 +732,23 @@ fn materialize_xslt10_temporary_source_string(
             "an XSLT 1.0 source-dependent temporary tree requires a principal source",
         )
     })?;
-    let selected = evaluate_location_path_controlled(source, source.document_node(), path, control)
+    materialize_xslt10_temporary_context_string(
+        source,
+        source.document_node(),
+        path,
+        request_id,
+        control,
+    )
+}
+
+pub(super) fn materialize_xslt10_temporary_context_string(
+    source: &Document,
+    context: NodeId,
+    path: &crate::xpath::path_experiment::LocationPath,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<TemporaryTree, ExecutionFailure> {
+    let selected = evaluate_location_path_controlled(source, context, path, control)
         .map_err(|failure| control_failure(failure, request_id))?;
     let value = selected.first().map_or_else(
         || Ok(String::new()),

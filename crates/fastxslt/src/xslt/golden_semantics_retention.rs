@@ -410,6 +410,9 @@ fn instruction_owned(value: &Instruction) -> usize {
         instruction @ Instruction::Xslt10TextTreeVariable { .. } => {
             xslt10_text_tree_variable_owned(instruction)
         }
+        instruction @ Instruction::Xslt10ValueOfTreeVariable { .. } => {
+            path_binding_owned(instruction)
+        }
         Instruction::SequenceNodes { select, location } => sequence_nodes_owned(select, location),
         Instruction::SequenceItems { select, location } => {
             vec_owned(select, sequence_item_owned) + location_owned(location)
@@ -494,6 +497,11 @@ fn path_binding_owned(instruction: &Instruction) -> usize {
             location,
         }
         | Instruction::Xslt10ForEachTextTreeVariable {
+            name,
+            select,
+            location,
+        }
+        | Instruction::Xslt10ValueOfTreeVariable {
             name,
             select,
             location,

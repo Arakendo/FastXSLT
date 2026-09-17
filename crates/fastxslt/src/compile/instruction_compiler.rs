@@ -336,6 +336,7 @@ fn local_variable_name(variable: &Instruction) -> &String {
     | Instruction::IntegerRangeVariable { name, .. }
     | Instruction::TemporaryTreeVariable { name, .. }
     | Instruction::Xslt10TextTreeVariable { name, .. }
+    | Instruction::Xslt10ValueOfTreeVariable { name, .. }
     | Instruction::Xslt10ForEachTextTreeVariable { name, .. }) = variable
     else {
         unreachable!("compile_variable returns a variable instruction")
@@ -1865,6 +1866,11 @@ fn compile_content_variable(
         return Ok(variable);
     }
     if let Some(variable) =
+        compile_xslt10_value_of_tree_variable(document, element, name, &location)?
+    {
+        return Ok(variable);
+    }
+    if let Some(variable) =
         compile_xslt10_for_each_text_variable(document, element, name, &location)?
     {
         return Ok(variable);
@@ -1903,6 +1909,35 @@ fn compile_xslt10_text_tree_variable(
         value: document.value(*child).unwrap_or_default().to_owned(),
         location: location.clone(),
     })
+}
+
+fn compile_xslt10_value_of_tree_variable(
+    document: &Document,
+    element: NodeId,
+    name: &str,
+    location: &SourceLocation,
+) -> Result<Option<Instruction>, CompileFailure> {
+    if optional_attribute(document, element, None, "as").is_some()
+        || !uses_xslt10_compatibility(document, element)
+    {
+        return Ok(None);
+    }
+    let children = meaningful_children(document, element);
+    let [value_of] = children.as_slice() else {
+        return Ok(None);
+    };
+    if !is_xslt_element(document, *value_of, "value-of") {
+        return Ok(None);
+    }
+    ensure_only_attributes(document, *value_of, &["select"], "xsl:value-of")?;
+    ensure_no_meaningful_children(document, *value_of, "xsl:value-of")?;
+    let select = required_attribute(document, *value_of, None, "select")?;
+    Ok(Some(Instruction::Xslt10ValueOfTreeVariable {
+        name: name.to_owned(),
+        select: parse_location_path(select, document.location(*value_of).clone())
+            .map_err(map_path_failure)?,
+        location: location.clone(),
+    }))
 }
 
 pub(super) fn compile_xslt10_for_each_text_path(
