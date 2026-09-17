@@ -851,7 +851,11 @@ mismatches and HTML-shaped results that the XML-semantic comparator cannot
 assess remain explicit evidence. An environment-supplied default HTML version
 is not inferred. The XSLT 1.0 HTML boolean-attribute set is minimized when an
 unnamespaced value equals its attribute name without ASCII case sensitivity;
-other and namespaced attributes retain ordinary quoted serialization.
+other and namespaced attributes retain quoted serialization. Ordinary HTML
+attribute values preserve angle brackets and XML whitespace characters rather
+than applying XML attribute escaping; ampersands, double quotes, and C1
+controls retain their required escaped forms. XHTML and XML output continue to
+use XML-compatible attribute escaping.
 `suppress-indentation` is retained as a list of expanded element names in
 compiled output settings and merged by expanded-name identity. When indentation
 is enabled, the serializer does not add indentation inside a matching element

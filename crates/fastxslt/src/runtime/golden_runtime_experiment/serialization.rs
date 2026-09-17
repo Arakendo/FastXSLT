@@ -1566,6 +1566,13 @@ fn serialize_element_attribute(
     output.push_str("=\"")?;
     if options.escape_uri_attributes && is_uri_attribute(element_name, attribute) {
         escape_uri_attribute(&attribute.value, output)?;
+    } else if options.html_mode != HtmlMode::None {
+        escape_html_attribute_with_character_map(
+            &attribute.value,
+            options.character_map,
+            options.normalization_form,
+            output,
+        )?;
     } else {
         escape_attribute_with_character_map(
             &attribute.value,
@@ -1849,6 +1856,28 @@ fn escape_attribute_with_character_map(
         character_map,
         normalization_form,
         escape_attribute_character,
+        output,
+    )
+}
+
+fn escape_html_attribute_with_character_map(
+    value: &str,
+    character_map: &[(char, String)],
+    normalization_form: NormalizationForm,
+    output: &mut BudgetedString,
+) -> Result<(), ExecutionFailure> {
+    write_character_expansion(
+        value,
+        character_map,
+        normalization_form,
+        |character, output| match character {
+            '&' => output.push_str("&amp;"),
+            '"' => output.push_str("&quot;"),
+            _ if is_c1_control(character) => {
+                output.push_str(&format!("&#x{:X};", u32::from(character)))
+            }
+            _ => output.push(character),
+        },
         output,
     )
 }

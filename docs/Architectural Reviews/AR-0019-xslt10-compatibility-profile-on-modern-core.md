@@ -1922,3 +1922,11 @@ maintained redistributable legacy suite becomes available.
   raising the strict lower bound from 1,564 to 1,565 without changing any
   execution or comparator denominator.
   [Evidence](../Evidence/oasis-xslt10-html-uri-attribute-escaping-2026-09-17.md)
+- 2026-09-17 -- Ordinary HTML attributes now use an HTML-specific escaping
+  path that preserves angle brackets and XML whitespace characters while
+  retaining escaped ampersands, quotes, and C1 controls. The unchanged
+  `Microsoft/Output_HtmlOutputWithLessThanInAttribute#1` and
+  `Microsoft/Output_EntityRefInAttribHtml#1` outputs reach their expected
+  attribute spellings but retain later pretty-print/newline differences. They
+  remain visible mismatches, and the strict lower bound remains 1,565.
+  [Evidence](../Evidence/oasis-xslt10-html-ordinary-attribute-escaping-2026-09-17.md)

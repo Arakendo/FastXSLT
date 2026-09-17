@@ -4654,6 +4654,12 @@ host lifecycle.
   result now compares exactly; existing percent escapes and apostrophes remain
   unchanged, and arbitrary `href` attributes no longer acquire URI semantics.
   [Evidence](../Evidence/oasis-xslt10-html-uri-attribute-escaping-2026-09-17.md)
+- [x] Apply HTML-specific ordinary attribute escaping: preserve `<`, `>`, tab,
+  line feed, and carriage return while still escaping ampersands, double
+  quotes, and C1 controls. Two unchanged Microsoft cases now reach their
+  expected attribute spellings but retain visible pretty-print/newline
+  differences, so the strict lower bound correctly remains 1,565.
+  [Evidence](../Evidence/oasis-xslt10-html-ordinary-attribute-escaping-2026-09-17.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

@@ -7016,7 +7016,23 @@ fn legacy_html_serialization_accepts_a_general_nested_result_tree() {
                 Vec::new(),
                 vec![element(
                     "section",
-                    vec![data_kind],
+                    vec![
+                        data_kind,
+                        ResultAttribute {
+                            name: crate::xml::quick_xml_experiment::ExpandedName {
+                                namespace: None,
+                                local: "data-expression".to_owned(),
+                            },
+                            value: "<bar>".to_owned(),
+                        },
+                        ResultAttribute {
+                            name: crate::xml::quick_xml_experiment::ExpandedName {
+                                namespace: None,
+                                local: "data-lines".to_owned(),
+                            },
+                            value: "x\ny".to_owned(),
+                        },
+                    ],
                     vec![
                         element("p", Vec::new(), vec![ResultNode::Text("A & B".to_owned())]),
                         element(
@@ -7073,7 +7089,7 @@ fn legacy_html_serialization_accepts_a_general_nested_result_tree() {
 
     assert_eq!(
         actual,
-        "<html><body><section data-kind=\"general\"><p>A &amp; B</p><A HREF=\"%22'caf%C3%A9\"></A><input CHECKED></section></body></html>"
+        "<html><body><section data-kind=\"general\" data-expression=\"<bar>\" data-lines=\"x\ny\"><p>A &amp; B</p><A HREF=\"%22'caf%C3%A9\"></A><input CHECKED></section></body></html>"
     );
 }
 
