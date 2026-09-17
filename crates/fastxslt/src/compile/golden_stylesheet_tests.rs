@@ -2347,6 +2347,29 @@ fn literal_result_extension_prefixes_are_scoped_validated_and_excluded() {
 }
 
 #[test]
+fn xslt10_instructions_ignore_foreign_namespaced_attributes() {
+    let stylesheet = parse_stylesheet(
+        "memory:xslt10-extension-attributes.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:e="urn:example"><xsl:template match="/" e:template="ignored"><out><xsl:copy-of select="doc" e:copy="ignored"/></out></xsl:template></xsl:stylesheet>"#,
+    );
+    compile_stylesheet(&stylesheet).expect("XSLT 1.0 extension attributes should be ignored");
+
+    let modern = parse_stylesheet(
+        "memory:modern-extension-attributes.xsl",
+        br#"<xsl:stylesheet version="3.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:e="urn:example"><xsl:template match="/" e:template="unsupported"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&modern).expect_err("modern behavior remains explicit");
+    assert_eq!(failure.code, "FXST1009");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+
+    let output = parse_stylesheet(
+        "memory:xslt10-output-extension-attribute.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:e="urn:example"><xsl:output e:control="ignored"/><xsl:template match="/"><out/></xsl:template></xsl:stylesheet>"#,
+    );
+    compile_stylesheet(&output).expect("XSLT 1.0 output extension attribute should be ignored");
+}
+
+#[test]
 fn static_integer_range_requires_a_context_independent_body() {
     let stylesheet = parse_stylesheet(
             "memory:static-range.xsl",

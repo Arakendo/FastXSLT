@@ -8,7 +8,7 @@ use crate::xslt::golden_semantics_experiment::OutputSettings;
 
 use super::{
     CompileFailure, compile_expanded_qname, ensure_no_meaningful_children, invalid,
-    optional_attribute, unsupported,
+    is_ignored_xslt10_extension_attribute, optional_attribute, unsupported,
 };
 
 const OUTPUT_ATTRIBUTES: &[&str] = &[
@@ -264,6 +264,7 @@ fn ensure_output_attributes(document: &Document, element: NodeId) -> Result<(), 
             .expect("attribute nodes have expanded names");
         if (name.namespace.is_none() && OUTPUT_ATTRIBUTES.contains(&name.local.as_str()))
             || (name.namespace.as_deref() == Some(XML_NAMESPACE) && name.local == "space")
+            || is_ignored_xslt10_extension_attribute(document, element, *attribute)
         {
             continue;
         }

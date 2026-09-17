@@ -1807,3 +1807,10 @@ maintained redistributable legacy suite becomes available.
   advance to later honest boundaries without adding a mismatch, execution
   failure, unexpected success, runtime version branch, or panic.
   [Evidence](../Evidence/oasis-xslt10-literal-result-extension-controls-2026-09-17.md)
+- 2026-09-17 -- Foreign namespaced extension attributes on admitted XSLT
+  elements are now ignored under XSLT 1.0 compatibility, while unqualified,
+  XSLT-namespace, reserved XML, and modern-version attributes retain their
+  existing validation. Two unchanged cases become exact, raising the lower
+  bound from 1,515 to 1,517 without adding a mismatch, execution failure,
+  unexpected success, runtime extension hook, or panic.
+  [Evidence](../Evidence/oasis-xslt10-extension-attributes-2026-09-17.md)

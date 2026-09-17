@@ -4553,6 +4553,13 @@ host lifecycle.
   mismatch, execution failure, unexpected success, runtime version branch, or
   panic.
   [Evidence](../Evidence/oasis-xslt10-literal-result-extension-controls-2026-09-17.md)
+- [x] Raise the exact lower bound to 1,517 by ignoring foreign namespaced
+  extension attributes on admitted XSLT elements under XSLT 1.0 compatibility.
+  Preserve validation for unqualified, XSLT-namespace, reserved XML, and
+  modern-version attributes. Two unchanged cases become exact without adding
+  a mismatch, execution failure, unexpected success, runtime extension hook,
+  or panic.
+  [Evidence](../Evidence/oasis-xslt10-extension-attributes-2026-09-17.md)
 - [x] Preserve compatibility mode in integer-equality plans so temporary-tree
   numeric parameters reuse XSLT 1.0 conversion; keep four doubts-annotated
   Microsoft whitespace outcomes visible rather than counting them as passes.

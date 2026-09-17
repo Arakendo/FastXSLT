@@ -1929,6 +1929,9 @@ pub(super) fn ensure_only_attributes(
         let name = document
             .name(*attribute)
             .expect("attribute nodes have expanded names");
+        if is_ignored_xslt10_extension_attribute(document, element, *attribute) {
+            continue;
+        }
         if name.namespace.is_some() || !allowed.contains(&name.local.as_str()) {
             return Err(unsupported(
                 "FXST1009",
@@ -1942,6 +1945,20 @@ pub(super) fn ensure_only_attributes(
         }
     }
     Ok(())
+}
+
+pub(super) fn is_ignored_xslt10_extension_attribute(
+    document: &Document,
+    element: NodeId,
+    attribute: NodeId,
+) -> bool {
+    let name = document
+        .name(attribute)
+        .expect("attribute nodes have expanded names");
+    instruction_compiler::uses_xslt10_compatibility(document, element)
+        && name.namespace.as_deref().is_some_and(|namespace| {
+            namespace != XSLT_NAMESPACE && namespace != "http://www.w3.org/XML/1998/namespace"
+        })
 }
 
 pub(super) fn document_element(document: &Document) -> Result<NodeId, CompileFailure> {
