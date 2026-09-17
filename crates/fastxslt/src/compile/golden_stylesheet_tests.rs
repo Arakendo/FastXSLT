@@ -2119,6 +2119,24 @@ fn processing_instruction_compiles_static_target_and_literal_data() {
 }
 
 #[test]
+fn comment_and_processing_instruction_fold_explicit_static_text() {
+    let stylesheet = parse_stylesheet(
+        "memory:static-node-content.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><xsl:comment><xsl:text disable-output-escaping="yes">&lt;&gt;&amp;'</xsl:text></xsl:comment><xsl:processing-instruction name="doe"><xsl:text disable-output-escaping="yes">&lt;&quot;&gt;</xsl:text></xsl:processing-instruction></xsl:template></xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&stylesheet).expect("static node content should compile");
+    let root_template = program.root_template.expect("root template");
+    assert!(matches!(
+        root_template.body.as_slice(),
+        [
+            Instruction::CommentNode { value: comment, .. },
+            Instruction::ProcessingInstructionNode { value: pi, .. }
+        ] if comment == "<>&'" && pi == "<\">"
+    ));
+}
+
+#[test]
 fn static_integer_range_requires_a_context_independent_body() {
     let stylesheet = parse_stylesheet(
             "memory:static-range.xsl",

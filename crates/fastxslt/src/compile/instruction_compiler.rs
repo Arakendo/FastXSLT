@@ -1174,16 +1174,24 @@ pub(super) fn compile_text_value(
     document: &Document,
     element: NodeId,
 ) -> Result<String, CompileFailure> {
+    compile_text_value_with_ignored_escaping(document, element, false)
+}
+
+fn compile_text_value_with_ignored_escaping(
+    document: &Document,
+    element: NodeId,
+    ignore_disable_output_escaping: bool,
+) -> Result<String, CompileFailure> {
     ensure_only_attributes(document, element, &["disable-output-escaping"], "xsl:text")?;
     match optional_attribute(document, element, None, "disable-output-escaping") {
-        None | Some("no") => {}
-        Some("yes") => {
+        Some("yes") if !ignore_disable_output_escaping => {
             return Err(unsupported(
                 "FXST1060",
                 "disable-output-escaping='yes' is outside the semantic result-tree slice",
                 document.location(element),
             ));
         }
+        None | Some("no" | "yes") => {}
         Some(_) => {
             return Err(invalid(
                 "XTSE0020",
@@ -1223,16 +1231,22 @@ pub(super) fn compile_processing_instruction(
         ));
     }
     let mut value = String::new();
-    for child in document.children(element).iter().copied() {
+    for child in meaningful_children(document, element) {
         match document.kind(child) {
             NodeKind::Text => value.push_str(document.value(child).unwrap_or_default()),
             NodeKind::Comment | NodeKind::ProcessingInstruction => {}
             NodeKind::Element => {
-                return Err(unsupported(
-                    "FXST1034",
-                    "computed processing-instruction content is outside the private slice",
-                    document.location(child),
-                ));
+                if is_xslt_element(document, child, "text") {
+                    value.push_str(&compile_text_value_with_ignored_escaping(
+                        document, child, true,
+                    )?);
+                } else {
+                    return Err(unsupported(
+                        "FXST1034",
+                        "computed processing-instruction content is outside the private slice",
+                        document.location(child),
+                    ));
+                }
             }
             NodeKind::Document | NodeKind::Attribute => {
                 return Err(invalid(
@@ -1273,16 +1287,22 @@ pub(super) fn compile_comment(
         })?
     } else {
         let mut value = String::new();
-        for child in document.children(element).iter().copied() {
+        for child in meaningful_children(document, element) {
             match document.kind(child) {
                 NodeKind::Text => value.push_str(document.value(child).unwrap_or_default()),
                 NodeKind::Comment | NodeKind::ProcessingInstruction => {}
                 NodeKind::Element => {
-                    return Err(unsupported(
-                        "FXST1036",
-                        "computed comment content is outside the private slice",
-                        document.location(child),
-                    ));
+                    if is_xslt_element(document, child, "text") {
+                        value.push_str(&compile_text_value_with_ignored_escaping(
+                            document, child, true,
+                        )?);
+                    } else {
+                        return Err(unsupported(
+                            "FXST1036",
+                            "computed comment content is outside the private slice",
+                            document.location(child),
+                        ));
+                    }
                 }
                 NodeKind::Document | NodeKind::Attribute => {
                     return Err(invalid(

@@ -1755,3 +1755,9 @@ maintained redistributable legacy suite becomes available.
   the lower bound from 1,491 to 1,492; the higher-version forward-compatibility
   companion remains explicit.
   [Evidence](../Evidence/oasis-xslt10-simplified-stylesheet-value-conversion-2026-09-16.md)
+- 2026-09-16 -- Static comment and processing-instruction constructors now
+  fold explicit `xsl:text` children, ignoring disable-output-escaping only in
+  those node-construction contexts where it has no effect. One unchanged
+  Microsoft comment case becomes exact, raising the lower bound from 1,492 to
+  1,493; one simplified case advances to the existing HTML serializer boundary.
+  [Evidence](../Evidence/oasis-xslt10-static-comment-pi-text-2026-09-16.md)
