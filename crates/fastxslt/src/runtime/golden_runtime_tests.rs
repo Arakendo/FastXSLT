@@ -1388,6 +1388,56 @@ fn static_xsl_element_namespace_serializes_a_default_result_binding() {
 }
 
 #[test]
+fn context_name_xsl_element_resolves_its_static_prefix_binding() {
+    let source = parse_document(
+        "memory:context-name-computed-element.xml",
+        br#"<doc xmlns:p="urn:item"><p:item/></doc>"#,
+        ParseLimits {
+            max_events: 12,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:context-name-computed-element.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:item" exclude-result-prefixes="p" version="1.0">
+          <xsl:output method="xml" omit-xml-declaration="yes"/>
+          <xsl:template match="/"><out><xsl:for-each select="doc/p:item"><xsl:element name="{name(.)}"/></xsl:for-each></out></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("context-name xsl:element should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "context-name-computed-element-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("context-name xsl:element should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "context-name-computed-element-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(
+        serialized,
+        "<out><p:item xmlns:p=\"urn:item\"></p:item></out>"
+    );
+}
+
+#[test]
 fn descendant_match_path_accepts_nonadjacent_ancestor() {
     let source = parse_document(
         "memory:descendant-match.xml",

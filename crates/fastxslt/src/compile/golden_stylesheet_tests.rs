@@ -417,9 +417,8 @@ fn declared_extension_elements_fail_explicitly_instead_of_becoming_literal_resul
 }
 
 #[test]
-fn static_xsl_element_keeps_dynamic_names_namespaces_and_unknown_attribute_sets_explicit() {
+fn computed_element_keeps_dynamic_namespaces_and_unknown_attribute_sets_explicit() {
     for (attribute, code) in [
-        ("name=\"{name()}\"", "FXST1047"),
         ("name=\"out\" namespace=\"{namespace-uri()}\"", "FXST1045"),
         ("name=\"out\" use-attribute-sets=\"common\"", "FXST1065"),
     ] {

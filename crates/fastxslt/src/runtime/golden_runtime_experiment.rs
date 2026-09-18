@@ -10,7 +10,7 @@ use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
 use crate::xdm::owned_tree_experiment::{
     Document, NodeId, NodeKind, SourceLocation, StringValueVisitFailure,
 };
-use crate::xml::quick_xml_experiment::{ExpandedName, ParseLimits};
+use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding, ParseLimits};
 use crate::xpath::castable_experiment::{CastEvaluationFailure, CastExpression, evaluate_cast};
 use crate::xpath::for_distinct_values_experiment::{
     ForDistinctValuesExpression, evaluate as evaluate_for_distinct_values,
@@ -20,9 +20,9 @@ use crate::xpath::path_experiment::{
 };
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, BooleanExpression, ComputedAttribute, FocusComparison, FocusEqualityOperand,
-    Instruction, NodeTest, OnMultipleMatchPolicy, OnNoMatchPolicy, SequenceItemExpression,
-    SortDataType, SortKey, SortOrder, SortSelect, SourceWhitespacePolicy, StringComparison,
-    StylesheetProgram, TemplateArgument,
+    Instruction, LiteralAttribute, NodeTest, OnMultipleMatchPolicy, OnNoMatchPolicy,
+    SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect, SourceWhitespacePolicy,
+    StringComparison, StylesheetProgram, TemplateArgument,
 };
 
 #[path = "atomic_template_executor.rs"]
@@ -718,13 +718,9 @@ fn execute_instruction(
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     match instruction {
-        Instruction::LiteralElement { .. } => result.push(execute_literal_element(
-            inputs,
-            instruction,
-            execution,
-            scope,
-            control,
-        )?),
+        Instruction::LiteralElement { .. } | Instruction::ContextNameElement { .. } => result.push(
+            execute_literal_element(inputs, instruction, execution, scope, control)?,
+        ),
         Instruction::Text { value, .. } => append_text(result, value, inputs.request_id, control)?,
         Instruction::CopyOfStaticAtomicText { value, .. } => {
             append_text(result, value, inputs.request_id, control)?;
@@ -1949,17 +1945,13 @@ fn execute_literal_element(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<ResultNode, ExecutionFailure> {
-    let Instruction::LiteralElement {
+    let ElementExecutionParts {
         name,
         namespaces,
         attributes,
         computed_attributes,
         body,
-        ..
-    } = instruction
-    else {
-        unreachable!("execute_literal_element receives a literal element instruction")
-    };
+    } = prepare_element_execution(inputs, instruction, execution, control)?;
     control
         .charge(WorkDomain::ResultNode, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
@@ -2024,19 +2016,143 @@ fn execute_literal_element(
             child => children.push(child),
         }
     }
-    let result_namespaces = Arc::clone(namespaces);
+    let result_namespaces = namespaces;
     #[cfg(test)]
     let result_namespaces = if control.complete_result_namespace_clones() {
-        Arc::from(namespaces.as_ref())
+        Arc::from(result_namespaces.as_ref())
     } else {
         result_namespaces
     };
     Ok(ResultNode::Element {
-        name: name.clone(),
+        name,
         namespaces: result_namespaces,
         attributes,
         children,
     })
+}
+
+struct ElementExecutionParts<'a> {
+    name: ExpandedName,
+    namespaces: Arc<[NamespaceBinding]>,
+    attributes: &'a [LiteralAttribute],
+    computed_attributes: &'a [ComputedAttribute],
+    body: &'a [Instruction],
+}
+
+fn prepare_element_execution<'a>(
+    inputs: &SequenceInputs<'_>,
+    instruction: &'a Instruction,
+    execution: SequenceContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<ElementExecutionParts<'a>, ExecutionFailure> {
+    match instruction {
+        Instruction::LiteralElement {
+            name,
+            namespaces,
+            attributes,
+            computed_attributes,
+            body,
+            ..
+        } => Ok(ElementExecutionParts {
+            name: name.clone(),
+            namespaces: Arc::clone(namespaces),
+            attributes,
+            computed_attributes,
+            body,
+        }),
+        Instruction::ContextNameElement {
+            namespace_override,
+            static_namespaces,
+            computed_attributes,
+            body,
+            location,
+        } => {
+            let (name, namespaces) = resolve_context_element_name(
+                inputs,
+                execution,
+                namespace_override.as_deref(),
+                static_namespaces,
+                location,
+                control,
+            )?;
+            Ok(ElementExecutionParts {
+                name,
+                namespaces,
+                attributes: &[],
+                computed_attributes,
+                body,
+            })
+        }
+        _ => unreachable!("execute_literal_element receives an element instruction"),
+    }
+}
+
+fn resolve_context_element_name(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    namespace_override: Option<&str>,
+    static_namespaces: &[crate::xml::quick_xml_experiment::NamespaceBinding],
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    control: &mut InvocationControl,
+) -> Result<
+    (
+        crate::xml::quick_xml_experiment::ExpandedName,
+        Arc<[crate::xml::quick_xml_experiment::NamespaceBinding]>,
+    ),
+    ExecutionFailure,
+> {
+    control
+        .charge(WorkDomain::XPathNodeVisit, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let context_name = execution_context_name(inputs, execution).ok_or_else(|| {
+        failure_at(
+            "XTDE0820",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            "xsl:element name AVT evaluated to an empty lexical QName",
+        )
+    })?;
+    let prefix = execution_context_prefix(inputs, execution);
+    let namespace = match namespace_override {
+        Some("") => None,
+        Some(namespace) => Some(namespace.to_owned()),
+        None => static_namespaces
+            .iter()
+            .find(|binding| binding.prefix.as_deref() == prefix)
+            .map(|binding| binding.namespace.clone()),
+    };
+    if prefix.is_some() && namespace.is_none() {
+        return Err(failure_at(
+            "XTDE0830",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            location.clone(),
+            "xsl:element dynamic name uses a prefix not bound by its static namespace context",
+        ));
+    }
+    let namespaces = match (prefix, namespace.as_deref()) {
+        (Some(prefix), Some(namespace)) => {
+            Arc::from([crate::xml::quick_xml_experiment::NamespaceBinding {
+                prefix: Some(prefix.to_owned()),
+                namespace: namespace.to_owned(),
+            }])
+        }
+        (None, Some(namespace)) => {
+            Arc::from([crate::xml::quick_xml_experiment::NamespaceBinding {
+                prefix: None,
+                namespace: namespace.to_owned(),
+            }])
+        }
+        _ => Arc::from([]),
+    };
+    Ok((
+        crate::xml::quick_xml_experiment::ExpandedName {
+            namespace,
+            local: context_name.local.clone(),
+        },
+        namespaces,
+    ))
 }
 
 fn execution_source_focus<'a>(
@@ -2066,6 +2182,18 @@ fn execution_context_name<'a>(
     execution
         .node
         .and_then(|node| inputs.source.and_then(|source| source.name(node)))
+}
+
+fn execution_context_prefix<'a>(
+    inputs: &'a SequenceInputs<'a>,
+    execution: SequenceContext<'a>,
+) -> Option<&'a str> {
+    if execution.temporary_focus.is_some() || execution.atomic_focus.is_some() {
+        return None;
+    }
+    execution
+        .node
+        .and_then(|node| inputs.source.and_then(|source| source.prefix(node)))
 }
 
 fn execution_context_lexical_name(

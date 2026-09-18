@@ -4711,6 +4711,13 @@ host lifecycle.
     existing result-node invariants, budgets, and validated constructors.
   - [x] Static computed-element namespace URIs compile to retained result
     bindings without recurring runtime QName work.
+  - [x] Exact context-name computed elements (`name="{name()}"` and
+    `name="{name(.)}"`) resolve their lexical QName through the retained
+    stylesheet static namespace context at execution. Seven OASIS cases leave
+    the generic dynamic-name frontier and one expected-error case now reports
+    the required runtime `XTDE0830`; arbitrary name and namespace AVTs remain
+    unsupported and the exact lower bound remains 1,565.
+    [Evidence](../Evidence/oasis-xslt10-context-name-computed-element-2026-09-18.md)
   - [x] Variable-valued `xsl:copy-of` preserves atomic, source-node, and
     temporary-tree semantics without introducing a legacy-only value model.
   - [x] Bounded `xsl:copy-of` path unions evaluate each typed alternative,

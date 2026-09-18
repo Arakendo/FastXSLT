@@ -240,18 +240,28 @@ fn observe_instructions(
                 computed_attributes,
                 body,
                 ..
-            } => {
-                observe_literal_element_attributes(
+            } => (
+                observe_element_constructor(
+                    Some(*origin),
                     computed_attributes,
                     instruction_count,
                     feature_counts,
-                )?;
-                let feature = match origin {
-                    ElementConstructorOrigin::Literal => SemanticFeature::LiteralElement,
-                    ElementConstructorOrigin::ComputedStatic => SemanticFeature::ComputedElement,
-                };
-                (feature, Some(body.as_slice()))
-            }
+                )?,
+                Some(body.as_slice()),
+            ),
+            Instruction::ContextNameElement {
+                computed_attributes,
+                body,
+                ..
+            } => (
+                observe_element_constructor(
+                    None,
+                    computed_attributes,
+                    instruction_count,
+                    feature_counts,
+                )?,
+                Some(body.as_slice()),
+            ),
             Instruction::Text { .. } => (SemanticFeature::Text, None),
             Instruction::ProcessingInstructionNode { .. } => {
                 (SemanticFeature::ProcessingInstruction, None)
@@ -314,19 +324,41 @@ fn observe_instructions(
         if let Some(body) = body {
             observe_instructions(body, instruction_count, feature_counts)?;
         }
-        if let Instruction::Choose {
-            branches,
-            otherwise,
-            ..
-        } = instruction
-        {
-            for branch in branches {
-                observe_instructions(&branch.body, instruction_count, feature_counts)?;
-            }
-            observe_instructions(otherwise, instruction_count, feature_counts)?;
-        }
+        observe_nested_choose(instruction, instruction_count, feature_counts)?;
     }
     Ok(())
+}
+
+fn observe_nested_choose(
+    instruction: &Instruction,
+    instruction_count: &mut usize,
+    feature_counts: &mut BTreeMap<SemanticFeature, usize>,
+) -> Result<(), InspectionFailure> {
+    let Instruction::Choose {
+        branches,
+        otherwise,
+        ..
+    } = instruction
+    else {
+        return Ok(());
+    };
+    for branch in branches {
+        observe_instructions(&branch.body, instruction_count, feature_counts)?;
+    }
+    observe_instructions(otherwise, instruction_count, feature_counts)
+}
+
+fn observe_element_constructor(
+    origin: Option<ElementConstructorOrigin>,
+    computed_attributes: &[ComputedAttribute],
+    instruction_count: &mut usize,
+    feature_counts: &mut BTreeMap<SemanticFeature, usize>,
+) -> Result<SemanticFeature, InspectionFailure> {
+    observe_literal_element_attributes(computed_attributes, instruction_count, feature_counts)?;
+    Ok(match origin {
+        Some(ElementConstructorOrigin::Literal) => SemanticFeature::LiteralElement,
+        Some(ElementConstructorOrigin::ComputedStatic) | None => SemanticFeature::ComputedElement,
+    })
 }
 
 fn observe_literal_element_attributes(

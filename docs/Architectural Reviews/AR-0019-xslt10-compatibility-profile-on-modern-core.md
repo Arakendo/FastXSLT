@@ -1939,3 +1939,11 @@ maintained redistributable legacy suite becomes available.
   presentation differences remain visible, so the exact lower bound remains
   1,565.
   [Evidence](../Evidence/oasis-xslt10-html-ampersand-curly-and-void-content-2026-09-17.md)
+- 2026-09-18 -- Exact `xsl:element name="{name()}"` and `name="{name(.)}"`
+  forms now retain the instruction's static namespace context and resolve the
+  context node's lexical QName at execution. Seven cases leave the generic
+  `FXST1047` frontier; one unchanged expected-error case now reaches and
+  reports runtime `XTDE0830` for a source prefix unavailable in that static
+  context. The exact lower bound remains 1,565, and arbitrary name/namespace
+  AVTs remain unsupported.
+  [Evidence](../Evidence/oasis-xslt10-context-name-computed-element-2026-09-18.md)

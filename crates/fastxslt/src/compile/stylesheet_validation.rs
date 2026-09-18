@@ -24,6 +24,7 @@ fn validate_named_calls(
     for instruction in instructions {
         match instruction {
             Instruction::LiteralElement { body, .. }
+            | Instruction::ContextNameElement { body, .. }
             | Instruction::ForEachVariable { body, .. }
             | Instruction::ForEachStaticIntegerRange { body, .. }
             | Instruction::ForEachNodes { body, .. }

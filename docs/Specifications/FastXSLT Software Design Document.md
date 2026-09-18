@@ -738,6 +738,15 @@ statically-named `xsl:attribute` with a variable value: compilation retains it
 as a distinct computed-attribute feature, while execution materializes it before
 children without exposing a mutable result-node API.
 
+The private computed-element path additionally admits the exact context-name
+AVTs `name="{name()}"` and `name="{name(.)}"`. Compilation retains the
+instruction's in-scope namespace bindings and optional static namespace
+override; execution resolves the context node's lexical prefix through that
+static context before constructing the ordinary semantic result element.
+Unbound prefixes and empty names remain structured dynamic errors. This does
+not admit arbitrary name expressions, dynamic namespace AVTs, or a public
+dynamic-QName representation.
+
 Compilation may eventually attach required navigation, retention, buffering,
 or evaluation capabilities to normalized expressions and templates. This is a
 reserved ownership seam, not an accepted metadata schema or requirement to

@@ -361,7 +361,9 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
 
 fn instruction_owned(value: &Instruction) -> usize {
     match value {
-        Instruction::LiteralElement { .. } => literal_element_instruction_owned(value),
+        Instruction::LiteralElement { .. } | Instruction::ContextNameElement { .. } => {
+            element_instruction_owned(value)
+        }
         Instruction::Text { value, location } | Instruction::CommentNode { value, location } => {
             value.capacity() + location_owned(location)
         }
@@ -399,11 +401,9 @@ fn instruction_owned(value: &Instruction) -> usize {
         instruction @ (Instruction::SourceNodeVariable { .. }
         | Instruction::SourceVariablePathVariable { .. }
         | Instruction::Xslt10ForEachTextTreeVariable { .. }) => path_binding_owned(instruction),
-        Instruction::SourceNodeUnionVariable {
-            name,
-            sources,
-            location,
-        } => name.capacity() + vec_owned(sources, String::capacity) + location_owned(location),
+        instruction @ Instruction::SourceNodeUnionVariable { .. } => {
+            source_node_union_owned(instruction)
+        }
         instruction @ Instruction::TemporaryTreeVariable { .. } => {
             temporary_tree_variable_owned(instruction)
         }
@@ -460,6 +460,44 @@ fn instruction_owned(value: &Instruction) -> usize {
             location,
         } => copy_owned(attributes, body, location),
     }
+}
+
+fn source_node_union_owned(value: &Instruction) -> usize {
+    let Instruction::SourceNodeUnionVariable {
+        name,
+        sources,
+        location,
+    } = value
+    else {
+        unreachable!("source-node-union retention requires its binding instruction")
+    };
+    name.capacity() + vec_owned(sources, String::capacity) + location_owned(location)
+}
+
+fn element_instruction_owned(value: &Instruction) -> usize {
+    match value {
+        Instruction::LiteralElement { .. } => literal_element_instruction_owned(value),
+        Instruction::ContextNameElement { .. } => context_name_element_owned(value),
+        _ => unreachable!("element retention requires an element instruction"),
+    }
+}
+
+fn context_name_element_owned(value: &Instruction) -> usize {
+    let Instruction::ContextNameElement {
+        namespace_override,
+        static_namespaces,
+        computed_attributes,
+        body,
+        location,
+    } = value
+    else {
+        unreachable!("context-name retention requires a context-name element instruction")
+    };
+    option_string_owned(namespace_override.as_ref())
+        + arc_slice_owned(static_namespaces, namespace_owned)
+        + vec_owned(computed_attributes, computed_attribute_owned)
+        + vec_owned(body, instruction_owned)
+        + location_owned(location)
 }
 
 fn sequence_nodes_owned(select: &ForDistinctValuesExpression, location: &SourceLocation) -> usize {
