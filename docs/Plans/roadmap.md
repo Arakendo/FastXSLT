@@ -4718,6 +4718,12 @@ host lifecycle.
     the required runtime `XTDE0830`; arbitrary name and namespace AVTs remain
     unsupported and the exact lower bound remains 1,565.
     [Evidence](../Evidence/oasis-xslt10-context-name-computed-element-2026-09-18.md)
+  - [x] Classify structurally complete `format-number()` calls with an arity
+    other than two or three as static `XPST0017 / invalid` before operand and
+    picture capability selection. Four unchanged OASIS cases leave the generic
+    `FXXP1009` frontier; ten valid-arity unsupported cases remain visible and
+    the exact lower bound stays 1,565.
+    [Evidence](../Evidence/oasis-xslt10-format-number-arity-classification-2026-09-18.md)
   - [x] Variable-valued `xsl:copy-of` preserves atomic, source-node, and
     temporary-tree semantics without introducing a legacy-only value model.
   - [x] Bounded `xsl:copy-of` path unions evaluate each typed alternative,

@@ -112,8 +112,15 @@ fn operand_capacity(value: &Operand) -> usize {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct FormatNumberFailure {
+    pub(crate) kind: FormatNumberFailureKind,
     pub(crate) detail: String,
     pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum FormatNumberFailureKind {
+    InvalidArity,
+    Unsupported,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -131,6 +138,15 @@ pub(crate) fn parse(
         .strip_prefix("format-number(")
         .and_then(|value| value.strip_suffix(')'))
         .ok_or_else(|| unsupported(expression, location))?;
+    if let Some(arity) = top_level_argument_count(arguments)
+        && !matches!(arity, 2 | 3)
+    {
+        return Err(FormatNumberFailure {
+            kind: FormatNumberFailureKind::InvalidArity,
+            detail: format!("format-number has invalid arity {arity}"),
+            location: location.clone(),
+        });
+    }
     let (number, remainder) =
         split_top_level_comma(arguments).ok_or_else(|| unsupported(expression, location))?;
     let (picture, requested_format_lexical) = match split_top_level_comma(remainder) {
@@ -565,8 +581,34 @@ fn split_top_level_comma(value: &str) -> Option<(&str, &str)> {
     None
 }
 
+fn top_level_argument_count(value: &str) -> Option<usize> {
+    if value.trim().is_empty() {
+        return Some(0);
+    }
+    let mut depth = 0_usize;
+    let mut quote = None;
+    let mut count = 1_usize;
+    for character in value.chars() {
+        if let Some(delimiter) = quote {
+            if character == delimiter {
+                quote = None;
+            }
+            continue;
+        }
+        match character {
+            '\'' | '"' => quote = Some(character),
+            '(' => depth += 1,
+            ')' => depth = depth.checked_sub(1)?,
+            ',' if depth == 0 => count += 1,
+            _ => {}
+        }
+    }
+    (depth == 0 && quote.is_none()).then_some(count)
+}
+
 fn unsupported(expression: &str, location: &SourceLocation) -> FormatNumberFailure {
     FormatNumberFailure {
+        kind: FormatNumberFailureKind::Unsupported,
         detail: format!(
             "the private formatting slice supports exact nonnegative decimals or variables, number() over a string literal, substring-after() over string literals, and picture '#,###.00': {expression}"
         ),
@@ -582,13 +624,38 @@ mod tests {
     use crate::xdm::owned_tree_experiment::SourceLocation;
     use crate::xml::quick_xml_experiment::ExpandedName;
 
-    use super::{DecimalFormat, FormatNumberEvaluationFailure, evaluate, parse};
+    use super::{
+        DecimalFormat, FormatNumberEvaluationFailure, FormatNumberFailureKind, evaluate, parse,
+    };
 
     fn location() -> SourceLocation {
         SourceLocation {
             resource: "memory:format-number".to_owned(),
             span: 0..1,
         }
+    }
+
+    #[test]
+    fn distinguishes_invalid_arity_from_unsupported_operand_shapes() {
+        for source in [
+            "format-number()",
+            "format-number(1)",
+            "format-number(1, '0', 'named', 'extra')",
+        ] {
+            assert_eq!(
+                parse(source, &location())
+                    .expect_err("invalid arity must fail")
+                    .kind,
+                FormatNumberFailureKind::InvalidArity,
+                "{source}"
+            );
+        }
+        assert_eq!(
+            parse("format-number(1, concat('0', '0'))", &location())
+                .expect_err("unsupported operand must fail")
+                .kind,
+            FormatNumberFailureKind::Unsupported
+        );
     }
 
     #[test]

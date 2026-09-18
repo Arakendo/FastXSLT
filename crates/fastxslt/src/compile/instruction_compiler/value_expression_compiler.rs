@@ -4,9 +4,9 @@ use super::{
     BooleanParseFailure, CaseConversionParseFailure, CompileCategory, CompileFailure,
     DeepEqualFailureKind, DefaultCollationParseFailure, Document, DurationComponentParseFailure,
     EffectiveBooleanFailure, EncodeForUriParseFailure, EscapeHtmlUriParseFailure, ExpandedName,
-    IriToUriParseFailure, LocationPath, NodeId, PathFailure, PathStep, ScalarExpression,
-    SequenceCardinalityParseFailure, SourceLocation, StringLengthParseFailure, ValueExpression,
-    XSLT_NAMESPACE, boolean_expression_compiler, classify_atomic_path_operand,
+    FormatNumberFailureKind, IriToUriParseFailure, LocationPath, NodeId, PathFailure, PathStep,
+    ScalarExpression, SequenceCardinalityParseFailure, SourceLocation, StringLengthParseFailure,
+    ValueExpression, XSLT_NAMESPACE, boolean_expression_compiler, classify_atomic_path_operand,
     classify_missing_context, conditional_expression_compiler, effective_xpath_default_namespace,
     invalid, is_ascii_ncname, map_path_failure, namespace_for_prefix, optional_attribute,
     parse_case_conversion, parse_castable, parse_context_focus_equality, parse_decimal_sum_for,
@@ -513,13 +513,18 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
             })?,
         ))
     } else if expression.trim_start().starts_with("format-number(") {
-        let mut format =
-            parse_format_number(expression, location).map_err(|failure| CompileFailure {
-                code: "FXXP1009",
-                category: CompileCategory::Unsupported,
+        let mut format = parse_format_number(expression, location).map_err(|failure| {
+            let (code, category) = match failure.kind {
+                FormatNumberFailureKind::InvalidArity => ("XPST0017", CompileCategory::Invalid),
+                FormatNumberFailureKind::Unsupported => ("FXXP1009", CompileCategory::Unsupported),
+            };
+            CompileFailure {
+                code,
+                category,
                 detail: failure.detail,
                 location: failure.location,
-            })?;
+            }
+        })?;
         if let Some(lexical) = format.requested_format_lexical().map(str::to_owned) {
             let name = super::super::compile_expanded_qname(
                 document,

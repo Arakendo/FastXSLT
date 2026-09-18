@@ -1947,3 +1947,10 @@ maintained redistributable legacy suite becomes available.
   context. The exact lower bound remains 1,565, and arbitrary name/namespace
   AVTs remain unsupported.
   [Evidence](../Evidence/oasis-xslt10-context-name-computed-element-2026-09-18.md)
+- 2026-09-18 -- Structurally complete `format-number()` calls now classify
+  top-level arity before operand and picture capability. Four unchanged OASIS
+  cases with zero, one, or four arguments move from generic `FXXP1009 /
+  unsupported` to static `XPST0017 / invalid`; ten valid-arity unsupported
+  cases remain explicit. Aggregate lifecycle and comparison counts are
+  unchanged, including the 1,565 exact-result lower bound.
+  [Evidence](../Evidence/oasis-xslt10-format-number-arity-classification-2026-09-18.md)

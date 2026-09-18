@@ -571,6 +571,13 @@ notation, and general numeric formatting remain outside this narrow static
 value-expression form. Quoted ordinary non-convertible values fold to `NaN`;
 special numeric lexicals remain explicit.
 
+Recognized `format-number()` calls validate their structurally complete
+top-level arity before operand and picture capability selection. The supported
+XSLT arities are two and three; another arity reports static `XPST0017`, while
+a valid-arity call outside the admitted formatting slice remains explicitly
+unsupported. Malformed or unbalanced syntax is not inferred to be an arity
+error.
+
 A typed `number(location-path)` value operation evaluates the shared path,
 requires zero or one selected node, and converts its XDM string value to a
 canonical finite decimal. Empty selections and ordinary non-convertible

@@ -156,6 +156,24 @@ fn xslt10_decimal_formats_are_statically_resolved() {
 }
 
 #[test]
+fn format_number_invalid_arity_is_a_static_error() {
+    for select in [
+        "format-number()",
+        "format-number(1)",
+        "format-number(1, '0', 'named', 'extra')",
+    ] {
+        let bytes = format!(
+            r#"<xsl:stylesheet version="1.0" xmlns:xsl="{}"><xsl:template match="/"><xsl:value-of select="{select}"/></xsl:template></xsl:stylesheet>"#,
+            super::XSLT_NAMESPACE
+        );
+        let document = parse_stylesheet("test:format-number-arity.xsl", bytes.as_bytes());
+        let failure = compile_stylesheet(&document).expect_err("invalid arity must fail");
+        assert_eq!(failure.code, "XPST0017", "{select}");
+        assert_eq!(failure.category, CompileCategory::Invalid, "{select}");
+    }
+}
+
+#[test]
 fn xslt10_decimal_format_rejects_conflicts_and_non_distinct_symbols() {
     for (declarations, code) in [
         (

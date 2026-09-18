@@ -46,7 +46,9 @@ use crate::xpath::focus_sum_for_experiment::parse as parse_focus_sum_for;
 use crate::xpath::for_distinct_values_experiment::{
     ForExpressionFailure, parse as parse_for_distinct_values,
 };
-use crate::xpath::format_number_experiment::parse as parse_format_number;
+use crate::xpath::format_number_experiment::{
+    FormatNumberFailureKind, parse as parse_format_number,
+};
 use crate::xpath::integer_for_experiment::parse as parse_integer_for;
 use crate::xpath::iri_to_uri_expression::{
     IriToUriParseFailure, parse as parse_iri_to_uri, recognizes as recognizes_iri_to_uri,
