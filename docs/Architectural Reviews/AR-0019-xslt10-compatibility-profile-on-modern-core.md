@@ -1954,3 +1954,10 @@ maintained redistributable legacy suite becomes available.
   cases remain explicit. Aggregate lifecycle and comparison counts are
   unchanged, including the 1,565 exact-result lower bound.
   [Evidence](../Evidence/oasis-xslt10-format-number-arity-classification-2026-09-18.md)
+- 2026-09-18 -- Exact string-literal AVTs on `xsl:sort` `data-type` and
+  `order` now fold into the existing typed sort plan at compilation. Two
+  unchanged Microsoft cases advance to a later computed-name boundary, while
+  one variable-valued Lotus order is now honestly unsupported instead of
+  invalid. The net `FXST1044` frontier falls from 17 to 16; aggregate counts
+  and the 1,565 exact lower bound remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-static-sort-control-avts-2026-09-18.md)

@@ -694,6 +694,13 @@ as focus for the instruction body without changing the surrounding current
 template rule or current mode. This is not a general `xsl:for-each` or sequence
 iteration contract.
 
+The admitted `xsl:sort` controls compile literal `text`/`number` data types and
+`ascending`/`descending` orders into typed plan values. The exact
+one-expression AVT whose expression is a string literal folds to the same plan
+at compilation. Variable-valued, path-valued, mixed-text, and other dynamic
+sort controls remain explicit unsupported boundaries; execution does not gain
+a separate sort-control AVT evaluator.
+
 The bounded include slice also admits one three-module include chain in which a
 simple fragment selects exactly one embedded stylesheet by `xml:id`. Resource
 bytes are acquired under the fragmentless identity before fragment semantics

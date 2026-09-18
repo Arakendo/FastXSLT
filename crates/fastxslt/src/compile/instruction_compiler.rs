@@ -1018,29 +1018,15 @@ pub(super) fn compile_sort_keys(
         } else {
             SortSelect::LocationPath(compile_sort_path(document, child, select, &location)?)
         };
-        let data_type = match optional_attribute(document, child, None, "data-type") {
-            None | Some("text") => SortDataType::Text,
-            Some("number") => SortDataType::Number,
-            Some(value) => {
-                return Err(unsupported(
-                    "FXST1044",
-                    format!("unsupported xsl:sort data-type: {value}"),
-                    &location,
-                ));
-            }
-        };
+        let data_type = compile_sort_data_type(
+            optional_attribute(document, child, None, "data-type"),
+            &location,
+        )?;
         validate_sort_collation_metadata(document, child, data_type, &location)?;
-        let order = match optional_attribute(document, child, None, "order") {
-            None | Some("ascending") => SortOrder::Ascending,
-            Some("descending") => SortOrder::Descending,
-            Some(value) => {
-                return Err(invalid(
-                    "XTDE0030",
-                    format!("invalid xsl:sort order: {value}"),
-                    &location,
-                ));
-            }
-        };
+        let order = compile_sort_order(
+            optional_attribute(document, child, None, "order"),
+            &location,
+        )?;
         sorts.push(SortKey {
             select,
             data_type,
@@ -1051,6 +1037,54 @@ pub(super) fn compile_sort_keys(
         sort_nodes.push(child);
     }
     Ok((sorts, sort_nodes))
+}
+
+fn compile_sort_data_type(
+    value: Option<&str>,
+    location: &SourceLocation,
+) -> Result<SortDataType, CompileFailure> {
+    match value.map(fold_static_sort_control_avt) {
+        None | Some(Some("text")) => Ok(SortDataType::Text),
+        Some(Some("number")) => Ok(SortDataType::Number),
+        Some(Some(value)) => Err(unsupported(
+            "FXST1044",
+            format!("unsupported xsl:sort data-type: {value}"),
+            location,
+        )),
+        Some(None) => Err(unsupported(
+            "FXST1044",
+            "dynamic xsl:sort data-type is outside the admitted sorting slice",
+            location,
+        )),
+    }
+}
+
+fn compile_sort_order(
+    value: Option<&str>,
+    location: &SourceLocation,
+) -> Result<SortOrder, CompileFailure> {
+    match value.map(fold_static_sort_control_avt) {
+        None | Some(Some("ascending")) => Ok(SortOrder::Ascending),
+        Some(Some("descending")) => Ok(SortOrder::Descending),
+        Some(Some(value)) => Err(invalid(
+            "XTDE0030",
+            format!("invalid xsl:sort order: {value}"),
+            location,
+        )),
+        Some(None) => Err(unsupported(
+            "FXST1044",
+            "dynamic xsl:sort order is outside the admitted sorting slice",
+            location,
+        )),
+    }
+}
+
+fn fold_static_sort_control_avt(value: &str) -> Option<&str> {
+    if !value.contains(['{', '}']) {
+        return Some(value);
+    }
+    let expression = value.strip_prefix('{')?.strip_suffix('}')?.trim();
+    xpath_string_literal(expression)
 }
 
 fn validate_sort_collation_metadata(

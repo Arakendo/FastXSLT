@@ -4724,6 +4724,12 @@ host lifecycle.
     `FXXP1009` frontier; ten valid-arity unsupported cases remain visible and
     the exact lower bound stays 1,565.
     [Evidence](../Evidence/oasis-xslt10-format-number-arity-classification-2026-09-18.md)
+  - [x] Fold exact one-expression string-literal AVTs on `xsl:sort` `data-type`
+    and `order` into the existing typed sort plan. Two unchanged cases advance
+    to their later computed-name boundary, one genuinely dynamic order is
+    reclassified from invalid to unsupported, and the net `FXST1044` frontier
+    falls from 17 to 16 without changing the 1,565 exact lower bound.
+    [Evidence](../Evidence/oasis-xslt10-static-sort-control-avts-2026-09-18.md)
   - [x] Variable-valued `xsl:copy-of` preserves atomic, source-node, and
     temporary-tree semantics without introducing a legacy-only value model.
   - [x] Bounded `xsl:copy-of` path unions evaluate each typed alternative,

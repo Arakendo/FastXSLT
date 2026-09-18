@@ -174,6 +174,32 @@ fn format_number_invalid_arity_is_a_static_error() {
 }
 
 #[test]
+fn sort_controls_fold_exact_literal_avts() {
+    let document = parse_stylesheet(
+        "test:sort-static-avt.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+              <xsl:template match="/"><xsl:for-each select="doc/item">
+                <xsl:sort select="@rank" data-type="{'number'}" order="{'descending'}"/>
+              </xsl:for-each></xsl:template>
+            </xsl:stylesheet>"#,
+    );
+    compile_stylesheet(&document).expect("literal sort-control AVTs should fold statically");
+
+    let dynamic = parse_stylesheet(
+        "test:sort-dynamic-avt.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+              <xsl:param name="kind" select="'number'"/>
+              <xsl:template match="/"><xsl:for-each select="doc/item">
+                <xsl:sort select="@rank" data-type="{$kind}"/>
+              </xsl:for-each></xsl:template>
+            </xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&dynamic).expect_err("dynamic sort control stays explicit");
+    assert_eq!(failure.code, "FXST1044");
+    assert_eq!(failure.category, CompileCategory::Unsupported);
+}
+
+#[test]
 fn xslt10_decimal_format_rejects_conflicts_and_non_distinct_symbols() {
     for (declarations, code) in [
         (
