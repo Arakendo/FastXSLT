@@ -2103,3 +2103,10 @@ maintained redistributable legacy suite becomes available.
   1,612; initialization reaches 2,002 and execution reaches 1,897. No sort-
   specific index or general function evaluator is added.
   [Evidence](../Evidence/oasis-xslt10-key-sort-selection-2026-09-18.md)
+- 2026-09-18 -- Structurally complete `key()` calls with any arity other than
+  two now report `XPST0017 / invalid` before operand capability selection.
+  Three unchanged Microsoft expected-error cases leave the generic unsupported
+  frontier and report the precise static failure. They were already counted as
+  observed errors, so the 1,612 exact lower bound and other totals remain
+  unchanged. Nested and dynamic two-argument forms remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-key-arity-classification-2026-09-18.md)

@@ -843,8 +843,9 @@ must remain differential-testable against that scan and must be source-derived
 and invocation-owned unless a later review admits another immutable prepared
 representation; it must not become a global or cross-snapshot cache. Variable
 references and recursive `key()` calls in the declaration's `use` expression
-remain static errors. Dynamic key names and values remain outside this lookup
-slice.
+remain static errors. A structurally complete `key()` call with any arity other
+than two reports `XPST0017` before supported-operand selection. Dynamic key
+names and values remain outside this lookup slice.
 
 For a computed-element name without AVT delimiters, compilation validates the
 lexical QName immediately. A malformed static name reports `XTDE0820`; a valid

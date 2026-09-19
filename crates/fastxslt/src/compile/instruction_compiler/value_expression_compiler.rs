@@ -632,6 +632,13 @@ pub(super) fn compile_xslt10_literal_key_lookup(
         )
     })?;
     let arguments = &expression[4..close];
+    if top_level_argument_count(arguments).is_some_and(|count| count != 2) {
+        return Err(invalid(
+            "XPST0017",
+            "key() requires exactly two arguments",
+            location,
+        ));
+    }
     let (name, value) = split_static_key_arguments(arguments, location).ok_or_else(|| {
         unsupported(
             "FXXP1023",
@@ -661,6 +668,31 @@ pub(super) fn compile_xslt10_literal_key_lookup(
         tail,
         location: location.clone(),
     })
+}
+
+fn top_level_argument_count(arguments: &str) -> Option<usize> {
+    if arguments.trim().is_empty() {
+        return Some(0);
+    }
+    let mut depth = 0_usize;
+    let mut quote = None;
+    let mut count = 1_usize;
+    for character in arguments.chars() {
+        if let Some(delimiter) = quote {
+            if character == delimiter {
+                quote = None;
+            }
+            continue;
+        }
+        match character {
+            '\'' | '"' => quote = Some(character),
+            '(' => depth += 1,
+            ')' => depth = depth.checked_sub(1)?,
+            ',' if depth == 0 => count += 1,
+            _ => {}
+        }
+    }
+    (depth == 0 && quote.is_none()).then_some(count)
 }
 
 fn parse_xslt10_key_predicate<'a>(
@@ -2258,7 +2290,7 @@ fn compile_root_expression(
 mod tests {
     use super::{
         ValueCompatibilityMode, ValueExpression, ValueStaticContext, compile_binary_numeric_node,
-        compile_binary_numeric_path,
+        compile_binary_numeric_path, top_level_argument_count,
     };
     use crate::xdm::owned_tree_experiment::SourceLocation;
 
@@ -2307,5 +2339,18 @@ mod tests {
                 "failed to compile XSLT 1.0 arithmetic: {expression}"
             );
         }
+    }
+
+    #[test]
+    fn counts_key_arguments_without_splitting_nested_calls_or_literals() {
+        assert_eq!(top_level_argument_count(""), Some(0));
+        assert_eq!(top_level_argument_count("'name'"), Some(1));
+        assert_eq!(top_level_argument_count("'name', path"), Some(2));
+        assert_eq!(
+            top_level_argument_count("'outer', key('inner', 'a,b')/value"),
+            Some(2)
+        );
+        assert_eq!(top_level_argument_count("'name', 'value', 3"), Some(3));
+        assert_eq!(top_level_argument_count("'name', broken("), None);
     }
 }

@@ -4840,6 +4840,12 @@ host lifecycle.
     1,610 to 1,612 without adding a sort-specific index or general function
     evaluator.
     [Evidence](../Evidence/oasis-xslt10-key-sort-selection-2026-09-18.md)
+  - [x] Classify structurally complete `key()` calls with any arity other than
+    two as `XPST0017 / invalid` before operand-capability selection. Three
+    unchanged Microsoft expected-error cases now report the precise static
+    failure; they were already observed errors, so the 1,612 exact lower bound
+    and other corpus totals remain unchanged.
+    [Evidence](../Evidence/oasis-xslt10-key-arity-classification-2026-09-18.md)
   - [x] Classify structurally complete `format-number()` calls with an arity
     other than two or three as static `XPST0017 / invalid` before operand and
     picture capability selection. Four unchanged OASIS cases leave the generic
