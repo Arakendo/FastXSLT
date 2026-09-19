@@ -616,7 +616,7 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     })
 }
 
-fn compile_xslt10_literal_key_lookup(
+pub(super) fn compile_xslt10_literal_key_lookup(
     document: &Document,
     element: NodeId,
     expression: &str,

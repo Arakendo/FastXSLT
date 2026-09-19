@@ -2121,6 +2121,36 @@ fn xslt10_key_lookup_converts_static_numeric_values_and_key_use_numbers() {
 }
 
 #[test]
+fn xslt10_key_node_selection_preserves_document_order_and_focus() {
+    const SOURCE: &str = "urn:fastxslt:key-for-each:source";
+    const STYLESHEET: &str = "urn:fastxslt:key-for-each:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:key name="codes" match="item" use="@code"/><xsl:key name="codes" match="entry" use="@code"/><xsl:template match="/"><out><each><xsl:for-each select="key('codes', 'x')"><xsl:value-of select="position()"/><xsl:text>/</xsl:text><xsl:value-of select="last()"/><xsl:text>:</xsl:text><xsl:value-of select="@name"/><xsl:text>;</xsl:text></xsl:for-each></each><applied><xsl:apply-templates select="key('codes', 'x')" mode="keyed"/></applied></out></xsl:template><xsl:template match="item" mode="keyed"><xsl:value-of select="position()"/><xsl:text>/</xsl:text><xsl:value-of select="last()"/><xsl:text>:</xsl:text><xsl:value-of select="@name"/><xsl:text>;</xsl:text></xsl:template><xsl:template match="entry" mode="keyed"><xsl:value-of select="position()"/><xsl:text>/</xsl:text><xsl:value-of select="last()"/><xsl:text>:</xsl:text><xsl:value-of select="@name"/><xsl:text>;</xsl:text></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item code='x' name='a'/><entry code='x' name='b'/><item code='x' name='c'/></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("key-for-each", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["key-for-each"].serialized,
+        "<out><each>1/3:a;2/3:b;3/3:c;</each><applied>1/3:a;2/3:b;3/3:c;</applied></out>"
+    );
+}
+
+#[test]
 fn xslt10_computed_attribute_for_each_concatenates_selected_string_values() {
     const SOURCE: &str = "urn:fastxslt:computed-attribute-for-each:source";
     const STYLESHEET: &str = "urn:fastxslt:computed-attribute-for-each:stylesheet";

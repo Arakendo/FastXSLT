@@ -36,6 +36,8 @@ mod dynamic_attribute_name;
 mod dynamic_document;
 #[path = "dynamic_element_name.rs"]
 mod dynamic_element_name;
+#[path = "key_lookup.rs"]
+mod key_lookup;
 #[path = "match_sequence_predicate.rs"]
 mod match_sequence_predicate;
 #[path = "number_executor.rs"]
@@ -3863,6 +3865,9 @@ fn select_apply_nodes(
         ApplySelection::LocationPath(path) => {
             evaluate_location_path_controlled(source, context, path, control)
                 .map_err(|failure| control_failure(failure, inputs.request_id))
+        }
+        ApplySelection::Xslt10KeyLookup(lookup) => {
+            key_lookup::select(inputs, lookup, Some(context), control)
         }
         ApplySelection::PathUnion(alternatives) => {
             evaluate_source_path_union(inputs, source, context, alternatives, control)

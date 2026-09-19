@@ -241,6 +241,12 @@ pub(super) fn parse_apply_selection(
     expression: &str,
     location: SourceLocation,
 ) -> Result<ApplySelection, CompileFailure> {
+    if uses_xslt10_compatibility(document, element) && expression.trim_start().starts_with("key(") {
+        return super::value_expression_compiler::compile_xslt10_literal_key_lookup(
+            document, element, expression, &location,
+        )
+        .map(|lookup| ApplySelection::Xslt10KeyLookup(Box::new(lookup)));
+    }
     if let Some(alternatives) = split_top_level_union(expression) {
         let mut variable = None;
         let mut paths = Vec::new();

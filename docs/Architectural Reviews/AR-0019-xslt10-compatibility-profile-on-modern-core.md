@@ -2033,3 +2033,11 @@ maintained redistributable legacy suite becomes available.
   unchanged. Dynamic values, node sets, unions, context-dependent arithmetic,
   and retained indexes remain outside the slice.
   [Evidence](../Evidence/oasis-xslt10-static-atomic-key-values-2026-09-18.md)
+- 2026-09-18 -- The complete charged key scan now has one private node-
+  selection owner shared by value conversion, `xsl:for-each`, and
+  `xsl:apply-templates`. A focused oracle confirms additive declarations,
+  document order, node identity, and identical focus across both node-set
+  consumers. Four unchanged cases become exact, raising the strict lower bound
+  from 1,587 to 1,591; initialization reaches 1,979 and execution reaches
+  1,875. No source-derived index or wider dynamic-key surface is admitted.
+  [Evidence](../Evidence/oasis-xslt10-key-node-selection-2026-09-18.md)

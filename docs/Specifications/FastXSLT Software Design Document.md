@@ -808,7 +808,12 @@ additively, and restores document order and node identity after an optional
 location-path tail. A declaration `use` expression may be a typed location
 path, string literal, or `number(location-path)`; numeric paths use XSLT 1.0
 first-node conversion under existing work accounting. The reference path does
-not retain an index. Any optimized lookup structure
+not retain an index. Its private node-selection result may feed XSLT 1.0
+first-node string conversion, `xsl:for-each`, or `xsl:apply-templates` through
+the ordinary typed execution plans; those consumers preserve source node
+identity, document order, focus, diagnostics, and work accounting. This does
+not define a public node-set abstraction or admit the lookup in every
+expression position. Any optimized lookup structure
 must remain differential-testable against that scan and must be source-derived
 and invocation-owned unless a later review admits another immutable prepared
 representation; it must not become a global or cross-snapshot cache. Variable

@@ -12,7 +12,7 @@ use super::{
     MatchSequencePredicate, MatchStringPredicate, MatchedTemplate, NamedTemplate, NamespaceBinding,
     OutputSettings, SequenceItemExpression, SortKey, SortSelect, SourceLocation, StylesheetProgram,
     Template, TemplateArgument, TemplateArgumentValue, TemplateParameter, TemplateParameterDefault,
-    ValueExpression, VariableFilteredElementPath, Xslt10AvtPart, Xslt10ConcatPart,
+    ValueExpression, VariableFilteredElementPath, Xslt10AvtPart, Xslt10ConcatPart, Xslt10KeyLookup,
 };
 
 impl StylesheetProgram {
@@ -341,6 +341,7 @@ fn variable_filtered_path_owned(value: &VariableFilteredElementPath) -> usize {
 fn apply_selection_owned(value: &ApplySelection) -> usize {
     match value {
         ApplySelection::LocationPath(path) => path.known_owned_capacity_bytes(),
+        ApplySelection::Xslt10KeyLookup(lookup) => xslt10_key_lookup_owned(lookup),
         ApplySelection::PathUnion(alternatives) => vec_owned(
             alternatives,
             crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,
@@ -370,6 +371,16 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
         }
         ApplySelection::VariableFilteredElementPath(path) => variable_filtered_path_owned(path),
     }
+}
+
+fn xslt10_key_lookup_owned(lookup: &Xslt10KeyLookup) -> usize {
+    name_owned(&lookup.name)
+        + lookup.value.capacity()
+        + lookup
+            .tail
+            .as_ref()
+            .map_or(0, LocationPath::known_owned_capacity_bytes)
+        + location_owned(&lookup.location)
 }
 
 fn instruction_owned(value: &Instruction) -> usize {
@@ -906,15 +917,7 @@ fn arc_slice_owned<T>(values: &Arc<[T]>, nested: impl Fn(&T) -> usize) -> usize 
 fn value_expression_owned(value: &ValueExpression) -> usize {
     match value {
         ValueExpression::LiteralString(value) => value.capacity(),
-        ValueExpression::Xslt10KeyLookup(lookup) => {
-            name_owned(&lookup.name)
-                + lookup.value.capacity()
-                + lookup
-                    .tail
-                    .as_ref()
-                    .map_or(0, LocationPath::known_owned_capacity_bytes)
-                + location_owned(&lookup.location)
-        }
+        ValueExpression::Xslt10KeyLookup(lookup) => xslt10_key_lookup_owned(lookup),
         ValueExpression::LocationPath(path)
         | ValueExpression::Xslt10FirstNodeLocationPath(path)
         | ValueExpression::Xslt10CurrentPredicatePath(path)
