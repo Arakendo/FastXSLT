@@ -2188,3 +2188,11 @@ maintained redistributable legacy suite becomes available.
   execution reaches 1,910. General sequence constructors and modern semantics
   remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-value-of-tree-expression-2026-09-19.md)
+- 2026-09-19 -- `sum($variable)` now requires an existing source-node variable
+  and shares the charged node conversion, XPath numeric conversion,
+  accumulation, and lexical formatting used by `sum(path)`. The unchanged,
+  doubt-annotated Lotus `math84` case becomes exact, raising the strict lower
+  bound from 1,621 to 1,622; initialization reaches 2,011 and execution reaches
+  1,911. Temporary-tree node-set conversion and modern function conversion are
+  not widened.
+  [Evidence](../Evidence/oasis-xslt10-variable-sum-2026-09-19.md)

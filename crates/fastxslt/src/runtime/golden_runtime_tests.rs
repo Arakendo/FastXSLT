@@ -830,6 +830,50 @@ fn xslt10_sum_paths_compose_through_template_arguments_and_computed_attributes()
 }
 
 #[test]
+fn xslt10_sum_accepts_a_source_node_variable() {
+    let source = parse_document(
+        "memory:variable-sum.xml",
+        br"<doc><n>1</n><n>2</n><n>3</n></doc>",
+        ParseLimits {
+            max_events: 20,
+            max_depth: 5,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:variable-sum.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output omit-xml-declaration="yes"/><xsl:template match="doc"><xsl:variable name="values" select="n"/><out><xsl:value-of select="sum($values)"/></out></xsl:template></xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("variable sum should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "variable-sum-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("variable sum should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "variable-sum-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out>6</out>");
+}
+
+#[test]
 fn xslt10_node_set_string_equal_and_not_equal_are_independently_existential() {
     let source = parse_document(
         "memory:node-set-comparison.xml",

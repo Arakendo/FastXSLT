@@ -920,6 +920,7 @@ pub(crate) enum ValueExpression {
     },
     Xslt10PathStringFunction(Box<Xslt10PathStringFunction>),
     Xslt10SumPath(LocationPath),
+    Xslt10VariableSum(String),
     Xslt10PathSubstring(Box<Xslt10PathSubstring>),
     Xslt10PathTranslate(Box<Xslt10PathTranslate>),
     Xslt10Concat(Box<Xslt10ConcatExpression>),

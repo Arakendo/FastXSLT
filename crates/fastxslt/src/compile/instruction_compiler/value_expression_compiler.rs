@@ -306,6 +306,11 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
         )));
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(variable) = parse_xslt10_variable_conversion(expression, "sum")
+    {
+        return Ok(ValueExpression::Xslt10VariableSum(variable.to_owned()));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(path) = compile_xslt10_sum_path(document, element, expression, location)?
     {
         return Ok(ValueExpression::Xslt10SumPath(path));

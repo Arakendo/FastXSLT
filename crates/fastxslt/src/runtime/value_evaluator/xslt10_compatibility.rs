@@ -370,8 +370,46 @@ pub(super) fn sum_path_lexical(
     let (source, context) = required_source_context(inputs, context)?;
     let selected = evaluate_location_path_controlled(source, context, path, control)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    sum_nodes_lexical(inputs, source, &selected, control)
+}
+
+pub(super) fn append_variable_sum(
+    inputs: &SequenceInputs<'_>,
+    variable: &str,
+    variables: &RuntimeVariables,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let source = inputs.source.ok_or_else(|| {
+        failure(
+            "FXRT1004",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "an XSLT 1.0 source-node sum requires a principal source",
+        )
+    })?;
+    let selected = variables
+        .source_nodes(inputs.globals, variable)
+        .ok_or_else(|| {
+            failure(
+                "XPTY0004",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!("sum requires a source-node sequence: ${variable}"),
+            )
+        })?;
+    let value = sum_nodes_lexical(inputs, source, selected, control)?;
+    append_text(result, &value, inputs.request_id, control)
+}
+
+fn sum_nodes_lexical(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    selected: &[NodeId],
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
     let mut sum = 0.0;
-    for node in selected {
+    for &node in selected {
         let value = source
             .string_value_controlled(node, control)
             .map_err(|failure| control_failure(failure, inputs.request_id))?;

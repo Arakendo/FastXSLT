@@ -529,6 +529,11 @@ pub(super) fn execute_value_of(
         ValueExpression::Xslt10SumPath(path) => {
             xslt10_compatibility::append_sum_path(inputs, context, path, result, control)?;
         }
+        ValueExpression::Xslt10VariableSum(variable) => {
+            xslt10_compatibility::append_variable_sum(
+                inputs, variable, variables, result, control,
+            )?;
+        }
         ValueExpression::Xslt10PathSubstring(expression) => {
             xslt10_compatibility::append_path_substring(
                 inputs, context, expression, result, control,
