@@ -726,9 +726,22 @@ fn compile_xslt10_key_name(
             static_namespaces: Arc::from(document.in_scope_namespaces(element)),
         });
     }
+    if let Some(expression) = compile_xslt10_concat(document, element, expression, location)?
+        && expression.parts.iter().all(|part| {
+            matches!(
+                part,
+                Xslt10ConcatPart::Literal(_) | Xslt10ConcatPart::Variable(_)
+            )
+        })
+    {
+        return Ok(Xslt10KeyName::Concat {
+            expression,
+            static_namespaces: Arc::from(document.in_scope_namespaces(element)),
+        });
+    }
     Err(unsupported(
         "FXXP1023",
-        "the admitted key() name is a string literal or one unqualified variable reference",
+        "the admitted key() name is a string literal, one unqualified variable reference, or a literal/variable concat()",
         location,
     ))
 }
@@ -839,6 +852,7 @@ fn closing_function_parenthesis(expression: &str) -> Option<usize> {
 
 fn split_key_arguments(arguments: &str) -> Option<(&str, &str)> {
     let mut quote = None;
+    let mut depth = 0_usize;
     for (offset, character) in arguments.char_indices() {
         if matches!(character, '\'' | '"') {
             if quote == Some(character) {
@@ -846,10 +860,17 @@ fn split_key_arguments(arguments: &str) -> Option<(&str, &str)> {
             } else if quote.is_none() {
                 quote = Some(character);
             }
-        } else if quote.is_none() && character == ',' {
-            let name = arguments[..offset].trim();
-            let value = arguments[offset + 1..].trim();
-            return (!name.is_empty() && !value.is_empty()).then_some((name, value));
+        } else if quote.is_none() {
+            match character {
+                '(' => depth += 1,
+                ')' => depth = depth.checked_sub(1)?,
+                ',' if depth == 0 => {
+                    let name = arguments[..offset].trim();
+                    let value = arguments[offset + 1..].trim();
+                    return (!name.is_empty() && !value.is_empty()).then_some((name, value));
+                }
+                _ => {}
+            }
         }
     }
     None

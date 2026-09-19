@@ -382,6 +382,10 @@ fn xslt10_key_lookup_owned(lookup: &Xslt10KeyLookup) -> usize {
             name,
             static_namespaces,
         } => name.capacity() + arc_slice_owned(static_namespaces, namespace_owned),
+        Xslt10KeyName::Concat {
+            expression,
+            static_namespaces,
+        } => xslt10_concat_owned(expression) + arc_slice_owned(static_namespaces, namespace_owned),
     }) + match &lookup.value {
         Xslt10KeyValue::Static(value) | Xslt10KeyValue::Variable(value) => value.capacity(),
         Xslt10KeyValue::ContextPath(path) => path.known_owned_capacity_bytes(),

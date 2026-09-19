@@ -2326,6 +2326,36 @@ fn xslt10_variable_key_name_resolves_with_captured_static_namespaces() {
 }
 
 #[test]
+fn xslt10_literal_variable_concat_key_name_uses_the_same_runtime_resolution() {
+    const SOURCE: &str = "urn:fastxslt:concat-key-name:source";
+    const STYLESHEET: &str = "urn:fastxslt:concat-key-name:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:variable name="suffix">space</xsl:variable><xsl:key name="keyspace" match="item" use="@code"/><xsl:template match="/"><out><xsl:value-of select="key(concat('key', $suffix), 'selected')"/></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item code='selected'>right</item></doc>".to_vec(),
+        )
+        .expect("admit concat-key-name source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit concat-key-name stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile concat key name");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("concat-key-name", "result", SOURCE))
+        .expect("admit concat-key-name request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute concat key name");
+
+    assert_eq!(
+        results.by_request["concat-key-name"].serialized,
+        "<out>right</out>"
+    );
+}
+
+#[test]
 fn xslt10_generate_id_key_avt_uses_first_selected_source_node_identity() {
     const SOURCE: &str = "urn:fastxslt:key-identity-avt:source";
     const STYLESHEET: &str = "urn:fastxslt:key-identity-avt:stylesheet";

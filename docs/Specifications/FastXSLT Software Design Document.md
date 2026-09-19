@@ -851,8 +851,9 @@ key names supplied by one unqualified variable reference are converted through
 XSLT 1.0 string rules and resolved as lexical QNames against immutable
 stylesheet namespaces captured at the call site. Invalid or unbound names
 report `XTDE1260`; source namespaces and ambient host state do not participate.
-Other dynamic-name and value-expression shapes remain outside this lookup
-slice.
+The same resolution path may consume a typed `concat()` name only when every
+part is a literal or unqualified variable reference. Other dynamic-name and
+value-expression shapes remain outside this lookup slice.
 
 For a computed-element name without AVT delimiters, compilation validates the
 lexical QName immediately. A malformed static name reports `XTDE0820`; a valid

@@ -115,15 +115,25 @@ fn resolve_lookup_name<'a>(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Cow<'a, ExpandedName>, ExecutionFailure> {
-    let (variable, static_namespaces) = match name {
+    let (lexical, static_namespaces) = match name {
         Xslt10KeyName::Static(name) => return Ok(Cow::Borrowed(name)),
         Xslt10KeyName::Variable {
             name,
             static_namespaces,
-        } => (name, static_namespaces),
+        } => (
+            super::value_evaluator::xslt10_variable_string_value(inputs, name, variables, control)?,
+            static_namespaces,
+        ),
+        Xslt10KeyName::Concat {
+            expression,
+            static_namespaces,
+        } => (
+            super::value_evaluator::evaluate_xslt10_concat(
+                inputs, None, expression, variables, control,
+            )?,
+            static_namespaces,
+        ),
     };
-    let lexical =
-        super::value_evaluator::xslt10_variable_string_value(inputs, variable, variables, control)?;
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;

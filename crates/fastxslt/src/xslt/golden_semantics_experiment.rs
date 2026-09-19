@@ -973,6 +973,10 @@ pub(crate) enum Xslt10KeyName {
         name: String,
         static_namespaces: Arc<[NamespaceBinding]>,
     },
+    Concat {
+        expression: Xslt10ConcatExpression,
+        static_namespaces: Arc<[NamespaceBinding]>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

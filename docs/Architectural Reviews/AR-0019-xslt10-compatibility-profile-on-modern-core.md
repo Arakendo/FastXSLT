@@ -2126,3 +2126,11 @@ maintained redistributable legacy suite becomes available.
   the strict lower bound from 1,613 to 1,614; initialization reaches 2,004 and
   execution reaches 1,899. Arbitrary dynamic-name expressions remain explicit.
   [Evidence](../Evidence/oasis-xslt10-variable-key-name-2026-09-18.md)
+- 2026-09-18 -- The runtime key-name plan now also consumes typed XSLT 1.0
+  `concat()` expressions made only from literals and unqualified variable
+  references. The unchanged Microsoft `91727` case initializes and executes
+  with correct key selection, then exposes an independent HTML-indentation
+  mismatch. Initialization reaches 2,005, execution reaches 1,900, and visible
+  mismatches reach 215; the strict exact lower bound remains 1,614. General
+  context-dependent dynamic-name expressions remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-concat-key-name-2026-09-18.md)

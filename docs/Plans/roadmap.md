@@ -4860,6 +4860,13 @@ host lifecycle.
     Lotus `idkey25` case becomes exact, raising the lower bound from 1,613 to
     1,614 without admitting arbitrary dynamic-name expressions.
     [Evidence](../Evidence/oasis-xslt10-variable-key-name-2026-09-18.md)
+  - [x] Compose a dynamic key name from the existing typed XSLT 1.0 `concat()`
+    plan only when every part is a literal or variable reference. The unchanged
+    Microsoft `91727` case now initializes and executes with correct key
+    selection before exposing an independent HTML-indentation mismatch;
+    initialized cases reach 2,005 and executions reach 1,900 while the exact
+    lower bound remains 1,614.
+    [Evidence](../Evidence/oasis-xslt10-concat-key-name-2026-09-18.md)
   - [x] Classify structurally complete `format-number()` calls with an arity
     other than two or three as static `XPST0017 / invalid` before operand and
     picture capability selection. Four unchanged OASIS cases leave the generic
