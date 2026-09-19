@@ -3649,6 +3649,36 @@ fn xslt10_sort_orders_for_each_and_apply_templates_with_stable_multiple_keys() {
 }
 
 #[test]
+fn xslt10_sort_uses_the_first_node_from_a_context_path_key_lookup() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-key-sort:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-key-sort:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:key name="month-number" match="months/entry/number" use="../name"/><xsl:template match="/"><out><xsl:for-each select="doc/birthday"><xsl:sort select="key('month-number', month)" data-type="number"/><xsl:value-of select="@person"/></xsl:for-each></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            br#"<doc><months><entry><name>Jan</name><number>1</number></entry><entry><name>Apr</name><number>4</number></entry><entry><name>Sep</name><number>9</number></entry></months><birthday person="late"><month>Sep</month></birthday><birthday person="early"><month>Jan</month></birthday><birthday person="middle"><month>Apr</month></birthday></doc>"#.to_vec(),
+        )
+        .expect("admit key sorting source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit key sorting stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile key sort");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("key-sort", "result", SOURCE))
+        .expect("admit key sort request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute key sort");
+
+    assert_eq!(
+        results.by_request["key-sort"].serialized,
+        "<out>earlymiddlelate</out>"
+    );
+}
+
+#[test]
 fn xslt10_sort_uses_the_first_document_order_node_from_a_path_union() {
     const SOURCE: &str = "urn:fastxslt:xslt10-sort-path-union:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-sort-path-union:stylesheet";

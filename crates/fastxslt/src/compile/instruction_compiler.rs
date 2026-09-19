@@ -1069,7 +1069,13 @@ pub(super) fn compile_sort_keys(
         ensure_no_meaningful_children(document, child, "xsl:sort")?;
         let location = document.location(child).clone();
         let select = optional_attribute(document, child, None, "select").unwrap_or(".");
-        let select = if let Some(alternatives) = split_top_level_union(select) {
+        let select = if xslt10_numeric_conversion && select.trim_start().starts_with("key(") {
+            SortSelect::Xslt10KeyLookup(Box::new(
+                value_expression_compiler::compile_xslt10_literal_key_lookup(
+                    document, child, select, &location,
+                )?,
+            ))
+        } else if let Some(alternatives) = split_top_level_union(select) {
             let alternatives = alternatives
                 .into_iter()
                 .map(str::trim)

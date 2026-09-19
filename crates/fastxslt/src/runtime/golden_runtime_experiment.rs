@@ -1302,6 +1302,11 @@ fn sort_selected_nodes(
                         .first()
                         .map_or_else(String::new, |selected| source.string_value(*selected))
                 }
+                SortSelect::Xslt10KeyLookup(lookup) => {
+                    key_lookup::select(inputs, lookup, Some(node), variables, control)?
+                        .first()
+                        .map_or_else(String::new, |selected| source.string_value(*selected))
+                }
                 SortSelect::PathUnion(alternatives) => {
                     evaluate_source_path_union(inputs, source, node, alternatives, control)?
                         .first()

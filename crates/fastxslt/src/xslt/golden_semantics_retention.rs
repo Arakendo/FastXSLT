@@ -853,6 +853,7 @@ fn sort_key_owned(sort: &SortKey) -> usize {
         SortSelect::LocationPath(path)
         | SortSelect::CountPath(path)
         | SortSelect::NumberPath(path) => path.known_owned_capacity_bytes(),
+        SortSelect::Xslt10KeyLookup(lookup) => xslt10_key_lookup_owned(lookup),
         SortSelect::PathUnion(alternatives) => vec_owned(
             alternatives,
             crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,

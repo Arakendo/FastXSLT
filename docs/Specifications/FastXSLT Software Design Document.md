@@ -834,7 +834,10 @@ apply/for-each selection plan may union at most eight already typed key
 lookups. It evaluates every alternative through the charged reference scan,
 then restores principal-source document order and removes duplicate node
 identities. This does not admit mixed key/path unions or general union
-expressions. Any optimized lookup
+expressions. An XSLT 1.0 sort expression may consume the same selector from
+each candidate's context and use the first selected node's string value through
+the ordinary sort typing path. This does not admit arbitrary function-valued
+sort expressions or a sort-specific key index. Any optimized lookup
 structure
 must remain differential-testable against that scan and must be source-derived
 and invocation-owned unless a later review admits another immutable prepared

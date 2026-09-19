@@ -2096,3 +2096,10 @@ maintained redistributable legacy suite becomes available.
   bound from 1,609 to 1,610; initialization reaches 2,000 and execution reaches
   1,895. Mixed key/path unions and retained indexes remain explicit.
   [Evidence](../Evidence/oasis-xslt10-key-union-selection-2026-09-18.md)
+- 2026-09-18 -- XSLT 1.0 sort expressions may now reuse the shared charged key
+  selector from each candidate's context and apply existing first-node string
+  conversion before ordinary sort typing. The unchanged Lotus `idkey32` and
+  `idkey33` cases become exact, raising the strict lower bound from 1,610 to
+  1,612; initialization reaches 2,002 and execution reaches 1,897. No sort-
+  specific index or general function evaluator is added.
+  [Evidence](../Evidence/oasis-xslt10-key-sort-selection-2026-09-18.md)
