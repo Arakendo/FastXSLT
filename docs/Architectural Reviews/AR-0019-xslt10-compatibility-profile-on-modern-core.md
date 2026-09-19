@@ -2007,3 +2007,12 @@ maintained redistributable legacy suite becomes available.
   errors, two UTF-16 serialization boundaries, and one correctly unbound local
   variable; no new pass is credited and the lower bound remains 1,569.
   [Evidence](../Evidence/oasis-xslt10-variable-composed-computed-attribute-names-2026-09-18.md)
+- 2026-09-18 -- Bounded static `xsl:key` declarations now compile into
+  immutable stylesheet-owned expanded names, match patterns, and `use` paths,
+  compose across admitted module graphs, and participate in exact retained-
+  capacity accounting. Variable and recursive-key `use` expressions report
+  `XTSE1205`. All 90 cases leave the blanket top-level declaration frontier;
+  three become exact, raising the lower bound from 1,569 to 1,572, while 85
+  function-shaped lookup cases remain explicit pending invocation-owned index
+  semantics.
+  [Evidence](../Evidence/oasis-xslt10-static-key-declaration-admission-2026-09-18.md)

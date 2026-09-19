@@ -797,6 +797,15 @@ and temporary-tree values through the existing runtime frame before applying
 the shared attribute `QName` rules. This does not establish a general AVT
 expression plan or a second variable store.
 
+An admitted `xsl:key` declaration is immutable compiled stylesheet state: its
+expanded name, bounded match pattern, typed `use` location path, and source
+location compile once and compose additively across admitted stylesheet-module
+graphs. Declaration admission does not itself build an index. Any future key
+lookup structure must remain source-derived and invocation-owned unless a later
+review admits another immutable prepared representation; it must not become a
+global or cross-snapshot cache. Variable references and recursive `key()` calls
+in the declaration's `use` expression remain static errors.
+
 For a computed-element name without AVT delimiters, compilation validates the
 lexical QName immediately. A malformed static name reports `XTDE0820`; a valid
 prefixed name without a binding reports `XTDE0830`. Values containing

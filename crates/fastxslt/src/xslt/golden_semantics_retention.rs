@@ -7,7 +7,7 @@ use super::{
     ConditionalPathBranch, ConditionalPathExpression, ConstructedAttribute, ConstructedElement,
     ConstructedNode, DecimalSumForExpression, DeepEqualBooleanExpression, ExpandedName,
     FocusSumForExpression, ForDistinctValuesExpression, FormatNumberExpression, GlobalBinding,
-    GlobalBindingDefault, Instruction, IntegerForExpression, LiteralAttribute,
+    GlobalBindingDefault, Instruction, IntegerForExpression, KeyDefinition, LiteralAttribute,
     LiteralAttributeValue, LocationPath, MatchNodeTest, MatchPattern, MatchSequencePredicate,
     MatchStringPredicate, MatchedTemplate, NamedTemplate, NamespaceBinding, OutputSettings,
     SequenceItemExpression, SortKey, SortSelect, SourceLocation, StylesheetProgram, Template,
@@ -33,6 +33,7 @@ impl StylesheetProgram {
             + vec_owned(&self.character_maps, character_map_owned)
             + vec_owned(&self.output_character_map_names, name_owned)
             + vec_owned(&self.local_attribute_set_names, name_owned)
+            + vec_owned(&self.key_definitions, key_definition_owned)
             + self
                 .output_character_map_location
                 .as_ref()
@@ -43,6 +44,13 @@ impl StylesheetProgram {
             + vec_owned(&self.named_templates, named_template_owned)
             + vec_owned(&self.global_bindings, global_binding_owned)
     }
+}
+
+fn key_definition_owned(value: &KeyDefinition) -> usize {
+    name_owned(&value.name)
+        + match_pattern_owned(&value.match_pattern)
+        + value.use_path.known_owned_capacity_bytes()
+        + location_owned(&value.location)
 }
 
 fn character_map_owned(value: &CharacterMapDefinition) -> usize {

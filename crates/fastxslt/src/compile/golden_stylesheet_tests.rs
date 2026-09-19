@@ -42,6 +42,48 @@ fn character_map_composition_sorts_keys_and_preserves_last_entry_precedence() {
 }
 
 #[test]
+fn xslt10_key_declarations_retain_static_name_match_and_use_state() {
+    let document = parse_stylesheet(
+        "test:key-declaration.xsl",
+        br#"<xsl:stylesheet version="1.0"
+              xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+              xmlns:k="urn:key">
+              <xsl:key name="k:codes" match="item" use="@code"/>
+              <xsl:key name="k:codes" match="entry" use="."/>
+              <xsl:template match="/"/>
+            </xsl:stylesheet>"#,
+    );
+
+    let program = compile_stylesheet(&document).expect("bounded key declarations should compile");
+    assert_eq!(program.key_definitions.len(), 2);
+    assert!(program.key_definitions.iter().all(|definition| {
+        definition.name.namespace.as_deref() == Some("urn:key") && definition.name.local == "codes"
+    }));
+    assert!(matches!(
+        program.key_definitions[0].match_pattern,
+        MatchPattern::Element(_)
+    ));
+}
+
+#[test]
+fn xslt10_key_use_rejects_variable_and_recursive_key_dependencies() {
+    for use_expression in ["$value", "key('other', @code)"] {
+        let bytes = format!(
+            r#"<xsl:stylesheet version="1.0" xmlns:xsl="{}">
+                  <xsl:key name="codes" match="item" use="{}"/>
+                  <xsl:template match="/"/>
+                </xsl:stylesheet>"#,
+            super::XSLT_NAMESPACE,
+            use_expression
+        );
+        let document = parse_stylesheet("test:invalid-key-use.xsl", bytes.as_bytes());
+        let failure = compile_stylesheet(&document).expect_err("key dependency must be rejected");
+        assert_eq!(failure.category, CompileCategory::Invalid);
+        assert_eq!(failure.code, "XTSE1205");
+    }
+}
+
+#[test]
 fn xslt10_namespace_alias_rewrites_literal_result_names_and_bindings() {
     let document = parse_stylesheet(
         "test:namespace-alias.xsl",

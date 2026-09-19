@@ -118,6 +118,9 @@ fn merge_included_program(
         .mode_policies
         .append(&mut included_program.mode_policies);
     merge_included_character_maps(program, included_program.character_maps, location)?;
+    program
+        .key_definitions
+        .append(&mut included_program.key_definitions);
     if included_program.output != default_output_settings() {
         return Err(unsupported(
             "FXST1019",
@@ -274,6 +277,7 @@ pub(crate) fn compile_stylesheet_with_import_and_include(
     merge_imported_named_templates(&mut program, imported_program.named_templates);
     merge_imported_global_bindings(&mut program, imported_program.global_bindings);
     merge_imported_character_maps(&mut program, imported_program.character_maps);
+    merge_key_definitions(&mut program, imported_program.key_definitions);
     finalize_character_maps(&mut program)?;
     validate_named_template_references(&program)?;
     Ok(program)
@@ -343,6 +347,7 @@ pub(crate) fn compile_stylesheet_with_imports(
         merge_imported_named_templates(&mut principal_program, program.named_templates);
         merge_imported_global_bindings(&mut principal_program, program.global_bindings);
         merge_imported_character_maps(&mut principal_program, program.character_maps);
+        merge_key_definitions(&mut principal_program, program.key_definitions);
     }
     finalize_character_maps(&mut principal_program)?;
     validate_named_template_references(&principal_program)?;
@@ -396,6 +401,7 @@ pub(crate) fn compile_stylesheet_with_two_imported_programs_at(
         merge_imported_named_templates(&mut principal_program, program.named_templates);
         merge_imported_global_bindings(&mut principal_program, program.global_bindings);
         merge_imported_character_maps(&mut principal_program, program.character_maps);
+        merge_key_definitions(&mut principal_program, program.key_definitions);
     }
     finalize_character_maps(&mut principal_program)?;
     validate_named_template_references(&principal_program)?;
@@ -442,6 +448,7 @@ pub(crate) fn compile_stylesheet_with_single_imported_program_at(
     merge_imported_named_templates(&mut principal_program, imported_program.named_templates);
     merge_imported_global_bindings(&mut principal_program, imported_program.global_bindings);
     merge_imported_character_maps(&mut principal_program, imported_program.character_maps);
+    merge_key_definitions(&mut principal_program, imported_program.key_definitions);
     finalize_character_maps(&mut principal_program)?;
     validate_named_template_references(&principal_program)?;
     Ok(principal_program)
@@ -690,6 +697,13 @@ fn merge_imported_character_maps(
     principal.character_maps = imported;
 }
 
+fn merge_key_definitions(
+    principal: &mut StylesheetProgram,
+    mut definitions: Vec<crate::xslt::golden_semantics_experiment::KeyDefinition>,
+) {
+    principal.key_definitions.append(&mut definitions);
+}
+
 fn merge_included_character_maps(
     principal: &mut StylesheetProgram,
     included: Vec<crate::xslt::golden_semantics_experiment::CharacterMapDefinition>,
@@ -744,6 +758,7 @@ pub(super) fn compile_simplified_stylesheet_at(
         output_character_map_names: Vec::new(),
         output_character_map_location: None,
         local_attribute_set_names: Vec::new(),
+        key_definitions: Vec::new(),
         root_template: Some(root_template),
         root_template_modes: Vec::new(),
         matched_templates: Vec::new(),
@@ -826,5 +841,34 @@ mod tests {
 
         assert_eq!(failure.code, "FXST1065");
         assert!(failure.detail.contains("across stylesheet modules"));
+    }
+
+    #[test]
+    fn composes_same_name_key_declarations_across_includes() {
+        let principal = stylesheet(
+            "urn:fastxslt:key-include:principal",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:include href="included.xsl"/><xsl:key name="shared" match="principal" use="@code"/><xsl:template match="/"/></xsl:stylesheet>"#,
+        );
+        let included = stylesheet(
+            "urn:fastxslt:key-include:included",
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:key name="shared" match="included" use="@code"/></xsl:stylesheet>"#,
+        );
+        let root = included
+            .children(included.document_node())
+            .iter()
+            .copied()
+            .find(|node| included.name(*node).is_some())
+            .expect("included stylesheet root");
+
+        let program = compile_stylesheet_with_single_include(&principal, &included, root)
+            .expect("same-name key declarations compose additively");
+
+        assert_eq!(program.key_definitions.len(), 2);
+        assert!(
+            program
+                .key_definitions
+                .iter()
+                .all(|definition| definition.name.local == "shared")
+        );
     }
 }

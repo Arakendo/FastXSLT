@@ -7,7 +7,7 @@ use crate::xpath::path_experiment::{PathFailure, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
     BooleanExpression, CharacterMapDefinition, ConstructedAttribute, ConstructedElement,
     ConstructedNode, GlobalBinding, GlobalBindingDefault, GlobalBindingKind, Instruction,
-    LiteralAttributeValue, MatchPattern, MatchedTemplate, NamedTemplate,
+    KeyDefinition, LiteralAttributeValue, MatchPattern, MatchedTemplate, NamedTemplate,
     STANDARD_INITIAL_TEMPLATE_NAME, SourceWhitespacePolicy, StylesheetProgram, Template,
     TemplateParameter, TemplateParameterDefault, TemplatePriority, ValueExpression,
     Xslt10TextChoiceBranch,
@@ -155,6 +155,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     let mut decimal_formats = decimal_format_compiler::DecimalFormats::default();
     let mut namespace_aliases = Vec::new();
     let mut local_attribute_set_names = Vec::new();
+    let mut key_definitions = Vec::new();
     for child in top_level_children {
         let Some(name) = document.name(child) else {
             continue;
@@ -220,6 +221,9 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
                 if !local_attribute_set_names.contains(&name) {
                     local_attribute_set_names.push(name);
                 }
+            }
+            (Some(XSLT_NAMESPACE), "key") => {
+                key_definitions.push(compile_key_definition(document, child)?);
             }
             (Some(XSLT_NAMESPACE), "strip-space") => {
                 ensure_only_attributes(document, child, &["elements"], "xsl:strip-space")?;
@@ -326,6 +330,7 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
         output_character_map_names,
         output_character_map_location,
         local_attribute_set_names,
+        key_definitions,
         root_template,
         root_template_modes,
         matched_templates,
@@ -335,6 +340,58 @@ pub(super) fn compile_stylesheet_at_excluding_unvalidated(
     namespace_alias_compiler::apply(&mut program, &namespace_aliases);
     decimal_format_compiler::apply(&mut program, &decimal_formats)?;
     Ok(program)
+}
+
+fn compile_key_definition(
+    document: &Document,
+    element: NodeId,
+) -> Result<KeyDefinition, CompileFailure> {
+    ensure_only_attributes(document, element, &["name", "match", "use"], "xsl:key")?;
+    ensure_no_meaningful_children(document, element, "xsl:key")?;
+    let name = compile_expanded_qname(
+        document,
+        element,
+        required_attribute(document, element, None, "name")?,
+        "xsl:key name",
+    )?;
+    let lexical_match = required_attribute(document, element, None, "match")?;
+    let (match_pattern, _) = compile_match_pattern(document, element, lexical_match)?;
+    let lexical_use = required_attribute(document, element, None, "use")?;
+    if contains_xpath_variable_or_key_call(lexical_use) {
+        return Err(invalid(
+            "XTSE1205",
+            "xsl:key use must not contain a variable reference or call key()",
+            document.location(element),
+        ));
+    }
+    let use_path = crate::xpath::path_experiment::parse_xslt10_location_path(
+        lexical_use,
+        document.location(element).clone(),
+    )
+    .map_err(map_path_failure)?;
+    Ok(KeyDefinition {
+        name,
+        match_pattern,
+        use_path,
+        location: document.location(element).clone(),
+    })
+}
+
+fn contains_xpath_variable_or_key_call(expression: &str) -> bool {
+    let mut quote = None;
+    for (offset, character) in expression.char_indices() {
+        if matches!(character, '\'' | '"') {
+            if quote == Some(character) {
+                quote = None;
+            } else if quote.is_none() {
+                quote = Some(character);
+            }
+        } else if quote.is_none() && (character == '$' || expression[offset..].starts_with("key("))
+        {
+            return true;
+        }
+    }
+    false
 }
 
 fn compile_character_map(

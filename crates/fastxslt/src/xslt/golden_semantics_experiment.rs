@@ -44,11 +44,20 @@ pub(crate) struct StylesheetProgram {
     pub(crate) output_character_map_names: Vec<ExpandedName>,
     pub(crate) output_character_map_location: Option<SourceLocation>,
     pub(crate) local_attribute_set_names: Vec<ExpandedName>,
+    pub(crate) key_definitions: Vec<KeyDefinition>,
     pub(crate) root_template: Option<Template>,
     pub(crate) root_template_modes: Vec<String>,
     pub(crate) matched_templates: Vec<MatchedTemplate>,
     pub(crate) named_templates: Vec<NamedTemplate>,
     pub(crate) global_bindings: Vec<GlobalBinding>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct KeyDefinition {
+    pub(crate) name: ExpandedName,
+    pub(crate) match_pattern: MatchPattern,
+    pub(crate) use_path: LocationPath,
+    pub(crate) location: SourceLocation,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
