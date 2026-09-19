@@ -7,11 +7,11 @@ use super::{
     ConditionalPathBranch, ConditionalPathExpression, ConstructedAttribute, ConstructedElement,
     ConstructedNode, DecimalSumForExpression, DeepEqualBooleanExpression, ExpandedName,
     FocusSumForExpression, ForDistinctValuesExpression, FormatNumberExpression, GlobalBinding,
-    GlobalBindingDefault, Instruction, IntegerForExpression, KeyDefinition, LiteralAttribute,
-    LiteralAttributeValue, LocationPath, MatchNodeTest, MatchPattern, MatchSequencePredicate,
-    MatchStringPredicate, MatchedTemplate, NamedTemplate, NamespaceBinding, OutputSettings,
-    SequenceItemExpression, SortKey, SortSelect, SourceLocation, StylesheetProgram, Template,
-    TemplateArgument, TemplateArgumentValue, TemplateParameter, TemplateParameterDefault,
+    GlobalBindingDefault, Instruction, IntegerForExpression, KeyDefinition, KeyUseExpression,
+    LiteralAttribute, LiteralAttributeValue, LocationPath, MatchNodeTest, MatchPattern,
+    MatchSequencePredicate, MatchStringPredicate, MatchedTemplate, NamedTemplate, NamespaceBinding,
+    OutputSettings, SequenceItemExpression, SortKey, SortSelect, SourceLocation, StylesheetProgram,
+    Template, TemplateArgument, TemplateArgumentValue, TemplateParameter, TemplateParameterDefault,
     ValueExpression, VariableFilteredElementPath, Xslt10AvtPart, Xslt10ConcatPart,
 };
 
@@ -49,7 +49,12 @@ impl StylesheetProgram {
 fn key_definition_owned(value: &KeyDefinition) -> usize {
     name_owned(&value.name)
         + match_pattern_owned(&value.match_pattern)
-        + value.use_path.known_owned_capacity_bytes()
+        + match &value.use_expression {
+            KeyUseExpression::LocationPath(path) | KeyUseExpression::NumberPath(path) => {
+                path.known_owned_capacity_bytes()
+            }
+            KeyUseExpression::LiteralString(value) => value.capacity(),
+        }
         + location_owned(&value.location)
 }
 

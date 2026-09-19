@@ -7,9 +7,9 @@ use crate::xpath::path_experiment::{PathFailure, parse_location_path};
 use crate::xslt::golden_semantics_experiment::{
     BooleanExpression, CharacterMapDefinition, ConstructedAttribute, ConstructedElement,
     ConstructedNode, GlobalBinding, GlobalBindingDefault, GlobalBindingKind, Instruction,
-    KeyDefinition, LiteralAttributeValue, MatchPattern, MatchedTemplate, NamedTemplate,
-    STANDARD_INITIAL_TEMPLATE_NAME, SourceWhitespacePolicy, StylesheetProgram, Template,
-    TemplateParameter, TemplateParameterDefault, TemplatePriority, ValueExpression,
+    KeyDefinition, KeyUseExpression, LiteralAttributeValue, MatchPattern, MatchedTemplate,
+    NamedTemplate, STANDARD_INITIAL_TEMPLATE_NAME, SourceWhitespacePolicy, StylesheetProgram,
+    Template, TemplateParameter, TemplateParameterDefault, TemplatePriority, ValueExpression,
     Xslt10TextChoiceBranch,
 };
 
@@ -364,15 +364,31 @@ fn compile_key_definition(
             document.location(element),
         ));
     }
-    let use_path = crate::xpath::path_experiment::parse_xslt10_location_path(
-        lexical_use,
-        document.location(element).clone(),
-    )
-    .map_err(map_path_failure)?;
+    let use_expression = if let Some(literal) = xpath_string_literal(lexical_use) {
+        KeyUseExpression::LiteralString(literal.to_owned())
+    } else if let Some(path) =
+        crate::xpath::constant_numeric_experiment::number_function_call(lexical_use)
+    {
+        KeyUseExpression::NumberPath(
+            crate::xpath::path_experiment::parse_xslt10_location_path(
+                path,
+                document.location(element).clone(),
+            )
+            .map_err(map_path_failure)?,
+        )
+    } else {
+        KeyUseExpression::LocationPath(
+            crate::xpath::path_experiment::parse_xslt10_location_path(
+                lexical_use,
+                document.location(element).clone(),
+            )
+            .map_err(map_path_failure)?,
+        )
+    };
     Ok(KeyDefinition {
         name,
         match_pattern,
-        use_path,
+        use_expression,
         location: document.location(element).clone(),
     })
 }

@@ -2025,3 +2025,11 @@ maintained redistributable legacy suite becomes available.
   runtime `XTDE1260`, while 11 dynamic/nonliteral forms remain explicit as
   `FXXP1023`. No index, cross-invocation retention, or new authority is added.
   [Evidence](../Evidence/oasis-xslt10-literal-key-lookup-reference-2026-09-18.md)
+- 2026-09-18 -- The typed key-use plan now admits constant strings and
+  `number(location-path)`, while finite source-free numeric lookup values reuse
+  the exact arithmetic compiler. Two unchanged Lotus cases become exact,
+  raising the strict lower bound from 1,585 to 1,587. Initialization reaches
+  1,971 cases and execution reaches 1,868; expected-error accounting is
+  unchanged. Dynamic values, node sets, unions, context-dependent arithmetic,
+  and retained indexes remain outside the slice.
+  [Evidence](../Evidence/oasis-xslt10-static-atomic-key-values-2026-09-18.md)

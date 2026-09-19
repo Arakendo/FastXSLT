@@ -2094,6 +2094,33 @@ fn xslt10_literal_key_lookup_scans_composed_definitions_in_document_order() {
 }
 
 #[test]
+fn xslt10_key_lookup_converts_static_numeric_values_and_key_use_numbers() {
+    const SOURCE: &str = "urn:fastxslt:key-number:source";
+    const STYLESHEET: &str = "urn:fastxslt:key-number:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:key name="constant" match="item" use="'fixed'"/><xsl:key name="numbers" match="item" use="number(q)"/><xsl:template match="/"><xsl:value-of select="key('constant', 'fixed')/@name"/><xsl:text>|</xsl:text><xsl:value-of select="key('numbers', 1.0)/@name"/><xsl:text>|</xsl:text><xsl:value-of select="key('numbers', 1+1)/@name"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item name='one'><q>1</q></item><item name='two'><q>2</q></item></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("key-number", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(results.by_request["key-number"].serialized, "one|one|two");
+}
+
+#[test]
 fn xslt10_computed_attribute_for_each_concatenates_selected_string_values() {
     const SOURCE: &str = "urn:fastxslt:computed-attribute-for-each:source";
     const STYLESHEET: &str = "urn:fastxslt:computed-attribute-for-each:stylesheet";

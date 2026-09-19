@@ -60,7 +60,7 @@ use crate::xpath::string_length_experiment::{
 use crate::xslt::golden_semantics_experiment::{
     ConditionalIntegerBranch, ConditionalIntegerCondition, ConditionalIntegerExpression,
     ConditionalPathBranch, ConditionalPathExpression, FocusEqualityOperand,
-    IntegerComparisonOperator, ValueExpression, Xslt10KeyLookup,
+    IntegerComparisonOperator, KeyUseExpression, ValueExpression, Xslt10KeyLookup,
 };
 
 #[path = "value_evaluator/xslt10_compatibility.rs"]
@@ -1377,13 +1377,14 @@ fn append_xslt10_key_lookup(
             )? {
                 continue;
             }
-            let values =
-                evaluate_location_path_controlled(source, candidate, &definition.use_path, control)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
-            for value in values {
-                let lexical = source
-                    .string_value_controlled(value, control)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let lexicals = evaluate_key_use_expression(
+                inputs,
+                source,
+                candidate,
+                &definition.use_expression,
+                control,
+            )?;
+            for lexical in lexicals {
                 if lexical == lookup.value {
                     matches = true;
                     break;
@@ -1414,6 +1415,45 @@ fn append_xslt10_key_lookup(
         append_source_string_value(inputs, *node, result, control)?;
     }
     Ok(())
+}
+
+fn evaluate_key_use_expression(
+    inputs: &SequenceInputs<'_>,
+    source: &crate::xdm::owned_tree_experiment::Document,
+    candidate: NodeId,
+    expression: &KeyUseExpression,
+    control: &mut InvocationControl,
+) -> Result<Vec<String>, ExecutionFailure> {
+    match expression {
+        KeyUseExpression::LiteralString(value) => Ok(vec![value.clone()]),
+        KeyUseExpression::LocationPath(path) => {
+            let selected = evaluate_location_path_controlled(source, candidate, path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            selected
+                .into_iter()
+                .map(|node| {
+                    source
+                        .string_value_controlled(node, control)
+                        .map_err(|failure| control_failure(failure, inputs.request_id))
+                })
+                .collect()
+        }
+        KeyUseExpression::NumberPath(path) => {
+            let selected = evaluate_location_path_controlled(source, candidate, path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let lexical = if let Some(node) = selected.first().copied() {
+                source
+                    .string_value_controlled(node, control)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?
+            } else {
+                String::new()
+            };
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            Ok(vec![xslt10_compatibility::number_lexical(&lexical)])
+        }
+    }
 }
 
 fn collect_source_nodes(

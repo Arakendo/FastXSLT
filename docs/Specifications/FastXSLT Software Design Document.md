@@ -801,16 +801,20 @@ An admitted `xsl:key` declaration is immutable compiled stylesheet state: its
 expanded name, bounded match pattern, typed `use` location path, and source
 location compile once and compose additively across admitted stylesheet-module
 graphs. The safe reference implementation for a literal key name and literal
-lookup value performs a complete charged scan of the current source document,
+or finite source-free numeric lookup value performs a complete charged scan of
+the current source document,
 reuses the compiled match and `use` semantics, composes same-name declarations
 additively, and restores document order and node identity after an optional
-location-path tail. It does not retain an index. Any optimized lookup structure
+location-path tail. A declaration `use` expression may be a typed location
+path, string literal, or `number(location-path)`; numeric paths use XSLT 1.0
+first-node conversion under existing work accounting. The reference path does
+not retain an index. Any optimized lookup structure
 must remain differential-testable against that scan and must be source-derived
 and invocation-owned unless a later review admits another immutable prepared
 representation; it must not become a global or cross-snapshot cache. Variable
 references and recursive `key()` calls in the declaration's `use` expression
-remain static errors. Dynamic key names and values remain outside this first
-lookup slice.
+remain static errors. Dynamic key names and values remain outside this lookup
+slice.
 
 For a computed-element name without AVT delimiters, compilation validates the
 lexical QName immediately. A malformed static name reports `XTDE0820`; a valid

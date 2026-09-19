@@ -56,8 +56,15 @@ pub(crate) struct StylesheetProgram {
 pub(crate) struct KeyDefinition {
     pub(crate) name: ExpandedName,
     pub(crate) match_pattern: MatchPattern,
-    pub(crate) use_path: LocationPath,
+    pub(crate) use_expression: KeyUseExpression,
     pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum KeyUseExpression {
+    LocationPath(LocationPath),
+    LiteralString(String),
+    NumberPath(LocationPath),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

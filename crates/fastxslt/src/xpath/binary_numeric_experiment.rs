@@ -46,6 +46,27 @@ pub(crate) enum BinaryNumericNode {
     },
 }
 
+pub(crate) fn fold_source_free(root: &BinaryNumericNode) -> Option<String> {
+    fn evaluate(root: &BinaryNumericNode) -> Option<ExactRational> {
+        match root {
+            BinaryNumericNode::Literal(value) => Some(*value),
+            BinaryNumericNode::Negate(value) => {
+                evaluate(value).and_then(|value| value.checked_negate().ok())
+            }
+            BinaryNumericNode::Operation {
+                left,
+                operator,
+                right,
+            } => apply_operator(evaluate(left)?, *operator, evaluate(right)?).ok(),
+            BinaryNumericNode::Path { .. }
+            | BinaryNumericNode::PathUnion(_)
+            | BinaryNumericNode::Variable(_) => None,
+        }
+    }
+
+    evaluate(root)?.format_decimal().ok()
+}
+
 impl BinaryNumericExpression {
     #[cfg(feature = "workbench")]
     pub(crate) fn known_owned_capacity_bytes(&self) -> usize {

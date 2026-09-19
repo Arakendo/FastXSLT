@@ -631,17 +631,14 @@ fn compile_xslt10_literal_key_lookup(
         )
     })?;
     let arguments = &expression[4..close];
-    let (name, value) = split_two_literal_arguments(arguments).ok_or_else(|| {
+    let (name, value) = split_static_key_arguments(arguments, location).ok_or_else(|| {
         unsupported(
             "FXXP1023",
-            "the first key() slice requires literal key name and lookup value arguments",
+            "the first key() slice requires a literal key name and a literal atomic lookup value",
             location,
         )
     })?;
     let name = super::super::compile_expanded_qname(document, element, name, "key() name")?;
-    let value = xpath_string_literal(value)
-        .expect("the literal key argument shape was checked")
-        .to_owned();
     let suffix = expression[close + 1..].trim();
     let tail = if suffix.is_empty() {
         None
@@ -688,7 +685,10 @@ fn closing_function_parenthesis(expression: &str) -> Option<usize> {
     None
 }
 
-fn split_two_literal_arguments(arguments: &str) -> Option<(&str, &str)> {
+fn split_static_key_arguments<'a>(
+    arguments: &'a str,
+    location: &SourceLocation,
+) -> Option<(&'a str, String)> {
     let mut quote = None;
     for (offset, character) in arguments.char_indices() {
         if matches!(character, '\'' | '"') {
@@ -701,7 +701,12 @@ fn split_two_literal_arguments(arguments: &str) -> Option<(&str, &str)> {
             let name = arguments[..offset].trim();
             let value = arguments[offset + 1..].trim();
             let name = xpath_string_literal(name)?;
-            xpath_string_literal(value)?;
+            let value = if let Some(value) = xpath_string_literal(value) {
+                value.to_owned()
+            } else {
+                let expression = compile_binary_numeric_node(value, location, false)?;
+                crate::xpath::binary_numeric_experiment::fold_source_free(&expression)?
+            };
             return Some((name, value));
         }
     }
