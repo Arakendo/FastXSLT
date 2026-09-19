@@ -140,7 +140,7 @@ fn apply_instructions(instructions: &mut [Instruction], aliases: &[NamespaceAlia
                 if *origin == ElementConstructorOrigin::Literal {
                     apply_name(name, aliases);
                     for attribute in attributes.iter_mut() {
-                        apply_name(&mut attribute.name, aliases);
+                        apply_attribute_name(&mut attribute.name, aliases);
                     }
                     let mut owned = namespaces.to_vec();
                     apply_namespaces(&mut owned, aliases);
@@ -180,7 +180,7 @@ fn apply_instructions(instructions: &mut [Instruction], aliases: &[NamespaceAlia
 fn apply_constructed_element(element: &mut ConstructedElement, aliases: &[NamespaceAlias]) {
     apply_name(&mut element.name, aliases);
     for attribute in &mut element.attributes {
-        apply_name(&mut attribute.name, aliases);
+        apply_attribute_name(&mut attribute.name, aliases);
     }
     apply_namespaces(&mut element.namespaces, aliases);
     ensure_name_namespace(&mut element.namespaces, &element.name, aliases);
@@ -200,6 +200,12 @@ fn apply_name(name: &mut ExpandedName, aliases: &[NamespaceAlias]) {
         .find(|alias| alias.stylesheet_namespace == name.namespace)
     {
         name.namespace.clone_from(&alias.result_namespace);
+    }
+}
+
+fn apply_attribute_name(name: &mut ExpandedName, aliases: &[NamespaceAlias]) {
+    if name.namespace.is_some() {
+        apply_name(name, aliases);
     }
 }
 

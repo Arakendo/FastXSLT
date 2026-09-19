@@ -110,7 +110,7 @@ fn xslt10_namespace_alias_rewrites_literal_result_names_and_bindings() {
               exclude-result-prefixes="axsl">
               <xsl:namespace-alias stylesheet-prefix="axsl" result-prefix="xsl"/>
               <xsl:template match="/">
-                <axsl:stylesheet axsl:version="1.0"><axsl:template/></axsl:stylesheet>
+                <axsl:stylesheet axsl:version="1.0" plain="kept"><axsl:template/></axsl:stylesheet>
               </xsl:template>
             </xsl:stylesheet>"#,
     );
@@ -137,6 +137,7 @@ fn xslt10_namespace_alias_rewrites_literal_result_names_and_bindings() {
         attributes[0].name.namespace.as_deref(),
         Some(super::XSLT_NAMESPACE)
     );
+    assert_eq!(attributes[1].name.namespace, None);
     let [Instruction::LiteralElement { name, .. }] = body.as_slice() else {
         panic!("nested aliased literal result element should be preserved");
     };

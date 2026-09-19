@@ -14,6 +14,7 @@ pressure architecture but does not silently create a public guarantee.
 - [OASIS XSLT 1.0 Mixed Key Apply Union](oasis-xslt10-mixed-key-apply-union-2026-09-19.md)
 - [OASIS XSLT 1.0 Formatted-Number Conversion](oasis-xslt10-formatted-number-conversion-2026-09-19.md)
 - [OASIS XSLT 1.0 Included Namespace Alias](oasis-xslt10-included-namespace-alias-2026-09-19.md)
+- [OASIS XSLT 1.0 Default-Alias Attribute Names](oasis-xslt10-default-alias-attribute-names-2026-09-19.md)
 - [OASIS XSLT 1.0 Key-Use Path Union](oasis-xslt10-key-use-path-union-2026-09-19.md)
 - [OASIS XSLT 1.0 Variable Division String Conversion](oasis-xslt10-variable-division-string-2026-09-19.md)
 - [OASIS XSLT 1.0 Concatenated `translate()` Maps](oasis-xslt10-concatenated-translate-maps-2026-09-19.md)
