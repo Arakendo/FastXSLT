@@ -816,7 +816,10 @@ diagnostics, and work accounting. This does not define a public node-set
 abstraction or admit the lookup in every expression position. A private typed
 filter may select an exact position or the last node from the ordered key
 result before an optional location-path tail; this does not admit general
-predicate evaluation. Any optimized
+predicate evaluation. A literal-name lookup may source its value from a runtime
+variable: atomic and temporary-tree values use XSLT 1.0 string conversion,
+while source-node-set values contribute each node's string value. This does not
+admit a dynamic key name or arbitrary value expression. Any optimized
 lookup structure
 must remain differential-testable against that scan and must be source-derived
 and invocation-owned unless a later review admits another immutable prepared

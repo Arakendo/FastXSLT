@@ -6,10 +6,10 @@ use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    KeyUseExpression, Xslt10KeyLookup, Xslt10KeyNodePredicate,
+    KeyUseExpression, Xslt10KeyLookup, Xslt10KeyNodePredicate, Xslt10KeyValue,
 };
 
-use super::runtime_context::{SequenceInputs, required_source_context};
+use super::runtime_context::{RuntimeVariables, SequenceInputs, required_source_context};
 use super::template_selector::{TemplateSelectionContext, matches_pattern};
 use super::value_evaluator::xslt10_number_lexical;
 use super::{ExecutionFailure, FailureCategory, control_failure, failure_at};
@@ -18,9 +18,11 @@ pub(super) fn select(
     inputs: &SequenceInputs<'_>,
     lookup: &Xslt10KeyLookup,
     context: Option<NodeId>,
+    variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ExecutionFailure> {
     let (source, _) = required_source_context(inputs, context)?;
+    let lookup_values = evaluate_lookup_value(inputs, &lookup.value, variables, control)?;
     let definitions = inputs
         .program
         .key_definitions
@@ -40,7 +42,7 @@ pub(super) fn select(
 
     let mut candidates = Vec::new();
     collect_source_nodes(source, source.document_node(), &mut candidates);
-    let variables = BTreeMap::new();
+    let match_variables = BTreeMap::new();
     let mut selected = Vec::new();
     for candidate in candidates {
         control
@@ -52,7 +54,7 @@ pub(super) fn select(
                 source,
                 node: candidate,
                 mode: None,
-                variables: &variables,
+                variables: &match_variables,
                 request_id: inputs.request_id,
                 document_rooted_matches: &inputs.document_rooted_matches,
             };
@@ -73,7 +75,7 @@ pub(super) fn select(
                 control,
             )?
             .into_iter()
-            .any(|lexical| lexical == lookup.value)
+            .any(|lexical| lookup_values.contains(&lexical))
             {
                 matches = true;
                 break;
@@ -109,6 +111,39 @@ pub(super) fn select(
         selected = tailed;
     }
     Ok(selected)
+}
+
+fn evaluate_lookup_value(
+    inputs: &SequenceInputs<'_>,
+    value: &Xslt10KeyValue,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<String>, ExecutionFailure> {
+    match value {
+        Xslt10KeyValue::Static(value) => Ok(vec![value.clone()]),
+        Xslt10KeyValue::Variable(name) => {
+            if let Some(nodes) = variables.source_nodes(inputs.globals, name) {
+                let source = inputs.source.ok_or_else(|| {
+                    super::failure(
+                        "XPDY0002",
+                        FailureCategory::Invalid,
+                        Some(inputs.request_id),
+                        format!("key() variable ${name} requires a source document"),
+                    )
+                })?;
+                return nodes
+                    .iter()
+                    .map(|node| {
+                        source
+                            .string_value_controlled(*node, control)
+                            .map_err(|failure| control_failure(failure, inputs.request_id))
+                    })
+                    .collect();
+            }
+            super::value_evaluator::xslt10_variable_string_value(inputs, name, variables, control)
+                .map(|value| vec![value])
+        }
+    }
 }
 
 fn evaluate_use(

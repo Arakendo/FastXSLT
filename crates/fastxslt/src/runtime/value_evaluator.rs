@@ -233,7 +233,7 @@ pub(super) fn execute_value_of(
             append_text(result, value, inputs.request_id, control)?;
         }
         ValueExpression::Xslt10KeyLookup(lookup) => {
-            append_xslt10_key_lookup(inputs, lookup, context, result, control)?;
+            append_xslt10_key_lookup(inputs, lookup, context, variables, result, control)?;
         }
         ValueExpression::LocationPath(path) => {
             append_location_path_string(inputs, path, context, result, control)?;
@@ -1333,10 +1333,11 @@ fn append_xslt10_key_lookup(
     inputs: &SequenceInputs<'_>,
     lookup: &Xslt10KeyLookup,
     context: Option<NodeId>,
+    variables: &RuntimeVariables,
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
-    let selected = super::key_lookup::select(inputs, lookup, context, control)?;
+    let selected = super::key_lookup::select(inputs, lookup, context, variables, control)?;
     if let Some(node) = selected.first() {
         append_source_string_value(inputs, *node, result, control)?;
     }

@@ -13,6 +13,7 @@ use super::{
     OutputSettings, SequenceItemExpression, SortKey, SortSelect, SourceLocation, StylesheetProgram,
     Template, TemplateArgument, TemplateArgumentValue, TemplateParameter, TemplateParameterDefault,
     ValueExpression, VariableFilteredElementPath, Xslt10AvtPart, Xslt10ConcatPart, Xslt10KeyLookup,
+    Xslt10KeyValue,
 };
 
 impl StylesheetProgram {
@@ -375,7 +376,9 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
 
 fn xslt10_key_lookup_owned(lookup: &Xslt10KeyLookup) -> usize {
     name_owned(&lookup.name)
-        + lookup.value.capacity()
+        + match &lookup.value {
+            Xslt10KeyValue::Static(value) | Xslt10KeyValue::Variable(value) => value.capacity(),
+        }
         + lookup
             .tail
             .as_ref()

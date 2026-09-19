@@ -898,7 +898,7 @@ fn execute_result_instruction<'a>(
             execute_copy_of_location_path(inputs, execution.node, select, control)
         }
         Instruction::CopyOfXslt10KeyLookup { select, .. } => {
-            execute_copy_of_xslt10_key_lookup(inputs, execution.node, select, control)
+            execute_copy_of_xslt10_key_lookup(inputs, execution.node, select, scope, control)
         }
         Instruction::CopyOfPathUnion { alternatives, .. } => {
             execute_copy_of_path_union(inputs, execution.node, alternatives, control)
@@ -927,10 +927,11 @@ fn execute_copy_of_xslt10_key_lookup(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
     select: &crate::xslt::golden_semantics_experiment::Xslt10KeyLookup,
+    variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     let source = inputs.source.expect("key lookup requires a source");
-    let selected = key_lookup::select(inputs, select, context, control)?;
+    let selected = key_lookup::select(inputs, select, context, variables, control)?;
     let mut copied = Vec::new();
     for node in selected {
         copied.extend(copy_source_node(source, inputs.request_id, node, control)?);
@@ -3886,7 +3887,7 @@ fn select_apply_nodes(
                 .map_err(|failure| control_failure(failure, inputs.request_id))
         }
         ApplySelection::Xslt10KeyLookup(lookup) => {
-            key_lookup::select(inputs, lookup, Some(context), control)
+            key_lookup::select(inputs, lookup, Some(context), variables, control)
         }
         ApplySelection::PathUnion(alternatives) => {
             evaluate_source_path_union(inputs, source, context, alternatives, control)

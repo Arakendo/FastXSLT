@@ -24,7 +24,7 @@ use super::{
 use crate::xpath::binary_numeric_experiment::{BinaryNumericNode, BinaryNumericOperator};
 use crate::xslt::golden_semantics_experiment::{
     Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10KeyLookup, Xslt10KeyNodePredicate,
-    Xslt10PathStringFunction, Xslt10PathStringFunctionKind, Xslt10PathSubstring,
+    Xslt10KeyValue, Xslt10PathStringFunction, Xslt10PathStringFunctionKind, Xslt10PathSubstring,
     Xslt10PathTranslate, Xslt10StringOperand,
 };
 
@@ -635,7 +635,7 @@ pub(super) fn compile_xslt10_literal_key_lookup(
     let (name, value) = split_static_key_arguments(arguments, location).ok_or_else(|| {
         unsupported(
             "FXXP1023",
-            "the first key() slice requires a literal key name and a literal atomic lookup value",
+            "the admitted key() slice requires a literal key name and a static atomic or variable lookup value",
             location,
         )
     })?;
@@ -714,7 +714,7 @@ fn closing_function_parenthesis(expression: &str) -> Option<usize> {
 fn split_static_key_arguments<'a>(
     arguments: &'a str,
     location: &SourceLocation,
-) -> Option<(&'a str, String)> {
+) -> Option<(&'a str, Xslt10KeyValue)> {
     let mut quote = None;
     for (offset, character) in arguments.char_indices() {
         if matches!(character, '\'' | '"') {
@@ -727,11 +727,18 @@ fn split_static_key_arguments<'a>(
             let name = arguments[..offset].trim();
             let value = arguments[offset + 1..].trim();
             let name = xpath_string_literal(name)?;
-            let value = if let Some(value) = xpath_string_literal(value) {
-                value.to_owned()
+            let value = if let Some(variable) = value
+                .strip_prefix('$')
+                .filter(|variable| is_ascii_ncname(variable))
+            {
+                Xslt10KeyValue::Variable(variable.to_owned())
+            } else if let Some(value) = xpath_string_literal(value) {
+                Xslt10KeyValue::Static(value.to_owned())
             } else {
                 let expression = compile_binary_numeric_node(value, location, false)?;
-                crate::xpath::binary_numeric_experiment::fold_source_free(&expression)?
+                Xslt10KeyValue::Static(crate::xpath::binary_numeric_experiment::fold_source_free(
+                    &expression,
+                )?)
             };
             return Some((name, value));
         }

@@ -2054,3 +2054,10 @@ maintained redistributable legacy suite becomes available.
   reaches 1,993 and execution reaches 1,889. General predicates and dynamic key
   arguments remain explicit.
   [Evidence](../Evidence/oasis-xslt10-positional-key-selection-2026-09-18.md)
+- 2026-09-18 -- A literal-name key lookup may now take a variable second
+  argument. Atomic and temporary-tree values reuse the existing XSLT 1.0
+  conversion owner; source-node-set values contribute every node string value.
+  One Microsoft case becomes exact and one reaches an independent HTML
+  indentation mismatch, raising the lower bound from 1,605 to 1,606 while two
+  cases leave initialization failure. Dynamic key names remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-variable-key-values-2026-09-18.md)
