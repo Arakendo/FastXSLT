@@ -5,7 +5,9 @@ use std::collections::BTreeMap;
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
-use crate::xslt::golden_semantics_experiment::{KeyUseExpression, Xslt10KeyLookup};
+use crate::xslt::golden_semantics_experiment::{
+    KeyUseExpression, Xslt10KeyLookup, Xslt10KeyNodePredicate,
+};
 
 use super::runtime_context::{SequenceInputs, required_source_context};
 use super::template_selector::{TemplateSelectionContext, matches_pattern};
@@ -80,6 +82,18 @@ pub(super) fn select(
         if matches {
             selected.push(candidate);
         }
+    }
+
+    if let Some(predicate) = lookup.predicate {
+        let position = match predicate {
+            Xslt10KeyNodePredicate::Position(position) => position,
+            Xslt10KeyNodePredicate::Last => selected.len(),
+        };
+        selected = position
+            .checked_sub(1)
+            .and_then(|index| selected.get(index).copied())
+            .into_iter()
+            .collect();
     }
 
     if let Some(tail) = &lookup.tail {

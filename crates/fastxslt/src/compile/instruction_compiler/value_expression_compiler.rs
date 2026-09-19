@@ -23,8 +23,9 @@ use super::{
 };
 use crate::xpath::binary_numeric_experiment::{BinaryNumericNode, BinaryNumericOperator};
 use crate::xslt::golden_semantics_experiment::{
-    Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10KeyLookup, Xslt10PathStringFunction,
-    Xslt10PathStringFunctionKind, Xslt10PathSubstring, Xslt10PathTranslate, Xslt10StringOperand,
+    Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10KeyLookup, Xslt10KeyNodePredicate,
+    Xslt10PathStringFunction, Xslt10PathStringFunctionKind, Xslt10PathSubstring,
+    Xslt10PathTranslate, Xslt10StringOperand,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -639,7 +640,7 @@ pub(super) fn compile_xslt10_literal_key_lookup(
         )
     })?;
     let name = super::super::compile_expanded_qname(document, element, name, "key() name")?;
-    let suffix = expression[close + 1..].trim();
+    let (predicate, suffix) = parse_xslt10_key_predicate(expression[close + 1..].trim());
     let tail = if suffix.is_empty() {
         None
     } else {
@@ -655,8 +656,33 @@ pub(super) fn compile_xslt10_literal_key_lookup(
     Ok(Xslt10KeyLookup {
         name,
         value,
+        predicate,
         tail,
         location: location.clone(),
+    })
+}
+
+fn parse_xslt10_key_predicate(expression: &str) -> (Option<Xslt10KeyNodePredicate>, &str) {
+    let Some(predicate) = expression.strip_prefix('[') else {
+        return (None, expression);
+    };
+    let Some((predicate, suffix)) = predicate.split_once(']') else {
+        return (None, expression);
+    };
+    let predicate = predicate.trim();
+    let predicate = if matches!(predicate, "last()" | "last()=position()") {
+        Some(Xslt10KeyNodePredicate::Last)
+    } else {
+        predicate
+            .strip_prefix("position()=")
+            .unwrap_or(predicate)
+            .trim()
+            .parse::<usize>()
+            .ok()
+            .map(Xslt10KeyNodePredicate::Position)
+    };
+    predicate.map_or((None, expression), |predicate| {
+        (Some(predicate), suffix.trim())
     })
 }
 

@@ -2047,3 +2047,10 @@ maintained redistributable legacy suite becomes available.
   initialization reaches 1,980 and execution reaches 1,876. No index,
   alternate copy semantics, or wider key grammar is introduced.
   [Evidence](../Evidence/oasis-xslt10-key-copy-of-2026-09-18.md)
+- 2026-09-18 -- The private key selection now applies exact positional
+  predicates before an optional path tail: integer position,
+  `position()=N`, `last()`, and `last()=position()`. Thirteen unchanged cases
+  become exact, raising the lower bound from 1,592 to 1,605; initialization
+  reaches 1,993 and execution reaches 1,889. General predicates and dynamic key
+  arguments remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-positional-key-selection-2026-09-18.md)

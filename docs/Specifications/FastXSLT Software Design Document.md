@@ -813,7 +813,10 @@ first-node string conversion, `xsl:for-each`, `xsl:apply-templates`, or the
 existing `xsl:copy-of` source deep-copy path through ordinary typed execution
 plans; those consumers preserve source node identity, document order, focus,
 diagnostics, and work accounting. This does not define a public node-set
-abstraction or admit the lookup in every expression position. Any optimized
+abstraction or admit the lookup in every expression position. A private typed
+filter may select an exact position or the last node from the ordered key
+result before an optional location-path tail; this does not admit general
+predicate evaluation. Any optimized
 lookup structure
 must remain differential-testable against that scan and must be source-derived
 and invocation-owned unless a later review admits another immutable prepared

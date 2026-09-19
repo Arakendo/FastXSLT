@@ -958,8 +958,15 @@ pub(crate) enum ValueExpression {
 pub(crate) struct Xslt10KeyLookup {
     pub(crate) name: ExpandedName,
     pub(crate) value: String,
+    pub(crate) predicate: Option<Xslt10KeyNodePredicate>,
     pub(crate) tail: Option<LocationPath>,
     pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Xslt10KeyNodePredicate {
+    Position(usize),
+    Last,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
