@@ -640,7 +640,8 @@ pub(super) fn compile_xslt10_literal_key_lookup(
         )
     })?;
     let name = super::super::compile_expanded_qname(document, element, name, "key() name")?;
-    let (predicate, suffix) = parse_xslt10_key_predicate(expression[close + 1..].trim());
+    let (predicate, suffix) =
+        parse_xslt10_key_predicate(document, element, expression[close + 1..].trim())?;
     let tail = if suffix.is_empty() {
         None
     } else {
@@ -662,16 +663,30 @@ pub(super) fn compile_xslt10_literal_key_lookup(
     })
 }
 
-fn parse_xslt10_key_predicate(expression: &str) -> (Option<Xslt10KeyNodePredicate>, &str) {
+fn parse_xslt10_key_predicate<'a>(
+    document: &Document,
+    element: NodeId,
+    expression: &'a str,
+) -> Result<(Option<Xslt10KeyNodePredicate>, &'a str), CompileFailure> {
     let Some(predicate) = expression.strip_prefix('[') else {
-        return (None, expression);
+        return Ok((None, expression));
     };
     let Some((predicate, suffix)) = predicate.split_once(']') else {
-        return (None, expression);
+        return Ok((None, expression));
     };
     let predicate = predicate.trim();
     let predicate = if matches!(predicate, "last()" | "last()=position()") {
         Some(Xslt10KeyNodePredicate::Last)
+    } else if let Some((name, value)) = parse_xslt10_key_attribute_predicate(predicate) {
+        Some(Xslt10KeyNodePredicate::AttributeEquals {
+            name: super::super::compile_expanded_qname(
+                document,
+                element,
+                name,
+                "key() predicate attribute",
+            )?,
+            value,
+        })
     } else {
         predicate
             .strip_prefix("position()=")
@@ -681,9 +696,25 @@ fn parse_xslt10_key_predicate(expression: &str) -> (Option<Xslt10KeyNodePredicat
             .ok()
             .map(Xslt10KeyNodePredicate::Position)
     };
-    predicate.map_or((None, expression), |predicate| {
+    Ok(predicate.map_or((None, expression), |predicate| {
         (Some(predicate), suffix.trim())
-    })
+    }))
+}
+
+fn parse_xslt10_key_attribute_predicate(predicate: &str) -> Option<(&str, String)> {
+    let (name, value) = predicate.split_once('=')?;
+    let name = name.trim().strip_prefix('@')?;
+    let value = value.trim();
+    for delimiter in ['\'', '"'] {
+        if let Some(value) = value
+            .strip_prefix(delimiter)
+            .and_then(|value| value.strip_suffix(delimiter))
+            .filter(|value| !value.contains(delimiter))
+        {
+            return Some((name, value.to_owned()));
+        }
+    }
+    None
 }
 
 fn closing_function_parenthesis(expression: &str) -> Option<usize> {

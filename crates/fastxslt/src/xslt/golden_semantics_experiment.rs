@@ -971,10 +971,11 @@ pub(crate) enum Xslt10KeyValue {
     ContextPath(LocationPath),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Xslt10KeyNodePredicate {
     Position(usize),
     Last,
+    AttributeEquals { name: ExpandedName, value: String },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

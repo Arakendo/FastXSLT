@@ -2211,6 +2211,36 @@ fn xslt10_count_key_lookup_uses_the_shared_ordered_node_selection() {
 }
 
 #[test]
+fn xslt10_key_attribute_predicate_filters_the_ordered_selection() {
+    const SOURCE: &str = "urn:fastxslt:key-attribute-predicate:source";
+    const STYLESHEET: &str = "urn:fastxslt:key-attribute-predicate:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:key name="prices" match="price" use="@group"/><xsl:template match="/"><out><xsl:for-each select="key('prices', 'a')[@kind='sale']"><xsl:value-of select="."/></xsl:for-each><xsl:value-of select="count(key('prices', 'a')[@kind='sale'])"/></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><price group='a' kind='regular'>1</price><price group='a' kind='sale'>2</price><price group='a' kind='sale'>3</price></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("key-attribute-predicate", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["key-attribute-predicate"].serialized,
+        "<out>232</out>"
+    );
+}
+
+#[test]
 fn xslt10_generate_id_key_avt_uses_first_selected_source_node_identity() {
     const SOURCE: &str = "urn:fastxslt:key-identity-avt:source";
     const STYLESHEET: &str = "urn:fastxslt:key-identity-avt:stylesheet";

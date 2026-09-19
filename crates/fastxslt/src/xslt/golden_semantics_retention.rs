@@ -381,6 +381,19 @@ fn xslt10_key_lookup_owned(lookup: &Xslt10KeyLookup) -> usize {
             Xslt10KeyValue::ContextPath(path) => path.known_owned_capacity_bytes(),
         }
         + lookup
+            .predicate
+            .as_ref()
+            .map_or(0, |predicate| {
+                match predicate {
+            crate::xslt::golden_semantics_experiment::Xslt10KeyNodePredicate::Position(_)
+            | crate::xslt::golden_semantics_experiment::Xslt10KeyNodePredicate::Last => 0,
+            crate::xslt::golden_semantics_experiment::Xslt10KeyNodePredicate::AttributeEquals {
+                name,
+                value,
+            } => name_owned(name) + value.capacity(),
+        }
+            })
+        + lookup
             .tail
             .as_ref()
             .map_or(0, LocationPath::known_owned_capacity_bytes)

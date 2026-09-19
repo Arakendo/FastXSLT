@@ -2082,3 +2082,10 @@ maintained redistributable legacy suite becomes available.
   zero-argument `generate-id()` AVT boundary, so the lower bound remains 1,608.
   General function-valued AVTs remain explicit.
   [Evidence](../Evidence/oasis-xslt10-generated-key-identity-avt-2026-09-18.md)
+- 2026-09-18 -- The ordered key selector now admits one exact literal
+  attribute-equality predicate, resolves its QName statically, and charges each
+  inspected source attribute. The unchanged composed-module Microsoft case
+  becomes exact, raising the strict lower bound from 1,608 to 1,609;
+  initialization reaches 1,999 and execution reaches 1,894. General key
+  predicates remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-key-attribute-predicate-2026-09-18.md)

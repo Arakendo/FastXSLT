@@ -815,8 +815,10 @@ plans; those consumers preserve source node identity, document order, focus,
 diagnostics, and work accounting. This does not define a public node-set
 abstraction or admit the lookup in every expression position. A private typed
 filter may select an exact position or the last node from the ordered key
-result before an optional location-path tail; this does not admit general
-predicate evaluation. A literal-name lookup may source its value from a runtime
+result before an optional location-path tail. It may also retain nodes whose
+statically resolved attribute has one exact literal value, charging every
+attribute inspected. These forms do not admit general predicate evaluation. A
+literal-name lookup may source its value from a runtime
 variable: atomic and temporary-tree values use XSLT 1.0 string conversion,
 while source-node-set values contribute each node's string value. This does not
 admit a dynamic key name or arbitrary value expression. The same node-set

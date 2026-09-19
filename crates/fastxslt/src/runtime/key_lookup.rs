@@ -87,17 +87,7 @@ pub(super) fn select(
         }
     }
 
-    if let Some(predicate) = lookup.predicate {
-        let position = match predicate {
-            Xslt10KeyNodePredicate::Position(position) => position,
-            Xslt10KeyNodePredicate::Last => selected.len(),
-        };
-        selected = position
-            .checked_sub(1)
-            .and_then(|index| selected.get(index).copied())
-            .into_iter()
-            .collect();
-    }
+    selected = apply_predicate(inputs, source, selected, lookup.predicate.as_ref(), control)?;
 
     if let Some(tail) = &lookup.tail {
         let mut tailed = Vec::new();
@@ -112,6 +102,47 @@ pub(super) fn select(
         selected = tailed;
     }
     Ok(selected)
+}
+
+fn apply_predicate(
+    inputs: &SequenceInputs<'_>,
+    source: &Document,
+    selected: Vec<NodeId>,
+    predicate: Option<&Xslt10KeyNodePredicate>,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let Some(predicate) = predicate else {
+        return Ok(selected);
+    };
+    match predicate {
+        Xslt10KeyNodePredicate::Position(position) => Ok(position
+            .checked_sub(1)
+            .and_then(|index| selected.get(index).copied())
+            .into_iter()
+            .collect()),
+        Xslt10KeyNodePredicate::Last => Ok(selected.last().copied().into_iter().collect()),
+        Xslt10KeyNodePredicate::AttributeEquals { name, value } => {
+            let mut filtered = Vec::new();
+            for node in selected {
+                let mut matches = false;
+                for attribute in source.attributes(node) {
+                    control
+                        .charge(WorkDomain::XPathNodeVisit, 1)
+                        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                    if source.name(*attribute) == Some(name)
+                        && source.value(*attribute) == Some(value.as_str())
+                    {
+                        matches = true;
+                        break;
+                    }
+                }
+                if matches {
+                    filtered.push(node);
+                }
+            }
+            Ok(filtered)
+        }
+    }
 }
 
 fn evaluate_lookup_value(
