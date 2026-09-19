@@ -1070,6 +1070,12 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
                 + expression.search.capacity()
                 + expression.replacement.capacity()
         }
+        ValueExpression::Xslt10ComposedPathTranslate(expression) => {
+            size_of_val(expression.as_ref())
+                + expression.path.known_owned_capacity_bytes()
+                + xslt10_translate_operand_owned(&expression.search)
+                + xslt10_translate_operand_owned(&expression.replacement)
+        }
         ValueExpression::Xslt10Concat(expression) => {
             size_of_val(expression.as_ref()) + xslt10_concat_owned(expression)
         }
@@ -1145,6 +1151,19 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         }
         ValueExpression::ConditionalInteger(expression) => conditional_integer_owned(expression),
         ValueExpression::ConditionalPath(expression) => conditional_path_owned(expression),
+    }
+}
+
+fn xslt10_translate_operand_owned(
+    operand: &crate::xslt::golden_semantics_experiment::Xslt10TranslateOperand,
+) -> usize {
+    match operand {
+        crate::xslt::golden_semantics_experiment::Xslt10TranslateOperand::Literal(value) => {
+            value.capacity()
+        }
+        crate::xslt::golden_semantics_experiment::Xslt10TranslateOperand::Concat(expression) => {
+            xslt10_concat_owned(expression)
+        }
     }
 }
 

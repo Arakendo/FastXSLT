@@ -7,6 +7,7 @@ Each record should identify the date, exact inputs or revisions, environment,
 method, results, limitations, and the decision or plan it informs. Evidence can
 pressure architecture but does not silently create a public guarantee.
 
+- [OASIS XSLT 1.0 Concatenated `translate()` Maps](oasis-xslt10-concatenated-translate-maps-2026-09-19.md)
 - [OASIS XSLT 1.0 Normalized Variable Translation](oasis-xslt10-normalized-variable-translate-2026-09-19.md)
 - [OASIS XSLT 1.0 Variable `sum()`](oasis-xslt10-variable-sum-2026-09-19.md)
 - [OASIS XSLT 1.0 Value-Of Tree Expression](oasis-xslt10-value-of-tree-expression-2026-09-19.md)

@@ -549,6 +549,11 @@ pub(super) fn execute_value_of(
                 inputs, expression, variables, result, control,
             )?;
         }
+        ValueExpression::Xslt10ComposedPathTranslate(expression) => {
+            xslt10_compatibility::append_composed_path_translate(
+                inputs, context, expression, variables, result, control,
+            )?;
+        }
         ValueExpression::Xslt10Concat(expression) => {
             xslt10_compatibility::append_concat(
                 inputs, context, expression, variables, result, control,

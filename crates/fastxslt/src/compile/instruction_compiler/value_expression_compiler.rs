@@ -25,10 +25,10 @@ use super::{
 };
 use crate::xpath::binary_numeric_experiment::{BinaryNumericNode, BinaryNumericOperator};
 use crate::xslt::golden_semantics_experiment::{
-    Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10KeyLookup, Xslt10KeyName,
-    Xslt10KeyNodePredicate, Xslt10KeyValue, Xslt10NormalizedVariableTranslate,
+    Xslt10ComposedPathTranslate, Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10KeyLookup,
+    Xslt10KeyName, Xslt10KeyNodePredicate, Xslt10KeyValue, Xslt10NormalizedVariableTranslate,
     Xslt10PathStringFunction, Xslt10PathStringFunctionKind, Xslt10PathSubstring,
-    Xslt10PathTranslate, Xslt10StringOperand,
+    Xslt10PathTranslate, Xslt10StringOperand, Xslt10TranslateOperand,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -328,6 +328,14 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
         return Ok(ValueExpression::Xslt10NormalizedVariableTranslate(
             Box::new(translate),
         ));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(translate) =
+            compile_xslt10_composed_path_translate(document, element, expression, location)?
+    {
+        return Ok(ValueExpression::Xslt10ComposedPathTranslate(Box::new(
+            translate,
+        )));
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(translate) =
@@ -1284,6 +1292,71 @@ fn compile_xslt10_normalized_variable_translate(
         search: xpath_string_literal(search)?.to_owned(),
         replacement: xpath_string_literal(replacement)?.to_owned(),
     })
+}
+
+fn compile_xslt10_composed_path_translate(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<Xslt10ComposedPathTranslate>, CompileFailure> {
+    let Some(arguments) = expression
+        .trim()
+        .strip_prefix("translate(")
+        .and_then(|value| value.strip_suffix(')'))
+    else {
+        return Ok(None);
+    };
+    let Some(arguments) = crate::xpath::static_string_experiment::split_arguments(arguments, 3)
+    else {
+        return Ok(None);
+    };
+    let [path, search, replacement] = arguments.as_slice() else {
+        return Ok(None);
+    };
+    let Some(search) = compile_xslt10_translate_operand(document, element, search, location)?
+    else {
+        return Ok(None);
+    };
+    let Some(replacement) =
+        compile_xslt10_translate_operand(document, element, replacement, location)?
+    else {
+        return Ok(None);
+    };
+    if matches!(search, Xslt10TranslateOperand::Literal(_))
+        && matches!(replacement, Xslt10TranslateOperand::Literal(_))
+    {
+        return Ok(None);
+    }
+    let mut path = parse_location_path(path, location.clone()).map_err(map_path_failure)?;
+    if let Some(namespace) = effective_xpath_default_namespace(document, element) {
+        for step in &mut path.steps {
+            if let PathStep::ChildNamed(local) = step {
+                *step = PathStep::ChildExpandedName(ExpandedName {
+                    namespace: Some(namespace.to_owned()),
+                    local: local.clone(),
+                });
+            }
+        }
+    }
+    Ok(Some(Xslt10ComposedPathTranslate {
+        path,
+        search,
+        replacement,
+    }))
+}
+
+fn compile_xslt10_translate_operand(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<Xslt10TranslateOperand>, CompileFailure> {
+    if let Some(literal) = xpath_string_literal(expression) {
+        return Ok(Some(Xslt10TranslateOperand::Literal(literal.to_owned())));
+    }
+    compile_xslt10_concat(document, element, expression, location)
+        .map(|concat| concat.map(Xslt10TranslateOperand::Concat))
 }
 
 pub(super) fn compile_xslt10_concat(

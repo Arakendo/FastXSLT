@@ -918,6 +918,50 @@ fn xslt10_translate_composes_with_normalized_source_node_variable() {
 }
 
 #[test]
+fn xslt10_translate_accepts_concatenated_variable_maps() {
+    let source = parse_document(
+        "memory:concat-map-translate.xml",
+        br"<doc><letters>abc</letters><mapped>XYZ</mapped></doc>",
+        ParseLimits {
+            max_events: 20,
+            max_depth: 5,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:concat-map-translate.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output omit-xml-declaration="yes"/><xsl:template match="doc"><xsl:variable name="first" select="'ab'"/><xsl:variable name="last" select="'c'"/><out><xsl:value-of select="translate(letters, concat($first,$last), 'XYZ')"/>|<xsl:value-of select="translate(mapped, 'XYZ', concat($first,$last))"/></out></xsl:template></xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 48,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("concatenated translation maps should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "concat-map-translate-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("concatenated translation maps should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "concat-map-translate-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out>XYZ|abc</out>");
+}
+
+#[test]
 fn xslt10_node_set_string_equal_and_not_equal_are_independently_existential() {
     let source = parse_document(
         "memory:node-set-comparison.xml",

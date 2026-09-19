@@ -2204,3 +2204,10 @@ maintained redistributable legacy suite becomes available.
   execution reaches 1,912. Dynamic mapping operands and general nested calls
   remain explicit.
   [Evidence](../Evidence/oasis-xslt10-normalized-variable-translate-2026-09-19.md)
+- 2026-09-19 -- A typed path-translation plan now permits the search or
+  replacement map to reuse the existing bounded XSLT 1.0 concat plan while
+  retaining the smaller literal-only path. The unchanged Lotus `string138`
+  and `string139` cases become exact, raising the strict lower bound from 1,623
+  to 1,625; initialization reaches 2,014 and execution reaches 1,914. Dynamic
+  function dispatch and non-path input values remain outside the slice.
+  [Evidence](../Evidence/oasis-xslt10-concatenated-translate-maps-2026-09-19.md)

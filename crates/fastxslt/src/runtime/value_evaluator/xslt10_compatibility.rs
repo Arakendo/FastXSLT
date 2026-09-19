@@ -1,13 +1,15 @@
 //! Private `XPath` 1.0 value-conversion compatibility operations.
 
+use std::borrow::Cow;
+
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xpath::path_experiment::{LocationPath, evaluate_location_path_controlled};
 use crate::xslt::golden_semantics_experiment::{
-    Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10NormalizedVariableTranslate,
-    Xslt10PathStringFunction, Xslt10PathStringFunctionKind, Xslt10PathSubstring,
-    Xslt10PathTranslate, Xslt10StringOperand,
+    Xslt10ComposedPathTranslate, Xslt10ConcatExpression, Xslt10ConcatPart,
+    Xslt10NormalizedVariableTranslate, Xslt10PathStringFunction, Xslt10PathStringFunctionKind,
+    Xslt10PathSubstring, Xslt10PathTranslate, Xslt10StringOperand, Xslt10TranslateOperand,
 };
 
 use super::super::{
@@ -506,6 +508,41 @@ pub(super) fn append_normalized_variable_translate(
         &expression.replacement,
     );
     append_text(result, &value, inputs.request_id, control)
+}
+
+pub(super) fn append_composed_path_translate(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    expression: &Xslt10ComposedPathTranslate,
+    variables: &RuntimeVariables,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let value = first_path_string(inputs, context, &expression.path, control)?;
+    let search = translate_operand_value(inputs, context, &expression.search, variables, control)?;
+    let replacement =
+        translate_operand_value(inputs, context, &expression.replacement, variables, control)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let value =
+        crate::xpath::static_string_experiment::evaluate_translate(&value, &search, &replacement);
+    append_text(result, &value, inputs.request_id, control)
+}
+
+fn translate_operand_value<'a>(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    operand: &'a Xslt10TranslateOperand,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Cow<'a, str>, ExecutionFailure> {
+    match operand {
+        Xslt10TranslateOperand::Literal(value) => Ok(Cow::Borrowed(value)),
+        Xslt10TranslateOperand::Concat(expression) => {
+            concat_value(inputs, context, expression, variables, control).map(Cow::Owned)
+        }
+    }
 }
 
 pub(super) fn append_concat(

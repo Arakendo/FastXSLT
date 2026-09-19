@@ -924,6 +924,7 @@ pub(crate) enum ValueExpression {
     Xslt10PathSubstring(Box<Xslt10PathSubstring>),
     Xslt10PathTranslate(Box<Xslt10PathTranslate>),
     Xslt10NormalizedVariableTranslate(Box<Xslt10NormalizedVariableTranslate>),
+    Xslt10ComposedPathTranslate(Box<Xslt10ComposedPathTranslate>),
     Xslt10Concat(Box<Xslt10ConcatExpression>),
     Xslt10VariableBooleanComparison {
         variable: String,
@@ -1043,6 +1044,19 @@ pub(crate) struct Xslt10NormalizedVariableTranslate {
     pub(crate) variable: String,
     pub(crate) search: String,
     pub(crate) replacement: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10ComposedPathTranslate {
+    pub(crate) path: LocationPath,
+    pub(crate) search: Xslt10TranslateOperand,
+    pub(crate) replacement: Xslt10TranslateOperand,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Xslt10TranslateOperand {
+    Literal(String),
+    Concat(Xslt10ConcatExpression),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
