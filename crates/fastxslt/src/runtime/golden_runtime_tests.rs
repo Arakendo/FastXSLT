@@ -962,6 +962,50 @@ fn xslt10_translate_accepts_concatenated_variable_maps() {
 }
 
 #[test]
+fn xslt10_string_wraps_variable_numeric_expression() {
+    let source = parse_document(
+        "memory:string-variable-numeric.xml",
+        br"<doc/>",
+        ParseLimits {
+            max_events: 8,
+            max_depth: 3,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:string-variable-numeric.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output omit-xml-declaration="yes"/><xsl:variable name="numerator" select="123"/><xsl:variable name="denominator" select="0"/><xsl:template match="/"><out><xsl:value-of select="string($numerator div $denominator)"/></out></xsl:template></xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("wrapped variable numeric expression should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "string-variable-numeric-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("wrapped variable numeric expression should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "string-variable-numeric-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out>Infinity</out>");
+}
+
+#[test]
 fn xslt10_node_set_string_equal_and_not_equal_are_independently_existential() {
     let source = parse_document(
         "memory:node-set-comparison.xml",

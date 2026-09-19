@@ -1022,6 +1022,10 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         | ValueExpression::Xslt10VariableStringLength(name)
         | ValueExpression::Xslt10VariableNumber(name)
         | ValueExpression::Xslt10VariableSum(name) => name.capacity(),
+        ValueExpression::Xslt10VariableDivisionString {
+            numerator,
+            denominator,
+        } => numerator.capacity() + denominator.capacity(),
         ValueExpression::Xslt10VariableStringLengthTimes { variable, .. }
         | ValueExpression::Xslt10VariableBooleanComparison { variable, .. }
         | ValueExpression::Xslt10VariableNumberComparison { variable, .. } => variable.capacity(),

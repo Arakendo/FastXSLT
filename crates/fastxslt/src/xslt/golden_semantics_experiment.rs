@@ -909,6 +909,10 @@ pub(crate) enum ValueExpression {
         factor: usize,
     },
     Xslt10VariableNumber(String),
+    Xslt10VariableDivisionString {
+        numerator: String,
+        denominator: String,
+    },
     Xslt10VariablePositionPath {
         path: LocationPath,
         variable: String,

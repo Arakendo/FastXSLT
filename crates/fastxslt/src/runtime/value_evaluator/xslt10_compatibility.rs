@@ -232,6 +232,33 @@ pub(super) fn number_lexical(value: &str) -> String {
         .map_or_else(|| "NaN".to_owned(), f64_lexical)
 }
 
+pub(super) fn append_variable_division_string(
+    inputs: &SequenceInputs<'_>,
+    numerator: &str,
+    denominator: &str,
+    variables: &RuntimeVariables,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let numerator = variable_numeric_lexical_value(inputs, numerator, variables, control)?;
+    let denominator = variable_numeric_lexical_value(inputs, denominator, variables, control)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let numerator =
+        crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&numerator)
+            .unwrap_or(f64::NAN);
+    let denominator =
+        crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&denominator)
+            .unwrap_or(f64::NAN);
+    append_text(
+        result,
+        &f64_lexical(numerator / denominator),
+        inputs.request_id,
+        control,
+    )
+}
+
 pub(super) fn append_variable_position_path(
     inputs: &SequenceInputs<'_>,
     context: Option<NodeId>,
@@ -288,7 +315,13 @@ pub(super) fn append_variable_position_path(
 }
 
 fn f64_lexical(value: f64) -> String {
-    if value == 0.0 {
+    if value.is_nan() {
+        "NaN".to_owned()
+    } else if value == f64::INFINITY {
+        "Infinity".to_owned()
+    } else if value == f64::NEG_INFINITY {
+        "-Infinity".to_owned()
+    } else if value == 0.0 {
         "0".to_owned()
     } else {
         value.to_string()

@@ -4944,6 +4944,13 @@ host lifecycle.
     1,625 with 2,014 initialized and 1,914 successfully executed cases while
     retaining the smaller literal-only path and excluding dynamic dispatch.
     [Evidence](../Evidence/oasis-xslt10-concatenated-translate-maps-2026-09-19.md)
+  - [x] Select a narrow XSLT 1.0 double-division plan for
+    `string($variable div $variable)`, preserving XPath infinity/NaN lexicals
+    without weakening the exact-rational evaluator. Two unchanged Microsoft
+    cases initialize and execute, raising those totals to 2,016 and 1,916, but
+    remain in the visible HTML-comparator gap; the exact lower bound stays
+    1,625.
+    [Evidence](../Evidence/oasis-xslt10-variable-division-string-2026-09-19.md)
   - [x] Variable-valued `xsl:copy-of` preserves atomic, source-node, and
     temporary-tree semantics without introducing a legacy-only value model.
   - [x] Bounded `xsl:copy-of` path unions evaluate each typed alternative,

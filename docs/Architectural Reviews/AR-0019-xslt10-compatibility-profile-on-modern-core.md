@@ -2211,3 +2211,11 @@ maintained redistributable legacy suite becomes available.
   to 1,625; initialization reaches 2,014 and execution reaches 1,914. Dynamic
   function dispatch and non-path input values remain outside the slice.
   [Evidence](../Evidence/oasis-xslt10-concatenated-translate-maps-2026-09-19.md)
+- 2026-09-19 -- `string($variable div $variable)` now selects a narrow XSLT
+  1.0 double-division plan and emits the XPath lexical values for infinities
+  and NaN without weakening the exact-rational evaluator's zero-divisor
+  boundary. Two unchanged Microsoft variable cases initialize and execute with
+  the required `Infinity`; initialization reaches 2,016 and execution reaches
+  1,916. Both remain visibly blocked by the HTML comparator, so the strict
+  exact lower bound remains 1,625.
+  [Evidence](../Evidence/oasis-xslt10-variable-division-string-2026-09-19.md)
