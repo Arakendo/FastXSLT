@@ -1438,6 +1438,76 @@ fn context_name_xsl_element_resolves_its_static_prefix_binding() {
 }
 
 #[test]
+fn path_name_xsl_element_uses_first_node_string_and_validates_the_qname() {
+    let source = parse_document(
+        "memory:path-name-computed-element.xml",
+        br#"<doc><item name="alpha"/><item name="p:beta"/></doc>"#,
+        ParseLimits {
+            max_events: 16,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:path-name-computed-element.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:p="urn:item" exclude-result-prefixes="p" version="1.0">
+          <xsl:output method="xml" omit-xml-declaration="yes"/>
+          <xsl:template match="/"><out><xsl:for-each select="doc/item"><xsl:element name="{@name}"/></xsl:for-each></out></xsl:template>
+        </xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("path-valued names should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "path-name-computed-element-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("path-valued names should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "path-name-computed-element-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(
+        serialized,
+        "<out><alpha></alpha><p:beta xmlns:p=\"urn:item\"></p:beta></out>"
+    );
+
+    let invalid_source = parse_document(
+        "memory:invalid-path-name-computed-element.xml",
+        br#"<doc><item name=" not-a-QName "/></doc>"#,
+        ParseLimits {
+            max_events: 8,
+            max_depth: 4,
+        },
+    )
+    .expect("source should parse");
+    let invalid_source = Document::from_parsed(invalid_source).expect("source XDM should build");
+    let failure = execute_program(
+        &program,
+        &invalid_source,
+        "invalid-path-name-computed-element-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect_err("invalid computed QName should fail");
+    assert_eq!(failure.code, "XTDE0820");
+    assert_eq!(failure.category, FailureCategory::Invalid);
+}
+
+#[test]
 fn descendant_match_path_accepts_nonadjacent_ancestor() {
     let source = parse_document(
         "memory:descendant-match.xml",

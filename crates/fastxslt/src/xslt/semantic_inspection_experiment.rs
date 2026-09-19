@@ -253,6 +253,11 @@ fn observe_instructions(
                 computed_attributes,
                 body,
                 ..
+            }
+            | Instruction::PathNameElement {
+                computed_attributes,
+                body,
+                ..
             } => (
                 observe_element_constructor(
                     None,
@@ -317,15 +322,23 @@ fn observe_instructions(
             | Instruction::CopyOfVariable { .. }
             | Instruction::CopyOfAtomicValue { .. } => (SemanticFeature::CopyOf, None),
         };
-        let occurrences = feature_counts.entry(feature).or_default();
-        *occurrences = occurrences
-            .checked_add(1)
-            .ok_or(InspectionFailure::CountOverflow)?;
+        increment_feature(feature_counts, feature)?;
         if let Some(body) = body {
             observe_instructions(body, instruction_count, feature_counts)?;
         }
         observe_nested_choose(instruction, instruction_count, feature_counts)?;
     }
+    Ok(())
+}
+
+fn increment_feature(
+    feature_counts: &mut BTreeMap<SemanticFeature, usize>,
+    feature: SemanticFeature,
+) -> Result<(), InspectionFailure> {
+    let occurrences = feature_counts.entry(feature).or_default();
+    *occurrences = occurrences
+        .checked_add(1)
+        .ok_or(InspectionFailure::CountOverflow)?;
     Ok(())
 }
 

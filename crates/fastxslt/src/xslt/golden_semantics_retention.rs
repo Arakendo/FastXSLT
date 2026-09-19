@@ -361,9 +361,9 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
 
 fn instruction_owned(value: &Instruction) -> usize {
     match value {
-        Instruction::LiteralElement { .. } | Instruction::ContextNameElement { .. } => {
-            element_instruction_owned(value)
-        }
+        Instruction::LiteralElement { .. }
+        | Instruction::ContextNameElement { .. }
+        | Instruction::PathNameElement { .. } => element_instruction_owned(value),
         Instruction::Text { value, location } | Instruction::CommentNode { value, location } => {
             value.capacity() + location_owned(location)
         }
@@ -478,8 +478,29 @@ fn element_instruction_owned(value: &Instruction) -> usize {
     match value {
         Instruction::LiteralElement { .. } => literal_element_instruction_owned(value),
         Instruction::ContextNameElement { .. } => context_name_element_owned(value),
+        Instruction::PathNameElement { .. } => path_name_element_owned(value),
         _ => unreachable!("element retention requires an element instruction"),
     }
+}
+
+fn path_name_element_owned(value: &Instruction) -> usize {
+    let Instruction::PathNameElement {
+        name,
+        namespace_override,
+        static_namespaces,
+        computed_attributes,
+        body,
+        location,
+    } = value
+    else {
+        unreachable!("path-name retention requires a path-name element instruction")
+    };
+    name.known_owned_capacity_bytes()
+        + option_string_owned(namespace_override.as_ref())
+        + arc_slice_owned(static_namespaces, namespace_owned)
+        + vec_owned(computed_attributes, computed_attribute_owned)
+        + vec_owned(body, instruction_owned)
+        + location_owned(location)
 }
 
 fn context_name_element_owned(value: &Instruction) -> usize {

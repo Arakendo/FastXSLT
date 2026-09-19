@@ -506,6 +506,14 @@ pub(crate) enum Instruction {
         body: Vec<Instruction>,
         location: SourceLocation,
     },
+    PathNameElement {
+        name: LocationPath,
+        namespace_override: Option<String>,
+        static_namespaces: Arc<[NamespaceBinding]>,
+        computed_attributes: Vec<ComputedAttribute>,
+        body: Vec<Instruction>,
+        location: SourceLocation,
+    },
     Text {
         value: String,
         location: SourceLocation,

@@ -32,6 +32,8 @@ mod atomic_template_executor;
 mod byte_encoding;
 #[path = "dynamic_document.rs"]
 mod dynamic_document;
+#[path = "dynamic_element_name.rs"]
+mod dynamic_element_name;
 #[path = "match_sequence_predicate.rs"]
 mod match_sequence_predicate;
 #[path = "number_executor.rs"]
@@ -68,6 +70,7 @@ mod value_evaluator;
 #[path = "variable_filtered_path.rs"]
 mod variable_filtered_path;
 
+use dynamic_element_name::resolve_path_element_name;
 use number_executor::execute as execute_number_instruction;
 #[cfg(test)]
 pub(super) use resource_compiler::compile_resource;
@@ -718,9 +721,15 @@ fn execute_instruction(
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     match instruction {
-        Instruction::LiteralElement { .. } | Instruction::ContextNameElement { .. } => result.push(
-            execute_literal_element(inputs, instruction, execution, scope, control)?,
-        ),
+        Instruction::LiteralElement { .. }
+        | Instruction::ContextNameElement { .. }
+        | Instruction::PathNameElement { .. } => result.push(execute_literal_element(
+            inputs,
+            instruction,
+            execution,
+            scope,
+            control,
+        )?),
         Instruction::Text { value, .. } => append_text(result, value, inputs.request_id, control)?,
         Instruction::CopyOfStaticAtomicText { value, .. } => {
             append_text(result, value, inputs.request_id, control)?;
@@ -2070,6 +2079,31 @@ fn prepare_element_execution<'a>(
             let (name, namespaces) = resolve_context_element_name(
                 inputs,
                 execution,
+                namespace_override.as_deref(),
+                static_namespaces,
+                location,
+                control,
+            )?;
+            Ok(ElementExecutionParts {
+                name,
+                namespaces,
+                attributes: &[],
+                computed_attributes,
+                body,
+            })
+        }
+        Instruction::PathNameElement {
+            name,
+            namespace_override,
+            static_namespaces,
+            computed_attributes,
+            body,
+            location,
+        } => {
+            let (name, namespaces) = resolve_path_element_name(
+                inputs,
+                execution,
+                name,
                 namespace_override.as_deref(),
                 static_namespaces,
                 location,

@@ -1967,3 +1967,13 @@ maintained redistributable legacy suite becomes available.
   from 23 to 13; all survivors contain genuinely dynamic AVTs. Aggregate
   lifecycle counts and the 1,565 exact-result lower bound remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-static-computed-element-qname-errors-2026-09-18.md)
+- 2026-09-18 -- An `xsl:element` name AVT containing exactly one admitted
+  location path now lowers to a typed instruction, evaluates through the
+  charged XPath owner, applies XSLT 1.0 first-node string conversion, and
+  resolves the resulting lexical `QName` against retained static namespaces.
+  Eleven cases leave `FXST1047`, reducing that frontier from 13 to 2. Four
+  initialize, three execute, one reports the expected runtime `XTDE0820`, and
+  `Lotus/lre_lre08#1` raises the strict exact-result lower bound from 1,565 to
+  1,566. Variable, composite, predicate/function, and dynamic-namespace forms
+  remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-path-valued-computed-element-names-2026-09-18.md)

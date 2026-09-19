@@ -479,7 +479,7 @@ fn computed_element_keeps_dynamic_namespaces_and_unknown_attribute_sets_explicit
 }
 
 #[test]
-fn computed_element_distinguishes_invalid_static_qnames_from_dynamic_names() {
+fn computed_element_distinguishes_invalid_static_qnames_from_path_names() {
     for name in ["", ":foo", "foo:", "a:b:c", "not a name"] {
         let bytes = format!(
             r#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:template match="/"><xsl:element name="{name}"/></xsl:template></xsl:stylesheet>"#
@@ -494,7 +494,17 @@ fn computed_element_distinguishes_invalid_static_qnames_from_dynamic_names() {
         "memory:dynamic-computed-name.xsl",
         br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:template match="/"><xsl:element name="{@name}"/></xsl:template></xsl:stylesheet>"#,
     );
-    let failure = compile_stylesheet(&document).expect_err("dynamic name stays explicit");
+    let program = compile_stylesheet(&document).expect("path name should compile");
+    assert!(matches!(
+        program.root_template.as_ref().unwrap().body.as_slice(),
+        [Instruction::PathNameElement { .. }]
+    ));
+
+    let modern = parse_stylesheet(
+        "memory:modern-dynamic-computed-name.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="3.0"><xsl:template match="/"><xsl:element name="{@name}"/></xsl:template></xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&modern).expect_err("modern semantics remain independent");
     assert_eq!(failure.code, "FXST1047");
     assert_eq!(failure.category, CompileCategory::Unsupported);
 }

@@ -523,6 +523,37 @@ fn compile_static_computed_element(
             location: document.location(element).clone(),
         });
     }
+    if uses_xslt10_compatibility(document, element)
+        && let Some(expression) = name
+            .strip_prefix('{')
+            .and_then(|value| value.strip_suffix('}'))
+            .filter(|value| !value.contains(['{', '}']))
+    {
+        if let Ok(name) = compile_sort_path(
+            document,
+            element,
+            expression.trim(),
+            document.location(element),
+        ) {
+            let (mut computed_attributes, computed_attribute_nodes) =
+                compile_computed_attributes(document, element)?;
+            let mut attribute_set_values = compile_local_attribute_sets(document, element, None)?;
+            attribute_set_values.retain(|set_attribute| {
+                !computed_attributes
+                    .iter()
+                    .any(|attribute| attribute.name == set_attribute.name)
+            });
+            attribute_set_values.append(&mut computed_attributes);
+            return Ok(Instruction::PathNameElement {
+                name,
+                namespace_override: namespace.map(str::to_owned),
+                static_namespaces: document.in_scope_namespaces(element).into(),
+                computed_attributes: attribute_set_values,
+                body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
+                location: document.location(element).clone(),
+            });
+        }
+    }
     let (name, mut namespaces) =
         compile_static_computed_element_name(document, element, name, namespace)?;
     let (mut computed_attributes, computed_attribute_nodes) =

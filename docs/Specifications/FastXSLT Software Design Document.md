@@ -761,6 +761,15 @@ Unbound prefixes and empty names remain structured dynamic errors. This does
 not admit arbitrary name expressions, dynamic namespace AVTs, or a public
 dynamic-QName representation.
 
+Under XSLT 1.0 static context, a computed-element name AVT containing exactly
+one admitted location path may instead retain that typed path. Execution uses
+the ordinary charged XPath evaluator and first-node string conversion, then
+validates the resulting lexical `QName` and resolves its prefix against the
+instruction's retained static namespace context. The resolved name feeds the
+same semantic result-element constructor as static and context-name elements.
+This does not admit variable paths, mixed AVT composition, dynamic namespace
+AVTs, or a public dynamic-name representation.
+
 For a computed-element name without AVT delimiters, compilation validates the
 lexical QName immediately. A malformed static name reports `XTDE0820`; a valid
 prefixed name without a binding reports `XTDE0830`. Values containing
