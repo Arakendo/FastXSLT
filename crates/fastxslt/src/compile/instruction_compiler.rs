@@ -609,6 +609,14 @@ fn retain_computed_attribute_namespace_bindings(
                 crate::xslt::golden_semantics_experiment::DynamicAttributeName::Path {
                     namespace_override,
                     ..
+                }
+                | crate::xslt::golden_semantics_experiment::DynamicAttributeName::ContextName {
+                    namespace_override,
+                    ..
+                }
+                | crate::xslt::golden_semantics_experiment::DynamicAttributeName::Literal {
+                    namespace_override,
+                    ..
                 } => namespace_override
                     .as_deref()
                     .filter(|value| !value.is_empty()),

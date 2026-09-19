@@ -785,6 +785,11 @@ required static binding before execution. This does not admit variable or
 temporary-tree paths, mixed AVT composition, dynamic namespace AVTs, or a
 public dynamic-name representation.
 
+The same private attribute-name plan may compile the exact `name()` / `name(.)`
+source-context operation or fold one XPath string-literal expression. Both feed
+the attribute-specific runtime `QName` validator; they do not widen the plan to
+arbitrary functions or AVT composition.
+
 For a computed-element name without AVT delimiters, compilation validates the
 lexical QName immediately. A malformed static name reports `XTDE0820`; a valid
 prefixed name without a binding reports `XTDE0830`. Values containing

@@ -4745,6 +4745,12 @@ host lifecycle.
     the strict lower bound to 1,569, while three independent later boundaries
     remain visible.
     [Evidence](../Evidence/oasis-xslt10-path-valued-computed-attribute-names-2026-09-18.md)
+  - [x] Extend the same private computed-attribute name plan to exact
+    `name()` / `name(.)` and one-expression string-literal AVTs. Two more cases
+    leave `FXST1062` and reach exact runtime `XTDE0855` and independent
+    `XTDE0410` boundaries; neither receives pass credit, so the strict lower
+    bound remains 1,569.
+    [Evidence](../Evidence/oasis-xslt10-context-and-literal-computed-attribute-names-2026-09-18.md)
   - [x] Classify structurally complete `format-number()` calls with an arity
     other than two or three as static `XPST0017 / invalid` before operand and
     picture capability selection. Four unchanged OASIS cases leave the generic

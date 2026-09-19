@@ -22,7 +22,9 @@ namespace override is retained on the containing result element at compilation,
 so serialization does not invent a binding after semantic construction.
 
 Variable composition, `name(.)`, temporary-tree paths, multiple AVT parts, and
-dynamic namespace AVTs remain unsupported.
+dynamic namespace AVTs remained outside this tranche. The separately measured
+context-name/literal follow-up admits two of those exact forms without changing
+the result recorded here.
 
 ## Corpus effect
 

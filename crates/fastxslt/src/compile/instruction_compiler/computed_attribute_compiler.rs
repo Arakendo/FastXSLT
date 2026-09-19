@@ -156,12 +156,11 @@ fn compile_computed_attribute_name(
             document.location(element),
         ));
     }
-    let path = lexical
+    let expression = lexical
         .strip_prefix('{')
         .and_then(|value| value.strip_suffix('}'))
         .map(str::trim)
         .filter(|value| !value.contains(['{', '}']))
-        .and_then(|value| parse_location_path(value, document.location(element).clone()).ok())
         .ok_or_else(|| {
             unsupported(
                 "FXST1062",
@@ -169,16 +168,38 @@ fn compile_computed_attribute_name(
                 document.location(element),
             )
         })?;
+    let namespace_override = namespace.map(str::to_owned);
+    let static_namespaces = || document.in_scope_namespaces(element).into();
+    let dynamic_name = if matches!(expression, "name()" | "name(.)") {
+        DynamicAttributeName::ContextName {
+            namespace_override,
+            static_namespaces: static_namespaces(),
+        }
+    } else if let Some(value) = xpath_string_literal(expression) {
+        DynamicAttributeName::Literal {
+            value: value.to_owned(),
+            namespace_override,
+            static_namespaces: static_namespaces(),
+        }
+    } else if let Ok(path) = parse_location_path(expression, document.location(element).clone()) {
+        DynamicAttributeName::Path {
+            path,
+            namespace_override,
+            static_namespaces: static_namespaces(),
+        }
+    } else {
+        return Err(unsupported(
+            "FXST1062",
+            "the private computed-attribute name slice supports one path, context-name, or string-literal XSLT 1.0 AVT",
+            document.location(element),
+        ));
+    };
     Ok((
         ExpandedName {
             namespace: None,
             local: String::new(),
         },
-        Some(DynamicAttributeName::Path {
-            path,
-            namespace_override: namespace.map(str::to_owned),
-            static_namespaces: document.in_scope_namespaces(element).into(),
-        }),
+        Some(dynamic_name),
     ))
 }
 

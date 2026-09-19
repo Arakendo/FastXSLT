@@ -1245,6 +1245,22 @@ fn computed_attribute_owned(value: &ComputedAttribute) -> usize {
                     + namespace_override.as_ref().map_or(0, String::capacity)
                     + arc_slice_owned(static_namespaces, namespace_owned)
             }
+            crate::xslt::golden_semantics_experiment::DynamicAttributeName::ContextName {
+                namespace_override,
+                static_namespaces,
+            } => {
+                namespace_override.as_ref().map_or(0, String::capacity)
+                    + arc_slice_owned(static_namespaces, namespace_owned)
+            }
+            crate::xslt::golden_semantics_experiment::DynamicAttributeName::Literal {
+                value,
+                namespace_override,
+                static_namespaces,
+            } => {
+                value.capacity()
+                    + namespace_override.as_ref().map_or(0, String::capacity)
+                    + arc_slice_owned(static_namespaces, namespace_owned)
+            }
         })
         + literal_attribute_value_owned(&value.value)
         + location_owned(&value.location)

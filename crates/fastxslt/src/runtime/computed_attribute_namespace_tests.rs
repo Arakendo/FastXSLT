@@ -222,6 +222,53 @@ fn path_valued_attribute_name_retains_static_namespace_override() {
 }
 
 #[test]
+fn xslt10_context_name_attribute_uses_source_lexical_name() {
+    let stylesheet = document(
+        "memory:context-name-attribute.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><xsl:apply-templates select="doc/item"/></xsl:template><xsl:template match="item"><out><xsl:attribute name="{name(.)}">kept</xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+    );
+    let source = document("memory:source.xml", br"<doc><item/></doc>");
+    let program = compile_stylesheet(&stylesheet).expect("stylesheet should compile");
+    let result = execute_program(
+        &program,
+        &source,
+        "context-name-attribute-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("stylesheet should execute");
+    let result = serialize_xml(
+        &result,
+        &program.output,
+        "context-name-attribute-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("context-name attribute should serialize");
+
+    assert_eq!(result, "<out item=\"kept\"></out>");
+}
+
+#[test]
+fn xslt10_literal_name_avt_observes_reserved_xmlns_rule_at_runtime() {
+    let stylesheet = document(
+        "memory:literal-dynamic-attribute-name.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out><xsl:attribute name="{'xmlns:bad'}" namespace="urn:not-xmlns">bad</xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+    );
+    let source = document("memory:source.xml", br"<doc/>");
+    let program = compile_stylesheet(&stylesheet).expect("stylesheet should compile");
+    let failure = execute_program(
+        &program,
+        &source,
+        "literal-dynamic-attribute-name-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect_err("an xmlns-prefixed computed name must fail");
+
+    assert_eq!(failure.code, "XTDE0855");
+    assert_eq!(failure.category, super::FailureCategory::Invalid);
+}
+
+#[test]
 fn xslt10_path_valued_attribute_name_reports_invalid_empty_qname() {
     let stylesheet = document(
         "memory:empty-dynamic-attribute-name.xsl",

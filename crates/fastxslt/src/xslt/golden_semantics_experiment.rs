@@ -1247,6 +1247,15 @@ pub(crate) enum DynamicAttributeName {
         namespace_override: Option<String>,
         static_namespaces: Arc<[NamespaceBinding]>,
     },
+    ContextName {
+        namespace_override: Option<String>,
+        static_namespaces: Arc<[NamespaceBinding]>,
+    },
+    Literal {
+        value: String,
+        namespace_override: Option<String>,
+        static_namespaces: Arc<[NamespaceBinding]>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

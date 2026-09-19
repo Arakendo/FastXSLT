@@ -1993,3 +1993,10 @@ maintained redistributable legacy suite becomes available.
   leave `FXST1062`; two become exact, raising the lower bound from 1,567 to
   1,569, while the other three expose independent later boundaries.
   [Evidence](../Evidence/oasis-xslt10-path-valued-computed-attribute-names-2026-09-18.md)
+- 2026-09-18 -- The private computed-attribute name plan now also admits exact
+  `name()` / `name(.)` and one-expression string-literal AVTs. Two cases leave
+  `FXST1062`: one reaches exact runtime `XTDE0855`, while the other reaches the
+  independent result-attribute attachment boundary. Neither receives pass
+  credit; the lower bound remains 1,569 and five variable-composition cases
+  remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-context-and-literal-computed-attribute-names-2026-09-18.md)

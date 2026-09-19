@@ -18,12 +18,30 @@ pub(super) fn resolve(
     location: &SourceLocation,
     control: &mut InvocationControl,
 ) -> Result<ExpandedName, ExecutionFailure> {
-    let DynamicAttributeName::Path {
-        path,
-        namespace_override,
-        static_namespaces,
-    } = name;
-    let lexical = path_name_value(inputs, context, path, control)?;
+    let (lexical, namespace_override, static_namespaces) = match name {
+        DynamicAttributeName::Path {
+            path,
+            namespace_override,
+            static_namespaces,
+        } => (
+            path_name_value(inputs, context, path, control)?,
+            namespace_override,
+            static_namespaces,
+        ),
+        DynamicAttributeName::ContextName {
+            namespace_override,
+            static_namespaces,
+        } => (
+            context_lexical_name(inputs, context, control)?,
+            namespace_override,
+            static_namespaces,
+        ),
+        DynamicAttributeName::Literal {
+            value,
+            namespace_override,
+            static_namespaces,
+        } => (value.clone(), namespace_override, static_namespaces),
+    };
     resolve_lexical_name(
         &lexical,
         namespace_override.as_deref(),
@@ -31,6 +49,27 @@ pub(super) fn resolve(
         location,
         inputs.request_id,
     )
+}
+
+fn context_lexical_name(
+    inputs: &SequenceInputs<'_>,
+    context: Option<crate::xdm::owned_tree_experiment::NodeId>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, context)?;
+    control
+        .charge(
+            crate::execution_control_experiment::WorkDomain::XPathNodeVisit,
+            1,
+        )
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let Some(name) = source.name(context) else {
+        return Ok(String::new());
+    };
+    Ok(source.prefix(context).map_or_else(
+        || name.local.clone(),
+        |prefix| format!("{prefix}:{}", name.local),
+    ))
 }
 
 fn path_name_value(
