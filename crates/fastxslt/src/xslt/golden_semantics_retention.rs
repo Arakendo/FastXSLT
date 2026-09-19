@@ -383,6 +383,10 @@ fn xslt10_key_lookup_owned(lookup: &Xslt10KeyLookup) -> usize {
         + location_owned(&lookup.location)
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "the exhaustive instruction ownership dispatcher is one cohesive accounting boundary"
+)]
 fn instruction_owned(value: &Instruction) -> usize {
     match value {
         Instruction::LiteralElement { .. }
@@ -459,6 +463,7 @@ fn instruction_owned(value: &Instruction) -> usize {
         | Instruction::CopyOfChildElements { .. }
         | Instruction::CopyOfAncestorOrSelfElements { .. }
         | Instruction::CopyOfLocationPath { .. }
+        | Instruction::CopyOfXslt10KeyLookup { .. }
         | Instruction::CopyOfPathUnion { .. }
         | Instruction::CopyOfStaticAtomicText { .. }
         | Instruction::CopyOfVariable { .. }
@@ -751,6 +756,9 @@ fn copy_of_owned(instruction: &Instruction) -> usize {
         | Instruction::CopyOfAncestorOrSelfElements { location } => location_owned(location),
         Instruction::CopyOfLocationPath { select, location } => {
             select.known_owned_capacity_bytes() + location_owned(location)
+        }
+        Instruction::CopyOfXslt10KeyLookup { select, location } => {
+            xslt10_key_lookup_owned(select) + location_owned(location)
         }
         Instruction::CopyOfPathUnion {
             alternatives,

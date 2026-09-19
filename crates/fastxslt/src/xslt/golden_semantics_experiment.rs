@@ -690,6 +690,10 @@ pub(crate) enum Instruction {
         select: LocationPath,
         location: SourceLocation,
     },
+    CopyOfXslt10KeyLookup {
+        select: Box<Xslt10KeyLookup>,
+        location: SourceLocation,
+    },
     CopyOfPathUnion {
         alternatives: Vec<LocationPath>,
         location: SourceLocation,

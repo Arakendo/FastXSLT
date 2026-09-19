@@ -773,6 +773,18 @@ fn compile_copy_of(document: &Document, element: NodeId) -> Result<Instruction, 
     ensure_only_attributes(document, element, &["select"], "xsl:copy-of")?;
     ensure_no_meaningful_children(document, element, "xsl:copy-of")?;
     let select = required_attribute(document, element, None, "select")?;
+    if uses_xslt10_compatibility(document, element) && select.trim_start().starts_with("key(") {
+        return value_expression_compiler::compile_xslt10_literal_key_lookup(
+            document,
+            element,
+            select,
+            document.location(element),
+        )
+        .map(|select| Instruction::CopyOfXslt10KeyLookup {
+            select: Box::new(select),
+            location: document.location(element).clone(),
+        });
+    }
     if let Some(value) = static_copy_of_text(select.trim()) {
         return Ok(Instruction::CopyOfStaticAtomicText {
             value,

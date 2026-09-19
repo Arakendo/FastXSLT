@@ -810,6 +810,7 @@ fn execute_instruction(
         | Instruction::CopyOfChildElements { .. }
         | Instruction::CopyOfAncestorOrSelfElements { .. }
         | Instruction::CopyOfLocationPath { .. }
+        | Instruction::CopyOfXslt10KeyLookup { .. }
         | Instruction::CopyOfPathUnion { .. }
         | Instruction::CopyOfVariable { .. }
         | Instruction::CopyOfAtomicValue { .. }
@@ -896,6 +897,9 @@ fn execute_result_instruction<'a>(
         Instruction::CopyOfLocationPath { select, .. } => {
             execute_copy_of_location_path(inputs, execution.node, select, control)
         }
+        Instruction::CopyOfXslt10KeyLookup { select, .. } => {
+            execute_copy_of_xslt10_key_lookup(inputs, execution.node, select, control)
+        }
         Instruction::CopyOfPathUnion { alternatives, .. } => {
             execute_copy_of_path_union(inputs, execution.node, alternatives, control)
         }
@@ -917,6 +921,21 @@ fn execute_result_instruction<'a>(
         Instruction::Copy { .. } => execute_copy(inputs, instruction, execution, scope, control),
         _ => unreachable!("result dispatch receives only result-producing instructions"),
     }
+}
+
+fn execute_copy_of_xslt10_key_lookup(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    select: &crate::xslt::golden_semantics_experiment::Xslt10KeyLookup,
+    control: &mut InvocationControl,
+) -> Result<Vec<ResultNode>, ExecutionFailure> {
+    let source = inputs.source.expect("key lookup requires a source");
+    let selected = key_lookup::select(inputs, select, context, control)?;
+    let mut copied = Vec::new();
+    for node in selected {
+        copied.extend(copy_source_node(source, inputs.request_id, node, control)?);
+    }
+    Ok(copied)
 }
 
 fn execute_copy_of_path_union(

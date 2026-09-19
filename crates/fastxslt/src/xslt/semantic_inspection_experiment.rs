@@ -317,6 +317,7 @@ fn observe_instructions(
             | Instruction::CopyOfChildElements { .. }
             | Instruction::CopyOfAncestorOrSelfElements { .. }
             | Instruction::CopyOfLocationPath { .. }
+            | Instruction::CopyOfXslt10KeyLookup { .. }
             | Instruction::CopyOfPathUnion { .. }
             | Instruction::CopyOfStaticAtomicText { .. }
             | Instruction::CopyOfVariable { .. }

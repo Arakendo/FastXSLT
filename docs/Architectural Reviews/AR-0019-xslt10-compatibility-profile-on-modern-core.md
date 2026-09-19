@@ -2041,3 +2041,9 @@ maintained redistributable legacy suite becomes available.
   from 1,587 to 1,591; initialization reaches 1,979 and execution reaches
   1,875. No source-derived index or wider dynamic-key surface is admitted.
   [Evidence](../Evidence/oasis-xslt10-key-node-selection-2026-09-18.md)
+- 2026-09-18 -- `xsl:copy-of` now consumes the same private charged key node
+  selection and the existing source deep-copy owner. The unchanged Lotus
+  `copy30` case becomes exact, raising the lower bound from 1,591 to 1,592;
+  initialization reaches 1,980 and execution reaches 1,876. No index,
+  alternate copy semantics, or wider key grammar is introduced.
+  [Evidence](../Evidence/oasis-xslt10-key-copy-of-2026-09-18.md)
