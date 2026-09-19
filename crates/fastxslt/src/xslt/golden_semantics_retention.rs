@@ -1121,7 +1121,8 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::DecimalSumFor(expression) => {
             size_of::<DecimalSumForExpression>() + expression.known_owned_capacity_bytes()
         }
-        ValueExpression::FormatNumber(expression) => {
+        ValueExpression::FormatNumber(expression)
+        | ValueExpression::Xslt10NumberOfFormatNumber(expression) => {
             size_of::<FormatNumberExpression>() + expression.known_owned_capacity_bytes()
         }
         ValueExpression::Castable(expression) => {

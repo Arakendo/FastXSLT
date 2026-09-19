@@ -445,6 +445,11 @@ pub(super) fn execute_value_of(
         ValueExpression::FormatNumber(expression) => {
             append_format_number(inputs, expression, variables, result, control)?;
         }
+        ValueExpression::Xslt10NumberOfFormatNumber(expression) => {
+            let formatted = evaluate_runtime_format_number(inputs, expression, variables, control)?;
+            let value = xslt10_compatibility::number_lexical(&formatted);
+            append_text(result, &value, inputs.request_id, control)?;
+        }
         ValueExpression::Castable(expression) => {
             let value =
                 execute_castable_expression(inputs, expression, context, variables, control)?;
@@ -1273,6 +1278,16 @@ fn append_format_number(
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
+    let formatted = evaluate_runtime_format_number(inputs, expression, variables, control)?;
+    append_text(result, &formatted, inputs.request_id, control)
+}
+
+fn evaluate_runtime_format_number(
+    inputs: &SequenceInputs<'_>,
+    expression: &crate::xpath::format_number_experiment::FormatNumberExpression,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
     let mut atomic_values = variables.atomics.as_ref().clone();
     for name in expression.variable_names() {
         if !atomic_values.contains_key(name) {
@@ -1281,22 +1296,20 @@ fn append_format_number(
             atomic_values.insert(name.to_owned(), AtomicValue::untyped(value));
         }
     }
-    let formatted =
-        evaluate_format_number(expression, &atomic_values).map_err(|error| match error {
-            FormatNumberEvaluationFailure::UnboundVariable(name) => failure(
-                "FXRT0002",
-                FailureCategory::Invalid,
-                Some(inputs.request_id),
-                format!("unbound variable: ${name}"),
-            ),
-            FormatNumberEvaluationFailure::Unsupported => failure(
-                "FXRT1007",
-                FailureCategory::Unsupported,
-                Some(inputs.request_id),
-                "dynamic value or picture exceeds the admitted format-number slice",
-            ),
-        })?;
-    append_text(result, &formatted, inputs.request_id, control)
+    evaluate_format_number(expression, &atomic_values).map_err(|error| match error {
+        FormatNumberEvaluationFailure::UnboundVariable(name) => failure(
+            "FXRT0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            format!("unbound variable: ${name}"),
+        ),
+        FormatNumberEvaluationFailure::Unsupported => failure(
+            "FXRT1007",
+            FailureCategory::Unsupported,
+            Some(inputs.request_id),
+            "dynamic value or picture exceeds the admitted format-number slice",
+        ),
+    })
 }
 
 fn append_generated_document_root_identity(

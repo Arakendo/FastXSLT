@@ -291,6 +291,17 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
         return Ok(value);
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(inner) = expression
+            .trim()
+            .strip_prefix("number(")
+            .and_then(|value| value.strip_suffix(')'))
+        && inner.trim_start().starts_with("format-number(")
+    {
+        return Ok(ValueExpression::Xslt10NumberOfFormatNumber(
+            compile_format_number(document, element, inner.trim(), location)?,
+        ));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(variable) = parse_xslt10_variable_conversion(expression, "string")
     {
         return Ok(ValueExpression::Xslt10VariableString(variable.to_owned()));
@@ -591,28 +602,9 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
             })?,
         ))
     } else if expression.trim_start().starts_with("format-number(") {
-        let mut format = parse_format_number(expression, location).map_err(|failure| {
-            let (code, category) = match failure.kind {
-                FormatNumberFailureKind::InvalidArity => ("XPST0017", CompileCategory::Invalid),
-                FormatNumberFailureKind::Unsupported => ("FXXP1009", CompileCategory::Unsupported),
-            };
-            CompileFailure {
-                code,
-                category,
-                detail: failure.detail,
-                location: failure.location,
-            }
-        })?;
-        if let Some(lexical) = format.requested_format_lexical().map(str::to_owned) {
-            let name = super::super::compile_expanded_qname(
-                document,
-                element,
-                &lexical,
-                "format-number decimal-format name",
-            )?;
-            format.set_requested_format(name);
-        }
-        ValueExpression::FormatNumber(Box::new(format))
+        ValueExpression::FormatNumber(compile_format_number(
+            document, element, expression, location,
+        )?)
     } else if expression.trim_start().starts_with("sum(for $") {
         ValueExpression::FocusSumFor(Box::new(
             parse_focus_sum_for(expression, location).map_err(|failure| CompileFailure {
@@ -686,6 +678,36 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
             static_context,
         )?
     })
+}
+
+fn compile_format_number(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Box<crate::xpath::format_number_experiment::FormatNumberExpression>, CompileFailure> {
+    let mut format = parse_format_number(expression, location).map_err(|failure| {
+        let (code, category) = match failure.kind {
+            FormatNumberFailureKind::InvalidArity => ("XPST0017", CompileCategory::Invalid),
+            FormatNumberFailureKind::Unsupported => ("FXXP1009", CompileCategory::Unsupported),
+        };
+        CompileFailure {
+            code,
+            category,
+            detail: failure.detail,
+            location: failure.location,
+        }
+    })?;
+    if let Some(lexical) = format.requested_format_lexical().map(str::to_owned) {
+        let name = super::super::compile_expanded_qname(
+            document,
+            element,
+            &lexical,
+            "format-number decimal-format name",
+        )?;
+        format.set_requested_format(name);
+    }
+    Ok(Box::new(format))
 }
 
 pub(super) fn compile_xslt10_literal_key_lookup(

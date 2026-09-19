@@ -4996,6 +4996,13 @@ host lifecycle.
     initialization to 2,025, successful execution to 1,925, and the exact
     lower bound to 1,794 while mismatches remain 57.
     [Evidence](../Evidence/oasis-xslt10-mixed-key-apply-union-2026-09-19.md)
+  - [x] Compose XPath 1.0 `number()` with the existing typed
+    `format-number()` plan, preserving decimal-format binding, runtime variable
+    conversion, and canonical XPath number lexicals. The unchanged Microsoft
+    `XSLTFunctions__testWithNumber` case advances to its distinct ISO-8859-1
+    serialization boundary, raising initialization to 2,026 while successful
+    execution remains 1,925 and the exact lower bound remains 1,794.
+    [Evidence](../Evidence/oasis-xslt10-formatted-number-conversion-2026-09-19.md)
   - [x] Variable-valued `xsl:copy-of` preserves atomic, source-node, and
     temporary-tree semantics without introducing a legacy-only value model.
   - [x] Bounded `xsl:copy-of` path unions evaluate each typed alternative,

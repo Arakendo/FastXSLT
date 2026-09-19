@@ -4128,6 +4128,35 @@ fn xslt10_format_number_converts_local_source_node_variables() {
 }
 
 #[test]
+fn xslt10_number_converts_the_formatted_string_value() {
+    const SOURCE: &str = "urn:fastxslt:number-format-number:source";
+    const STYLESHEET: &str = "urn:fastxslt:number-format-number:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br"<doc/>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="format-number(-1234.5, '###0.00 ')"/><xsl:text>|</xsl:text><xsl:value-of select="number(format-number(-1234.5, '###0.00 '))"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile formatted-number conversion");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("number-format-number", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute formatted conversion");
+    assert_eq!(
+        results.by_request["number-format-number"].serialized,
+        "-1234.50 |-1234.5"
+    );
+}
+
+#[test]
 fn xslt10_contains_converts_two_variable_operands() {
     const SOURCE: &str = "urn:fastxslt:contains-variable-operands:source";
     const STYLESHEET: &str = "urn:fastxslt:contains-variable-operands:stylesheet";

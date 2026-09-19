@@ -291,7 +291,9 @@ fn apply_value(
     value: &mut ValueExpression,
     declarations: &DecimalFormats,
 ) -> Result<(), CompileFailure> {
-    if let ValueExpression::FormatNumber(expression) = value {
+    if let ValueExpression::FormatNumber(expression)
+    | ValueExpression::Xslt10NumberOfFormatNumber(expression) = value
+    {
         let declaration = if let Some(name) = expression.requested_format() {
             declarations
                 .named

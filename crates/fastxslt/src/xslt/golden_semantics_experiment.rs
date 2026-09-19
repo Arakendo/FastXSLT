@@ -904,6 +904,7 @@ pub(crate) enum ValueExpression {
     FocusSumFor(Box<FocusSumForExpression>),
     DecimalSumFor(Box<DecimalSumForExpression>),
     FormatNumber(Box<FormatNumberExpression>),
+    Xslt10NumberOfFormatNumber(Box<FormatNumberExpression>),
     Castable(Box<CastableExpression>),
     DeepEqual(Box<DeepEqualBooleanExpression>),
     DefaultCollation(Box<DefaultCollationExpression>),
