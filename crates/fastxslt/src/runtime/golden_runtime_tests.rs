@@ -2154,7 +2154,7 @@ fn xslt10_key_node_consumers_preserve_document_order_identity_and_focus() {
 fn xslt10_key_variable_values_preserve_atomic_and_node_set_conversion() {
     const SOURCE: &str = "urn:fastxslt:key-variable:source";
     const STYLESHEET: &str = "urn:fastxslt:key-variable:stylesheet";
-    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:variable name="wanted">x</xsl:variable><xsl:key name="codes" match="item" use="@code"/><xsl:template match="/"><xsl:variable name="queries" select="doc/query"/><out><text><xsl:for-each select="key('codes', $wanted)"><xsl:value-of select="@name"/></xsl:for-each></text><nodes><xsl:for-each select="key('codes', $queries)"><xsl:value-of select="@name"/><xsl:text>;</xsl:text></xsl:for-each></nodes></out></xsl:template></xsl:stylesheet>"#;
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:variable name="wanted">x</xsl:variable><xsl:key name="codes" match="item" use="@code"/><xsl:template match="/"><xsl:variable name="queries" select="doc/query"/><out><text><xsl:for-each select="key('codes', $wanted)"><xsl:value-of select="@name"/></xsl:for-each></text><nodes><xsl:for-each select="key('codes', $queries)"><xsl:value-of select="@name"/><xsl:text>;</xsl:text></xsl:for-each></nodes><path><xsl:for-each select="key('codes', doc/query)"><xsl:value-of select="@name"/><xsl:text>;</xsl:text></xsl:for-each></path><contexts><xsl:for-each select="doc/query"><xsl:for-each select="key('codes', .)"><xsl:value-of select="@name"/><xsl:text>;</xsl:text></xsl:for-each></xsl:for-each></contexts></out></xsl:template></xsl:stylesheet>"#;
     let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
     resources
         .admit(
@@ -2176,7 +2176,7 @@ fn xslt10_key_variable_values_preserve_atomic_and_node_set_conversion() {
 
     assert_eq!(
         results.by_request["key-variable"].serialized,
-        "<out><text>a</text><nodes>a;b;</nodes></out>"
+        "<out><text>a</text><nodes>a;b;</nodes><path>a;b;</path><contexts>a;b;</contexts></out>"
     );
 }
 

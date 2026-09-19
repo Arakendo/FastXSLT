@@ -21,8 +21,9 @@ pub(super) fn select(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ExecutionFailure> {
-    let (source, _) = required_source_context(inputs, context)?;
-    let lookup_values = evaluate_lookup_value(inputs, &lookup.value, variables, control)?;
+    let (source, context) = required_source_context(inputs, context)?;
+    let lookup_values =
+        evaluate_lookup_value(inputs, source, context, &lookup.value, variables, control)?;
     let definitions = inputs
         .program
         .key_definitions
@@ -115,6 +116,8 @@ pub(super) fn select(
 
 fn evaluate_lookup_value(
     inputs: &SequenceInputs<'_>,
+    source: &Document,
+    context: NodeId,
     value: &Xslt10KeyValue,
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
@@ -142,6 +145,17 @@ fn evaluate_lookup_value(
             }
             super::value_evaluator::xslt10_variable_string_value(inputs, name, variables, control)
                 .map(|value| vec![value])
+        }
+        Xslt10KeyValue::ContextPath(path) => {
+            evaluate_location_path_controlled(source, context, path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?
+                .into_iter()
+                .map(|node| {
+                    source
+                        .string_value_controlled(node, control)
+                        .map_err(|failure| control_failure(failure, inputs.request_id))
+                })
+                .collect()
         }
     }
 }

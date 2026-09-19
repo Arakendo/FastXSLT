@@ -967,6 +967,7 @@ pub(crate) struct Xslt10KeyLookup {
 pub(crate) enum Xslt10KeyValue {
     Static(String),
     Variable(String),
+    ContextPath(LocationPath),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

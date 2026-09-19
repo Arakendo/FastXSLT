@@ -819,7 +819,10 @@ result before an optional location-path tail; this does not admit general
 predicate evaluation. A literal-name lookup may source its value from a runtime
 variable: atomic and temporary-tree values use XSLT 1.0 string conversion,
 while source-node-set values contribute each node's string value. This does not
-admit a dynamic key name or arbitrary value expression. Any optimized
+admit a dynamic key name or arbitrary value expression. The same node-set
+conversion may consume an already typed location path evaluated from the
+call's current principal-source context; cross-document context switching and
+nested key calls remain outside the slice. Any optimized
 lookup structure
 must remain differential-testable against that scan and must be source-derived
 and invocation-owned unless a later review admits another immutable prepared

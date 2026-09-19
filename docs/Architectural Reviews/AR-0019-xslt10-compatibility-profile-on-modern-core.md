@@ -2061,3 +2061,10 @@ maintained redistributable legacy suite becomes available.
   indentation mismatch, raising the lower bound from 1,605 to 1,606 while two
   cases leave initialization failure. Dynamic key names remain explicit.
   [Evidence](../Evidence/oasis-xslt10-variable-key-values-2026-09-18.md)
+- 2026-09-18 -- A literal-name key lookup may now take an existing typed
+  context location path as its second argument. Every selected node string
+  value participates in lookup. One Lotus case becomes exact and one Microsoft
+  case reaches independent runtime `XTDE0410`, raising the lower bound from
+  1,606 to 1,607 while two cases leave initialization failure. Arbitrary
+  expressions and cross-document key context remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-context-path-key-values-2026-09-18.md)

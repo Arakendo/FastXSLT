@@ -734,11 +734,15 @@ fn split_static_key_arguments<'a>(
                 Xslt10KeyValue::Variable(variable.to_owned())
             } else if let Some(value) = xpath_string_literal(value) {
                 Xslt10KeyValue::Static(value.to_owned())
+            } else if let Some(expression) = compile_binary_numeric_node(value, location, false)
+                && let Some(value) =
+                    crate::xpath::binary_numeric_experiment::fold_source_free(&expression)
+            {
+                Xslt10KeyValue::Static(value)
             } else {
-                let expression = compile_binary_numeric_node(value, location, false)?;
-                Xslt10KeyValue::Static(crate::xpath::binary_numeric_experiment::fold_source_free(
-                    &expression,
-                )?)
+                Xslt10KeyValue::ContextPath(
+                    parse_xslt10_location_path(value, location.clone()).ok()?,
+                )
             };
             return Some((name, value));
         }

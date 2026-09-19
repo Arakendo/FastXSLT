@@ -378,6 +378,7 @@ fn xslt10_key_lookup_owned(lookup: &Xslt10KeyLookup) -> usize {
     name_owned(&lookup.name)
         + match &lookup.value {
             Xslt10KeyValue::Static(value) | Xslt10KeyValue::Variable(value) => value.capacity(),
+            Xslt10KeyValue::ContextPath(path) => path.known_owned_capacity_bytes(),
         }
         + lookup
             .tail
