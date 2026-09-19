@@ -430,6 +430,7 @@ pub(crate) enum ApplySelection {
     LocationPath(LocationPath),
     Xslt10KeyLookup(Box<Xslt10KeyLookup>),
     Xslt10KeyUnion(Vec<Xslt10KeyLookup>),
+    Xslt10MixedUnion(Vec<Xslt10ApplyUnionPart>),
     PathUnion(Vec<LocationPath>),
     VariablePathUnion {
         variable: String,
@@ -450,6 +451,13 @@ pub(crate) enum ApplySelection {
         steps: Vec<ExpandedName>,
     },
     VariableFilteredElementPath(VariableFilteredElementPath),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Xslt10ApplyUnionPart {
+    Path(LocationPath),
+    Key(Box<Xslt10KeyLookup>),
+    Variable(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -2504,6 +2504,36 @@ fn xslt10_key_union_deduplicates_and_restores_document_order() {
 }
 
 #[test]
+fn xslt10_mixed_key_path_and_variable_union_restores_document_order() {
+    const SOURCE: &str = "urn:fastxslt:mixed-key-union:source";
+    const STYLESHEET: &str = "urn:fastxslt:mixed-key-union:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:key name="selected" match="item" use="@selected"/><xsl:template match="/"><xsl:variable name="first" select="doc/item[1]"/><out><xsl:apply-templates select="key('selected', 'yes') | doc/item[4] | $first"/></out></xsl:template><xsl:template match="item"><xsl:value-of select="@name"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item name='a'/><item selected='yes' name='b'/><item selected='yes' name='c'/><item name='d'/></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("mixed-key-union", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["mixed-key-union"].serialized,
+        "<out>abcd</out>"
+    );
+}
+
+#[test]
 fn xslt10_nested_key_lookup_uses_inner_selected_node_strings() {
     const SOURCE: &str = "urn:fastxslt:nested-key:source";
     const STYLESHEET: &str = "urn:fastxslt:nested-key:stylesheet";

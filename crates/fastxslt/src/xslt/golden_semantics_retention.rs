@@ -12,8 +12,8 @@ use super::{
     MatchSequencePredicate, MatchStringPredicate, MatchedTemplate, NamedTemplate, NamespaceBinding,
     OutputSettings, SequenceItemExpression, SortKey, SortSelect, SourceLocation, StylesheetProgram,
     Template, TemplateArgument, TemplateArgumentValue, TemplateParameter, TemplateParameterDefault,
-    ValueExpression, VariableFilteredElementPath, Xslt10AvtPart, Xslt10ConcatPart, Xslt10KeyLookup,
-    Xslt10KeyName, Xslt10KeyValue,
+    ValueExpression, VariableFilteredElementPath, Xslt10ApplyUnionPart, Xslt10AvtPart,
+    Xslt10ConcatPart, Xslt10KeyLookup, Xslt10KeyName, Xslt10KeyValue,
 };
 
 impl StylesheetProgram {
@@ -347,6 +347,13 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
         ApplySelection::LocationPath(path) => path.known_owned_capacity_bytes(),
         ApplySelection::Xslt10KeyLookup(lookup) => xslt10_key_lookup_owned(lookup),
         ApplySelection::Xslt10KeyUnion(lookups) => vec_owned(lookups, xslt10_key_lookup_owned),
+        ApplySelection::Xslt10MixedUnion(alternatives) => {
+            vec_owned(alternatives, |alternative| match alternative {
+                Xslt10ApplyUnionPart::Path(path) => path.known_owned_capacity_bytes(),
+                Xslt10ApplyUnionPart::Key(lookup) => xslt10_key_lookup_owned(lookup),
+                Xslt10ApplyUnionPart::Variable(name) => name.capacity(),
+            })
+        }
         ApplySelection::PathUnion(alternatives) => vec_owned(
             alternatives,
             crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,

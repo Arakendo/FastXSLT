@@ -6,7 +6,7 @@ use crate::xpath::path_experiment::{
 };
 use crate::xslt::golden_semantics_experiment::{
     ApplySelection, Instruction, NodeTest, TemplateArgument, TemplateArgumentValue,
-    Xslt10ContentArgument, Xslt10ContentTextBinding,
+    Xslt10ApplyUnionPart, Xslt10ContentArgument, Xslt10ContentTextBinding,
 };
 
 use super::super::variable_filtered_path_compiler::parse as parse_variable_filtered_path;
@@ -383,7 +383,7 @@ fn parse_xslt10_key_selection(
     if let Some(alternatives) = split_top_level_union(expression)
         && alternatives
             .iter()
-            .all(|alternative| alternative.trim_start().starts_with("key("))
+            .any(|alternative| alternative.trim_start().starts_with("key("))
     {
         if alternatives.len() > 8 {
             return Err(unsupported(
@@ -392,18 +392,49 @@ fn parse_xslt10_key_selection(
                 location,
             ));
         }
-        let lookups = alternatives
-            .into_iter()
-            .map(|alternative| {
-                super::value_expression_compiler::compile_xslt10_literal_key_lookup(
+        if alternatives
+            .iter()
+            .all(|alternative| alternative.trim_start().starts_with("key("))
+        {
+            let lookups = alternatives
+                .into_iter()
+                .map(|alternative| {
+                    super::value_expression_compiler::compile_xslt10_literal_key_lookup(
+                        document,
+                        element,
+                        alternative,
+                        location,
+                    )
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            return Ok(Some(ApplySelection::Xslt10KeyUnion(lookups)));
+        }
+        let mut compiled = Vec::with_capacity(alternatives.len());
+        for alternative in alternatives.into_iter().map(str::trim) {
+            if alternative.starts_with("key(") {
+                compiled.push(Xslt10ApplyUnionPart::Key(Box::new(
+                    super::value_expression_compiler::compile_xslt10_literal_key_lookup(
+                        document,
+                        element,
+                        alternative,
+                        location,
+                    )?,
+                )));
+            } else if let Some(variable) = alternative
+                .strip_prefix('$')
+                .filter(|name| is_ascii_ncname(name))
+            {
+                compiled.push(Xslt10ApplyUnionPart::Variable(variable.to_owned()));
+            } else {
+                compiled.push(Xslt10ApplyUnionPart::Path(parse_selection_path(
                     document,
                     element,
                     alternative,
-                    location,
-                )
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        return Ok(Some(ApplySelection::Xslt10KeyUnion(lookups)));
+                    location.clone(),
+                )?));
+            }
+        }
+        return Ok(Some(ApplySelection::Xslt10MixedUnion(compiled)));
     }
     if expression.trim_start().starts_with("key(") {
         let lookup = super::value_expression_compiler::compile_xslt10_literal_key_lookup(

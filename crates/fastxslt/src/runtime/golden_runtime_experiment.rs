@@ -22,7 +22,7 @@ use crate::xslt::golden_semantics_experiment::{
     ApplySelection, BooleanExpression, ComputedAttribute, FocusComparison, FocusEqualityOperand,
     Instruction, LiteralAttribute, NodeTest, OnMultipleMatchPolicy, OnNoMatchPolicy,
     SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect, SourceWhitespacePolicy,
-    StringComparison, StylesheetProgram, TemplateArgument, Xslt10KeyLookup,
+    StringComparison, StylesheetProgram, TemplateArgument, Xslt10ApplyUnionPart, Xslt10KeyLookup,
 };
 
 #[path = "atomic_template_executor.rs"]
@@ -4025,6 +4025,9 @@ fn select_apply_nodes(
         ApplySelection::Xslt10KeyUnion(lookups) => {
             select_xslt10_key_union(inputs, lookups, context, variables, control)
         }
+        ApplySelection::Xslt10MixedUnion(alternatives) => {
+            select_xslt10_mixed_union(inputs, alternatives, context, variables, control)
+        }
         ApplySelection::PathUnion(alternatives) => {
             evaluate_source_path_union(inputs, source, context, alternatives, control)
         }
@@ -4142,6 +4145,40 @@ fn select_xslt10_key_union(
             variables,
             control,
         )?);
+    }
+    selected.sort_unstable_by_key(|node| source.document_order(*node));
+    selected.dedup();
+    Ok(selected)
+}
+
+fn select_xslt10_mixed_union(
+    inputs: &SequenceInputs<'_>,
+    alternatives: &[Xslt10ApplyUnionPart],
+    context: NodeId,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let source = inputs
+        .source
+        .expect("mixed union selection requires a source");
+    let mut selected = Vec::new();
+    for alternative in alternatives {
+        match alternative {
+            Xslt10ApplyUnionPart::Path(path) => selected.extend(
+                evaluate_location_path_controlled(source, context, path, control)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?,
+            ),
+            Xslt10ApplyUnionPart::Key(lookup) => selected.extend(key_lookup::select(
+                inputs,
+                lookup,
+                Some(context),
+                variables,
+                control,
+            )?),
+            Xslt10ApplyUnionPart::Variable(name) => {
+                selected.extend(source_variable_nodes(inputs, name, variables)?);
+            }
+        }
     }
     selected.sort_unstable_by_key(|node| source.document_order(*node));
     selected.dedup();
