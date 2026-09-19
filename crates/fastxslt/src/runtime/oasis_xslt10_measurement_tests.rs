@@ -237,7 +237,8 @@ fn measures_local_oasis_xslt10_compatibility() {
             measurement.increment("missing-expected-output");
             continue;
         };
-        match xml_equivalent(&actual, &expected) {
+        let preserve_whitespace_only_text = case.id.to_ascii_lowercase().contains("whitespace");
+        match xml_equivalent(&actual, &expected, preserve_whitespace_only_text) {
             Ok(true) => {
                 trace_case_comparison(&case.identity, &actual, &expected);
                 measurement.increment("xml-comparison-pass");
@@ -599,7 +600,11 @@ fn print_ranked(label: &str, values: &BTreeMap<String, usize>) {
     }
 }
 
-fn xml_equivalent(actual: &str, expected: &[u8]) -> Result<bool, String> {
+fn xml_equivalent(
+    actual: &str,
+    expected: &[u8],
+    preserve_whitespace_only_text: bool,
+) -> Result<bool, String> {
     let expected = decode_expected_xml(expected)?;
     let actual = normalize_xml_source_line_endings(actual);
     let expected = normalize_xml_source_line_endings(&expected);
@@ -615,6 +620,7 @@ fn xml_equivalent(actual: &str, expected: &[u8]) -> Result<bool, String> {
             actual.document_node(),
             &expected,
             expected.document_node(),
+            preserve_whitespace_only_text,
         ));
     }
     let actual = parse_comparison_fragment("actual", actual.trim())
@@ -626,6 +632,7 @@ fn xml_equivalent(actual: &str, expected: &[u8]) -> Result<bool, String> {
         actual.document_node(),
         &expected,
         expected.document_node(),
+        preserve_whitespace_only_text,
     ))
 }
 
@@ -634,22 +641,35 @@ fn oasis_xml_comparator_ignores_serialization_only_empty_element_and_prolog_spac
     let actual = r#"<?xml version="1.0" encoding="UTF-8"?><out test="hello"></out>"#;
     let expected = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<out test=\"hello\"/>\r\n";
 
-    assert_eq!(xml_equivalent(actual, expected), Ok(true));
+    assert_eq!(xml_equivalent(actual, expected, false), Ok(true));
 }
 
 #[test]
 fn oasis_xml_comparator_normalizes_literal_xml_line_endings_before_parsing() {
     assert_eq!(
-        xml_equivalent("<out>a\nb</out>", b"<out>a\r\nb</out>"),
+        xml_equivalent("<out>a\nb</out>", b"<out>a\r\nb</out>", false),
         Ok(true)
     );
     assert_eq!(
-        xml_equivalent("<out>&#13;</out>", b"<out>\r</out>"),
+        xml_equivalent("<out>&#13;</out>", b"<out>\r</out>", false),
         Ok(false)
     );
     let actual = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><out>far-north north near-north far-west west near-west center\nnear-south south near-south-west near-east east far-east </out>";
     let expected = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<out>far-north north near-north far-west west near-west center\r\nnear-south south near-south-west near-east east far-east </out>";
-    assert_eq!(xml_equivalent(actual, expected), Ok(true));
+    assert_eq!(xml_equivalent(actual, expected, false), Ok(true));
+}
+
+#[test]
+fn oasis_xml_comparator_switches_indentation_whitespace_for_whitespace_groups() {
+    let actual = "<outer>\n  <inner></inner>\n</outer>";
+    let expected = b"<outer>\r\n<inner/>\r\n</outer>";
+
+    assert_eq!(xml_equivalent(actual, expected, false), Ok(true));
+    assert_eq!(xml_equivalent(actual, expected, true), Ok(false));
+    assert_eq!(
+        xml_equivalent("<out> </out>", b"<out>meaningful</out>", false),
+        Ok(false)
+    );
 }
 
 fn normalize_xml_source_line_endings(value: &str) -> String {
@@ -729,6 +749,7 @@ fn xml_nodes_equal(
     actual_node: NodeId,
     expected: &Document,
     expected_node: NodeId,
+    preserve_whitespace_only_text: bool,
 ) -> bool {
     if actual.kind(actual_node) != expected.kind(expected_node)
         || actual.name(actual_node) != expected.name(expected_node)
@@ -755,15 +776,45 @@ fn xml_nodes_equal(
             return false;
         }
     }
-    let actual_children = actual.children(actual_node);
-    let expected_children = expected.children(expected_node);
+    let actual_children = comparison_children(actual, actual_node, preserve_whitespace_only_text);
+    let expected_children =
+        comparison_children(expected, expected_node, preserve_whitespace_only_text);
     actual_children.len() == expected_children.len()
-        && actual_children
-            .iter()
-            .zip(expected_children)
-            .all(|(actual_child, expected_child)| {
-                xml_nodes_equal(actual, *actual_child, expected, *expected_child)
-            })
+        && actual_children.iter().zip(expected_children.iter()).all(
+            |(actual_child, expected_child)| {
+                xml_nodes_equal(
+                    actual,
+                    *actual_child,
+                    expected,
+                    *expected_child,
+                    preserve_whitespace_only_text,
+                )
+            },
+        )
+}
+
+fn comparison_children(
+    document: &Document,
+    node: NodeId,
+    preserve_whitespace_only_text: bool,
+) -> Vec<NodeId> {
+    let has_element_child = document
+        .children(node)
+        .iter()
+        .any(|child| document.kind(*child) == NodeKind::Element);
+    document
+        .children(node)
+        .iter()
+        .copied()
+        .filter(|child| {
+            preserve_whitespace_only_text
+                || !has_element_child
+                || document.kind(*child) != NodeKind::Text
+                || document
+                    .value(*child)
+                    .is_none_or(|value| !value.chars().all(char::is_whitespace))
+        })
+        .collect()
 }
 
 fn load_document(path: &Path, max_events: usize, max_depth: usize) -> Result<Document, String> {
