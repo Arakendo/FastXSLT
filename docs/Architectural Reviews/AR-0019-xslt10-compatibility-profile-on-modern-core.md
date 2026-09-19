@@ -2134,3 +2134,10 @@ maintained redistributable legacy suite becomes available.
   mismatches reach 215; the strict exact lower bound remains 1,614. General
   context-dependent dynamic-name expressions remain explicit.
   [Evidence](../Evidence/oasis-xslt10-concat-key-name-2026-09-18.md)
+- 2026-09-18 -- Exact one-variable AVTs for `xsl:sort` `data-type` and `order`
+  now retain typed variable controls and resolve them through charged XSLT 1.0
+  string conversion once per sort invocation. The unchanged Lotus `sort32`
+  and `sort33` cases become exact, raising the strict lower bound from 1,614 to
+  1,616; initialization reaches 2,007 and execution reaches 1,902. General
+  dynamic AVTs and language-sensitive collation remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-variable-sort-controls-2026-09-18.md)

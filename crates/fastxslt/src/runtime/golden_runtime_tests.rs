@@ -7820,6 +7820,39 @@ fn xslt10_numeric_sort_uses_xpath_number_lexicals_and_equal_zero_keys() {
 }
 
 #[test]
+fn xslt10_sort_resolves_variable_data_type_and_order() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-variable-sort-control:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-variable-sort-control:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:template match="/"><xsl:variable name="type" select="'number'"/><xsl:variable name="direction" select="'descending'"/><out><xsl:for-each select="doc/n"><xsl:sort data-type="{$type}" order="{$direction}"/><xsl:value-of select="."/><xsl:text>|</xsl:text></xsl:for-each></out></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    resources
+        .admit(SOURCE, b"<doc><n>2</n><n>10</n><n>1</n></doc>".to_vec())
+        .expect("admit source");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile variable sort controls");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request(
+            "xslt10-variable-sort-control",
+            "variable-sort-control-result",
+            SOURCE,
+        ))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute variable sort controls");
+
+    assert_eq!(
+        results.by_request["xslt10-variable-sort-control"].serialized,
+        "<out>10|2|1|</out>"
+    );
+}
+
+#[test]
 fn xslt10_numeric_sort_ignores_static_language_and_case_order() {
     const SOURCE: &str = "urn:fastxslt:xslt10-numeric-sort-collation:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-numeric-sort-collation:stylesheet";

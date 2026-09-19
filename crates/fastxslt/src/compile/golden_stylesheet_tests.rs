@@ -253,7 +253,17 @@ fn sort_controls_fold_exact_literal_avts() {
               </xsl:for-each></xsl:template>
             </xsl:stylesheet>"#,
     );
-    let failure = compile_stylesheet(&dynamic).expect_err("dynamic sort control stays explicit");
+    compile_stylesheet(&dynamic).expect("one variable sort control should compile");
+
+    let wider_dynamic = parse_stylesheet(
+        "test:sort-dynamic-path-avt.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+              <xsl:template match="/"><xsl:for-each select="doc/item">
+                <xsl:sort select="@rank" data-type="{../kind}"/>
+              </xsl:for-each></xsl:template>
+            </xsl:stylesheet>"#,
+    );
+    let failure = compile_stylesheet(&wider_dynamic).expect_err("path sort control stays explicit");
     assert_eq!(failure.code, "FXST1044");
     assert_eq!(failure.category, CompileCategory::Unsupported);
 }

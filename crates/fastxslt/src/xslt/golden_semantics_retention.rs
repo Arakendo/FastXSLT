@@ -871,7 +871,17 @@ fn sort_key_owned(sort: &SortKey) -> usize {
         | SortSelect::ContextNodeName
         | SortSelect::ContextStringLength => 0,
     };
-    select + location_owned(&sort.location)
+    let data_type = match &sort.data_type {
+        crate::xslt::golden_semantics_experiment::SortDataType::Variable(name) => name.capacity(),
+        crate::xslt::golden_semantics_experiment::SortDataType::Text
+        | crate::xslt::golden_semantics_experiment::SortDataType::Number => 0,
+    };
+    let order = match &sort.order {
+        crate::xslt::golden_semantics_experiment::SortOrder::Variable(name) => name.capacity(),
+        crate::xslt::golden_semantics_experiment::SortOrder::Ascending
+        | crate::xslt::golden_semantics_experiment::SortOrder::Descending => 0,
+    };
+    select + data_type + order + location_owned(&sort.location)
 }
 
 fn apply_templates_owned(

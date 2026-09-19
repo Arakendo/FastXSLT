@@ -1276,6 +1276,32 @@ enum EvaluatedSortKey {
     Number(Option<f64>),
 }
 
+#[derive(Debug, Clone, Copy)]
+struct EvaluatedSortControl {
+    data_type: EvaluatedSortDataType,
+    order: EvaluatedSortOrder,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum EvaluatedSortDataType {
+    Text,
+    Number,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum EvaluatedSortOrder {
+    Ascending,
+    Descending,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct SortFocus<'a> {
+    source: &'a Document,
+    node: NodeId,
+    position: usize,
+    size: usize,
+}
+
 fn sort_selected_nodes(
     inputs: &SequenceInputs<'_>,
     selected: Vec<NodeId>,
@@ -1283,7 +1309,14 @@ fn sort_selected_nodes(
     variables: &RuntimeVariables,
     control: &mut InvocationControl,
 ) -> Result<Vec<NodeId>, ExecutionFailure> {
-    if sorts.is_empty() || selected.len() < 2 {
+    if sorts.is_empty() {
+        return Ok(selected);
+    }
+    let sort_controls = sorts
+        .iter()
+        .map(|sort| evaluate_sort_control(inputs, sort, variables, control))
+        .collect::<Result<Vec<_>, ExecutionFailure>>()?;
+    if selected.len() < 2 {
         return Ok(selected);
     }
     let source = inputs
@@ -1293,67 +1326,24 @@ fn sort_selected_nodes(
     let focus_size = selected.len();
     for (offset, node) in selected.into_iter().enumerate() {
         let mut values = Vec::with_capacity(sorts.len());
-        for sort in sorts {
-            let value = match &sort.select {
-                SortSelect::LocationPath(path) => {
-                    let nodes = evaluate_location_path_controlled(source, node, path, control)
-                        .map_err(|failure| control_failure(failure, inputs.request_id))?;
-                    nodes
-                        .first()
-                        .map_or_else(String::new, |selected| source.string_value(*selected))
-                }
-                SortSelect::Xslt10KeyLookup(lookup) => {
-                    key_lookup::select(inputs, lookup, Some(node), variables, control)?
-                        .first()
-                        .map_or_else(String::new, |selected| source.string_value(*selected))
-                }
-                SortSelect::PathUnion(alternatives) => {
-                    evaluate_source_path_union(inputs, source, node, alternatives, control)?
-                        .first()
-                        .map_or_else(String::new, |selected| source.string_value(*selected))
-                }
-                SortSelect::Literal(value) => value.clone(),
-                SortSelect::Variable(name) => sort_variable(inputs, name, variables, control)?,
-                SortSelect::ContextPosition => (offset + 1).to_string(),
-                SortSelect::ContextSize => focus_size.to_string(),
-                SortSelect::ContextNodeName => {
-                    control
-                        .charge(WorkDomain::XPathNodeVisit, 1)
-                        .map_err(|failure| control_failure(failure, inputs.request_id))?;
-                    source.name(node).map_or_else(String::new, |name| {
-                        source.prefix(node).map_or_else(
-                            || name.local.clone(),
-                            |prefix| format!("{prefix}:{}", name.local),
-                        )
-                    })
-                }
-                SortSelect::ContextStringLength => evaluate_sort_context_string_length(
+        for (sort, sort_control) in sorts.iter().zip(&sort_controls) {
+            let value = evaluate_sort_key_value(
+                inputs,
+                SortFocus {
                     source,
                     node,
-                    inputs.request_id,
-                    &sort.location,
-                    control,
-                )?
-                .to_string(),
-                SortSelect::CountPath(path) => {
-                    let count = evaluate_location_path_controlled(source, node, path, control)
-                        .map_err(|failure| control_failure(failure, inputs.request_id))?
-                        .len();
-                    control
-                        .charge(WorkDomain::XPathOperation, 1)
-                        .map_err(|failure| control_failure(failure, inputs.request_id))?;
-                    count.to_string()
-                }
-                SortSelect::NumberPath(path) => evaluate_sort_number_path(
-                    source,
-                    node,
-                    path,
-                    sort.xslt10_numeric_conversion,
-                    inputs.request_id,
-                    control,
-                )?,
-            };
-            values.push(typed_sort_key(sort, value));
+                    position: offset + 1,
+                    size: focus_size,
+                },
+                sort,
+                variables,
+                control,
+            )?;
+            values.push(typed_sort_key(
+                sort_control.data_type,
+                sort.xslt10_numeric_conversion,
+                value,
+            ));
         }
         keyed.push((node, values));
     }
@@ -1365,11 +1355,11 @@ fn sort_selected_nodes(
         .charge(WorkDomain::XPathOperation, comparison_charge)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
     keyed.sort_by(|left, right| {
-        for (index, sort) in sorts.iter().enumerate() {
+        for (index, sort_control) in sort_controls.iter().enumerate() {
             let ordering = compare_sort_keys(&left.1[index], &right.1[index]);
-            let ordering = match sort.order {
-                SortOrder::Ascending => ordering,
-                SortOrder::Descending => ordering.reverse(),
+            let ordering = match sort_control.order {
+                EvaluatedSortOrder::Ascending => ordering,
+                EvaluatedSortOrder::Descending => ordering.reverse(),
             };
             if !ordering.is_eq() {
                 return ordering;
@@ -1380,10 +1370,135 @@ fn sort_selected_nodes(
     Ok(keyed.into_iter().map(|(node, _)| node).collect())
 }
 
-fn typed_sort_key(sort: &SortKey, value: String) -> EvaluatedSortKey {
-    match sort.data_type {
-        SortDataType::Text => EvaluatedSortKey::Text(value),
-        SortDataType::Number => EvaluatedSortKey::Number(if sort.xslt10_numeric_conversion {
+fn evaluate_sort_key_value(
+    inputs: &SequenceInputs<'_>,
+    focus: SortFocus<'_>,
+    sort: &SortKey,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let source = focus.source;
+    let node = focus.node;
+    match &sort.select {
+        SortSelect::LocationPath(path) => {
+            let nodes = evaluate_location_path_controlled(source, node, path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            Ok(nodes
+                .first()
+                .map_or_else(String::new, |selected| source.string_value(*selected)))
+        }
+        SortSelect::Xslt10KeyLookup(lookup) => {
+            Ok(
+                key_lookup::select(inputs, lookup, Some(node), variables, control)?
+                    .first()
+                    .map_or_else(String::new, |selected| source.string_value(*selected)),
+            )
+        }
+        SortSelect::PathUnion(alternatives) => {
+            Ok(
+                evaluate_source_path_union(inputs, source, node, alternatives, control)?
+                    .first()
+                    .map_or_else(String::new, |selected| source.string_value(*selected)),
+            )
+        }
+        SortSelect::Literal(value) => Ok(value.clone()),
+        SortSelect::Variable(name) => sort_variable(inputs, name, variables, control),
+        SortSelect::ContextPosition => Ok(focus.position.to_string()),
+        SortSelect::ContextSize => Ok(focus.size.to_string()),
+        SortSelect::ContextNodeName => {
+            control
+                .charge(WorkDomain::XPathNodeVisit, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            Ok(source.name(node).map_or_else(String::new, |name| {
+                source.prefix(node).map_or_else(
+                    || name.local.clone(),
+                    |prefix| format!("{prefix}:{}", name.local),
+                )
+            }))
+        }
+        SortSelect::ContextStringLength => Ok(evaluate_sort_context_string_length(
+            source,
+            node,
+            inputs.request_id,
+            &sort.location,
+            control,
+        )?
+        .to_string()),
+        SortSelect::CountPath(path) => {
+            let count = evaluate_location_path_controlled(source, node, path, control)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?
+                .len();
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            Ok(count.to_string())
+        }
+        SortSelect::NumberPath(path) => evaluate_sort_number_path(
+            source,
+            node,
+            path,
+            sort.xslt10_numeric_conversion,
+            inputs.request_id,
+            control,
+        ),
+    }
+}
+
+fn evaluate_sort_control(
+    inputs: &SequenceInputs<'_>,
+    sort: &SortKey,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<EvaluatedSortControl, ExecutionFailure> {
+    let data_type = match &sort.data_type {
+        SortDataType::Text => EvaluatedSortDataType::Text,
+        SortDataType::Number => EvaluatedSortDataType::Number,
+        SortDataType::Variable(variable) => {
+            match sort_variable(inputs, variable, variables, control)?.as_str() {
+                "text" => EvaluatedSortDataType::Text,
+                "number" => EvaluatedSortDataType::Number,
+                value => {
+                    return Err(failure_at(
+                        "FXST1044",
+                        FailureCategory::Unsupported,
+                        Some(inputs.request_id),
+                        sort.location.clone(),
+                        format!("unsupported dynamic xsl:sort data-type: {value}"),
+                    ));
+                }
+            }
+        }
+    };
+    let order = match &sort.order {
+        SortOrder::Ascending => EvaluatedSortOrder::Ascending,
+        SortOrder::Descending => EvaluatedSortOrder::Descending,
+        SortOrder::Variable(variable) => {
+            match sort_variable(inputs, variable, variables, control)?.as_str() {
+                "ascending" => EvaluatedSortOrder::Ascending,
+                "descending" => EvaluatedSortOrder::Descending,
+                value => {
+                    return Err(failure_at(
+                        "XTDE0030",
+                        FailureCategory::Invalid,
+                        Some(inputs.request_id),
+                        sort.location.clone(),
+                        format!("invalid dynamic xsl:sort order: {value}"),
+                    ));
+                }
+            }
+        }
+    };
+    Ok(EvaluatedSortControl { data_type, order })
+}
+
+fn typed_sort_key(
+    data_type: EvaluatedSortDataType,
+    xslt10_numeric_conversion: bool,
+    value: String,
+) -> EvaluatedSortKey {
+    match data_type {
+        EvaluatedSortDataType::Text => EvaluatedSortKey::Text(value),
+        EvaluatedSortDataType::Number => EvaluatedSortKey::Number(if xslt10_numeric_conversion {
             crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&value)
         } else {
             value.trim().parse().ok()

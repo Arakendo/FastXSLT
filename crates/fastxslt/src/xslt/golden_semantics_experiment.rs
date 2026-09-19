@@ -471,16 +471,18 @@ pub(crate) enum ElementConstructorOrigin {
     ComputedStatic,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SortDataType {
     Text,
     Number,
+    Variable(String),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SortOrder {
     Ascending,
     Descending,
+    Variable(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

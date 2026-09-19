@@ -1120,7 +1120,7 @@ pub(super) fn compile_sort_keys(
             optional_attribute(document, child, None, "data-type"),
             &location,
         )?;
-        validate_sort_collation_metadata(document, child, data_type, &location)?;
+        validate_sort_collation_metadata(document, child, &data_type, &location)?;
         let order = compile_sort_order(
             optional_attribute(document, child, None, "order"),
             &location,
@@ -1149,11 +1149,15 @@ fn compile_sort_data_type(
             format!("unsupported xsl:sort data-type: {value}"),
             location,
         )),
-        Some(None) => Err(unsupported(
-            "FXST1044",
-            "dynamic xsl:sort data-type is outside the admitted sorting slice",
-            location,
-        )),
+        Some(None) => compile_sort_control_variable(value.expect("dynamic sort control exists"))
+            .map(SortDataType::Variable)
+            .ok_or_else(|| {
+                unsupported(
+                    "FXST1044",
+                    "dynamic xsl:sort data-type is outside the admitted variable-only slice",
+                    location,
+                )
+            }),
     }
 }
 
@@ -1169,11 +1173,15 @@ fn compile_sort_order(
             format!("invalid xsl:sort order: {value}"),
             location,
         )),
-        Some(None) => Err(unsupported(
-            "FXST1044",
-            "dynamic xsl:sort order is outside the admitted sorting slice",
-            location,
-        )),
+        Some(None) => compile_sort_control_variable(value.expect("dynamic sort control exists"))
+            .map(SortOrder::Variable)
+            .ok_or_else(|| {
+                unsupported(
+                    "FXST1044",
+                    "dynamic xsl:sort order is outside the admitted variable-only slice",
+                    location,
+                )
+            }),
     }
 }
 
@@ -1185,22 +1193,30 @@ fn fold_static_sort_control_avt(value: &str) -> Option<&str> {
     xpath_string_literal(expression)
 }
 
+fn compile_sort_control_variable(value: &str) -> Option<String> {
+    let expression = value.strip_prefix('{')?.strip_suffix('}')?.trim();
+    let variable = expression.strip_prefix('$')?;
+    is_ascii_ncname(variable).then(|| variable.to_owned())
+}
+
 fn validate_sort_collation_metadata(
     document: &Document,
     sort: NodeId,
-    data_type: SortDataType,
+    data_type: &SortDataType,
     location: &SourceLocation,
 ) -> Result<(), CompileFailure> {
     let lang = optional_attribute(document, sort, None, "lang");
     let case_order = optional_attribute(document, sort, None, "case-order");
-    if data_type == SortDataType::Text && (lang.is_some() || case_order.is_some()) {
+    if matches!(data_type, SortDataType::Text | SortDataType::Variable(_))
+        && (lang.is_some() || case_order.is_some())
+    {
         return Err(unsupported(
             "FXST1063",
             "language-sensitive text collation is outside the admitted xsl:sort slice",
             location,
         ));
     }
-    if data_type == SortDataType::Number
+    if matches!(data_type, SortDataType::Number)
         && lang
             .into_iter()
             .chain(case_order)

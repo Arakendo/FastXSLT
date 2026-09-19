@@ -15,10 +15,13 @@ an XPath string literal. Values such as `data-type="{'number'}"` and
 `order="{'descending'}"` become the same typed `SortDataType` and `SortOrder`
 plans as their literal attribute spellings.
 
-Variable-valued, path-valued, mixed-text, or otherwise dynamic sort controls
-remain `FXST1044 / unsupported`. The runtime has no new AVT evaluator or
-version branch, and sort selection, focus, stability, work charging, and
-cancellation continue through the existing path.
+At this tranche, variable-valued, path-valued, mixed-text, or otherwise dynamic
+sort controls remained `FXST1044 / unsupported`. A later bounded tranche admits
+one variable reference without changing this static-folding result; see
+[OASIS XSLT 1.0 Variable Sort Controls](oasis-xslt10-variable-sort-controls-2026-09-18.md).
+Path-valued, mixed-text, and other dynamic AVTs remain explicit. Static folding
+adds no runtime AVT evaluator or version branch, and sort selection, focus,
+stability, work charging, and cancellation continue through the existing path.
 
 ## Corpus effect
 
@@ -41,7 +44,8 @@ exact-result gain.
 ## Verification
 
 - A focused compiler test admits literal `number` and `descending` AVTs and
-  keeps a variable-valued control unsupported.
+  keeps a path-valued control unsupported after the later variable-only
+  extension.
 - The complete local OASIS measurement conserves all identities and exposes
   the three case transitions above.
 - The ordinary workspace verification gates pass.
