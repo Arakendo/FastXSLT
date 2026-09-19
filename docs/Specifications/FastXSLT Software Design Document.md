@@ -770,6 +770,11 @@ same semantic result-element constructor as static and context-name elements.
 This does not admit variable paths, mixed AVT composition, dynamic namespace
 AVTs, or a public dynamic-name representation.
 
+The same private dynamic-name representation may compose static text with one
+`position()` expression. It reads the already-established sequence focus and
+passes the composed lexical value through the same runtime `QName` resolver;
+it does not introduce an independent focus or general AVT evaluator.
+
 For a computed-element name without AVT delimiters, compilation validates the
 lexical QName immediately. A malformed static name reports `XTDE0820`; a valid
 prefixed name without a binding reports `XTDE0830`. Values containing

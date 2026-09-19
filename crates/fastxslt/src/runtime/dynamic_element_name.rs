@@ -6,6 +6,7 @@ use crate::execution_control_experiment::InvocationControl;
 use crate::xdm::owned_tree_experiment::SourceLocation;
 use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::path_experiment::{LocationPath, evaluate_location_path_controlled};
+use crate::xslt::golden_semantics_experiment::DynamicElementName;
 
 use super::runtime_context::SequenceInputs;
 use super::{
@@ -13,22 +14,21 @@ use super::{
     required_source_context,
 };
 
-pub(super) fn resolve_path_element_name(
+pub(super) fn resolve_dynamic_element_name(
     inputs: &SequenceInputs<'_>,
     execution: SequenceContext<'_>,
-    path: &LocationPath,
+    name: &DynamicElementName,
     namespace_override: Option<&str>,
     static_namespaces: &[NamespaceBinding],
     location: &SourceLocation,
     control: &mut InvocationControl,
 ) -> Result<(ExpandedName, Arc<[NamespaceBinding]>), ExecutionFailure> {
-    let (source, context) = required_source_context(inputs, execution.node)?;
-    let selected = evaluate_location_path_controlled(source, context, path, control)
-        .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let lexical = selected
-        .first()
-        .map(|node| source.string_value(*node))
-        .unwrap_or_default();
+    let lexical = match name {
+        DynamicElementName::Path(path) => path_name_value(inputs, execution, path, control)?,
+        DynamicElementName::FocusPosition { prefix, suffix } => {
+            format!("{prefix}{}{suffix}", execution.focus_position)
+        }
+    };
     resolve_lexical_element_name(
         &lexical,
         namespace_override,
@@ -36,6 +36,21 @@ pub(super) fn resolve_path_element_name(
         location,
         inputs.request_id,
     )
+}
+
+fn path_name_value(
+    inputs: &SequenceInputs<'_>,
+    execution: SequenceContext<'_>,
+    path: &LocationPath,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let (source, context) = required_source_context(inputs, execution.node)?;
+    let selected = evaluate_location_path_controlled(source, context, path, control)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    Ok(selected
+        .first()
+        .map(|node| source.string_value(*node))
+        .unwrap_or_default())
 }
 
 fn resolve_lexical_element_name(

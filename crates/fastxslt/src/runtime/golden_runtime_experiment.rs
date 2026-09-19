@@ -70,7 +70,7 @@ mod value_evaluator;
 #[path = "variable_filtered_path.rs"]
 mod variable_filtered_path;
 
-use dynamic_element_name::resolve_path_element_name;
+use dynamic_element_name::resolve_dynamic_element_name;
 use number_executor::execute as execute_number_instruction;
 #[cfg(test)]
 pub(super) use resource_compiler::compile_resource;
@@ -723,7 +723,7 @@ fn execute_instruction(
     match instruction {
         Instruction::LiteralElement { .. }
         | Instruction::ContextNameElement { .. }
-        | Instruction::PathNameElement { .. } => result.push(execute_literal_element(
+        | Instruction::DynamicNameElement { .. } => result.push(execute_literal_element(
             inputs,
             instruction,
             execution,
@@ -2092,7 +2092,7 @@ fn prepare_element_execution<'a>(
                 body,
             })
         }
-        Instruction::PathNameElement {
+        Instruction::DynamicNameElement {
             name,
             namespace_override,
             static_namespaces,
@@ -2100,7 +2100,7 @@ fn prepare_element_execution<'a>(
             body,
             location,
         } => {
-            let (name, namespaces) = resolve_path_element_name(
+            let (name, namespaces) = resolve_dynamic_element_name(
                 inputs,
                 execution,
                 name,

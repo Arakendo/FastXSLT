@@ -62,9 +62,9 @@ use crate::xpath::string_length_experiment::{
     StringLengthParseFailure, parse as parse_string_length, recognizes as recognizes_string_length,
 };
 use crate::xslt::golden_semantics_experiment::{
-    ChooseBranch, ComputedAttribute, ElementConstructorOrigin, FocusEqualityOperand, Instruction,
-    LiteralAttributeValue, SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect,
-    StringComparison, TemplateArgument, ValueExpression,
+    ChooseBranch, ComputedAttribute, DynamicElementName, ElementConstructorOrigin,
+    FocusEqualityOperand, Instruction, LiteralAttributeValue, SequenceItemExpression, SortDataType,
+    SortKey, SortOrder, SortSelect, StringComparison, TemplateArgument, ValueExpression,
 };
 
 #[path = "instruction_compiler/computed_attribute_compiler.rs"]
@@ -524,35 +524,25 @@ fn compile_static_computed_element(
         });
     }
     if uses_xslt10_compatibility(document, element)
-        && let Some(expression) = name
-            .strip_prefix('{')
-            .and_then(|value| value.strip_suffix('}'))
-            .filter(|value| !value.contains(['{', '}']))
+        && let Some(name) = compile_dynamic_element_name(document, element, name)
     {
-        if let Ok(name) = compile_sort_path(
-            document,
-            element,
-            expression.trim(),
-            document.location(element),
-        ) {
-            let (mut computed_attributes, computed_attribute_nodes) =
-                compile_computed_attributes(document, element)?;
-            let mut attribute_set_values = compile_local_attribute_sets(document, element, None)?;
-            attribute_set_values.retain(|set_attribute| {
-                !computed_attributes
-                    .iter()
-                    .any(|attribute| attribute.name == set_attribute.name)
-            });
-            attribute_set_values.append(&mut computed_attributes);
-            return Ok(Instruction::PathNameElement {
-                name,
-                namespace_override: namespace.map(str::to_owned),
-                static_namespaces: document.in_scope_namespaces(element).into(),
-                computed_attributes: attribute_set_values,
-                body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
-                location: document.location(element).clone(),
-            });
-        }
+        let (mut computed_attributes, computed_attribute_nodes) =
+            compile_computed_attributes(document, element)?;
+        let mut attribute_set_values = compile_local_attribute_sets(document, element, None)?;
+        attribute_set_values.retain(|set_attribute| {
+            !computed_attributes
+                .iter()
+                .any(|attribute| attribute.name == set_attribute.name)
+        });
+        attribute_set_values.append(&mut computed_attributes);
+        return Ok(Instruction::DynamicNameElement {
+            name,
+            namespace_override: namespace.map(str::to_owned),
+            static_namespaces: document.in_scope_namespaces(element).into(),
+            computed_attributes: attribute_set_values,
+            body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
+            location: document.location(element).clone(),
+        });
     }
     let (name, mut namespaces) =
         compile_static_computed_element_name(document, element, name, namespace)?;
@@ -576,6 +566,27 @@ fn compile_static_computed_element(
         body: compile_sequence_excluding(document, element, &computed_attribute_nodes)?,
         location: document.location(element).clone(),
     })
+}
+
+fn compile_dynamic_element_name(
+    document: &Document,
+    element: NodeId,
+    lexical: &str,
+) -> Option<DynamicElementName> {
+    if let Some((prefix, suffix)) = lexical.split_once("{position()}")
+        && !prefix.contains(['{', '}'])
+        && !suffix.contains(['{', '}'])
+    {
+        return Some(DynamicElementName::FocusPosition {
+            prefix: prefix.to_owned(),
+            suffix: suffix.to_owned(),
+        });
+    }
+    let expression = lexical.strip_prefix('{')?.strip_suffix('}')?.trim();
+    (!expression.contains(['{', '}']))
+        .then(|| compile_sort_path(document, element, expression, document.location(element)).ok())
+        .flatten()
+        .map(DynamicElementName::Path)
 }
 
 fn retain_computed_attribute_namespace_bindings(

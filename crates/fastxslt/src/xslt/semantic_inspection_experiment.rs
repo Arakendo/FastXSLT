@@ -254,7 +254,7 @@ fn observe_instructions(
                 body,
                 ..
             }
-            | Instruction::PathNameElement {
+            | Instruction::DynamicNameElement {
                 computed_attributes,
                 body,
                 ..

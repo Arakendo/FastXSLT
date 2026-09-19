@@ -363,7 +363,7 @@ fn instruction_owned(value: &Instruction) -> usize {
     match value {
         Instruction::LiteralElement { .. }
         | Instruction::ContextNameElement { .. }
-        | Instruction::PathNameElement { .. } => element_instruction_owned(value),
+        | Instruction::DynamicNameElement { .. } => element_instruction_owned(value),
         Instruction::Text { value, location } | Instruction::CommentNode { value, location } => {
             value.capacity() + location_owned(location)
         }
@@ -478,13 +478,13 @@ fn element_instruction_owned(value: &Instruction) -> usize {
     match value {
         Instruction::LiteralElement { .. } => literal_element_instruction_owned(value),
         Instruction::ContextNameElement { .. } => context_name_element_owned(value),
-        Instruction::PathNameElement { .. } => path_name_element_owned(value),
+        Instruction::DynamicNameElement { .. } => dynamic_name_element_owned(value),
         _ => unreachable!("element retention requires an element instruction"),
     }
 }
 
-fn path_name_element_owned(value: &Instruction) -> usize {
-    let Instruction::PathNameElement {
+fn dynamic_name_element_owned(value: &Instruction) -> usize {
+    let Instruction::DynamicNameElement {
         name,
         namespace_override,
         static_namespaces,
@@ -493,14 +493,26 @@ fn path_name_element_owned(value: &Instruction) -> usize {
         location,
     } = value
     else {
-        unreachable!("path-name retention requires a path-name element instruction")
+        unreachable!("dynamic-name retention requires its element instruction")
     };
-    name.known_owned_capacity_bytes()
+    dynamic_element_name_owned(name)
         + option_string_owned(namespace_override.as_ref())
         + arc_slice_owned(static_namespaces, namespace_owned)
         + vec_owned(computed_attributes, computed_attribute_owned)
         + vec_owned(body, instruction_owned)
         + location_owned(location)
+}
+
+fn dynamic_element_name_owned(
+    name: &crate::xslt::golden_semantics_experiment::DynamicElementName,
+) -> usize {
+    use crate::xslt::golden_semantics_experiment::DynamicElementName;
+    match name {
+        DynamicElementName::Path(path) => path.known_owned_capacity_bytes(),
+        DynamicElementName::FocusPosition { prefix, suffix } => {
+            prefix.capacity() + suffix.capacity()
+        }
+    }
 }
 
 fn context_name_element_owned(value: &Instruction) -> usize {

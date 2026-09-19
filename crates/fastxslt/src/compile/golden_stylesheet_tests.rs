@@ -497,7 +497,7 @@ fn computed_element_distinguishes_invalid_static_qnames_from_path_names() {
     let program = compile_stylesheet(&document).expect("path name should compile");
     assert!(matches!(
         program.root_template.as_ref().unwrap().body.as_slice(),
-        [Instruction::PathNameElement { .. }]
+        [Instruction::DynamicNameElement { .. }]
     ));
 
     let modern = parse_stylesheet(

@@ -1977,3 +1977,12 @@ maintained redistributable legacy suite becomes available.
   1,566. Variable, composite, predicate/function, and dynamic-namespace forms
   remain explicit.
   [Evidence](../Evidence/oasis-xslt10-path-valued-computed-element-names-2026-09-18.md)
+- 2026-09-18 -- Exact static-text-plus-`position()` computed-element names now
+  reuse the established sequence focus and the same private runtime `QName`
+  resolver as path-valued names. The path and focus-position forms were
+  consolidated behind one typed dynamic-name representation after source-unit
+  pressure rejected parallel instruction branches. The unchanged Microsoft
+  case becomes exact, raising the strict lower bound from 1,566 to 1,567 and
+  reducing `FXST1047` from 2 to 1; variable/path and general composite AVTs
+  remain unsupported.
+  [Evidence](../Evidence/oasis-xslt10-focus-position-computed-element-name-2026-09-18.md)

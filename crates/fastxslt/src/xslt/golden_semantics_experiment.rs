@@ -506,8 +506,8 @@ pub(crate) enum Instruction {
         body: Vec<Instruction>,
         location: SourceLocation,
     },
-    PathNameElement {
-        name: LocationPath,
+    DynamicNameElement {
+        name: DynamicElementName,
         namespace_override: Option<String>,
         static_namespaces: Arc<[NamespaceBinding]>,
         computed_attributes: Vec<ComputedAttribute>,
@@ -709,6 +709,12 @@ pub(crate) enum Instruction {
         body: Vec<Instruction>,
         location: SourceLocation,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum DynamicElementName {
+    Path(LocationPath),
+    FocusPosition { prefix: String, suffix: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
