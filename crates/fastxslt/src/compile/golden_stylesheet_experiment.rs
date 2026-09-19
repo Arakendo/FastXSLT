@@ -366,6 +366,19 @@ fn compile_key_definition(
     }
     let use_expression = if let Some(literal) = xpath_string_literal(lexical_use) {
         KeyUseExpression::LiteralString(literal.to_owned())
+    } else if let Some(alternatives) = instruction_compiler::split_top_level_union(lexical_use) {
+        let alternatives = alternatives
+            .into_iter()
+            .map(str::trim)
+            .map(|alternative| {
+                crate::xpath::path_experiment::parse_xslt10_location_path(
+                    alternative,
+                    document.location(element).clone(),
+                )
+                .map_err(map_path_failure)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        KeyUseExpression::PathUnion(alternatives)
     } else if let Some(path) =
         crate::xpath::constant_numeric_experiment::number_function_call(lexical_use)
     {

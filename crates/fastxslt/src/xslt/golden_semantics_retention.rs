@@ -54,6 +54,9 @@ fn key_definition_owned(value: &KeyDefinition) -> usize {
             KeyUseExpression::LocationPath(path) | KeyUseExpression::NumberPath(path) => {
                 path.known_owned_capacity_bytes()
             }
+            KeyUseExpression::PathUnion(alternatives) => {
+                vec_owned(alternatives, LocationPath::known_owned_capacity_bytes)
+            }
             KeyUseExpression::LiteralString(value) => value.capacity(),
         }
         + location_owned(&value.location)

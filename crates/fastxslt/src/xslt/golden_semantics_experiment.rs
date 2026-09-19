@@ -63,6 +63,7 @@ pub(crate) struct KeyDefinition {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum KeyUseExpression {
     LocationPath(LocationPath),
+    PathUnion(Vec<LocationPath>),
     LiteralString(String),
     NumberPath(LocationPath),
 }

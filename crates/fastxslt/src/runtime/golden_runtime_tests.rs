@@ -2270,6 +2270,36 @@ fn xslt10_literal_key_lookup_scans_composed_definitions_in_document_order() {
 }
 
 #[test]
+fn xslt10_key_use_path_union_restores_document_order_and_node_identity() {
+    const SOURCE: &str = "urn:fastxslt:key-use-union:source";
+    const STYLESHEET: &str = "urn:fastxslt:key-use-union:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:key name="coordinates" match="item" use="z | x | x | y"/><xsl:template match="/"><out><xsl:for-each select="key('coordinates', '25')"><xsl:value-of select="@name"/><xsl:text>|</xsl:text></xsl:for-each></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item name='first'><x>25</x><y>1</y><z>25</z></item><item name='second'><x>2</x><y>25</y><z>3</z></item></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("key-use-union", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["key-use-union"].serialized,
+        "<out>first|second|</out>"
+    );
+}
+
+#[test]
 fn xslt10_key_lookup_converts_static_numeric_values_and_key_use_numbers() {
     const SOURCE: &str = "urn:fastxslt:key-number:source";
     const STYLESHEET: &str = "urn:fastxslt:key-number:stylesheet";

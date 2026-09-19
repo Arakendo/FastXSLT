@@ -311,6 +311,25 @@ fn evaluate_use(
                 })
                 .collect()
         }
+        KeyUseExpression::PathUnion(alternatives) => {
+            let mut selected = Vec::new();
+            for path in alternatives {
+                selected.extend(
+                    evaluate_location_path_controlled(source, candidate, path, control)
+                        .map_err(|failure| control_failure(failure, inputs.request_id))?,
+                );
+            }
+            selected.sort_unstable_by_key(|node| source.document_order(*node));
+            selected.dedup();
+            selected
+                .into_iter()
+                .map(|node| {
+                    source
+                        .string_value_controlled(node, control)
+                        .map_err(|failure| control_failure(failure, inputs.request_id))
+                })
+                .collect()
+        }
         KeyUseExpression::NumberPath(path) => {
             let selected = evaluate_location_path_controlled(source, candidate, path, control)
                 .map_err(|failure| control_failure(failure, inputs.request_id))?;
