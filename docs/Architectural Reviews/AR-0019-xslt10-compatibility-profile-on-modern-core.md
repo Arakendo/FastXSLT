@@ -2089,3 +2089,10 @@ maintained redistributable legacy suite becomes available.
   initialization reaches 1,999 and execution reaches 1,894. General key
   predicates remain explicit.
   [Evidence](../Evidence/oasis-xslt10-key-attribute-predicate-2026-09-18.md)
+- 2026-09-18 -- The private apply/for-each selection owner now unions up to
+  eight already typed key lookups. Every alternative uses the charged reference
+  scan before source document-order normalization and identity deduplication.
+  The unchanged Lotus `select55` case becomes exact, raising the strict lower
+  bound from 1,609 to 1,610; initialization reaches 2,000 and execution reaches
+  1,895. Mixed key/path unions and retained indexes remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-key-union-selection-2026-09-18.md)

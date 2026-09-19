@@ -428,6 +428,7 @@ pub(crate) enum ApplySelection {
     },
     LocationPath(LocationPath),
     Xslt10KeyLookup(Box<Xslt10KeyLookup>),
+    Xslt10KeyUnion(Vec<Xslt10KeyLookup>),
     PathUnion(Vec<LocationPath>),
     VariablePathUnion {
         variable: String,

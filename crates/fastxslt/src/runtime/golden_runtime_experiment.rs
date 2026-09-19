@@ -22,7 +22,7 @@ use crate::xslt::golden_semantics_experiment::{
     ApplySelection, BooleanExpression, ComputedAttribute, FocusComparison, FocusEqualityOperand,
     Instruction, LiteralAttribute, NodeTest, OnMultipleMatchPolicy, OnNoMatchPolicy,
     SequenceItemExpression, SortDataType, SortKey, SortOrder, SortSelect, SourceWhitespacePolicy,
-    StringComparison, StylesheetProgram, TemplateArgument,
+    StringComparison, StylesheetProgram, TemplateArgument, Xslt10KeyLookup,
 };
 
 #[path = "atomic_template_executor.rs"]
@@ -3889,6 +3889,9 @@ fn select_apply_nodes(
         ApplySelection::Xslt10KeyLookup(lookup) => {
             key_lookup::select(inputs, lookup, Some(context), variables, control)
         }
+        ApplySelection::Xslt10KeyUnion(lookups) => {
+            select_xslt10_key_union(inputs, lookups, context, variables, control)
+        }
         ApplySelection::PathUnion(alternatives) => {
             evaluate_source_path_union(inputs, source, context, alternatives, control)
         }
@@ -3908,16 +3911,7 @@ fn select_apply_nodes(
             evaluate_source_variable_path(inputs, source, variable, path, variables, control)
         }
         ApplySelection::ChildElement(name) => {
-            let mut selected = Vec::new();
-            for child in source.children(context).iter().copied() {
-                control
-                    .charge(WorkDomain::XPathNodeVisit, 1)
-                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
-                if source.kind(child) == NodeKind::Element && source.name(child) == Some(name) {
-                    selected.push(child);
-                }
-            }
-            Ok(selected)
+            select_child_elements(source, context, name, inputs.request_id, control)
         }
         ApplySelection::DescendantElement(name) => {
             let mut selected = Vec::new();
@@ -3977,6 +3971,48 @@ fn select_apply_nodes(
             unreachable!("temporary-tree selection is dispatched before source selection")
         }
     }
+}
+
+fn select_child_elements(
+    source: &Document,
+    context: NodeId,
+    name: &ExpandedName,
+    request_id: &str,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let mut selected = Vec::new();
+    for child in source.children(context).iter().copied() {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, request_id))?;
+        if source.kind(child) == NodeKind::Element && source.name(child) == Some(name) {
+            selected.push(child);
+        }
+    }
+    Ok(selected)
+}
+
+fn select_xslt10_key_union(
+    inputs: &SequenceInputs<'_>,
+    lookups: &[Xslt10KeyLookup],
+    context: NodeId,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Vec<NodeId>, ExecutionFailure> {
+    let source = inputs.source.expect("key selection requires a source");
+    let mut selected = Vec::new();
+    for lookup in lookups {
+        selected.extend(key_lookup::select(
+            inputs,
+            lookup,
+            Some(context),
+            variables,
+            control,
+        )?);
+    }
+    selected.sort_unstable_by_key(|node| source.document_order(*node));
+    selected.dedup();
+    Ok(selected)
 }
 
 fn source_variable_nodes(

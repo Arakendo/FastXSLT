@@ -829,7 +829,12 @@ consumer may count the resulting effective node sequence through the same
 selector. A literal-result attribute may also compose optional static text
 with the stable identity of the first selected key node through the exact
 `generate-id(key(...))` shape. These typed consumers do not admit key lookup or
-general function calls into other expression positions. Any optimized lookup
+general function calls into other expression positions. The private
+apply/for-each selection plan may union at most eight already typed key
+lookups. It evaluates every alternative through the charged reference scan,
+then restores principal-source document order and removes duplicate node
+identities. This does not admit mixed key/path unions or general union
+expressions. Any optimized lookup
 structure
 must remain differential-testable against that scan and must be source-derived
 and invocation-owned unless a later review admits another immutable prepared

@@ -343,6 +343,7 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
     match value {
         ApplySelection::LocationPath(path) => path.known_owned_capacity_bytes(),
         ApplySelection::Xslt10KeyLookup(lookup) => xslt10_key_lookup_owned(lookup),
+        ApplySelection::Xslt10KeyUnion(lookups) => vec_owned(lookups, xslt10_key_lookup_owned),
         ApplySelection::PathUnion(alternatives) => vec_owned(
             alternatives,
             crate::xpath::path_experiment::LocationPath::known_owned_capacity_bytes,

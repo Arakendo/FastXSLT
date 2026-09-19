@@ -241,11 +241,12 @@ pub(super) fn parse_apply_selection(
     expression: &str,
     location: SourceLocation,
 ) -> Result<ApplySelection, CompileFailure> {
-    if uses_xslt10_compatibility(document, element) && expression.trim_start().starts_with("key(") {
-        return super::value_expression_compiler::compile_xslt10_literal_key_lookup(
-            document, element, expression, &location,
-        )
-        .map(|lookup| ApplySelection::Xslt10KeyLookup(Box::new(lookup)));
+    if uses_xslt10_compatibility(document, element) {
+        if let Some(selection) =
+            parse_xslt10_key_selection(document, element, expression, &location)?
+        {
+            return Ok(selection);
+        }
     }
     if let Some(alternatives) = split_top_level_union(expression) {
         let mut variable = None;
@@ -371,6 +372,46 @@ pub(super) fn parse_apply_selection(
         ));
     }
     parse_selection_path(document, element, expression, location).map(ApplySelection::LocationPath)
+}
+
+fn parse_xslt10_key_selection(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<ApplySelection>, CompileFailure> {
+    if let Some(alternatives) = split_top_level_union(expression)
+        && alternatives
+            .iter()
+            .all(|alternative| alternative.trim_start().starts_with("key("))
+    {
+        if alternatives.len() > 8 {
+            return Err(unsupported(
+                "FXXP1023",
+                "the admitted key() union is limited to eight alternatives",
+                location,
+            ));
+        }
+        let lookups = alternatives
+            .into_iter()
+            .map(|alternative| {
+                super::value_expression_compiler::compile_xslt10_literal_key_lookup(
+                    document,
+                    element,
+                    alternative,
+                    location,
+                )
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        return Ok(Some(ApplySelection::Xslt10KeyUnion(lookups)));
+    }
+    if expression.trim_start().starts_with("key(") {
+        let lookup = super::value_expression_compiler::compile_xslt10_literal_key_lookup(
+            document, element, expression, location,
+        )?;
+        return Ok(Some(ApplySelection::Xslt10KeyLookup(Box::new(lookup))));
+    }
+    Ok(None)
 }
 
 fn parse_source_variable_path(
