@@ -2156,3 +2156,11 @@ maintained redistributable legacy suite becomes available.
   charged path evaluation, ordering, deduplication, and key ownership remain
   unchanged.
   [Evidence](../Evidence/oasis-xslt10-key-descendant-tail-2026-09-19.md)
+- 2026-09-19 -- `format-number()` variable operands now reuse the established
+  charged XSLT 1.0 string conversion instead of seeing only local atomics and
+  temporary trees. Seven unchanged Microsoft cases leave misleading unbound-
+  variable failures: six reach the honest bounded dynamic-picture frontier and
+  one reaches its independent encoding boundary. `FXRT0002` falls from 20 to
+  13 while the strict exact lower bound remains 1,618. The repair does not
+  expand the bounded formatter or select arbitrary-precision representation.
+  [Evidence](../Evidence/oasis-xslt10-format-number-variable-conversion-2026-09-19.md)

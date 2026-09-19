@@ -4900,6 +4900,12 @@ host lifecycle.
     visible mismatches from 215 to 214 without adding another evaluator or
     retained key index.
     [Evidence](../Evidence/oasis-xslt10-key-descendant-tail-2026-09-19.md)
+  - [x] Route `format-number()` variable operands through the existing charged
+    XSLT 1.0 string conversion rather than a formatter-local subset of variable
+    kinds. Seven unchanged Microsoft cases leave misleading unbound-variable
+    failures; six expose the bounded dynamic-picture frontier and one reaches
+    its independent encoding boundary. The exact lower bound remains 1,618.
+    [Evidence](../Evidence/oasis-xslt10-format-number-variable-conversion-2026-09-19.md)
   - [x] Variable-valued `xsl:copy-of` preserves atomic, source-node, and
     temporary-tree semantics without introducing a legacy-only value model.
   - [x] Bounded `xsl:copy-of` path unions evaluate each typed alternative,

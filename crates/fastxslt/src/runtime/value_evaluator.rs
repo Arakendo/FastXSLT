@@ -1222,11 +1222,9 @@ fn append_format_number(
     let mut atomic_values = variables.atomics.as_ref().clone();
     for name in expression.variable_names() {
         if !atomic_values.contains_key(name) {
-            if let Some(tree) = variables.temporary_tree(inputs.globals, name) {
-                let value =
-                    runtime_context::temporary_tree_string_value(tree, inputs.request_id, control)?;
-                atomic_values.insert(name.to_owned(), AtomicValue::untyped(value));
-            }
+            let value =
+                xslt10_compatibility::variable_string_value(inputs, name, variables, control)?;
+            atomic_values.insert(name.to_owned(), AtomicValue::untyped(value));
         }
     }
     let formatted =

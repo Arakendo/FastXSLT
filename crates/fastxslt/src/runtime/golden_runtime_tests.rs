@@ -3859,6 +3859,39 @@ fn xslt10_sort_resolves_a_qualified_attribute_key() {
 }
 
 #[test]
+fn xslt10_format_number_converts_local_source_node_variables() {
+    const SOURCE: &str = "urn:fastxslt:format-number-source-variable:source";
+    const STYLESHEET: &str = "urn:fastxslt:format-number-source-variable:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(
+            SOURCE,
+            br##"<doc><case number="1234.5" pattern="#,##0.00"/></doc>"##.to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:for-each select="doc/case"><xsl:variable name="number" select="@number"/><xsl:variable name="pattern" select="@pattern"/><xsl:value-of select="format-number($number, $pattern)"/></xsl:for-each></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile format-number source-node variables");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("format-number-source-variable", "result", SOURCE))
+        .expect("admit request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute format-number source-node variables");
+    assert_eq!(
+        results.by_request["format-number-source-variable"].serialized,
+        "1,234.50"
+    );
+}
+
+#[test]
 fn xslt10_default_single_number_counts_matching_preceding_siblings() {
     const SOURCE: &str = "urn:fastxslt:xslt10-number:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-number:stylesheet";
