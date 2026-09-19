@@ -200,6 +200,16 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(value) =
+            crate::xpath::constant_numeric_experiment::fold_xslt10_non_finite_comparison(expression)
+    {
+        return Ok(ValueExpression::SourceFreeScalar(Box::new(
+            ScalarExpression::Boolean(
+                crate::xpath::constant_boolean_experiment::BooleanExpression::Constant(value),
+            ),
+        )));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(value) =
             crate::xpath::constant_numeric_experiment::fold_xslt10_non_finite_division(expression)
     {
         return Ok(match value {

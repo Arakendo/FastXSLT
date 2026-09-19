@@ -81,6 +81,7 @@ pub(crate) fn fold_xslt10_non_finite_division(expression: &str) -> Option<Xslt10
     {
         return None;
     }
+    let divisor_is_negative = right.trim_start().starts_with('-');
     let left = evaluate(left).ok()?;
     let right = evaluate(right).ok()?;
     if right.numerator != 0 {
@@ -89,13 +90,146 @@ pub(crate) fn fold_xslt10_non_finite_division(expression: &str) -> Option<Xslt10
     if as_boolean {
         return Some(Xslt10NonFiniteValue::Boolean(left.numerator != 0));
     }
-    Some(Xslt10NonFiniteValue::Lexical(
-        match left.numerator.cmp(&0) {
-            Ordering::Less => "-Infinity",
-            Ordering::Equal => "NaN",
-            Ordering::Greater => "Infinity",
-        },
-    ))
+    if left.numerator == 0 {
+        return Some(Xslt10NonFiniteValue::Lexical("NaN"));
+    }
+    let negative = (left.numerator < 0) ^ divisor_is_negative;
+    Some(Xslt10NonFiniteValue::Lexical(if negative {
+        "-Infinity"
+    } else {
+        "Infinity"
+    }))
+}
+
+pub(crate) fn fold_xslt10_non_finite_comparison(expression: &str) -> Option<bool> {
+    let expression = strip_outer_parentheses(expression.trim());
+    for (token, comparison) in [
+        (">=", NumericComparison::GreaterThanOrEqual),
+        ("<=", NumericComparison::LessThanOrEqual),
+        ("!=", NumericComparison::NotEqual),
+        ("=", NumericComparison::Equal),
+        (">", NumericComparison::GreaterThan),
+        ("<", NumericComparison::LessThan),
+    ] {
+        let Some((left, right)) = expression.split_once(token) else {
+            continue;
+        };
+        if right.contains(token) {
+            return None;
+        }
+        let left = xslt10_constant_number(left)?;
+        let right = xslt10_constant_number(right)?;
+        if !left.is_non_finite() && !right.is_non_finite() {
+            return None;
+        }
+        return Some(comparison.evaluate(left, right));
+    }
+    None
+}
+
+#[derive(Clone, Copy)]
+enum Xslt10ConstantNumber {
+    Finite(Rational),
+    PositiveInfinity,
+    NegativeInfinity,
+    NaN,
+}
+
+impl Xslt10ConstantNumber {
+    const fn is_non_finite(self) -> bool {
+        !matches!(self, Self::Finite(_))
+    }
+}
+
+#[derive(Clone, Copy)]
+enum NumericComparison {
+    Equal,
+    NotEqual,
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
+}
+
+impl NumericComparison {
+    fn evaluate(self, left: Xslt10ConstantNumber, right: Xslt10ConstantNumber) -> bool {
+        let ordering = compare_xslt10_numbers(left, right);
+        match self {
+            Self::Equal => ordering.is_some_and(Ordering::is_eq),
+            Self::NotEqual => ordering.is_none_or(|ordering| !ordering.is_eq()),
+            Self::LessThan => ordering.is_some_and(Ordering::is_lt),
+            Self::LessThanOrEqual => ordering.is_some_and(|ordering| !ordering.is_gt()),
+            Self::GreaterThan => ordering.is_some_and(Ordering::is_gt),
+            Self::GreaterThanOrEqual => ordering.is_some_and(|ordering| !ordering.is_lt()),
+        }
+    }
+}
+
+fn xslt10_constant_number(expression: &str) -> Option<Xslt10ConstantNumber> {
+    let expression = strip_outer_parentheses(expression.trim());
+    if let Some(value) = fold_xslt10_non_finite_division(expression) {
+        return match value {
+            Xslt10NonFiniteValue::Lexical("Infinity") => {
+                Some(Xslt10ConstantNumber::PositiveInfinity)
+            }
+            Xslt10NonFiniteValue::Lexical("-Infinity") => {
+                Some(Xslt10ConstantNumber::NegativeInfinity)
+            }
+            Xslt10NonFiniteValue::Lexical("NaN") => Some(Xslt10ConstantNumber::NaN),
+            Xslt10NonFiniteValue::Boolean(_) | Xslt10NonFiniteValue::Lexical(_) => None,
+        };
+    }
+    evaluate(expression).ok().map(Xslt10ConstantNumber::Finite)
+}
+
+fn compare_xslt10_numbers(
+    left: Xslt10ConstantNumber,
+    right: Xslt10ConstantNumber,
+) -> Option<Ordering> {
+    use Xslt10ConstantNumber::{Finite, NaN, NegativeInfinity, PositiveInfinity};
+    match (left, right) {
+        (NaN, _) | (_, NaN) => None,
+        (PositiveInfinity, PositiveInfinity) | (NegativeInfinity, NegativeInfinity) => {
+            Some(Ordering::Equal)
+        }
+        (PositiveInfinity, _) | (_, NegativeInfinity) => Some(Ordering::Greater),
+        (NegativeInfinity, _) | (_, PositiveInfinity) => Some(Ordering::Less),
+        (Finite(left), Finite(right)) => {
+            left.numerator
+                .checked_mul(right.denominator)
+                .and_then(|left_scaled| {
+                    right
+                        .numerator
+                        .checked_mul(left.denominator)
+                        .map(|right_scaled| left_scaled.cmp(&right_scaled))
+                })
+        }
+    }
+}
+
+fn strip_outer_parentheses(mut expression: &str) -> &str {
+    while expression.starts_with('(') && expression.ends_with(')') {
+        let mut depth = 0_usize;
+        let mut encloses_all = true;
+        for (index, byte) in expression.bytes().enumerate() {
+            match byte {
+                b'(' => depth += 1,
+                b')' => {
+                    depth = depth.saturating_sub(1);
+                    if depth == 0 && index + 1 != expression.len() {
+                        encloses_all = false;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        if !encloses_all || depth != 0 {
+            break;
+        }
+        expression = expression[1..expression.len() - 1].trim();
+    }
+    expression
 }
 
 pub(crate) fn fold_xslt10_nan_composition(expression: &str) -> Option<Xslt10NonFiniteValue> {
@@ -673,8 +807,8 @@ mod tests {
         evaluate_integral_lexical, evaluate_number_lexical, fold_boolean_number_equality,
         fold_exact_integral_arithmetic, fold_integral_equality, fold_integral_function,
         fold_number_conversion, fold_xslt10_nan_composition,
-        fold_xslt10_nested_string_number_equality, fold_xslt10_non_finite_division,
-        integral_function_call, number_function_call,
+        fold_xslt10_nested_string_number_equality, fold_xslt10_non_finite_comparison,
+        fold_xslt10_non_finite_division, integral_function_call, number_function_call,
     };
 
     #[test]
@@ -804,7 +938,9 @@ mod tests {
     fn folds_xpath10_literal_division_by_zero_without_changing_exact_arithmetic() {
         for (expression, expected) in [
             ("1 div 0", Xslt10NonFiniteValue::Lexical("Infinity")),
+            ("1 div -0", Xslt10NonFiniteValue::Lexical("-Infinity")),
             ("-1 div +0", Xslt10NonFiniteValue::Lexical("-Infinity")),
+            ("-1 div -0", Xslt10NonFiniteValue::Lexical("Infinity")),
             ("-0 div 0", Xslt10NonFiniteValue::Lexical("NaN")),
             ("boolean(1 div 0)", Xslt10NonFiniteValue::Boolean(true)),
             ("boolean(0 div 0)", Xslt10NonFiniteValue::Boolean(false)),
@@ -821,6 +957,27 @@ mod tests {
             assert_eq!(fold_xslt10_non_finite_division(expression), None);
         }
         assert_eq!(fold_exact_integral_arithmetic("1 div 0"), None);
+    }
+
+    #[test]
+    fn folds_xpath10_non_finite_constant_comparisons() {
+        for (expression, expected) in [
+            ("1 div -0 = 2 div -0", true),
+            ("1 div -0 = 1 div 0", false),
+            ("0 div 0 >= 0", false),
+            ("0 div 0 < 0", false),
+            ("0 div 0 != 0", true),
+            ("1 div 0 > 999", true),
+            ("-1 div 0 <= -999", true),
+        ] {
+            assert_eq!(
+                fold_xslt10_non_finite_comparison(expression),
+                Some(expected)
+            );
+        }
+        for expression in ["1 = 1", "source = 1 div 0", "1 div 0"] {
+            assert_eq!(fold_xslt10_non_finite_comparison(expression), None);
+        }
     }
 
     #[test]

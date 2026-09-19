@@ -108,9 +108,28 @@ pub(super) fn compile(
     {
         return Ok(comparison);
     }
+    compile_scalar(
+        parsed,
+        expression,
+        location,
+        comparison,
+        xslt10_compatibility,
+    )
+}
+
+fn compile_scalar(
+    parsed: &str,
+    expression: &str,
+    location: &SourceLocation,
+    comparison: StringComparison,
+    xslt10_compatibility: bool,
+) -> Result<BooleanExpression, CompileFailure> {
     if let Some(comparison) =
         compile_xslt10_context_comparison(parsed, location, xslt10_compatibility)
     {
+        return Ok(comparison);
+    }
+    if let Some(comparison) = compile_xslt10_non_finite_comparison(parsed, xslt10_compatibility) {
         return Ok(comparison);
     }
     parse_scalar(
@@ -120,6 +139,15 @@ pub(super) fn compile(
         comparison,
         xslt10_compatibility,
     )
+}
+
+fn compile_xslt10_non_finite_comparison(
+    expression: &str,
+    xslt10_compatibility: bool,
+) -> Option<BooleanExpression> {
+    xslt10_compatibility
+        .then(|| constant_numeric_experiment::fold_xslt10_non_finite_comparison(expression))?
+        .map(BooleanExpression::Constant)
 }
 
 fn compile_xslt10_context_comparison(
