@@ -2118,3 +2118,11 @@ maintained redistributable legacy suite becomes available.
   1,613; initialization reaches 2,003 and execution reaches 1,898. Dynamic key
   names and arbitrary nested expressions remain explicit.
   [Evidence](../Evidence/oasis-xslt10-nested-key-selection-2026-09-18.md)
+- 2026-09-18 -- A key name may now come from one unqualified variable
+  reference. Its XSLT 1.0 string value is resolved as a lexical QName against
+  immutable namespaces captured at the call site; invalid/unbound names report
+  `XTDE1260`, resolution is charged, and the owned namespace slice is exactly
+  capacity-accounted. The unchanged Lotus `idkey25` case becomes exact, raising
+  the strict lower bound from 1,613 to 1,614; initialization reaches 2,004 and
+  execution reaches 1,899. Arbitrary dynamic-name expressions remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-variable-key-name-2026-09-18.md)

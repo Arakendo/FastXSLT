@@ -1,5 +1,7 @@
 //! Private typed compilation of `xsl:value-of` expressions.
 
+use std::sync::Arc;
+
 use super::{
     BooleanParseFailure, CaseConversionParseFailure, CompileCategory, CompileFailure,
     DeepEqualFailureKind, DefaultCollationParseFailure, Document, DurationComponentParseFailure,
@@ -23,9 +25,9 @@ use super::{
 };
 use crate::xpath::binary_numeric_experiment::{BinaryNumericNode, BinaryNumericOperator};
 use crate::xslt::golden_semantics_experiment::{
-    Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10KeyLookup, Xslt10KeyNodePredicate,
-    Xslt10KeyValue, Xslt10PathStringFunction, Xslt10PathStringFunctionKind, Xslt10PathSubstring,
-    Xslt10PathTranslate, Xslt10StringOperand,
+    Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10KeyLookup, Xslt10KeyName,
+    Xslt10KeyNodePredicate, Xslt10KeyValue, Xslt10PathStringFunction, Xslt10PathStringFunctionKind,
+    Xslt10PathSubstring, Xslt10PathTranslate, Xslt10StringOperand,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -653,11 +655,11 @@ fn compile_xslt10_key_lookup(
     let (name, value) = split_key_arguments(arguments).ok_or_else(|| {
         unsupported(
             "FXXP1023",
-            "the admitted key() slice requires a literal key name and a static atomic or variable lookup value",
+            "the admitted key() slice requires two structurally complete arguments",
             location,
         )
     })?;
-    let name = super::super::compile_expanded_qname(document, element, name, "key() name")?;
+    let name = compile_xslt10_key_name(document, element, name, location)?;
     let value = if value.trim_start().starts_with("key(") {
         if nesting_depth >= MAX_NESTING_DEPTH {
             return Err(unsupported(
@@ -703,6 +705,32 @@ fn compile_xslt10_key_lookup(
         tail,
         location: location.clone(),
     })
+}
+
+fn compile_xslt10_key_name(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Xslt10KeyName, CompileFailure> {
+    if let Some(name) = xpath_string_literal(expression) {
+        return super::super::compile_expanded_qname(document, element, name, "key() name")
+            .map(Xslt10KeyName::Static);
+    }
+    if let Some(name) = expression
+        .strip_prefix('$')
+        .filter(|name| is_ascii_ncname(name))
+    {
+        return Ok(Xslt10KeyName::Variable {
+            name: name.to_owned(),
+            static_namespaces: Arc::from(document.in_scope_namespaces(element)),
+        });
+    }
+    Err(unsupported(
+        "FXXP1023",
+        "the admitted key() name is a string literal or one unqualified variable reference",
+        location,
+    ))
 }
 
 fn top_level_argument_count(arguments: &str) -> Option<usize> {
@@ -821,8 +849,7 @@ fn split_key_arguments(arguments: &str) -> Option<(&str, &str)> {
         } else if quote.is_none() && character == ',' {
             let name = arguments[..offset].trim();
             let value = arguments[offset + 1..].trim();
-            let name = xpath_string_literal(name)?;
-            return Some((name, value));
+            return (!name.is_empty() && !value.is_empty()).then_some((name, value));
         }
     }
     None

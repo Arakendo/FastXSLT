@@ -959,11 +959,20 @@ pub(crate) enum ValueExpression {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Xslt10KeyLookup {
-    pub(crate) name: ExpandedName,
+    pub(crate) name: Xslt10KeyName,
     pub(crate) value: Xslt10KeyValue,
     pub(crate) predicate: Option<Xslt10KeyNodePredicate>,
     pub(crate) tail: Option<LocationPath>,
     pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Xslt10KeyName {
+    Static(ExpandedName),
+    Variable {
+        name: String,
+        static_namespaces: Arc<[NamespaceBinding]>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

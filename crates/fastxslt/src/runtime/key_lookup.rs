@@ -1,12 +1,14 @@
 //! Charged XSLT 1.0 key lookup reference selection.
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
+use crate::xml::quick_xml_experiment::{ExpandedName, NamespaceBinding};
 use crate::xpath::path_experiment::evaluate_location_path_controlled;
 use crate::xslt::golden_semantics_experiment::{
-    KeyUseExpression, Xslt10KeyLookup, Xslt10KeyNodePredicate, Xslt10KeyValue,
+    KeyUseExpression, Xslt10KeyLookup, Xslt10KeyName, Xslt10KeyNodePredicate, Xslt10KeyValue,
 };
 
 use super::runtime_context::{RuntimeVariables, SequenceInputs, required_source_context};
@@ -24,12 +26,14 @@ pub(super) fn select(
     let (source, context) = required_source_context(inputs, context)?;
     let lookup_values =
         evaluate_lookup_value(inputs, source, context, &lookup.value, variables, control)?;
+    let lookup_name =
+        resolve_lookup_name(inputs, &lookup.name, &lookup.location, variables, control)?;
     let definitions = inputs
         .program
         .key_definitions
         .iter()
         .enumerate()
-        .filter(|(_, definition)| definition.name == lookup.name)
+        .filter(|(_, definition)| definition.name == *lookup_name)
         .collect::<Vec<_>>();
     if definitions.is_empty() {
         return Err(failure_at(
@@ -37,7 +41,7 @@ pub(super) fn select(
             FailureCategory::Invalid,
             Some(inputs.request_id),
             lookup.location.clone(),
-            format!("key() refers to an undeclared key: {}", lookup.name.local),
+            format!("key() refers to an undeclared key: {}", lookup_name.local),
         ));
     }
 
@@ -102,6 +106,81 @@ pub(super) fn select(
         selected = tailed;
     }
     Ok(selected)
+}
+
+fn resolve_lookup_name<'a>(
+    inputs: &SequenceInputs<'_>,
+    name: &'a Xslt10KeyName,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    variables: &RuntimeVariables,
+    control: &mut InvocationControl,
+) -> Result<Cow<'a, ExpandedName>, ExecutionFailure> {
+    let (variable, static_namespaces) = match name {
+        Xslt10KeyName::Static(name) => return Ok(Cow::Borrowed(name)),
+        Xslt10KeyName::Variable {
+            name,
+            static_namespaces,
+        } => (name, static_namespaces),
+    };
+    let lexical =
+        super::value_evaluator::xslt10_variable_string_value(inputs, variable, variables, control)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    resolve_lexical_key_name(&lexical, static_namespaces)
+        .map(Cow::Owned)
+        .ok_or_else(|| {
+            failure_at(
+                "XTDE1260",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                location.clone(),
+                format!("key() name is not a bound lexical QName: {lexical}"),
+            )
+        })
+}
+
+fn resolve_lexical_key_name(
+    lexical: &str,
+    static_namespaces: &[NamespaceBinding],
+) -> Option<ExpandedName> {
+    let (prefix, local) = lexical
+        .split_once(':')
+        .map_or((None, lexical), |(prefix, local)| (Some(prefix), local));
+    if !is_ascii_ncname(local)
+        || prefix.is_some_and(|prefix| !is_ascii_ncname(prefix))
+        || local.contains(':')
+    {
+        return None;
+    }
+    let namespace = match prefix {
+        Some(prefix) => Some(
+            static_namespaces
+                .iter()
+                .find(|binding| binding.prefix.as_deref() == Some(prefix))?
+                .namespace
+                .clone(),
+        ),
+        None => None,
+    };
+    Some(ExpandedName {
+        namespace,
+        local: local.to_owned(),
+    })
+}
+
+fn is_ascii_ncname(value: &str) -> bool {
+    let mut characters = value.chars();
+    let Some(first) = characters.next() else {
+        return false;
+    };
+    (first == '_' || first.is_ascii_alphabetic())
+        && characters.all(|character| {
+            character == '_'
+                || character == '-'
+                || character == '.'
+                || character.is_ascii_alphanumeric()
+        })
 }
 
 fn apply_predicate(

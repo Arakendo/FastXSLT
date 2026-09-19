@@ -84,7 +84,7 @@ fn xslt10_key_use_rejects_variable_and_recursive_key_dependencies() {
 }
 
 #[test]
-fn xslt10_key_lookup_with_dynamic_name_stays_explicit_without_panicking() {
+fn xslt10_key_lookup_with_variable_name_compiles_as_a_typed_plan() {
     let document = parse_stylesheet(
         "test:dynamic-key-name.xsl",
         br#"<xsl:stylesheet version="1.0"
@@ -97,9 +97,7 @@ fn xslt10_key_lookup_with_dynamic_name_stays_explicit_without_panicking() {
             </xsl:stylesheet>"#,
     );
 
-    let failure = compile_stylesheet(&document).expect_err("dynamic key names remain unsupported");
-    assert_eq!(failure.category, CompileCategory::Unsupported);
-    assert_eq!(failure.code, "FXXP1023");
+    compile_stylesheet(&document).expect("variable key name should compile");
 }
 
 #[test]

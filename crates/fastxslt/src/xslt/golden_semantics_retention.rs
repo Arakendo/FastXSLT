@@ -13,7 +13,7 @@ use super::{
     OutputSettings, SequenceItemExpression, SortKey, SortSelect, SourceLocation, StylesheetProgram,
     Template, TemplateArgument, TemplateArgumentValue, TemplateParameter, TemplateParameterDefault,
     ValueExpression, VariableFilteredElementPath, Xslt10AvtPart, Xslt10ConcatPart, Xslt10KeyLookup,
-    Xslt10KeyValue,
+    Xslt10KeyName, Xslt10KeyValue,
 };
 
 impl StylesheetProgram {
@@ -376,25 +376,27 @@ fn apply_selection_owned(value: &ApplySelection) -> usize {
 }
 
 fn xslt10_key_lookup_owned(lookup: &Xslt10KeyLookup) -> usize {
-    name_owned(&lookup.name)
-        + match &lookup.value {
-            Xslt10KeyValue::Static(value) | Xslt10KeyValue::Variable(value) => value.capacity(),
-            Xslt10KeyValue::ContextPath(path) => path.known_owned_capacity_bytes(),
-            Xslt10KeyValue::NestedLookup(lookup) => xslt10_key_lookup_owned(lookup),
-        }
-        + lookup
-            .predicate
-            .as_ref()
-            .map_or(0, |predicate| {
-                match predicate {
+    (match &lookup.name {
+        Xslt10KeyName::Static(name) => name_owned(name),
+        Xslt10KeyName::Variable {
+            name,
+            static_namespaces,
+        } => name.capacity() + arc_slice_owned(static_namespaces, namespace_owned),
+    }) + match &lookup.value {
+        Xslt10KeyValue::Static(value) | Xslt10KeyValue::Variable(value) => value.capacity(),
+        Xslt10KeyValue::ContextPath(path) => path.known_owned_capacity_bytes(),
+        Xslt10KeyValue::NestedLookup(lookup) => xslt10_key_lookup_owned(lookup),
+    } + lookup
+        .predicate
+        .as_ref()
+        .map_or(0, |predicate| match predicate {
             crate::xslt::golden_semantics_experiment::Xslt10KeyNodePredicate::Position(_)
             | crate::xslt::golden_semantics_experiment::Xslt10KeyNodePredicate::Last => 0,
             crate::xslt::golden_semantics_experiment::Xslt10KeyNodePredicate::AttributeEquals {
                 name,
                 value,
             } => name_owned(name) + value.capacity(),
-        }
-            })
+        })
         + lookup
             .tail
             .as_ref()

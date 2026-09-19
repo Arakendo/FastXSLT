@@ -847,7 +847,11 @@ remain static errors. A structurally complete `key()` call with any arity other
 than two reports `XPST0017` before supported-operand selection. One lookup may
 obtain its values from another complete typed lookup; recursive plan depth is
 limited to four and every nested scan remains charged independently. Dynamic
-key names and other unadmitted value expressions remain outside this lookup
+key names supplied by one unqualified variable reference are converted through
+XSLT 1.0 string rules and resolved as lexical QNames against immutable
+stylesheet namespaces captured at the call site. Invalid or unbound names
+report `XTDE1260`; source namespaces and ambient host state do not participate.
+Other dynamic-name and value-expression shapes remain outside this lookup
 slice.
 
 For a computed-element name without AVT delimiters, compilation validates the

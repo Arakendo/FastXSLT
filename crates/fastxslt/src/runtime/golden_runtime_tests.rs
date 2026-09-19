@@ -2295,6 +2295,37 @@ fn xslt10_nested_key_lookup_uses_inner_selected_node_strings() {
 }
 
 #[test]
+fn xslt10_variable_key_name_resolves_with_captured_static_namespaces() {
+    const SOURCE: &str = "urn:fastxslt:variable-key-name:source";
+    const STYLESHEET: &str = "urn:fastxslt:variable-key-name:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:k="urn:key"><xsl:output omit-xml-declaration="yes"/><xsl:variable name="key-name">k:lookup</xsl:variable><xsl:key name="k:lookup" match="item" use="@code"/><xsl:template match="/"><out><xsl:value-of select="key($key-name, 'selected')"/></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item code='ignored'>wrong</item><item code='selected'>right</item></doc>"
+                .to_vec(),
+        )
+        .expect("admit variable-key-name source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit variable-key-name stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile variable key name");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("variable-key-name", "result", SOURCE))
+        .expect("admit variable-key-name request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute variable key name");
+
+    assert_eq!(
+        results.by_request["variable-key-name"].serialized,
+        "<out xmlns:k=\"urn:key\">right</out>"
+    );
+}
+
+#[test]
 fn xslt10_generate_id_key_avt_uses_first_selected_source_node_identity() {
     const SOURCE: &str = "urn:fastxslt:key-identity-avt:source";
     const STYLESHEET: &str = "urn:fastxslt:key-identity-avt:stylesheet";
