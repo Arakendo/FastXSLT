@@ -160,3 +160,83 @@ fn computed_attributes_reuse_sequence_position_and_size() {
         "<out position=\"1\" size=\"2\"></out><out position=\"2\" size=\"2\"></out>"
     );
 }
+
+#[test]
+fn xslt10_path_valued_attribute_name_uses_first_node_string_value() {
+    let stylesheet = document(
+        "memory:dynamic-attribute-name.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:attribute name="{doc/name/@value}">kept</xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+    );
+    let source = document(
+        "memory:source.xml",
+        br#"<doc><name value="chosen"/><name value="ignored"/></doc>"#,
+    );
+    let program = compile_stylesheet(&stylesheet).expect("stylesheet should compile");
+    let result = execute_program(
+        &program,
+        &source,
+        "dynamic-attribute-name-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("stylesheet should execute");
+    let result = serialize_xml(
+        &result,
+        &program.output,
+        "dynamic-attribute-name-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("dynamic attribute should serialize");
+
+    assert_eq!(result, "<out chosen=\"kept\"></out>");
+}
+
+#[test]
+fn path_valued_attribute_name_retains_static_namespace_override() {
+    let stylesheet = document(
+        "memory:dynamic-namespaced-attribute.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:template match="/"><out><xsl:attribute name="{doc/name}" namespace="urn:dynamic">kept</xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+    );
+    let source = document("memory:source.xml", br"<doc><name>chosen</name></doc>");
+    let program = compile_stylesheet(&stylesheet).expect("stylesheet should compile");
+    let result = execute_program(
+        &program,
+        &source,
+        "dynamic-namespaced-attribute-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("stylesheet should execute");
+    let result = serialize_xml(
+        &result,
+        &program.output,
+        "dynamic-namespaced-attribute-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("dynamic namespaced attribute should serialize");
+
+    assert_eq!(
+        result,
+        r#"<out xmlns:ns0="urn:dynamic" ns0:chosen="kept"></out>"#
+    );
+}
+
+#[test]
+fn xslt10_path_valued_attribute_name_reports_invalid_empty_qname() {
+    let stylesheet = document(
+        "memory:empty-dynamic-attribute-name.xsl",
+        br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:template match="/"><out><xsl:attribute name="{doc/missing}">bad</xsl:attribute></out></xsl:template></xsl:stylesheet>"#,
+    );
+    let source = document("memory:source.xml", br"<doc/>");
+    let program = compile_stylesheet(&stylesheet).expect("stylesheet should compile");
+    let failure = execute_program(
+        &program,
+        &source,
+        "empty-dynamic-attribute-name-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect_err("an empty dynamic name must fail");
+
+    assert_eq!(failure.code, "XTDE0850");
+    assert_eq!(failure.category, super::FailureCategory::Invalid);
+}

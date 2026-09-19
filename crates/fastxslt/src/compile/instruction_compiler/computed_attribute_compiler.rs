@@ -3,7 +3,9 @@
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xml::quick_xml_experiment::ExpandedName;
 use crate::xpath::path_experiment::parse_location_path;
-use crate::xslt::golden_semantics_experiment::{ComputedAttribute, LiteralAttributeValue};
+use crate::xslt::golden_semantics_experiment::{
+    ComputedAttribute, DynamicAttributeName, LiteralAttributeValue,
+};
 
 use super::value_expression_compiler::compile_xslt10_concat;
 use super::{
@@ -42,9 +44,10 @@ pub(super) fn compile_computed_attributes(
         }
         let attribute = compile_computed_attribute(document, child)?;
         if recover_duplicate_attributes
-            && let Some(index) = attributes
-                .iter()
-                .position(|existing: &ComputedAttribute| existing.name == attribute.name)
+            && attribute.dynamic_name.is_none()
+            && let Some(index) = attributes.iter().position(|existing: &ComputedAttribute| {
+                existing.dynamic_name.is_none() && existing.name == attribute.name
+            })
         {
             attributes.remove(index);
         }
@@ -68,15 +71,10 @@ pub(super) fn compile_computed_attribute(
             document.location(element),
         ));
     }
-    if name.contains(['{', '}']) {
-        return Err(unsupported(
-            "FXST1062",
-            "the private computed-attribute name slice requires a static QName",
-            document.location(element),
-        ));
-    }
-    let name = compile_static_attribute_name(document, element, name, namespace)?;
-    if name.local == "xmlns" || name.namespace.as_deref() == Some(XMLNS_NAMESPACE) {
+    let (name, dynamic_name) = compile_computed_attribute_name(document, element, name, namespace)?;
+    if dynamic_name.is_none()
+        && (name.local == "xmlns" || name.namespace.as_deref() == Some(XMLNS_NAMESPACE))
+    {
         return Err(invalid(
             "XTDE0855",
             "xsl:attribute cannot construct a name in the reserved xmlns namespace",
@@ -133,9 +131,55 @@ pub(super) fn compile_computed_attribute(
     };
     Ok(ComputedAttribute {
         name,
+        dynamic_name,
         value,
         location: document.location(element).clone(),
     })
+}
+
+fn compile_computed_attribute_name(
+    document: &Document,
+    element: NodeId,
+    lexical: &str,
+    namespace: Option<&str>,
+) -> Result<(ExpandedName, Option<DynamicAttributeName>), CompileFailure> {
+    if !lexical.contains(['{', '}']) {
+        return Ok((
+            compile_static_attribute_name(document, element, lexical, namespace)?,
+            None,
+        ));
+    }
+    if !uses_xslt10_compatibility(document, element) {
+        return Err(unsupported(
+            "FXST1062",
+            "the private computed-attribute name slice requires a static QName",
+            document.location(element),
+        ));
+    }
+    let path = lexical
+        .strip_prefix('{')
+        .and_then(|value| value.strip_suffix('}'))
+        .map(str::trim)
+        .filter(|value| !value.contains(['{', '}']))
+        .and_then(|value| parse_location_path(value, document.location(element).clone()).ok())
+        .ok_or_else(|| {
+            unsupported(
+                "FXST1062",
+                "the private computed-attribute name slice supports one path-valued XSLT 1.0 AVT",
+                document.location(element),
+            )
+        })?;
+    Ok((
+        ExpandedName {
+            namespace: None,
+            local: String::new(),
+        },
+        Some(DynamicAttributeName::Path {
+            path,
+            namespace_override: namespace.map(str::to_owned),
+            static_namespaces: document.in_scope_namespaces(element).into(),
+        }),
+    ))
 }
 
 fn compile_xslt10_local_source_path_count(

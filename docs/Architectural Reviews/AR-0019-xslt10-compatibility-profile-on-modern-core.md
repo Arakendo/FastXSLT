@@ -1986,3 +1986,10 @@ maintained redistributable legacy suite becomes available.
   reducing `FXST1047` from 2 to 1; variable/path and general composite AVTs
   remain unsupported.
   [Evidence](../Evidence/oasis-xslt10-focus-position-computed-element-name-2026-09-18.md)
+- 2026-09-18 -- Exact one-path XSLT 1.0 computed-attribute name AVTs now reuse
+  the charged location-path evaluator and first-node string conversion, then
+  apply attribute-specific runtime `QName` rules. Static namespace overrides
+  are retained on the containing result element during compilation. Five cases
+  leave `FXST1062`; two become exact, raising the lower bound from 1,567 to
+  1,569, while the other three expose independent later boundaries.
+  [Evidence](../Evidence/oasis-xslt10-path-valued-computed-attribute-names-2026-09-18.md)

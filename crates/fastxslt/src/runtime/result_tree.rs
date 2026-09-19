@@ -127,50 +127,44 @@ pub(super) fn materialize_computed_attributes(
     };
     let mut materialized = Vec::with_capacity(attributes.len());
     for attribute in attributes {
-        match &attribute.value {
-            LiteralAttributeValue::Number(instruction) => {
-                materialized.push(materialize_number_attribute(
-                    inputs,
-                    attribute,
-                    instruction,
-                    focus,
-                    request_id,
-                    control,
-                )?);
-            }
+        let mut result = match &attribute.value {
+            LiteralAttributeValue::Number(instruction) => materialize_number_attribute(
+                inputs,
+                attribute,
+                instruction,
+                focus,
+                request_id,
+                control,
+            )?,
             LiteralAttributeValue::Xslt10ForEachPathStringValue(path) => {
-                materialized.push(materialize_for_each_attribute(
-                    attribute, path, &context, control,
-                )?);
+                materialize_for_each_attribute(attribute, path, &context, control)?
             }
-            LiteralAttributeValue::Xslt10Concat(expression) => {
-                materialized.push(materialize_concat_attribute(
-                    inputs, attribute, expression, variables, focus, request_id, control,
-                )?);
-            }
+            LiteralAttributeValue::Xslt10Concat(expression) => materialize_concat_attribute(
+                inputs, attribute, expression, variables, focus, request_id, control,
+            )?,
             LiteralAttributeValue::CountSourceNodeVariable(variable) => {
-                materialized.push(materialize_source_node_variable_count(
+                materialize_source_node_variable_count(
                     inputs, attribute, variable, variables, request_id, control,
-                )?);
+                )?
             }
             LiteralAttributeValue::CountSourcePath(path)
             | LiteralAttributeValue::Xslt10LocalSourcePathCount(path) => {
-                materialized.push(materialize_source_path_count(
+                materialize_source_path_count(
                     attribute,
                     std::slice::from_ref(path),
                     focus.source,
                     request_id,
                     control,
-                )?);
+                )?
             }
             LiteralAttributeValue::CountSourcePathUnion(alternatives) => {
-                materialized.push(materialize_source_path_count(
+                materialize_source_path_count(
                     attribute,
                     alternatives,
                     focus.source,
                     request_id,
                     control,
-                )?);
+                )?
             }
             LiteralAttributeValue::ContextNormalizedStringLength => {
                 control
@@ -185,21 +179,29 @@ pub(super) fn materialize_computed_attributes(
                         "normalized string length requires a source context item",
                     )
                 })?;
-                materialized.push(ResultAttribute {
+                ResultAttribute {
                     name: attribute.name.clone(),
                     value: normalized_node_string_length(inputs, node, control)?.to_string(),
-                });
+                }
             }
-            _ => {
-                materialized.push(materialize_attribute(
-                    &attribute.name,
-                    &attribute.value,
-                    &attribute.location,
-                    &context,
-                    control,
-                )?);
-            }
+            _ => materialize_attribute(
+                &attribute.name,
+                &attribute.value,
+                &attribute.location,
+                &context,
+                control,
+            )?,
+        };
+        if let Some(name) = &attribute.dynamic_name {
+            result.name = super::dynamic_attribute_name::resolve(
+                inputs,
+                focus.source.map(|(_, node)| node),
+                name,
+                &attribute.location,
+                control,
+            )?;
         }
+        materialized.push(result);
     }
     Ok(materialized)
 }

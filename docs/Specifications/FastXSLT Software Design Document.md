@@ -775,6 +775,16 @@ The same private dynamic-name representation may compose static text with one
 passes the composed lexical value through the same runtime `QName` resolver;
 it does not introduce an independent focus or general AVT evaluator.
 
+Under XSLT 1.0 static context, an `xsl:attribute` name AVT containing exactly
+one admitted location path uses the same charged navigation and first-node
+string-conversion primitive. Attribute-specific runtime `QName` validation
+retains the distinct reserved-name and prefix/namespace rules. An optional
+static namespace URI and the instruction's static namespace context are
+compiled into the private name plan; the containing result element retains any
+required static binding before execution. This does not admit variable or
+temporary-tree paths, mixed AVT composition, dynamic namespace AVTs, or a
+public dynamic-name representation.
+
 For a computed-element name without AVT delimiters, compilation validates the
 lexical QName immediately. A malformed static name reports `XTDE0820`; a valid
 prefixed name without a binding reports `XTDE0830`. Values containing

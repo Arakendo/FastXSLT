@@ -30,6 +30,8 @@ mod atomic_template_executor;
 #[cfg(test)]
 #[path = "golden_runtime_experiment/byte_encoding.rs"]
 mod byte_encoding;
+#[path = "dynamic_attribute_name.rs"]
+mod dynamic_attribute_name;
 #[path = "dynamic_document.rs"]
 mod dynamic_document;
 #[path = "dynamic_element_name.rs"]

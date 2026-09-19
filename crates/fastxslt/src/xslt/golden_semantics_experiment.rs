@@ -1235,8 +1235,18 @@ pub(crate) struct LiteralAttribute {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ComputedAttribute {
     pub(crate) name: ExpandedName,
+    pub(crate) dynamic_name: Option<DynamicAttributeName>,
     pub(crate) value: LiteralAttributeValue,
     pub(crate) location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum DynamicAttributeName {
+    Path {
+        path: LocationPath,
+        namespace_override: Option<String>,
+        static_namespaces: Arc<[NamespaceBinding]>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

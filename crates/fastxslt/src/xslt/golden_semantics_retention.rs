@@ -1235,6 +1235,17 @@ fn literal_attribute_owned(value: &LiteralAttribute) -> usize {
 
 fn computed_attribute_owned(value: &ComputedAttribute) -> usize {
     name_owned(&value.name)
+        + value.dynamic_name.as_ref().map_or(0, |name| match name {
+            crate::xslt::golden_semantics_experiment::DynamicAttributeName::Path {
+                path,
+                namespace_override,
+                static_namespaces,
+            } => {
+                path.known_owned_capacity_bytes()
+                    + namespace_override.as_ref().map_or(0, String::capacity)
+                    + arc_slice_owned(static_namespaces, namespace_owned)
+            }
+        })
         + literal_attribute_value_owned(&value.value)
         + location_owned(&value.location)
 }

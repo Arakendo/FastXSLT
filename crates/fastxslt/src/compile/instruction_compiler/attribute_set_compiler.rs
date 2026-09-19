@@ -144,9 +144,10 @@ fn apply(
         }
         for child in meaningful_children(document, declaration) {
             let attribute = compile_attribute_set_attribute(document, child)?;
-            if let Some(index) = values
-                .iter()
-                .position(|existing| existing.name == attribute.name)
+            if attribute.dynamic_name.is_none()
+                && let Some(index) = values.iter().position(|existing| {
+                    existing.dynamic_name.is_none() && existing.name == attribute.name
+                })
             {
                 values.remove(index);
             }

@@ -381,6 +381,7 @@ fn compile_attribute(document: &Document, element: NodeId) -> Result<Instruction
                 namespace: None,
                 local: name.to_owned(),
             },
+            dynamic_name: None,
             value,
             location: document.location(element).clone(),
         },
@@ -409,7 +410,7 @@ pub(super) fn compile_literal_element(
         attributes.retain(|literal| {
             !computed_attributes
                 .iter()
-                .any(|computed| computed.name == literal.name)
+                .any(|computed| computed.dynamic_name.is_none() && computed.name == literal.name)
         });
     } else {
         ensure_distinct_result_attributes(
@@ -421,12 +422,13 @@ pub(super) fn compile_literal_element(
     let mut attribute_set_values =
         compile_local_attribute_sets(document, element, Some(XSLT_NAMESPACE))?;
     attribute_set_values.retain(|set_attribute| {
-        !attributes
-            .iter()
-            .any(|attribute| attribute.name == set_attribute.name)
-            && !computed_attributes
-                .iter()
-                .any(|attribute| attribute.name == set_attribute.name)
+        !attributes.iter().any(|attribute| {
+            set_attribute.dynamic_name.is_none() && attribute.name == set_attribute.name
+        }) && !computed_attributes.iter().any(|attribute| {
+            attribute.dynamic_name.is_none()
+                && set_attribute.dynamic_name.is_none()
+                && attribute.name == set_attribute.name
+        })
     });
     attribute_set_values.append(&mut computed_attributes);
     let computed_attributes = attribute_set_values;
@@ -510,9 +512,11 @@ fn compile_static_computed_element(
             compile_computed_attributes(document, element)?;
         let mut attribute_set_values = compile_local_attribute_sets(document, element, None)?;
         attribute_set_values.retain(|set_attribute| {
-            !computed_attributes
-                .iter()
-                .any(|attribute| attribute.name == set_attribute.name)
+            !computed_attributes.iter().any(|attribute| {
+                attribute.dynamic_name.is_none()
+                    && set_attribute.dynamic_name.is_none()
+                    && attribute.name == set_attribute.name
+            })
         });
         attribute_set_values.append(&mut computed_attributes);
         return Ok(Instruction::ContextNameElement {
@@ -530,9 +534,11 @@ fn compile_static_computed_element(
             compile_computed_attributes(document, element)?;
         let mut attribute_set_values = compile_local_attribute_sets(document, element, None)?;
         attribute_set_values.retain(|set_attribute| {
-            !computed_attributes
-                .iter()
-                .any(|attribute| attribute.name == set_attribute.name)
+            !computed_attributes.iter().any(|attribute| {
+                attribute.dynamic_name.is_none()
+                    && set_attribute.dynamic_name.is_none()
+                    && attribute.name == set_attribute.name
+            })
         });
         attribute_set_values.append(&mut computed_attributes);
         return Ok(Instruction::DynamicNameElement {
@@ -550,9 +556,11 @@ fn compile_static_computed_element(
         compile_computed_attributes(document, element)?;
     let mut attribute_set_values = compile_local_attribute_sets(document, element, None)?;
     attribute_set_values.retain(|set_attribute| {
-        !computed_attributes
-            .iter()
-            .any(|attribute| attribute.name == set_attribute.name)
+        !computed_attributes.iter().any(|attribute| {
+            attribute.dynamic_name.is_none()
+                && set_attribute.dynamic_name.is_none()
+                && attribute.name == set_attribute.name
+        })
     });
     attribute_set_values.append(&mut computed_attributes);
     let computed_attributes = attribute_set_values;
@@ -595,10 +603,18 @@ fn retain_computed_attribute_namespace_bindings(
 ) {
     const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
     let mut generated_index = 0_usize;
-    for namespace in attributes
-        .iter()
-        .filter_map(|attribute| attribute.name.namespace.as_deref())
-    {
+    for namespace in attributes.iter().filter_map(|attribute| {
+        attribute.name.namespace.as_deref().or_else(|| {
+            attribute.dynamic_name.as_ref().and_then(|name| match name {
+                crate::xslt::golden_semantics_experiment::DynamicAttributeName::Path {
+                    namespace_override,
+                    ..
+                } => namespace_override
+                    .as_deref()
+                    .filter(|value| !value.is_empty()),
+            })
+        })
+    }) {
         if namespace == XML_NAMESPACE
             || namespaces
                 .iter()
@@ -714,12 +730,15 @@ fn ensure_distinct_result_attributes(
     location: &SourceLocation,
 ) -> Result<(), CompileFailure> {
     for (index, attribute) in computed.iter().enumerate() {
+        if attribute.dynamic_name.is_some() {
+            continue;
+        }
         if literal
             .iter()
             .any(|existing| existing.name == attribute.name)
             || computed[..index]
                 .iter()
-                .any(|existing| existing.name == attribute.name)
+                .any(|existing| existing.dynamic_name.is_none() && existing.name == attribute.name)
         {
             return Err(invalid(
                 "XTDE0410",
