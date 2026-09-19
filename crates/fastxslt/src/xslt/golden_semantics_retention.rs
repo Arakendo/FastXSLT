@@ -1366,6 +1366,11 @@ fn literal_attribute_value_owned(value: &LiteralAttributeValue) -> usize {
             path,
             suffix,
         } => prefix.capacity() + path.known_owned_capacity_bytes() + suffix.capacity(),
+        LiteralAttributeValue::Xslt10TextAndGeneratedKeyIdentity {
+            prefix,
+            lookup,
+            suffix,
+        } => prefix.capacity() + xslt10_key_lookup_owned(lookup) + suffix.capacity(),
         LiteralAttributeValue::Xslt10TextAndAttributeIntegerOffset {
             prefix,
             name,

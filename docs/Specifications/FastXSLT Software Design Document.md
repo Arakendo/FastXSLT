@@ -824,8 +824,11 @@ conversion may consume an already typed location path evaluated from the
 call's current principal-source context; cross-document context switching and
 nested key calls remain outside the slice. The typed XSLT 1.0 `count()` value
 consumer may count the resulting effective node sequence through the same
-selector; this does not admit key lookup into other expression consumers. Any
-optimized lookup structure
+selector. A literal-result attribute may also compose optional static text
+with the stable identity of the first selected key node through the exact
+`generate-id(key(...))` shape. These typed consumers do not admit key lookup or
+general function calls into other expression positions. Any optimized lookup
+structure
 must remain differential-testable against that scan and must be source-derived
 and invocation-owned unless a later review admits another immutable prepared
 representation; it must not become a global or cross-snapshot cache. Variable

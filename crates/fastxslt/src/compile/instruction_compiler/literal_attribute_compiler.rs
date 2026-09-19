@@ -95,6 +95,11 @@ fn parse_literal_attribute_value_with_context(
         if let Some(value) = parse_variable_and_path(lexical, location) {
             return Ok(value);
         }
+        if let Some(value) =
+            parse_xslt10_generated_key_identity_avt(lexical, location, static_context)?
+        {
+            return Ok(value);
+        }
         if let Some(value) = parse_multi_path_avt(lexical, location, static_context) {
             return Ok(LiteralAttributeValue::Xslt10MultiPathAvt(value));
         }
@@ -108,6 +113,41 @@ fn parse_literal_attribute_value_with_context(
         ));
     }
     Ok(LiteralAttributeValue::Text(lexical.to_owned()))
+}
+
+fn parse_xslt10_generated_key_identity_avt(
+    lexical: &str,
+    location: &SourceLocation,
+    static_context: Option<(&Document, NodeId)>,
+) -> Result<Option<LiteralAttributeValue>, CompileFailure> {
+    let Some((prefix, expression, suffix)) = single_dynamic_expression(lexical) else {
+        return Ok(None);
+    };
+    let expression = expression.trim();
+    let Some(key_expression) = expression
+        .strip_prefix("generate-id(")
+        .and_then(|inner| inner.strip_suffix(')'))
+        .map(str::trim)
+        .filter(|inner| inner.starts_with("key("))
+    else {
+        return Ok(None);
+    };
+    let Some((document, element)) = static_context else {
+        return Ok(None);
+    };
+    let lookup = super::value_expression_compiler::compile_xslt10_literal_key_lookup(
+        document,
+        element,
+        key_expression,
+        location,
+    )?;
+    Ok(Some(
+        LiteralAttributeValue::Xslt10TextAndGeneratedKeyIdentity {
+            prefix: prefix.to_owned(),
+            lookup: Box::new(lookup),
+            suffix: suffix.to_owned(),
+        },
+    ))
 }
 
 fn validate_avt_delimiters(lexical: &str, location: &SourceLocation) -> Result<(), CompileFailure> {

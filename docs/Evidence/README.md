@@ -7,6 +7,7 @@ Each record should identify the date, exact inputs or revisions, environment,
 method, results, limitations, and the decision or plan it informs. Evidence can
 pressure architecture but does not silently create a public guarantee.
 
+- [OASIS XSLT 1.0 Generated Key Identity AVT](oasis-xslt10-generated-key-identity-avt-2026-09-18.md)
 - [OASIS XSLT 1.0 Counted Key Selection](oasis-xslt10-count-key-selection-2026-09-18.md)
 - [OASIS XSLT 1.0 Context-Path Key Values](oasis-xslt10-context-path-key-values-2026-09-18.md)
 - [OASIS XSLT 1.0 Variable Key Values](oasis-xslt10-variable-key-values-2026-09-18.md)

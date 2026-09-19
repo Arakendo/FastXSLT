@@ -359,56 +359,15 @@ fn materialize_attribute(
                 path, value, *equal, location, context, control,
             )?
         }
-        LiteralAttributeValue::Xslt10TextAndPath {
-            prefix,
-            path,
-            suffix,
-        } => materialize_source_path_avt(prefix, path, suffix, location, context, control)?,
-        LiteralAttributeValue::Xslt10TextAndNormalizedPath {
-            prefix,
-            path,
-            suffix,
-        } => materialize_normalized_source_path_avt(
-            prefix, path, suffix, location, context, control,
-        )?,
-        LiteralAttributeValue::Xslt10TextAndAttributeIntegerOffset {
-            prefix,
-            name,
-            offset,
-            suffix,
-        } => materialize_source_attribute_integer_offset_avt(
-            prefix, name, *offset, suffix, location, context, control,
-        )?,
-        LiteralAttributeValue::Xslt10TextAndSourceAttributeConcat {
-            prefix,
-            left,
-            right,
-            suffix,
-        } => materialize_source_attribute_concat_avt(
-            prefix, left, right, suffix, location, context, control,
-        )?,
-        LiteralAttributeValue::Xslt10TextAndSourceAttributeStartsWith {
-            prefix,
-            value,
-            prefix_attribute,
-            suffix,
-        } => materialize_source_attribute_starts_with_avt(
-            prefix,
-            value,
-            prefix_attribute,
-            suffix,
-            location,
-            context,
-            control,
-        )?,
-        LiteralAttributeValue::Xslt10TextAndLiteralVariableConcat {
-            prefix,
-            literal,
-            variable,
-            suffix,
-        } => materialize_literal_variable_concat_avt(
-            prefix, literal, variable, suffix, location, context, control,
-        )?,
+        value @ (LiteralAttributeValue::Xslt10TextAndPath { .. }
+        | LiteralAttributeValue::Xslt10TextAndNormalizedPath { .. }
+        | LiteralAttributeValue::Xslt10TextAndGeneratedKeyIdentity { .. }
+        | LiteralAttributeValue::Xslt10TextAndAttributeIntegerOffset { .. }
+        | LiteralAttributeValue::Xslt10TextAndSourceAttributeConcat { .. }
+        | LiteralAttributeValue::Xslt10TextAndSourceAttributeStartsWith { .. }
+        | LiteralAttributeValue::Xslt10TextAndLiteralVariableConcat { .. }) => {
+            materialize_text_avt(value, location, context, control)?
+        }
         LiteralAttributeValue::Xslt10VariableAndPath {
             variable,
             separator,
@@ -432,6 +391,107 @@ fn materialize_attribute(
         name: name.clone(),
         value,
     })
+}
+
+fn materialize_text_avt(
+    value: &LiteralAttributeValue,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    match value {
+        LiteralAttributeValue::Xslt10TextAndPath {
+            prefix,
+            path,
+            suffix,
+        } => materialize_source_path_avt(prefix, path, suffix, location, context, control),
+        LiteralAttributeValue::Xslt10TextAndNormalizedPath {
+            prefix,
+            path,
+            suffix,
+        } => {
+            materialize_normalized_source_path_avt(prefix, path, suffix, location, context, control)
+        }
+        LiteralAttributeValue::Xslt10TextAndGeneratedKeyIdentity {
+            prefix,
+            lookup,
+            suffix,
+        } => materialize_generated_key_identity_avt(
+            prefix, lookup, suffix, location, context, control,
+        ),
+        LiteralAttributeValue::Xslt10TextAndAttributeIntegerOffset {
+            prefix,
+            name,
+            offset,
+            suffix,
+        } => materialize_source_attribute_integer_offset_avt(
+            prefix, name, *offset, suffix, location, context, control,
+        ),
+        LiteralAttributeValue::Xslt10TextAndSourceAttributeConcat {
+            prefix,
+            left,
+            right,
+            suffix,
+        } => materialize_source_attribute_concat_avt(
+            prefix, left, right, suffix, location, context, control,
+        ),
+        LiteralAttributeValue::Xslt10TextAndSourceAttributeStartsWith {
+            prefix,
+            value,
+            prefix_attribute,
+            suffix,
+        } => materialize_source_attribute_starts_with_avt(
+            prefix,
+            value,
+            prefix_attribute,
+            suffix,
+            location,
+            context,
+            control,
+        ),
+        LiteralAttributeValue::Xslt10TextAndLiteralVariableConcat {
+            prefix,
+            literal,
+            variable,
+            suffix,
+        } => materialize_literal_variable_concat_avt(
+            prefix, literal, variable, suffix, location, context, control,
+        ),
+        _ => unreachable!("text AVT dispatch admits only text-composition values"),
+    }
+}
+
+fn materialize_generated_key_identity_avt(
+    prefix: &str,
+    lookup: &crate::xslt::golden_semantics_experiment::Xslt10KeyLookup,
+    suffix: &str,
+    location: &crate::xdm::owned_tree_experiment::SourceLocation,
+    context: &AttributeContext<'_>,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
+    let node = context.source_focus.map(|(_, node)| node).ok_or_else(|| {
+        failure_at(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(context.request_id),
+            location.clone(),
+            "generate-id(key()) requires a source context item",
+        )
+    })?;
+    let selected = super::key_lookup::select(
+        context.inputs,
+        lookup,
+        Some(node),
+        context.variables,
+        control,
+    )?;
+    let mut value = String::with_capacity(prefix.len() + suffix.len() + 24);
+    value.push_str(prefix);
+    if let Some(node) = selected.first() {
+        value.push_str(&super::runtime_context::source_node_identity(*node));
+    }
+    value.push_str(suffix);
+    Ok(value)
 }
 
 fn attribute_global_variable_string(

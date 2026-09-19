@@ -4815,6 +4815,12 @@ host lifecycle.
     admitting key expressions in AVTs, conditions, sorting, unions, or match
     patterns.
     [Evidence](../Evidence/oasis-xslt10-count-key-selection-2026-09-18.md)
+  - [x] Compose the first node from the shared key selector with stable
+    source-node identity in the exact `generate-id(key(...))` literal-result
+    AVT shape. Focused semantics pass; two motivating Microsoft cases advance
+    to a separate zero-argument `generate-id()` AVT boundary, so the exact
+    lower bound remains 1,608.
+    [Evidence](../Evidence/oasis-xslt10-generated-key-identity-avt-2026-09-18.md)
   - [x] Classify structurally complete `format-number()` calls with an arity
     other than two or three as static `XPST0017 / invalid` before operand and
     picture capability selection. Four unchanged OASIS cases leave the generic

@@ -2211,6 +2211,37 @@ fn xslt10_count_key_lookup_uses_the_shared_ordered_node_selection() {
 }
 
 #[test]
+fn xslt10_generate_id_key_avt_uses_first_selected_source_node_identity() {
+    const SOURCE: &str = "urn:fastxslt:key-identity-avt:source";
+    const STYLESHEET: &str = "urn:fastxslt:key-identity-avt:stylesheet";
+    let stylesheet = br##"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:key name="cities" match="city" use="@name"/><xsl:template match="/"><out><xsl:apply-templates select="doc/place"/></out></xsl:template><xsl:template match="place"><a href="#{generate-id(key('cities', .))}"><xsl:value-of select="."/></a></xsl:template></xsl:stylesheet>"##;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><place>seattle</place><place>missing</place><city name='seattle'/></doc>"
+                .to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("key-identity-avt", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["key-identity-avt"].serialized,
+        "<out><a href=\"#fastxslt-principal-n6\">seattle</a><a href=\"#\">missing</a></out>"
+    );
+}
+
+#[test]
 fn xslt10_computed_attribute_for_each_concatenates_selected_string_values() {
     const SOURCE: &str = "urn:fastxslt:computed-attribute-for-each:source";
     const STYLESHEET: &str = "urn:fastxslt:computed-attribute-for-each:stylesheet";

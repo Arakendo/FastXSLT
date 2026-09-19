@@ -2075,3 +2075,10 @@ maintained redistributable legacy suite becomes available.
   1,893. Key expressions in AVTs, conditions, sorting, unions, and match
   patterns remain explicit.
   [Evidence](../Evidence/oasis-xslt10-count-key-selection-2026-09-18.md)
+- 2026-09-18 -- Literal-result AVTs may now compose optional static text with
+  `generate-id(key(...))`, reusing the shared charged key selector and stable
+  principal-source node identity. Focused matching and empty-selection cases
+  pass. The two motivating Microsoft cases advance to an independent
+  zero-argument `generate-id()` AVT boundary, so the lower bound remains 1,608.
+  General function-valued AVTs remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-generated-key-identity-avt-2026-09-18.md)
