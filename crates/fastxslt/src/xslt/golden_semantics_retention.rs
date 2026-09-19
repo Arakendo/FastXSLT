@@ -464,7 +464,7 @@ fn instruction_owned(value: &Instruction) -> usize {
             xslt10_text_tree_variable_owned(instruction)
         }
         instruction @ Instruction::Xslt10ValueOfTreeVariable { .. } => {
-            path_binding_owned(instruction)
+            xslt10_value_of_tree_variable_owned(instruction)
         }
         Instruction::SequenceNodes { select, location } => sequence_nodes_owned(select, location),
         Instruction::SequenceItems { select, location } => {
@@ -625,11 +625,6 @@ fn path_binding_owned(instruction: &Instruction) -> usize {
             name,
             select,
             location,
-        }
-        | Instruction::Xslt10ValueOfTreeVariable {
-            name,
-            select,
-            location,
         } => name.capacity() + select.known_owned_capacity_bytes() + location_owned(location),
         Instruction::SourceVariablePathVariable {
             name,
@@ -644,6 +639,18 @@ fn path_binding_owned(instruction: &Instruction) -> usize {
         }
         _ => unreachable!("path-binding accounting receives one path binding"),
     }
+}
+
+fn xslt10_value_of_tree_variable_owned(instruction: &Instruction) -> usize {
+    let Instruction::Xslt10ValueOfTreeVariable {
+        name,
+        select,
+        location,
+    } = instruction
+    else {
+        unreachable!("XSLT 1.0 value-of tree accounting receives one matching binding")
+    };
+    name.capacity() + value_expression_owned(select) + location_owned(location)
 }
 
 fn xslt10_text_tree_variable_owned(instruction: &Instruction) -> usize {

@@ -2125,8 +2125,12 @@ fn compile_xslt10_value_of_tree_variable(
     let select = required_attribute(document, *value_of, None, "select")?;
     Ok(Some(Instruction::Xslt10ValueOfTreeVariable {
         name: name.to_owned(),
-        select: parse_location_path(select, document.location(*value_of).clone())
-            .map_err(map_path_failure)?,
+        select: compile_value_expression(
+            document,
+            *value_of,
+            select,
+            document.location(*value_of),
+        )?,
         location: location.clone(),
     }))
 }

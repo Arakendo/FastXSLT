@@ -2179,3 +2179,12 @@ maintained redistributable legacy suite becomes available.
   execution reaches 1,909. Modern function conversion and broader argument
   shapes remain unchanged.
   [Evidence](../Evidence/oasis-xslt10-variable-contains-2026-09-19.md)
+- 2026-09-19 -- A content-built XSLT 1.0 variable containing exactly one
+  `xsl:value-of` now retains the shared typed `ValueExpression` rather than a
+  path-only subset, evaluates it with the current focus and lexical frame, and
+  materializes the result through the existing invocation-owned temporary text
+  tree. The unchanged Lotus `namedtemplate08` case becomes exact, raising the
+  strict lower bound from 1,620 to 1,621; initialization reaches 2,010 and
+  execution reaches 1,910. General sequence constructors and modern semantics
+  remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-value-of-tree-expression-2026-09-19.md)

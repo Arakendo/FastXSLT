@@ -1903,14 +1903,20 @@ fn bind_xslt10_value_of_tree(
     execution: SequenceContext<'_>,
     scope: &mut RuntimeVariables,
     name: &str,
-    select: &crate::xpath::path_experiment::LocationPath,
+    select: &crate::xslt::golden_semantics_experiment::ValueExpression,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
-    let (source, context) = required_source_context(inputs, execution.node)?;
-    let tree = runtime_context::materialize_xslt10_temporary_context_string(
-        source,
-        context,
+    let value = value_evaluator::evaluate_as_temporary_text(
+        inputs,
         select,
+        execution.node,
+        execution.focus_position,
+        execution.focus_size,
+        scope,
+        control,
+    )?;
+    let tree = runtime_context::materialize_parentless_temporary_node(
+        TemporaryNodeKind::Text(value),
         inputs.request_id,
         control,
     )?;

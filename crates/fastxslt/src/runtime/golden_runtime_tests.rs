@@ -4603,6 +4603,39 @@ fn xslt10_string_and_number_convert_variable_values() {
 }
 
 #[test]
+fn xslt10_value_of_tree_variable_uses_typed_variable_conversion() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-value-of-tree-expression:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-value-of-tree-expression:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0"
+        xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+        <xsl:output method="xml" omit-xml-declaration="yes"/>
+        <xsl:template match="doc"><xsl:call-template name="emit"><xsl:with-param name="number" select="555"/></xsl:call-template></xsl:template>
+        <xsl:template name="emit"><xsl:param name="number"/><xsl:variable name="temporary"><xsl:value-of select="number($number)"/></xsl:variable><out><xsl:value-of select="$temporary"/></out></xsl:template>
+    </xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(SOURCE, b"<doc/>".to_vec())
+        .expect("admit value-of tree expression source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit value-of tree expression stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET)
+        .expect("compile value-of tree expression stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("xslt10-value-of-tree-expression", "result", SOURCE))
+        .expect("admit value-of tree expression request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute value-of tree expression transform");
+    assert_eq!(
+        results.by_request["xslt10-value-of-tree-expression"].serialized,
+        "<out>555</out>"
+    );
+}
+
+#[test]
 fn xslt10_local_value_of_content_builds_a_temporary_text_tree() {
     const SOURCE: &str = "urn:fastxslt:xslt10-local-value-of-tree:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-local-value-of-tree:stylesheet";
