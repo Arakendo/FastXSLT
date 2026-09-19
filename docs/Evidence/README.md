@@ -7,6 +7,7 @@ Each record should identify the date, exact inputs or revisions, environment,
 method, results, limitations, and the decision or plan it informs. Evidence can
 pressure architecture but does not silently create a public guarantee.
 
+- [OASIS XSLT 1.0 Global Tree-Variable AVTs](oasis-xslt10-global-tree-variable-avts-2026-09-19.md)
 - [OASIS XSLT 1.0 `format-number()` Variable Conversion](oasis-xslt10-format-number-variable-conversion-2026-09-19.md)
 - [OASIS XSLT 1.0 Key Descendant Tail](oasis-xslt10-key-descendant-tail-2026-09-19.md)
 - [OASIS XSLT 1.0 Variable-Selection Sort](oasis-xslt10-variable-selection-sort-2026-09-18.md)

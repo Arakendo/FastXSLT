@@ -16,7 +16,7 @@ use crate::xslt::golden_semantics_experiment::{
 use super::runtime_context::{RuntimeVariables, SequenceInputs};
 use super::value_evaluator::{
     evaluate_binary_numeric_value, evaluate_xslt10_concat, normalized_node_string,
-    normalized_node_string_length,
+    normalized_node_string_length, xslt10_variable_string_value,
 };
 use super::{ExecutionFailure, FailureCategory, SequenceContext, control_failure, failure_at};
 
@@ -777,23 +777,14 @@ fn attribute_variable_string(
     context: &AttributeContext<'_>,
     control: &mut InvocationControl,
 ) -> Result<String, ExecutionFailure> {
-    if let Some(value) = context.variables.atomics.get(variable) {
-        return Ok(value.lexical().to_owned());
-    }
-    if let Some(tree) = context.variables.temporary_trees.get(variable) {
-        return super::runtime_context::temporary_tree_string_value(
-            tree,
-            context.request_id,
-            control,
-        );
-    }
-    Err(failure_at(
-        "FXRT0002",
-        FailureCategory::Invalid,
-        Some(context.request_id),
-        location.clone(),
-        format!("unbound variable in result attribute expression: ${variable}"),
-    ))
+    xslt10_variable_string_value(context.inputs, variable, context.variables, control).map_err(
+        |mut failure| {
+            if failure.location.is_none() {
+                failure.location = Some(location.clone());
+            }
+            failure
+        },
+    )
 }
 
 fn materialize_context_integer_increment(

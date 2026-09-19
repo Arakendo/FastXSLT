@@ -2164,3 +2164,11 @@ maintained redistributable legacy suite becomes available.
   13 while the strict exact lower bound remains 1,618. The repair does not
   expand the bounded formatter or select arbitrary-precision representation.
   [Evidence](../Evidence/oasis-xslt10-format-number-variable-conversion-2026-09-19.md)
+- 2026-09-19 -- Literal-result AVTs now reuse the same charged XSLT 1.0
+  variable string conversion, including global temporary trees and declared
+  empty parameters, while retaining the AVT source location on failure. Five
+  unchanged Microsoft cases execute; `AVTs__77536` becomes exact and four
+  namespace-alias cases expose later comparison behavior. The strict lower
+  bound rises from 1,618 to 1,619, successful execution reaches 1,908, and the
+  `FXRT0002` frontier falls from 13 to 8.
+  [Evidence](../Evidence/oasis-xslt10-global-tree-variable-avts-2026-09-19.md)

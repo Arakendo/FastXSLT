@@ -5776,6 +5776,39 @@ fn xslt10_text_tree_variable_composes_with_source_path_avts() {
 }
 
 #[test]
+fn xslt10_global_text_tree_and_empty_parameter_variables_materialize_in_avts() {
+    const SOURCE: &str = "urn:fastxslt:global-text-tree-variable-avt:source";
+    const STYLESHEET: &str = "urn:fastxslt:global-text-tree-variable-avt:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            br"<photograph><href>headquarters.jpg</href></photograph>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="xml" omit-xml-declaration="yes"/><xsl:variable name="image-dir">/images</xsl:variable><xsl:param name="empty"/><xsl:template match="photograph"><out src="{$image-dir}/{href}" empty="{$empty}"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile global text-tree variable AVT");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("global-text-tree-variable-avt", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal())
+        .expect("execute global text-tree and empty parameter AVTs");
+    assert_eq!(
+        results.by_request["global-text-tree-variable-avt"].serialized,
+        "<out src=\"/images/headquarters.jpg\" empty=\"\"></out>"
+    );
+}
+
+#[test]
 fn xslt10_static_text_constructors_share_local_and_global_temporary_tree_semantics() {
     const SOURCE: &str = "urn:fastxslt:static-text-tree-sequence:source";
     const STYLESHEET: &str = "urn:fastxslt:static-text-tree-sequence:stylesheet";
