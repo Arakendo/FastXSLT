@@ -5,15 +5,16 @@ use crate::xdm::atomic_value_experiment::{AtomicValue, BuiltinAtomicType};
 use crate::xdm::owned_tree_experiment::{Document, NodeId};
 use crate::xpath::path_experiment::{LocationPath, evaluate_location_path_controlled};
 use crate::xslt::golden_semantics_experiment::{
-    Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10PathStringFunction,
-    Xslt10PathStringFunctionKind, Xslt10PathSubstring, Xslt10PathTranslate, Xslt10StringOperand,
+    Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10NormalizedVariableTranslate,
+    Xslt10PathStringFunction, Xslt10PathStringFunctionKind, Xslt10PathSubstring,
+    Xslt10PathTranslate, Xslt10StringOperand,
 };
 
 use super::super::{
     ExecutionFailure, FailureCategory, ResultNode, RuntimeVariables, SequenceInputs,
     control_failure, failure, required_source_context, runtime_context,
 };
-use super::{append_boolean, append_source_string_value, append_text};
+use super::{append_boolean, append_source_string_value, append_text, normalized_node_string};
 
 pub(super) fn variable_string_value(
     inputs: &SequenceInputs<'_>,
@@ -453,6 +454,49 @@ pub(super) fn append_path_translate(
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
     let value = first_path_string(inputs, context, &expression.path, control)?;
+    control
+        .charge(WorkDomain::XPathOperation, 1)
+        .map_err(|failure| control_failure(failure, inputs.request_id))?;
+    let value = crate::xpath::static_string_experiment::evaluate_translate(
+        &value,
+        &expression.search,
+        &expression.replacement,
+    );
+    append_text(result, &value, inputs.request_id, control)
+}
+
+pub(super) fn append_normalized_variable_translate(
+    inputs: &SequenceInputs<'_>,
+    expression: &Xslt10NormalizedVariableTranslate,
+    variables: &RuntimeVariables,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let source = inputs.source.ok_or_else(|| {
+        failure(
+            "XPDY0002",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            "source-node variable translation requires a source document",
+        )
+    })?;
+    let nodes = variables
+        .source_nodes(inputs.globals, &expression.variable)
+        .ok_or_else(|| {
+            failure(
+                "XPTY0004",
+                FailureCategory::Invalid,
+                Some(inputs.request_id),
+                format!(
+                    "normalize-space requires a source-node sequence: ${}",
+                    expression.variable
+                ),
+            )
+        })?;
+    let value = match nodes.first().copied() {
+        Some(node) => normalized_node_string(source, node, inputs.request_id, control)?,
+        None => String::new(),
+    };
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;

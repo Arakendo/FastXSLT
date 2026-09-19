@@ -544,6 +544,11 @@ pub(super) fn execute_value_of(
                 inputs, context, expression, result, control,
             )?;
         }
+        ValueExpression::Xslt10NormalizedVariableTranslate(expression) => {
+            xslt10_compatibility::append_normalized_variable_translate(
+                inputs, expression, variables, result, control,
+            )?;
+        }
         ValueExpression::Xslt10Concat(expression) => {
             xslt10_compatibility::append_concat(
                 inputs, context, expression, variables, result, control,

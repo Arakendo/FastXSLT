@@ -874,6 +874,50 @@ fn xslt10_sum_accepts_a_source_node_variable() {
 }
 
 #[test]
+fn xslt10_translate_composes_with_normalized_source_node_variable() {
+    let source = parse_document(
+        "memory:normalized-variable-translate.xml",
+        br"<doc><value>  first&#x9; second  </value></doc>",
+        ParseLimits {
+            max_events: 16,
+            max_depth: 5,
+        },
+    )
+    .expect("source should parse");
+    let source = Document::from_parsed(source).expect("source XDM should build");
+    let stylesheet = parse_document(
+        "memory:normalized-variable-translate.xsl",
+        br#"<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"><xsl:output omit-xml-declaration="yes"/><xsl:template match="doc"><xsl:variable name="value" select="value"/><out><xsl:value-of select="translate(normalize-space($value), ' ', '_')"/></out></xsl:template></xsl:stylesheet>"#,
+        ParseLimits {
+            max_events: 32,
+            max_depth: 8,
+        },
+    )
+    .expect("stylesheet should parse");
+    let stylesheet = Document::from_parsed(stylesheet).expect("stylesheet XDM should build");
+    let program = crate::compile::golden_stylesheet_experiment::compile_stylesheet(&stylesheet)
+        .expect("normalized variable translation should compile");
+
+    let result = execute_program(
+        &program,
+        &source,
+        "normalized-variable-translate-request",
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("normalized variable translation should execute");
+    let serialized = serialize_xml(
+        &result,
+        &program.output,
+        "normalized-variable-translate-request",
+        4_096,
+        &mut InvocationControl::unbounded(),
+    )
+    .expect("result should serialize");
+
+    assert_eq!(serialized, "<out>first_second</out>");
+}
+
+#[test]
 fn xslt10_node_set_string_equal_and_not_equal_are_independently_existential() {
     let source = parse_document(
         "memory:node-set-comparison.xml",

@@ -1064,6 +1064,12 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
                 + expression.search.capacity()
                 + expression.replacement.capacity()
         }
+        ValueExpression::Xslt10NormalizedVariableTranslate(expression) => {
+            size_of_val(expression.as_ref())
+                + expression.variable.capacity()
+                + expression.search.capacity()
+                + expression.replacement.capacity()
+        }
         ValueExpression::Xslt10Concat(expression) => {
             size_of_val(expression.as_ref()) + xslt10_concat_owned(expression)
         }

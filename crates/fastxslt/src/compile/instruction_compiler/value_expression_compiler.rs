@@ -26,8 +26,9 @@ use super::{
 use crate::xpath::binary_numeric_experiment::{BinaryNumericNode, BinaryNumericOperator};
 use crate::xslt::golden_semantics_experiment::{
     Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10KeyLookup, Xslt10KeyName,
-    Xslt10KeyNodePredicate, Xslt10KeyValue, Xslt10PathStringFunction, Xslt10PathStringFunctionKind,
-    Xslt10PathSubstring, Xslt10PathTranslate, Xslt10StringOperand,
+    Xslt10KeyNodePredicate, Xslt10KeyValue, Xslt10NormalizedVariableTranslate,
+    Xslt10PathStringFunction, Xslt10PathStringFunctionKind, Xslt10PathSubstring,
+    Xslt10PathTranslate, Xslt10StringOperand,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -320,6 +321,13 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
             compile_xslt10_path_substring(document, element, expression, location)?
     {
         return Ok(ValueExpression::Xslt10PathSubstring(Box::new(substring)));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(translate) = compile_xslt10_normalized_variable_translate(expression)
+    {
+        return Ok(ValueExpression::Xslt10NormalizedVariableTranslate(
+            Box::new(translate),
+        ));
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(translate) =
@@ -1250,6 +1258,32 @@ fn compile_xslt10_path_translate(
         search: search.to_owned(),
         replacement: replacement.to_owned(),
     }))
+}
+
+fn compile_xslt10_normalized_variable_translate(
+    expression: &str,
+) -> Option<Xslt10NormalizedVariableTranslate> {
+    let arguments = expression
+        .trim()
+        .strip_prefix("translate(")?
+        .strip_suffix(')')?;
+    let arguments = crate::xpath::static_string_experiment::split_arguments(arguments, 3)?;
+    let [value, search, replacement] = arguments.as_slice() else {
+        return None;
+    };
+    let variable = value
+        .trim()
+        .strip_prefix("normalize-space($")?
+        .strip_suffix(')')?
+        .trim();
+    if !is_ascii_ncname(variable) {
+        return None;
+    }
+    Some(Xslt10NormalizedVariableTranslate {
+        variable: variable.to_owned(),
+        search: xpath_string_literal(search)?.to_owned(),
+        replacement: xpath_string_literal(replacement)?.to_owned(),
+    })
 }
 
 pub(super) fn compile_xslt10_concat(

@@ -2196,3 +2196,11 @@ maintained redistributable legacy suite becomes available.
   1,911. Temporary-tree node-set conversion and modern function conversion are
   not widened.
   [Evidence](../Evidence/oasis-xslt10-variable-sum-2026-09-19.md)
+- 2026-09-19 -- The bounded XSLT 1.0 value compiler now composes streaming,
+  charged `normalize-space()` over a source-node variable with the established
+  Unicode-codepoint `translate()` implementation when both mapping operands
+  are literals. The unchanged Lotus `string121` case becomes exact, raising the
+  strict lower bound from 1,622 to 1,623; initialization reaches 2,012 and
+  execution reaches 1,912. Dynamic mapping operands and general nested calls
+  remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-normalized-variable-translate-2026-09-19.md)
