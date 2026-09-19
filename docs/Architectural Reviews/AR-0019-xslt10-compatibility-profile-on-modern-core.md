@@ -2141,3 +2141,10 @@ maintained redistributable legacy suite becomes available.
   1,616; initialization reaches 2,007 and execution reaches 1,902. General
   dynamic AVTs and language-sensitive collation remain explicit.
   [Evidence](../Evidence/oasis-xslt10-variable-sort-controls-2026-09-18.md)
+- 2026-09-18 -- `xsl:for-each` over an invocation-owned source-node variable
+  now retains sort keys and routes the node IDs through the ordinary stable,
+  charged source sort. The unchanged Lotus `sort40` case becomes exact,
+  raising the strict lower bound from 1,616 to 1,617; initialization reaches
+  2,008 and execution reaches 1,903. Atomic-sequence sorting and a second
+  evaluator are not admitted.
+  [Evidence](../Evidence/oasis-xslt10-variable-selection-sort-2026-09-18.md)

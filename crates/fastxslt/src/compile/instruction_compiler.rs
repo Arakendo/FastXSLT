@@ -959,13 +959,6 @@ fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction,
         .strip_prefix('$')
         .filter(|name| is_ascii_ncname(name))
     {
-        if !sorts.is_empty() {
-            return Err(unsupported(
-                "FXST1044",
-                "xsl:sort over variable selections is outside the admitted sorting slice",
-                document.location(element),
-            ));
-        }
         ensure_only_attributes(
             document,
             element,
@@ -974,6 +967,7 @@ fn compile_for_each(document: &Document, element: NodeId) -> Result<Instruction,
         )?;
         return Ok(Instruction::ForEachVariable {
             variable: variable.to_owned(),
+            sorts,
             body: compile_sequence_excluding(document, element, &sort_nodes)?,
             location: document.location(element).clone(),
         });

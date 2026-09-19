@@ -1109,6 +1109,7 @@ fn execute_copy_of_child_elements(
 fn execute_for_each_variable<'a>(
     inputs: &SequenceInputs<'a>,
     variable: &str,
+    sorts: &[SortKey],
     body: &[Instruction],
     execution: SequenceContext<'a>,
     variables: &RuntimeVariables,
@@ -1128,9 +1129,10 @@ fn execute_for_each_variable<'a>(
         );
     }
     if let Some(nodes) = variables.source_nodes(inputs.globals, variable) {
+        let nodes = sort_selected_nodes(inputs, nodes.clone(), sorts, variables, control)?;
         let focus_size = nodes.len();
         let mut result = Vec::new();
-        for (index, node) in nodes.iter().copied().enumerate() {
+        for (index, node) in nodes.into_iter().enumerate() {
             result.extend(execute_sequence(
                 inputs,
                 body,
@@ -1164,8 +1166,13 @@ fn execute_for_each_instruction<'a>(
     control: &mut InvocationControl,
 ) -> Result<Vec<ResultNode>, ExecutionFailure> {
     match instruction {
-        Instruction::ForEachVariable { variable, body, .. } => {
-            execute_for_each_variable(inputs, variable, body, execution, variables, control)
+        Instruction::ForEachVariable {
+            variable,
+            sorts,
+            body,
+            ..
+        } => {
+            execute_for_each_variable(inputs, variable, sorts, body, execution, variables, control)
         }
         Instruction::ForEachStaticIntegerRange {
             start, end, body, ..

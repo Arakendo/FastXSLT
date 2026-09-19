@@ -658,6 +658,7 @@ pub(crate) enum Instruction {
     },
     ForEachVariable {
         variable: String,
+        sorts: Vec<SortKey>,
         body: Vec<Instruction>,
         location: SourceLocation,
     },

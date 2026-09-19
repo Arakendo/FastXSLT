@@ -834,9 +834,15 @@ fn for_each_owned(value: &Instruction) -> usize {
     match value {
         Instruction::ForEachVariable {
             variable,
+            sorts,
             body,
             location,
-        } => variable.capacity() + vec_owned(body, instruction_owned) + location_owned(location),
+        } => {
+            variable.capacity()
+                + vec_owned(sorts, sort_key_owned)
+                + vec_owned(body, instruction_owned)
+                + location_owned(location)
+        }
         Instruction::ForEachStaticIntegerRange { body, location, .. } => {
             vec_owned(body, instruction_owned) + location_owned(location)
         }
