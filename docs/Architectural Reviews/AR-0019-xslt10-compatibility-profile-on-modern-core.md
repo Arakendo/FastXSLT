@@ -2068,3 +2068,10 @@ maintained redistributable legacy suite becomes available.
   1,606 to 1,607 while two cases leave initialization failure. Arbitrary
   expressions and cross-document key context remain explicit.
   [Evidence](../Evidence/oasis-xslt10-context-path-key-values-2026-09-18.md)
+- 2026-09-18 -- The typed XSLT 1.0 `count()` value-expression consumer now
+  reuses the same charged key node selector as the other admitted consumers.
+  The unchanged Lotus `idkey15` case becomes exact, raising the strict lower
+  bound from 1,607 to 1,608; initialization reaches 1,998 and execution reaches
+  1,893. Key expressions in AVTs, conditions, sorting, unions, and match
+  patterns remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-count-key-selection-2026-09-18.md)

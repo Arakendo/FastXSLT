@@ -1798,6 +1798,13 @@ fn compile_count_value(
             variable.to_owned(),
         )));
     }
+    if compatibility == ValueCompatibilityMode::Xslt10 && argument.trim_start().starts_with("key(")
+    {
+        let lookup = compile_xslt10_literal_key_lookup(document, element, argument, location)?;
+        return Ok(Some(ValueExpression::Xslt10CountKeyLookup(Box::new(
+            lookup,
+        ))));
+    }
     let mut path =
         parse_location_path(argument.trim(), location.clone()).map_err(map_path_failure)?;
     if let Some(namespace) = effective_xpath_default_namespace(document, element) {

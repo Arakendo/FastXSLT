@@ -2181,6 +2181,36 @@ fn xslt10_key_variable_values_preserve_atomic_and_node_set_conversion() {
 }
 
 #[test]
+fn xslt10_count_key_lookup_uses_the_shared_ordered_node_selection() {
+    const SOURCE: &str = "urn:fastxslt:key-count:source";
+    const STYLESHEET: &str = "urn:fastxslt:key-count:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:key name="codes" match="item" use="@code"/><xsl:template match="/"><xsl:variable name="wanted" select="doc/query"/><out><static><xsl:value-of select="count(key('codes', 'x'))"/></static><nodes><xsl:value-of select="count(key('codes', $wanted))"/></nodes><middle><xsl:value-of select="count(key('codes', 'x')[2])"/></middle><xsl:for-each select="doc/query"><n><xsl:value-of select="count(key('codes', .))"/></n></xsl:for-each></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><query>x</query><query>y</query><item code='x'/><item code='y'/><item code='x'/></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("key-count", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["key-count"].serialized,
+        "<out><static>2</static><nodes>3</nodes><middle>1</middle><n>2</n><n>1</n></out>"
+    );
+}
+
+#[test]
 fn xslt10_computed_attribute_for_each_concatenates_selected_string_values() {
     const SOURCE: &str = "urn:fastxslt:computed-attribute-for-each:source";
     const STYLESHEET: &str = "urn:fastxslt:computed-attribute-for-each:stylesheet";

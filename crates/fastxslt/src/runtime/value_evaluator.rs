@@ -235,6 +235,11 @@ pub(super) fn execute_value_of(
         ValueExpression::Xslt10KeyLookup(lookup) => {
             append_xslt10_key_lookup(inputs, lookup, context, variables, result, control)?;
         }
+        ValueExpression::Xslt10CountKeyLookup(lookup) => {
+            let count =
+                super::key_lookup::select(inputs, lookup, context, variables, control)?.len();
+            append_text(result, &count.to_string(), inputs.request_id, control)?;
+        }
         ValueExpression::LocationPath(path) => {
             append_location_path_string(inputs, path, context, result, control)?;
         }
