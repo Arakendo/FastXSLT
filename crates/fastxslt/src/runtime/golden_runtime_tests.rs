@@ -2151,6 +2151,36 @@ fn xslt10_key_node_consumers_preserve_document_order_identity_and_focus() {
 }
 
 #[test]
+fn xslt10_key_descendant_tail_stays_relative_to_each_selected_node() {
+    const SOURCE: &str = "urn:fastxslt:key-descendant-tail:source";
+    const STYLESHEET: &str = "urn:fastxslt:key-descendant-tail:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:key name="groups" match="group" use="@code"/><xsl:template match="/"><out><xsl:for-each select="key('groups', 'selected')//item"><xsl:value-of select="."/></xsl:for-each></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><group code='selected'><item>A</item><nested><item>B</item></nested></group><group code='ignored'><item>C</item></group><group code='selected'><item>D</item></group></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile key descendant tail");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("key-descendant-tail", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute key descendant tail");
+
+    assert_eq!(
+        results.by_request["key-descendant-tail"].serialized,
+        "<out>ABD</out>"
+    );
+}
+
+#[test]
 fn xslt10_key_variable_values_preserve_atomic_and_node_set_conversion() {
     const SOURCE: &str = "urn:fastxslt:key-variable:source";
     const STYLESHEET: &str = "urn:fastxslt:key-variable:stylesheet";

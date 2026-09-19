@@ -689,14 +689,18 @@ fn compile_xslt10_key_lookup(
     let tail = if suffix.is_empty() {
         None
     } else {
-        let path = suffix.strip_prefix('/').ok_or_else(|| {
-            unsupported(
+        let path = if let Some(descendant) = suffix.strip_prefix("//") {
+            format!(".//{descendant}")
+        } else if let Some(child) = suffix.strip_prefix('/') {
+            child.to_owned()
+        } else {
+            return Err(unsupported(
                 "FXXP1023",
                 "the first key() slice supports only a location-path tail",
                 location,
-            )
-        })?;
-        Some(parse_xslt10_location_path(path, location.clone()).map_err(map_path_failure)?)
+            ));
+        };
+        Some(parse_xslt10_location_path(&path, location.clone()).map_err(map_path_failure)?)
     };
     Ok(Xslt10KeyLookup {
         name,

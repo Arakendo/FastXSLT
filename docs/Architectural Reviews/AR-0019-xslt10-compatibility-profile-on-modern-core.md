@@ -2148,3 +2148,11 @@ maintained redistributable legacy suite becomes available.
   2,008 and execution reaches 1,903. Atomic-sequence sorting and a second
   evaluator are not admitted.
   [Evidence](../Evidence/oasis-xslt10-variable-selection-sort-2026-09-18.md)
+- 2026-09-19 -- The typed key lookup now preserves `//tail` as a
+  context-relative descendant path from every selected keyed node rather than
+  accidentally lowering it as a document-rooted path. The unchanged Lotus
+  `idkey34` case moves from mismatch to exact, raising the strict lower bound
+  from 1,617 to 1,618 and reducing visible mismatches from 215 to 214. Existing
+  charged path evaluation, ordering, deduplication, and key ownership remain
+  unchanged.
+  [Evidence](../Evidence/oasis-xslt10-key-descendant-tail-2026-09-19.md)
