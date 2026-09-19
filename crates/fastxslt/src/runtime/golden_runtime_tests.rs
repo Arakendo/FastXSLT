@@ -2183,6 +2183,38 @@ fn principal_template_after_two_includes_wins_same_precedence_conflict() {
 }
 
 #[test]
+fn principal_namespace_alias_rewrites_included_literal_results() {
+    const SOURCE: &str = "urn:fastxslt:included-namespace-alias:source";
+    const PRINCIPAL: &str = "https://example.invalid/alias/main.xsl";
+    const INCLUDED: &str = "https://example.invalid/alias/included.xsl";
+    let principal = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:axsl="urn:literal-xsl" exclude-result-prefixes="axsl"><xsl:output omit-xml-declaration="yes"/><xsl:include href="included.xsl"/><xsl:namespace-alias stylesheet-prefix="axsl" result-prefix="xsl"/><xsl:template match="/"><axsl:stylesheet version="1.0"><xsl:apply-templates select="doc/*"/></axsl:stylesheet></xsl:template><xsl:template match="b"><axsl:template match="b"/></xsl:template></xsl:stylesheet>"#;
+    let included = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:axsl="urn:literal-xsl" exclude-result-prefixes="axsl"><xsl:template match="a"><axsl:template match="a"/></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(3, 8_192, 24_576));
+    resources
+        .admit(SOURCE, b"<doc><a/><b/></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(PRINCIPAL, principal.to_vec())
+        .expect("admit principal stylesheet");
+    resources
+        .admit(INCLUDED, included.to_vec())
+        .expect("admit included stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, PRINCIPAL).expect("compile aliased include graph");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("included-alias", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute aliased include graph");
+
+    assert_eq!(
+        results.by_request["included-alias"].serialized,
+        "<xsl:stylesheet xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\" version=\"1.0\"><xsl:template match=\"a\"></xsl:template><xsl:template match=\"b\"></xsl:template></xsl:stylesheet>"
+    );
+}
+
+#[test]
 fn named_processing_instruction_pattern_outranks_generic_node_test() {
     const SOURCE: &str = "urn:fastxslt:named-pi-pattern:source";
     const STYLESHEET: &str = "urn:fastxslt:named-pi-pattern:stylesheet";

@@ -5,6 +5,7 @@ use crate::xslt::golden_semantics_experiment::{
 };
 
 use super::instruction_compiler::compile_literal_element;
+use super::namespace_alias_compiler;
 use super::stylesheet_validation::validate_named_template_references;
 use super::{
     CompileFailure, XSLT_NAMESPACE, compile_stylesheet_at_excluding_unvalidated,
@@ -74,7 +75,7 @@ pub(crate) fn compile_stylesheet_with_single_include(
 pub(crate) fn compile_stylesheet_with_single_include_program_at(
     principal: &Document,
     principal_root: NodeId,
-    included_program: StylesheetProgram,
+    mut included_program: StylesheetProgram,
 ) -> Result<StylesheetProgram, CompileFailure> {
     let include_declarations = include_nodes_at(principal, principal_root)?;
     let [include] = include_declarations.as_slice() else {
@@ -86,6 +87,7 @@ pub(crate) fn compile_stylesheet_with_single_include_program_at(
     };
     let mut program =
         compile_stylesheet_at_excluding_unvalidated(principal, principal_root, &[*include])?;
+    apply_principal_namespace_aliases(principal, principal_root, &mut included_program)?;
 
     merge_included_program(
         &mut program,
@@ -219,7 +221,8 @@ pub(crate) fn compile_stylesheet_with_two_included_programs_at(
         principal_root,
         &include_declarations,
     )?;
-    for (included, include) in included_programs.into_iter().zip(include_declarations) {
+    for (mut included, include) in included_programs.into_iter().zip(include_declarations) {
+        apply_principal_namespace_aliases(principal, principal_root, &mut included)?;
         merge_included_program(&mut program, included, principal.location(include), true)?;
     }
     finalize_character_maps(&mut program)?;
@@ -251,7 +254,8 @@ pub(crate) fn compile_stylesheet_with_import_and_include(
         ));
     }
     let mut program = compile_stylesheet_at_excluding_unvalidated(principal, root, &dependencies)?;
-    let included_program = compile_dependency_module(included.0, included.1)?;
+    let mut included_program = compile_dependency_module(included.0, included.1)?;
+    apply_principal_namespace_aliases(principal, root, &mut included_program)?;
     merge_included_program(
         &mut program,
         included_program,
@@ -281,6 +285,22 @@ pub(crate) fn compile_stylesheet_with_import_and_include(
     finalize_character_maps(&mut program)?;
     validate_named_template_references(&program)?;
     Ok(program)
+}
+
+fn apply_principal_namespace_aliases(
+    principal: &Document,
+    principal_root: NodeId,
+    included: &mut StylesheetProgram,
+) -> Result<(), CompileFailure> {
+    let mut aliases = Vec::new();
+    for declaration in meaningful_children(principal, principal_root)
+        .into_iter()
+        .filter(|child| is_xslt_element(principal, *child, "namespace-alias"))
+    {
+        namespace_alias_compiler::compile_declaration(principal, declaration, &mut aliases)?;
+    }
+    namespace_alias_compiler::apply(included, &aliases);
+    Ok(())
 }
 
 pub(crate) fn compile_stylesheet_with_imports(
