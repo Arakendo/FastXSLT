@@ -2110,3 +2110,11 @@ maintained redistributable legacy suite becomes available.
   observed errors, so the 1,612 exact lower bound and other totals remain
   unchanged. Nested and dynamic two-argument forms remain explicit.
   [Evidence](../Evidence/oasis-xslt10-key-arity-classification-2026-09-18.md)
+- 2026-09-18 -- A typed key lookup may now obtain its lookup values from
+  another complete typed lookup under a compile-time nesting limit of four.
+  Inner and outer reference scans remain independently charged and recursive
+  plans participate in exact capacity accounting. The unchanged Lotus
+  `idkey21` case becomes exact, raising the strict lower bound from 1,612 to
+  1,613; initialization reaches 2,003 and execution reaches 1,898. Dynamic key
+  names and arbitrary nested expressions remain explicit.
+  [Evidence](../Evidence/oasis-xslt10-nested-key-selection-2026-09-18.md)

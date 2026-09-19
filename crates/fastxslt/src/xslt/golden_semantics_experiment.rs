@@ -971,6 +971,7 @@ pub(crate) enum Xslt10KeyValue {
     Static(String),
     Variable(String),
     ContextPath(LocationPath),
+    NestedLookup(Box<Xslt10KeyLookup>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

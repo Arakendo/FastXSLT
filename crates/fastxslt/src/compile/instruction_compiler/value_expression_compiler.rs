@@ -623,6 +623,17 @@ pub(super) fn compile_xslt10_literal_key_lookup(
     expression: &str,
     location: &SourceLocation,
 ) -> Result<Xslt10KeyLookup, CompileFailure> {
+    compile_xslt10_key_lookup(document, element, expression, location, 0)
+}
+
+fn compile_xslt10_key_lookup(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+    nesting_depth: usize,
+) -> Result<Xslt10KeyLookup, CompileFailure> {
+    const MAX_NESTING_DEPTH: usize = 4;
     let expression = expression.trim();
     let close = closing_function_parenthesis(expression).ok_or_else(|| {
         invalid(
@@ -639,7 +650,7 @@ pub(super) fn compile_xslt10_literal_key_lookup(
             location,
         ));
     }
-    let (name, value) = split_static_key_arguments(arguments, location).ok_or_else(|| {
+    let (name, value) = split_key_arguments(arguments).ok_or_else(|| {
         unsupported(
             "FXXP1023",
             "the admitted key() slice requires a literal key name and a static atomic or variable lookup value",
@@ -647,6 +658,30 @@ pub(super) fn compile_xslt10_literal_key_lookup(
         )
     })?;
     let name = super::super::compile_expanded_qname(document, element, name, "key() name")?;
+    let value = if value.trim_start().starts_with("key(") {
+        if nesting_depth >= MAX_NESTING_DEPTH {
+            return Err(unsupported(
+                "FXXP1023",
+                "nested key() lookup depth exceeds the admitted limit of four",
+                location,
+            ));
+        }
+        Xslt10KeyValue::NestedLookup(Box::new(compile_xslt10_key_lookup(
+            document,
+            element,
+            value,
+            location,
+            nesting_depth + 1,
+        )?))
+    } else {
+        compile_xslt10_key_value(value, location).ok_or_else(|| {
+            unsupported(
+                "FXXP1023",
+                "the admitted key() slice requires a literal key name and a static atomic, variable, context-path, or nested-key lookup value",
+                location,
+            )
+        })?
+    };
     let (predicate, suffix) =
         parse_xslt10_key_predicate(document, element, expression[close + 1..].trim())?;
     let tail = if suffix.is_empty() {
@@ -774,10 +809,7 @@ fn closing_function_parenthesis(expression: &str) -> Option<usize> {
     None
 }
 
-fn split_static_key_arguments<'a>(
-    arguments: &'a str,
-    location: &SourceLocation,
-) -> Option<(&'a str, Xslt10KeyValue)> {
+fn split_key_arguments(arguments: &str) -> Option<(&str, &str)> {
     let mut quote = None;
     for (offset, character) in arguments.char_indices() {
         if matches!(character, '\'' | '"') {
@@ -790,27 +822,29 @@ fn split_static_key_arguments<'a>(
             let name = arguments[..offset].trim();
             let value = arguments[offset + 1..].trim();
             let name = xpath_string_literal(name)?;
-            let value = if let Some(variable) = value
-                .strip_prefix('$')
-                .filter(|variable| is_ascii_ncname(variable))
-            {
-                Xslt10KeyValue::Variable(variable.to_owned())
-            } else if let Some(value) = xpath_string_literal(value) {
-                Xslt10KeyValue::Static(value.to_owned())
-            } else if let Some(expression) = compile_binary_numeric_node(value, location, false)
-                && let Some(value) =
-                    crate::xpath::binary_numeric_experiment::fold_source_free(&expression)
-            {
-                Xslt10KeyValue::Static(value)
-            } else {
-                Xslt10KeyValue::ContextPath(
-                    parse_xslt10_location_path(value, location.clone()).ok()?,
-                )
-            };
             return Some((name, value));
         }
     }
     None
+}
+
+fn compile_xslt10_key_value(value: &str, location: &SourceLocation) -> Option<Xslt10KeyValue> {
+    if let Some(variable) = value
+        .strip_prefix('$')
+        .filter(|variable| is_ascii_ncname(variable))
+    {
+        Some(Xslt10KeyValue::Variable(variable.to_owned()))
+    } else if let Some(value) = xpath_string_literal(value) {
+        Some(Xslt10KeyValue::Static(value.to_owned()))
+    } else if let Some(expression) = compile_binary_numeric_node(value, location, false)
+        && let Some(value) = crate::xpath::binary_numeric_experiment::fold_source_free(&expression)
+    {
+        Some(Xslt10KeyValue::Static(value))
+    } else {
+        parse_xslt10_location_path(value, location.clone())
+            .ok()
+            .map(Xslt10KeyValue::ContextPath)
+    }
 }
 
 fn parse_xslt10_variable_string_length(expression: &str) -> Option<&str> {

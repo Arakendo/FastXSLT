@@ -844,8 +844,11 @@ and invocation-owned unless a later review admits another immutable prepared
 representation; it must not become a global or cross-snapshot cache. Variable
 references and recursive `key()` calls in the declaration's `use` expression
 remain static errors. A structurally complete `key()` call with any arity other
-than two reports `XPST0017` before supported-operand selection. Dynamic key
-names and values remain outside this lookup slice.
+than two reports `XPST0017` before supported-operand selection. One lookup may
+obtain its values from another complete typed lookup; recursive plan depth is
+limited to four and every nested scan remains charged independently. Dynamic
+key names and other unadmitted value expressions remain outside this lookup
+slice.
 
 For a computed-element name without AVT delimiters, compilation validates the
 lexical QName immediately. A malformed static name reports `XTDE0820`; a valid

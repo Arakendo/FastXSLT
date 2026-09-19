@@ -2268,6 +2268,33 @@ fn xslt10_key_union_deduplicates_and_restores_document_order() {
 }
 
 #[test]
+fn xslt10_nested_key_lookup_uses_inner_selected_node_strings() {
+    const SOURCE: &str = "urn:fastxslt:nested-key:source";
+    const STYLESHEET: &str = "urn:fastxslt:nested-key:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:key name="groups" match="group" use="title"/><xsl:key name="items" match="item" use="@mark"/><xsl:template match="/"><out><xsl:for-each select="key('items', key('groups', 'chosen')/mark)"><xsl:value-of select="."/></xsl:for-each></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><group><title>chosen</title><mark>a</mark><mark>c</mark></group><item mark='a'>A</item><item mark='b'>B</item><item mark='c'>C</item></doc>".to_vec(),
+        )
+        .expect("admit nested-key source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit nested-key stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile nested key lookup");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(16_384));
+    builder
+        .add(request("nested-key", "result", SOURCE))
+        .expect("admit nested-key request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute nested key lookup");
+
+    assert_eq!(results.by_request["nested-key"].serialized, "<out>AC</out>");
+}
+
+#[test]
 fn xslt10_generate_id_key_avt_uses_first_selected_source_node_identity() {
     const SOURCE: &str = "urn:fastxslt:key-identity-avt:source";
     const STYLESHEET: &str = "urn:fastxslt:key-identity-avt:stylesheet";

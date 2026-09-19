@@ -188,6 +188,16 @@ fn evaluate_lookup_value(
                 })
                 .collect()
         }
+        Xslt10KeyValue::NestedLookup(lookup) => {
+            select(inputs, lookup, Some(context), variables, control)?
+                .into_iter()
+                .map(|node| {
+                    source
+                        .string_value_controlled(node, control)
+                        .map_err(|failure| control_failure(failure, inputs.request_id))
+                })
+                .collect()
+        }
     }
 }
 
