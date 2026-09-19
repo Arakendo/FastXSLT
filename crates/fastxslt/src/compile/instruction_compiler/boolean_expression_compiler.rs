@@ -146,7 +146,11 @@ fn compile_xslt10_non_finite_comparison(
     xslt10_compatibility: bool,
 ) -> Option<BooleanExpression> {
     xslt10_compatibility
-        .then(|| constant_numeric_experiment::fold_xslt10_non_finite_comparison(expression))?
+        .then(|| {
+            constant_numeric_experiment::fold_xslt10_finite_comparison(expression).or_else(|| {
+                constant_numeric_experiment::fold_xslt10_non_finite_comparison(expression)
+            })
+        })?
         .map(BooleanExpression::Constant)
 }
 

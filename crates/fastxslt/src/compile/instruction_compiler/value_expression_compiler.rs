@@ -162,6 +162,12 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     {
         return Ok(ValueExpression::LiteralString(literal));
     }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(literal) =
+            crate::xpath::constant_numeric_experiment::fold_xslt10_finite_arithmetic(expression)
+    {
+        return Ok(ValueExpression::LiteralString(literal));
+    }
     if let Some(literal) =
         crate::xpath::constant_numeric_experiment::fold_number_conversion(expression)
     {
@@ -191,6 +197,16 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
             crate::xpath::constant_boolean_experiment::fold_xpath10_ordered_literal_comparison(
                 expression,
             )
+    {
+        return Ok(ValueExpression::SourceFreeScalar(Box::new(
+            ScalarExpression::Boolean(
+                crate::xpath::constant_boolean_experiment::BooleanExpression::Constant(value),
+            ),
+        )));
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(value) =
+            crate::xpath::constant_numeric_experiment::fold_xslt10_finite_comparison(expression)
     {
         return Ok(ValueExpression::SourceFreeScalar(Box::new(
             ScalarExpression::Boolean(

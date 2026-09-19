@@ -50,6 +50,12 @@ pub(crate) fn fold_exact_integral_arithmetic(expression: &str) -> Option<String>
         .then(|| value.numerator.div_euclid(value.denominator).to_string())
 }
 
+pub(crate) fn fold_xslt10_finite_arithmetic(expression: &str) -> Option<String> {
+    let expression = expression.trim();
+    contains_binary_arithmetic_operator(expression)?;
+    rational_to_decimal(evaluate_xslt10(expression).ok()?)
+}
+
 pub(crate) fn fold_number_conversion(expression: &str) -> Option<String> {
     let argument = number_function_call(expression)?;
     if argument.is_empty() {
@@ -123,6 +129,37 @@ pub(crate) fn fold_xslt10_non_finite_comparison(expression: &str) -> Option<bool
             return None;
         }
         return Some(comparison.evaluate(left, right));
+    }
+    None
+}
+
+pub(crate) fn fold_xslt10_finite_comparison(expression: &str) -> Option<bool> {
+    let expression = strip_outer_parentheses(expression.trim());
+    for (token, comparison) in [
+        (">=", NumericComparison::GreaterThanOrEqual),
+        ("<=", NumericComparison::LessThanOrEqual),
+        ("!=", NumericComparison::NotEqual),
+        ("=", NumericComparison::Equal),
+        (">", NumericComparison::GreaterThan),
+        ("<", NumericComparison::LessThan),
+    ] {
+        let Some((left, right)) = expression.split_once(token) else {
+            continue;
+        };
+        let left = evaluate_xslt10(left.trim()).ok()?;
+        let right = evaluate_xslt10(right.trim()).ok()?;
+        let ordering = compare_xslt10_numbers(
+            Xslt10ConstantNumber::Finite(left),
+            Xslt10ConstantNumber::Finite(right),
+        )?;
+        return Some(match comparison {
+            NumericComparison::Equal => ordering.is_eq(),
+            NumericComparison::NotEqual => !ordering.is_eq(),
+            NumericComparison::LessThan => ordering.is_lt(),
+            NumericComparison::LessThanOrEqual => !ordering.is_gt(),
+            NumericComparison::GreaterThan => ordering.is_gt(),
+            NumericComparison::GreaterThanOrEqual => !ordering.is_lt(),
+        });
     }
     None
 }
@@ -624,6 +661,22 @@ fn evaluate(expression: &str) -> Result<Rational, ConstantNumericFailure> {
     let mut parser = Parser {
         input: expression.as_bytes(),
         offset: 0,
+        xslt10_string_numbers: false,
+    };
+    let value = parser.additive()?;
+    parser.whitespace();
+    if parser.offset == parser.input.len() {
+        Ok(value)
+    } else {
+        Err(ConstantNumericFailure::Unsupported)
+    }
+}
+
+fn evaluate_xslt10(expression: &str) -> Result<Rational, ConstantNumericFailure> {
+    let mut parser = Parser {
+        input: expression.as_bytes(),
+        offset: 0,
+        xslt10_string_numbers: true,
     };
     let value = parser.additive()?;
     parser.whitespace();
@@ -637,6 +690,7 @@ fn evaluate(expression: &str) -> Result<Rational, ConstantNumericFailure> {
 struct Parser<'a> {
     input: &'a [u8],
     offset: usize,
+    xslt10_string_numbers: bool,
 }
 
 impl Parser<'_> {
@@ -721,13 +775,14 @@ impl Parser<'_> {
             }
             return value.round();
         }
-        if self.consume(b'(') {
-            let value = self.additive()?;
-            self.whitespace();
-            if !self.consume(b')') {
-                return Err(ConstantNumericFailure::Invalid);
-            }
-            return Ok(value);
+        if let Some(value) = self.xslt10_number_function() {
+            return value;
+        }
+        if let Some(value) = self.parenthesized() {
+            return value;
+        }
+        if let Some(value) = self.xslt10_string_number() {
+            return value;
         }
         let integer_start = self.offset;
         while self.input.get(self.offset).is_some_and(u8::is_ascii_digit) {
@@ -769,6 +824,68 @@ impl Parser<'_> {
         })
     }
 
+    fn xslt10_number_function(&mut self) -> Option<Result<Rational, ConstantNumericFailure>> {
+        if !self.xslt10_string_numbers || !self.consume_keyword(b"number") {
+            return None;
+        }
+        Some((|| {
+            self.whitespace();
+            if !self.consume(b'(') {
+                return Err(ConstantNumericFailure::Invalid);
+            }
+            let value = self.additive()?;
+            self.whitespace();
+            if !self.consume(b')') {
+                return Err(ConstantNumericFailure::Invalid);
+            }
+            Ok(value)
+        })())
+    }
+
+    fn parenthesized(&mut self) -> Option<Result<Rational, ConstantNumericFailure>> {
+        if !self.consume(b'(') {
+            return None;
+        }
+        Some((|| {
+            let value = self.additive()?;
+            self.whitespace();
+            if !self.consume(b')') {
+                return Err(ConstantNumericFailure::Invalid);
+            }
+            Ok(value)
+        })())
+    }
+
+    fn xslt10_string_number(&mut self) -> Option<Result<Rational, ConstantNumericFailure>> {
+        if !self.xslt10_string_numbers
+            || !self
+                .input
+                .get(self.offset)
+                .is_some_and(|byte| matches!(byte, b'\'' | b'"'))
+        {
+            return None;
+        }
+        Some((|| {
+            let quote = self.input[self.offset];
+            self.offset += 1;
+            let start = self.offset;
+            while self
+                .input
+                .get(self.offset)
+                .is_some_and(|byte| *byte != quote)
+            {
+                self.offset += 1;
+            }
+            if !self.consume(quote) {
+                return Err(ConstantNumericFailure::Invalid);
+            }
+            let lexical = std::str::from_utf8(&self.input[start..self.offset - 1])
+                .expect("an XPath numeric string literal is valid UTF-8")
+                .trim();
+            evaluate(lexical)
+        })())
+    }
+
     fn whitespace(&mut self) {
         while self
             .input
@@ -798,6 +915,60 @@ impl Parser<'_> {
     }
 }
 
+fn rational_to_decimal(value: Rational) -> Option<String> {
+    let divisor = greatest_common_divisor(
+        value.numerator.unsigned_abs(),
+        u128::try_from(value.denominator).ok()?,
+    );
+    let numerator = value.numerator / i128::try_from(divisor).ok()?;
+    let mut denominator = value.denominator / i128::try_from(divisor).ok()?;
+    let mut twos = 0_u32;
+    let mut fives = 0_u32;
+    while denominator % 2 == 0 {
+        denominator /= 2;
+        twos += 1;
+    }
+    while denominator % 5 == 0 {
+        denominator /= 5;
+        fives += 1;
+    }
+    if denominator != 1 {
+        return None;
+    }
+    let scale = twos.max(fives);
+    let numerator = numerator
+        .checked_mul(2_i128.checked_pow(scale - twos)?)?
+        .checked_mul(5_i128.checked_pow(scale - fives)?)?;
+    if scale == 0 {
+        return Some(numerator.to_string());
+    }
+    let negative = numerator < 0;
+    let digits = numerator.unsigned_abs().to_string();
+    let scale = usize::try_from(scale).ok()?;
+    let padded = if digits.len() <= scale {
+        format!("{}{}", "0".repeat(scale + 1 - digits.len()), digits)
+    } else {
+        digits
+    };
+    let split = padded.len() - scale;
+    let fraction = padded[split..].trim_end_matches('0');
+    let sign = if negative { "-" } else { "" };
+    if fraction.is_empty() {
+        Some(format!("{sign}{}", &padded[..split]))
+    } else {
+        Some(format!("{sign}{}.{fraction}", &padded[..split]))
+    }
+}
+
+const fn greatest_common_divisor(mut left: u128, mut right: u128) -> u128 {
+    while right != 0 {
+        let remainder = left % right;
+        left = right;
+        right = remainder;
+    }
+    left
+}
+
 #[cfg(test)]
 mod tests {
     use std::cmp::Ordering;
@@ -806,9 +977,10 @@ mod tests {
         ConstantNumericFailure, IntegralFunction, Xslt10NonFiniteValue, compare,
         evaluate_integral_lexical, evaluate_number_lexical, fold_boolean_number_equality,
         fold_exact_integral_arithmetic, fold_integral_equality, fold_integral_function,
-        fold_number_conversion, fold_xslt10_nan_composition,
-        fold_xslt10_nested_string_number_equality, fold_xslt10_non_finite_comparison,
-        fold_xslt10_non_finite_division, integral_function_call, number_function_call,
+        fold_number_conversion, fold_xslt10_finite_arithmetic, fold_xslt10_finite_comparison,
+        fold_xslt10_nan_composition, fold_xslt10_nested_string_number_equality,
+        fold_xslt10_non_finite_comparison, fold_xslt10_non_finite_division, integral_function_call,
+        number_function_call,
     };
 
     #[test]
@@ -978,6 +1150,39 @@ mod tests {
         for expression in ["1 = 1", "source = 1 div 0", "1 div 0"] {
             assert_eq!(fold_xslt10_non_finite_comparison(expression), None);
         }
+    }
+
+    #[test]
+    fn folds_xpath10_finite_constant_arithmetic_to_decimal_lexicals() {
+        for (expression, expected) in [
+            ("7 div 4", "1.75"),
+            ("4 div 10000", "0.0004"),
+            ("0.109375 * 16", "1.75"),
+            ("' 6 ' div 2", "3"),
+            ("number(7 div 4)", "1.75"),
+        ] {
+            assert_eq!(
+                fold_xslt10_finite_arithmetic(expression).as_deref(),
+                Some(expected)
+            );
+        }
+        for expression in ["1 div 3", "7", "source div 2", "'bad' div 2"] {
+            assert_eq!(fold_xslt10_finite_arithmetic(expression), None);
+        }
+    }
+
+    #[test]
+    fn folds_xpath10_finite_constant_comparisons() {
+        for (expression, expected) in [
+            ("number(1.75) = (7 div 4)", true),
+            ("number(1.75) = (0.109375 * 16)", true),
+            ("number(0.0004) = (4 div 10000)", true),
+            ("' 6 ' div 2 > 2", true),
+            ("7 div 4 != 1.75", false),
+        ] {
+            assert_eq!(fold_xslt10_finite_comparison(expression), Some(expected));
+        }
+        assert_eq!(fold_xslt10_finite_comparison("source = 1"), None);
     }
 
     #[test]
