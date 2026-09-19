@@ -1,5 +1,7 @@
 //! Private dynamic value evaluation for admitted `xsl:value-of` expressions.
 
+use std::cmp::Ordering;
+
 use crate::execution_control_experiment::{InvocationControl, WorkDomain};
 use crate::xdm::atomic_value_experiment::AtomicValue;
 use crate::xdm::owned_tree_experiment::{NodeId, SourceLocation, StringValueVisitFailure};
@@ -625,6 +627,20 @@ pub(super) fn execute_value_of(
                 inputs, variable, *value, *equal, variables, control,
             )?;
             append_boolean(inputs, matches != *negate, result, control)?;
+        }
+        ValueExpression::Xslt10NumberPathComparison { path, value, equal } => {
+            let dynamic = evaluate_number_path(inputs, context, path, control)?;
+            let dynamic =
+                crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(&dynamic)
+                    .unwrap_or(f64::NAN);
+            let compiled =
+                crate::xpath::constant_boolean_experiment::parse_xpath_number_literal(value)
+                    .expect("compiled XSLT 1.0 numeric comparison retains a finite decimal");
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            let matches = dynamic.partial_cmp(&compiled).is_some_and(Ordering::is_eq);
+            append_boolean(inputs, matches == *equal, result, control)?;
         }
         ValueExpression::SourceFreeScalar(expression) => {
             append_source_free_scalar(inputs, expression, result, control)?;
@@ -1849,6 +1865,16 @@ fn append_number_path(
     result: &mut Vec<ResultNode>,
     control: &mut InvocationControl,
 ) -> Result<(), ExecutionFailure> {
+    let value = evaluate_number_path(inputs, context, path, control)?;
+    append_text(result, &value, inputs.request_id, control)
+}
+
+fn evaluate_number_path(
+    inputs: &SequenceInputs<'_>,
+    context: Option<NodeId>,
+    path: &crate::xpath::path_experiment::LocationPath,
+    control: &mut InvocationControl,
+) -> Result<String, ExecutionFailure> {
     let (source, context) = required_source_context(inputs, context)?;
     let selected = evaluate_location_path_controlled(source, context, path, control)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
@@ -1862,7 +1888,7 @@ fn append_number_path(
         ));
     }
     let Some(node) = selected.first().copied() else {
-        return append_text(result, "NaN", inputs.request_id, control);
+        return Ok("NaN".to_owned());
     };
     let lexical = source
         .string_value_controlled(node, control)
@@ -1870,8 +1896,8 @@ fn append_number_path(
     control
         .charge(WorkDomain::XPathOperation, 1)
         .map_err(|failure| control_failure(failure, inputs.request_id))?;
-    let value = crate::xpath::constant_numeric_experiment::evaluate_number_lexical(&lexical)
-        .map_err(|numeric_failure| match numeric_failure {
+    crate::xpath::constant_numeric_experiment::evaluate_number_lexical(&lexical).map_err(
+        |numeric_failure| match numeric_failure {
             crate::xpath::constant_numeric_experiment::ConstantNumericFailure::Invalid => {
                 failure_at(
                     "FORG0001",
@@ -1892,8 +1918,8 @@ fn append_number_path(
                     ),
                 )
             }
-        })?;
-    append_text(result, &value, inputs.request_id, control)
+        },
+    )
 }
 
 fn append_normalized_node_string(

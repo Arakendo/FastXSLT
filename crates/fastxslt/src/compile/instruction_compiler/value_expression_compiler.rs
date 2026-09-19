@@ -393,6 +393,12 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
             denominator: denominator.to_owned(),
         });
     }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some(comparison) =
+            compile_xslt10_number_path_comparison(document, element, expression, location)?
+    {
+        return Ok(comparison);
+    }
     if let Some(path) = compile_number_path(document, element, expression, location)? {
         return Ok(ValueExpression::NumberPath(path));
     }
@@ -1568,6 +1574,69 @@ fn parse_xslt10_variable_atomic_comparison(expression: &str) -> Option<ValueExpr
             equal,
             negate,
         })
+}
+
+fn compile_xslt10_number_path_comparison(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Option<ValueExpression>, CompileFailure> {
+    let expression = strip_xslt10_parentheses(expression.trim());
+    let (left, right, equal) = if let Some((left, right)) = expression.split_once("!=") {
+        (left.trim(), right.trim(), false)
+    } else {
+        let Some((left, right)) = expression.split_once('=') else {
+            return Ok(None);
+        };
+        (left.trim(), right.trim(), true)
+    };
+    for (path_operand, constant_operand) in [(left, right), (right, left)] {
+        let path_operand = strip_xslt10_parentheses(path_operand);
+        let Some(path) = compile_number_path(document, element, path_operand, location)? else {
+            continue;
+        };
+        let constant_operand = strip_xslt10_parentheses(constant_operand);
+        let Some(value) = crate::xpath::constant_numeric_experiment::fold_xslt10_finite_arithmetic(
+            constant_operand,
+        ) else {
+            continue;
+        };
+        return Ok(Some(ValueExpression::Xslt10NumberPathComparison {
+            path,
+            value,
+            equal,
+        }));
+    }
+    Ok(None)
+}
+
+fn strip_xslt10_parentheses(mut expression: &str) -> &str {
+    loop {
+        let bytes = expression.as_bytes();
+        if bytes.first() != Some(&b'(') || bytes.last() != Some(&b')') {
+            return expression;
+        }
+        let mut depth = 0_usize;
+        let mut encloses_all = true;
+        for (index, byte) in bytes.iter().copied().enumerate() {
+            match byte {
+                b'(' => depth += 1,
+                b')' => {
+                    depth = depth.saturating_sub(1);
+                    if depth == 0 && index + 1 != bytes.len() {
+                        encloses_all = false;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        if !encloses_all || depth != 0 {
+            return expression;
+        }
+        expression = expression[1..expression.len() - 1].trim();
+    }
 }
 
 fn compile_binary_numeric_path(

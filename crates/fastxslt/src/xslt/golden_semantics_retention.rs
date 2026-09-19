@@ -1041,6 +1041,9 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::Xslt10VariableStringComparison {
             variable, value, ..
         } => variable.capacity() + value.capacity(),
+        ValueExpression::Xslt10NumberPathComparison { path, value, .. } => {
+            path.known_owned_capacity_bytes() + value.capacity()
+        }
         ValueExpression::Xslt10VariableStringVariablesComparison { left, right, .. } => {
             left.capacity() + right.capacity()
         }

@@ -6894,6 +6894,35 @@ fn xpath_number_conversion_handles_finite_and_nan_results() {
 }
 
 #[test]
+fn xslt10_number_path_compares_with_compiled_constant_arithmetic() {
+    const SOURCE: &str = "urn:fastxslt:xslt10-number-comparison:source";
+    const STYLESHEET: &str = "urn:fastxslt:xslt10-number-comparison:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br"<doc><k>0.0004</k></doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:template match="/"><xsl:value-of select="number(doc/k) = (4 div 10000)"/>|<xsl:value-of select="number(doc/k) != (2 div 5000)"/>|<xsl:value-of select="number(doc/missing) != (4 div 10000)"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile XSLT 1.0 number-path comparisons");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("number-comparison", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute number comparisons");
+    assert_eq!(
+        results.by_request["number-comparison"].serialized,
+        "true|false|true"
+    );
+}
+
+#[test]
 fn xpath_number_path_rejects_more_than_one_node() {
     const SOURCE: &str = "urn:fastxslt:number-many:source";
     const STYLESHEET: &str = "urn:fastxslt:number-many:stylesheet";

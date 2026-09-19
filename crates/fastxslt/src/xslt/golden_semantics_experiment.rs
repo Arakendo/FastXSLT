@@ -962,6 +962,11 @@ pub(crate) enum ValueExpression {
         equal: bool,
         negate: bool,
     },
+    Xslt10NumberPathComparison {
+        path: LocationPath,
+        value: String,
+        equal: bool,
+    },
     SourceFreeScalar(Box<ScalarExpression>),
     DocumentBoolean(Box<DocumentBooleanExpression>),
     EncodeForUri(Box<EncodeForUriExpression>),
