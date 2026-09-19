@@ -1029,6 +1029,9 @@ fn value_expression_owned(value: &ValueExpression) -> usize {
         ValueExpression::Xslt10VariableStringVariablesComparison { left, right, .. } => {
             left.capacity() + right.capacity()
         }
+        ValueExpression::Xslt10VariableContains { haystack, needle } => {
+            haystack.capacity() + needle.capacity()
+        }
         ValueExpression::Xslt10SourcePathStringComparison { left, right, .. } => {
             path_pair_owned(left, right) + size_of_val(right.as_ref())
         }

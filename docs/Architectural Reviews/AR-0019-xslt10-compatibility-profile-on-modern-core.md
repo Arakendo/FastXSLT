@@ -2172,3 +2172,10 @@ maintained redistributable legacy suite becomes available.
   bound rises from 1,618 to 1,619, successful execution reaches 1,908, and the
   `FXRT0002` frontier falls from 13 to 8.
   [Evidence](../Evidence/oasis-xslt10-global-tree-variable-avts-2026-09-19.md)
+- 2026-09-19 -- A typed XSLT 1.0 `contains($haystack,$needle)` plan now
+  converts exactly two variable operands through the shared charged string-
+  value owner. The unchanged Lotus `string56` case becomes exact, raising the
+  strict lower bound from 1,619 to 1,620; initialization reaches 2,009 and
+  execution reaches 1,909. Modern function conversion and broader argument
+  shapes remain unchanged.
+  [Evidence](../Evidence/oasis-xslt10-variable-contains-2026-09-19.md)

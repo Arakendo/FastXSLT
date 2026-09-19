@@ -939,6 +939,10 @@ pub(crate) enum ValueExpression {
         right: String,
         equal: bool,
     },
+    Xslt10VariableContains {
+        haystack: String,
+        needle: String,
+    },
     Xslt10SourcePathStringComparison {
         left: LocationPath,
         right: Box<LocationPath>,

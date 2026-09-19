@@ -3892,6 +3892,36 @@ fn xslt10_format_number_converts_local_source_node_variables() {
 }
 
 #[test]
+fn xslt10_contains_converts_two_variable_operands() {
+    const SOURCE: &str = "urn:fastxslt:contains-variable-operands:source";
+    const STYLESHEET: &str = "urn:fastxslt:contains-variable-operands:stylesheet";
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 4_096, 8_192));
+    resources
+        .admit(SOURCE, br"<doc>AB-CY-DE</doc>".to_vec())
+        .expect("admit source");
+    resources
+        .admit(
+            STYLESHEET,
+            br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="text"/><xsl:variable name="find" select="'CY'"/><xsl:template match="/"><xsl:variable name="node" select="doc"/><xsl:value-of select="contains($node,$find)"/></xsl:template></xsl:stylesheet>"#.to_vec(),
+        )
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program =
+        compile_resource(&snapshot, STYLESHEET).expect("compile variable contains expression");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(4_096));
+    builder
+        .add(request("contains-variable-operands", "result", SOURCE))
+        .expect("admit request");
+
+    let results =
+        execute_transform_set(builder.seal()).expect("execute variable contains expression");
+    assert_eq!(
+        results.by_request["contains-variable-operands"].serialized,
+        "true"
+    );
+}
+
+#[test]
 fn xslt10_default_single_number_counts_matching_preceding_siblings() {
     const SOURCE: &str = "urn:fastxslt:xslt10-number:source";
     const STYLESHEET: &str = "urn:fastxslt:xslt10-number:stylesheet";

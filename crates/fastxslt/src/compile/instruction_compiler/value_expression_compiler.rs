@@ -290,6 +290,14 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
         return Ok(ValueExpression::Xslt10VariablePath { variable, path });
     }
     if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && let Some((haystack, needle)) = parse_xslt10_variable_contains(expression)
+    {
+        return Ok(ValueExpression::Xslt10VariableContains {
+            haystack: haystack.to_owned(),
+            needle: needle.to_owned(),
+        });
+    }
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
         && let Some(function) =
             compile_xslt10_path_string_function(document, element, expression, location)?
     {
@@ -1348,6 +1356,18 @@ fn parse_xslt10_variable_string_variables_comparison(
         parse_boolean_comparison_variable(left)?,
         parse_boolean_comparison_variable(right)?,
         equal,
+    ))
+}
+
+fn parse_xslt10_variable_contains(expression: &str) -> Option<(&str, &str)> {
+    let arguments = expression
+        .trim()
+        .strip_prefix("contains(")?
+        .strip_suffix(')')?;
+    let (haystack, needle) = arguments.split_once(',')?;
+    (!needle.contains(',')).then_some((
+        parse_boolean_comparison_variable(haystack.trim())?,
+        parse_boolean_comparison_variable(needle.trim())?,
     ))
 }
 

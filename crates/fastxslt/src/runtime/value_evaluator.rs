@@ -571,6 +571,16 @@ pub(super) fn execute_value_of(
             )?;
             append_boolean(inputs, matches, result, control)?;
         }
+        ValueExpression::Xslt10VariableContains { haystack, needle } => {
+            let haystack =
+                xslt10_compatibility::variable_string_value(inputs, haystack, variables, control)?;
+            let needle =
+                xslt10_compatibility::variable_string_value(inputs, needle, variables, control)?;
+            control
+                .charge(WorkDomain::XPathOperation, 1)
+                .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            append_boolean(inputs, haystack.contains(&needle), result, control)?;
+        }
         ValueExpression::Xslt10SourcePathStringComparison { left, right, equal } => {
             let matches = runtime_context::evaluate_source_path_string_comparison(
                 inputs, context, left, right, *equal, control,
