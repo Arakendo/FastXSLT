@@ -819,6 +819,7 @@ pub(crate) enum FocusComparison {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ValueExpression {
     LiteralString(String),
+    Xslt10KeyLookup(Box<Xslt10KeyLookup>),
     LocationPath(LocationPath),
     Xslt10FirstNodeLocationPath(LocationPath),
     Xslt10CurrentPredicatePath(LocationPath),
@@ -939,6 +940,14 @@ pub(crate) enum ValueExpression {
     StringLength(Box<StringLengthExpression>),
     ConditionalInteger(Box<ConditionalIntegerExpression>),
     ConditionalPath(Box<ConditionalPathExpression>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Xslt10KeyLookup {
+    pub(crate) name: ExpandedName,
+    pub(crate) value: String,
+    pub(crate) tail: Option<LocationPath>,
+    pub(crate) location: SourceLocation,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

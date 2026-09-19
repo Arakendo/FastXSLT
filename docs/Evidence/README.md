@@ -7,6 +7,7 @@ Each record should identify the date, exact inputs or revisions, environment,
 method, results, limitations, and the decision or plan it informs. Evidence can
 pressure architecture but does not silently create a public guarantee.
 
+- [OASIS XSLT 1.0 Literal `key()` Lookup Reference](oasis-xslt10-literal-key-lookup-reference-2026-09-18.md)
 - [OASIS XSLT 1.0 Lexical Context Comparison](oasis-xslt10-lexical-context-comparison-2026-09-15.md)
 - [OASIS XSLT 1.0 Child Node-Set/Literal Comparison](oasis-xslt10-child-node-set-literal-comparison-2026-09-15.md)
 - [OASIS XSLT 1.0 Literal-Result AVT Scalars](oasis-xslt10-literal-result-avt-scalars-2026-09-15.md)

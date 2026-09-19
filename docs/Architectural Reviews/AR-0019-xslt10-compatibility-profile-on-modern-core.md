@@ -2016,3 +2016,12 @@ maintained redistributable legacy suite becomes available.
   function-shaped lookup cases remain explicit pending invocation-owned index
   semantics.
   [Evidence](../Evidence/oasis-xslt10-static-key-declaration-admission-2026-09-18.md)
+- 2026-09-18 -- Literal-name/literal-value `key()` calls in the private
+  `xsl:value-of` path now execute through a complete charged source scan. The
+  scan reuses compiled key match/`use` semantics, composes same-name
+  declarations, preserves document order and node identity, and remains the
+  safe oracle for any later index. Thirteen unchanged cases become exact,
+  raising the strict lower bound from 1,572 to 1,585; an undeclared key reports
+  runtime `XTDE1260`, while 11 dynamic/nonliteral forms remain explicit as
+  `FXXP1023`. No index, cross-invocation retention, or new authority is added.
+  [Evidence](../Evidence/oasis-xslt10-literal-key-lookup-reference-2026-09-18.md)

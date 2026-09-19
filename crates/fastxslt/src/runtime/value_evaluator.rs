@@ -60,7 +60,7 @@ use crate::xpath::string_length_experiment::{
 use crate::xslt::golden_semantics_experiment::{
     ConditionalIntegerBranch, ConditionalIntegerCondition, ConditionalIntegerExpression,
     ConditionalPathBranch, ConditionalPathExpression, FocusEqualityOperand,
-    IntegerComparisonOperator, ValueExpression,
+    IntegerComparisonOperator, ValueExpression, Xslt10KeyLookup,
 };
 
 #[path = "value_evaluator/xslt10_compatibility.rs"]
@@ -227,6 +227,9 @@ pub(super) fn execute_value_of(
     match select {
         ValueExpression::LiteralString(value) => {
             append_text(result, value, inputs.request_id, control)?;
+        }
+        ValueExpression::Xslt10KeyLookup(lookup) => {
+            append_xslt10_key_lookup(inputs, lookup, context, result, control)?;
         }
         ValueExpression::LocationPath(path) => {
             append_location_path_string(inputs, path, context, result, control)?;
@@ -1320,6 +1323,109 @@ fn append_location_path_string(
         append_source_string_value(inputs, *node, result, control)?;
     }
     Ok(())
+}
+
+fn append_xslt10_key_lookup(
+    inputs: &SequenceInputs<'_>,
+    lookup: &Xslt10KeyLookup,
+    context: Option<NodeId>,
+    result: &mut Vec<ResultNode>,
+    control: &mut InvocationControl,
+) -> Result<(), ExecutionFailure> {
+    let (source, _) = required_source_context(inputs, context)?;
+    let definitions = inputs
+        .program
+        .key_definitions
+        .iter()
+        .enumerate()
+        .filter(|(_, definition)| definition.name == lookup.name)
+        .collect::<Vec<_>>();
+    if definitions.is_empty() {
+        return Err(failure_at(
+            "XTDE1260",
+            FailureCategory::Invalid,
+            Some(inputs.request_id),
+            lookup.location.clone(),
+            format!("key() refers to an undeclared key: {}", lookup.name.local),
+        ));
+    }
+
+    let mut candidates = Vec::new();
+    collect_source_nodes(source, source.document_node(), &mut candidates);
+    let variables = std::collections::BTreeMap::new();
+    let mut selected = Vec::new();
+    for candidate in candidates {
+        control
+            .charge(WorkDomain::XPathNodeVisit, 1)
+            .map_err(|failure| control_failure(failure, inputs.request_id))?;
+        let mut matches = false;
+        for (definition_index, definition) in &definitions {
+            let selection = super::template_selector::TemplateSelectionContext {
+                source,
+                node: candidate,
+                mode: None,
+                variables: &variables,
+                request_id: inputs.request_id,
+                document_rooted_matches: &inputs.document_rooted_matches,
+            };
+            let pattern_index = inputs.program.matched_templates.len() + *definition_index;
+            if !super::template_selector::matches_pattern(
+                pattern_index,
+                &definition.match_pattern,
+                &selection,
+                control,
+            )? {
+                continue;
+            }
+            let values =
+                evaluate_location_path_controlled(source, candidate, &definition.use_path, control)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+            for value in values {
+                let lexical = source
+                    .string_value_controlled(value, control)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?;
+                if lexical == lookup.value {
+                    matches = true;
+                    break;
+                }
+            }
+            if matches {
+                break;
+            }
+        }
+        if matches {
+            selected.push(candidate);
+        }
+    }
+
+    if let Some(tail) = &lookup.tail {
+        let mut tailed = Vec::new();
+        for node in selected {
+            tailed.extend(
+                evaluate_location_path_controlled(source, node, tail, control)
+                    .map_err(|failure| control_failure(failure, inputs.request_id))?,
+            );
+        }
+        tailed.sort_unstable_by_key(|node| source.document_order(*node));
+        tailed.dedup();
+        selected = tailed;
+    }
+    if let Some(node) = selected.first() {
+        append_source_string_value(inputs, *node, result, control)?;
+    }
+    Ok(())
+}
+
+fn collect_source_nodes(
+    source: &crate::xdm::owned_tree_experiment::Document,
+    node: NodeId,
+    nodes: &mut Vec<NodeId>,
+) {
+    nodes.push(node);
+    nodes.extend_from_slice(source.attributes(node));
+    for child in source.children(node) {
+        collect_source_nodes(source, *child, nodes);
+    }
 }
 
 fn append_xslt10_first_node_location_path_string(

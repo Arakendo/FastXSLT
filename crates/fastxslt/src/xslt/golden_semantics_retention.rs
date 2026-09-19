@@ -901,6 +901,15 @@ fn arc_slice_owned<T>(values: &Arc<[T]>, nested: impl Fn(&T) -> usize) -> usize 
 fn value_expression_owned(value: &ValueExpression) -> usize {
     match value {
         ValueExpression::LiteralString(value) => value.capacity(),
+        ValueExpression::Xslt10KeyLookup(lookup) => {
+            name_owned(&lookup.name)
+                + lookup.value.capacity()
+                + lookup
+                    .tail
+                    .as_ref()
+                    .map_or(0, LocationPath::known_owned_capacity_bytes)
+                + location_owned(&lookup.location)
+        }
         ValueExpression::LocationPath(path)
         | ValueExpression::Xslt10FirstNodeLocationPath(path)
         | ValueExpression::Xslt10CurrentPredicatePath(path)

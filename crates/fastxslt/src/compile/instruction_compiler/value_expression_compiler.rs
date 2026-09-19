@@ -23,7 +23,7 @@ use super::{
 };
 use crate::xpath::binary_numeric_experiment::{BinaryNumericNode, BinaryNumericOperator};
 use crate::xslt::golden_semantics_experiment::{
-    Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10PathStringFunction,
+    Xslt10ConcatExpression, Xslt10ConcatPart, Xslt10KeyLookup, Xslt10PathStringFunction,
     Xslt10PathStringFunctionKind, Xslt10PathSubstring, Xslt10PathTranslate, Xslt10StringOperand,
 };
 
@@ -86,6 +86,12 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
     location: &SourceLocation,
 ) -> Result<ValueExpression, CompileFailure> {
     let static_context = ValueStaticContext::for_element(document, element);
+    if static_context.compatibility == ValueCompatibilityMode::Xslt10
+        && expression.trim_start().starts_with("key(")
+    {
+        return compile_xslt10_literal_key_lookup(document, element, expression, location)
+            .map(|lookup| ValueExpression::Xslt10KeyLookup(Box::new(lookup)));
+    }
     if let Some(literal) = xpath_string_literal(expression.trim()) {
         return Ok(ValueExpression::LiteralString(literal.to_owned()));
     }
@@ -608,6 +614,98 @@ pub(in crate::compile::golden_stylesheet_experiment) fn compile_value_expression
             static_context,
         )?
     })
+}
+
+fn compile_xslt10_literal_key_lookup(
+    document: &Document,
+    element: NodeId,
+    expression: &str,
+    location: &SourceLocation,
+) -> Result<Xslt10KeyLookup, CompileFailure> {
+    let expression = expression.trim();
+    let close = closing_function_parenthesis(expression).ok_or_else(|| {
+        invalid(
+            "XPST0003",
+            "key() requires a closed two-argument call",
+            location,
+        )
+    })?;
+    let arguments = &expression[4..close];
+    let (name, value) = split_two_literal_arguments(arguments).ok_or_else(|| {
+        unsupported(
+            "FXXP1023",
+            "the first key() slice requires literal key name and lookup value arguments",
+            location,
+        )
+    })?;
+    let name = super::super::compile_expanded_qname(document, element, name, "key() name")?;
+    let value = xpath_string_literal(value)
+        .expect("the literal key argument shape was checked")
+        .to_owned();
+    let suffix = expression[close + 1..].trim();
+    let tail = if suffix.is_empty() {
+        None
+    } else {
+        let path = suffix.strip_prefix('/').ok_or_else(|| {
+            unsupported(
+                "FXXP1023",
+                "the first key() slice supports only a location-path tail",
+                location,
+            )
+        })?;
+        Some(parse_xslt10_location_path(path, location.clone()).map_err(map_path_failure)?)
+    };
+    Ok(Xslt10KeyLookup {
+        name,
+        value,
+        tail,
+        location: location.clone(),
+    })
+}
+
+fn closing_function_parenthesis(expression: &str) -> Option<usize> {
+    let mut quote = None;
+    let mut depth = 0_usize;
+    for (offset, character) in expression.char_indices().skip(3) {
+        if matches!(character, '\'' | '"') {
+            if quote == Some(character) {
+                quote = None;
+            } else if quote.is_none() {
+                quote = Some(character);
+            }
+            continue;
+        }
+        if quote.is_some() {
+            continue;
+        }
+        match character {
+            '(' => depth += 1,
+            ')' if depth == 1 => return Some(offset),
+            ')' => depth = depth.checked_sub(1)?,
+            _ => {}
+        }
+    }
+    None
+}
+
+fn split_two_literal_arguments(arguments: &str) -> Option<(&str, &str)> {
+    let mut quote = None;
+    for (offset, character) in arguments.char_indices() {
+        if matches!(character, '\'' | '"') {
+            if quote == Some(character) {
+                quote = None;
+            } else if quote.is_none() {
+                quote = Some(character);
+            }
+        } else if quote.is_none() && character == ',' {
+            let name = arguments[..offset].trim();
+            let value = arguments[offset + 1..].trim();
+            let name = xpath_string_literal(name)?;
+            xpath_string_literal(value)?;
+            return Some((name, value));
+        }
+    }
+    None
 }
 
 fn parse_xslt10_variable_string_length(expression: &str) -> Option<&str> {

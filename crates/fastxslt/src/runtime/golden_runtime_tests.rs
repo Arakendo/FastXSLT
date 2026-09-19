@@ -2064,6 +2064,36 @@ fn ignored_stylesheet_comments_do_not_split_literal_text_runs() {
 }
 
 #[test]
+fn xslt10_literal_key_lookup_scans_composed_definitions_in_document_order() {
+    const SOURCE: &str = "urn:fastxslt:key-lookup:source";
+    const STYLESHEET: &str = "urn:fastxslt:key-lookup:stylesheet";
+    let stylesheet = br#"<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output omit-xml-declaration="yes"/><xsl:key name="codes" match="item" use="@code"/><xsl:key name="codes" match="entry" use="@code"/><xsl:template match="/"><out><xsl:value-of select="key('codes', 'b')/@name"/></out></xsl:template></xsl:stylesheet>"#;
+    let mut resources = ResourceSetBuilder::new(ResourceLimits::new(2, 8_192, 16_384));
+    resources
+        .admit(
+            SOURCE,
+            b"<doc><item code='a' name='alpha'/><entry code='b' name='beta'/><item code='b' name='later'/></doc>".to_vec(),
+        )
+        .expect("admit source");
+    resources
+        .admit(STYLESHEET, stylesheet.to_vec())
+        .expect("admit stylesheet");
+    let snapshot = resources.seal();
+    let program = compile_resource(&snapshot, STYLESHEET).expect("compile stylesheet");
+    let mut builder = TransformSetBuilder::new(snapshot, program, 1, policy(8_192));
+    builder
+        .add(request("key-lookup", "result", SOURCE))
+        .expect("admit request");
+
+    let results = execute_transform_set(builder.seal()).expect("execute stylesheet");
+
+    assert_eq!(
+        results.by_request["key-lookup"].serialized,
+        "<out>beta</out>"
+    );
+}
+
+#[test]
 fn xslt10_computed_attribute_for_each_concatenates_selected_string_values() {
     const SOURCE: &str = "urn:fastxslt:computed-attribute-for-each:source";
     const STYLESHEET: &str = "urn:fastxslt:computed-attribute-for-each:stylesheet";

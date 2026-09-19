@@ -203,7 +203,7 @@ pub(super) fn accepts_mode(modes: &[String], mode: Option<&str>) -> bool {
     clippy::too_many_lines,
     reason = "the exhaustive private pattern dispatch remains one semantic ownership point"
 )]
-fn matches_pattern(
+pub(super) fn matches_pattern(
     template_index: usize,
     pattern: &MatchPattern,
     selection: &TemplateSelectionContext<'_>,
